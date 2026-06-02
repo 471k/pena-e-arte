@@ -15,6 +15,15 @@ public static class ClientEndpoints
 
         group.MapGet("/",   GetClients).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/",  CreateClient).RequireAuthorization("ArtistAndAbove");
+
+        group.MapGet("{clientId:guid}/profile",           GetClientProfile).RequireAuthorization("ArtistAndAbove");
+        group.MapPut("{clientId:guid}/profile",           UpsertClientProfile).RequireAuthorization("ArtistAndAbove");
+        group.MapPatch("{clientId:guid}/profile/body-map", UpdateBodyMap).RequireAuthorization("ArtistAndAbove");
+
+        group.MapGet("{clientId:guid}/tattoos",           GetTattooRecords).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("{clientId:guid}/tattoos",          AddTattooRecord).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("{clientId:guid}/tattoos/{id:guid}", GetTattooRecord).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("{clientId:guid}/tattoos/{id:guid}", DeleteTattooRecord).RequireAuthorization("ArtistAndAbove");
     }
 
     private static async Task<IResult> GetClients(
@@ -33,5 +42,73 @@ public static class ClientEndpoints
     {
         ClientResponse result = await mediator.Send(new CreateClientCommand(request), ct);
         return Results.Created($"/api/v1/clients/{result.Id}", result);
+    }
+
+    private static async Task<IResult> GetClientProfile(
+        Guid              clientId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        ClientProfileResponse result = await mediator.Send(new GetClientProfileQuery(clientId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpsertClientProfile(
+        Guid                        clientId,
+        UpsertClientProfileRequest  request,
+        ISender                     mediator,
+        CancellationToken           ct)
+    {
+        ClientProfileResponse result = await mediator.Send(new UpsertClientProfileCommand(clientId, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateBodyMap(
+        Guid                 clientId,
+        UpdateBodyMapRequest request,
+        ISender              mediator,
+        CancellationToken    ct)
+    {
+        ClientProfileResponse result = await mediator.Send(new UpdateBodyMapCommand(clientId, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetTattooRecords(
+        Guid              clientId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<TattooRecordResponse> result = await mediator.Send(new GetTattooRecordsQuery(clientId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> AddTattooRecord(
+        Guid                 clientId,
+        AddTattooRecordRequest request,
+        ISender              mediator,
+        CancellationToken    ct)
+    {
+        TattooRecordResponse result = await mediator.Send(new AddTattooRecordCommand(clientId, request), ct);
+        return Results.Created($"/api/v1/clients/{clientId}/tattoos/{result.Id}", result);
+    }
+
+    private static async Task<IResult> GetTattooRecord(
+        Guid              clientId,
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        TattooRecordResponse result = await mediator.Send(new GetTattooRecordQuery(clientId, id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> DeleteTattooRecord(
+        Guid              clientId,
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new DeleteTattooRecordCommand(clientId, id), ct);
+        return Results.NoContent();
     }
 }
