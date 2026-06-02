@@ -1,0 +1,92 @@
+using FluentAssertions;
+using NSubstitute;
+using Pena_e_Arte.Application.Appointments.Commands;
+using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.UnitTests.Helpers;
+
+namespace Pena_e_Arte.UnitTests.Appointments;
+
+public class CancelAppointmentHandlerTests
+{
+    private readonly FakeDbContext     _db       = FakeDbContext.Create();
+    private readonly ICurrentTenant    _tenant   = Substitute.For<ICurrentTenant>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly Guid              _studioId = Guid.NewGuid();
+
+    public CancelAppointmentHandlerTests() =>
+        _tenant.StudioId.Returns(_studioId);
+
+    private CancelAppointmentHandler CreateSut() => new(_db, _tenant, _realtime);
+
+    [Fact]
+    public async Task Handle_PendingAppointment_SetsStatusToCancelled()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Pending);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        _db.Appointments.Single(a => a.Id == id).Status.Should().Be(AppointmentStatus.Cancelled);
+    }
+
+    [Fact]
+    public async Task Handle_ValidCancel_NotifiesRealtime()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Pending);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _realtime.Received(1)
+            .NotifyStudioAsync(_studioId, "AppointmentCancelled", Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_AppointmentNotFound_ThrowsNotFoundException()
+    {
+        Func<Task> act = () => CreateSut().Handle(new CancelAppointmentCommand(Guid.NewGuid()), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_CompletedAppointment_ThrowsBusinessRuleViolationException()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Completed);
+
+        Func<Task> act = () => CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*cannot be cancelled*");
+    }
+
+    [Fact]
+    public async Task Handle_CompletedAppointment_DoesNotChangeStatus()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Completed);
+
+        try { await CreateSut().Handle(new CancelAppointmentCommand(id), default); } catch { }
+
+        _db.Appointments.Single(a => a.Id == id).Status.Should().Be(AppointmentStatus.Completed);
+    }
+
+    private async Task<Guid> SeedAppointment(AppointmentStatus status)
+    {
+        Appointment appointment = new()
+        {
+            StudioId        = _studioId,
+            ArtistId        = Guid.NewGuid(),
+            ClientId        = Guid.NewGuid(),
+            Date            = DateTime.UtcNow.AddDays(1),
+            EndDate         = DateTime.UtcNow.AddDays(1).AddHours(2),
+            DurationMinutes = 120,
+            Status          = status,
+            DepositStatus   = DepositStatus.Pending
+        };
+        _db.Appointments.Add(appointment);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        return appointment.Id;
+    }
+}

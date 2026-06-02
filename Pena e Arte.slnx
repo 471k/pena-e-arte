@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pena_e_Arte.IntegrationTests/Pena_e_Arte.IntegrationTests.csproj" />
+    <Project Path="tests/Pena_e_Arte.UnitTests/Pena_e_Arte.UnitTests.csproj" />
+  </Folder>
+  <Project Path="Pena_e_Arte.API/Pena_e_Arte.API.csproj" />
+  <Project Path="Pena_e_Arte.Application/Pena_e_Arte.Application.csproj" />
+  <Project Path="Pena_e_Arte.Contracts/Pena_e_Arte.Contracts.csproj" />
+  <Project Path="Pena_e_Arte.Domain/Pena_e_Arte.Domain.csproj" />
+  <Project Path="Pena_e_Arte.Infrastructure/Pena_e_Arte.Infrastructure.csproj" />
+</Solution>

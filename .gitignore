@@ -1,0 +1,69 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.db
+*.cache
+*.dll
+*.exe
+!**/bin/Migrations/*.dll
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+## NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+nuget.config
+
+## ASP.NET Core
+**/appsettings.*.json
+!**/appsettings.json
+!**/appsettings.Development.json
+
+## Secrets / env
+.env
+.env.*
+*.env
+secrets.json
+**/secrets.json
+
+## Frontend
+**/node_modules/
+**/dist/
+**/.vite/
+**/.turbo/
+**/coverage/
+**/.next/
+**/.nuxt/
+
+## Logs
+*.log
+logs/
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Docker
+docker-compose.override.yml
+
+## Test results
+TestResults/
+*.trx
+*.coveragexml
