@@ -1,13 +1,24 @@
+using NSubstitute;
 using Pena_e_Arte.Application.Clients.Commands;
 using Pena_e_Arte.Application.Clients.Validators;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Clients;
 
 public class UpdateTattooRecordValidatorTests
 {
-    private readonly UpdateTattooRecordValidator _sut = new();
+    private const string ValidUrl = "https://cdn.example.com/photo.jpg";
+
+    private readonly IR2Service                 _r2  = Substitute.For<IR2Service>();
+    private readonly UpdateTattooRecordValidator _sut;
+
+    public UpdateTattooRecordValidatorTests()
+    {
+        _r2.IsR2Url(ValidUrl).Returns(true);
+        _sut = new UpdateTattooRecordValidator(_r2);
+    }
 
     private static UpdateTattooRecordCommand ValidCommand() =>
         new(Guid.NewGuid(), Guid.NewGuid(),
@@ -17,6 +28,14 @@ public class UpdateTattooRecordValidatorTests
     public void Validate_ValidCommand_IsValid()
     {
         _sut.ShouldBeValid(ValidCommand());
+    }
+
+    [Fact]
+    public void Validate_ValidCommandWithPhotoUrls_IsValid()
+    {
+        UpdateTattooRecordCommand cmd = new(Guid.NewGuid(), Guid.NewGuid(),
+            new UpdateTattooRecordRequest("desc", "arm", [ValidUrl], DateTime.UtcNow.AddDays(-1)));
+        _sut.ShouldBeValid(cmd);
     }
 
     [Fact]
@@ -72,6 +91,17 @@ public class UpdateTattooRecordValidatorTests
     {
         UpdateTattooRecordCommand cmd = new(Guid.NewGuid(), Guid.NewGuid(),
             new("desc", "arm", [new string('x', 2049)], DateTime.UtcNow.AddDays(-1)));
+        _sut.ShouldFailOn(cmd, "Request.PhotoUrls[0]");
+    }
+
+    [Fact]
+    public void Validate_PhotoUrlNotFromR2_FailsOnPhotoUrls()
+    {
+        const string externalUrl = "https://external.attacker.com/photo.jpg";
+        _r2.IsR2Url(externalUrl).Returns(false);
+
+        UpdateTattooRecordCommand cmd = new(Guid.NewGuid(), Guid.NewGuid(),
+            new("desc", "arm", [externalUrl], DateTime.UtcNow.AddDays(-1)));
         _sut.ShouldFailOn(cmd, "Request.PhotoUrls[0]");
     }
 }

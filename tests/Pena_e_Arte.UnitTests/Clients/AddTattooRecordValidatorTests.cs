@@ -1,13 +1,24 @@
+using NSubstitute;
 using Pena_e_Arte.Application.Clients.Commands;
 using Pena_e_Arte.Application.Clients.Validators;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Clients;
 
 public class AddTattooRecordValidatorTests
 {
-    private readonly AddTattooRecordValidator _sut = new();
+    private const string ValidUrl = "https://cdn.example.com/photo.jpg";
+
+    private readonly IR2Service              _r2  = Substitute.For<IR2Service>();
+    private readonly AddTattooRecordValidator _sut;
+
+    public AddTattooRecordValidatorTests()
+    {
+        _r2.IsR2Url(ValidUrl).Returns(true);
+        _sut = new AddTattooRecordValidator(_r2);
+    }
 
     private static AddTattooRecordCommand ValidCommand() =>
         Command(Guid.NewGuid(), Guid.NewGuid(), "Dragon sleeve", "left_arm", [], DateTime.UtcNow.AddDays(-1));
@@ -25,6 +36,14 @@ public class AddTattooRecordValidatorTests
     public void Validate_ValidCommand_IsValid()
     {
         _sut.ShouldBeValid(ValidCommand());
+    }
+
+    [Fact]
+    public void Validate_ValidCommandWithPhotoUrls_IsValid()
+    {
+        AddTattooRecordCommand cmd = Command(
+            Guid.NewGuid(), Guid.NewGuid(), "desc", "arm", [ValidUrl], DateTime.UtcNow.AddDays(-1));
+        _sut.ShouldBeValid(cmd);
     }
 
     [Fact]
@@ -78,6 +97,17 @@ public class AddTattooRecordValidatorTests
     {
         _sut.ShouldFailOn(
             Command(Guid.NewGuid(), Guid.NewGuid(), "desc", "arm", [new('x', 2049)], DateTime.UtcNow.AddDays(-1)),
+            "Request.PhotoUrls[0]");
+    }
+
+    [Fact]
+    public void Validate_PhotoUrlNotFromR2_FailsOnPhotoUrls()
+    {
+        const string externalUrl = "https://external.attacker.com/photo.jpg";
+        _r2.IsR2Url(externalUrl).Returns(false);
+
+        _sut.ShouldFailOn(
+            Command(Guid.NewGuid(), Guid.NewGuid(), "desc", "arm", [externalUrl], DateTime.UtcNow.AddDays(-1)),
             "Request.PhotoUrls[0]");
     }
 }

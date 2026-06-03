@@ -1,3 +1,5 @@
+using Amazon.Runtime;
+using Amazon.S3;
 using Hangfire;
 using Hangfire.MySql;
 using Microsoft.AspNetCore.Identity;
@@ -65,6 +67,17 @@ public static class InfrastructureServiceExtensions
         TwilioClient.Init(
             configuration["Twilio:AccountSid"]!,
             configuration["Twilio:AuthToken"]!);
+
+        services.Configure<R2Options>(configuration.GetSection(R2Options.Section));
+        R2Options r2Opts = configuration.GetSection(R2Options.Section).Get<R2Options>()!;
+        AmazonS3Config s3Config = new()
+        {
+            ServiceURL     = $"https://{r2Opts.AccountId}.r2.cloudflarestorage.com",
+            ForcePathStyle = true
+        };
+        services.AddSingleton<IAmazonS3>(
+            new AmazonS3Client(new BasicAWSCredentials(r2Opts.AccessKeyId, r2Opts.SecretAccessKey), s3Config));
+        services.AddSingleton<IR2Service, R2Service>();
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenant,        CurrentTenantService>();
