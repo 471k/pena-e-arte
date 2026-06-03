@@ -12,8 +12,9 @@ public static class StudioEndpoints
     {
         RouteGroupBuilder group = app.MapGroup("/api/v1/studios");
 
-        group.MapGet("/map",  GetStudioMap).AllowAnonymous();
-        group.MapPost("/",    RegisterStudio).AllowAnonymous();
+        group.MapGet("/map",     GetStudioMap).AllowAnonymous();
+        group.MapPost("/",       RegisterStudio).AllowAnonymous();
+        group.MapPost("/connect", ConnectStudio).RequireAuthorization("OwnerOnly");
     }
 
     private static async Task<IResult> GetStudioMap(
@@ -31,5 +32,14 @@ public static class StudioEndpoints
     {
         StudioResponse result = await mediator.Send(new RegisterStudioCommand(request), ct);
         return Results.Created($"/api/v1/studios/{result.Id}", result);
+    }
+
+    private static async Task<IResult> ConnectStudio(
+        ConnectStudioRequest  request,
+        ISender               mediator,
+        CancellationToken     ct)
+    {
+        ConnectOnboardingResponse result = await mediator.Send(new ConnectStudioCommand(request), ct);
+        return Results.Ok(result);
     }
 }

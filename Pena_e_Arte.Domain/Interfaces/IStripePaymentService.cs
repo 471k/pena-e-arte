@@ -14,4 +14,9 @@ public interface IStripePaymentService
         string            connectedAccountId,
         long?             amountInCents,
         CancellationToken ct);
+
+    Task CapturePaymentAsync(
+        string            paymentIntentId,
+        string            connectedAccountId,
+        CancellationToken ct);
 }

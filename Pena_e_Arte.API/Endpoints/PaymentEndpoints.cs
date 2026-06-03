@@ -25,6 +25,9 @@ public static class PaymentEndpoints
         group.MapPut("/{id:guid}/splits",
             UpdateSessionSplits).RequireAuthorization("ArtistAndAbove");
 
+        group.MapPost("/{id:guid}/capture",
+            CaptureDeposit).RequireAuthorization("ArtistAndAbove");
+
         group.MapPost("/{id:guid}/refund",
             RefundPayment).RequireAuthorization("OwnerOnly");
     }
@@ -64,6 +67,15 @@ public static class PaymentEndpoints
         CancellationToken          ct)
     {
         PaymentResponse result = await mediator.Send(new UpdateSessionSplitsCommand(id, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CaptureDeposit(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        PaymentResponse result = await mediator.Send(new CaptureDepositCommand(id), ct);
         return Results.Ok(result);
     }
 

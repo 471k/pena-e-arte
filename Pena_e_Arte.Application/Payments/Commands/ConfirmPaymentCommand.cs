@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
@@ -24,6 +25,17 @@ public class ConfirmPaymentHandler(IAppDbContext db)
         payment.Status    = PaymentStatus.Paid;
         payment.PaidAt    = DateTime.UtcNow;
         payment.UpdatedAt = DateTime.UtcNow;
+
+        // Webhook-only path — IgnoreQueryFilters intentional (no tenant JWT in scope).
+        Appointment? appointment = await db.Appointments
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
+
+        if (appointment is not null)
+        {
+            appointment.DepositStatus = DepositStatus.Paid;
+            appointment.UpdatedAt     = DateTime.UtcNow;
+        }
 
         await db.SaveChangesAsync(ct);
     }

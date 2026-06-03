@@ -15,9 +15,10 @@ public class StripePaymentService(PaymentIntentService intentService, RefundServ
     {
         PaymentIntentCreateOptions options = new()
         {
-            Amount   = amountInCents,
-            Currency = currency.ToLowerInvariant(),
-            Metadata = new Dictionary<string, string> { { "payment_id", paymentId.ToString() } },
+            Amount        = amountInCents,
+            Currency      = currency.ToLowerInvariant(),
+            CaptureMethod = "manual",
+            Metadata      = new Dictionary<string, string> { { "payment_id", paymentId.ToString() } },
             AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true }
         };
 
@@ -43,5 +44,14 @@ public class StripePaymentService(PaymentIntentService intentService, RefundServ
 
         Refund refund = await refundService.CreateAsync(options, requestOptions, ct);
         return refund.Id;
+    }
+
+    public async Task CapturePaymentAsync(
+        string            paymentIntentId,
+        string            connectedAccountId,
+        CancellationToken ct)
+    {
+        RequestOptions requestOptions = new() { StripeAccount = connectedAccountId };
+        await intentService.CaptureAsync(paymentIntentId, null, requestOptions, ct);
     }
 }

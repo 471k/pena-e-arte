@@ -59,6 +59,8 @@ public static class InfrastructureServiceExtensions
         Stripe.StripeConfiguration.ApiKey = configuration["Stripe:SecretKey"]!;
         services.AddSingleton<Stripe.PaymentIntentService>();
         services.AddSingleton<Stripe.RefundService>();
+        services.AddSingleton<Stripe.AccountService>();
+        services.AddSingleton<Stripe.AccountLinkService>();
 
         TwilioClient.Init(
             configuration["Twilio:AccountSid"]!,
@@ -72,6 +74,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IJobScheduler,         JobScheduler>();
         services.AddScoped<ISlotLocker,           SlotLocker>();
         services.AddScoped<IStripePaymentService, StripePaymentService>();
+        services.AddScoped<IStripeConnectService, StripeConnectService>();
         services.AddScoped<INotificationService,  NotificationService>();
 
         return services;

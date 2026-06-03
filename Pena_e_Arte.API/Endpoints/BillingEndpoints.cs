@@ -100,6 +100,12 @@ public static class BillingEndpoints
             case "payment_intent.payment_failed" when stripeEvent.Data.Object is PaymentIntent intent:
                 await mediator.Send(new MarkPaymentFailedCommand(intent.Id), ct);
                 break;
+
+            case "account.updated" when stripeEvent.Data.Object is Stripe.Account account:
+                if (account.ChargesEnabled)
+                    logger.LogInformation(
+                        "Stripe Connect account onboarding complete {@StripeAccountId}", account.Id);
+                break;
         }
 
         return Results.Ok();
