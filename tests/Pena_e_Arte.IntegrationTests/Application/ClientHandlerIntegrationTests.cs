@@ -124,6 +124,137 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
         result.Should().ContainSingle(c => c.Email == targetEmail);
     }
 
+    // ── AddTattooRecord ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AddTattooRecord_ValidRequest_PersistsToDatabase()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid clientId, Guid artistId) = await SeedClientAndArtistAsync(tenantId);
+        AddTattooRecordRequest req = new(artistId, null, "Dragon sleeve", "left_arm", [], DateTime.UtcNow.AddDays(-5));
+
+        TattooRecordResponse result = await RunAddTattooRecordHandler(tenantId, clientId, req);
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        bool exists = await verify.TattooRecords.AnyAsync(t => t.Id == result.Id);
+        exists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddTattooRecord_TenantIsolation_RecordScopedToTenant()
+    {
+        Guid tenantA = Guid.NewGuid();
+        Guid tenantB = Guid.NewGuid();
+        (Guid clientId, Guid artistId) = await SeedClientAndArtistAsync(tenantA);
+        AddTattooRecordRequest req = new(artistId, null, "Rose", "wrist", [], DateTime.UtcNow.AddDays(-1));
+
+        TattooRecordResponse result = await RunAddTattooRecordHandler(tenantA, clientId, req);
+
+        await using AppDbContext tenantBCtx = fixture.CreateDbContext(tenantB);
+        bool visibleToOtherTenant = await tenantBCtx.TattooRecords.AnyAsync(t => t.Id == result.Id);
+        visibleToOtherTenant.Should().BeFalse(because: "tenant query filter must isolate records");
+    }
+
+    [Fact]
+    public async Task AddTattooRecord_UnknownClient_ThrowsNotFoundException()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (_, Guid artistId) = await SeedClientAndArtistAsync(tenantId);
+        AddTattooRecordRequest req = new(artistId, null, "Skull", "neck", [], DateTime.UtcNow.AddDays(-2));
+
+        Func<Task> act = () => RunAddTattooRecordHandler(tenantId, Guid.NewGuid(), req);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    // ── GetTattooRecords ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetTattooRecords_ReturnsOnlyCurrentTenantRecords()
+    {
+        Guid tenantA = Guid.NewGuid();
+        Guid tenantB = Guid.NewGuid();
+        (Guid clientA, Guid artistA) = await SeedClientAndArtistAsync(tenantA);
+        (Guid clientB, Guid artistB) = await SeedClientAndArtistAsync(tenantB);
+
+        await RunAddTattooRecordHandler(tenantA, clientA, new(artistA, null, "A1", "arm", [], DateTime.UtcNow.AddDays(-1)));
+        await RunAddTattooRecordHandler(tenantA, clientA, new(artistA, null, "A2", "leg", [], DateTime.UtcNow.AddDays(-2)));
+        await RunAddTattooRecordHandler(tenantB, clientB, new(artistB, null, "B1", "back", [], DateTime.UtcNow.AddDays(-1)));
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantA);
+        GetTattooRecordsHandler handler = new(db);
+        List<TattooRecordResponse> result = await handler.Handle(new GetTattooRecordsQuery(clientA), default);
+
+        result.Should().HaveCount(2);
+        result.Should().AllSatisfy(r => r.ClientId.Should().Be(clientA));
+    }
+
+    // ── GetTattooRecord (single) ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetTattooRecord_ExistingRecord_ReturnsRecord()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid clientId, Guid artistId) = await SeedClientAndArtistAsync(tenantId);
+        AddTattooRecordRequest addReq = new(artistId, null, "Lotus", "shoulder", [], DateTime.UtcNow.AddDays(-7));
+        TattooRecordResponse added = await RunAddTattooRecordHandler(tenantId, clientId, addReq);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        GetTattooRecordHandler handler = new(db);
+        TattooRecordResponse result = await handler.Handle(new GetTattooRecordQuery(clientId, added.Id), default);
+
+        result.Id.Should().Be(added.Id);
+        result.Description.Should().Be("Lotus");
+    }
+
+    // ── UpdateTattooRecord ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateTattooRecord_ValidRequest_PersistsChangesToDatabase()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid clientId, Guid artistId) = await SeedClientAndArtistAsync(tenantId);
+        TattooRecordResponse added = await RunAddTattooRecordHandler(tenantId, clientId,
+            new(artistId, null, "Old desc", "left_arm", [], DateTime.UtcNow.AddDays(-10)));
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        UpdateTattooRecordHandler handler = new(db);
+        UpdateTattooRecordRequest updateReq = new("New desc", "right_leg", [], DateTime.UtcNow.AddDays(-3));
+        TattooRecordResponse updated = await handler.Handle(
+            new UpdateTattooRecordCommand(clientId, added.Id, updateReq), default);
+
+        updated.Description.Should().Be("New desc");
+        updated.BodyLocation.Should().Be("right_leg");
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        TattooRecord? persisted = await verify.TattooRecords.FirstOrDefaultAsync(t => t.Id == added.Id);
+        persisted!.Description.Should().Be("New desc");
+    }
+
+    // ── DeleteTattooRecord ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DeleteTattooRecord_ExistingRecord_SoftDeletesFromDatabase()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid clientId, Guid artistId) = await SeedClientAndArtistAsync(tenantId);
+        TattooRecordResponse added = await RunAddTattooRecordHandler(tenantId, clientId,
+            new(artistId, null, "Phoenix", "back", [], DateTime.UtcNow.AddDays(-15)));
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        DeleteTattooRecordHandler handler = new(db);
+        await handler.Handle(new DeleteTattooRecordCommand(clientId, added.Id), default);
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        bool stillVisible = await verify.TattooRecords.AnyAsync(t => t.Id == added.Id);
+        stillVisible.Should().BeFalse(because: "soft-delete filter excludes records with DeletedAt set");
+
+        bool existsUnfiltered = await verify.TattooRecords
+            .IgnoreQueryFilters()
+            .AnyAsync(t => t.Id == added.Id && t.DeletedAt != null);
+        existsUnfiltered.Should().BeTrue(because: "row must still exist with DeletedAt populated");
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
     private async Task<ClientResponse> RunCreateHandler(Guid tenantId, CreateClientRequest req)
@@ -133,5 +264,38 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
         tenant.SetTenant(tenantId);
         CreateClientHandler handler = new(db, tenant);
         return await handler.Handle(new CreateClientCommand(req), default);
+    }
+
+    private async Task<(Guid clientId, Guid artistId)> SeedClientAndArtistAsync(Guid tenantId)
+    {
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        Client client = new()
+        {
+            StudioId  = tenantId,
+            FirstName = "Test",
+            LastName  = "Client",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        Artist artist = new()
+        {
+            StudioId  = tenantId,
+            FirstName = "Test",
+            LastName  = "Artist",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        db.Clients.Add(client);
+        db.Artists.Add(artist);
+        await db.SaveChangesAsync();
+        return (client.Id, artist.Id);
+    }
+
+    private async Task<TattooRecordResponse> RunAddTattooRecordHandler(
+        Guid tenantId, Guid clientId, AddTattooRecordRequest req)
+    {
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(tenantId);
+        AddTattooRecordHandler handler = new(db, tenant);
+        return await handler.Handle(new AddTattooRecordCommand(clientId, req), default);
     }
 }
