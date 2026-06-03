@@ -12,6 +12,7 @@ public class DepositRuleConfiguration : TenantEntityConfiguration<DepositRule>
     {
         base.Configure(builder);
 
+        builder.Property(d => d.Name).IsRequired().HasMaxLength(100);
         builder.Property(d => d.AmountFixed).HasColumnType("decimal(18,2)");
         builder.Property(d => d.AmountPercent).HasColumnType("decimal(5,2)");
     }

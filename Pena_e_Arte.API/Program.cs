@@ -63,6 +63,7 @@ try
 
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();
+    app.MapDepositRuleEndpoints();
     app.MapArtistEndpoints();
     app.MapClientEndpoints();
     app.MapDesignEndpoints();
