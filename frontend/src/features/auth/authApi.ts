@@ -11,6 +11,13 @@ interface AuthResponse {
   tokenType: string;
 }
 
+interface RegisterUserRequest {
+  email: string;
+  password: string;
+  role: string;
+  studioId: string;
+}
+
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: fetchBaseQuery({
@@ -26,7 +33,10 @@ export const authApi = createApi({
     login: builder.mutation<AuthResponse, LoginRequest>({
       query: (body) => ({ url: "auth/login", method: "POST", body }),
     }),
+    registerUser: builder.mutation<void, RegisterUserRequest>({
+      query: (body) => ({ url: "auth/register", method: "POST", body }),
+    }),
   }),
 });
 
-export const { useLoginMutation } = authApi;
+export const { useLoginMutation, useRegisterUserMutation } = authApi;

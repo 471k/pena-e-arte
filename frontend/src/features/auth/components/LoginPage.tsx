@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, PenLine } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath } from "@/app/router";
@@ -116,6 +116,13 @@ export function LoginPage() {
             </form>
           </CardContent>
         </Card>
+
+        <p className="text-center text-sm text-muted-foreground">
+          New studio?{" "}
+          <Link to="/register" className="underline underline-offset-4 hover:text-primary">
+            Register your studio
+          </Link>
+        </p>
       </div>
     </div>
   );

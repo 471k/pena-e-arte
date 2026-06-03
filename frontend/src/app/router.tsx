@@ -1,5 +1,6 @@
 import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 import { LoginPage } from "@/features/auth/components/LoginPage";
+import { RegisterStudioPage } from "@/features/studios";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -22,7 +23,8 @@ export function getRoleRedirectPath(role: Role): string {
 }
 
 export const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
+  { path: "/login",    element: <LoginPage /> },
+  { path: "/register", element: <RegisterStudioPage /> },
   {
     path: "/",
     element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
