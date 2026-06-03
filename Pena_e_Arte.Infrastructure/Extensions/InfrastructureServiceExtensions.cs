@@ -42,9 +42,9 @@ public static class InfrastructureServiceExtensions
 
         var redisConnectionString = configuration["Redis:ConnectionString"]!;
         services.AddStackExchangeRedisCache(options =>
-            options.Configuration = redisConnectionString);
+            options.Configuration = redisConnectionString + ",abortConnect=false");
         services.AddSingleton<IConnectionMultiplexer>(
-            ConnectionMultiplexer.Connect(redisConnectionString));
+            ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
 
         services.AddHangfire(config => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -70,14 +70,21 @@ public static class InfrastructureServiceExtensions
 
         services.Configure<R2Options>(configuration.GetSection(R2Options.Section));
         R2Options r2Opts = configuration.GetSection(R2Options.Section).Get<R2Options>()!;
-        AmazonS3Config s3Config = new()
+        if (!string.IsNullOrEmpty(r2Opts.AccountId))
         {
-            ServiceURL     = $"https://{r2Opts.AccountId}.r2.cloudflarestorage.com",
-            ForcePathStyle = true
-        };
-        services.AddSingleton<IAmazonS3>(
-            new AmazonS3Client(new BasicAWSCredentials(r2Opts.AccessKeyId, r2Opts.SecretAccessKey), s3Config));
-        services.AddSingleton<IR2Service, R2Service>();
+            AmazonS3Config s3Config = new()
+            {
+                ServiceURL     = $"https://{r2Opts.AccountId}.r2.cloudflarestorage.com",
+                ForcePathStyle = true
+            };
+            services.AddSingleton<IAmazonS3>(
+                new AmazonS3Client(new BasicAWSCredentials(r2Opts.AccessKeyId, r2Opts.SecretAccessKey), s3Config));
+            services.AddSingleton<IR2Service, R2Service>();
+        }
+        else
+        {
+            services.AddSingleton<IR2Service, NullR2Service>();
+        }
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenant,             CurrentTenantService>();

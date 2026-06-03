@@ -1,0 +1,12 @@
+using Pena_e_Arte.Domain.Interfaces;
+
+namespace Pena_e_Arte.Infrastructure.Services;
+
+internal sealed class NullR2Service : IR2Service
+{
+    public Task<(string UploadUrl, string PublicUrl)> GeneratePresignedUploadUrlAsync(
+        string objectKey, string contentType, CancellationToken ct)
+        => throw new InvalidOperationException("Cloudflare R2 is not configured.");
+
+    public bool IsR2Url(string url) => false;
+}
