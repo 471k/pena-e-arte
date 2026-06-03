@@ -331,12 +331,15 @@ public class PaymentHandlerIntegrationTests
     private async Task<Guid> SeedPendingPayment(
         Guid tenantId, string intentId, PaymentStatus status = PaymentStatus.Pending)
     {
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
+        Guid appointmentId = await SeedAppointment(tenantId, artistId, clientId);
+
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
         Payment payment = new()
         {
             StudioId              = tenantId,
-            AppointmentId         = Guid.NewGuid(),
-            ClientId              = Guid.NewGuid(),
+            AppointmentId         = appointmentId,
+            ClientId              = clientId,
             Amount                = 100m,
             Status                = status,
             StripePaymentIntentId = intentId

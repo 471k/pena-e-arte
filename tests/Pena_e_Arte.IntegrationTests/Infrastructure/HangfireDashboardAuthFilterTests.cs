@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using FluentAssertions;
+using Hangfire;
+using Hangfire.AspNetCore;
 using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Pena_e_Arte.API.Extensions;
 
@@ -54,12 +57,10 @@ public class HangfireDashboardAuthFilterTests
     [Fact]
     public void Authorize_UnauthenticatedWithIssuerRole_ReturnsFalse()
     {
-        DefaultHttpContext httpContext = new();
-        httpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity([new Claim(ClaimTypes.Role, "issuer")]));
+        DefaultHttpContext httpContext = BuildHttpContext(authenticated: false, role: "issuer");
 
-        DashboardContext ctx = Substitute.For<DashboardContext>();
-        ctx.GetHttpContext().Returns(httpContext);
+        DashboardContext ctx = new AspNetCoreDashboardContext(
+            Substitute.For<JobStorage>(), new DashboardOptions(), httpContext);
 
         bool result = _sut.Authorize(ctx);
 
@@ -78,16 +79,21 @@ public class HangfireDashboardAuthFilterTests
 
     private static DashboardContext DashboardContextFor(bool authenticated, string? role)
     {
+        DefaultHttpContext httpContext = BuildHttpContext(authenticated, role);
+        return new AspNetCoreDashboardContext(
+            Substitute.For<JobStorage>(), new DashboardOptions(), httpContext);
+    }
+
+    private static DefaultHttpContext BuildHttpContext(bool authenticated, string? role)
+    {
         DefaultHttpContext httpContext = new();
+        httpContext.RequestServices = new ServiceCollection().BuildServiceProvider();
 
         List<Claim> claims = [];
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
 
         string? authType = authenticated ? "test" : null;
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, authType));
-
-        DashboardContext ctx = Substitute.For<DashboardContext>();
-        ctx.GetHttpContext().Returns(httpContext);
-        return ctx;
+        return httpContext;
     }
 }

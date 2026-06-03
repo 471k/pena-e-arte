@@ -1,28 +1,27 @@
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
-using Testcontainers.MySql;
 
 namespace Pena_e_Arte.IntegrationTests.Infrastructure;
 
 public sealed class DatabaseFixture : IAsyncLifetime
 {
-    private readonly MySqlContainer _container = new MySqlBuilder()
-        .WithImage("mysql:8.4")
-        .Build();
+    private readonly string _databaseName = $"pena_arte_test_{Guid.NewGuid():N}";
 
-    public string ConnectionString { get; private set; } = string.Empty;
+    public string ConnectionString =>
+        $"Server=127.0.0.1;Port=3306;Database={_databaseName};User=root;Password=root;AllowPublicKeyRetrieval=true;SslMode=None;";
 
     public async Task InitializeAsync()
     {
-        await _container.StartAsync();
-        ConnectionString = _container.GetConnectionString();
-
         await using AppDbContext ctx = CreateDbContext(Guid.Empty);
         await ctx.Database.EnsureCreatedAsync();
     }
 
-    public async Task DisposeAsync() => await _container.DisposeAsync();
+    public async Task DisposeAsync()
+    {
+        await using AppDbContext ctx = CreateDbContext(Guid.Empty);
+        await ctx.Database.EnsureDeletedAsync();
+    }
 
     public AppDbContext CreateDbContext(Guid tenantId)
     {
@@ -30,7 +29,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
         if (tenantId != Guid.Empty) tenant.SetTenant(tenantId);
 
         DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySql(ConnectionString, new MySqlServerVersion(new Version(8, 4, 0)))
+            .UseMySql(ConnectionString, new MySqlServerVersion(new Version(8, 0, 0)))
             .Options;
 
         return new AppDbContext(options, tenant);

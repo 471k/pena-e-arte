@@ -1,6 +1,9 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.ValueObjects;
 
 namespace Pena_e_Arte.Infrastructure.Persistence.Configurations;
 
@@ -15,7 +18,21 @@ public class ClientProfileConfiguration : TenantEntityConfiguration<ClientProfil
         builder.Property(cp => cp.MedicalNotes).HasMaxLength(4000);
         builder.Property(cp => cp.Allergies).HasMaxLength(1000);
 
-        builder.OwnsOne(cp => cp.BodyMap, b => b.ToJson());
+        builder.Property(cp => cp.BodyMap)
+               .HasColumnName("body_map")
+               .HasColumnType("json")
+               .HasConversion(
+                   v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                   v => JsonSerializer.Deserialize<BodyMap>(v, (JsonSerializerOptions?)null) ?? new BodyMap()
+               )
+               .Metadata.SetValueComparer(new ValueComparer<BodyMap>(
+                   (a, b) => JsonSerializer.Serialize(a, (JsonSerializerOptions?)null)
+                          == JsonSerializer.Serialize(b, (JsonSerializerOptions?)null),
+                   v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null).GetHashCode(),
+                   v => JsonSerializer.Deserialize<BodyMap>(
+                            JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                            (JsonSerializerOptions?)null) ?? new BodyMap()
+               ));
 
         builder.HasOne(cp => cp.Client)
                .WithOne(c => c.Profile)
