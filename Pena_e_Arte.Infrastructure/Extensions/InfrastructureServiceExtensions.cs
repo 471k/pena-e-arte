@@ -80,15 +80,16 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IR2Service, R2Service>();
 
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentTenant,        CurrentTenantService>();
-        services.AddScoped<ICurrentUser,          CurrentUserService>();
-        services.AddScoped<IIdentityService,      IdentityService>();
-        services.AddScoped<IRealtimeNotifier,     RealtimeNotifier>();
-        services.AddScoped<IJobScheduler,         JobScheduler>();
-        services.AddScoped<ISlotLocker,           SlotLocker>();
-        services.AddScoped<IStripePaymentService, StripePaymentService>();
-        services.AddScoped<IStripeConnectService, StripeConnectService>();
-        services.AddScoped<INotificationService,  NotificationService>();
+        services.AddScoped<ICurrentTenant,             CurrentTenantService>();
+        services.AddScoped<ICurrentUser,               CurrentUserService>();
+        services.AddScoped<IIdentityService,           IdentityService>();
+        services.AddScoped<IRealtimeNotifier,          RealtimeNotifier>();
+        services.AddScoped<IJobScheduler,              JobScheduler>();
+        services.AddScoped<ISlotLocker,                SlotLocker>();
+        services.AddScoped<IStripePaymentService,      StripePaymentService>();
+        services.AddScoped<IStripeConnectService,      StripeConnectService>();
+        services.AddScoped<INotificationService,       NotificationService>();
+        services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
 
         return services;
     }
