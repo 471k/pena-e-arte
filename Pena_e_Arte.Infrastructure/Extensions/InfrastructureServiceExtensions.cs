@@ -55,13 +55,18 @@ public static class InfrastructureServiceExtensions
 
         services.AddSignalR();
 
+        Stripe.StripeConfiguration.ApiKey = configuration["Stripe:SecretKey"]!;
+        services.AddSingleton<Stripe.PaymentIntentService>();
+        services.AddSingleton<Stripe.RefundService>();
+
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentTenant,  CurrentTenantService>();
-        services.AddScoped<ICurrentUser,    CurrentUserService>();
-        services.AddScoped<IIdentityService, IdentityService>();
-        services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
-        services.AddScoped<IJobScheduler,     JobScheduler>();
-        services.AddScoped<ISlotLocker,       SlotLocker>();
+        services.AddScoped<ICurrentTenant,       CurrentTenantService>();
+        services.AddScoped<ICurrentUser,         CurrentUserService>();
+        services.AddScoped<IIdentityService,     IdentityService>();
+        services.AddScoped<IRealtimeNotifier,    RealtimeNotifier>();
+        services.AddScoped<IJobScheduler,        JobScheduler>();
+        services.AddScoped<ISlotLocker,          SlotLocker>();
+        services.AddScoped<IStripePaymentService, StripePaymentService>();
 
         return services;
     }

@@ -68,6 +68,7 @@ try
     app.MapStudioEndpoints();
     app.MapBillingEndpoints();
     app.MapFormEndpoints();
+    app.MapPaymentEndpoints();
 
     app.Run();
 }

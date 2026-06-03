@@ -1,6 +1,7 @@
 using MediatR;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Billing.Queries;
+using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Stripe;
@@ -68,6 +69,7 @@ public static class BillingEndpoints
     private static async Task<IResult> HandleConnectWebhook(
         HttpRequest       httpRequest,
         IConfiguration    configuration,
+        ISender           mediator,
         ILoggerFactory    loggerFactory,
         CancellationToken ct)
     {
@@ -76,15 +78,28 @@ public static class BillingEndpoints
         string  signature = httpRequest.Headers["Stripe-Signature"].ToString();
         string  secret    = configuration["Stripe:WebhookSecretConnect"]!;
 
+        Event stripeEvent;
         try
         {
-            Event stripeEvent = EventUtility.ConstructEvent(payload, signature, secret);
-            logger.LogInformation("Stripe connect webhook received {@EventType}", stripeEvent.Type);
+            stripeEvent = EventUtility.ConstructEvent(payload, signature, secret);
         }
         catch (StripeException ex)
         {
             logger.LogWarning(ex, "Invalid Stripe connect webhook signature");
             return Results.Unauthorized();
+        }
+
+        logger.LogInformation("Stripe connect webhook received {@EventType}", stripeEvent.Type);
+
+        switch (stripeEvent.Type)
+        {
+            case "payment_intent.succeeded" when stripeEvent.Data.Object is PaymentIntent intent:
+                await mediator.Send(new ConfirmPaymentCommand(intent.Id), ct);
+                break;
+
+            case "payment_intent.payment_failed" when stripeEvent.Data.Object is PaymentIntent intent:
+                await mediator.Send(new MarkPaymentFailedCommand(intent.Id), ct);
+                break;
         }
 
         return Results.Ok();

@@ -28,9 +28,10 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             SlotAlreadyBookedException      => (StatusCodes.Status409Conflict,              ex.Message),
             DesignAlreadyApprovedException      => (StatusCodes.Status409Conflict,              ex.Message),
             ConsentFormAlreadySignedException   => (StatusCodes.Status409Conflict,              ex.Message),
-            TenantSuspendedException        => (StatusCodes.Status403Forbidden,             ex.Message),
-            SubscriptionRequiredException   => (StatusCodes.Status402PaymentRequired,       ex.Message),
-            BusinessRuleViolationException  => (StatusCodes.Status422UnprocessableEntity,   ex.Message),
+            TenantSuspendedException            => (StatusCodes.Status403Forbidden,           ex.Message),
+            SubscriptionRequiredException       => (StatusCodes.Status402PaymentRequired,     ex.Message),
+            StripeAccountNotConnectedException  => (StatusCodes.Status422UnprocessableEntity, ex.Message),
+            BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message),
             UnauthorizedAccessException     => (StatusCodes.Status401Unauthorized,          ex.Message),
             _                               => (StatusCodes.Status500InternalServerError,   "An unexpected error occurred.")
         };
