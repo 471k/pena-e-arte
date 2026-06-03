@@ -101,5 +101,5 @@ public class RegisterStudioHandlerTests
     }
 
     private static RegisterStudioRequest ValidRequest() =>
-        new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61);
+        new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com");
 }

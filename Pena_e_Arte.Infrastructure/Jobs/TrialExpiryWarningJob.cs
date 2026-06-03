@@ -1,15 +1,74 @@
+using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
 
 namespace Pena_e_Arte.Infrastructure.Jobs;
 
-public class TrialExpiryWarningJob(INotificationService notifications, AppDbContext db)
+public class TrialExpiryWarningJob(
+    INotificationService              notifications,
+    AppDbContext                      db,
+    ILogger<TrialExpiryWarningJob>    logger)
 {
     public async Task ExecuteAsync(Guid studioId, CancellationToken ct = default)
     {
-        var studio = await db.Studios.FindAsync([studioId], ct);
-        if (studio is null) return;
+        Studio? studio = await db.Studios.FindAsync([studioId], ct);
+        if (studio is null)
+        {
+            logger.LogWarning("Studio {@StudioId} not found for trial expiry warning job", studioId);
+            return;
+        }
 
-        // TODO: resolve owner email and send 48h trial expiry warning
+        string subject   = "Your Pena e Arte trial expires in 48 hours";
+        string emailBody = BuildEmailBody(studio);
+
+        bool success = false;
+        try
+        {
+            await notifications.SendEmailAsync(studio.OwnerEmail, subject, emailBody, ct);
+            success = true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send trial expiry warning email for studio {@StudioId}", studioId);
+        }
+
+        db.NotificationLogs.Add(new NotificationLog
+        {
+            StudioId    = studio.Id,
+            RecipientId = studio.Id,
+            Channel     = NotificationChannel.Email,
+            Subject     = subject,
+            Body        = emailBody,
+            SentAt      = DateTime.UtcNow,
+            IsSuccess   = success
+        });
+
+        await db.SaveChangesAsync(ct);
     }
+
+    private static string BuildEmailBody(Studio studio) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto">
+          <h2 style="color:#c0392b">Your free trial ends in 48 hours</h2>
+          <p>Hi {studio.Name} team,</p>
+          <p>Your 14-day free trial of <strong>Pena e Arte</strong> expires on
+             <strong>{studio.TrialExpiresAt:dddd, dd MMMM yyyy 'at' HH:mm} UTC</strong>.</p>
+          <p>After your trial ends you'll have a 7-day read-only grace period before your account
+             is suspended. Subscribe now to keep full access and avoid any interruption.</p>
+          <p style="margin:2em 0">
+            <a href="https://app.pena-e-arte.com/billing"
+               style="background:#1a1a1a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px">
+              Choose a plan →
+            </a>
+          </p>
+          <p>Yearly plans save you 2 months — that's ~17% off. 🎉</p>
+          <hr/>
+          <p style="font-size:0.85em;color:#666">Pena e Arte — Studio Management Platform</p>
+        </body>
+        </html>
+        """;
 }

@@ -6,6 +6,7 @@ public class Studio
     public string   Name            { get; set; }  = string.Empty;
     public string   Slug            { get; set; }  = string.Empty;
     public string   City            { get; set; }  = string.Empty;
+    public string   OwnerEmail      { get; set; }  = string.Empty;
     public double   Latitude        { get; set; }
     public double   Longitude       { get; set; }
     public bool     IsActive        { get; set; }

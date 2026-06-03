@@ -69,6 +69,7 @@ try
     app.MapBillingEndpoints();
     app.MapFormEndpoints();
     app.MapPaymentEndpoints();
+    app.MapNotificationEndpoints();
 
     app.Run();
 }

@@ -25,7 +25,7 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task RegisterStudio_NewSlug_PersistsStudioToDatabase()
     {
         string slug = UniqueSlug();
-        StudioResponse result = await RunRegisterHandler(new("Tinta Viva", slug, "Lisboa", 38.7, -9.1));
+        StudioResponse result = await RunRegisterHandler(new("Tinta Viva", slug, "Lisboa", 38.7, -9.1, "owner@tintaviva.com"));
 
         await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
         bool exists = await verify.Studios.AnyAsync(s => s.Id == result.Id);
@@ -36,7 +36,7 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task RegisterStudio_NewSlug_CreatesTrialingSubscription()
     {
         string slug = UniqueSlug();
-        StudioResponse result = await RunRegisterHandler(new("Tinta Viva", slug, "Porto", 41.1, -8.6));
+        StudioResponse result = await RunRegisterHandler(new("Tinta Viva", slug, "Porto", 41.1, -8.6, "owner@tintaviva.com"));
 
         await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
         Subscription? sub = await verify.Subscriptions.FirstOrDefaultAsync(s => s.StudioId == result.Id);
@@ -49,7 +49,7 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task RegisterStudio_NewSlug_SetsCorrectTrialAndGraceDates()
     {
         string slug = UniqueSlug();
-        StudioResponse result = await RunRegisterHandler(new("Test Studio", slug, "Braga", 41.5, -8.4));
+        StudioResponse result = await RunRegisterHandler(new("Test Studio", slug, "Braga", 41.5, -8.4, "owner@teststudio.com"));
 
         await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
         Subscription? sub = await verify.Subscriptions.FirstOrDefaultAsync(s => s.StudioId == result.Id);
@@ -61,7 +61,7 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task RegisterStudio_NewSlug_SchedulesAllThreeTrialJobs()
     {
-        await RunRegisterHandler(new("Job Studio", UniqueSlug(), "Faro", 37.0, -7.9));
+        await RunRegisterHandler(new("Job Studio", UniqueSlug(), "Faro", 37.0, -7.9, "owner@jobstudio.com"));
 
         _jobs.Received(1).ScheduleTrialExpiryWarning(Arg.Any<Guid>(), Arg.Any<DateTimeOffset>());
         _jobs.Received(1).ScheduleTrialExpiry(Arg.Any<Guid>(), Arg.Any<DateTimeOffset>());
@@ -72,9 +72,9 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task RegisterStudio_DuplicateSlug_ThrowsBusinessRuleViolationException()
     {
         string slug = UniqueSlug();
-        await RunRegisterHandler(new("Studio One", slug, "Lisboa", 38.7, -9.1));
+        await RunRegisterHandler(new("Studio One", slug, "Lisboa", 38.7, -9.1, "owner@one.com"));
 
-        Func<Task> act = () => RunRegisterHandler(new("Studio Two", slug, "Porto", 41.1, -8.6));
+        Func<Task> act = () => RunRegisterHandler(new("Studio Two", slug, "Porto", 41.1, -8.6, "owner@two.com"));
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*slug*");
@@ -84,7 +84,7 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task RegisterStudio_IsActiveByDefault()
     {
         string slug = UniqueSlug();
-        StudioResponse result = await RunRegisterHandler(new("Active Studio", slug, "Setubal", 38.5, -8.9));
+        StudioResponse result = await RunRegisterHandler(new("Active Studio", slug, "Setubal", 38.5, -8.9, "owner@activestudio.com"));
 
         await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
         Studio? studio = await verify.Studios.FindAsync(result.Id);

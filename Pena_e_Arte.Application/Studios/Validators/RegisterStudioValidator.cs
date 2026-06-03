@@ -13,6 +13,7 @@ public class RegisterStudioValidator : AbstractValidator<RegisterStudioCommand>
             .Matches("^[a-z0-9-]+$")
             .WithMessage("Slug may only contain lowercase letters, numbers, and hyphens.");
         RuleFor(x => x.Request.City).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.Request.OwnerEmail).NotEmpty().MaximumLength(256).EmailAddress();
         RuleFor(x => x.Request.Latitude).InclusiveBetween(-90, 90);
         RuleFor(x => x.Request.Longitude).InclusiveBetween(-180, 180);
     }

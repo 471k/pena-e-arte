@@ -109,9 +109,23 @@ public class RegisterStudioValidatorTests
         result.Errors.Should().NotContain(e => e.PropertyName == "Request.Longitude");
     }
 
-    private static RegisterStudioCommand ValidCommand() =>
-        Command("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61);
+    [Fact]
+    public void Validate_EmptyOwnerEmail_FailsOnOwnerEmail()
+    {
+        _sut.ShouldFailOn(Command("Studio", "my-studio", "Lisbon", 38.7, -9.1, ""), "Request.OwnerEmail");
+    }
 
-    private static RegisterStudioCommand Command(string name, string slug, string city, double lat, double lon) =>
-        new(new RegisterStudioRequest(name, slug, city, lat, lon));
+    [Fact]
+    public void Validate_InvalidOwnerEmail_FailsOnOwnerEmail()
+    {
+        _sut.ShouldFailOn(Command("Studio", "my-studio", "Lisbon", 38.7, -9.1, "not-an-email"), "Request.OwnerEmail");
+    }
+
+    private static RegisterStudioCommand ValidCommand() =>
+        Command("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com");
+
+    private static RegisterStudioCommand Command(
+        string name, string slug, string city, double lat, double lon,
+        string ownerEmail = "owner@example.com") =>
+        new(new RegisterStudioRequest(name, slug, city, lat, lon, ownerEmail));
 }

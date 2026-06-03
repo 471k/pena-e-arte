@@ -9,6 +9,7 @@ using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
 using StackExchange.Redis;
+using Twilio;
 
 namespace Pena_e_Arte.Infrastructure.Extensions;
 
@@ -59,14 +60,19 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<Stripe.PaymentIntentService>();
         services.AddSingleton<Stripe.RefundService>();
 
+        TwilioClient.Init(
+            configuration["Twilio:AccountSid"]!,
+            configuration["Twilio:AuthToken"]!);
+
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentTenant,       CurrentTenantService>();
-        services.AddScoped<ICurrentUser,         CurrentUserService>();
-        services.AddScoped<IIdentityService,     IdentityService>();
-        services.AddScoped<IRealtimeNotifier,    RealtimeNotifier>();
-        services.AddScoped<IJobScheduler,        JobScheduler>();
-        services.AddScoped<ISlotLocker,          SlotLocker>();
+        services.AddScoped<ICurrentTenant,        CurrentTenantService>();
+        services.AddScoped<ICurrentUser,          CurrentUserService>();
+        services.AddScoped<IIdentityService,      IdentityService>();
+        services.AddScoped<IRealtimeNotifier,     RealtimeNotifier>();
+        services.AddScoped<IJobScheduler,         JobScheduler>();
+        services.AddScoped<ISlotLocker,           SlotLocker>();
         services.AddScoped<IStripePaymentService, StripePaymentService>();
+        services.AddScoped<INotificationService,  NotificationService>();
 
         return services;
     }

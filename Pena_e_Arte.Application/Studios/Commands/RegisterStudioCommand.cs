@@ -31,6 +31,7 @@ public class RegisterStudioHandler(IAppDbContext db, IJobScheduler jobs)
             Name           = req.Name,
             Slug           = req.Slug,
             City           = req.City,
+            OwnerEmail     = req.OwnerEmail,
             Latitude       = req.Latitude,
             Longitude      = req.Longitude,
             IsActive       = true,

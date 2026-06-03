@@ -5,4 +5,5 @@ public record RegisterStudioRequest(
     string Slug,
     string City,
     double Latitude,
-    double Longitude);
+    double Longitude,
+    string OwnerEmail);
