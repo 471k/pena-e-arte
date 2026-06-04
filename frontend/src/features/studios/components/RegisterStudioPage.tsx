@@ -150,7 +150,8 @@ export function RegisterStudioPage() {
     } catch (err) {
       const message =
         typeof err === "object" && err !== null && "data" in err
-          ? ((err as { data: { detail?: string } }).data?.detail ??
+          ? ((err as { data: { message?: string; detail?: string } }).data?.message ??
+            (err as { data: { message?: string; detail?: string } }).data?.detail ??
             "Registration failed. Please try again.")
           : "Unable to reach the server. Please try again.";
       setServerError(message);

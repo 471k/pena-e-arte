@@ -52,7 +52,9 @@ export function LoginPage() {
 
   const serverError = error
     ? "data" in error
-      ? (error.data as { detail?: string })?.detail ?? "Invalid email or password."
+      ? (error.data as { message?: string; detail?: string })?.message ??
+        (error.data as { message?: string; detail?: string })?.detail ??
+        "Invalid email or password."
       : "Unable to reach the server. Please try again."
     : null;
 

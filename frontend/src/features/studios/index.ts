@@ -1,2 +1,3 @@
 export { RegisterStudioPage } from "./components/RegisterStudioPage";
-export { useRegisterStudioMutation } from "./studiosApi";
+export { useRegisterStudioMutation, useGetStudioMapQuery } from "./studiosApi";
+export type { StudioMapItem } from "./studiosApi";

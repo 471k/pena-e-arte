@@ -21,6 +21,15 @@ export interface StudioResponse {
   createdAt: string;
 }
 
+export interface StudioMapItem {
+  id: string;
+  name: string;
+  slug: string;
+  latitude: number;
+  longitude: number;
+  city: string;
+}
+
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery: fetchBaseQuery({
@@ -36,7 +45,10 @@ export const studiosApi = createApi({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),
     }),
+    getStudioMap: builder.query<StudioMapItem[], void>({
+      query: () => "studios/map",
+    }),
   }),
 });
 
-export const { useRegisterStudioMutation } = studiosApi;
+export const { useRegisterStudioMutation, useGetStudioMapQuery } = studiosApi;
