@@ -13,16 +13,21 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 public record CreateAppointmentCommand(CreateAppointmentRequest Request) : IRequest<AppointmentResponse>;
 
 public class CreateAppointmentHandler(
-    IAppDbContext    db,
-    ICurrentTenant   tenant,
-    ISlotLocker      slotLocker,
-    IJobScheduler    jobs,
+    IAppDbContext     db,
+    ICurrentTenant    tenant,
+    ICurrentUser      currentUser,
+    ISlotLocker       slotLocker,
+    IJobScheduler     jobs,
     IRealtimeNotifier realtime)
     : IRequestHandler<CreateAppointmentCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(CreateAppointmentCommand command, CancellationToken ct)
     {
         CreateAppointmentRequest req = command.Request;
+
+        // Clients cannot book on behalf of another client — always enforce JWT identity.
+        Guid clientId = currentUser.Role == "client" ? currentUser.UserId : req.ClientId;
+
         DateTime requestEnd = req.Date.AddMinutes(req.DurationMinutes);
 
         bool locked = await slotLocker.TryAcquireLockAsync(tenant.StudioId, req.ArtistId, req.Date, ct);
@@ -38,17 +43,25 @@ public class CreateAppointmentHandler(
 
             if (conflict) throw new SlotAlreadyBookedException();
 
+            DepositRule? rule = await db.DepositRules.FirstOrDefaultAsync(r => r.IsActive, ct);
+            decimal depositAmount = rule switch
+            {
+                { AmountFixed: decimal f }   => f,
+                { AmountPercent: decimal _ } => 0m, // percent requires session price, not yet tracked
+                _                            => 0m,
+            };
+
             Appointment appointment = new()
             {
                 StudioId        = tenant.StudioId,
                 ArtistId        = req.ArtistId,
-                ClientId        = req.ClientId,
+                ClientId        = clientId,
                 Date            = req.Date,
                 EndDate         = requestEnd,
                 DurationMinutes = req.DurationMinutes,
                 Status          = AppointmentStatus.Pending,
                 DepositStatus   = DepositStatus.Pending,
-                DepositAmount   = req.DepositAmount,
+                DepositAmount   = depositAmount,
                 Notes           = req.Notes
             };
 

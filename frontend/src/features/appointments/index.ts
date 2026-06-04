@@ -1,4 +1,5 @@
 export { SchedulePage } from "./components/SchedulePage";
+export { BookPage } from "./components/BookPage";
 export { DepositStatusBadge } from "./components/DepositStatusBadge";
 export { appointmentsApi } from "./appointmentsApi";
 export {

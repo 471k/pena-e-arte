@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -13,22 +14,24 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class CreateAppointmentHandlerTests
 {
-    private readonly FakeDbContext    _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant   _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly ISlotLocker      _locker   = Substitute.For<ISlotLocker>();
-    private readonly IJobScheduler    _jobs     = Substitute.For<IJobScheduler>();
+    private readonly FakeDbContext     _db       = FakeDbContext.Create();
+    private readonly ICurrentTenant    _tenant   = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser      _user     = Substitute.For<ICurrentUser>();
+    private readonly ISlotLocker       _locker   = Substitute.For<ISlotLocker>();
+    private readonly IJobScheduler     _jobs     = Substitute.For<IJobScheduler>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly Guid             _studioId = Guid.NewGuid();
+    private readonly Guid              _studioId = Guid.NewGuid();
 
     public CreateAppointmentHandlerTests()
     {
         _tenant.StudioId.Returns(_studioId);
+        _user.Role.Returns("artist");
         _locker.TryAcquireLockAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                .Returns(true);
     }
 
     private CreateAppointmentHandler CreateSut() =>
-        new(_db, _tenant, _locker, _jobs, _realtime);
+        new(_db, _tenant, _user, _locker, _jobs, _realtime);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsAppointmentResponse()
@@ -41,9 +44,39 @@ public class CreateAppointmentHandlerTests
         result.ClientId.Should().Be(req.ClientId);
         result.Date.Should().Be(req.Date);
         result.DurationMinutes.Should().Be(req.DurationMinutes);
-        result.DepositAmount.Should().Be(req.DepositAmount);
+        result.DepositAmount.Should().Be(0m);
         result.StudioId.Should().Be(_studioId);
         result.Status.Should().Be(AppointmentStatus.Pending.ToString());
+    }
+
+    [Fact]
+    public async Task Handle_ActiveFixedDepositRule_UsesRuleAmount()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        result.DepositAmount.Should().Be(75m);
+    }
+
+    [Fact]
+    public async Task Handle_NoActiveDepositRule_DepositAmountIsZero()
+    {
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        result.DepositAmount.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Handle_InactiveDepositRule_DepositAmountIsZero()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = false });
+        await _db.SaveChangesAsync();
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        result.DepositAmount.Should().Be(0m);
     }
 
     [Fact]
@@ -157,6 +190,33 @@ public class CreateAppointmentHandlerTests
             .ReleaseLockAsync(Arg.Any<Guid>(), req.ArtistId, req.Date, Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Handle_ClientRole_IgnoresRequestClientIdAndUsesJwtIdentity()
+    {
+        Guid jwtUserId    = Guid.NewGuid();
+        Guid spoofedId    = Guid.NewGuid();
+        _user.Role.Returns("client");
+        _user.UserId.Returns(jwtUserId);
+
+        CreateAppointmentRequest req = ValidRequest() with { ClientId = spoofedId };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.ClientId.Should().Be(jwtUserId);
+        result.ClientId.Should().NotBe(spoofedId);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistRole_AllowsProvidedClientId()
+    {
+        Guid targetClientId = Guid.NewGuid();
+        _user.Role.Returns("artist");
+
+        CreateAppointmentRequest req = ValidRequest() with { ClientId = targetClientId };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.ClientId.Should().Be(targetClientId);
+    }
+
     private static CreateAppointmentRequest ValidRequest() =>
-        new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, 50m, null);
+        new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
 }

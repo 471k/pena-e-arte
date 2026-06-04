@@ -67,21 +67,6 @@ public class CreateAppointmentValidatorTests
     }
 
     [Fact]
-    public void Validate_NegativeDeposit_FailsOnDepositAmount()
-    {
-        _sut.ShouldFailOn(
-            ValidCommand() with { Request = ValidRequest() with { DepositAmount = -0.01m } },
-            "Request.DepositAmount");
-    }
-
-    [Fact]
-    public void Validate_ZeroDeposit_IsValid()
-    {
-        ValidationResult result = _sut.Validate(ValidCommand() with { Request = ValidRequest() with { DepositAmount = 0m } });
-        result.Errors.Should().NotContain(e => e.PropertyName == "Request.DepositAmount");
-    }
-
-    [Fact]
     public void Validate_NotesExceedsMaxLength_FailsOnNotes()
     {
         _sut.ShouldFailOn(
@@ -97,7 +82,7 @@ public class CreateAppointmentValidatorTests
     }
 
     private static CreateAppointmentRequest ValidRequest() =>
-        new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, 50m, null);
+        new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
 
     private static CreateAppointmentCommand ValidCommand() =>
         new(ValidRequest());

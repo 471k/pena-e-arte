@@ -5,5 +5,4 @@ public record CreateAppointmentRequest(
     Guid     ClientId,
     DateTime Date,
     int      DurationMinutes,
-    decimal  DepositAmount,
     string?  Notes);

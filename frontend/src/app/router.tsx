@@ -2,7 +2,7 @@ import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 import { LoginPage } from "@/features/auth/components/LoginPage";
 import { RegisterStudioPage } from "@/features/studios";
 import { StudioMapPage } from "@/features/map";
-import { SchedulePage } from "@/features/appointments";
+import { SchedulePage, BookPage } from "@/features/appointments";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
     path: "/",
     element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
     children: [
-      { path: "book",      element: <div>Client layout (coming soon)</div> },
+      { path: "book",      element: <BookPage /> },
       { path: "schedule",  element: <SchedulePage /> },
       { path: "dashboard", element: <div>Owner layout (coming soon)</div> },
       { path: "platform",  element: <div>Issuer layout (coming soon)</div> },

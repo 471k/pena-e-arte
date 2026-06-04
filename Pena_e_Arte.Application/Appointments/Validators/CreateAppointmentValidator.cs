@@ -13,7 +13,6 @@ public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentCom
             .GreaterThan(DateTime.UtcNow)
             .WithMessage("Appointment date must be in the future.");
         RuleFor(x => x.Request.DurationMinutes).InclusiveBetween(30, 480);
-        RuleFor(x => x.Request.DepositAmount).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Request.Notes).MaximumLength(2000).When(x => x.Request.Notes is not null);
     }
 }

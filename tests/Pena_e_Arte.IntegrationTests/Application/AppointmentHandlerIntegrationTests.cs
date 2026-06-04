@@ -18,6 +18,7 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class AppointmentHandlerIntegrationTests
 {
     private readonly DatabaseFixture   _fixture;
+    private readonly ICurrentUser      _user;
     private readonly ISlotLocker       _locker;
     private readonly IJobScheduler     _jobs;
     private readonly IRealtimeNotifier _realtime;
@@ -25,10 +26,12 @@ public class AppointmentHandlerIntegrationTests
     public AppointmentHandlerIntegrationTests(DatabaseFixture fixture)
     {
         _fixture  = fixture;
+        _user     = Substitute.For<ICurrentUser>();
         _locker   = Substitute.For<ISlotLocker>();
         _jobs     = Substitute.For<IJobScheduler>();
         _realtime = Substitute.For<IRealtimeNotifier>();
 
+        _user.Role.Returns("artist");
         _locker.TryAcquireLockAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                .Returns(true);
     }
@@ -41,7 +44,7 @@ public class AppointmentHandlerIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
 
-        CreateAppointmentRequest req = new(artistId, clientId, DateTime.UtcNow.AddDays(3), 90, 50m, null);
+        CreateAppointmentRequest req = new(artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null);
         AppointmentResponse result = await RunCreateHandler(tenantId, req);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -59,7 +62,7 @@ public class AppointmentHandlerIntegrationTests
         await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(120));
 
         // New appointment overlaps the existing one (starts 60 min into it)
-        CreateAppointmentRequest req = new(artistId, clientId, start.AddMinutes(60), 90, 0m, null);
+        CreateAppointmentRequest req = new(artistId, clientId, start.AddMinutes(60), 90, null);
 
         Func<Task> act = () => RunCreateHandler(tenantId, req);
 
@@ -76,7 +79,7 @@ public class AppointmentHandlerIntegrationTests
         await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(120),
                               AppointmentStatus.Cancelled);
 
-        CreateAppointmentRequest req = new(artistId, clientId, start.AddMinutes(60), 90, 0m, null);
+        CreateAppointmentRequest req = new(artistId, clientId, start.AddMinutes(60), 90, null);
 
         Func<Task> act = () => RunCreateHandler(tenantId, req);
 
@@ -94,7 +97,7 @@ public class AppointmentHandlerIntegrationTests
         await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(120));
 
         // Same slot but different artist — no conflict
-        CreateAppointmentRequest req = new(artistId2, clientId, start, 90, 0m, null);
+        CreateAppointmentRequest req = new(artistId2, clientId, start, 90, null);
 
         Func<Task> act = () => RunCreateHandler(tenantId, req);
 
@@ -114,7 +117,7 @@ public class AppointmentHandlerIntegrationTests
         // tenantB creates artist/client with same IDs (impossible in prod but tests filter isolation)
         // Instead, create same-time appointment for tenantB's own artist
         (Guid b_artistId, Guid b_clientId) = await SeedArtistAndClient(tenantB);
-        CreateAppointmentRequest req = new(b_artistId, b_clientId, start.AddMinutes(60), 90, 0m, null);
+        CreateAppointmentRequest req = new(b_artistId, b_clientId, start.AddMinutes(60), 90, null);
 
         Func<Task> act = () => RunCreateHandler(tenantB, req);
 
@@ -211,7 +214,7 @@ public class AppointmentHandlerIntegrationTests
     private async Task<AppointmentResponse> RunCreateHandler(Guid tenantId, CreateAppointmentRequest req)
     {
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CreateAppointmentHandler handler = new(db, TenantFor(tenantId), _locker, _jobs, _realtime);
+        CreateAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _locker, _jobs, _realtime);
         return await handler.Handle(new CreateAppointmentCommand(req), default);
     }
 
