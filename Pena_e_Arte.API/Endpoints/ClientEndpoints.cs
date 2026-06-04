@@ -3,6 +3,7 @@ using Pena_e_Arte.Application.Clients.Commands;
 using Pena_e_Arte.Application.Clients.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Exceptions;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -13,8 +14,9 @@ public static class ClientEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/clients")
             .RequireAuthorization();
 
-        group.MapGet("/",   GetClients).RequireAuthorization("ArtistAndAbove");
-        group.MapPost("/",  CreateClient).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/",             GetClients).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("/",            CreateClient).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("{clientId:guid}", GetClientById).RequireAuthorization("ArtistAndAbove");
 
         group.MapGet("{clientId:guid}/profile",           GetClientProfile).RequireAuthorization("ArtistAndAbove");
         group.MapPut("{clientId:guid}/profile",           UpsertClientProfile).RequireAuthorization("ArtistAndAbove");
@@ -25,6 +27,15 @@ public static class ClientEndpoints
         group.MapGet("{clientId:guid}/tattoos/{id:guid}",    GetTattooRecord).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{clientId:guid}/tattoos/{id:guid}",  UpdateTattooRecord).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{clientId:guid}/tattoos/{id:guid}", DeleteTattooRecord).RequireAuthorization("ArtistAndAbove");
+    }
+
+    private static async Task<IResult> GetClientById(
+        Guid              clientId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        ClientResponse result = await mediator.Send(new GetClientQuery(clientId), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetClients(

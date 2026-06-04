@@ -11,6 +11,17 @@ export interface ClientResponse {
   createdAt: string;
 }
 
+export interface ClientProfileResponse {
+  id:               string;
+  clientId:         string;
+  studioId:         string;
+  dateOfBirth:      string | null;
+  medicalNotes:     string | null;
+  allergies:        string | null;
+  bodyMapLocations: string[];
+  updatedAt:        string;
+}
+
 export interface CreateClientRequest {
   firstName: string;
   lastName:  string;
@@ -18,10 +29,16 @@ export interface CreateClientRequest {
   phone:     string | null;
 }
 
+export interface UpsertClientProfileRequest {
+  dateOfBirth:  string | null;
+  medicalNotes: string | null;
+  allergies:    string | null;
+}
+
 export const clientsApi = createApi({
   reducerPath: "clientsApi",
   baseQuery,
-  tagTypes: ["Client"],
+  tagTypes: ["Client", "ClientProfile"],
   endpoints: (builder) => ({
     getClients: builder.query<ClientResponse[], string | undefined>({
       query: (search) => ({
@@ -30,14 +47,38 @@ export const clientsApi = createApi({
       }),
       providesTags: ["Client"],
     }),
+    getClientById: builder.query<ClientResponse, string>({
+      query: (id) => `clients/${id}`,
+      providesTags: (_result, _error, id) => [{ type: "Client", id }],
+    }),
     createClient: builder.mutation<ClientResponse, CreateClientRequest>({
       query: (body) => ({ url: "clients", method: "POST", body }),
       invalidatesTags: ["Client"],
+    }),
+    getClientProfile: builder.query<ClientProfileResponse, string>({
+      query: (clientId) => `clients/${clientId}/profile`,
+      providesTags: (_result, _error, clientId) => [{ type: "ClientProfile", id: clientId }],
+    }),
+    upsertClientProfile: builder.mutation<
+      ClientProfileResponse,
+      { clientId: string; body: UpsertClientProfileRequest }
+    >({
+      query: ({ clientId, body }) => ({
+        url: `clients/${clientId}/profile`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { clientId }) => [
+        { type: "ClientProfile", id: clientId },
+      ],
     }),
   }),
 });
 
 export const {
   useGetClientsQuery,
+  useGetClientByIdQuery,
   useCreateClientMutation,
+  useGetClientProfileQuery,
+  useUpsertClientProfileMutation,
 } = clientsApi;
