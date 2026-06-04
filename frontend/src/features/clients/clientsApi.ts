@@ -56,6 +56,13 @@ export interface AddTattooRecordRequest {
   completedAt:   string;
 }
 
+export interface UpdateTattooRecordRequest {
+  description:  string;
+  bodyLocation: string;
+  photoUrls:    string[];
+  completedAt:  string;
+}
+
 export const clientsApi = createApi({
   reducerPath: "clientsApi",
   baseQuery,
@@ -97,6 +104,13 @@ export const clientsApi = createApi({
       query: (clientId) => `clients/${clientId}/tattoos`,
       providesTags: (_result, _error, clientId) => [{ type: "TattooRecord", id: clientId }],
     }),
+    getTattooRecord: builder.query<
+      TattooRecordResponse,
+      { clientId: string; tattooId: string }
+    >({
+      query: ({ clientId, tattooId }) => `clients/${clientId}/tattoos/${tattooId}`,
+      providesTags: (_result, _error, { tattooId }) => [{ type: "TattooRecord", id: tattooId }],
+    }),
     addTattooRecord: builder.mutation<
       TattooRecordResponse,
       { clientId: string; body: AddTattooRecordRequest }
@@ -105,6 +119,30 @@ export const clientsApi = createApi({
         url: `clients/${clientId}/tattoos`,
         method: "POST",
         body,
+      }),
+      invalidatesTags: (_result, _error, { clientId }) => [{ type: "TattooRecord", id: clientId }],
+    }),
+    updateTattooRecord: builder.mutation<
+      TattooRecordResponse,
+      { clientId: string; tattooId: string; body: UpdateTattooRecordRequest }
+    >({
+      query: ({ clientId, tattooId, body }) => ({
+        url: `clients/${clientId}/tattoos/${tattooId}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { clientId, tattooId }) => [
+        { type: "TattooRecord", id: tattooId },
+        { type: "TattooRecord", id: clientId },
+      ],
+    }),
+    deleteTattooRecord: builder.mutation<
+      void,
+      { clientId: string; tattooId: string }
+    >({
+      query: ({ clientId, tattooId }) => ({
+        url: `clients/${clientId}/tattoos/${tattooId}`,
+        method: "DELETE",
       }),
       invalidatesTags: (_result, _error, { clientId }) => [{ type: "TattooRecord", id: clientId }],
     }),
@@ -132,5 +170,8 @@ export const {
   useUpsertClientProfileMutation,
   useUpdateBodyMapMutation,
   useGetTattooRecordsQuery,
+  useGetTattooRecordQuery,
   useAddTattooRecordMutation,
+  useUpdateTattooRecordMutation,
+  useDeleteTattooRecordMutation,
 } = clientsApi;

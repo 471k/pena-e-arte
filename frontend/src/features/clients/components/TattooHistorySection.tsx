@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarDays, ImageIcon, Loader2, MapPin, Plus, Scroll } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CalendarDays, ChevronRight, ImageIcon, Loader2, MapPin, Plus, Scroll } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -36,39 +37,50 @@ function formatDate(iso: string): string {
 
 function TattooRecordCard({
   record,
+  clientId,
   artistName,
 }: {
   record:     TattooRecordResponse;
+  clientId:   string;
   artistName: string;
 }) {
   return (
-    <Card>
-      <CardContent className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium leading-snug flex-1">{record.description}</p>
-          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-            {formatDate(record.completedAt)}
-          </span>
-        </div>
+    <Link
+      to={`/clients/${clientId}/tattoos/${record.id}`}
+      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+    >
+      <Card className="hover:bg-muted/40 transition-colors">
+        <CardContent className="p-4 flex items-start gap-3">
+          <div className="flex-1 space-y-1.5 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium leading-snug line-clamp-2">{record.description}</p>
+              <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                {formatDate(record.completedAt)}
+              </span>
+            </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <MapPin className="h-3 w-3 shrink-0" />
-            {resolveLocation(record.bodyLocation)}
-          </span>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CalendarDays className="h-3 w-3 shrink-0" />
-            {artistName}
-          </span>
-          {record.photoUrls.length > 0 && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <ImageIcon className="h-3 w-3 shrink-0" />
-              {record.photoUrls.length} photo{record.photoUrls.length !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3 shrink-0" />
+                {resolveLocation(record.bodyLocation)}
+              </span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarDays className="h-3 w-3 shrink-0" />
+                {artistName}
+              </span>
+              {record.photoUrls.length > 0 && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ImageIcon className="h-3 w-3 shrink-0" />
+                  {record.photoUrls.length} photo{record.photoUrls.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground self-center" />
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
@@ -281,6 +293,7 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
               <TattooRecordCard
                 key={r.id}
                 record={r}
+                clientId={clientId}
                 artistName={artistName(r.artistId)}
               />
             ))}
