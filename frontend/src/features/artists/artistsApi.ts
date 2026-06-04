@@ -12,6 +12,13 @@ export interface ArtistResponse {
   updatedAt:       string;
 }
 
+export interface UpdateArtistRequest {
+  firstName:       string;
+  lastName:        string;
+  email:           string;
+  specializations: string | null;
+}
+
 export const artistsApi = createApi({
   reducerPath: "artistsApi",
   baseQuery: fetchBaseQuery({
@@ -32,7 +39,24 @@ export const artistsApi = createApi({
       }),
       providesTags: ["Artist"],
     }),
+    getArtistById: builder.query<ArtistResponse, string>({
+      query: (id) => `artists/${id}`,
+      providesTags: (_result, _error, id) => [{ type: "Artist", id }],
+    }),
+    updateArtist: builder.mutation<ArtistResponse, { id: string; body: UpdateArtistRequest }>({
+      query: ({ id, body }) => ({ url: `artists/${id}`, method: "PUT", body }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: "Artist", id }, "Artist"],
+    }),
+    deleteArtist: builder.mutation<void, string>({
+      query: (id) => ({ url: `artists/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Artist"],
+    }),
   }),
 });
 
-export const { useGetArtistsQuery } = artistsApi;
+export const {
+  useGetArtistsQuery,
+  useGetArtistByIdQuery,
+  useUpdateArtistMutation,
+  useDeleteArtistMutation,
+} = artistsApi;
