@@ -35,10 +35,31 @@ export interface UpsertClientProfileRequest {
   allergies:    string | null;
 }
 
+export interface TattooRecordResponse {
+  id:            string;
+  clientId:      string;
+  artistId:      string;
+  appointmentId: string | null;
+  description:   string;
+  bodyLocation:  string;
+  photoUrls:     string[];
+  completedAt:   string;
+  createdAt:     string;
+}
+
+export interface AddTattooRecordRequest {
+  artistId:      string;
+  appointmentId: string | null;
+  description:   string;
+  bodyLocation:  string;
+  photoUrls:     string[];
+  completedAt:   string;
+}
+
 export const clientsApi = createApi({
   reducerPath: "clientsApi",
   baseQuery,
-  tagTypes: ["Client", "ClientProfile"],
+  tagTypes: ["Client", "ClientProfile", "TattooRecord"],
   endpoints: (builder) => ({
     getClients: builder.query<ClientResponse[], string | undefined>({
       query: (search) => ({
@@ -72,6 +93,21 @@ export const clientsApi = createApi({
         { type: "ClientProfile", id: clientId },
       ],
     }),
+    getTattooRecords: builder.query<TattooRecordResponse[], string>({
+      query: (clientId) => `clients/${clientId}/tattoos`,
+      providesTags: (_result, _error, clientId) => [{ type: "TattooRecord", id: clientId }],
+    }),
+    addTattooRecord: builder.mutation<
+      TattooRecordResponse,
+      { clientId: string; body: AddTattooRecordRequest }
+    >({
+      query: ({ clientId, body }) => ({
+        url: `clients/${clientId}/tattoos`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { clientId }) => [{ type: "TattooRecord", id: clientId }],
+    }),
     updateBodyMap: builder.mutation<
       ClientProfileResponse,
       { clientId: string; locations: string[] }
@@ -95,4 +131,6 @@ export const {
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
   useUpdateBodyMapMutation,
+  useGetTattooRecordsQuery,
+  useAddTattooRecordMutation,
 } = clientsApi;

@@ -18,6 +18,7 @@ import {
   useUpdateBodyMapMutation,
 } from "../clientsApi";
 import { BodyMap } from "./BodyMap";
+import { TattooHistorySection } from "./TattooHistorySection";
 
 const profileSchema = z.object({
   dateOfBirth:  z.string().optional(),
@@ -280,6 +281,11 @@ export function ClientDetailPage() {
               />
             </CardContent>
           </Card>
+        )}
+
+        {/* Tattoo History — always shown, independent of profile */}
+        {mode === "view" && (
+          <TattooHistorySection clientId={id!} />
         )}
 
         {mode === "edit" && (

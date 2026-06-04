@@ -6,12 +6,16 @@ export {
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
   useUpdateBodyMapMutation,
+  useGetTattooRecordsQuery,
+  useAddTattooRecordMutation,
 } from "./clientsApi";
 export type {
   ClientResponse,
   ClientProfileResponse,
   CreateClientRequest,
   UpsertClientProfileRequest,
+  TattooRecordResponse,
+  AddTattooRecordRequest,
 } from "./clientsApi";
 export { ClientListPage } from "./components/ClientListPage";
 export { CreateClientPage } from "./components/CreateClientPage";
