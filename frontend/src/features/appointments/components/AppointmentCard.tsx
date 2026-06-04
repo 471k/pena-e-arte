@@ -4,21 +4,15 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
-import { AppointmentStatus, DepositStatus } from "../appointment.types";
+import { AppointmentStatus } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
+import { DepositStatusBadge } from "./DepositStatusBadge";
 import { useCancelAppointmentMutation } from "../appointmentsApi";
 
 interface AppointmentCardProps {
   appointment: AppointmentResponse;
 }
-
-const DEPOSIT_STATUS_LABELS: Record<DepositStatus, string> = {
-  [DepositStatus.Pending]:   "Pending",
-  [DepositStatus.Paid]:      "Paid",
-  [DepositStatus.Forfeited]: "Forfeited",
-  [DepositStatus.Refunded]:  "Refunded",
-};
 
 const TERMINAL_STATUSES = new Set<AppointmentStatus>([
   AppointmentStatus.Cancelled,
@@ -61,8 +55,9 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             <span className="text-xs text-muted-foreground">{appointment.durationMinutes} min</span>
             <AppointmentStatusBadge status={appointment.status} />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Deposit: {formatCurrency(appointment.depositAmount)} · {DEPOSIT_STATUS_LABELS[appointment.depositStatus]}
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            Deposit: {formatCurrency(appointment.depositAmount)}
+            <DepositStatusBadge status={appointment.depositStatus} />
           </p>
           {appointment.notes && (
             <p className="text-xs text-muted-foreground truncate">{appointment.notes}</p>
