@@ -24,7 +24,7 @@ type FormValues = z.infer<typeof schema>;
 
 export function BookAppointmentForm() {
   const user = useAppSelector((s) => s.auth.user);
-  const { data: artists, isLoading: loadingArtists } = useGetArtistsQuery();
+  const { data: artists, isLoading: loadingArtists } = useGetArtistsQuery(undefined);
   const [createAppointment, { isLoading, isSuccess, reset: resetMutation }] =
     useCreateAppointmentMutation();
 

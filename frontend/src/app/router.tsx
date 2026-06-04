@@ -3,6 +3,7 @@ import { LoginPage } from "@/features/auth/components/LoginPage";
 import { RegisterStudioPage } from "@/features/studios";
 import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage } from "@/features/appointments";
+import { ArtistListPage } from "@/features/artists";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -36,6 +37,11 @@ export const router = createBrowserRouter([
       { path: "schedule",  element: <SchedulePage /> },
       { path: "dashboard", element: <div>Owner layout (coming soon)</div> },
       { path: "platform",  element: <div>Issuer layout (coming soon)</div> },
+      {
+        path: "artists",
+        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+        children: [{ index: true, element: <ArtistListPage /> }],
+      },
     ],
   },
   { path: "*", element: <Navigate to="/login" replace /> },

@@ -23,9 +23,14 @@ export const artistsApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ["Artist"],
   endpoints: (builder) => ({
-    getArtists: builder.query<ArtistResponse[], void>({
-      query: () => "artists",
+    getArtists: builder.query<ArtistResponse[], string | undefined>({
+      query: (search) => ({
+        url: "artists",
+        params: search ? { search } : undefined,
+      }),
+      providesTags: ["Artist"],
     }),
   }),
 });
