@@ -13,7 +13,7 @@ interface Zone {
 }
 
 // viewBox "0 0 200 380" — zones are non-overlapping, person's left = viewer's left
-const FRONT_ZONES: Zone[] = [
+export const FRONT_ZONES: Zone[] = [
   { id: "head",             label: "Head",           svgLabel: "Head",     x: 68,  y: 5,   w: 64,  h: 62,  rx: 32 },
   { id: "neck",             label: "Neck",           svgLabel: "Neck",     x: 84,  y: 67,  w: 32,  h: 20 },
   { id: "left_shoulder",    label: "Left Shoulder",  svgLabel: "L.Shldr",  x: 22,  y: 87,  w: 36,  h: 40 },
@@ -36,7 +36,7 @@ const FRONT_ZONES: Zone[] = [
   { id: "right_foot",       label: "Right Foot",     svgLabel: "R.Foot",   x: 102, y: 360, w: 46,  h: 18 },
 ];
 
-const BACK_ZONES: Zone[] = [
+export const BACK_ZONES: Zone[] = [
   { id: "skull",                 label: "Skull",             svgLabel: "Skull",    x: 68,  y: 5,   w: 64,  h: 62,  rx: 32 },
   { id: "neck_back",             label: "Neck (Back)",       svgLabel: "Neck",     x: 84,  y: 67,  w: 32,  h: 20 },
   { id: "left_shoulder_back",    label: "Left Shoulder",     svgLabel: "L.Shldr",  x: 22,  y: 87,  w: 36,  h: 40 },

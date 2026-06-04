@@ -13,6 +13,7 @@ import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetTattooRecordsQuery, useAddTattooRecordMutation } from "../clientsApi";
 import type { TattooRecordResponse } from "../clientsApi";
+import { ALL_BODY_ZONES, FRONT_ZONES, BACK_ZONES } from "./BodyMap";
 
 const addSchema = z.object({
   description:  z.string().min(1, "Required").max(2000, "Max 2000 characters"),
@@ -22,6 +23,10 @@ const addSchema = z.object({
 });
 
 type AddFormValues = z.infer<typeof addSchema>;
+
+function resolveLocation(id: string): string {
+  return ALL_BODY_ZONES.find((z) => z.id === id)?.label ?? id;
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -49,7 +54,7 @@ function TattooRecordCard({
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3 shrink-0" />
-            {record.bodyLocation}
+            {resolveLocation(record.bodyLocation)}
           </span>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <CalendarDays className="h-3 w-3 shrink-0" />
@@ -175,12 +180,26 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
 
             <div className="space-y-1.5">
               <Label htmlFor="tr-bodyLocation">Body location</Label>
-              <Input
+              <select
                 id="tr-bodyLocation"
-                placeholder="e.g. Left forearm, upper sleeve"
                 {...register("bodyLocation")}
-                className={cn(errors.bodyLocation && "border-destructive")}
-              />
+                className={cn(
+                  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  errors.bodyLocation && "border-destructive",
+                )}
+              >
+                <option value="">Select zone…</option>
+                <optgroup label="Front">
+                  {FRONT_ZONES.map((z) => (
+                    <option key={z.id} value={z.id}>{z.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Back">
+                  {BACK_ZONES.map((z) => (
+                    <option key={z.id} value={z.id}>{z.label}</option>
+                  ))}
+                </optgroup>
+              </select>
               {errors.bodyLocation && (
                 <p className="text-xs text-destructive">{errors.bodyLocation.message}</p>
               )}
