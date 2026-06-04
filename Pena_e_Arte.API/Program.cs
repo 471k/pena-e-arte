@@ -9,6 +9,7 @@ using Pena_e_Arte.API.Middleware;
 using Pena_e_Arte.Application.Common.Behaviors;
 using Pena_e_Arte.Infrastructure.Extensions;
 using Pena_e_Arte.Infrastructure.Hubs;
+using Pena_e_Arte.Infrastructure.Persistence.Seed;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -45,6 +46,7 @@ try
     WebApplication app = builder.Build();
 
     await SeedRolesAsync(app);
+    await DataSeeder.SeedAsync(app.Services);
 
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionMiddleware>();

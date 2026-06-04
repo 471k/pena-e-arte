@@ -16,7 +16,7 @@ const schema = z.object({
     (v) => new Date(v) > new Date(),
     "Appointment must be in the future"
   ),
-  durationMinutes: z.coerce.number().int().min(30, "Minimum 30 minutes").max(480, "Maximum 8 hours"),
+  durationMinutes: z.number().int().min(30, "Minimum 30 minutes").max(480, "Maximum 8 hours"),
   notes:           z.string().optional(),
 });
 
@@ -114,7 +114,7 @@ export function BookAppointmentForm() {
           min={30}
           max={480}
           step={30}
-          {...register("durationMinutes")}
+          {...register("durationMinutes", { valueAsNumber: true })}
           className={cn(errors.durationMinutes && "border-destructive")}
         />
         {errors.durationMinutes && (
