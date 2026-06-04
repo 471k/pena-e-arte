@@ -1,5 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "@/app/store";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQuery } from "@/shared/api/baseQuery";
 import type {
   AppointmentResponse,
   CreateAppointmentRequest,
@@ -8,15 +8,7 @@ import type {
 
 export const appointmentsApi = createApi({
   reducerPath: "appointmentsApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "/api/v1/",
-    prepareHeaders: (headers, { getState }) => {
-      const { token, tenantId } = (getState() as RootState).auth;
-      if (token)    headers.set("Authorization", `Bearer ${token}`);
-      if (tenantId) headers.set("X-Tenant-Id", tenantId);
-      return headers;
-    },
-  }),
+  baseQuery,
   tagTypes: ["Appointment"],
   endpoints: (builder) => ({
     getAppointments: builder.query<AppointmentResponse[], GetAppointmentsParams>({

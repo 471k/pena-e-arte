@@ -1,5 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "@/app/store";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQuery } from "@/shared/api/baseQuery";
 
 export interface RegisterStudioRequest {
   name: string;
@@ -32,15 +32,7 @@ export interface StudioMapItem {
 
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "/api/v1/",
-    prepareHeaders: (headers, { getState }) => {
-      const { token, tenantId } = (getState() as RootState).auth;
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      if (tenantId) headers.set("X-Tenant-Id", tenantId);
-      return headers;
-    },
-  }),
+  baseQuery,
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),

@@ -1,5 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "@/app/store";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQuery } from "@/shared/api/baseQuery";
 
 export interface ArtistResponse {
   id:              string;
@@ -12,6 +12,13 @@ export interface ArtistResponse {
   updatedAt:       string;
 }
 
+export interface CreateArtistRequest {
+  firstName:       string;
+  lastName:        string;
+  email:           string;
+  specializations: string | null;
+}
+
 export interface UpdateArtistRequest {
   firstName:       string;
   lastName:        string;
@@ -21,17 +28,13 @@ export interface UpdateArtistRequest {
 
 export const artistsApi = createApi({
   reducerPath: "artistsApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "/api/v1/",
-    prepareHeaders: (headers, { getState }) => {
-      const { token, tenantId } = (getState() as RootState).auth;
-      if (token)    headers.set("Authorization", `Bearer ${token}`);
-      if (tenantId) headers.set("X-Tenant-Id", tenantId);
-      return headers;
-    },
-  }),
+  baseQuery,
   tagTypes: ["Artist"],
   endpoints: (builder) => ({
+    createArtist: builder.mutation<ArtistResponse, CreateArtistRequest>({
+      query: (body) => ({ url: "artists", method: "POST", body }),
+      invalidatesTags: ["Artist"],
+    }),
     getArtists: builder.query<ArtistResponse[], string | undefined>({
       query: (search) => ({
         url: "artists",
@@ -55,6 +58,7 @@ export const artistsApi = createApi({
 });
 
 export const {
+  useCreateArtistMutation,
   useGetArtistsQuery,
   useGetArtistByIdQuery,
   useUpdateArtistMutation,

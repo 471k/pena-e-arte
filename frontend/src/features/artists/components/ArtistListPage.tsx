@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
-import { Loader2, PenLine, Search, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Loader2, PenLine, Plus, Search, Users } from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { usePermission } from "@/shared/hooks/usePermission";
+import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "../artistsApi";
 import { ArtistCard } from "./ArtistCard";
 
 export function ArtistListPage() {
+  const navigate = useNavigate();
+  const canManage = usePermission(Role.Owner);
   const [inputValue, setInputValue] = useState("");
   const [search, setSearch] = useState<string | undefined>(undefined);
 
@@ -22,12 +28,20 @@ export function ArtistListPage() {
           <PenLine className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Artists</span>
         </div>
-        {artists && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Users className="h-3.5 w-3.5" />
-            <span>{artists.length} artist{artists.length !== 1 ? "s" : ""}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {artists && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Users className="h-3.5 w-3.5" />
+              <span>{artists.length} artist{artists.length !== 1 ? "s" : ""}</span>
+            </div>
+          )}
+          {canManage && (
+            <Button size="sm" onClick={() => navigate("/artists/new")} className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              New Artist
+            </Button>
+          )}
+        </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
