@@ -4,6 +4,7 @@ import { RegisterStudioPage } from "@/features/studios";
 import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage } from "@/features/appointments";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
+import { ClientListPage, CreateClientPage } from "@/features/clients";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -48,6 +49,14 @@ export const router = createBrowserRouter([
             children: [{ index: true, element: <CreateArtistPage /> }],
           },
           { path: ":id",   element: <ArtistDetailPage /> },
+        ],
+      },
+      {
+        path: "clients",
+        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+        children: [
+          { index: true, element: <ClientListPage /> },
+          { path: "new",  element: <CreateClientPage /> },
         ],
       },
     ],
