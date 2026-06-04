@@ -72,6 +72,19 @@ export const clientsApi = createApi({
         { type: "ClientProfile", id: clientId },
       ],
     }),
+    updateBodyMap: builder.mutation<
+      ClientProfileResponse,
+      { clientId: string; locations: string[] }
+    >({
+      query: ({ clientId, locations }) => ({
+        url: `clients/${clientId}/profile/body-map`,
+        method: "PATCH",
+        body: { locations },
+      }),
+      invalidatesTags: (_result, _error, { clientId }) => [
+        { type: "ClientProfile", id: clientId },
+      ],
+    }),
   }),
 });
 
@@ -81,4 +94,5 @@ export const {
   useCreateClientMutation,
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
+  useUpdateBodyMapMutation,
 } = clientsApi;

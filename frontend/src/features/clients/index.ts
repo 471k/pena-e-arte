@@ -5,6 +5,7 @@ export {
   useCreateClientMutation,
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
+  useUpdateBodyMapMutation,
 } from "./clientsApi";
 export type {
   ClientResponse,
@@ -15,3 +16,4 @@ export type {
 export { ClientListPage } from "./components/ClientListPage";
 export { CreateClientPage } from "./components/CreateClientPage";
 export { ClientDetailPage } from "./components/ClientDetailPage";
+export { BodyMap, ALL_BODY_ZONES } from "./components/BodyMap";

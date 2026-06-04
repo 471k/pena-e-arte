@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Calendar, Mail, Pencil, Phone, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Mail, Pencil, Phone, Loader2, MapPin } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -15,7 +15,9 @@ import {
   useGetClientByIdQuery,
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
+  useUpdateBodyMapMutation,
 } from "../clientsApi";
+import { BodyMap } from "./BodyMap";
 
 const profileSchema = z.object({
   dateOfBirth:  z.string().optional(),
@@ -57,8 +59,12 @@ export function ClientDetailPage() {
   const profileNotFound =
     profileError && "status" in profileError && profileError.status === 404;
 
-  const [upsertProfile, { isLoading: isSaving }] = useUpsertClientProfileMutation();
-  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [upsertProfile,  { isLoading: isSaving }]    = useUpsertClientProfileMutation();
+  const [updateBodyMap, { isLoading: isSavingMap }] = useUpdateBodyMapMutation();
+
+  const [mode,         setMode]         = useState<"view" | "edit">("view");
+  const [bodyMapMode,  setBodyMapMode]  = useState<"view" | "edit">("view");
+  const [bodyMapDraft, setBodyMapDraft] = useState<string[]>([]);
 
   const { register, handleSubmit, formState: { errors }, reset } =
     useForm<ProfileFormValues>({ resolver: zodResolver(profileSchema) });
@@ -83,6 +89,17 @@ export function ClientDetailPage() {
       },
     });
     setMode("view");
+  }
+
+  function startBodyMapEdit() {
+    setBodyMapDraft(profile?.bodyMapLocations ?? []);
+    setBodyMapMode("edit");
+  }
+
+  async function saveBodyMap() {
+    if (!id) return;
+    await updateBodyMap({ clientId: id, locations: bodyMapDraft });
+    setBodyMapMode("view");
   }
 
   if (clientLoading || clientUninitialized || profileLoading || profileUninitialized) {
@@ -206,6 +223,63 @@ export function ClientDetailPage() {
               </Card>
             )}
           </>
+        )}
+
+        {/* Body Map — only when profile exists and not editing profile fields */}
+        {mode === "view" && !profileNotFound && (
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-medium">Body Map</h2>
+                </div>
+                {canEdit && bodyMapMode === "view" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={startBodyMapEdit}
+                    className="h-7 gap-1 text-xs px-2"
+                    data-testid="edit-body-map"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit
+                  </Button>
+                )}
+                {bodyMapMode === "edit" && (
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBodyMapMode("view")}
+                      disabled={isSavingMap}
+                      className="h-7 text-xs px-2"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={saveBodyMap}
+                      disabled={isSavingMap}
+                      className="h-7 text-xs px-3"
+                    >
+                      {isSavingMap ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        "Save"
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <BodyMap
+                locations={bodyMapMode === "edit" ? bodyMapDraft : (profile?.bodyMapLocations ?? [])}
+                readOnly={bodyMapMode === "view"}
+                onChange={bodyMapMode === "edit" ? setBodyMapDraft : undefined}
+              />
+            </CardContent>
+          </Card>
         )}
 
         {mode === "edit" && (
