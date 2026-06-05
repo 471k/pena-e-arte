@@ -1,0 +1,268 @@
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Check, ImageOff, Loader2, RefreshCw, Upload } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/shared/components/ui/button";
+import { Card, CardContent } from "@/shared/components/ui/card";
+import { Label } from "@/shared/components/ui/label";
+import { cn } from "@/shared/utils/cn";
+import { usePermission } from "@/shared/hooks/usePermission";
+import { Role } from "@/shared/types/roles";
+import { useGetRevisionsQuery, useReviewRevisionMutation } from "../designsApi";
+import type { DesignRevisionResponse } from "../design.types";
+
+const TEXTAREA_CLS = cn(
+  "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
+  "ring-offset-background placeholder:text-muted-foreground",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+  "disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+);
+
+const notesSchema = z.object({
+  notes: z.string().max(2000, "Max 2000 characters").optional(),
+});
+type NotesForm = z.infer<typeof notesSchema>;
+
+function StatusBadge({ status }: { status: string | null }) {
+  if (!status) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        Pending
+      </span>
+    );
+  }
+  if (status === "Approved") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
+        <Check className="h-3 w-3" />
+        Approved
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-400">
+      <RefreshCw className="h-3 w-3" />
+      Changes Requested
+    </span>
+  );
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
+
+interface RevisionCardProps {
+  revision:  DesignRevisionResponse;
+  canReview: boolean;
+}
+
+function RevisionCard({ revision, canReview }: RevisionCardProps) {
+  const [mode, setMode]   = useState<"idle" | "changes">("idle");
+  const [review, { isLoading }] = useReviewRevisionMutation();
+
+  const { register, handleSubmit, reset, formState: { errors } } =
+    useForm<NotesForm>({ resolver: zodResolver(notesSchema) });
+
+  const isReviewable = canReview && revision.approvalStatus !== "Approved";
+
+  async function approve() {
+    await review({ revisionId: revision.id, approved: true, notes: null });
+  }
+
+  async function requestChanges(values: NotesForm) {
+    await review({
+      revisionId: revision.id,
+      approved:   false,
+      notes:      values.notes?.trim() || null,
+    });
+    reset();
+    setMode("idle");
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              v{revision.versionNumber}
+            </span>
+            <StatusBadge status={revision.approvalStatus} />
+          </div>
+          <span className="text-xs text-muted-foreground">{formatDate(revision.uploadedAt)}</span>
+        </div>
+
+        {/* Image */}
+        <a
+          href={revision.fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block overflow-hidden rounded-md border border-input bg-muted"
+        >
+          <img
+            src={revision.fileUrl}
+            alt={`Revision v${revision.versionNumber}`}
+            className="w-full max-h-64 object-contain"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+              (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute("hidden");
+            }}
+          />
+          <div hidden className="flex flex-col items-center justify-center gap-1 py-8 text-muted-foreground">
+            <ImageOff className="h-6 w-6" />
+            <span className="text-xs">Preview unavailable</span>
+          </div>
+        </a>
+
+        {/* Upload notes */}
+        {revision.notes && (
+          <p className="text-xs text-muted-foreground">{revision.notes}</p>
+        )}
+
+        {/* Existing approval notes */}
+        {revision.approvalNotes && (
+          <p className="text-xs border-l-2 border-yellow-500 pl-2 text-muted-foreground">
+            {revision.approvalNotes}
+          </p>
+        )}
+
+        {/* Review actions (clients only, non-approved revisions) */}
+        {isReviewable && (
+          <div className="pt-1 space-y-3">
+            {mode === "idle" && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="gap-1.5 flex-1"
+                  disabled={isLoading}
+                  onClick={approve}
+                >
+                  {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Approve
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 flex-1"
+                  disabled={isLoading}
+                  onClick={() => setMode("changes")}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Request Changes
+                </Button>
+              </div>
+            )}
+
+            {mode === "changes" && (
+              <form onSubmit={handleSubmit(requestChanges)} className="space-y-2">
+                <div className="space-y-1">
+                  <Label htmlFor={`notes-${revision.id}`} className="text-xs">
+                    Notes (optional)
+                  </Label>
+                  <textarea
+                    id={`notes-${revision.id}`}
+                    rows={3}
+                    placeholder="Describe what needs to change…"
+                    disabled={isLoading}
+                    {...register("notes")}
+                    className={cn(TEXTAREA_CLS, errors.notes && "border-destructive")}
+                  />
+                  {errors.notes && (
+                    <p className="text-xs text-destructive">{errors.notes.message}</p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm" variant="outline" className="flex-1" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Submit"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="flex-1"
+                    disabled={isLoading}
+                    onClick={() => { setMode("idle"); reset(); }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function DesignDetailPage() {
+  const { id: designId } = useParams<{ id: string }>();
+  const navigate  = useNavigate();
+  const canReview = usePermission(Role.Client);
+  const canUpload = usePermission(Role.Artist);
+
+  const { data: revisions, isLoading, isError } =
+    useGetRevisionsQuery(designId ?? "", { skip: !designId });
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/designs")}
+          className="gap-1.5"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Designs
+        </Button>
+
+        {canUpload && designId && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => navigate(`/designs/${designId}/upload`)}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Upload Revision
+          </Button>
+        )}
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        {isLoading && (
+          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Loading revisions…</span>
+          </div>
+        )}
+
+        {isError && (
+          <p className="text-center text-sm text-destructive py-16">
+            Failed to load revisions. Please try again.
+          </p>
+        )}
+
+        {!isLoading && !isError && revisions?.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-16">
+            No revisions yet.
+          </p>
+        )}
+
+        {!isLoading && !isError && revisions && revisions.length > 0 && (
+          <div className="space-y-4">
+            {revisions.map((r) => (
+              <RevisionCard key={r.id} revision={r} canReview={canReview} />
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

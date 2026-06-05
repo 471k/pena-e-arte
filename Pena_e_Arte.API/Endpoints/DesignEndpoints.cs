@@ -3,6 +3,7 @@ using Pena_e_Arte.Application.Designs.Commands;
 using Pena_e_Arte.Application.Designs.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using System.Collections.Generic;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -15,6 +16,7 @@ public static class DesignEndpoints
 
         group.MapGet("/",                                    GetDesigns).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/",                                   CreateDesign).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("{id:guid}/revisions",                  GetRevisions).RequireAuthorization("ClientAndAbove");
         group.MapPost("{id:guid}/revisions",                 UploadRevision).RequireAuthorization("ArtistAndAbove");
         group.MapPost("revisions/{revisionId:guid}/review",  ReviewDesign).RequireAuthorization("ClientAndAbove");
     }
@@ -26,6 +28,15 @@ public static class DesignEndpoints
         CancellationToken ct)
     {
         List<DesignResponse> result = await mediator.Send(new GetDesignsQuery(clientId, artistId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetRevisions(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<DesignRevisionResponse> result = await mediator.Send(new GetDesignRevisionsQuery(id), ct);
         return Results.Ok(result);
     }
 

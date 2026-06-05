@@ -5,7 +5,7 @@ import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage } from "@/features/appointments";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
 import { ClientListPage, CreateClientPage, ClientDetailPage, TattooRecordDetailPage } from "@/features/clients";
-import { DesignListPage, CreateDesignPage, UploadRevisionPage } from "@/features/designs";
+import { DesignListPage, CreateDesignPage, UploadRevisionPage, DesignDetailPage } from "@/features/designs";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -64,11 +64,19 @@ export const router = createBrowserRouter([
       },
       {
         path: "designs",
-        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+        element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
         children: [
-          { index: true,          element: <DesignListPage /> },
-          { path: "new",          element: <CreateDesignPage /> },
-          { path: ":id/upload",   element: <UploadRevisionPage /> },
+          // artist-only: list, create, upload
+          {
+            element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+            children: [
+              { index: true,        element: <DesignListPage /> },
+              { path: "new",        element: <CreateDesignPage /> },
+              { path: ":id/upload", element: <UploadRevisionPage /> },
+            ],
+          },
+          // clients and above: view detail + review revisions
+          { path: ":id", element: <DesignDetailPage /> },
         ],
       },
     ],

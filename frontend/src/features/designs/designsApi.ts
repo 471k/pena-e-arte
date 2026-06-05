@@ -6,6 +6,7 @@ import type {
   CreateDesignRequest,
   DesignRevisionResponse,
   UploadRevisionRequest,
+  ReviewRevisionRequest,
 } from "./design.types";
 
 export const designsApi = createApi({
@@ -35,6 +36,18 @@ export const designsApi = createApi({
       }),
       invalidatesTags: ["Design"],
     }),
+    getRevisions: builder.query<DesignRevisionResponse[], string>({
+      query: (designId) => `designs/${designId}/revisions`,
+      providesTags: (_result, _error, designId) => [{ type: "Design", id: designId }],
+    }),
+    reviewRevision: builder.mutation<DesignRevisionResponse, ReviewRevisionRequest>({
+      query: ({ revisionId, approved, notes }) => ({
+        url:    `designs/revisions/${revisionId}/review`,
+        method: "POST",
+        body:   { approved, notes },
+      }),
+      invalidatesTags: ["Design"],
+    }),
   }),
 });
 
@@ -42,4 +55,6 @@ export const {
   useGetDesignsQuery,
   useCreateDesignMutation,
   useUploadRevisionMutation,
+  useGetRevisionsQuery,
+  useReviewRevisionMutation,
 } = designsApi;

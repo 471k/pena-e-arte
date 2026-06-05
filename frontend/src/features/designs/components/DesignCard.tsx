@@ -1,5 +1,5 @@
 import { Palette, Upload } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import type { DesignResponse } from "../design.types";
@@ -20,19 +20,24 @@ export function DesignCard({ design }: DesignCardProps) {
   const navigate = useNavigate();
 
   return (
-    <Card>
+    <Card className="hover:bg-muted/40 transition-colors">
       <CardContent className="p-4 flex items-start gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-          <Palette className="h-5 w-5 text-muted-foreground" />
-        </div>
+        <Link
+          to={`/designs/${design.id}`}
+          className="flex items-start gap-4 flex-1 min-w-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <Palette className="h-5 w-5 text-muted-foreground" />
+          </div>
 
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm font-medium leading-none">{design.title}</p>
-          {design.description && (
-            <p className="text-xs text-muted-foreground truncate">{design.description}</p>
-          )}
-          <p className="text-xs text-muted-foreground">{formatDate(design.createdAt)}</p>
-        </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-sm font-medium leading-none">{design.title}</p>
+            {design.description && (
+              <p className="text-xs text-muted-foreground truncate">{design.description}</p>
+            )}
+            <p className="text-xs text-muted-foreground">{formatDate(design.createdAt)}</p>
+          </div>
+        </Link>
 
         <Button
           variant="ghost"

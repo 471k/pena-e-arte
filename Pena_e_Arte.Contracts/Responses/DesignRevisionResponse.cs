@@ -6,4 +6,6 @@ public record DesignRevisionResponse(
     int      VersionNumber,
     string   FileUrl,
     string?  Notes,
-    DateTime UploadedAt);
+    DateTime UploadedAt,
+    string?  ApprovalStatus,
+    string?  ApprovalNotes);

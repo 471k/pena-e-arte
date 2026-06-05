@@ -45,6 +45,7 @@ public class UploadDesignRevisionHandler(
         return response;
     }
 
-    internal static DesignRevisionResponse Map(DesignRevision r) =>
-        new(r.Id, r.DesignId, r.VersionNumber, r.FileUrl, r.Notes, r.UploadedAt);
+    internal static DesignRevisionResponse Map(DesignRevision r, DesignApproval? approval = null) =>
+        new(r.Id, r.DesignId, r.VersionNumber, r.FileUrl, r.Notes, r.UploadedAt,
+            approval?.Status.ToString(), approval?.ClientNotes);
 }

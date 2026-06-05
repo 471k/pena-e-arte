@@ -35,16 +35,18 @@ public class ReviewDesignHandler(
             ? DesignApprovalStatus.Approved
             : DesignApprovalStatus.ChangesRequested;
 
+        DesignApproval approval;
         if (revision.Approval is null)
         {
-            db.DesignApprovals.Add(new DesignApproval
+            approval = new DesignApproval
             {
                 StudioId         = tenant.StudioId,
                 DesignRevisionId = revision.Id,
                 Status           = newStatus,
                 ClientNotes      = req.Notes,
                 ReviewedAt       = DateTime.UtcNow
-            });
+            };
+            db.DesignApprovals.Add(approval);
         }
         else
         {
@@ -52,12 +54,13 @@ public class ReviewDesignHandler(
             revision.Approval.ClientNotes = req.Notes;
             revision.Approval.ReviewedAt  = DateTime.UtcNow;
             revision.Approval.UpdatedAt   = DateTime.UtcNow;
+            approval = revision.Approval;
         }
 
         await db.SaveChangesAsync(ct);
 
         string eventName = req.Approved ? "DesignApproved" : "DesignChangeRequested";
-        DesignRevisionResponse response = UploadDesignRevisionHandler.Map(revision);
+        DesignRevisionResponse response = UploadDesignRevisionHandler.Map(revision, approval);
         await realtime.NotifyStudioAsync(tenant.StudioId, eventName, response, ct);
 
         return response;

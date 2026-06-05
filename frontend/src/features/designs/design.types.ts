@@ -21,16 +21,24 @@ export interface CreateDesignRequest {
 }
 
 export interface DesignRevisionResponse {
-  id:            string;
-  designId:      string;
-  versionNumber: number;
-  fileUrl:       string;
-  notes:         string | null;
-  uploadedAt:    string;
+  id:             string;
+  designId:       string;
+  versionNumber:  number;
+  fileUrl:        string;
+  notes:          string | null;
+  uploadedAt:     string;
+  approvalStatus: string | null;
+  approvalNotes:  string | null;
 }
 
 export interface UploadRevisionRequest {
   designId: string;
   fileUrl:  string;
   notes:    string | null;
+}
+
+export interface ReviewRevisionRequest {
+  revisionId: string;
+  approved:   boolean;
+  notes:      string | null;
 }
