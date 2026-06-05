@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  AlertTriangle, BookOpen, CalendarDays, CreditCard,
+  AlertTriangle, Bell, BookOpen, CalendarDays, CreditCard,
   LayoutDashboard, Loader2, ScrollText, Scroll, Users, Zap,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -214,8 +214,9 @@ const NAV_TILES: NavTile[] = [
   { label: "Clients",       icon: <Users        className="h-5 w-5" />, href: "/clients" },
   { label: "Artists",       icon: <Scroll       className="h-5 w-5" />, href: "/artists" },
   { label: "Designs",       icon: <BookOpen     className="h-5 w-5" />, href: "/designs" },
-  { label: "Deposit Rules", icon: <ScrollText   className="h-5 w-5" />, href: "/deposit-rules" },
-  { label: "Billing",       icon: <CreditCard   className="h-5 w-5" />, href: "/billing" },
+  { label: "Deposit Rules",  icon: <ScrollText   className="h-5 w-5" />, href: "/deposit-rules" },
+  { label: "Billing",        icon: <CreditCard   className="h-5 w-5" />, href: "/billing" },
+  { label: "Notifications",  icon: <Bell         className="h-5 w-5" />, href: "/notifications" },
 ];
 
 function QuickNav() {
