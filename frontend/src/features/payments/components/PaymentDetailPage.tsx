@@ -182,7 +182,7 @@ export function PaymentDetailPage() {
         </Button>
 
         <div className="flex items-center gap-2">
-          {isPending && (
+          {isPending && canOwner && (
             <Button
               size="sm"
               onClick={() => capture(payment.id)}
@@ -237,10 +237,12 @@ export function PaymentDetailPage() {
           </CardContent>
         </Card>
 
-        <SessionSplitsEditor
-          paymentId={payment.id}
-          currentSplits={payment.sessionSplits}
-        />
+        {canOwner && (
+          <SessionSplitsEditor
+            paymentId={payment.id}
+            currentSplits={payment.sessionSplits}
+          />
+        )}
       </main>
     </div>
   );

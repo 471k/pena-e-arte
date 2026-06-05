@@ -189,7 +189,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "payments",
-        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
         children: [
           { index: true,            element: <PaymentListPage /> },
           { path: "new",            element: <CreatePaymentIntentPage /> },

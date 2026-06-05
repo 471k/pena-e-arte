@@ -52,6 +52,7 @@ export function AppointmentDetailPage() {
   const { id }       = useParams<{ id: string }>();
   const navigate     = useNavigate();
   const isArtistPlus = usePermission(Role.Artist);
+  const canOwner     = usePermission(Role.Owner);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   const { data: appt, isLoading, isError } = useGetAppointmentQuery(id ?? "", {
@@ -148,7 +149,7 @@ export function AppointmentDetailPage() {
                   </Button>
                 )}
 
-                {appt.depositStatus === DepositStatus.Pending && (
+                {appt.depositStatus === DepositStatus.Pending && canOwner && (
                   <Button
                     variant="outline"
                     className="w-full gap-2"

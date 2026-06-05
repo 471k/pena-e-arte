@@ -14,19 +14,19 @@ public static class PaymentEndpoints
             .RequireAuthorization();
 
         group.MapPost("/",
-            CreatePaymentIntent).RequireAuthorization("ArtistAndAbove");
+            CreatePaymentIntent).RequireAuthorization("OwnerOnly");
 
         group.MapGet("/",
-            GetPayments).RequireAuthorization("ArtistAndAbove");
+            GetPayments).RequireAuthorization("OwnerOnly");
 
         group.MapGet("/appointment/{appointmentId:guid}",
-            GetPaymentByAppointment).RequireAuthorization("ArtistAndAbove");
+            GetPaymentByAppointment).RequireAuthorization("OwnerOnly");
 
         group.MapPut("/{id:guid}/splits",
-            UpdateSessionSplits).RequireAuthorization("ArtistAndAbove");
+            UpdateSessionSplits).RequireAuthorization("OwnerOnly");
 
         group.MapPost("/{id:guid}/capture",
-            CaptureDeposit).RequireAuthorization("ArtistAndAbove");
+            CaptureDeposit).RequireAuthorization("OwnerOnly");
 
         group.MapPost("/{id:guid}/refund",
             RefundPayment).RequireAuthorization("OwnerOnly");
