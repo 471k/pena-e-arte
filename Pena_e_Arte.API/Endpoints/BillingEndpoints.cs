@@ -5,6 +5,7 @@ using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Stripe;
+using System.Collections.Generic;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -15,6 +16,7 @@ public static class BillingEndpoints
         RouteGroupBuilder billingGroup = app.MapGroup("/api/v1/billing")
             .RequireAuthorization();
 
+        billingGroup.MapGet("/plans",           GetPlans).RequireAuthorization("OwnerOnly");
         billingGroup.MapGet("/subscription",   GetSubscription).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/subscription",  CreateSubscription).RequireAuthorization("OwnerOnly");
 
@@ -22,6 +24,14 @@ public static class BillingEndpoints
 
         webhookGroup.MapPost("/billing", HandleBillingWebhook).AllowAnonymous();
         webhookGroup.MapPost("/connect", HandleConnectWebhook).AllowAnonymous();
+    }
+
+    private static async Task<IResult> GetPlans(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<PlanResponse> result = await mediator.Send(new GetPlansQuery(), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetSubscription(

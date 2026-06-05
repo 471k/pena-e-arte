@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 import { LoginPage } from "@/features/auth/components/LoginPage";
-import { RegisterStudioPage } from "@/features/studios";
+import { RegisterStudioPage, ConnectStudioPage, ConnectReturnPage, ConnectRefreshPage } from "@/features/studios";
+import { BillingPage, SubscribePage } from "@/features/billing";
 import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage } from "@/features/appointments";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
@@ -49,6 +50,23 @@ export const router = createBrowserRouter([
       { path: "schedule",  element: <SchedulePage /> },
       { path: "dashboard", element: <div>Owner layout (coming soon)</div> },
       { path: "platform",  element: <div>Issuer layout (coming soon)</div> },
+      {
+        path: "billing",
+        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+        children: [
+          { index: true,         element: <BillingPage /> },
+          { path: "subscribe",   element: <SubscribePage /> },
+        ],
+      },
+      {
+        path: "studio",
+        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+        children: [
+          { path: "connect",         element: <ConnectStudioPage /> },
+          { path: "connect/return",  element: <ConnectReturnPage /> },
+          { path: "connect/refresh", element: <ConnectRefreshPage /> },
+        ],
+      },
       {
         path: "artists",
         element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,

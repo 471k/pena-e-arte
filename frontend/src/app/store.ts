@@ -7,6 +7,7 @@ import { artistsApi } from "@/features/artists/artistsApi";
 import { clientsApi } from "@/features/clients/clientsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { filesApi } from "@/shared/api/filesApi";
+import { billingApi } from "@/features/billing/billingApi";
 import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
@@ -22,6 +23,7 @@ export const store = configureStore({
     [clientsApi.reducerPath]:        clientsApi.reducer,
     [designsApi.reducerPath]:        designsApi.reducer,
     [filesApi.reducerPath]:          filesApi.reducer,
+    [billingApi.reducerPath]:        billingApi.reducer,
     [intakeFormsApi.reducerPath]:    intakeFormsApi.reducer,
     [consentFormsApi.reducerPath]:   consentFormsApi.reducer,
     [depositRulesApi.reducerPath]:   depositRulesApi.reducer,
@@ -36,6 +38,7 @@ export const store = configureStore({
       clientsApi.middleware,
       designsApi.middleware,
       filesApi.middleware,
+      billingApi.middleware,
       intakeFormsApi.middleware,
       consentFormsApi.middleware,
       depositRulesApi.middleware,

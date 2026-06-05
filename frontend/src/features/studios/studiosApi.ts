@@ -30,6 +30,16 @@ export interface StudioMapItem {
   city: string;
 }
 
+export interface ConnectStudioRequest {
+  returnUrl:  string;
+  refreshUrl: string;
+  country:    string;
+}
+
+export interface ConnectOnboardingResponse {
+  onboardingUrl: string;
+}
+
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
@@ -40,7 +50,14 @@ export const studiosApi = createApi({
     getStudioMap: builder.query<StudioMapItem[], void>({
       query: () => "studios/map",
     }),
+    connectStudio: builder.mutation<ConnectOnboardingResponse, ConnectStudioRequest>({
+      query: (body) => ({ url: "studios/connect", method: "POST", body }),
+    }),
   }),
 });
 
-export const { useRegisterStudioMutation, useGetStudioMapQuery } = studiosApi;
+export const {
+  useRegisterStudioMutation,
+  useGetStudioMapQuery,
+  useConnectStudioMutation,
+} = studiosApi;
