@@ -1,15 +1,16 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, CheckCircle, FileSignature, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, FileSignature, FileText, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useAppSelector } from "@/app/hooks";
 import { cn } from "@/shared/utils/cn";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSignConsentFormMutation } from "../consentFormsApi";
+import { FileUploadField, PDF_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
 
 const TEXTAREA_CLS = cn(
   "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
@@ -28,7 +29,6 @@ const SELECT_CLS = cn(
 const schema = z.object({
   appointmentId: z.string().min(1, "Please select an appointment"),
   signatureData: z.string().min(2, "Please type your full name to sign"),
-  fileUrl:       z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -40,6 +40,8 @@ export function SignConsentFormPage() {
   const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
   const [signConsentForm, { isLoading, isSuccess, reset: resetMutation }] =
     useSignConsentFormMutation();
+
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const {
     register,
@@ -54,9 +56,12 @@ export function SignConsentFormPage() {
       clientId:      user.id,
       appointmentId: values.appointmentId,
       signatureData: values.signatureData,
-      fileUrl:       values.fileUrl || null,
+      fileUrl:       pdfUrl,
     });
-    if ("data" in result) resetForm();
+    if ("data" in result) {
+      resetForm();
+      setPdfUrl(null);
+    }
   }
 
   if (isSuccess) {
@@ -140,17 +145,26 @@ export function SignConsentFormPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="consentFileUrl">Consent document URL (optional)</Label>
-            <Input
-              id="consentFileUrl"
-              type="text"
-              placeholder="https://…"
+            <FileUploadField
+              acceptedTypes={PDF_ACCEPTED_TYPES}
+              keyPrefix={`consent/${user?.id ?? "anon"}`}
+              label="Consent document (optional)"
               disabled={isLoading}
-              {...register("fileUrl")}
-              className={cn(errors.fileUrl && "border-destructive")}
+              onUploaded={(url) => setPdfUrl(url)}
             />
-            {errors.fileUrl && (
-              <p className="text-xs text-destructive">{errors.fileUrl.message}</p>
+            {pdfUrl && (
+              <div className="flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm">
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate text-xs text-muted-foreground">PDF uploaded</span>
+                <button
+                  type="button"
+                  onClick={() => setPdfUrl(null)}
+                  className="text-xs text-destructive hover:underline shrink-0"
+                  disabled={isLoading}
+                >
+                  Remove
+                </button>
+              </div>
             )}
           </div>
 

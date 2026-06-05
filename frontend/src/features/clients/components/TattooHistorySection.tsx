@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "react-router-dom";
-import { CalendarDays, ChevronRight, ImageIcon, Loader2, MapPin, Plus, Scroll } from "lucide-react";
+import { CalendarDays, ChevronRight, ImageIcon, Loader2, MapPin, Plus, Scroll, X } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -15,6 +15,7 @@ import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetTattooRecordsQuery, useAddTattooRecordMutation } from "../clientsApi";
 import type { TattooRecordResponse } from "../clientsApi";
 import { ALL_BODY_ZONES, FRONT_ZONES, BACK_ZONES } from "./BodyMap";
+import { FileUploadField, IMAGE_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
 
 const addSchema = z.object({
   description:  z.string().min(1, "Required").max(2000, "Max 2000 characters"),
@@ -98,6 +99,7 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
   const { data: artists = [] } = useGetArtistsQuery(undefined);
 
   const [addRecord, { isLoading: isAdding }] = useAddTattooRecordMutation();
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
 
   const {
     register,
@@ -119,12 +121,13 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
         appointmentId: null,
         description:   values.description,
         bodyLocation:  values.bodyLocation,
-        photoUrls:     [],
+        photoUrls,
         completedAt:   new Date(values.completedAt + "T00:00:00Z").toISOString(),
       },
     });
     if ("data" in result) {
       reset();
+      setPhotoUrls([]);
       setShowForm(false);
     }
   }
@@ -159,7 +162,7 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setShowForm(false); reset(); }}
+              onClick={() => { setShowForm(false); reset(); setPhotoUrls([]); }}
               disabled={isAdding}
               className="h-7 text-xs px-2"
             >
@@ -252,6 +255,35 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
                   <p className="text-xs text-destructive">{errors.completedAt.message}</p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <FileUploadField
+                acceptedTypes={IMAGE_ACCEPTED_TYPES}
+                keyPrefix={`clients/${clientId}/photos`}
+                label="Photos (optional)"
+                disabled={isAdding}
+                onUploaded={(url) => setPhotoUrls((prev) => [...prev, url])}
+              />
+              {photoUrls.length > 0 && (
+                <ul className="space-y-1">
+                  {photoUrls.map((url, i) => (
+                    <li key={url} className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground truncate">
+                        Photo {i + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPhotoUrls((prev) => prev.filter((_, j) => j !== i))}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        aria-label="Remove photo"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <Button type="submit" size="sm" className="w-full" disabled={isAdding}>

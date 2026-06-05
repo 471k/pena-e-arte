@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  ArrowLeft, CalendarDays, ImageIcon, Loader2, MapPin, Pencil, Trash2,
+  ArrowLeft, CalendarDays, ImageIcon, Loader2, MapPin, Pencil, Trash2, X,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -20,6 +20,7 @@ import {
   useDeleteTattooRecordMutation,
 } from "../clientsApi";
 import { ALL_BODY_ZONES, FRONT_ZONES, BACK_ZONES } from "./BodyMap";
+import { FileUploadField, IMAGE_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
 
 const editSchema = z.object({
   description:  z.string().min(1, "Required").max(2000, "Max 2000 characters"),
@@ -61,6 +62,7 @@ export function TattooRecordDetailPage() {
   const [deleteRecord, { isLoading: isDeleting }] = useDeleteTattooRecordMutation();
 
   const [mode, setMode] = useState<"view" | "edit" | "confirm-delete">("view");
+  const [newPhotoUrls, setNewPhotoUrls] = useState<string[]>([]);
 
   const { register, handleSubmit, formState: { errors }, reset } =
     useForm<EditFormValues>({ resolver: zodResolver(editSchema) });
@@ -77,6 +79,7 @@ export function TattooRecordDetailPage() {
       bodyLocation: record.bodyLocation,
       completedAt:  toDateInput(record.completedAt),
     });
+    setNewPhotoUrls([]);
     setMode("edit");
   }
 
@@ -88,7 +91,7 @@ export function TattooRecordDetailPage() {
       body: {
         description:  values.description,
         bodyLocation: values.bodyLocation,
-        photoUrls:    record.photoUrls,
+        photoUrls:    [...record.photoUrls, ...newPhotoUrls],
         completedAt:  new Date(values.completedAt + "T00:00:00Z").toISOString(),
       },
     });
@@ -290,13 +293,39 @@ export function TattooRecordDetailPage() {
               )}
             </div>
 
-            {record.photoUrls.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-sm text-muted-foreground">
-                  {record.photoUrls.length} existing photo{record.photoUrls.length !== 1 ? "s" : ""} kept unchanged.
+            <div className="space-y-1.5">
+              {record.photoUrls.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {record.photoUrls.length} existing photo{record.photoUrls.length !== 1 ? "s" : ""} kept.
                 </p>
-              </div>
-            )}
+              )}
+              <FileUploadField
+                acceptedTypes={IMAGE_ACCEPTED_TYPES}
+                keyPrefix={`clients/${clientId}/photos`}
+                label="Add photos"
+                disabled={isSaving}
+                onUploaded={(url) => setNewPhotoUrls((prev) => [...prev, url])}
+              />
+              {newPhotoUrls.length > 0 && (
+                <ul className="space-y-1">
+                  {newPhotoUrls.map((url, i) => (
+                    <li key={url} className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground truncate">
+                        New photo {i + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setNewPhotoUrls((prev) => prev.filter((_, j) => j !== i))}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        aria-label="Remove photo"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <Button type="submit" className="w-full" disabled={isSaving}>
               {isSaving ? (
