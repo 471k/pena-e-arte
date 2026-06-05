@@ -4,4 +4,6 @@ public record UpdatePlanRequest(
     string  Name,
     decimal PriceMonthly,
     decimal PriceYearly,
-    int     YearlyDiscountPercent);
+    int     YearlyDiscountPercent,
+    string? StripePriceIdMonthly = null,
+    string? StripePriceIdYearly  = null);

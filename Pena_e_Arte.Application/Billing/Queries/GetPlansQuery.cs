@@ -20,7 +20,9 @@ public class GetPlansHandler(IAppDbContext db)
                 p.BillingInterval.ToString(),
                 p.PriceMonthly,
                 p.PriceYearly,
-                p.YearlyDiscountPercent))
+                p.YearlyDiscountPercent,
+                p.StripePriceIdMonthly,
+                p.StripePriceIdYearly))
             .ToListAsync(ct);
     }
 }

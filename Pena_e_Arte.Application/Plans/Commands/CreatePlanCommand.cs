@@ -26,6 +26,8 @@ public class CreatePlanHandler(IAppDbContext db)
             PriceMonthly          = req.PriceMonthly,
             PriceYearly           = req.PriceYearly,
             YearlyDiscountPercent = req.YearlyDiscountPercent,
+            StripePriceIdMonthly  = req.StripePriceIdMonthly,
+            StripePriceIdYearly   = req.StripePriceIdYearly,
         };
 
         db.Plans.Add(plan);
@@ -33,7 +35,8 @@ public class CreatePlanHandler(IAppDbContext db)
 
         return new PlanResponse(
             plan.Id, plan.Name, plan.BillingInterval.ToString(),
-            plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent);
+            plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent,
+            plan.StripePriceIdMonthly, plan.StripePriceIdYearly);
     }
 }
 

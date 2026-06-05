@@ -10,6 +10,8 @@ public class Plan
     public decimal         PriceMonthly          { get; set; }
     public decimal         PriceYearly           { get; set; }
     public int             YearlyDiscountPercent { get; set; }  = 17;
+    public string?         StripePriceIdMonthly  { get; set; }
+    public string?         StripePriceIdYearly   { get; set; }
     public DateTime        CreatedAt             { get; init; } = DateTime.UtcNow;
 
     public ICollection<Subscription> Subscriptions { get; set; } = [];

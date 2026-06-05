@@ -187,7 +187,12 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
     {
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         ICurrentTenant tenant = TenantFor(studioId);
-        CreateSubscriptionHandler handler = new(db, tenant);
+        IStripeBillingService billing = Substitute.For<IStripeBillingService>();
+        billing.CreateCustomerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+               .Returns("cus_test");
+        billing.CreateSubscriptionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+               .Returns(("sub_test", DateTime.UtcNow.AddMonths(1)));
+        CreateSubscriptionHandler handler = new(db, tenant, billing);
         return await handler.Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
     }
 

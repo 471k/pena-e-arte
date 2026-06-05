@@ -16,5 +16,7 @@ public class PlanConfiguration : IEntityTypeConfiguration<Plan>
                .HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(p => p.PriceMonthly).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(p => p.PriceYearly).HasColumnType("decimal(18,2)").IsRequired();
+        builder.Property(p => p.StripePriceIdMonthly).HasMaxLength(255);
+        builder.Property(p => p.StripePriceIdYearly).HasMaxLength(255);
     }
 }

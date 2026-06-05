@@ -120,8 +120,14 @@ public static class BillingEndpoints
             }
 
             case "customer.subscription.updated" when stripeEvent.Data.Object is Stripe.Subscription sub:
-                await mediator.Send(new HandleSubscriptionUpdatedCommand(sub.Id, sub.Status), ct);
+            {
+                string?  priceId   = sub.Items?.Data?.FirstOrDefault()?.Price?.Id;
+                DateTime periodEnd = sub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
+                                     ?? DateTime.UtcNow.AddMonths(1);
+                await mediator.Send(
+                    new HandleSubscriptionUpdatedCommand(sub.Id, sub.Status, periodEnd, priceId), ct);
                 break;
+            }
 
             case "customer.subscription.deleted" when stripeEvent.Data.Object is Stripe.Subscription sub:
                 await mediator.Send(new HandleSubscriptionDeletedCommand(sub.Id), ct);

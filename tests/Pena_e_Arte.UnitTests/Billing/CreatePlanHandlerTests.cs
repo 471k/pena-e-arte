@@ -44,6 +44,20 @@ public class CreatePlanHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithStripePriceIds_PersistsAndReturnsThem()
+    {
+        PlanResponse result = await CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", "Monthly", 49m, 490m, 17,
+                StripePriceIdMonthly: "price_monthly_xyz",
+                StripePriceIdYearly:  "price_yearly_xyz")), default);
+
+        result.StripePriceIdMonthly.Should().Be("price_monthly_xyz");
+        result.StripePriceIdYearly.Should().Be("price_yearly_xyz");
+        _db.Plans.Single(p => p.Name == "Pro").StripePriceIdMonthly.Should().Be("price_monthly_xyz");
+    }
+
+    [Fact]
     public async Task Handle_InvalidBillingInterval_ThrowsException()
     {
         Func<Task> act = () => CreateSut().Handle(

@@ -24,12 +24,15 @@ public class UpdatePlanHandler(IAppDbContext db)
         plan.PriceMonthly          = req.PriceMonthly;
         plan.PriceYearly           = req.PriceYearly;
         plan.YearlyDiscountPercent = req.YearlyDiscountPercent;
+        plan.StripePriceIdMonthly  = req.StripePriceIdMonthly;
+        plan.StripePriceIdYearly   = req.StripePriceIdYearly;
 
         await db.SaveChangesAsync(ct);
 
         return new PlanResponse(
             plan.Id, plan.Name, plan.BillingInterval.ToString(),
-            plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent);
+            plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent,
+            plan.StripePriceIdMonthly, plan.StripePriceIdYearly);
     }
 }
 

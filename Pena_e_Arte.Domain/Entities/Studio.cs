@@ -11,7 +11,8 @@ public class Studio
     public double   Longitude       { get; set; }
     public bool     IsActive        { get; set; }
     public DateTime TrialExpiresAt  { get; set; }
-    public string?  StripeAccountId { get; set; }
+    public string?  StripeAccountId  { get; set; }
+    public string?  StripeCustomerId { get; set; }
     public DateTime CreatedAt       { get; init; } = DateTime.UtcNow;
 
     public Subscription? Subscription { get; set; }

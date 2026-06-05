@@ -39,6 +39,21 @@ public class UpdatePlanHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithStripePriceIds_UpdatesAndReturnsThem()
+    {
+        Guid planId = await SeedPlan("Pro", 49m);
+
+        PlanResponse result = await CreateSut().Handle(
+            new UpdatePlanCommand(planId, new UpdatePlanRequest(
+                "Pro", 49m, 490m, 17,
+                StripePriceIdMonthly: "price_monthly_new",
+                StripePriceIdYearly:  "price_yearly_new")), default);
+
+        result.StripePriceIdMonthly.Should().Be("price_monthly_new");
+        result.StripePriceIdYearly.Should().Be("price_yearly_new");
+    }
+
+    [Fact]
     public async Task Handle_NonExistentPlan_ThrowsNotFoundException()
     {
         Func<Task> act = () => CreateSut().Handle(

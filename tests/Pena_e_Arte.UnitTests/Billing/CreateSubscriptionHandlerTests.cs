@@ -13,14 +13,21 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class CreateSubscriptionHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext        _db      = FakeDbContext.Create();
+    private readonly ICurrentTenant       _tenant  = Substitute.For<ICurrentTenant>();
+    private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
+    private readonly Guid                 _studioId = Guid.NewGuid();
 
-    public CreateSubscriptionHandlerTests() =>
+    public CreateSubscriptionHandlerTests()
+    {
         _tenant.StudioId.Returns(_studioId);
+        _billing.CreateCustomerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns("cus_test123");
+        _billing.CreateSubscriptionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(("sub_test123", DateTime.UtcNow.AddMonths(1)));
+    }
 
-    private CreateSubscriptionHandler CreateSut() => new(_db, _tenant);
+    private CreateSubscriptionHandler CreateSut() => new(_db, _tenant, _billing);
 
     [Fact]
     public async Task Handle_ValidPlanAndTrialingSubscription_ReturnsActiveSubscription()
@@ -94,9 +101,57 @@ public class CreateSubscriptionHandlerTests
             .WithMessage("*active*");
     }
 
-    private async Task<Guid> SeedPlan()
+    [Fact]
+    public async Task Handle_PlanWithStripePriceId_CallsStripeAndStoresSubscriptionId()
     {
-        Plan plan = new() { Name = "Pro", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m };
+        Guid planId = await SeedPlan(stripePriceIdMonthly: "price_monthly_abc");
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        await _billing.Received(1).CreateSubscriptionAsync(
+            Arg.Any<string>(), "price_monthly_abc", Arg.Any<CancellationToken>());
+
+        _db.Subscriptions.Single(s => s.StudioId == _studioId)
+            .StripeSubscriptionId.Should().Be("sub_test123");
+    }
+
+    [Fact]
+    public async Task Handle_PlanWithStripePriceId_CreatesStripeCustomerWhenMissing()
+    {
+        Guid planId = await SeedPlan(stripePriceIdMonthly: "price_monthly_abc");
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        await _billing.Received(1).CreateCustomerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _db.Studios.Single(s => s.Id == _studioId).StripeCustomerId.Should().Be("cus_test123");
+    }
+
+    [Fact]
+    public async Task Handle_PlanWithoutStripePriceId_DoesNotCallStripe()
+    {
+        Guid planId = await SeedPlan();
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        await _billing.DidNotReceive().CreateSubscriptionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    private async Task<Guid> SeedPlan(string? stripePriceIdMonthly = null)
+    {
+        Plan plan = new()
+        {
+            Name                 = "Pro",
+            BillingInterval      = BillingInterval.Monthly,
+            PriceMonthly         = 49m,
+            StripePriceIdMonthly = stripePriceIdMonthly,
+        };
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         return plan.Id;
@@ -104,6 +159,18 @@ public class CreateSubscriptionHandlerTests
 
     private async Task SeedSubscription(SubscriptionStatus status)
     {
+        Studio studio = new()
+        {
+            Id             = _studioId,
+            Name           = "Test Studio",
+            Slug           = "test-studio",
+            City           = "Lisboa",
+            OwnerEmail     = "owner@test.com",
+            IsActive       = true,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+        };
+        _db.Studios.Add(studio);
+
         _db.Subscriptions.Add(new Subscription
         {
             StudioId         = _studioId,

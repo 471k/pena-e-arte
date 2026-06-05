@@ -6,4 +6,6 @@ public record PlanResponse(
     string  BillingInterval,
     decimal PriceMonthly,
     decimal PriceYearly,
-    int     YearlyDiscountPercent);
+    int     YearlyDiscountPercent,
+    string? StripePriceIdMonthly,
+    string? StripePriceIdYearly);

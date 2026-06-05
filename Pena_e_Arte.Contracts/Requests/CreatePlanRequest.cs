@@ -5,4 +5,6 @@ public record CreatePlanRequest(
     string  BillingInterval,
     decimal PriceMonthly,
     decimal PriceYearly,
-    int     YearlyDiscountPercent);
+    int     YearlyDiscountPercent,
+    string? StripePriceIdMonthly = null,
+    string? StripePriceIdYearly  = null);

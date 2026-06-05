@@ -6,8 +6,10 @@ using Pena_e_Arte.Domain.Enums;
 namespace Pena_e_Arte.Application.Billing.Commands;
 
 public record HandleSubscriptionUpdatedCommand(
-    string StripeSubscriptionId,
-    string StripeStatus) : IRequest;
+    string   StripeSubscriptionId,
+    string   StripeStatus,
+    DateTime CurrentPeriodEnd,
+    string?  StripePriceId) : IRequest;
 
 public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandler<HandleSubscriptionUpdatedCommand>
 {
@@ -26,6 +28,18 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
             "canceled" => SubscriptionStatus.Cancelled,
             _          => subscription.Status
         };
+
+        subscription.CurrentPeriodEnd = command.CurrentPeriodEnd;
+
+        if (command.StripePriceId is not null)
+        {
+            Domain.Entities.Plan? plan = await db.Plans.FirstOrDefaultAsync(
+                p => p.StripePriceIdMonthly == command.StripePriceId ||
+                     p.StripePriceIdYearly  == command.StripePriceId, ct);
+
+            if (plan is not null)
+                subscription.PlanId = plan.Id;
+        }
 
         await db.SaveChangesAsync(ct);
     }

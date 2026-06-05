@@ -12,6 +12,8 @@ public class HandleSubscriptionUpdatedHandlerTests
 
     private HandleSubscriptionUpdatedHandler CreateSut() => new(_db);
 
+    private static readonly DateTime _nextPeriodEnd = DateTime.UtcNow.AddMonths(1);
+
     [Theory]
     [InlineData("active",   SubscriptionStatus.Active)]
     [InlineData("past_due", SubscriptionStatus.PastDue)]
@@ -24,10 +26,47 @@ public class HandleSubscriptionUpdatedHandlerTests
         await SeedSubscription(stripeSubId, SubscriptionStatus.Trialing);
 
         await CreateSut().Handle(
-            new HandleSubscriptionUpdatedCommand(stripeSubId, stripeStatus), default);
+            new HandleSubscriptionUpdatedCommand(stripeSubId, stripeStatus, _nextPeriodEnd, null), default);
 
         _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
             .Status.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task Handle_KnownStripeStatus_UpdatesCurrentPeriodEnd()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.Trialing);
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "active", _nextPeriodEnd, null), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .CurrentPeriodEnd.Should().BeCloseTo(_nextPeriodEnd, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task Handle_WithMatchingPriceId_UpdatesPlanId()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.Active);
+
+        Plan plan = new()
+        {
+            Name                 = "Pro",
+            BillingInterval      = BillingInterval.Monthly,
+            PriceMonthly         = 49m,
+            StripePriceIdMonthly = "price_monthly123"
+        };
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "active", _nextPeriodEnd, "price_monthly123"), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .PlanId.Should().Be(plan.Id);
     }
 
     [Fact]
@@ -37,7 +76,7 @@ public class HandleSubscriptionUpdatedHandlerTests
         await SeedSubscription(stripeSubId, SubscriptionStatus.Active);
 
         await CreateSut().Handle(
-            new HandleSubscriptionUpdatedCommand(stripeSubId, "paused"), default);
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "paused", _nextPeriodEnd, null), default);
 
         _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
             .Status.Should().Be(SubscriptionStatus.Active);
@@ -47,7 +86,7 @@ public class HandleSubscriptionUpdatedHandlerTests
     public async Task Handle_UnknownSubscription_DoesNotThrow()
     {
         Func<Task> act = () => CreateSut().Handle(
-            new HandleSubscriptionUpdatedCommand("sub_unknown", "active"), default);
+            new HandleSubscriptionUpdatedCommand("sub_unknown", "active", _nextPeriodEnd, null), default);
 
         await act.Should().NotThrowAsync();
     }

@@ -64,6 +64,8 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<Stripe.RefundService>();
         services.AddSingleton<Stripe.AccountService>();
         services.AddSingleton<Stripe.AccountLinkService>();
+        services.AddSingleton<Stripe.CustomerService>();
+        services.AddSingleton<Stripe.SubscriptionService>();
 
         TwilioClient.Init(
             configuration["Twilio:AccountSid"]!,
@@ -96,6 +98,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<ISlotLocker,                SlotLocker>();
         services.AddScoped<IStripePaymentService,      StripePaymentService>();
         services.AddScoped<IStripeConnectService,      StripeConnectService>();
+        services.AddScoped<IStripeBillingService,      StripeBillingService>();
         services.AddScoped<INotificationService,       NotificationService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
 

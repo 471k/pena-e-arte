@@ -16,6 +16,7 @@ public class StudioConfiguration : IEntityTypeConfiguration<Studio>
         builder.Property(s => s.City).HasMaxLength(100).IsRequired();
         builder.Property(s => s.OwnerEmail).HasMaxLength(256).IsRequired();
         builder.Property(s => s.StripeAccountId).HasMaxLength(255);
+        builder.Property(s => s.StripeCustomerId).HasMaxLength(255);
 
         builder.HasIndex(s => s.Slug).IsUnique().HasDatabaseName("ix_studios_slug");
         builder.HasIndex(s => s.IsActive).HasDatabaseName("ix_studios_is_active");
