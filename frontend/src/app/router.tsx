@@ -6,6 +6,14 @@ import { SchedulePage, BookPage } from "@/features/appointments";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
 import { ClientListPage, CreateClientPage, ClientDetailPage, TattooRecordDetailPage } from "@/features/clients";
 import { DesignListPage, CreateDesignPage, UploadRevisionPage, DesignDetailPage } from "@/features/designs";
+import {
+  SubmitIntakeFormPage,
+  IntakeFormListPage,
+  IntakeFormDetailPage,
+  SignConsentFormPage,
+  ConsentFormListPage,
+  ConsentFormDetailPage,
+} from "@/features/forms";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -77,6 +85,34 @@ export const router = createBrowserRouter([
           },
           // clients and above: view detail + review revisions
           { path: ":id", element: <DesignDetailPage /> },
+        ],
+      },
+      {
+        path: "forms",
+        element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+        children: [
+          // submit intake form: ClientAndAbove (all roles)
+          { path: "intake/new", element: <SubmitIntakeFormPage /> },
+          // intake list + detail: ArtistAndAbove
+          {
+            path: "intake",
+            element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+            children: [
+              { index: true, element: <IntakeFormListPage /> },
+              { path: ":id", element: <IntakeFormDetailPage /> },
+            ],
+          },
+          // sign consent form: ClientAndAbove (all roles)
+          { path: "consent/new", element: <SignConsentFormPage /> },
+          // consent list + detail: ArtistAndAbove
+          {
+            path: "consent",
+            element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+            children: [
+              { index: true, element: <ConsentFormListPage /> },
+              { path: ":id", element: <ConsentFormDetailPage /> },
+            ],
+          },
         ],
       },
     ],

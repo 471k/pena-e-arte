@@ -7,6 +7,8 @@ import { artistsApi } from "@/features/artists/artistsApi";
 import { clientsApi } from "@/features/clients/clientsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { filesApi } from "@/shared/api/filesApi";
+import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
+import { consentFormsApi } from "@/features/forms/consentFormsApi";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +20,8 @@ export const store = configureStore({
     [clientsApi.reducerPath]:      clientsApi.reducer,
     [designsApi.reducerPath]:      designsApi.reducer,
     [filesApi.reducerPath]:        filesApi.reducer,
+    [intakeFormsApi.reducerPath]:  intakeFormsApi.reducer,
+    [consentFormsApi.reducerPath]: consentFormsApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault().concat(
@@ -28,6 +32,8 @@ export const store = configureStore({
       clientsApi.middleware,
       designsApi.middleware,
       filesApi.middleware,
+      intakeFormsApi.middleware,
+      consentFormsApi.middleware,
     ),
 });
 
