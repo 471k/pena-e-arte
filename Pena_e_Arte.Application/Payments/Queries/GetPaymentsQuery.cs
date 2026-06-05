@@ -16,17 +16,19 @@ public class GetPaymentsHandler(IAppDbContext db)
     {
         IQueryable<Payment> q = db.Payments
             .Include(p => p.SessionSplits.Where(ss => ss.DeletedAt == null))
-            .OrderBy(p => p.CreatedAt);
+            .OrderBy(p => p.CreatedAt)
+            .ThenBy(p => p.Id);
 
         if (query.LastSeenId.HasValue)
         {
-            DateTime? cursor = await db.Payments
+            var cursor = await db.Payments
                 .Where(p => p.Id == query.LastSeenId.Value)
-                .Select(p => (DateTime?)p.CreatedAt)
+                .Select(p => new { p.CreatedAt, p.Id })
                 .FirstOrDefaultAsync(ct);
 
-            if (cursor.HasValue)
-                q = q.Where(p => p.CreatedAt > cursor.Value);
+            if (cursor is not null)
+                q = q.Where(p => p.CreatedAt > cursor.CreatedAt
+                               || (p.CreatedAt == cursor.CreatedAt && p.Id > cursor.Id));
         }
 
         List<Payment> payments = await q.Take(query.PageSize).ToListAsync(ct);

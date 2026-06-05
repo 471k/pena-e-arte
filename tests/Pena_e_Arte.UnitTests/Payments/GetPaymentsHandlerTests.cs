@@ -79,13 +79,38 @@ public class GetPaymentsHandlerTests
         result.Single().SessionSplits.Should().ContainSingle(s => s.Label == "Deposit");
     }
 
+    [Fact]
+    public async Task Handle_WithCursor_SameCreatedAt_DoesNotSkipRecords()
+    {
+        DateTime sharedTimestamp = DateTime.UtcNow;
+        Guid id1 = Guid.NewGuid();
+        Guid id2 = Guid.NewGuid();
+        Guid id3 = Guid.NewGuid();
+
+        // Order by Id as tiebreaker — sort the three GUIDs to know expected page order
+        Guid[] sorted = [id1, id2, id3];
+        Array.Sort(sorted, (a, b) => string.Compare(a.ToString(), b.ToString(), StringComparison.Ordinal));
+
+        foreach (Guid id in sorted)
+            await SeedPaymentWithId(id, sharedTimestamp);
+
+        List<PaymentResponse> page1 = await CreateSut()
+            .Handle(new GetPaymentsQuery(PageSize: 2), default);
+
+        List<PaymentResponse> page2 = await CreateSut()
+            .Handle(new GetPaymentsQuery(LastSeenId: page1[1].Id, PageSize: 10), default);
+
+        page1.Should().HaveCount(2);
+        page2.Should().HaveCount(1);
+        page2[0].Id.Should().Be(sorted[2]);
+        page1.Select(p => p.Id).Concat(page2.Select(p => p.Id))
+            .Should().BeEquivalentTo(sorted, because: "all three records must be returned across both pages");
+    }
+
     private async Task SeedPayments(int count)
     {
         for (int i = 0; i < count; i++)
-        {
             await SeedPayment(100m * (i + 1));
-            await Task.Delay(1); // ensure distinct CreatedAt for cursor pagination
-        }
     }
 
     private async Task<Guid> SeedPayment(decimal amount)
@@ -101,5 +126,21 @@ public class GetPaymentsHandlerTests
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
         return payment.Id;
+    }
+
+    private async Task SeedPaymentWithId(Guid id, DateTime createdAt)
+    {
+        Payment payment = new()
+        {
+            Id            = id,
+            StudioId      = _studioId,
+            AppointmentId = Guid.NewGuid(),
+            ClientId      = Guid.NewGuid(),
+            Amount        = 100m,
+            Status        = PaymentStatus.Pending,
+            CreatedAt     = createdAt
+        };
+        _db.Payments.Add(payment);
+        await _db.SaveChangesAsync();
     }
 }

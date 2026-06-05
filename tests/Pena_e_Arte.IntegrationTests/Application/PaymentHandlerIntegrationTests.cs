@@ -36,6 +36,10 @@ public class PaymentHandlerIntegrationTests
         _stripe.RefundPaymentIntentAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Returns($"re_{Guid.NewGuid():N}");
+
+        _stripe.CapturePaymentAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
     }
 
     // ── CreatePaymentIntent ───────────────────────────────────────────────────────
@@ -282,6 +286,161 @@ public class PaymentHandlerIntegrationTests
         result.Should().ContainSingle(p => p.StudioId == tenantA);
     }
 
+    // ── CaptureDeposit ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CaptureDeposit_PendingPayment_UpdatesStatusToPaidInDb()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId);
+
+        await RunCaptureHandler(tenantId, paymentId);
+
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        Payment? payment = await verify.Payments.FirstOrDefaultAsync(p => p.Id == paymentId);
+        payment!.Status.Should().Be(PaymentStatus.Paid);
+    }
+
+    [Fact]
+    public async Task CaptureDeposit_PendingPayment_SetsPaidAtInDb()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId);
+
+        await RunCaptureHandler(tenantId, paymentId);
+
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        Payment? payment = await verify.Payments.FirstOrDefaultAsync(p => p.Id == paymentId);
+        payment!.PaidAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CaptureDeposit_PendingPayment_UpdatesAppointmentDepositStatusToPaid()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId);
+
+        await using AppDbContext dbForAppt = _fixture.CreateDbContext(tenantId);
+        Guid appointmentId = await dbForAppt.Payments
+            .Where(p => p.Id == paymentId)
+            .Select(p => p.AppointmentId)
+            .FirstAsync();
+
+        await RunCaptureHandler(tenantId, paymentId);
+
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        Appointment? appointment = await verify.Appointments.FirstOrDefaultAsync(a => a.Id == appointmentId);
+        appointment!.DepositStatus.Should().Be(DepositStatus.Paid);
+    }
+
+    [Fact]
+    public async Task CaptureDeposit_PendingPayment_CallsStripeCapture()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId);
+
+        await RunCaptureHandler(tenantId, paymentId);
+
+        await _stripe.Received(1).CapturePaymentAsync(
+            intentId, "acct_test_123", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CaptureDeposit_AlreadyPaidPayment_ThrowsBusinessRuleViolation()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
+
+        Func<Task> act = () => RunCaptureHandler(tenantId, paymentId);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    // ── Refund ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Refund_PaidPayment_UpdatesStatusToRefundedInDb()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
+
+        await RunRefundHandler(tenantId, paymentId, refundAmount: null);
+
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        Payment? payment = await verify.Payments.FirstOrDefaultAsync(p => p.Id == paymentId);
+        payment!.Status.Should().Be(PaymentStatus.Refunded);
+    }
+
+    [Fact]
+    public async Task Refund_PaidPayment_CallsStripeRefundWithFullAmount()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
+
+        await RunRefundHandler(tenantId, paymentId, refundAmount: null);
+
+        // SeedPendingPayment seeds Amount = 100m → 10000 cents
+        await _stripe.Received(1).RefundPaymentIntentAsync(
+            intentId, "acct_test_123", 10000L, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Refund_PartialRefund_CallsStripeRefundWithCorrectAmount()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
+
+        await RunRefundHandler(tenantId, paymentId, refundAmount: 40m);
+
+        await _stripe.Received(1).RefundPaymentIntentAsync(
+            intentId, "acct_test_123", 4000L, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Refund_PendingPayment_ThrowsBusinessRuleViolation()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId);
+
+        Func<Task> act = () => RunRefundHandler(tenantId, paymentId, refundAmount: null);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*paid*");
+    }
+
+    [Fact]
+    public async Task Refund_AmountExceedsOriginal_ThrowsBusinessRuleViolation()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        await SeedStudio(tenantId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
+
+        // SeedPendingPayment seeds Amount = 100m; refunding 200m exceeds it
+        Func<Task> act = () => RunRefundHandler(tenantId, paymentId, refundAmount: 200m);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*exceed*");
+    }
+
     // ── Seed helpers ──────────────────────────────────────────────────────────────
 
     private async Task<(Guid ArtistId, Guid ClientId)> SeedArtistAndClient(Guid tenantId)
@@ -359,5 +518,23 @@ public class PaymentHandlerIntegrationTests
         return await handler.Handle(
             new CreatePaymentIntentCommand(new CreatePaymentIntentRequest(appointmentId, clientId, amount, "eur")),
             default);
+    }
+
+    private async Task<PaymentResponse> RunCaptureHandler(Guid tenantId, Guid paymentId)
+    {
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(tenantId);
+        CaptureDepositHandler handler = new(db, tenant, _stripe, _realtime);
+        return await handler.Handle(new CaptureDepositCommand(paymentId), default);
+    }
+
+    private async Task<PaymentResponse> RunRefundHandler(Guid tenantId, Guid paymentId, decimal? refundAmount)
+    {
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(tenantId);
+        RefundPaymentHandler handler = new(db, tenant, _stripe);
+        return await handler.Handle(new RefundPaymentCommand(paymentId, refundAmount), default);
     }
 }
