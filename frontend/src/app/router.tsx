@@ -15,6 +15,7 @@ import {
   ConsentFormDetailPage,
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
+import { NotificationLogListPage } from "@/features/notifications";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -127,6 +128,13 @@ export const router = createBrowserRouter([
               { path: ":id", element: <ConsentFormDetailPage /> },
             ],
           },
+        ],
+      },
+      {
+        path: "notifications",
+        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+        children: [
+          { index: true, element: <NotificationLogListPage /> },
         ],
       },
     ],

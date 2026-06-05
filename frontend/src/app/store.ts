@@ -10,20 +10,22 @@ import { filesApi } from "@/shared/api/filesApi";
 import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
+import { notificationsApi } from "@/features/notifications/notificationsApi";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    [authApi.reducerPath]:          authApi.reducer,
-    [studiosApi.reducerPath]:       studiosApi.reducer,
-    [appointmentsApi.reducerPath]:  appointmentsApi.reducer,
-    [artistsApi.reducerPath]:       artistsApi.reducer,
-    [clientsApi.reducerPath]:       clientsApi.reducer,
-    [designsApi.reducerPath]:       designsApi.reducer,
-    [filesApi.reducerPath]:         filesApi.reducer,
-    [intakeFormsApi.reducerPath]:   intakeFormsApi.reducer,
-    [consentFormsApi.reducerPath]:  consentFormsApi.reducer,
-    [depositRulesApi.reducerPath]:  depositRulesApi.reducer,
+    [authApi.reducerPath]:           authApi.reducer,
+    [studiosApi.reducerPath]:        studiosApi.reducer,
+    [appointmentsApi.reducerPath]:   appointmentsApi.reducer,
+    [artistsApi.reducerPath]:        artistsApi.reducer,
+    [clientsApi.reducerPath]:        clientsApi.reducer,
+    [designsApi.reducerPath]:        designsApi.reducer,
+    [filesApi.reducerPath]:          filesApi.reducer,
+    [intakeFormsApi.reducerPath]:    intakeFormsApi.reducer,
+    [consentFormsApi.reducerPath]:   consentFormsApi.reducer,
+    [depositRulesApi.reducerPath]:   depositRulesApi.reducer,
+    [notificationsApi.reducerPath]:  notificationsApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault().concat(
@@ -37,6 +39,7 @@ export const store = configureStore({
       intakeFormsApi.middleware,
       consentFormsApi.middleware,
       depositRulesApi.middleware,
+      notificationsApi.middleware,
     ),
 });
 
