@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Calendar, CreditCard, Loader2, RefreshCw, Zap } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, CreditCard, Loader2, RefreshCw, Zap } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
@@ -138,19 +138,47 @@ export function BillingPage() {
         {/* Connect with Stripe */}
         <Card>
           <CardContent className="p-5 space-y-3">
-            <p className="text-sm font-medium">Stripe Connect</p>
-            <p className="text-xs text-muted-foreground">
-              Connect your studio to Stripe to accept deposit payments from clients.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full gap-1.5"
-              onClick={() => navigate("/studio/connect")}
-            >
-              <CreditCard className="h-3.5 w-3.5" />
-              Set up payments
-            </Button>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Stripe Connect</p>
+              {sub.isStripeConnected && (
+                <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  Connected
+                </span>
+              )}
+            </div>
+
+            {sub.isStripeConnected ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Your studio is connected to Stripe. Clients can pay deposits at booking.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5"
+                  onClick={() => navigate("/studio/connect")}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Update Stripe account
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Connect your studio to Stripe to accept deposit payments from clients.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5"
+                  onClick={() => navigate("/studio/connect")}
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Set up payments
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 

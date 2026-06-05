@@ -16,6 +16,7 @@ public class GetSubscriptionHandler(IAppDbContext db, ICurrentTenant tenant)
     public async Task<SubscriptionResponse> Handle(GetSubscriptionQuery query, CancellationToken ct)
     {
         Domain.Entities.Subscription subscription = await db.Subscriptions
+            .Include(s => s.Studio)
             .FirstOrDefaultAsync(s => s.StudioId == tenant.StudioId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Subscription), tenant.StudioId);
 

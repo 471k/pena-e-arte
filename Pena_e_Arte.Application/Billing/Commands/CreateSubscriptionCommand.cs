@@ -38,5 +38,6 @@ public class CreateSubscriptionHandler(IAppDbContext db, ICurrentTenant tenant)
 
     internal static SubscriptionResponse Map(Domain.Entities.Subscription s) => new(
         s.Id, s.StudioId, s.PlanId, s.Status.ToString(),
-        s.TrialExpiresAt, s.CurrentPeriodEnd, s.GracePeriodEnd, s.StripeSubscriptionId);
+        s.TrialExpiresAt, s.CurrentPeriodEnd, s.GracePeriodEnd, s.StripeSubscriptionId,
+        s.Studio?.StripeAccountId is not null);
 }

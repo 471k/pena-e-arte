@@ -7,6 +7,7 @@ export interface SubscriptionResponse {
   currentPeriodEnd:     string;
   gracePeriodEnd:       string;
   stripeSubscriptionId: string | null;
+  isStripeConnected:    boolean;
 }
 
 export interface PlanResponse {

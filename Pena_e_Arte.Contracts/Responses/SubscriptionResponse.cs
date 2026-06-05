@@ -8,4 +8,5 @@ public record SubscriptionResponse(
     DateTime  TrialExpiresAt,
     DateTime  CurrentPeriodEnd,
     DateTime  GracePeriodEnd,
-    string?   StripeSubscriptionId);
+    string?   StripeSubscriptionId,
+    bool      IsStripeConnected);
