@@ -2,6 +2,7 @@ import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 import { LoginPage } from "@/features/auth/components/LoginPage";
 import { RegisterStudioPage, ConnectStudioPage, ConnectReturnPage, ConnectRefreshPage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
+import { DashboardPage } from "@/features/dashboard";
 import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage } from "@/features/appointments";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
@@ -48,7 +49,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "book",      element: <BookPage /> },
       { path: "schedule",  element: <SchedulePage /> },
-      { path: "dashboard", element: <div>Owner layout (coming soon)</div> },
+      { path: "dashboard", element: <DashboardPage /> },
       { path: "platform",  element: <div>Issuer layout (coming soon)</div> },
       {
         path: "billing",
