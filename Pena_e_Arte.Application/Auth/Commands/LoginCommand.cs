@@ -12,10 +12,12 @@ public class LoginHandler(IIdentityService identity) : IRequestHandler<LoginComm
 {
     public async Task<AuthResponse> Handle(LoginCommand command, CancellationToken ct)
     {
-        (bool success, string? token, string? error) =
+        (bool success, string? accessToken, string? error) =
             await identity.LoginAsync(command.Request.Email, command.Request.Password);
 
         if (!success) throw new BusinessRuleViolationException(error ?? "Invalid credentials.");
-        return new AuthResponse(token!);
+
+        string refreshToken = await identity.CreateRefreshTokenAsync(command.Request.Email);
+        return new AuthResponse(accessToken!, refreshToken);
     }
 }

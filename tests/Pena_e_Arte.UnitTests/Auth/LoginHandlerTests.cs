@@ -19,11 +19,14 @@ public class LoginHandlerTests
     {
         _identity.LoginAsync("user@example.com", "password123")
                  .Returns((true, "jwt.token.here", null));
+        _identity.CreateRefreshTokenAsync("user@example.com")
+                 .Returns("refresh.token.here");
 
         AuthResponse result = await CreateSut().Handle(
             new LoginCommand(new LoginRequest("user@example.com", "password123")), default);
 
         result.AccessToken.Should().Be("jwt.token.here");
+        result.RefreshToken.Should().Be("refresh.token.here");
         result.TokenType.Should().Be("Bearer");
     }
 
@@ -58,6 +61,8 @@ public class LoginHandlerTests
     {
         _identity.LoginAsync("user@example.com", "secret123")
                  .Returns((true, "token", null));
+        _identity.CreateRefreshTokenAsync("user@example.com")
+                 .Returns("refresh.token");
 
         await CreateSut().Handle(
             new LoginCommand(new LoginRequest("user@example.com", "secret123")), default);

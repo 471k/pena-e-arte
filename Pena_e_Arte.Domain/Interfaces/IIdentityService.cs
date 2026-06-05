@@ -6,4 +6,6 @@ public interface IIdentityService
     Task<(bool Success, string? Token, string? Error)> LoginAsync(string email, string password);
     Task<(bool Success, string? Token, string? Error)> GeneratePasswordResetTokenAsync(string email);
     Task<(bool Success, string[] Errors)> ResetPasswordAsync(string email, string token, string newPassword);
+    Task<string> CreateRefreshTokenAsync(string email);
+    Task<(bool Success, string? AccessToken, string? RefreshToken, string? Error)> RefreshTokenAsync(string refreshToken);
 }

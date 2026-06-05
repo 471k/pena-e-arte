@@ -61,6 +61,9 @@ public class GetSubscriptionHandlerTests
 
     private async Task<Guid> SeedSubscription(SubscriptionStatus status)
     {
+        // Studio must exist so Include(s => s.Studio) resolves correctly in InMemory
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test Studio", Slug = "test" });
+
         Subscription sub = new()
         {
             StudioId         = _studioId,

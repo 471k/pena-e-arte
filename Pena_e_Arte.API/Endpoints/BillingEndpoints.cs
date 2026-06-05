@@ -2,6 +2,7 @@ using MediatR;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Billing.Queries;
 using Pena_e_Arte.Application.Payments.Commands;
+using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Stripe;
@@ -16,7 +17,11 @@ public static class BillingEndpoints
         RouteGroupBuilder billingGroup = app.MapGroup("/api/v1/billing")
             .RequireAuthorization();
 
-        billingGroup.MapGet("/plans",           GetPlans).RequireAuthorization("OwnerOnly");
+        billingGroup.MapGet("/plans",              GetPlans).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/plans",             CreatePlan).RequireAuthorization("IssuerOnly");
+        billingGroup.MapPut("/plans/{id:guid}",    UpdatePlan).RequireAuthorization("IssuerOnly");
+        billingGroup.MapDelete("/plans/{id:guid}", DeletePlan).RequireAuthorization("IssuerOnly");
+
         billingGroup.MapGet("/subscription",   GetSubscription).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/subscription",  CreateSubscription).RequireAuthorization("OwnerOnly");
 
@@ -32,6 +37,34 @@ public static class BillingEndpoints
     {
         List<PlanResponse> result = await mediator.Send(new GetPlansQuery(), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CreatePlan(
+        CreatePlanRequest request,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        PlanResponse result = await mediator.Send(new CreatePlanCommand(request), ct);
+        return Results.Created($"/api/v1/billing/plans/{result.Id}", result);
+    }
+
+    private static async Task<IResult> UpdatePlan(
+        Guid              id,
+        UpdatePlanRequest request,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        PlanResponse result = await mediator.Send(new UpdatePlanCommand(id, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> DeletePlan(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new DeletePlanCommand(id), ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> GetSubscription(
@@ -54,6 +87,7 @@ public static class BillingEndpoints
     private static async Task<IResult> HandleBillingWebhook(
         HttpRequest       httpRequest,
         IConfiguration    configuration,
+        ISender           mediator,
         ILoggerFactory    loggerFactory,
         CancellationToken ct)
     {
@@ -62,15 +96,36 @@ public static class BillingEndpoints
         string  signature = httpRequest.Headers["Stripe-Signature"].ToString();
         string  secret    = configuration["Stripe:WebhookSecretBilling"]!;
 
+        Event stripeEvent;
         try
         {
-            Event stripeEvent = EventUtility.ConstructEvent(payload, signature, secret);
-            logger.LogInformation("Stripe billing webhook received {@EventType}", stripeEvent.Type);
+            stripeEvent = EventUtility.ConstructEvent(payload, signature, secret);
         }
         catch (StripeException ex)
         {
             logger.LogWarning(ex, "Invalid Stripe billing webhook signature");
             return Results.Unauthorized();
+        }
+
+        logger.LogInformation("Stripe billing webhook received {@EventType}", stripeEvent.Type);
+
+        switch (stripeEvent.Type)
+        {
+            case "invoice.paid" when stripeEvent.Data.Object is Invoice invoice:
+            {
+                string? stripeSubId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
+                if (stripeSubId is not null)
+                    await mediator.Send(new HandleInvoicePaidCommand(stripeSubId, invoice.PeriodEnd), ct);
+                break;
+            }
+
+            case "customer.subscription.updated" when stripeEvent.Data.Object is Stripe.Subscription sub:
+                await mediator.Send(new HandleSubscriptionUpdatedCommand(sub.Id, sub.Status), ct);
+                break;
+
+            case "customer.subscription.deleted" when stripeEvent.Data.Object is Stripe.Subscription sub:
+                await mediator.Send(new HandleSubscriptionDeletedCommand(sub.Id), ct);
+                break;
         }
 
         return Results.Ok();

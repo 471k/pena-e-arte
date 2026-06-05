@@ -38,7 +38,8 @@ public static class InfrastructureServiceExtensions
             options.Lockout.MaxFailedAccessAttempts = 5;
         })
         .AddRoles<IdentityRole>()
-        .AddEntityFrameworkStores<AppDbContext>();
+        .AddEntityFrameworkStores<AppDbContext>()
+        .AddDefaultTokenProviders();
 
         var redisConnectionString = configuration["Redis:ConnectionString"]!;
         services.AddStackExchangeRedisCache(options =>

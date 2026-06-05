@@ -1,6 +1,7 @@
 using MediatR;
 using Pena_e_Arte.Application.Auth.Commands;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Contracts.Responses;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -14,6 +15,7 @@ public static class AuthEndpoints
         group.MapPost("/register",        Register).AllowAnonymous();
         group.MapPost("/forgot-password", ForgotPassword).AllowAnonymous();
         group.MapPost("/reset-password",  ResetPassword).AllowAnonymous();
+        group.MapPost("/refresh",         Refresh).AllowAnonymous();
     }
 
     private static async Task<IResult> Login(
@@ -51,5 +53,14 @@ public static class AuthEndpoints
     {
         await mediator.Send(new ResetPasswordCommand(request), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> Refresh(
+        RefreshTokenRequest request,
+        ISender             mediator,
+        CancellationToken   ct)
+    {
+        AuthResponse response = await mediator.Send(new RefreshTokenCommand(request), ct);
+        return Results.Ok(response);
     }
 }

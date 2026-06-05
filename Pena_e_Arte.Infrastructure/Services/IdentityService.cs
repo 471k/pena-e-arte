@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -62,6 +63,41 @@ public class IdentityService(
         return result.Succeeded
             ? (true, [])
             : (false, result.Errors.Select(e => e.Description).ToArray());
+    }
+
+    public async Task<string> CreateRefreshTokenAsync(string email)
+    {
+        IdentityUser user = (await userManager.FindByEmailAsync(email))!;
+
+        string randomPart   = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string refreshToken = $"{user.Id}.{randomPart}";
+
+        await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", refreshToken);
+        return refreshToken;
+    }
+
+    public async Task<(bool Success, string? AccessToken, string? RefreshToken, string? Error)> RefreshTokenAsync(
+        string refreshToken)
+    {
+        int dotIndex = refreshToken.IndexOf('.');
+        if (dotIndex < 0) return (false, null, null, "Invalid refresh token.");
+
+        string userId = refreshToken[..dotIndex];
+        IdentityUser? user = await userManager.FindByIdAsync(userId);
+        if (user is null) return (false, null, null, "Invalid refresh token.");
+
+        string? stored = await userManager.GetAuthenticationTokenAsync(user, "App", "RefreshToken");
+        if (stored != refreshToken) return (false, null, null, "Invalid refresh token.");
+
+        string newRandom       = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string newRefreshToken = $"{user.Id}.{newRandom}";
+        await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", newRefreshToken);
+
+        IList<string> roles      = await userManager.GetRolesAsync(user);
+        IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
+        string newAccessToken    = GenerateJwt(user, roles, userClaims);
+
+        return (true, newAccessToken, newRefreshToken, null);
     }
 
     private string GenerateJwt(IdentityUser user, IList<string> roles, IList<Claim> userClaims)
