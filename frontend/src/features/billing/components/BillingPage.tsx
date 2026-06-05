@@ -157,7 +157,7 @@ export function BillingPage() {
                   variant="outline"
                   size="sm"
                   className="w-full gap-1.5"
-                  onClick={() => navigate("/studio/connect")}
+                  onClick={() => navigate("/studio/connect", { state: { isUpdate: true } })}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   Update Stripe account

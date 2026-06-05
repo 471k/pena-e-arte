@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Label } from "@/shared/components/ui/label";
@@ -29,7 +29,9 @@ const SELECT_CLS = cn(
 );
 
 export function ConnectStudioPage() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const isUpdate  = (location.state as { isUpdate?: boolean } | null)?.isUpdate === true;
   const [connectStudio, { isLoading }] = useConnectStudioMutation();
   const [country,    setCountry]    = useState("");
   const [error,      setError]      = useState<string | null>(null);
@@ -65,21 +67,31 @@ export function ConnectStudioPage() {
         </Button>
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
-          <span className="font-semibold tracking-tight">Connect with Stripe</span>
+          <span className="font-semibold tracking-tight">
+            {isUpdate ? "Update Stripe account" : "Connect with Stripe"}
+          </span>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-8 space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Connect your studio to Stripe to accept deposit payments from clients. You'll be redirected
-          to Stripe to complete the onboarding process.
-        </p>
-
-        <ul className="space-y-1.5 text-sm text-muted-foreground list-disc list-inside">
-          <li>Accepts all major credit and debit cards</li>
-          <li>Deposits held and released automatically</li>
-          <li>Payouts directly to your bank account</li>
-        </ul>
+        {isUpdate ? (
+          <p className="text-sm text-muted-foreground">
+            Update your connected Stripe account details. You'll be redirected to Stripe to complete
+            the process and then returned here.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Connect your studio to Stripe to accept deposit payments from clients. You'll be
+              redirected to Stripe to complete the onboarding process.
+            </p>
+            <ul className="space-y-1.5 text-sm text-muted-foreground list-disc list-inside">
+              <li>Accepts all major credit and debit cards</li>
+              <li>Deposits held and released automatically</li>
+              <li>Payouts directly to your bank account</li>
+            </ul>
+          </>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="country">Country</Label>
