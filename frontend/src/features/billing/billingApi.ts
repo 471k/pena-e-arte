@@ -34,21 +34,21 @@ export const billingApi = createApi({
       query: (body) => ({ url: "billing/subscription", method: "POST", body }),
       invalidatesTags: ["Subscription"],
     }),
-    // Issuer plan management (uses /api/v1/plans)
+    // Issuer plan management
     getIssuerPlans: builder.query<PlanResponse[], void>({
-      query: () => "plans",
+      query: () => "billing/plans",
       providesTags: ["Plan"],
     }),
     createPlan: builder.mutation<PlanResponse, CreatePlanRequest>({
-      query: (body) => ({ url: "plans", method: "POST", body }),
+      query: (body) => ({ url: "billing/plans", method: "POST", body }),
       invalidatesTags: ["Plan"],
     }),
     updatePlan: builder.mutation<PlanResponse, { id: string } & UpdatePlanRequest>({
-      query: ({ id, ...body }) => ({ url: `plans/${id}`, method: "PUT", body }),
+      query: ({ id, ...body }) => ({ url: `billing/plans/${id}`, method: "PUT", body }),
       invalidatesTags: ["Plan"],
     }),
     deletePlan: builder.mutation<void, string>({
-      query: (id) => ({ url: `plans/${id}`, method: "DELETE" }),
+      query: (id) => ({ url: `billing/plans/${id}`, method: "DELETE" }),
       invalidatesTags: ["Plan"],
     }),
   }),
