@@ -1,6 +1,12 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
-import type { DesignResponse, GetDesignsParams, CreateDesignRequest } from "./design.types";
+import type {
+  DesignResponse,
+  GetDesignsParams,
+  CreateDesignRequest,
+  DesignRevisionResponse,
+  UploadRevisionRequest,
+} from "./design.types";
 
 export const designsApi = createApi({
   reducerPath: "designsApi",
@@ -21,7 +27,19 @@ export const designsApi = createApi({
       query: (body) => ({ url: "designs", method: "POST", body }),
       invalidatesTags: ["Design"],
     }),
+    uploadRevision: builder.mutation<DesignRevisionResponse, UploadRevisionRequest>({
+      query: ({ designId, fileUrl, notes }) => ({
+        url:    `designs/${designId}/revisions`,
+        method: "POST",
+        body:   { fileUrl, notes },
+      }),
+      invalidatesTags: ["Design"],
+    }),
   }),
 });
 
-export const { useGetDesignsQuery, useCreateDesignMutation } = designsApi;
+export const {
+  useGetDesignsQuery,
+  useCreateDesignMutation,
+  useUploadRevisionMutation,
+} = designsApi;

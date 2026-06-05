@@ -6,6 +6,7 @@ import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { clientsApi } from "@/features/clients/clientsApi";
 import { designsApi } from "@/features/designs/designsApi";
+import { filesApi } from "@/shared/api/filesApi";
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     [artistsApi.reducerPath]:      artistsApi.reducer,
     [clientsApi.reducerPath]:      clientsApi.reducer,
     [designsApi.reducerPath]:      designsApi.reducer,
+    [filesApi.reducerPath]:        filesApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault().concat(
@@ -25,6 +27,7 @@ export const store = configureStore({
       artistsApi.middleware,
       clientsApi.middleware,
       designsApi.middleware,
+      filesApi.middleware,
     ),
 });
 

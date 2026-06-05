@@ -19,3 +19,18 @@ export interface CreateDesignRequest {
   title:       string;
   description: string | null;
 }
+
+export interface DesignRevisionResponse {
+  id:            string;
+  designId:      string;
+  versionNumber: number;
+  fileUrl:       string;
+  notes:         string | null;
+  uploadedAt:    string;
+}
+
+export interface UploadRevisionRequest {
+  designId: string;
+  fileUrl:  string;
+  notes:    string | null;
+}

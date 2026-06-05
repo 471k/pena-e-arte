@@ -5,7 +5,7 @@ import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage } from "@/features/appointments";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
 import { ClientListPage, CreateClientPage, ClientDetailPage, TattooRecordDetailPage } from "@/features/clients";
-import { DesignListPage, CreateDesignPage } from "@/features/designs";
+import { DesignListPage, CreateDesignPage, UploadRevisionPage } from "@/features/designs";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -66,8 +66,9 @@ export const router = createBrowserRouter([
         path: "designs",
         element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
         children: [
-          { index: true,  element: <DesignListPage /> },
-          { path: "new",  element: <CreateDesignPage /> },
+          { index: true,          element: <DesignListPage /> },
+          { path: "new",          element: <CreateDesignPage /> },
+          { path: ":id/upload",   element: <UploadRevisionPage /> },
         ],
       },
     ],

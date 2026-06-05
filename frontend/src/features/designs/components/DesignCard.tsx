@@ -1,5 +1,7 @@
-import { Palette } from "lucide-react";
+import { Palette, Upload } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Button } from "@/shared/components/ui/button";
 import type { DesignResponse } from "../design.types";
 
 interface DesignCardProps {
@@ -15,6 +17,8 @@ function formatDate(dateStr: string): string {
 }
 
 export function DesignCard({ design }: DesignCardProps) {
+  const navigate = useNavigate();
+
   return (
     <Card>
       <CardContent className="p-4 flex items-start gap-4">
@@ -29,6 +33,16 @@ export function DesignCard({ design }: DesignCardProps) {
           )}
           <p className="text-xs text-muted-foreground">{formatDate(design.createdAt)}</p>
         </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0 h-8 w-8 p-0"
+          aria-label="Upload revision"
+          onClick={() => navigate(`/designs/${design.id}/upload`)}
+        >
+          <Upload className="h-4 w-4" />
+        </Button>
       </CardContent>
     </Card>
   );
