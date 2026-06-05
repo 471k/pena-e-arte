@@ -99,7 +99,7 @@ public static class BillingEndpoints
         Event stripeEvent;
         try
         {
-            stripeEvent = EventUtility.ConstructEvent(payload, signature, secret);
+            stripeEvent = EventUtility.ConstructEvent(payload, signature, secret, throwOnApiVersionMismatch: false);
         }
         catch (StripeException ex)
         {
@@ -152,7 +152,7 @@ public static class BillingEndpoints
         Event stripeEvent;
         try
         {
-            stripeEvent = EventUtility.ConstructEvent(payload, signature, secret);
+            stripeEvent = EventUtility.ConstructEvent(payload, signature, secret, throwOnApiVersionMismatch: false);
         }
         catch (StripeException ex)
         {
