@@ -36,7 +36,7 @@ export function CreateArtistPage() {
       specializations: values.specializations?.trim() || null,
     });
     if ("data" in result) {
-      navigate(`/artists/${result.data.id}`);
+      navigate(`/artists/${result.data!.id}`);
     }
   }
 

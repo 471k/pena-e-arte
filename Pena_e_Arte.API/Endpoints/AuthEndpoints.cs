@@ -10,8 +10,10 @@ public static class AuthEndpoints
     {
         RouteGroupBuilder group = app.MapGroup("/api/v1/auth");
 
-        group.MapPost("/login",    Login).AllowAnonymous();
-        group.MapPost("/register", Register).AllowAnonymous();
+        group.MapPost("/login",           Login).AllowAnonymous();
+        group.MapPost("/register",        Register).AllowAnonymous();
+        group.MapPost("/forgot-password", ForgotPassword).AllowAnonymous();
+        group.MapPost("/reset-password",  ResetPassword).AllowAnonymous();
     }
 
     private static async Task<IResult> Login(
@@ -29,6 +31,25 @@ public static class AuthEndpoints
         CancellationToken   ct)
     {
         await mediator.Send(new RegisterUserCommand(request), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ForgotPassword(
+        ForgotPasswordRequest request,
+        ISender               mediator,
+        CancellationToken     ct)
+    {
+        string? token = await mediator.Send(new ForgotPasswordCommand(request), ct);
+        // In production the token is emailed. Dev: return it for testing.
+        return Results.Ok(new { resetToken = token });
+    }
+
+    private static async Task<IResult> ResetPassword(
+        ResetPasswordRequest request,
+        ISender              mediator,
+        CancellationToken    ct)
+    {
+        await mediator.Send(new ResetPasswordCommand(request), ct);
         return Results.NoContent();
     }
 }

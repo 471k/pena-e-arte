@@ -30,7 +30,7 @@ const editSchema = z
   .object({
     name:        z.string().min(1, "Name is required").max(100, "Max 100 characters"),
     depositType: z.enum(["fixed", "percent"]),
-    amount:      z.coerce.number({ invalid_type_error: "Must be a number" }).positive("Must be greater than 0"),
+    amount:      z.number().positive("Must be greater than 0"),
     isActive:    z.boolean(),
   })
   .superRefine((data, ctx) => {
@@ -251,7 +251,7 @@ export function DepositRuleDetailPage() {
                 type="number"
                 step="0.01"
                 min="0.01"
-                {...register("amount")}
+                {...register("amount", { valueAsNumber: true })}
                 className={cn(errors.amount && "border-destructive")}
               />
               {errors.amount && (

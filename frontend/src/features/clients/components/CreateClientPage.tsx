@@ -36,7 +36,7 @@ export function CreateClientPage() {
       phone:     values.phone?.trim() || null,
     });
     if ("data" in result) {
-      navigate(`/clients/${result.data.id}`);
+      navigate(`/clients/${result.data!.id}`);
     }
   }
 

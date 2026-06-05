@@ -75,6 +75,7 @@ try
     app.MapPaymentEndpoints();
     app.MapNotificationEndpoints();
     app.MapFileEndpoints();
+    app.MapIssuerEndpoints();
 
     app.Run();
 }

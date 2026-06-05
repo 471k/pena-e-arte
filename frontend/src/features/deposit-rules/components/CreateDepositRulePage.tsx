@@ -14,7 +14,7 @@ const createSchema = z
   .object({
     name:        z.string().min(1, "Name is required").max(100, "Max 100 characters"),
     depositType: z.enum(["fixed", "percent"]),
-    amount:      z.coerce.number({ invalid_type_error: "Must be a number" }).positive("Must be greater than 0"),
+    amount:      z.number().positive("Must be greater than 0"),
     isActive:    z.boolean(),
   })
   .superRefine((data, ctx) => {
@@ -50,7 +50,7 @@ export function CreateDepositRulePage() {
     };
     const result = await createRule(body);
     if ("data" in result) {
-      navigate(`/deposit-rules/${result.data.id}`);
+      navigate(`/deposit-rules/${result.data!.id}`);
     }
   }
 
@@ -110,7 +110,7 @@ export function CreateDepositRulePage() {
               step="0.01"
               min="0.01"
               placeholder={depositType === "fixed" ? "e.g. 50" : "e.g. 20"}
-              {...register("amount")}
+              {...register("amount", { valueAsNumber: true })}
               className={cn(errors.amount && "border-destructive")}
             />
             {errors.amount && (

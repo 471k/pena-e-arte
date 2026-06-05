@@ -1,5 +1,8 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAppSelector } from "@/app/hooks";
+import { useSignalR } from "@/shared/hooks/useSignalR";
+import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import {
   AlertTriangle, Bell, BookOpen, CalendarDays, CreditCard,
   LayoutDashboard, Loader2, ScrollText, Scroll, Users, Zap,
@@ -214,9 +217,10 @@ const NAV_TILES: NavTile[] = [
   { label: "Clients",       icon: <Users        className="h-5 w-5" />, href: "/clients" },
   { label: "Artists",       icon: <Scroll       className="h-5 w-5" />, href: "/artists" },
   { label: "Designs",       icon: <BookOpen     className="h-5 w-5" />, href: "/designs" },
-  { label: "Deposit Rules",  icon: <ScrollText   className="h-5 w-5" />, href: "/deposit-rules" },
-  { label: "Billing",        icon: <CreditCard   className="h-5 w-5" />, href: "/billing" },
-  { label: "Notifications",  icon: <Bell         className="h-5 w-5" />, href: "/notifications" },
+  { label: "Deposit Rules", icon: <ScrollText   className="h-5 w-5" />, href: "/deposit-rules" },
+  { label: "Billing",       icon: <CreditCard   className="h-5 w-5" />, href: "/billing" },
+  { label: "Notifications", icon: <Bell         className="h-5 w-5" />, href: "/notifications" },
+  { label: "Studio",        icon: <LayoutDashboard className="h-5 w-5" />, href: "/studio/profile" },
 ];
 
 function QuickNav() {
@@ -245,6 +249,9 @@ function QuickNav() {
 // ── page ──────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
+  const tenantId = useAppSelector((s) => s.auth.tenantId);
+  useSignalR(tenantId);
+
   const today       = useMemo(() => new Date(), []);
   const todayStart  = useMemo(() => startOfDay(today), [today]);
   const tomorrow    = useMemo(() => addDays(todayStart, 1), [todayStart]);
@@ -262,6 +269,7 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <ReadOnlyBanner />
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <LayoutDashboard className="h-5 w-5" />

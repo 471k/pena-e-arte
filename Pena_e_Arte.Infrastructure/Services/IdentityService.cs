@@ -41,6 +41,29 @@ public class IdentityService(
         return (true, GenerateJwt(user, roles, userClaims), null);
     }
 
+    public async Task<(bool Success, string? Token, string? Error)> GeneratePasswordResetTokenAsync(string email)
+    {
+        IdentityUser? user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+            return (true, null, null); // don't reveal user existence
+
+        string token = await userManager.GeneratePasswordResetTokenAsync(user);
+        return (true, token, null);
+    }
+
+    public async Task<(bool Success, string[] Errors)> ResetPasswordAsync(
+        string email, string token, string newPassword)
+    {
+        IdentityUser? user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+            return (false, ["Invalid reset request."]);
+
+        IdentityResult result = await userManager.ResetPasswordAsync(user, token, newPassword);
+        return result.Succeeded
+            ? (true, [])
+            : (false, result.Errors.Select(e => e.Description).ToArray());
+    }
+
     private string GenerateJwt(IdentityUser user, IList<string> roles, IList<Claim> userClaims)
     {
         string secretKey  = configuration["Jwt:SecretKey"]!;

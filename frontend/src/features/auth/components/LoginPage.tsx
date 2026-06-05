@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, PenLine } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath } from "@/app/router";
@@ -24,10 +24,12 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const existingRole = useAppSelector((s) => s.auth.role);
   const [login, { isLoading, error }] = useLoginMutation();
 
-  const redirectPath = existingRole ? getRoleRedirectPath(existingRole) : null;
+  const sessionExpired = searchParams.get("reason") === "session_expired";
+  const redirectPath   = existingRole ? getRoleRedirectPath(existingRole) : null;
 
   useEffect(() => {
     if (redirectPath) navigate(redirectPath, { replace: true });
@@ -69,6 +71,12 @@ export function LoginPage() {
           <p className="text-sm text-muted-foreground">Tattoo Studio Management</p>
         </div>
 
+        {sessionExpired && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+            Your session expired. Please sign in again.
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Sign in</CardTitle>
@@ -92,7 +100,15 @@ export function LoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-muted-foreground underline underline-offset-4 hover:text-primary"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   type="password"

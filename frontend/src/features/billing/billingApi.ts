@@ -2,13 +2,29 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest } from "./billing.types";
 
+export interface CreatePlanRequest {
+  name:                 string;
+  billingInterval:      string;
+  priceMonthly:         number;
+  priceYearly:          number;
+  yearlyDiscountPercent: number;
+}
+
+export interface UpdatePlanRequest {
+  name:                 string;
+  priceMonthly:         number;
+  priceYearly:          number;
+  yearlyDiscountPercent: number;
+}
+
 export const billingApi = createApi({
   reducerPath: "billingApi",
   baseQuery,
-  tagTypes: ["Subscription"],
+  tagTypes: ["Subscription", "Plan"],
   endpoints: (builder) => ({
     getPlans: builder.query<PlanResponse[], void>({
       query: () => "billing/plans",
+      providesTags: ["Plan"],
     }),
     getSubscription: builder.query<SubscriptionResponse, void>({
       query: () => "billing/subscription",
@@ -18,6 +34,23 @@ export const billingApi = createApi({
       query: (body) => ({ url: "billing/subscription", method: "POST", body }),
       invalidatesTags: ["Subscription"],
     }),
+    // Issuer plan management (uses /api/v1/plans)
+    getIssuerPlans: builder.query<PlanResponse[], void>({
+      query: () => "plans",
+      providesTags: ["Plan"],
+    }),
+    createPlan: builder.mutation<PlanResponse, CreatePlanRequest>({
+      query: (body) => ({ url: "plans", method: "POST", body }),
+      invalidatesTags: ["Plan"],
+    }),
+    updatePlan: builder.mutation<PlanResponse, { id: string } & UpdatePlanRequest>({
+      query: ({ id, ...body }) => ({ url: `plans/${id}`, method: "PUT", body }),
+      invalidatesTags: ["Plan"],
+    }),
+    deletePlan: builder.mutation<void, string>({
+      query: (id) => ({ url: `plans/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Plan"],
+    }),
   }),
 });
 
@@ -25,4 +58,8 @@ export const {
   useGetPlansQuery,
   useGetSubscriptionQuery,
   useCreateSubscriptionMutation,
+  useGetIssuerPlansQuery,
+  useCreatePlanMutation,
+  useUpdatePlanMutation,
+  useDeletePlanMutation,
 } = billingApi;

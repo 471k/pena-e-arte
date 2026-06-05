@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { authApi } from "@/features/auth/authApi";
 import authReducer from "@/features/auth/authSlice";
+import uiReducer from "@/features/ui/uiSlice";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
@@ -12,10 +13,12 @@ import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
+import { paymentsApi } from "@/features/payments/paymentsApi";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    ui:   uiReducer,
     [authApi.reducerPath]:           authApi.reducer,
     [studiosApi.reducerPath]:        studiosApi.reducer,
     [appointmentsApi.reducerPath]:   appointmentsApi.reducer,
@@ -28,6 +31,7 @@ export const store = configureStore({
     [consentFormsApi.reducerPath]:   consentFormsApi.reducer,
     [depositRulesApi.reducerPath]:   depositRulesApi.reducer,
     [notificationsApi.reducerPath]:  notificationsApi.reducer,
+    [paymentsApi.reducerPath]:       paymentsApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault().concat(
@@ -43,6 +47,7 @@ export const store = configureStore({
       consentFormsApi.middleware,
       depositRulesApi.middleware,
       notificationsApi.middleware,
+      paymentsApi.middleware,
     ),
 });
 

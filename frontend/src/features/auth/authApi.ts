@@ -18,6 +18,12 @@ interface RegisterUserRequest {
   studioId: string;
 }
 
+interface ResetPasswordRequest {
+  email: string;
+  token: string;
+  newPassword: string;
+}
+
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: fetchBaseQuery({
@@ -36,7 +42,18 @@ export const authApi = createApi({
     registerUser: builder.mutation<void, RegisterUserRequest>({
       query: (body) => ({ url: "auth/register", method: "POST", body }),
     }),
+    requestPasswordReset: builder.mutation<{ resetToken: string | null }, string>({
+      query: (email) => ({ url: "auth/forgot-password", method: "POST", body: { email } }),
+    }),
+    resetPassword: builder.mutation<void, ResetPasswordRequest>({
+      query: (body) => ({ url: "auth/reset-password", method: "POST", body }),
+    }),
   }),
 });
 
-export const { useLoginMutation, useRegisterUserMutation } = authApi;
+export const {
+  useLoginMutation,
+  useRegisterUserMutation,
+  useRequestPasswordResetMutation,
+  useResetPasswordMutation,
+} = authApi;

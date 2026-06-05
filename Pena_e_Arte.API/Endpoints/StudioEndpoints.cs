@@ -15,6 +15,15 @@ public static class StudioEndpoints
         group.MapGet("/map",     GetStudioMap).AllowAnonymous();
         group.MapPost("/",       RegisterStudio).AllowAnonymous();
         group.MapPost("/connect", ConnectStudio).RequireAuthorization("OwnerOnly");
+
+        // Owner: view + edit own studio profile
+        group.MapGet("/me",  GetMyStudio).RequireAuthorization("OwnerOnly");
+        group.MapPut("/me",  UpdateMyStudio).RequireAuthorization("OwnerOnly");
+
+        // Issuer: list all studios + suspension controls
+        group.MapGet("/",                      GetStudios).RequireAuthorization("IssuerOnly");
+        group.MapPatch("{id:guid}/suspend",    SuspendStudio).RequireAuthorization("IssuerOnly");
+        group.MapPatch("{id:guid}/unsuspend",  UnsuspendStudio).RequireAuthorization("IssuerOnly");
     }
 
     private static async Task<IResult> GetStudioMap(
@@ -41,5 +50,48 @@ public static class StudioEndpoints
     {
         ConnectOnboardingResponse result = await mediator.Send(new ConnectStudioCommand(request), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetMyStudio(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        StudioResponse result = await mediator.Send(new GetMyStudioQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateMyStudio(
+        UpdateStudioRequest request,
+        ISender             mediator,
+        CancellationToken   ct)
+    {
+        StudioResponse result = await mediator.Send(new UpdateMyStudioCommand(request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetStudios(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<StudioResponse> result = await mediator.Send(new GetStudiosQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> SuspendStudio(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new SuspendStudioCommand(id), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> UnsuspendStudio(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new UnsuspendStudioCommand(id), ct);
+        return Results.NoContent();
     }
 }

@@ -18,6 +18,10 @@ export const appointmentsApi = createApi({
       }),
       providesTags: ["Appointment"],
     }),
+    getAppointment: builder.query<AppointmentResponse, string>({
+      query: (id) => `appointments/${id}`,
+      providesTags: ["Appointment"],
+    }),
     createAppointment: builder.mutation<AppointmentResponse, CreateAppointmentRequest>({
       query: (body) => ({ url: "appointments", method: "POST", body }),
       invalidatesTags: ["Appointment"],
@@ -26,11 +30,27 @@ export const appointmentsApi = createApi({
       query: (id) => ({ url: `appointments/${id}`, method: "DELETE" }),
       invalidatesTags: ["Appointment"],
     }),
+    confirmAppointment: builder.mutation<AppointmentResponse, string>({
+      query: (id) => ({ url: `appointments/${id}/confirm`, method: "PATCH" }),
+      invalidatesTags: ["Appointment"],
+    }),
+    completeAppointment: builder.mutation<AppointmentResponse, string>({
+      query: (id) => ({ url: `appointments/${id}/complete`, method: "PATCH" }),
+      invalidatesTags: ["Appointment"],
+    }),
+    markNoShow: builder.mutation<AppointmentResponse, string>({
+      query: (id) => ({ url: `appointments/${id}/no-show`, method: "PATCH" }),
+      invalidatesTags: ["Appointment"],
+    }),
   }),
 });
 
 export const {
   useGetAppointmentsQuery,
+  useGetAppointmentQuery,
   useCreateAppointmentMutation,
   useCancelAppointmentMutation,
+  useConfirmAppointmentMutation,
+  useCompleteAppointmentMutation,
+  useMarkNoShowMutation,
 } = appointmentsApi;

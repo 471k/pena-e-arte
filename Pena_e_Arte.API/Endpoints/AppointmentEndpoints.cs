@@ -13,9 +13,13 @@ public static class AppointmentEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/appointments")
             .RequireAuthorization();
 
-        group.MapGet("/",            GetAppointments).RequireAuthorization("ArtistAndAbove");
-        group.MapPost("/",           CreateAppointment).RequireAuthorization("ClientAndAbove");
-        group.MapDelete("{id:guid}", CancelAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/",                    GetAppointments).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("{id:guid}",            GetAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("/",                   CreateAppointment).RequireAuthorization("ClientAndAbove");
+        group.MapDelete("{id:guid}",         CancelAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapPatch("{id:guid}/confirm",  ConfirmAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapPatch("{id:guid}/complete", CompleteAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapPatch("{id:guid}/no-show",  MarkNoShow).RequireAuthorization("ArtistAndAbove");
     }
 
     private static async Task<IResult> GetAppointments(
@@ -25,6 +29,15 @@ public static class AppointmentEndpoints
         CancellationToken ct)
     {
         List<AppointmentResponse> result = await mediator.Send(new GetAppointmentsQuery(from, to), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetAppointment(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        AppointmentResponse result = await mediator.Send(new GetAppointmentQuery(id), ct);
         return Results.Ok(result);
     }
 
@@ -44,5 +57,32 @@ public static class AppointmentEndpoints
     {
         await mediator.Send(new CancelAppointmentCommand(id), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> ConfirmAppointment(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        AppointmentResponse result = await mediator.Send(new ConfirmAppointmentCommand(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CompleteAppointment(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        AppointmentResponse result = await mediator.Send(new CompleteAppointmentCommand(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> MarkNoShow(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        AppointmentResponse result = await mediator.Send(new MarkNoShowCommand(id), ct);
+        return Results.Ok(result);
     }
 }

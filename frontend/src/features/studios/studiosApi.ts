@@ -40,9 +40,17 @@ export interface ConnectOnboardingResponse {
   onboardingUrl: string;
 }
 
+export interface UpdateStudioRequest {
+  name:      string;
+  city:      string;
+  latitude:  number;
+  longitude: number;
+}
+
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
+  tagTypes: ["Studio"],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),
@@ -53,6 +61,27 @@ export const studiosApi = createApi({
     connectStudio: builder.mutation<ConnectOnboardingResponse, ConnectStudioRequest>({
       query: (body) => ({ url: "studios/connect", method: "POST", body }),
     }),
+    getMyStudio: builder.query<StudioResponse, void>({
+      query: () => "studios/me",
+      providesTags: ["Studio"],
+    }),
+    updateMyStudio: builder.mutation<StudioResponse, UpdateStudioRequest>({
+      query: (body) => ({ url: "studios/me", method: "PUT", body }),
+      invalidatesTags: ["Studio"],
+    }),
+    // Issuer: list all studios
+    getStudios: builder.query<StudioResponse[], void>({
+      query: () => "studios",
+      providesTags: ["Studio"],
+    }),
+    suspendStudio: builder.mutation<void, string>({
+      query: (id) => ({ url: `studios/${id}/suspend`, method: "PATCH" }),
+      invalidatesTags: ["Studio"],
+    }),
+    unsuspendStudio: builder.mutation<void, string>({
+      query: (id) => ({ url: `studios/${id}/unsuspend`, method: "PATCH" }),
+      invalidatesTags: ["Studio"],
+    }),
   }),
 });
 
@@ -60,4 +89,9 @@ export const {
   useRegisterStudioMutation,
   useGetStudioMapQuery,
   useConnectStudioMutation,
+  useGetMyStudioQuery,
+  useUpdateMyStudioMutation,
+  useGetStudiosQuery,
+  useSuspendStudioMutation,
+  useUnsuspendStudioMutation,
 } = studiosApi;
