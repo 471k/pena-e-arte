@@ -37,6 +37,7 @@ function formatCurrency(amount: number): string {
 export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const navigate      = useNavigate();
   const isArtistPlus  = usePermission(Role.Artist);
+  const canOwner      = usePermission(Role.Owner);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   const [cancel,   { isLoading: cancelling  }] = useCancelAppointmentMutation();
@@ -48,7 +49,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const isPending        = appointment.status === AppointmentStatus.Pending;
   const isConfirmed      = appointment.status === AppointmentStatus.Confirmed;
   const showChargeButton =
-    isArtistPlus &&
+    canOwner &&
     !isTerminal &&
     appointment.depositStatus === DepositStatus.Pending;
 
