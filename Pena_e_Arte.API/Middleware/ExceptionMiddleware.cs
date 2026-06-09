@@ -22,7 +22,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
     {
         (int statusCode, string message) = ex switch
         {
-            ValidationException ve          => (StatusCodes.Status400BadRequest,
+            ValidationException ve          => (StatusCodes.Status422UnprocessableEntity,
                                                 string.Join("; ", ve.Errors.Select(e => e.ErrorMessage))),
             NotFoundException               => (StatusCodes.Status404NotFound,              ex.Message),
             SlotAlreadyBookedException      => (StatusCodes.Status409Conflict,              ex.Message),
