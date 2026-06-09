@@ -10,6 +10,7 @@ import { useAppSelector } from "@/app/hooks";
 import { cn } from "@/shared/utils/cn";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSubmitIntakeFormMutation } from "../intakeFormsApi";
+import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 
 const TEXTAREA_CLS = cn(
   "flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
@@ -38,7 +39,7 @@ export function SubmitIntakeFormPage() {
   const user = useAppSelector((s) => s.auth.user);
 
   const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
-  const [submitIntakeForm, { isLoading, isSuccess, reset: resetMutation }] =
+  const [submitIntakeForm, { isLoading, isSuccess, isError, reset: resetMutation }] =
     useSubmitIntakeFormMutation();
 
   const {
@@ -92,6 +93,7 @@ export function SubmitIntakeFormPage() {
           <span className="font-semibold tracking-tight">Intake Form</span>
         </div>
       </header>
+      <ReadOnlyBanner />
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <p className="text-sm text-muted-foreground mb-6">
@@ -149,6 +151,12 @@ export function SubmitIntakeFormPage() {
               <p className="text-xs text-destructive">{errors.fileUrl.message}</p>
             )}
           </div>
+
+          {isError && (
+            <p className="text-sm text-destructive text-center">
+              Failed to submit. Please try again.
+            </p>
+          )}
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (

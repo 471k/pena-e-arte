@@ -25,7 +25,7 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
       return result;
     }
 
-    if (result.error?.status === 403) {
+    if (result.error?.status === 402 || result.error?.status === 403) {
       const data = result.error.data as { message?: string } | undefined;
       const message = data?.message ?? "Your studio is in read-only mode.";
       api.dispatch(setReadOnlyError(message));

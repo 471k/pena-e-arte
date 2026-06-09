@@ -10,6 +10,7 @@ import { useAppSelector } from "@/app/hooks";
 import { cn } from "@/shared/utils/cn";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSignConsentFormMutation } from "../consentFormsApi";
+import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { FileUploadField, PDF_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
 
 const TEXTAREA_CLS = cn(
@@ -38,7 +39,7 @@ export function SignConsentFormPage() {
   const user = useAppSelector((s) => s.auth.user);
 
   const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
-  const [signConsentForm, { isLoading, isSuccess, reset: resetMutation }] =
+  const [signConsentForm, { isLoading, isSuccess, isError, reset: resetMutation }] =
     useSignConsentFormMutation();
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -97,6 +98,7 @@ export function SignConsentFormPage() {
           <span className="font-semibold tracking-tight">Consent Form</span>
         </div>
       </header>
+      <ReadOnlyBanner />
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <p className="text-sm text-muted-foreground mb-6">
@@ -167,6 +169,12 @@ export function SignConsentFormPage() {
               </div>
             )}
           </div>
+
+          {isError && (
+            <p className="text-sm text-destructive text-center">
+              Failed to sign. Please try again.
+            </p>
+          )}
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
