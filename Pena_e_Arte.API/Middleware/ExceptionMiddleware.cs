@@ -22,6 +22,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
     {
         (int statusCode, string message) = ex switch
         {
+            BadHttpRequestException          => (StatusCodes.Status400BadRequest,         "Invalid or missing request body."),
             JsonException                   => (StatusCodes.Status400BadRequest,         "Invalid JSON in request body."),
             ValidationException ve          => (StatusCodes.Status422UnprocessableEntity,
                                                 string.Join("; ", ve.Errors.Select(e => e.ErrorMessage))),
