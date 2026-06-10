@@ -8,5 +8,8 @@ internal sealed class NullR2Service : IR2Service
         string objectKey, string contentType, CancellationToken ct)
         => throw new InvalidOperationException("Cloudflare R2 is not configured.");
 
+    public Task<string> GeneratePresignedReadUrlAsync(string fileUrl, CancellationToken ct)
+        => throw new InvalidOperationException("Cloudflare R2 is not configured.");
+
     public bool IsR2Url(string url) => false;
 }

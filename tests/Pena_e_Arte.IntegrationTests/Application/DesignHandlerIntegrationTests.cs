@@ -2,8 +2,10 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Pena_e_Arte.Application.Designs.Commands;
+using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -142,6 +144,76 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
         approval.ClientNotes.Should().Be("Fix the shading");
     }
 
+    // ── DesignShareToken ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetSharedDesign_ValidToken_ReturnsSharedDesignResponse()
+    {
+        Guid tenantId  = Guid.NewGuid();
+        Guid designId  = await SeedDesign(tenantId);
+        DesignRevisionResponse revision = await RunUploadHandler(
+            tenantId, new(designId, "https://r2.example.com/v1.png", null));
+
+        DesignShareTokenResponse tokenData = await RunCreateShareTokenHandler(tenantId, revision.Id);
+
+        IR2Service r2 = Substitute.For<IR2Service>();
+        r2.GeneratePresignedReadUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+          .Returns("https://signed.example.com/url");
+
+        await using AppDbContext publicDb = fixture.CreateDbContext(Guid.Empty);
+        GetSharedDesignHandler handler = new(publicDb, r2);
+        SharedDesignResponse? result = await handler.Handle(new GetSharedDesignQuery(tokenData.Token), default);
+
+        result.Should().NotBeNull();
+        result!.ImageUrl.Should().Be("https://signed.example.com/url");
+    }
+
+    [Fact]
+    public async Task GetSharedDesign_ExpiredToken_ReturnsNull()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid designId = await SeedDesign(tenantId);
+        DesignRevisionResponse revision = await RunUploadHandler(
+            tenantId, new(designId, "https://r2.example.com/v1.png", null));
+
+        DesignShareTokenResponse tokenData = await RunCreateShareTokenHandler(tenantId, revision.Id);
+
+        await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
+        DesignShareToken shareToken = ctx.DesignShareTokens.First(t => t.Token == tokenData.Token);
+        shareToken.ExpiresAt = DateTime.UtcNow.AddDays(-1);
+        await ctx.SaveChangesAsync();
+
+        IR2Service r2 = Substitute.For<IR2Service>();
+        await using AppDbContext publicDb = fixture.CreateDbContext(Guid.Empty);
+        GetSharedDesignHandler handler = new(publicDb, r2);
+        SharedDesignResponse? result = await handler.Handle(new GetSharedDesignQuery(tokenData.Token), default);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetSharedDesign_RevokedToken_ReturnsNull()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid designId = await SeedDesign(tenantId);
+        DesignRevisionResponse revision = await RunUploadHandler(
+            tenantId, new(designId, "https://r2.example.com/v1.png", null));
+
+        DesignShareTokenResponse tokenData = await RunCreateShareTokenHandler(tenantId, revision.Id);
+
+        await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
+        DesignShareToken shareToken = ctx.DesignShareTokens.First(t => t.Token == tokenData.Token);
+        shareToken.IsRevoked = true;
+        await ctx.SaveChangesAsync();
+
+        IR2Service r2 = Substitute.For<IR2Service>();
+        await using AppDbContext publicDb = fixture.CreateDbContext(Guid.Empty);
+        GetSharedDesignHandler handler = new(publicDb, r2);
+        SharedDesignResponse? result = await handler.Handle(new GetSharedDesignQuery(tokenData.Token), default);
+
+        result.Should().BeNull();
+    }
+
     // ── Seed helpers ─────────────────────────────────────────────────────────────
 
     private async Task<(Guid ArtistId, Guid ClientId)> SeedArtistAndClient(Guid tenantId)
@@ -177,6 +249,16 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         ReviewDesignHandler handler = new(db, TenantFor(tenantId), _realtime);
         await handler.Handle(new ReviewDesignCommand(req), default);
+    }
+
+    private async Task<DesignShareTokenResponse> RunCreateShareTokenHandler(Guid tenantId, Guid revisionId)
+    {
+        ICurrentUser currentUser = Substitute.For<ICurrentUser>();
+        currentUser.UserId.Returns(Guid.NewGuid());
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        CreateDesignShareTokenHandler handler = new(db, TenantFor(tenantId), currentUser);
+        return await handler.Handle(new CreateDesignShareTokenCommand(revisionId), default);
     }
 
     private static ICurrentTenant TenantFor(Guid tenantId)

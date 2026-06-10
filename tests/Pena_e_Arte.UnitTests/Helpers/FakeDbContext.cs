@@ -13,9 +13,10 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ClientProfile>   ClientProfiles   => Set<ClientProfile>();
     public DbSet<TattooRecord>    TattooRecords    => Set<TattooRecord>();
     public DbSet<Artist>          Artists          => Set<Artist>();
-    public DbSet<Design>          Designs          => Set<Design>();
-    public DbSet<DesignRevision>  DesignRevisions  => Set<DesignRevision>();
-    public DbSet<DesignApproval>  DesignApprovals  => Set<DesignApproval>();
+    public DbSet<Design>           Designs           => Set<Design>();
+    public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
+    public DbSet<DesignApproval>   DesignApprovals   => Set<DesignApproval>();
+    public DbSet<DesignShareToken> DesignShareTokens => Set<DesignShareToken>();
     public DbSet<Payment>         Payments         => Set<Payment>();
     public DbSet<SessionSplit>    SessionSplits    => Set<SessionSplit>();
     public DbSet<IntakeForm>      IntakeForms      => Set<IntakeForm>();
@@ -38,6 +39,11 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasOne(r => r.Approval)
             .WithOne(a => a.DesignRevision)
             .HasForeignKey<DesignApproval>(a => a.DesignRevisionId);
+
+        modelBuilder.Entity<DesignShareToken>()
+            .HasOne(t => t.DesignRevision)
+            .WithMany()
+            .HasForeignKey(t => t.DesignRevisionId);
 
         modelBuilder.Entity<ClientProfile>()
             .HasOne(cp => cp.Client)

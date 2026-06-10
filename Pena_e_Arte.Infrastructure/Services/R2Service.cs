@@ -27,6 +27,24 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         return Task.FromResult((uploadUrl, publicUrl));
     }
 
+    public Task<string> GeneratePresignedReadUrlAsync(string fileUrl, CancellationToken ct)
+    {
+        string prefix    = _opts.PublicUrl.TrimEnd('/') + "/";
+        string objectKey = fileUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? fileUrl[prefix.Length..]
+            : fileUrl;
+
+        GetPreSignedUrlRequest request = new()
+        {
+            BucketName = _opts.BucketName,
+            Key        = objectKey,
+            Verb       = HttpVerb.GET,
+            Expires    = DateTime.UtcNow.AddMinutes(15)
+        };
+
+        return Task.FromResult(s3.GetPreSignedURL(request));
+    }
+
     public bool IsR2Url(string url) =>
         !string.IsNullOrEmpty(url) &&
         url.StartsWith(_opts.PublicUrl, StringComparison.OrdinalIgnoreCase);

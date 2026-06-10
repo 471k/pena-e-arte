@@ -72,6 +72,7 @@ try
     app.MapPrometheusScrapingEndpoint();
 
     app.MapPublicEndpoints();
+    app.MapPublicDesignEndpoints();
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();
     app.MapDepositRuleEndpoints();

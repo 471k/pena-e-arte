@@ -12,9 +12,10 @@ public interface IAppDbContext
     DbSet<ClientProfile>   ClientProfiles   { get; }
     DbSet<TattooRecord>    TattooRecords    { get; }
     DbSet<Artist>          Artists          { get; }
-    DbSet<Design>          Designs          { get; }
-    DbSet<DesignRevision>  DesignRevisions  { get; }
-    DbSet<DesignApproval>  DesignApprovals  { get; }
+    DbSet<Design>            Designs            { get; }
+    DbSet<DesignRevision>    DesignRevisions    { get; }
+    DbSet<DesignApproval>    DesignApprovals    { get; }
+    DbSet<DesignShareToken>  DesignShareTokens  { get; }
     DbSet<Payment>         Payments         { get; }
     DbSet<SessionSplit>    SessionSplits    { get; }
     DbSet<IntakeForm>      IntakeForms      { get; }
