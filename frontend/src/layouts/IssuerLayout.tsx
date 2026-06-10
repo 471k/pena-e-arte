@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Building2, CreditCard, Globe, PenLine } from "lucide-react";
+import { BarChart2, Building2, CreditCard, Globe, PenLine } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 
 const NAV_ITEMS = [
-  { label: "Studios",  href: "/platform/studios", icon: <Building2 className="h-4 w-4" /> },
-  { label: "Plans",    href: "/platform/plans",   icon: <CreditCard className="h-4 w-4" /> },
-  { label: "Map",      href: "/map",               icon: <Globe className="h-4 w-4" /> },
+  { label: "Studios",  href: "/platform/studios",  icon: <Building2 className="h-4 w-4" /> },
+  { label: "Plans",    href: "/platform/plans",    icon: <CreditCard className="h-4 w-4" /> },
+  { label: "Reports",  href: "/platform/reports",  icon: <BarChart2  className="h-4 w-4" /> },
+  { label: "Map",      href: "/map",                icon: <Globe      className="h-4 w-4" /> },
 ];
 
 export function IssuerLayout() {

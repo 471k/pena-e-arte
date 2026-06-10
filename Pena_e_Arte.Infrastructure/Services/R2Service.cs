@@ -48,4 +48,53 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
     public bool IsR2Url(string url) =>
         !string.IsNullOrEmpty(url) &&
         url.StartsWith(_opts.PublicUrl, StringComparison.OrdinalIgnoreCase);
+
+    public Task<string> GeneratePresignedReadUrlAsync(string objectKey, TimeSpan ttl, CancellationToken ct)
+    {
+        string prefix = _opts.PublicUrl.TrimEnd('/') + "/";
+        string key = objectKey.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? objectKey[prefix.Length..]
+            : objectKey;
+
+        GetPreSignedUrlRequest request = new()
+        {
+            BucketName = _opts.BucketName,
+            Key        = key,
+            Verb       = HttpVerb.GET,
+            Expires    = DateTime.UtcNow.Add(ttl)
+        };
+
+        return Task.FromResult(s3.GetPreSignedURL(request));
+    }
+
+    public async Task UploadAsync(string objectKey, byte[] data, string contentType, CancellationToken ct)
+    {
+        using MemoryStream stream = new(data);
+        PutObjectRequest request = new()
+        {
+            BucketName  = _opts.BucketName,
+            Key         = objectKey,
+            InputStream = stream,
+            ContentType = contentType,
+        };
+        await s3.PutObjectAsync(request, ct);
+    }
+
+    public async Task<IReadOnlyList<R2ObjectInfo>> ListByPrefixAsync(string prefix, CancellationToken ct)
+    {
+        ListObjectsV2Request request = new()
+        {
+            BucketName = _opts.BucketName,
+            Prefix     = prefix,
+        };
+
+        ListObjectsV2Response response = await s3.ListObjectsV2Async(request, ct);
+
+        return response.S3Objects
+            .Select(o => new R2ObjectInfo(
+                o.Key,
+                o.LastModified ?? DateTime.UtcNow,
+                o.Size ?? 0L))
+            .ToList();
+    }
 }

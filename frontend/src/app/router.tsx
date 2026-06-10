@@ -20,7 +20,7 @@ import {
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage } from "@/features/payments";
-import { IssuerStudioListPage, PlanManagementPage } from "@/features/platform";
+import { IssuerStudioListPage, PlanManagementPage, IndustryReportsPanel } from "@/features/platform";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage } from "@/features/public";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
@@ -129,6 +129,7 @@ export const router = createBrowserRouter([
                   { index: true,     element: <Navigate to="/platform/studios" replace /> },
                   { path: "studios", element: <IssuerStudioListPage /> },
                   { path: "plans",   element: <PlanManagementPage /> },
+                  { path: "reports", element: <IndustryReportsPanel /> },
                 ],
               },
 

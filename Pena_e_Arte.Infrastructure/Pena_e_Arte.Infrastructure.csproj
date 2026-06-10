@@ -34,4 +34,10 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Pena_e_Arte.UnitTests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>
