@@ -18,8 +18,11 @@ const uiSlice = createSlice({
     setSessionExpired: (state) => {
       state.sessionExpired = true;
     },
+    clearSessionExpired: (state) => {
+      state.sessionExpired = false;
+    },
   },
 });
 
-export const { setReadOnlyError, clearReadOnlyError, setSessionExpired } = uiSlice.actions;
+export const { setReadOnlyError, clearReadOnlyError, setSessionExpired, clearSessionExpired } = uiSlice.actions;
 export default uiSlice.reducer;

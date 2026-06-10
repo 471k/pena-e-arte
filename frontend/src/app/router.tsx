@@ -1,4 +1,5 @@
-import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, Outlet, createBrowserRouter, useNavigate } from "react-router-dom";
 import { LoginPage, ForgotPasswordPage, ResetPasswordPage } from "@/features/auth";
 import { RegisterStudioPage, ConnectStudioPage, ConnectReturnPage, ConnectRefreshPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
@@ -25,7 +26,8 @@ import { ArtistLayout } from "@/layouts/ArtistLayout";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
 import { IssuerLayout } from "@/layouts/IssuerLayout";
 import { Role } from "@/shared/types/roles";
-import { useAppSelector } from "./hooks";
+import { clearSessionExpired } from "@/features/ui/uiSlice";
+import { useAppDispatch, useAppSelector } from "./hooks";
 
 function RoleGuard({ allowedRoles }: { allowedRoles: Role[] }) {
   const role = useAppSelector((s) => s.auth.role);
@@ -51,6 +53,21 @@ function IndexRedirect() {
   return <Navigate to={getRoleRedirectPath(role)} replace />;
 }
 
+function AppRoot() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const sessionExpired = useAppSelector((s) => s.ui.sessionExpired);
+
+  useEffect(() => {
+    if (sessionExpired) {
+      dispatch(clearSessionExpired());
+      navigate("/login?reason=session_expired", { replace: true });
+    }
+  }, [sessionExpired, dispatch, navigate]);
+
+  return <Outlet />;
+}
+
 export const router = createBrowserRouter([
   { path: "/login",           element: <LoginPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
@@ -59,8 +76,11 @@ export const router = createBrowserRouter([
   { path: "/map",             element: <StudioMapPage /> },
   {
     path: "/",
-    element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+    element: <AppRoot />,
     children: [
+      {
+        element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+        children: [
       { index: true, element: <IndexRedirect /> },
 
       // Client routes
@@ -233,6 +253,8 @@ export const router = createBrowserRouter([
           { path: ":appointmentId", element: <PaymentDetailPage /> },
         ],
       },
+      ],
+    },
     ],
   },
   { path: "*", element: <Navigate to="/login" replace /> },
