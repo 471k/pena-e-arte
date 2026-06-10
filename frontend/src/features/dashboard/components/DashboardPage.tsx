@@ -220,7 +220,7 @@ const NAV_TILES: NavTile[] = [
   { label: "Deposit Rules", icon: <ScrollText   className="h-5 w-5" />, href: "/deposit-rules" },
   { label: "Billing",       icon: <CreditCard   className="h-5 w-5" />, href: "/billing" },
   { label: "Notifications", icon: <Bell         className="h-5 w-5" />, href: "/notifications" },
-  { label: "Studio",        icon: <LayoutDashboard className="h-5 w-5" />, href: "/studio/profile" },
+  { label: "Studio",        icon: <LayoutDashboard className="h-5 w-5" />, href: "/studios/me" },
 ];
 
 function QuickNav() {

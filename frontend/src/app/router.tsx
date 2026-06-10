@@ -153,10 +153,21 @@ export const router = createBrowserRouter([
         ],
       },
       {
+        path: "studios",
+        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+        children: [
+          {
+            element: <OwnerLayout />,
+            children: [
+              { path: "me", element: <StudioProfilePage /> },
+            ],
+          },
+        ],
+      },
+      {
         path: "studio",
         element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
         children: [
-          { path: "profile",         element: <StudioProfilePage /> },
           { path: "connect",         element: <ConnectStudioPage /> },
           { path: "connect/return",  element: <ConnectReturnPage /> },
           { path: "connect/refresh", element: <ConnectRefreshPage /> },
