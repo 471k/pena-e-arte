@@ -1,11 +1,21 @@
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { useAppSelector } from "@/app/hooks";
+import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { cn } from "@/shared/utils/cn";
 import { Role } from "@/shared/types/roles";
 import { useCreateAppointmentMutation } from "../appointmentsApi";
@@ -25,19 +35,12 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const selectClass = cn(
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-  "ring-offset-background focus-visible:outline-none focus-visible:ring-2",
-  "focus-visible:ring-ring focus-visible:ring-offset-2",
-  "disabled:cursor-not-allowed disabled:opacity-50"
-);
-
 export function BookAppointmentForm() {
-  const user = useAppSelector((s) => s.auth.user);
+  const user = useCurrentUser();
   const role = useAppSelector((s) => s.auth.role);
 
-  const isClientRole  = role === Role.Client;
-  const isStaffRole   = role === Role.Artist || role === Role.Owner || role === Role.Issuer;
+  const isClientRole = role === Role.Client;
+  const isStaffRole  = role === Role.Artist || role === Role.Owner || role === Role.Issuer;
 
   const { data: artists, isLoading: loadingArtists } = useGetArtistsQuery(undefined);
   const { data: clients, isLoading: loadingClients }  = useGetClientsQuery(undefined, {
@@ -49,6 +52,7 @@ export function BookAppointmentForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     reset: resetForm,
@@ -62,13 +66,18 @@ export function BookAppointmentForm() {
 
   async function onSubmit(values: FormValues) {
     const clientId = isClientRole ? (user?.id ?? values.clientId) : values.clientId;
-    await createAppointment({
+    const result = await createAppointment({
       artistId:        values.artistId,
       clientId,
       date:            new Date(values.scheduledAt).toISOString(),
       durationMinutes: values.durationMinutes,
       notes:           values.notes ?? null,
     });
+    if ("data" in result) {
+      toast.success("Appointment requested.");
+    } else {
+      toast.error("Failed to book appointment.");
+    }
     resetForm({ durationMinutes: 60, clientId: isClientRole ? (user?.id ?? "") : "" });
   }
 
@@ -89,19 +98,28 @@ export function BookAppointmentForm() {
       {/* Artist selector */}
       <div className="space-y-1.5">
         <Label htmlFor="artistId">Artist</Label>
-        <select
-          id="artistId"
-          disabled={loadingArtists}
-          {...register("artistId")}
-          className={cn(selectClass, errors.artistId && "border-destructive")}
-        >
-          <option value="">{loadingArtists ? "Loading…" : "Select an artist"}</option>
-          {artists?.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.firstName} {a.lastName}
-            </option>
-          ))}
-        </select>
+        <Controller
+          control={control}
+          name="artistId"
+          render={({ field }) => (
+            <Select
+              disabled={loadingArtists}
+              value={field.value}
+              onValueChange={field.onChange}
+            >
+              <SelectTrigger id="artistId" className={cn(errors.artistId && "border-destructive")}>
+                <SelectValue placeholder={loadingArtists ? "Loading…" : "Select an artist"} />
+              </SelectTrigger>
+              <SelectContent>
+                {artists?.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.firstName} {a.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
         {errors.artistId && (
           <p className="text-xs text-destructive">{errors.artistId.message}</p>
         )}
@@ -111,19 +129,28 @@ export function BookAppointmentForm() {
       {isStaffRole && (
         <div className="space-y-1.5">
           <Label htmlFor="clientId">Client</Label>
-          <select
-            id="clientId"
-            disabled={loadingClients}
-            {...register("clientId")}
-            className={cn(selectClass, errors.clientId && "border-destructive")}
-          >
-            <option value="">{loadingClients ? "Loading…" : "Select a client"}</option>
-            {clients?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.firstName} {c.lastName}
-              </option>
-            ))}
-          </select>
+          <Controller
+            control={control}
+            name="clientId"
+            render={({ field }) => (
+              <Select
+                disabled={loadingClients}
+                value={field.value}
+                onValueChange={field.onChange}
+              >
+                <SelectTrigger id="clientId" className={cn(errors.clientId && "border-destructive")}>
+                  <SelectValue placeholder={loadingClients ? "Loading…" : "Select a client"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.firstName} {c.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
           {errors.clientId && (
             <p className="text-xs text-destructive">{errors.clientId.message}</p>
           )}
@@ -165,17 +192,12 @@ export function BookAppointmentForm() {
       {/* Notes */}
       <div className="space-y-1.5">
         <Label htmlFor="notes">Notes (optional)</Label>
-        <textarea
+        <Textarea
           id="notes"
           rows={3}
           placeholder="Any details about the tattoo…"
           {...register("notes")}
-          className={cn(
-            "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-            "ring-offset-background placeholder:text-muted-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            "disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-          )}
+          className="resize-none"
         />
       </div>
 

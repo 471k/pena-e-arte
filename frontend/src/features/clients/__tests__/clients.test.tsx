@@ -98,34 +98,30 @@ function renderList(role: Role = Role.Owner) {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("Clients feature", () => {
-  // 1. List page renders all cards
+  // 1. List page renders all rows in the DataTable
   it("renders 3 ClientCards as <Link> wrappers with ChevronRight indicators", async () => {
     renderList();
 
-    const links = await screen.findAllByRole("link");
-    expect(links).toHaveLength(3);
-
-    const hrefs = links.map((l) => l.getAttribute("href"));
-    expect(hrefs).toContain(`/clients/${ANA.id}`);
-    expect(hrefs).toContain(`/clients/${CLIENTS[1].id}`);
-    expect(hrefs).toContain(`/clients/${CLIENTS[2].id}`);
+    // DataTable: 1 header row + 3 data rows = 4 total
+    const rows = await screen.findAllByRole("row");
+    expect(rows.length).toBeGreaterThanOrEqual(4);
 
     expect(screen.getByText("Ana Ferreira")).toBeInTheDocument();
     expect(screen.getByText("Bruno Santos")).toBeInTheDocument();
     expect(screen.getByText("Carla Nunes")).toBeInTheDocument();
 
-    for (const link of links) {
-      expect(link.querySelector("svg")).not.toBeNull();
+    // Data rows have cursor-pointer class (for onRowClick)
+    const dataRows = rows.slice(1);
+    for (const row of dataRows) {
+      expect(row).toHaveClass("cursor-pointer");
     }
-
-    expect(links[0].querySelector("[class*='hover']")).not.toBeNull();
   });
 
   // 2. Card shows phone when present, omits it when null
   it("shows phone for Ana, omits phone row for Bruno", async () => {
     renderList();
 
-    await screen.findAllByRole("link");
+    await screen.findAllByRole("row");
 
     expect(screen.getByText("+351 912 111 222")).toBeInTheDocument();
     expect(screen.queryByText("null")).not.toBeInTheDocument();
@@ -135,7 +131,7 @@ describe("Clients feature", () => {
   it("shows client count in header after load", async () => {
     renderList();
 
-    await screen.findAllByRole("link");
+    await screen.findAllByRole("row");
 
     expect(screen.getByText(/3 clients/i)).toBeInTheDocument();
   });
@@ -157,13 +153,14 @@ describe("Clients feature", () => {
     );
 
     renderList();
-    await screen.findAllByRole("link");
+    await screen.findAllByRole("row");
 
     const input = screen.getByPlaceholderText(/search by name or email/i);
     await user.type(input, "Ana");
 
+    // After filtering: 1 header row + 1 data row = 2 rows
     await waitFor(() => {
-      expect(screen.getAllByRole("link")).toHaveLength(1);
+      expect(screen.getAllByRole("row")).toHaveLength(2);
     }, { timeout: 1000 });
 
     expect(screen.getByText("Ana Ferreira")).toBeInTheDocument();
@@ -191,7 +188,7 @@ describe("Clients feature", () => {
   it("Artist role: New Client button is visible", async () => {
     renderList(Role.Artist);
 
-    await screen.findAllByRole("link");
+    await screen.findAllByRole("row");
 
     expect(screen.getByRole("button", { name: /new client/i })).toBeInTheDocument();
   });
@@ -200,7 +197,7 @@ describe("Clients feature", () => {
   it("Owner role: New Client button is visible", async () => {
     renderList(Role.Owner);
 
-    await screen.findAllByRole("link");
+    await screen.findAllByRole("row");
 
     expect(screen.getByRole("button", { name: /new client/i })).toBeInTheDocument();
   });

@@ -20,6 +20,9 @@ public static class StudioEndpoints
         group.MapGet("/me",  GetMyStudio).RequireAuthorization("OwnerOnly");
         group.MapPut("/me",  UpdateMyStudio).RequireAuthorization("OwnerOnly");
 
+        // Owner: manage branding for their studio
+        group.MapPatch("{id:guid}/branding",   UpdateBranding).RequireAuthorization("OwnerOnly");
+
         // Issuer: list all studios + suspension controls
         group.MapGet("/",                      GetStudios).RequireAuthorization("IssuerOnly");
         group.MapPatch("{id:guid}/suspend",    SuspendStudio).RequireAuthorization("IssuerOnly");
@@ -66,6 +69,17 @@ public static class StudioEndpoints
         CancellationToken   ct)
     {
         StudioResponse result = await mediator.Send(new UpdateMyStudioCommand(request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateBranding(
+        Guid                         id,
+        UpdateStudioBrandingRequest  request,
+        ISender                      mediator,
+        CancellationToken            ct)
+    {
+        StudioResponse result = await mediator.Send(
+            new UpdateStudioBrandingCommand(id, request.ShowPlatformBranding), ct);
         return Results.Ok(result);
     }
 

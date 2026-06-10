@@ -7,5 +7,6 @@ public record StudioResponse(
     string   City,
     double   Latitude,
     double   Longitude,
+    bool     ShowPlatformBranding,
     DateTime TrialExpiresAt,
     DateTime CreatedAt);

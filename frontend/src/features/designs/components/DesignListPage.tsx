@@ -1,6 +1,7 @@
-import { Loader2, Palette, Plus } from "lucide-react";
+import { Palette, Plus } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useGetDesignsQuery } from "../designsApi";
@@ -42,9 +43,10 @@ export function DesignListPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading designs…</span>
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+            ))}
           </div>
         )}
 

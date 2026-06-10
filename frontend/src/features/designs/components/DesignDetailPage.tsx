@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { ArrowLeft, Check, ImageOff, Loader2, RefreshCw, Upload } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,18 +8,12 @@ import { z } from "zod";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/utils/cn";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useGetRevisionsQuery, useReviewRevisionMutation } from "../designsApi";
 import type { DesignRevisionResponse } from "../design.types";
-
-const TEXTAREA_CLS = cn(
-  "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-  "ring-offset-background placeholder:text-muted-foreground",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-  "disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-);
 
 const notesSchema = z.object({
   notes: z.string().max(2000, "Max 2000 characters").optional(),
@@ -70,17 +65,27 @@ function RevisionCard({ revision, canReview }: RevisionCardProps) {
   const isReviewable = canReview && revision.approvalStatus !== "Approved";
 
   async function approve() {
-    await review({ revisionId: revision.id, approved: true, notes: null });
+    const result = await review({ revisionId: revision.id, approved: true, notes: null });
+    if ("data" in result) {
+      toast.success("Design approved.");
+    } else {
+      toast.error("Failed to approve design.");
+    }
   }
 
   async function requestChanges(values: NotesForm) {
-    await review({
+    const result = await review({
       revisionId: revision.id,
       approved:   false,
       notes:      values.notes?.trim() || null,
     });
-    reset();
-    setMode("idle");
+    if ("data" in result) {
+      toast.success("Changes requested.");
+      reset();
+      setMode("idle");
+    } else {
+      toast.error("Failed to submit review.");
+    }
   }
 
   return (
@@ -164,13 +169,13 @@ function RevisionCard({ revision, canReview }: RevisionCardProps) {
                   <Label htmlFor={`notes-${revision.id}`} className="text-xs">
                     Notes (optional)
                   </Label>
-                  <textarea
+                  <Textarea
                     id={`notes-${revision.id}`}
                     rows={3}
                     placeholder="Describe what needs to change…"
                     disabled={isLoading}
                     {...register("notes")}
-                    className={cn(TEXTAREA_CLS, errors.notes && "border-destructive")}
+                    className={cn("resize-none", errors.notes && "border-destructive")}
                   />
                   {errors.notes && (
                     <p className="text-xs text-destructive">{errors.notes.message}</p>

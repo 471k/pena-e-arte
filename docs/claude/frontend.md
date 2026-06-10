@@ -43,18 +43,23 @@ src/frontend/src/
 ## Redux Store Structure
 
 ```typescript
-// app/store.ts
+// app/store.ts — actual slices as of 2026-06-10
 export const store = configureStore({
   reducer: {
     auth:          authReducer,
     ui:            uiReducer,
-    notifications: notificationReducer,
-    // RTK Query reducers
-    [appointmentsApi.reducerPath]: appointmentsApi.reducer,
-    [clientsApi.reducerPath]:      clientsApi.reducer,
-    [billingApi.reducerPath]:      billingApi.reducer,
-    [studiosApi.reducerPath]:      studiosApi.reducer,
-    [designsApi.reducerPath]:      designsApi.reducer,
+    notifications: notificationsReducer,
+    // RTK Query reducers (add new api slices here as features are built)
+    [appointmentsApi.reducerPath]:  appointmentsApi.reducer,
+    [clientsApi.reducerPath]:       clientsApi.reducer,
+    [billingApi.reducerPath]:       billingApi.reducer,
+    [studiosApi.reducerPath]:       studiosApi.reducer,
+    [designsApi.reducerPath]:       designsApi.reducer,
+    [authApi.reducerPath]:          authApi.reducer,
+    [filesApi.reducerPath]:         filesApi.reducer,
+    [intakeFormsApi.reducerPath]:   intakeFormsApi.reducer,
+    [consentFormsApi.reducerPath]:  consentFormsApi.reducer,
+    [depositRulesApi.reducerPath]:  depositRulesApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault()
@@ -62,7 +67,12 @@ export const store = configureStore({
       .concat(clientsApi.middleware)
       .concat(billingApi.middleware)
       .concat(studiosApi.middleware)
-      .concat(designsApi.middleware),
+      .concat(designsApi.middleware)
+      .concat(authApi.middleware)
+      .concat(filesApi.middleware)
+      .concat(intakeFormsApi.middleware)
+      .concat(consentFormsApi.middleware)
+      .concat(depositRulesApi.middleware),
 });
 
 export type RootState   = ReturnType<typeof store.getState>;
@@ -212,14 +222,17 @@ export function useSignalR(studioId: string) {
 - `strict: true` in `tsconfig.json` — no exceptions.
 - No `any`. Use `unknown` and narrow.
 - All API response shapes typed in `shared/types/` or co-located in the feature.
-- Enums for roles and status values — never raw strings in logic.
+- Const objects + type aliases for roles and status values — never raw strings in logic.
+- Do NOT use TypeScript `enum` — the project has `erasableSyntaxOnly: true` in tsconfig which disallows enums.
 
 ```typescript
 // shared/types/roles.ts
-export enum Role {
-  Client = "client",
-  Artist = "artist",
-  Owner  = "owner",
-  Issuer = "issuer",
-}
+export const Role = {
+  Client: "client",
+  Artist: "artist",
+  Owner:  "owner",
+  Issuer: "issuer",
+} as const;
+
+export type Role = typeof Role[keyof typeof Role];
 ```

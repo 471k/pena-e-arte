@@ -1,7 +1,7 @@
 # Database Instructions — MySQL 8.4 + EF Core 10
 
 > Load this file when working on entities, migrations, DbContext,
-> or anything in `TattooStudio.Infrastructure/Persistence/`.
+> or anything in `Pena_e_Arte.Infrastructure/Persistence/`.
 
 ---
 
@@ -178,13 +178,13 @@ Always name migrations descriptively.
 ```bash
 # Add migration
 dotnet ef migrations add AddAppointmentDepositColumn \
-  --project src/TattooStudio.Infrastructure \
-  --startup-project src/TattooStudio.API
+  --project Pena_e_Arte.Infrastructure \
+  --startup-project Pena_e_Arte.API
 
 # Apply
 dotnet ef database update \
-  --project src/TattooStudio.Infrastructure \
-  --startup-project src/TattooStudio.API
+  --project Pena_e_Arte.Infrastructure \
+  --startup-project Pena_e_Arte.API
 ```
 
 **Zero-downtime migration order for breaking changes:**

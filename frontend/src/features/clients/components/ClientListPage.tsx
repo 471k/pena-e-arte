@@ -1,18 +1,30 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Plus, Search, Users } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { DataTable } from "@/shared/components/DataTable";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useGetClientsQuery } from "../clientsApi";
-import { ClientCard } from "./ClientCard";
+import type { ClientResponse } from "../clientsApi";
+
+function ClientRowSkeleton() {
+  return (
+    <div className="flex items-center gap-4 py-3 border-b">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="h-4 w-48" />
+      <Skeleton className="h-4 w-28" />
+    </div>
+  );
+}
 
 export function ClientListPage() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const canCreate = usePermission(Role.Artist);
   const [inputValue, setInputValue] = useState("");
-  const [search, setSearch] = useState<string | undefined>(undefined);
+  const [search, setSearch]         = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(inputValue.trim() || undefined), 300);
@@ -44,7 +56,7 @@ export function ClientListPage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
@@ -56,9 +68,10 @@ export function ClientListPage() {
         </div>
 
         {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading clients…</span>
+          <div className="space-y-0">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <ClientRowSkeleton key={i} />
+            ))}
           </div>
         )}
 
@@ -68,18 +81,23 @@ export function ClientListPage() {
           </p>
         )}
 
-        {!isLoading && !isError && clients?.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-16">
-            {search ? `No clients match "${search}".` : "No clients in this studio yet."}
-          </p>
-        )}
-
-        {!isLoading && !isError && clients && clients.length > 0 && (
-          <div className="space-y-2">
-            {clients.map((client) => (
-              <ClientCard key={client.id} client={client} />
-            ))}
-          </div>
+        {!isLoading && !isError && (
+          <DataTable<ClientResponse>
+            columns={[
+              {
+                header: "Name",
+                cell: (c) => (
+                  <span className="font-medium">{c.firstName} {c.lastName}</span>
+                ),
+              },
+              { header: "Email",   accessorKey: "email" },
+              { header: "Phone",   cell: (c) => c.phone ?? "—" },
+            ]}
+            data={clients ?? []}
+            keyExtractor={(c) => c.id}
+            onRowClick={(c) => navigate(`/clients/${c.id}`)}
+            emptyMessage={search ? `No clients match "${search}".` : "No clients in this studio yet."}
+          />
         )}
       </main>
     </div>

@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { authApi } from "@/features/auth/authApi";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
+import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
@@ -17,8 +18,9 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 
 export const store = configureStore({
   reducer: {
-    auth: authReducer,
-    ui:   uiReducer,
+    auth:          authReducer,
+    ui:            uiReducer,
+    notifications: notificationsReducer,
     [authApi.reducerPath]:           authApi.reducer,
     [studiosApi.reducerPath]:        studiosApi.reducer,
     [appointmentsApi.reducerPath]:   appointmentsApi.reducer,

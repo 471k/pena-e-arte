@@ -1,6 +1,7 @@
-import { FileSignature, Loader2 } from "lucide-react";
+import { FileSignature } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetConsentFormsQuery } from "../consentFormsApi";
 import type { ConsentFormResponse } from "../form.types";
 
@@ -84,9 +85,10 @@ export function ConsentFormListPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-3">
         {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading consent forms…</span>
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            ))}
           </div>
         )}
 

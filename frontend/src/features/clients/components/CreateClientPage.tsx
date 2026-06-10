@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -36,7 +37,10 @@ export function CreateClientPage() {
       phone:     values.phone?.trim() || null,
     });
     if ("data" in result) {
+      toast.success("Client created.");
       navigate(`/clients/${result.data!.id}`);
+    } else {
+      toast.error("Failed to create client.");
     }
   }
 

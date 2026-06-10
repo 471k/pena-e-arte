@@ -3,7 +3,6 @@ import { CalendarDays, ChevronLeft, ChevronRight, Loader2, PenLine } from "lucid
 import { Button } from "@/shared/components/ui/button";
 import { useAppSelector } from "@/app/hooks";
 import { useSignalR } from "@/shared/hooks/useSignalR";
-import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { useGetAppointmentsQuery } from "../appointmentsApi";
 import { AppointmentCard } from "./AppointmentCard";
 
@@ -56,7 +55,6 @@ export function SchedulePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <ReadOnlyBanner />
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <PenLine className="h-5 w-5" />

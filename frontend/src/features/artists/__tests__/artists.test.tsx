@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -9,6 +9,8 @@ import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
 import { artistsApi } from "@/features/artists/artistsApi";
+import { designsApi } from "@/features/designs/designsApi";
+import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { ArtistListPage } from "@/features/artists/components/ArtistListPage";
 import { ArtistDetailPage } from "@/features/artists/components/ArtistDetailPage";
@@ -87,6 +89,9 @@ const server = setupServer(
   http.delete("http://localhost/api/v1/artists/:id", () =>
     new HttpResponse(null, { status: 204 }),
   ),
+
+  http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/appointments", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -98,10 +103,13 @@ afterAll(() => server.close());
 function makeStore(role: Role = Role.Owner) {
   return configureStore({
     reducer: {
-      auth: authReducer,
-      [artistsApi.reducerPath]: artistsApi.reducer,
+      auth:              authReducer,
+      [artistsApi.reducerPath]:      artistsApi.reducer,
+      [designsApi.reducerPath]:      designsApi.reducer,
+      [appointmentsApi.reducerPath]: appointmentsApi.reducer,
     },
-    middleware: (gd) => gd().concat(artistsApi.middleware),
+    middleware: (gd) =>
+      gd().concat(artistsApi.middleware, designsApi.middleware, appointmentsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@ink-soul.test" }, token: "fake", tenantId: "t1", role } as any,
@@ -144,25 +152,20 @@ describe("Artists feature", () => {
   it("renders 3 ArtistCards as <Link> wrappers with ChevronRight indicators", async () => {
     renderList();
 
-    const links = await screen.findAllByRole("link");
-    expect(links).toHaveLength(3);
-
-    const hrefs = links.map((l) => l.getAttribute("href"));
-    expect(hrefs).toContain(`/artists/${ELENA.id}`);
-    expect(hrefs).toContain(`/artists/${ARTISTS[1].id}`);
-    expect(hrefs).toContain(`/artists/${ARTISTS[2].id}`);
+    // DataTable renders table rows (1 header + 3 data = 4 rows)
+    const rows = await screen.findAllByRole("row");
+    // header row + 3 data rows
+    expect(rows.length).toBeGreaterThanOrEqual(4);
 
     expect(screen.getByText("Elena Martins")).toBeInTheDocument();
     expect(screen.getByText("Marco Silva")).toBeInTheDocument();
     expect(screen.getByText("Sara Costa")).toBeInTheDocument();
 
-    // Each link card contains an SVG (ChevronRight)
-    for (const link of links) {
-      expect(link.querySelector("svg")).not.toBeNull();
+    // Data rows have cursor-pointer class
+    const dataRows = rows.slice(1);
+    for (const row of dataRows) {
+      expect(row).toHaveClass("cursor-pointer");
     }
-
-    // Card hover class is present (CSS-only, asserting class attribute)
-    expect(links[0].querySelector("[class*='hover']")).not.toBeNull();
   });
 
   // 2. Clicking Elena navigates to detail view
@@ -170,8 +173,10 @@ describe("Artists feature", () => {
     const user = userEvent.setup();
     renderList();
 
-    const elenaLink = await screen.findByRole("link", { name: /elena martins/i });
-    await user.click(elenaLink);
+    await screen.findAllByRole("row");
+
+    const elenaCell = await screen.findByText("Elena Martins");
+    await user.click(elenaCell);
 
     // Avatar initials
     await screen.findByText("EM");

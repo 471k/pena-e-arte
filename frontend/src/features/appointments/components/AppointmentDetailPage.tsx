@@ -3,8 +3,13 @@ import {
   ArrowLeft, CalendarDays, Check, CreditCard, Loader2, Trash2, UserX,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from "@/shared/components/ui/dialog";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
@@ -53,7 +58,7 @@ export function AppointmentDetailPage() {
   const navigate     = useNavigate();
   const isArtistPlus = usePermission(Role.Artist);
   const canOwner     = usePermission(Role.Owner);
-  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   const { data: appt, isLoading, isError } = useGetAppointmentQuery(id ?? "", {
     skip: !id,
@@ -69,11 +74,15 @@ export function AppointmentDetailPage() {
   const isConfirmed = appt?.status === AppointmentStatus.Confirmed;
   const anyLoading  = cancelling || confirming || completing || markingNoShow;
 
-  async function handleCancel() {
-    if (!confirmCancel) { setConfirmCancel(true); return; }
-    await cancel(appt!.id);
-    setConfirmCancel(false);
-    navigate(-1);
+  async function handleCancelConfirmed() {
+    const result = await cancel(appt!.id);
+    setCancelDialogOpen(false);
+    if ("data" in result) {
+      toast.success("Appointment cancelled.");
+      navigate(-1);
+    } else {
+      toast.error("Failed to cancel appointment.");
+    }
   }
 
   return (
@@ -176,40 +185,43 @@ export function AppointmentDetailPage() {
                   </Button>
                 )}
 
-                {confirmCancel ? (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="destructive"
-                      className="flex-1"
-                      disabled={anyLoading}
-                      onClick={handleCancel}
-                    >
-                      {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm cancel"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setConfirmCancel(false)}
-                    >
-                      Keep
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    className="w-full gap-2 text-destructive hover:text-destructive"
-                    disabled={anyLoading}
-                    onClick={handleCancel}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Cancel appointment
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  className="w-full gap-2 text-destructive hover:text-destructive"
+                  disabled={anyLoading}
+                  onClick={() => setCancelDialogOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Cancel appointment
+                </Button>
               </div>
             )}
           </>
         )}
       </main>
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel appointment</DialogTitle>
+            <DialogDescription>
+              This will cancel the appointment. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              Keep
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancelling}
+              onClick={handleCancelConfirmed}
+            >
+              {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel appointment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

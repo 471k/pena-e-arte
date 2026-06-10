@@ -9,8 +9,9 @@ public class Studio
     public string   OwnerEmail      { get; set; }  = string.Empty;
     public double   Latitude        { get; set; }
     public double   Longitude       { get; set; }
-    public bool     IsActive        { get; set; }
-    public DateTime TrialExpiresAt  { get; set; }
+    public bool     IsActive              { get; set; }
+    public bool     ShowPlatformBranding  { get; set; } = true;
+    public DateTime TrialExpiresAt        { get; set; }
     public string?  StripeAccountId  { get; set; }
     public string?  StripeCustomerId { get; set; }
     public DateTime CreatedAt       { get; init; } = DateTime.UtcNow;

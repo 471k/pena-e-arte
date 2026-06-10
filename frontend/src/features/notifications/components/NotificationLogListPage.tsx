@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Bell, CheckCircle2, Loader2, Mail, MessageSquare, XCircle } from "lucide-react";
+import { Bell, CheckCircle2, Mail, MessageSquare, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetNotificationsQuery } from "../notificationsApi";
 import type { NotificationLogResponse, NotificationsFilter } from "../notification.types";
 
@@ -145,9 +146,10 @@ export function NotificationLogListPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-2">
         {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading notifications…</span>
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+            ))}
           </div>
         )}
 

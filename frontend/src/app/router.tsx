@@ -19,7 +19,11 @@ import {
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage } from "@/features/payments";
-import { IssuerLayout, IssuerStudioListPage, PlanManagementPage } from "@/features/platform";
+import { IssuerStudioListPage, PlanManagementPage } from "@/features/platform";
+import { ClientLayout } from "@/layouts/ClientLayout";
+import { ArtistLayout } from "@/layouts/ArtistLayout";
+import { OwnerLayout } from "@/layouts/OwnerLayout";
+import { IssuerLayout } from "@/layouts/IssuerLayout";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "./hooks";
 
@@ -57,10 +61,43 @@ export const router = createBrowserRouter([
     path: "/",
     element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
     children: [
-      { index: true,   element: <IndexRedirect /> },
-      { path: "book",      element: <BookPage /> },
-      { path: "schedule",  element: <SchedulePage /> },
-      { path: "dashboard", element: <DashboardPage /> },
+      { index: true, element: <IndexRedirect /> },
+
+      // Client routes
+      {
+        path: "book",
+        element: <RoleGuard allowedRoles={[Role.Client, Role.Issuer]} />,
+        children: [
+          {
+            element: <ClientLayout />,
+            children: [{ index: true, element: <BookPage /> }],
+          },
+        ],
+      },
+
+      // Artist routes
+      {
+        path: "schedule",
+        element: <RoleGuard allowedRoles={[Role.Artist, Role.Issuer]} />,
+        children: [
+          {
+            element: <ArtistLayout />,
+            children: [{ index: true, element: <SchedulePage /> }],
+          },
+        ],
+      },
+
+      // Owner routes
+      {
+        path: "dashboard",
+        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+        children: [
+          {
+            element: <OwnerLayout />,
+            children: [{ index: true, element: <DashboardPage /> }],
+          },
+        ],
+      },
 
       // Appointment detail
       {

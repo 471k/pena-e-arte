@@ -169,6 +169,14 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + MailKit | Per-tenant |
 | 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth | Platform-wide |
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |
+| 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
+| 10 | Public Portfolio Pages | Reads `Studio`, `Artist` (read-only, no tenant filter) | None — public SEO endpoints | Platform-wide |
+| 11 | Referral Code System | `ReferralCode`, `ReferralRedemption` | Stripe Billing discount coupon | Issuer-level |
+| 12 | Client Portable Profiles | `ClientProfile` cross-tenant read (opt-in) | `IgnoreQueryFilters` — issuer-scoped only | Cross-tenant (issuer) |
+| 13 | Design Share Token | `DesignShareToken` | Cloudflare R2, public time-limited endpoint | Per-tenant |
+| 14 | Studio QR Code Generator | No new entity (reads `Studio.Slug`) | QRCoder NuGet (pre-approved, see Decisions Log) | Per-tenant |
+| 15 | Industry Analytics Reports | No entity (aggregate reads, issuer-scoped) | Hangfire monthly job, Cloudflare R2 (report storage) | Issuer-level |
+| 16 | Booking Confirmation Branding | Reuses `Studio.ShowPlatformBranding` (#09) | MailKit templates, R2 PDF footer | Per-tenant |
 
 ---
 
@@ -264,12 +272,173 @@ The following are the only documented exceptions:
 | Endpoint | Reason | Security mechanism |
 |---|---|---|
 | `GET /api/studios/map` | Public discovery, no user context | None needed — read-only public data |
+| `GET /api/v1/public/studios/{slug}` | Public SEO portfolio page | None — read-only, non-sensitive studio info only |
+| `GET /api/v1/public/artists/{slug}` | Public SEO artist portfolio | None — read-only, non-sensitive artist info only |
+| `GET /api/v1/public/designs/share/{token}` | Client-shared design link | Short-lived token (`DesignShareToken.ExpiresAt`), revocable |
+| `GET /api/v1/studios/{id}/qr` | QR code image download | None — points to public portfolio URL only |
 | `POST /api/webhooks/stripe/billing` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
 | `POST /api/webhooks/stripe/connect` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
 
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
 Never add new AllowAnonymous endpoints without adding a row to this table.
+
+---
+
+## Self-Promotion Module Architecture
+
+Eight features that make the platform market itself. Implement in order — later
+features depend on entities introduced by earlier ones.
+
+### Implementation Order & Dependencies
+
+```
+01 → Platform Branding Flag        (Studio.ShowPlatformBranding)
+02 → Public Portfolio Pages        (Studio.Slug, Artist.Slug)
+03 → Booking Confirmation Branding (depends on #01)
+04 → Referral Code System          (ReferralCode, ReferralRedemption)
+05 → Client Portable Profiles      (cross-tenant read, IPortableProfileService)
+06 → Design Share Token            (DesignShareToken, depends on DesignRevision)
+07 → Studio QR Code Generator      (depends on #02 — uses portfolio URL)
+08 → Industry Analytics Reports    (issuer-only, depends on stable aggregate schema)
+```
+
+### Platform Branding Flag
+
+```
+Studio entity gains:
+  ShowPlatformBranding  bool  default: true
+  (stored per-tenant, not on Subscription — survives plan changes)
+
+Plan entity gains:
+  AllowBrandingRemoval  bool  default: false
+  (issuer sets this true on paid plans)
+
+Enforcement:
+  - Booking widget footer: rendered by frontend, reads Studio flag via RTK Query
+  - Email footer: MailKit template receives ShowPlatformBranding from handler
+  - PDF footer: injected in R2 upload pipeline before write
+  - Owner can toggle only if Plan.AllowBrandingRemoval == true
+    → validated in UpdateStudioBrandingCommand handler, not in the endpoint
+```
+
+### Public Portfolio Slugs
+
+```
+Studio.Slug  string  unique, DB index, generated from Studio.Name on creation
+Artist.Slug  string  unique, DB index, generated from Artist.DisplayName on creation
+
+Slug rules:
+  - lowercase, hyphens only, max 60 chars
+  - Generated: "studio-name" → "studio-name-2" if collision
+  - Editable by owner once after creation (ArtistAndAbove for artist slug)
+  - Stored as-is; never auto-regenerated after first save
+
+Public endpoints (no auth, no tenant filter):
+  GET /api/v1/public/studios/{slug}   → PublicStudioResponse
+  GET /api/v1/public/artists/{slug}   → PublicArtistResponse
+  Both use IgnoreQueryFilters() — documented here as the second approved usage.
+```
+
+### Referral Code System
+
+```
+ReferralCode
+  ReferralCodeId  Guid
+  StudioId        Guid   (the referring studio)
+  Code            string (8-char uppercase, unique)
+  CreatedAt       DateTime
+  ExpiresAt       DateTime (nullable — issuer can set expiry)
+  IsActive        bool
+
+ReferralRedemption
+  ReferralRedemptionId  Guid
+  ReferralCodeId        Guid
+  NewStudioId           Guid  (the studio that signed up with this code)
+  RedeemedAt            DateTime
+  DiscountApplied       bool
+
+Flow:
+  1. Owner calls GenerateReferralCodeCommand → creates ReferralCode, returns Code
+  2. New studio signs up with ?ref=CODE in registration URL
+  3. CreateStudioCommand checks for valid ReferralCode, stores in session/temp
+  4. On first CreateSubscriptionCommand: applies Stripe Billing coupon
+     (one free month, created programmatically via Stripe API)
+  5. ReferralRedemption record written, ReferralCode.IsActive may be set false
+     if single-use (issuer config)
+```
+
+### Client Portable Profiles (Cross-Tenant)
+
+```
+This is the ONLY second approved use of IgnoreQueryFilters() in the codebase.
+
+IPortableProfileService (Domain/Interfaces/)
+  Task<ClientProfile?> FindByUserIdAsync(Guid userId, CancellationToken ct)
+  Task<IReadOnlyList<TattooRecord>> GetHistoryAsync(Guid userId, CancellationToken ct)
+
+Implementation in Infrastructure MUST:
+  1. Call _db.ClientProfiles.IgnoreQueryFilters()
+  2. Filter by ClientProfile.UserId (not TenantId)
+  3. Require opt-in: ClientProfile.AllowCrossTenantRead == true
+  4. Return only non-sensitive fields (no payment history, no consent form data)
+
+This service is ONLY injectable in handlers where the command comes from
+the client themselves (ClientAndAbove) or IssuerOnly queries.
+Never inject it in owner/artist handlers.
+```
+
+### Design Share Token
+
+```
+DesignShareToken
+  DesignShareTokenId  Guid
+  Token               string  (Guid.NewGuid().ToString("N") — opaque, 32 chars)
+  DesignRevisionId    Guid
+  StudioId            Guid    (for quick tenant lookup without filter bypass)
+  CreatedByUserId     Guid
+  ExpiresAt           DateTime (default: now + 30 days)
+  IsRevoked           bool    (owner/artist can revoke)
+  ViewCount           int     (informational)
+
+Public endpoint — no auth:
+  GET /api/v1/public/designs/share/{token}
+  → validates token, checks ExpiresAt and IsRevoked, returns signed R2 URL (short TTL)
+  → increments ViewCount
+  → never returns studioId or artistId in the response — only image URL + design title
+```
+
+### QR Code Generator
+
+```
+New NuGet dependency: QRCoder (pre-approved — see Decisions Log)
+
+Endpoint (no auth — public download):
+  GET /api/v1/studios/{studioId}/qr?format=png|svg
+  Returns QR code pointing to: https://penaearte.com/s/{studio.Slug}
+  Content-Type: image/png or image/svg+xml
+
+Frontend:
+  Owner settings page shows QR preview + download button
+  No Redux slice needed — plain RTK Query endpoint
+```
+
+### Industry Analytics Reports
+
+```
+Hangfire job: IndustryReportJob (runs first day of each month, issuer-scoped)
+  - Queries aggregate data with IgnoreQueryFilters() (third approved usage)
+  - Output: anonymized JSON — no studio names, no user IDs
+  - Metrics: avg appointments/month, peak booking hours, top session durations,
+    platform-wide retention rate, trial→paid conversion rate
+  - Written to Cloudflare R2: reports/industry/{year}-{month}.json
+  - Issuer dashboard endpoint: GET /api/v1/platform/reports/industry (IssuerOnly)
+    returns list of available report months + signed R2 URLs
+
+PII rules:
+  - No studio names, no artist names, no client data whatsoever
+  - Aggregate only — minimum cohort size of 10 studios before a metric is shown
+```
 
 ---
 
@@ -294,3 +463,12 @@ does not re-litigate them.
 | Trial model | 14-day full trial, no CC required | Maximises trial starts; full access builds habit before paywall |
 | Post-trial | 7-day read-only grace period | Reduces churn fear, increases trust and conversion |
 | Yearly pricing | Monthly × 10 (2 months free) | Standard SaaS incentive, ~17% discount |
+| Platform branding | `ShowPlatformBranding` bool on `Studio` (default `true`) | Drives viral growth; removal is a paid upgrade — free tier always shows badge |
+| Branding gate | `Subscription.Plan.AllowBrandingRemoval` bool on `Plan` | Decouples plan logic from branding logic; issuer controls which plans unlock removal |
+| Public portfolio SEO | Slug-based URLs `/s/{slug}` and `/artist/{slug}` | Human-readable, indexable, studio-owned vanity URLs |
+| Portfolio slug | `Studio.Slug` and `Artist.Slug` (unique, lowercase, URL-safe) | Generated on creation, editable by owner once — no collisions enforced by DB unique index |
+| Referral codes | `ReferralCode` entity + Stripe Billing coupon | Owners refer other studios; reward is a discount month — Stripe coupon applied at subscription creation |
+| Client portable profiles | Cross-tenant read via `IgnoreQueryFilters()` in dedicated `IPortableProfileService` | Only called with explicit `clientId` after the client opts in; never exposed through normal tenant-scoped queries |
+| Design share tokens | Short-lived JWT-like opaque token (Guid), stored in `DesignShareToken` table | Revocable, no auth required to view, expiry enforced at query time |
+| QR code library | `QRCoder` (NuGet) | Pure .NET, no native deps, zero weight — only pre-approved external lib addition for self-promotion module |
+| Industry reports | Issuer-only Hangfire monthly job writing anonymized JSON to R2 | No PII, no per-studio identifiers in output — aggregate only |

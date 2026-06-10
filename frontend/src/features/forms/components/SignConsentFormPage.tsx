@@ -1,31 +1,26 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import { ArrowLeft, CheckCircle, FileSignature, FileText, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { Label } from "@/shared/components/ui/label";
-import { useAppSelector } from "@/app/hooks";
+import { Textarea } from "@/shared/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
+import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSignConsentFormMutation } from "../consentFormsApi";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { FileUploadField, PDF_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
-
-const TEXTAREA_CLS = cn(
-  "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-  "ring-offset-background placeholder:text-muted-foreground",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-  "disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-);
-
-const SELECT_CLS = cn(
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-  "ring-offset-background focus-visible:outline-none focus-visible:ring-2",
-  "focus-visible:ring-ring focus-visible:ring-offset-2",
-  "disabled:cursor-not-allowed disabled:opacity-50"
-);
 
 const schema = z.object({
   appointmentId: z.string().min(1, "Please select an appointment"),
@@ -36,7 +31,7 @@ type FormValues = z.infer<typeof schema>;
 
 export function SignConsentFormPage() {
   const navigate = useNavigate();
-  const user = useAppSelector((s) => s.auth.user);
+  const user = useCurrentUser();
 
   const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
   const [signConsentForm, { isLoading, isSuccess, isError, reset: resetMutation }] =
@@ -46,6 +41,7 @@ export function SignConsentFormPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset: resetForm,
     formState: { errors },
@@ -60,8 +56,11 @@ export function SignConsentFormPage() {
       fileUrl:       pdfUrl,
     });
     if ("data" in result) {
+      toast.success("Consent form signed.");
       resetForm();
       setPdfUrl(null);
+    } else {
+      toast.error("Failed to sign consent form.");
     }
   }
 
@@ -109,23 +108,35 @@ export function SignConsentFormPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
             <Label htmlFor="appointmentId">Appointment</Label>
-            <select
-              id="appointmentId"
-              disabled={loadingAppts || isLoading}
-              {...register("appointmentId")}
-              className={cn(SELECT_CLS, errors.appointmentId && "border-destructive")}
-            >
-              <option value="">
-                {loadingAppts ? "Loading appointments…" : "Select an appointment"}
-              </option>
-              {appointments?.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {new Date(a.date).toLocaleDateString("en-GB", {
-                    day: "numeric", month: "short", year: "numeric",
-                  })}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="appointmentId"
+              render={({ field }) => (
+                <Select
+                  disabled={loadingAppts || isLoading}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger
+                    id="appointmentId"
+                    className={cn(errors.appointmentId && "border-destructive")}
+                  >
+                    <SelectValue
+                      placeholder={loadingAppts ? "Loading appointments…" : "Select an appointment"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {appointments?.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {new Date(a.date).toLocaleDateString("en-GB", {
+                          day: "numeric", month: "short", year: "numeric",
+                        })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.appointmentId && (
               <p className="text-xs text-destructive">{errors.appointmentId.message}</p>
             )}
@@ -133,13 +144,13 @@ export function SignConsentFormPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="signatureData">Digital signature (full name)</Label>
-            <textarea
+            <Textarea
               id="signatureData"
               rows={2}
               placeholder="Type your full legal name…"
               disabled={isLoading}
               {...register("signatureData")}
-              className={cn(TEXTAREA_CLS, errors.signatureData && "border-destructive")}
+              className={cn("resize-none", errors.signatureData && "border-destructive")}
             />
             {errors.signatureData && (
               <p className="text-xs text-destructive">{errors.signatureData.message}</p>

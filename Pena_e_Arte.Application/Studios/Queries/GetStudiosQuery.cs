@@ -17,6 +17,7 @@ public class GetStudiosHandler(IAppDbContext db)
             .Select(s => new StudioResponse(
                 s.Id, s.Name, s.Slug, s.City,
                 s.Latitude, s.Longitude,
+                s.ShowPlatformBranding,
                 s.TrialExpiresAt, s.CreatedAt))
             .ToListAsync(ct);
     }

@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { useAppSelector } from "@/app/hooks";
+import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { cn } from "@/shared/utils/cn";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSubmitIntakeFormMutation } from "../intakeFormsApi";
@@ -36,7 +36,7 @@ type FormValues = z.infer<typeof schema>;
 
 export function SubmitIntakeFormPage() {
   const navigate = useNavigate();
-  const user = useAppSelector((s) => s.auth.user);
+  const user = useCurrentUser();
 
   const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
   const [submitIntakeForm, { isLoading, isSuccess, isError, reset: resetMutation }] =

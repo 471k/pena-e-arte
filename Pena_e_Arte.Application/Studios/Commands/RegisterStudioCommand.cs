@@ -57,6 +57,8 @@ public class RegisterStudioHandler(IAppDbContext db, IJobScheduler jobs)
 
         return new StudioResponse(
             studio.Id, studio.Name, studio.Slug, studio.City,
-            studio.Latitude, studio.Longitude, studio.TrialExpiresAt, studio.CreatedAt);
+            studio.Latitude, studio.Longitude,
+            studio.ShowPlatformBranding,
+            studio.TrialExpiresAt, studio.CreatedAt);
     }
 }

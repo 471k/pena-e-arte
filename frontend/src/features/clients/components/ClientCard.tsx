@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ChevronRight, Mail, Phone } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import type { ClientResponse } from "../clientsApi";
 
 interface ClientCardProps {
@@ -19,9 +20,9 @@ export function ClientCard({ client }: ClientCardProps) {
     >
       <Card className="hover:bg-muted/40 transition-colors">
         <CardContent className="p-4 flex items-start gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground select-none">
-            {getInitials(client.firstName, client.lastName)}
-          </div>
+          <Avatar className="shrink-0">
+            <AvatarFallback>{getInitials(client.firstName, client.lastName)}</AvatarFallback>
+          </Avatar>
 
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-sm font-medium leading-none">

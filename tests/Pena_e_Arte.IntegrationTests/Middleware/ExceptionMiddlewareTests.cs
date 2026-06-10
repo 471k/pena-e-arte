@@ -41,11 +41,11 @@ public class ExceptionMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_ValidationException_Returns400()
+    public async Task InvokeAsync_ValidationException_Returns422()
     {
         var failures = new List<ValidationFailure> { new("Field", "Required") };
         (int code, _) = await InvokeWithException(new ValidationException(failures));
-        code.Should().Be(StatusCodes.Status400BadRequest);
+        code.Should().Be(StatusCodes.Status422UnprocessableEntity);
     }
 
     [Fact]

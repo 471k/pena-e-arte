@@ -1,18 +1,30 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, PenLine, Plus, Search, Users } from "lucide-react";
+import { PenLine, Plus, Search, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { DataTable } from "@/shared/components/DataTable";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "../artistsApi";
-import { ArtistCard } from "./ArtistCard";
+import type { ArtistResponse } from "../artistsApi";
+
+function ArtistRowSkeleton() {
+  return (
+    <div className="flex items-center gap-4 py-3 border-b">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="h-4 w-48" />
+      <Skeleton className="h-4 w-36" />
+    </div>
+  );
+}
 
 export function ArtistListPage() {
-  const navigate = useNavigate();
-  const canManage = usePermission(Role.Owner);
+  const navigate   = useNavigate();
+  const canManage  = usePermission(Role.Owner);
   const [inputValue, setInputValue] = useState("");
-  const [search, setSearch] = useState<string | undefined>(undefined);
+  const [search, setSearch]         = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(inputValue.trim() || undefined), 300);
@@ -44,7 +56,7 @@ export function ArtistListPage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
@@ -56,9 +68,10 @@ export function ArtistListPage() {
         </div>
 
         {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading artists…</span>
+          <div className="space-y-0">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <ArtistRowSkeleton key={i} />
+            ))}
           </div>
         )}
 
@@ -68,18 +81,26 @@ export function ArtistListPage() {
           </p>
         )}
 
-        {!isLoading && !isError && artists?.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-16">
-            {search ? `No artists match "${search}".` : "No artists in this studio yet."}
-          </p>
-        )}
-
-        {!isLoading && !isError && artists && artists.length > 0 && (
-          <div className="space-y-2">
-            {artists.map((artist) => (
-              <ArtistCard key={artist.id} artist={artist} />
-            ))}
-          </div>
+        {!isLoading && !isError && (
+          <DataTable<ArtistResponse>
+            columns={[
+              {
+                header: "Name",
+                cell: (a) => (
+                  <span className="font-medium">{a.firstName} {a.lastName}</span>
+                ),
+              },
+              { header: "Email",           accessorKey: "email" },
+              {
+                header: "Specializations",
+                cell: (a) => a.specializations ?? "—",
+              },
+            ]}
+            data={artists ?? []}
+            keyExtractor={(a) => a.id}
+            onRowClick={(a) => navigate(`/artists/${a.id}`)}
+            emptyMessage={search ? `No artists match "${search}".` : "No artists in this studio yet."}
+          />
         )}
       </main>
     </div>

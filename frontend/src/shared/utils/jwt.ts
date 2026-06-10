@@ -6,11 +6,12 @@ const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role
 interface JwtClaims {
   sub: string;
   email: string;
+  exp?: number;
   tenant_id?: string;
   [ROLE_CLAIM]?: string;
 }
 
-export function decodeToken(token: string): AuthPayload {
+export function decodeToken(token: string): AuthPayload & { exp?: number } {
   const claims = jwtDecode<JwtClaims>(token);
 
   const user: User = {
@@ -28,5 +29,6 @@ export function decodeToken(token: string): AuthPayload {
     token,
     tenantId: claims.tenant_id ?? null,
     role,
+    exp: claims.exp,
   };
 }

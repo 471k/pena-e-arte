@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 
 export function useSignalR(studioId: string | null | undefined) {
@@ -24,8 +25,7 @@ export function useSignalR(studioId: string | null | undefined) {
     connection.on("AppointmentCancelled", () => dispatch(appointmentsApi.util.invalidateTags(["Appointment"])));
     connection.on("NotificationCreated",  () => dispatch(notificationsApi.util.invalidateTags(["NotificationLog"])));
     connection.on("DesignRevisionUploaded", () => {
-      // Designs are invalidated globally; the client's DesignDetailPage will re-fetch
-      dispatch(appointmentsApi.util.invalidateTags(["Appointment"]));
+      dispatch(designsApi.util.invalidateTags(["Design"]));
     });
 
     connection

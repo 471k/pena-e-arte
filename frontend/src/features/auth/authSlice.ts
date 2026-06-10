@@ -18,8 +18,7 @@ function loadInitialState(): AuthState {
 
     const payload = decodeToken(token);
     // Discard expired tokens (exp is in seconds)
-    const exp = (JSON.parse(atob(token.split(".")[1])) as { exp?: number }).exp;
-    if (exp && Date.now() / 1000 > exp) {
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
       localStorage.removeItem(TOKEN_KEY);
       return { user: null, token: null, tenantId: null, role: null };
     }

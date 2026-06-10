@@ -30,6 +30,7 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
         return new StudioResponse(
             studio.Id, studio.Name, studio.Slug, studio.City,
             studio.Latitude, studio.Longitude,
+            studio.ShowPlatformBranding,
             studio.TrialExpiresAt, studio.CreatedAt);
     }
 }

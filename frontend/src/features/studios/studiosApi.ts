@@ -11,14 +11,15 @@ export interface RegisterStudioRequest {
 }
 
 export interface StudioResponse {
-  id: string;
-  name: string;
-  slug: string;
-  city: string;
-  latitude: number;
-  longitude: number;
-  trialExpiresAt: string;
-  createdAt: string;
+  id:                   string;
+  name:                 string;
+  slug:                 string;
+  city:                 string;
+  latitude:             number;
+  longitude:            number;
+  showPlatformBranding: boolean;
+  trialExpiresAt:       string;
+  createdAt:            string;
 }
 
 export interface StudioMapItem {
@@ -74,6 +75,14 @@ export const studiosApi = createApi({
       query: () => "studios",
       providesTags: ["Studio"],
     }),
+    updateStudioBranding: builder.mutation<StudioResponse, { id: string; showPlatformBranding: boolean }>({
+      query: ({ id, showPlatformBranding }) => ({
+        url:    `studios/${id}/branding`,
+        method: "PATCH",
+        body:   { showPlatformBranding },
+      }),
+      invalidatesTags: ["Studio"],
+    }),
     suspendStudio: builder.mutation<void, string>({
       query: (id) => ({ url: `studios/${id}/suspend`, method: "PATCH" }),
       invalidatesTags: ["Studio"],
@@ -91,6 +100,7 @@ export const {
   useConnectStudioMutation,
   useGetMyStudioQuery,
   useUpdateMyStudioMutation,
+  useUpdateStudioBrandingMutation,
   useGetStudiosQuery,
   useSuspendStudioMutation,
   useUnsuspendStudioMutation,

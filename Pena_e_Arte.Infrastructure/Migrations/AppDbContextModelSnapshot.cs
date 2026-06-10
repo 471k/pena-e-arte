@@ -829,6 +829,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<bool>("AllowBrandingRemoval")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("BillingInterval")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -940,6 +943,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
+
+                    b.Property<bool>("ShowPlatformBranding")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Slug")
                         .IsRequired()

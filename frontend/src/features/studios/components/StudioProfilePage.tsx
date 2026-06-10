@@ -8,6 +8,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation } from "../studiosApi";
+import { BrandingSettingsCard } from "./BrandingSettingsCard";
 
 const schema = z.object({
   name:      z.string().min(1, "Name is required").max(200),
@@ -126,6 +127,8 @@ export function StudioProfilePage() {
             </form>
           </CardContent>
         </Card>
+
+        <BrandingSettingsCard />
       </main>
     </div>
   );

@@ -1,21 +1,21 @@
 # Backend Instructions — ASP.NET Core 10
 
-> Load this file when working on anything in `src/TattooStudio.API`,
-> `TattooStudio.Application`, `TattooStudio.Domain`, or
-> `TattooStudio.Infrastructure`.
+> Load this file when working on anything in `Pena_e_Arte.API`,
+> `Pena_e_Arte.Application`, `Pena_e_Arte.Domain`, or
+> `Pena_e_Arte.Infrastructure`.
 
 ---
 
 ## Project Layout
 
 ```
-TattooStudio.API/
+Pena_e_Arte.API/
 ├── Endpoints/              one static class per feature (AppointmentEndpoints.cs)
 ├── Middleware/             TenantMiddleware.cs, ExceptionMiddleware.cs
 ├── Extensions/             ServiceCollectionExtensions per concern
 └── Program.cs              minimal, just wires extensions
 
-TattooStudio.Application/
+Pena_e_Arte.Application/
 ├── Appointments/
 │   ├── Commands/           CreateAppointmentCommand + Handler
 │   ├── Queries/            GetAppointmentsQuery + Handler
@@ -26,13 +26,13 @@ TattooStudio.Application/
 ├── Designs/
 └── Notifications/
 
-TattooStudio.Domain/
+Pena_e_Arte.Domain/
 ├── Entities/               pure C# classes, no EF attributes here
 ├── Enums/                  Role.cs, AppointmentStatus.cs
 ├── Interfaces/             ICurrentTenant, ICurrentUser, repositories
 └── Exceptions/             DomainException base + specifics
 
-TattooStudio.Infrastructure/
+Pena_e_Arte.Infrastructure/
 ├── Persistence/
 │   ├── AppDbContext.cs
 │   ├── Configurations/     IEntityTypeConfiguration per entity
@@ -42,7 +42,7 @@ TattooStudio.Infrastructure/
 ├── Jobs/                   Hangfire job classes
 └── Caching/                Redis wrappers
 
-TattooStudio.Contracts/
+Pena_e_Arte.Contracts/
 ├── Requests/               input DTOs
 └── Responses/              output DTOs
 ```

@@ -57,28 +57,27 @@ Infra         Docker · K3s · Nginx · GitHub Actions
 /
 ├── CLAUDE.md
 ├── docs/
-│   └── claude/                   ← per-layer instruction files
+│   └── claude/                       ← per-layer instruction files
 │       ├── backend.md
 │       ├── frontend.md
 │       ├── database.md
 │       ├── architecture.md
-│       └── conventions.md
-├── src/
-│   ├── TattooStudio.API/          ← ASP.NET Core entry point
-│   ├── TattooStudio.Application/  ← MediatR handlers, DTOs, validators
-│   ├── TattooStudio.Domain/       ← Entities, enums, interfaces
-│   ├── TattooStudio.Infrastructure/ ← EF Core, external services, SignalR
-│   ├── TattooStudio.Contracts/    ← Shared request/response models
-│   └── frontend/                  ← React + Vite app
-│       └── src/
-│           ├── app/               ← store, router
-│           ├── features/          ← feature slices (appointments, clients…)
-│           ├── shared/            ← reusable components, hooks, utils
-│           └── layouts/           ← role-based layout components
+│       ├── conventions.md
+│       └── self-promotion-prompts.md ← feature prompts (SP-01 through SP-08)
+├── Pena_e_Arte.API/                  ← ASP.NET Core entry point
+├── Pena_e_Arte.Application/          ← MediatR handlers, DTOs, validators
+├── Pena_e_Arte.Domain/               ← Entities, enums, interfaces
+├── Pena_e_Arte.Infrastructure/       ← EF Core, external services, SignalR
+├── Pena_e_Arte.Contracts/            ← Shared request/response models
+├── frontend/                         ← React + Vite app
+│   └── src/
+│       ├── app/                      ← store, router
+│       ├── features/                 ← feature slices (appointments, clients…)
+│       ├── shared/                   ← reusable components, hooks, utils
+│       └── layouts/                  ← role-based layout components
 └── tests/
-    ├── TattooStudio.UnitTests/
-    ├── TattooStudio.IntegrationTests/
-    └── TattooStudio.E2ETests/
+    ├── Pena_e_Arte.UnitTests/
+    └── Pena_e_Arte.IntegrationTests/
 ```
 
 ---
@@ -109,9 +108,9 @@ Infra         Docker · K3s · Nginx · GitHub Actions
 # Backend
 dotnet build
 dotnet test
-dotnet ef migrations add <Name> --project TattooStudio.Infrastructure
-dotnet ef database update --project TattooStudio.Infrastructure
-dotnet run --project src/TattooStudio.API
+dotnet ef migrations add <Name> --project Pena_e_Arte.Infrastructure
+dotnet ef database update --project Pena_e_Arte.Infrastructure
+dotnet run --project Pena_e_Arte.API
 
 # Frontend
 pnpm install
