@@ -14,11 +14,12 @@ public static class DesignEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/designs")
             .RequireAuthorization();
 
-        group.MapGet("/",                                    GetDesigns).RequireAuthorization("ArtistAndAbove");
-        group.MapPost("/",                                   CreateDesign).RequireAuthorization("ArtistAndAbove");
-        group.MapGet("{id:guid}/revisions",                  GetRevisions).RequireAuthorization("ClientAndAbove");
-        group.MapPost("{id:guid}/revisions",                 UploadRevision).RequireAuthorization("ArtistAndAbove");
-        group.MapPost("revisions/{revisionId:guid}/review",  ReviewDesign).RequireAuthorization("ClientAndAbove");
+        group.MapGet("/",                                          GetDesigns).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("/",                                         CreateDesign).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("{id:guid}/revisions",                        GetRevisions).RequireAuthorization("ClientAndAbove");
+        group.MapPost("{id:guid}/revisions",                       UploadRevision).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("{id:guid}/revisions/{revisionId:guid}",   DeleteRevision).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("revisions/{revisionId:guid}/review",        ReviewDesign).RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> GetDesigns(
@@ -58,6 +59,16 @@ public static class DesignEndpoints
         UploadDesignRevisionRequest withDesignId = request with { DesignId = id };
         DesignRevisionResponse result = await mediator.Send(new UploadDesignRevisionCommand(withDesignId), ct);
         return Results.Created($"/api/v1/designs/{id}/revisions/{result.Id}", result);
+    }
+
+    private static async Task<IResult> DeleteRevision(
+        Guid              id,
+        Guid              revisionId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new DeleteDesignRevisionCommand(id, revisionId), ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> ReviewDesign(

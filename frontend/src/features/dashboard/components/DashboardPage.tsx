@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Separator } from "@/shared/components/ui/separator";
 import { cn } from "@/shared/utils/cn";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
@@ -123,7 +124,7 @@ function artistName(artistId: string, artists: ArtistResponse[]): string {
 
 function TodayRow({ appt, artists }: { appt: AppointmentResponse; artists: ArtistResponse[] }) {
   return (
-    <div className="flex items-center justify-between py-2.5 border-b last:border-0 gap-4">
+    <div className="flex items-center justify-between py-2.5 gap-4">
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-sm font-medium tabular-nums shrink-0">
           {formatTime(appt.date)}
@@ -193,8 +194,11 @@ function TodaySection({
 
           {!isLoading && !isError && appointments && appointments.length > 0 && (
             <div>
-              {appointments.map((a) => (
-                <TodayRow key={a.id} appt={a} artists={artists} />
+              {appointments.map((a, i) => (
+                <div key={a.id}>
+                  {i > 0 && <Separator />}
+                  <TodayRow appt={a} artists={artists} />
+                </div>
               ))}
             </div>
           )}

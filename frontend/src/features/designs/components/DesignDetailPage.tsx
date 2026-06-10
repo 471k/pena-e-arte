@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Check, ImageOff, Loader2, RefreshCw, Upload } from "lucide-react";
+import { ArrowLeft, Check, ImageOff, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from "@/shared/components/ui/dialog";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/utils/cn";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
-import { useGetRevisionsQuery, useReviewRevisionMutation } from "../designsApi";
+import { useDeleteRevisionMutation, useGetRevisionsQuery, useReviewRevisionMutation } from "../designsApi";
 import type { DesignRevisionResponse } from "../design.types";
 
 const notesSchema = z.object({
@@ -51,18 +55,31 @@ function formatDate(dateStr: string): string {
 }
 
 interface RevisionCardProps {
-  revision:  DesignRevisionResponse;
-  canReview: boolean;
+  revision:   DesignRevisionResponse;
+  canReview:  boolean;
+  canDelete:  boolean;
 }
 
-function RevisionCard({ revision, canReview }: RevisionCardProps) {
-  const [mode, setMode]   = useState<"idle" | "changes">("idle");
-  const [review, { isLoading }] = useReviewRevisionMutation();
+function RevisionCard({ revision, canReview, canDelete }: RevisionCardProps) {
+  const [mode, setMode]           = useState<"idle" | "changes">("idle");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [review,  { isLoading }]  = useReviewRevisionMutation();
+  const [deleteRevision, { isLoading: deleting }] = useDeleteRevisionMutation();
 
   const { register, handleSubmit, reset, formState: { errors } } =
     useForm<NotesForm>({ resolver: zodResolver(notesSchema) });
 
   const isReviewable = canReview && revision.approvalStatus !== "Approved";
+
+  async function handleDelete() {
+    const result = await deleteRevision({ designId: revision.designId, revisionId: revision.id });
+    setDeleteOpen(false);
+    if ("error" in result) {
+      toast.error("Failed to delete revision.");
+    } else {
+      toast.success("Revision deleted.");
+    }
+  }
 
   async function approve() {
     const result = await review({ revisionId: revision.id, approved: true, notes: null });
@@ -89,6 +106,7 @@ function RevisionCard({ revision, canReview }: RevisionCardProps) {
   }
 
   return (
+    <>
     <Card>
       <CardContent className="p-4 space-y-3">
         {/* Header row */}
@@ -99,7 +117,21 @@ function RevisionCard({ revision, canReview }: RevisionCardProps) {
             </span>
             <StatusBadge status={revision.approvalStatus} />
           </div>
-          <span className="text-xs text-muted-foreground">{formatDate(revision.uploadedAt)}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{formatDate(revision.uploadedAt)}</span>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                onClick={() => setDeleteOpen(true)}
+                disabled={deleting}
+                aria-label="Delete revision"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Image */}
@@ -202,6 +234,24 @@ function RevisionCard({ revision, canReview }: RevisionCardProps) {
         )}
       </CardContent>
     </Card>
+
+    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete revision v{revision.versionNumber}?</DialogTitle>
+          <DialogDescription>This action cannot be undone.</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
@@ -263,7 +313,7 @@ export function DesignDetailPage() {
         {!isLoading && !isError && revisions && revisions.length > 0 && (
           <div className="space-y-4">
             {revisions.map((r) => (
-              <RevisionCard key={r.id} revision={r} canReview={canReview} />
+              <RevisionCard key={r.id} revision={r} canReview={canReview} canDelete={canUpload} />
             ))}
           </div>
         )}

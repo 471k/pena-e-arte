@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { Separator } from "@/shared/components/ui/separator";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
@@ -40,7 +41,7 @@ function formatCurrency(amount: number): string {
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-center py-2 border-b last:border-0 gap-4">
+    <div className="flex justify-between items-center py-2 gap-4">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-right">{value}</span>
     </div>
@@ -115,22 +116,28 @@ export function AppointmentDetailPage() {
         {!isLoading && appt && (
           <>
             <Card>
-              <CardContent className="p-0 divide-y">
-                <div className="px-4 pt-4 pb-0">
-                  <Row label="Date &amp; time" value={formatDateTime(appt.date)} />
-                  <Row label="Duration"  value={`${appt.durationMinutes} min`} />
-                  <Row label="Status"    value={<AppointmentStatusBadge status={appt.status} />} />
-                  <Row
-                    label="Deposit"
-                    value={
-                      <span className="flex items-center gap-1.5">
-                        {formatCurrency(appt.depositAmount)}
-                        <DepositStatusBadge status={appt.depositStatus} />
-                      </span>
-                    }
-                  />
-                  {appt.notes && <Row label="Notes" value={appt.notes} />}
-                </div>
+              <CardContent className="px-4 py-1">
+                <Row label="Date &amp; time" value={formatDateTime(appt.date)} />
+                <Separator />
+                <Row label="Duration"  value={`${appt.durationMinutes} min`} />
+                <Separator />
+                <Row label="Status"    value={<AppointmentStatusBadge status={appt.status} />} />
+                <Separator />
+                <Row
+                  label="Deposit"
+                  value={
+                    <span className="flex items-center gap-1.5">
+                      {formatCurrency(appt.depositAmount)}
+                      <DepositStatusBadge status={appt.depositStatus} />
+                    </span>
+                  }
+                />
+                {appt.notes && (
+                  <>
+                    <Separator />
+                    <Row label="Notes" value={appt.notes} />
+                  </>
+                )}
               </CardContent>
             </Card>
 

@@ -48,6 +48,13 @@ export const designsApi = createApi({
       }),
       invalidatesTags: ["Design"],
     }),
+    deleteRevision: builder.mutation<void, { designId: string; revisionId: string }>({
+      query: ({ designId, revisionId }) => ({
+        url:    `designs/${designId}/revisions/${revisionId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Design"],
+    }),
   }),
 });
 
@@ -57,4 +64,5 @@ export const {
   useUploadRevisionMutation,
   useGetRevisionsQuery,
   useReviewRevisionMutation,
+  useDeleteRevisionMutation,
 } = designsApi;
