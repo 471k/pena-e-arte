@@ -22,9 +22,11 @@ public interface IAppDbContext
     DbSet<NotificationLog> NotificationLogs { get; }
 
     // Issuer-level
-    DbSet<Studio>          Studios          { get; }
-    DbSet<Plan>            Plans            { get; }
-    DbSet<Subscription>    Subscriptions    { get; }
+    DbSet<Studio>              Studios             { get; }
+    DbSet<Plan>                Plans               { get; }
+    DbSet<Subscription>        Subscriptions       { get; }
+    DbSet<ReferralCode>        ReferralCodes       { get; }
+    DbSet<ReferralRedemption>  ReferralRedemptions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

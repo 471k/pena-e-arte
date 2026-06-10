@@ -14,15 +14,15 @@ public class StripeBillingService(CustomerService customerService, SubscriptionS
     }
 
     public async Task<(string SubscriptionId, DateTime CurrentPeriodEnd)> CreateSubscriptionAsync(
-        string customerId, string priceId, CancellationToken ct)
+        string customerId, string priceId, string? couponId, CancellationToken ct)
     {
         SubscriptionCreateOptions options = new()
         {
-            Customer = customerId,
-            Items    = new List<SubscriptionItemOptions>
-            {
-                new() { Price = priceId }
-            },
+            Customer  = customerId,
+            Items     = new List<SubscriptionItemOptions> { new() { Price = priceId } },
+            Discounts = couponId is not null
+                ? new List<SubscriptionDiscountOptions> { new() { Coupon = couponId } }
+                : null,
         };
 
         Stripe.Subscription sub = await subscriptionService.CreateAsync(options, null, ct);

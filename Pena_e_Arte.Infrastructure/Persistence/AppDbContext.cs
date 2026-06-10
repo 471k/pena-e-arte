@@ -28,9 +28,11 @@ public class AppDbContext(
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
 
     // --- Issuer-level (no tenant filter) ---
-    public DbSet<Studio>       Studios       => Set<Studio>();
-    public DbSet<Plan>         Plans         => Set<Plan>();
-    public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<Studio>             Studios             => Set<Studio>();
+    public DbSet<Plan>               Plans               => Set<Plan>();
+    public DbSet<Subscription>       Subscriptions       => Set<Subscription>();
+    public DbSet<ReferralCode>       ReferralCodes       => Set<ReferralCode>();
+    public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

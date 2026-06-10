@@ -21,5 +21,7 @@ public class Studio
     public string?  StripeCustomerId { get; set; }
     public DateTime CreatedAt       { get; init; } = DateTime.UtcNow;
 
+    public Guid? PendingReferralCodeId { get; set; }
+
     public Subscription? Subscription { get; set; }
 }

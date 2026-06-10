@@ -2,12 +2,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, PenLine } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath } from "@/app/router";
 import { useLoginMutation, useRegisterUserMutation } from "@/features/auth/authApi";
-import { setCredentials } from "@/features/auth/authSlice";
+import { setCredentials, setPendingReferralCode } from "@/features/auth/authSlice";
 import { Button } from "@/shared/components/ui/button";
 import {
   Card,
@@ -62,6 +62,8 @@ export function RegisterStudioPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const existingRole = useAppSelector((s) => s.auth.role);
+  const pendingReferralCode = useAppSelector((s) => s.auth.pendingReferralCode);
+  const [searchParams] = useSearchParams();
 
   const [step, setStep] = useState<1 | 2>(1);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -102,6 +104,11 @@ export function RegisterStudioPage() {
   }, [existingRole, navigate]);
 
   useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) dispatch(setPendingReferralCode(ref));
+  }, [searchParams, dispatch]);
+
+  useEffect(() => {
     if (!slugManuallyEdited.current) {
       const auto = nameValue
         .toLowerCase()
@@ -125,12 +132,13 @@ export function RegisterStudioPage() {
     setServerError(null);
     try {
       const studio = await registerStudio({
-        name: values.name,
-        slug: values.slug,
-        city: values.city,
-        latitude: values.latitude,
-        longitude: values.longitude,
-        ownerEmail: values.email,
+        name:         values.name,
+        slug:         values.slug,
+        city:         values.city,
+        latitude:     values.latitude,
+        longitude:    values.longitude,
+        ownerEmail:   values.email,
+        ...(pendingReferralCode ? { referralCode: pendingReferralCode } : {}),
       }).unwrap();
 
       await registerUser({
@@ -146,6 +154,7 @@ export function RegisterStudioPage() {
       }).unwrap();
 
       dispatch(setCredentials(decodeToken(accessToken)));
+      dispatch(setPendingReferralCode(null));
       navigate("/dashboard", { replace: true });
     } catch (err) {
       const message =

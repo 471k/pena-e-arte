@@ -85,6 +85,7 @@ try
     app.MapNotificationEndpoints();
     app.MapFileEndpoints();
     app.MapIssuerEndpoints();
+    app.MapReferralEndpoints();
 
     app.Run();
 }
