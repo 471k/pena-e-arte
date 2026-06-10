@@ -26,6 +26,7 @@ import { useGetConsentFormsQuery } from "@/features/forms/consentFormsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { BodyMap } from "./BodyMap";
 import { TattooHistorySection } from "./TattooHistorySection";
+import { useGetPortableProfileQuery } from "../clientsApi";
 
 const profileSchema = z.object({
   dateOfBirth:  z.string().optional(),
@@ -69,6 +70,10 @@ export function ClientDetailPage() {
 
   const [upsertProfile,  { isLoading: isSaving }]    = useUpsertClientProfileMutation();
   const [updateBodyMap, { isLoading: isSavingMap }] = useUpdateBodyMapMutation();
+
+  const { data: portableProfile } = useGetPortableProfileQuery(client?.userId ?? "", {
+    skip: !client?.userId,
+  });
 
   const { data: allAppointments = [], isLoading: appsLoading } =
     useGetAppointmentsQuery({}, { skip: !id });
@@ -267,6 +272,9 @@ export function ClientDetailPage() {
             <TabsList className="w-full">
               <TabsTrigger value="profile"  className="flex-1">Profile</TabsTrigger>
               <TabsTrigger value="tattoos"  className="flex-1">Tattoo History</TabsTrigger>
+              {portableProfile && (
+                <TabsTrigger value="cross-studio" className="flex-1">Cross-Studio</TabsTrigger>
+              )}
               <TabsTrigger value="forms"    className="flex-1">Forms</TabsTrigger>
               <TabsTrigger value="appointments" className="flex-1">Appointments</TabsTrigger>
             </TabsList>
@@ -367,6 +375,45 @@ export function ClientDetailPage() {
             <TabsContent value="tattoos" className="mt-4">
               <TattooHistorySection clientId={id!} />
             </TabsContent>
+
+            {/* Cross-Studio History tab */}
+            {portableProfile && (
+              <TabsContent value="cross-studio" className="mt-4 space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Tattoo history shared by this client from other studios on Pena e Artë.
+                </p>
+                {portableProfile.tattooHistory.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No cross-studio history available.
+                  </p>
+                ) : (
+                  portableProfile.tattooHistory.map((record, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{record.bodyLocation}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(record.completedAt).toLocaleDateString("en-GB", {
+                              day: "numeric", month: "short", year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          by {record.artistFirstName} · {record.description}
+                        </p>
+                        {record.photoUrls.length > 0 && (
+                          <img
+                            src={record.photoUrls[0]}
+                            alt="Tattoo"
+                            className="w-full rounded-md object-cover max-h-48"
+                          />
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </TabsContent>
+            )}
 
             {/* Forms tab */}
             <TabsContent value="forms" className="mt-4 space-y-4">

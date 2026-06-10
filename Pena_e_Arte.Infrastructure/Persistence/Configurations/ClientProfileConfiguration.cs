@@ -40,8 +40,18 @@ public class ClientProfileConfiguration : TenantEntityConfiguration<ClientProfil
                .HasConstraintName("fk_client_profiles_clients")
                .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Property(cp => cp.AllowCrossTenantRead)
+               .HasDefaultValue(false)
+               .IsRequired();
+
+        builder.Property(cp => cp.CrossTenantOptInAt)
+               .HasColumnType("datetime(6)");
+
         builder.HasIndex(cp => cp.ClientId)
                .IsUnique()
                .HasDatabaseName("ix_client_profiles_client_id");
+
+        builder.HasIndex(cp => cp.AllowCrossTenantRead)
+               .HasDatabaseName("ix_client_profiles_allow_cross_tenant_read");
     }
 }

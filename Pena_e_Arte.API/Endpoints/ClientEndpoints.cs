@@ -4,6 +4,7 @@ using Pena_e_Arte.Application.Clients.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Models;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -27,6 +28,9 @@ public static class ClientEndpoints
         group.MapGet("{clientId:guid}/tattoos/{id:guid}",    GetTattooRecord).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{clientId:guid}/tattoos/{id:guid}",  UpdateTattooRecord).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{clientId:guid}/tattoos/{id:guid}", DeleteTattooRecord).RequireAuthorization("ArtistAndAbove");
+
+        group.MapPatch("me/portable-profile", UpdatePortableProfileOptIn).RequireAuthorization("ClientAndAbove");
+        group.MapGet("{userId:guid}/portable-profile",  GetPortableProfile).RequireAuthorization("ArtistAndAbove");
     }
 
     private static async Task<IResult> GetClientById(
@@ -133,5 +137,23 @@ public static class ClientEndpoints
     {
         await mediator.Send(new DeleteTattooRecordCommand(clientId, id), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> UpdatePortableProfileOptIn(
+        UpdatePortableProfileOptInRequest request,
+        ISender                           mediator,
+        CancellationToken                 ct)
+    {
+        await mediator.Send(new UpdatePortableProfileOptInCommand(request), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetPortableProfile(
+        Guid              userId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        PortableClientProfile? result = await mediator.Send(new GetPortableProfileQuery(userId), ct);
+        return result is null ? Results.NotFound() : Results.Ok(result);
     }
 }

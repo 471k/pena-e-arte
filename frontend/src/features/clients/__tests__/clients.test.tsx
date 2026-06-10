@@ -23,6 +23,7 @@ const ANA: ClientResponse = {
   email:     "ana.ferreira@ink-soul.test",
   phone:     "+351 912 111 222",
   createdAt: "2024-01-10T09:00:00.000Z",
+  userId:    null,
 };
 
 const CLIENTS: ClientResponse[] = [
@@ -35,6 +36,7 @@ const CLIENTS: ClientResponse[] = [
     email:     "bruno.santos@ink-soul.test",
     phone:     null,
     createdAt: "2024-02-14T09:00:00.000Z",
+    userId:    null,
   },
   {
     id:        "cccc0003-0000-0000-0000-000000000003",
@@ -44,6 +46,7 @@ const CLIENTS: ClientResponse[] = [
     email:     "carla.nunes@ink-soul.test",
     phone:     "+351 963 333 444",
     createdAt: "2024-03-20T09:00:00.000Z",
+    userId:    null,
   },
 ];
 
