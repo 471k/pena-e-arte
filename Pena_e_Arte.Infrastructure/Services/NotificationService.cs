@@ -17,21 +17,21 @@ public class NotificationService(
     {
         MimeMessage message = new();
         message.From.Add(new MailboxAddress(
-            configuration["Email:FromName"] ?? "Pena e Arte",
-            configuration["Email:FromAddress"]!));
+            configuration["MailKit:FromName"] ?? "Pena e Arte",
+            configuration["MailKit:FromAddress"]!));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
         message.Body    = new TextPart("html") { Text = body };
 
         using SmtpClient smtp = new();
         await smtp.ConnectAsync(
-            configuration["Email:SmtpHost"]!,
-            configuration.GetValue<int>("Email:SmtpPort"),
-            SecureSocketOptions.StartTls, ct);
+            configuration["MailKit:Host"]!,
+            configuration.GetValue<int>("MailKit:Port"),
+            SecureSocketOptions.Auto, ct);
 
-        await smtp.AuthenticateAsync(
-            configuration["Email:Username"]!,
-            configuration["Email:Password"]!, ct);
+        string? username = configuration["MailKit:Username"];
+        if (!string.IsNullOrEmpty(username))
+            await smtp.AuthenticateAsync(username, configuration["MailKit:Password"]!, ct);
 
         await smtp.SendAsync(message, ct);
         await smtp.DisconnectAsync(true, ct);
