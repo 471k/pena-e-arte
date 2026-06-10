@@ -31,6 +31,7 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             studio.Id, studio.Name, studio.Slug, studio.City,
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
+            AllowBrandingRemoval: false,
             studio.TrialExpiresAt, studio.CreatedAt);
     }
 }

@@ -18,6 +18,7 @@ export interface StudioResponse {
   latitude:             number;
   longitude:            number;
   showPlatformBranding: boolean;
+  allowBrandingRemoval: boolean;
   trialExpiresAt:       string;
   createdAt:            string;
 }

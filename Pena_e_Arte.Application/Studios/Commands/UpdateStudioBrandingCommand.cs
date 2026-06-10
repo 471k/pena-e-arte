@@ -30,13 +30,16 @@ public class UpdateStudioBrandingHandler(IAppDbContext db)
                     "Your current plan does not allow removing platform branding.");
         }
 
-        studio.ShowPlatformBranding = command.ShowPlatformBranding;
+        studio.UpdateBranding(command.ShowPlatformBranding);
         await db.SaveChangesAsync(ct);
+
+        bool allowBrandingRemoval = studio.Subscription?.Plan?.AllowBrandingRemoval ?? false;
 
         return new StudioResponse(
             studio.Id, studio.Name, studio.Slug, studio.City,
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
+            allowBrandingRemoval,
             studio.TrialExpiresAt, studio.CreatedAt);
     }
 }

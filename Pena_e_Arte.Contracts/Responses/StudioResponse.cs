@@ -8,5 +8,6 @@ public record StudioResponse(
     double   Latitude,
     double   Longitude,
     bool     ShowPlatformBranding,
+    bool     AllowBrandingRemoval,
     DateTime TrialExpiresAt,
     DateTime CreatedAt);

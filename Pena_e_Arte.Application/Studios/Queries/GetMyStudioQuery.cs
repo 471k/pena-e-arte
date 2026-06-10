@@ -15,13 +15,18 @@ public class GetMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
     public async Task<StudioResponse> Handle(GetMyStudioQuery query, CancellationToken ct)
     {
         Domain.Entities.Studio studio = await db.Studios
+            .Include(s => s.Subscription)
+            .ThenInclude(sub => sub == null ? null : sub.Plan)
             .FirstOrDefaultAsync(s => s.Id == tenant.StudioId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Studio), tenant.StudioId);
+
+        bool allowBrandingRemoval = studio.Subscription?.Plan?.AllowBrandingRemoval ?? false;
 
         return new StudioResponse(
             studio.Id, studio.Name, studio.Slug, studio.City,
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
+            allowBrandingRemoval,
             studio.TrialExpiresAt, studio.CreatedAt);
     }
 }

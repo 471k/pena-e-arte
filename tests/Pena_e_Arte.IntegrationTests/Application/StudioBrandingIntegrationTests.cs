@@ -18,7 +18,7 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
     public async Task UpdateBranding_ShowTrue_PersistsToDatabase()
     {
         (Studio studio, _) = await SeedStudioWithPlan(allowBrandingRemoval: true);
-        studio.ShowPlatformBranding = false;
+        studio.UpdateBranding(false);
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
         seed.Studios.Update(studio);
         await seed.SaveChangesAsync();
@@ -73,11 +73,10 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
         Studio studio = new()
         {
-            Name                 = "No Sub Studio",
-            Slug                 = UniqueSlug(),
-            City                 = "Porto",
-            IsActive             = true,
-            ShowPlatformBranding = true,
+            Name     = "No Sub Studio",
+            Slug     = UniqueSlug(),
+            City     = "Porto",
+            IsActive = true,
         };
         seed.Studios.Add(studio);
         await seed.SaveChangesAsync();
@@ -106,11 +105,10 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
 
         Studio studio = new()
         {
-            Name                 = "Branding Test Studio",
-            Slug                 = UniqueSlug(),
-            City                 = "Lisboa",
-            IsActive             = true,
-            ShowPlatformBranding = true,
+            Name     = "Branding Test Studio",
+            Slug     = UniqueSlug(),
+            City     = "Lisboa",
+            IsActive = true,
         };
         seed.Studios.Add(studio);
 

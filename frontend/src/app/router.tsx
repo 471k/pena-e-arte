@@ -68,6 +68,17 @@ function AppRoot() {
   return <Outlet />;
 }
 
+function AppLayout() {
+  const role = useAppSelector((s) => s.auth.role);
+  switch (role) {
+    case Role.Owner:  return <OwnerLayout />;
+    case Role.Artist: return <ArtistLayout />;
+    case Role.Client: return <ClientLayout />;
+    case Role.Issuer: return <IssuerLayout />;
+    default:          return <Outlet />;
+  }
+}
+
 export const router = createBrowserRouter([
   { path: "/login",           element: <LoginPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
@@ -81,191 +92,189 @@ export const router = createBrowserRouter([
       {
         element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
         children: [
-      { index: true, element: <IndexRedirect /> },
-
-      // Client routes
-      {
-        path: "book",
-        element: <RoleGuard allowedRoles={[Role.Client, Role.Issuer]} />,
-        children: [
+          { index: true, element: <IndexRedirect /> },
           {
-            element: <ClientLayout />,
-            children: [{ index: true, element: <BookPage /> }],
-          },
-        ],
-      },
-
-      // Artist routes
-      {
-        path: "schedule",
-        element: <RoleGuard allowedRoles={[Role.Artist, Role.Issuer]} />,
-        children: [
-          {
-            element: <ArtistLayout />,
-            children: [{ index: true, element: <SchedulePage /> }],
-          },
-        ],
-      },
-
-      // Owner routes
-      {
-        path: "dashboard",
-        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-        children: [
-          {
-            element: <OwnerLayout />,
-            children: [{ index: true, element: <DashboardPage /> }],
-          },
-        ],
-      },
-
-      // Appointment detail
-      {
-        path: "appointments",
-        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-        children: [
-          { path: ":id", element: <AppointmentDetailPage /> },
-        ],
-      },
-
-      // Issuer platform
-      {
-        path: "platform",
-        element: <RoleGuard allowedRoles={[Role.Issuer]} />,
-        children: [
-          {
-            element: <IssuerLayout />,
+            element: <AppLayout />,
             children: [
-              { index: true,          element: <Navigate to="/platform/studios" replace /> },
-              { path: "studios",      element: <IssuerStudioListPage /> },
-              { path: "plans",        element: <PlanManagementPage /> },
+              // ── Client ──────────────────────────────────────────────────────
+              {
+                path: "book",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Issuer]} />,
+                children: [{ index: true, element: <BookPage /> }],
+              },
+
+              // ── Artist ──────────────────────────────────────────────────────
+              {
+                path: "schedule",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Issuer]} />,
+                children: [{ index: true, element: <SchedulePage /> }],
+              },
+
+              // ── Owner ───────────────────────────────────────────────────────
+              {
+                path: "dashboard",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                children: [{ index: true, element: <DashboardPage /> }],
+              },
+
+              // ── Issuer platform ─────────────────────────────────────────────
+              {
+                path: "platform",
+                element: <RoleGuard allowedRoles={[Role.Issuer]} />,
+                children: [
+                  { index: true,     element: <Navigate to="/platform/studios" replace /> },
+                  { path: "studios", element: <IssuerStudioListPage /> },
+                  { path: "plans",   element: <PlanManagementPage /> },
+                ],
+              },
+
+              // ── Shared: appointments ────────────────────────────────────────
+              {
+                path: "appointments",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [
+                  { path: ":id", element: <AppointmentDetailPage /> },
+                ],
+              },
+
+              // ── Shared: artists ─────────────────────────────────────────────
+              {
+                path: "artists",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [
+                  { index: true, element: <ArtistListPage /> },
+                  {
+                    path: "new",
+                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                    children: [{ index: true, element: <CreateArtistPage /> }],
+                  },
+                  { path: ":id", element: <ArtistDetailPage /> },
+                ],
+              },
+
+              // ── Shared: clients ─────────────────────────────────────────────
+              {
+                path: "clients",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [
+                  { index: true,                   element: <ClientListPage /> },
+                  { path: "new",                   element: <CreateClientPage /> },
+                  { path: ":id",                   element: <ClientDetailPage /> },
+                  { path: ":id/tattoos/:tattooId", element: <TattooRecordDetailPage /> },
+                ],
+              },
+
+              // ── Shared: designs ─────────────────────────────────────────────
+              {
+                path: "designs",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [
+                  {
+                    element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                    children: [
+                      { index: true,        element: <DesignListPage /> },
+                      { path: "new",        element: <CreateDesignPage /> },
+                      { path: ":id/upload", element: <UploadRevisionPage /> },
+                    ],
+                  },
+                  { path: ":id", element: <DesignDetailPage /> },
+                ],
+              },
+
+              // ── Shared: deposit rules ───────────────────────────────────────
+              {
+                path: "deposit-rules",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [
+                  { index: true, element: <DepositRuleListPage /> },
+                  {
+                    path: "new",
+                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                    children: [{ index: true, element: <CreateDepositRulePage /> }],
+                  },
+                  { path: ":id", element: <DepositRuleDetailPage /> },
+                ],
+              },
+
+              // ── Shared: forms ────────────────────────────────────────────────
+              {
+                path: "forms",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [
+                  { path: "intake/new", element: <SubmitIntakeFormPage /> },
+                  {
+                    path: "intake",
+                    element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                    children: [
+                      { index: true, element: <IntakeFormListPage /> },
+                      { path: ":id", element: <IntakeFormDetailPage /> },
+                    ],
+                  },
+                  { path: "consent/new", element: <SignConsentFormPage /> },
+                  {
+                    path: "consent",
+                    element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                    children: [
+                      { index: true, element: <ConsentFormListPage /> },
+                      { path: ":id", element: <ConsentFormDetailPage /> },
+                    ],
+                  },
+                ],
+              },
+
+              // ── Shared: notifications ───────────────────────────────────────
+              {
+                path: "notifications",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [
+                  { index: true, element: <NotificationLogListPage /> },
+                ],
+              },
+
+              // ── Owner: billing ──────────────────────────────────────────────
+              {
+                path: "billing",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                children: [
+                  { index: true,       element: <BillingPage /> },
+                  { path: "subscribe", element: <SubscribePage /> },
+                ],
+              },
+
+              // ── Owner: studio profile ───────────────────────────────────────
+              {
+                path: "studios",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                children: [
+                  { path: "me", element: <StudioProfilePage /> },
+                ],
+              },
+
+              // ── Owner: studio connect (Stripe OAuth — no sub-nav needed) ────
+              {
+                path: "studio",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                children: [
+                  { path: "connect",         element: <ConnectStudioPage /> },
+                  { path: "connect/return",  element: <ConnectReturnPage /> },
+                  { path: "connect/refresh", element: <ConnectRefreshPage /> },
+                ],
+              },
+
+              // ── Owner: payments ─────────────────────────────────────────────
+              {
+                path: "payments",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                children: [
+                  { index: true,            element: <PaymentListPage /> },
+                  { path: "new",            element: <CreatePaymentIntentPage /> },
+                  { path: ":appointmentId", element: <PaymentDetailPage /> },
+                ],
+              },
             ],
           },
         ],
       },
-
-      {
-        path: "billing",
-        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-        children: [
-          { index: true,       element: <BillingPage /> },
-          { path: "subscribe", element: <SubscribePage /> },
-        ],
-      },
-      {
-        path: "studios",
-        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-        children: [
-          {
-            element: <OwnerLayout />,
-            children: [
-              { path: "me", element: <StudioProfilePage /> },
-            ],
-          },
-        ],
-      },
-      {
-        path: "studio",
-        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-        children: [
-          { path: "connect",         element: <ConnectStudioPage /> },
-          { path: "connect/return",  element: <ConnectReturnPage /> },
-          { path: "connect/refresh", element: <ConnectRefreshPage /> },
-        ],
-      },
-      {
-        path: "artists",
-        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-        children: [
-          { index: true, element: <ArtistListPage /> },
-          {
-            path: "new",
-            element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-            children: [{ index: true, element: <CreateArtistPage /> }],
-          },
-          { path: ":id", element: <ArtistDetailPage /> },
-        ],
-      },
-      {
-        path: "clients",
-        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-        children: [
-          { index: true,                   element: <ClientListPage /> },
-          { path: "new",                   element: <CreateClientPage /> },
-          { path: ":id",                   element: <ClientDetailPage /> },
-          { path: ":id/tattoos/:tattooId", element: <TattooRecordDetailPage /> },
-        ],
-      },
-      {
-        path: "designs",
-        element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
-        children: [
-          {
-            element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-            children: [
-              { index: true,        element: <DesignListPage /> },
-              { path: "new",        element: <CreateDesignPage /> },
-              { path: ":id/upload", element: <UploadRevisionPage /> },
-            ],
-          },
-          { path: ":id", element: <DesignDetailPage /> },
-        ],
-      },
-      {
-        path: "deposit-rules",
-        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-        children: [
-          { index: true, element: <DepositRuleListPage /> },
-          {
-            path: "new",
-            element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-            children: [{ index: true, element: <CreateDepositRulePage /> }],
-          },
-          { path: ":id", element: <DepositRuleDetailPage /> },
-        ],
-      },
-      {
-        path: "forms",
-        element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
-        children: [
-          { path: "intake/new", element: <SubmitIntakeFormPage /> },
-          {
-            path: "intake",
-            element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-            children: [
-              { index: true, element: <IntakeFormListPage /> },
-              { path: ":id", element: <IntakeFormDetailPage /> },
-            ],
-          },
-          { path: "consent/new", element: <SignConsentFormPage /> },
-          {
-            path: "consent",
-            element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-            children: [
-              { index: true, element: <ConsentFormListPage /> },
-              { path: ":id", element: <ConsentFormDetailPage /> },
-            ],
-          },
-        ],
-      },
-      {
-        path: "notifications",
-        element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-        children: [
-          { index: true, element: <NotificationLogListPage /> },
-        ],
-      },
-      {
-        path: "payments",
-        element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-        children: [
-          { index: true,            element: <PaymentListPage /> },
-          { path: "new",            element: <CreatePaymentIntentPage /> },
-          { path: ":appointmentId", element: <PaymentDetailPage /> },
-        ],
-      },
-      ],
-    },
     ],
   },
   { path: "*", element: <Navigate to="/login" replace /> },

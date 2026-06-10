@@ -48,16 +48,25 @@ export function BrandingSettingsCard() {
           </Badge>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleToggle}
-          disabled={isLoading}
-          className="gap-2"
+        <div
+          title={
+            !studio.allowBrandingRemoval && studio.showPlatformBranding
+              ? "Upgrade your plan to remove platform branding."
+              : undefined
+          }
+          className="w-fit"
         >
-          {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {studio.showPlatformBranding ? "Disable branding" : "Enable branding"}
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggle}
+            disabled={isLoading || (!studio.allowBrandingRemoval && studio.showPlatformBranding)}
+            className="gap-2"
+          >
+            {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {studio.showPlatformBranding ? "Disable branding" : "Enable branding"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

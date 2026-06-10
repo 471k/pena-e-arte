@@ -24,11 +24,10 @@ public class UpdateStudioBrandingHandlerTests
 
         Studio studio = new()
         {
-            Name                 = "Test Studio",
-            Slug                 = "test-studio",
-            City                 = "Lisboa",
-            IsActive             = true,
-            ShowPlatformBranding = true,
+            Name     = "Test Studio",
+            Slug     = "test-studio",
+            City     = "Lisboa",
+            IsActive = true,
         };
         _db.Studios.Add(studio);
 
@@ -49,7 +48,7 @@ public class UpdateStudioBrandingHandlerTests
     public async Task Handle_ShowBranding_UpdatesFlag()
     {
         Studio studio = await SeedStudioWithPlan(allowBrandingRemoval: false);
-        studio.ShowPlatformBranding = false;
+        studio.UpdateBranding(false);
         await _db.SaveChangesAsync();
 
         StudioResponse result = await CreateSut()

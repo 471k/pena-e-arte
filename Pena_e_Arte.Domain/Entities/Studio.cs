@@ -10,7 +10,9 @@ public class Studio
     public double   Latitude        { get; set; }
     public double   Longitude       { get; set; }
     public bool     IsActive              { get; set; }
-    public bool     ShowPlatformBranding  { get; set; } = true;
+    public bool     ShowPlatformBranding  { get; private set; } = true;
+
+    public void UpdateBranding(bool show) => ShowPlatformBranding = show;
     public DateTime TrialExpiresAt        { get; set; }
     public string?  StripeAccountId  { get; set; }
     public string?  StripeCustomerId { get; set; }
