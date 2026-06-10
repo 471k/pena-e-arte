@@ -10,6 +10,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
+using Pena_e_Arte.Infrastructure.Services.MailKit;
 using StackExchange.Redis;
 using Twilio;
 
@@ -101,6 +102,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IStripeBillingService,      StripeBillingService>();
         services.AddScoped<INotificationService,       NotificationService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
+        services.AddSingleton<IEmailRenderer,          EmailRenderer>();
 
         return services;
     }

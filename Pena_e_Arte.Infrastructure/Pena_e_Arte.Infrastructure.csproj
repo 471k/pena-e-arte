@@ -26,6 +26,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Services\MailKit\Templates\*.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

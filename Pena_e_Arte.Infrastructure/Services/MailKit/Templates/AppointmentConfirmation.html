@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto">
+  <h2 style="color:#1a1a1a">Your appointment is confirmed!</h2>
+  <p>Hi {{client_first_name}},</p>
+  <p>Your tattoo appointment has been confirmed:</p>
+  <p style="font-size:1.1em;font-weight:bold">{{appointment_date}}</p>
+  <p>Duration: {{duration_minutes}} minutes</p>
+  {{#if show_notes}}<p>Notes: {{notes}}</p>{{/if}}
+  <p>We look forward to seeing you!</p>
+  <hr/>
+  <p style="font-size:0.85em;color:#666">Pena e Arte &mdash; Your Tattoo Studio</p>
+  {{#if show_branding}}<table width="100%"><tr><td style="text-align:center;padding:16px 0;font-size:12px;color:#999;">Booked via <a href="https://penaearte.com" style="color:#999;">Pena e Art&#235;</a></td></tr></table>{{/if}}
+</body>
+</html>

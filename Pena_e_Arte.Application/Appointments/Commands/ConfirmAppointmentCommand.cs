@@ -13,7 +13,8 @@ public record ConfirmAppointmentCommand(Guid AppointmentId) : IRequest<Appointme
 public class ConfirmAppointmentHandler(
     IAppDbContext     db,
     ICurrentTenant    tenant,
-    IRealtimeNotifier realtime)
+    IRealtimeNotifier realtime,
+    ISender           sender)
     : IRequestHandler<ConfirmAppointmentCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(ConfirmAppointmentCommand command, CancellationToken ct)
@@ -34,6 +35,8 @@ public class ConfirmAppointmentHandler(
         AppointmentResponse response = CreateAppointmentHandler.Map(appointment);
         await realtime.NotifyStudioAsync(
             tenant.StudioId, "AppointmentConfirmed", response, ct);
+
+        await sender.Send(new SendAppointmentConfirmationCommand(appointment.Id), ct);
 
         return response;
     }
