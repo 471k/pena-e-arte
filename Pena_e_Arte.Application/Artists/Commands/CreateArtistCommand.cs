@@ -6,6 +6,7 @@ using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Utilities;
 
 namespace Pena_e_Arte.Application.Artists.Commands;
 
@@ -22,6 +23,16 @@ public class CreateArtistHandler(IAppDbContext db, ICurrentTenant tenant)
         if (exists)
             throw new BusinessRuleViolationException($"An artist with email '{req.Email}' already exists in this studio.");
 
+        string baseSlug = SlugHelper.GenerateSlug($"{req.FirstName} {req.LastName}");
+        string slug = baseSlug;
+        int counter = 2;
+        // IgnoreQueryFilters: slug must be globally unique for public portfolio URLs
+        while (await db.Artists.IgnoreQueryFilters().AnyAsync(a => a.Slug == slug && a.DeletedAt == null, ct))
+        {
+            slug = $"{baseSlug}-{counter}";
+            counter++;
+        }
+
         Artist artist = new()
         {
             StudioId        = tenant.StudioId,
@@ -30,6 +41,7 @@ public class CreateArtistHandler(IAppDbContext db, ICurrentTenant tenant)
             Email           = req.Email,
             Specializations = req.Specializations
         };
+        artist.SetSlug(slug);
 
         db.Artists.Add(artist);
         await db.SaveChangesAsync(ct);

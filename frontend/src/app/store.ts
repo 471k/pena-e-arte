@@ -15,6 +15,7 @@ import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { publicApi } from "@/features/public";
 
 export const store = configureStore({
   reducer: {
@@ -34,6 +35,7 @@ export const store = configureStore({
     [depositRulesApi.reducerPath]:   depositRulesApi.reducer,
     [notificationsApi.reducerPath]:  notificationsApi.reducer,
     [paymentsApi.reducerPath]:       paymentsApi.reducer,
+    [publicApi.reducerPath]:         publicApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault().concat(
@@ -50,6 +52,7 @@ export const store = configureStore({
       depositRulesApi.middleware,
       notificationsApi.middleware,
       paymentsApi.middleware,
+      publicApi.middleware,
     ),
 });
 

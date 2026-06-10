@@ -7,10 +7,13 @@ public class Studio
     public string   Slug            { get; set; }  = string.Empty;
     public string   City            { get; set; }  = string.Empty;
     public string   OwnerEmail      { get; set; }  = string.Empty;
+    public string?  Description     { get; set; }
+    public string?  CoverImageUrl   { get; set; }
     public double   Latitude        { get; set; }
     public double   Longitude       { get; set; }
     public bool     IsActive              { get; set; }
     public bool     ShowPlatformBranding  { get; private set; } = true;
+    public DateTime? SlugLockedAt   { get; set; }
 
     public void UpdateBranding(bool show) => ShowPlatformBranding = show;
     public DateTime TrialExpiresAt        { get; set; }

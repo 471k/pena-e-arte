@@ -21,6 +21,7 @@ import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } fro
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage } from "@/features/payments";
 import { IssuerStudioListPage, PlanManagementPage } from "@/features/platform";
+import { StudioPortfolioPage, ArtistPortfolioPage } from "@/features/public";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
@@ -85,6 +86,8 @@ export const router = createBrowserRouter([
   { path: "/reset-password",  element: <ResetPasswordPage /> },
   { path: "/register",        element: <RegisterStudioPage /> },
   { path: "/map",             element: <StudioMapPage /> },
+  { path: "/s/:slug",         element: <StudioPortfolioPage /> },
+  { path: "/artist/:slug",    element: <ArtistPortfolioPage /> },
   {
     path: "/",
     element: <AppRoot />,

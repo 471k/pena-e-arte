@@ -15,6 +15,8 @@ public class StudioConfiguration : IEntityTypeConfiguration<Studio>
         builder.Property(s => s.Slug).HasMaxLength(100).IsRequired();
         builder.Property(s => s.City).HasMaxLength(100).IsRequired();
         builder.Property(s => s.OwnerEmail).HasMaxLength(256).IsRequired();
+        builder.Property(s => s.Description).HasMaxLength(1000);
+        builder.Property(s => s.CoverImageUrl).HasMaxLength(500);
         builder.Property(s => s.StripeAccountId).HasMaxLength(255);
         builder.Property(s => s.StripeCustomerId).HasMaxLength(255);
 

@@ -3,6 +3,7 @@ using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Application.Studios.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Unit = MediatR.Unit;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -20,8 +21,9 @@ public static class StudioEndpoints
         group.MapGet("/me",  GetMyStudio).RequireAuthorization("OwnerOnly");
         group.MapPut("/me",  UpdateMyStudio).RequireAuthorization("OwnerOnly");
 
-        // Owner: manage branding for their studio
+        // Owner: manage branding and slug for their studio
         group.MapPatch("{id:guid}/branding",   UpdateBranding).RequireAuthorization("OwnerOnly");
+        group.MapPatch("{id:guid}/slug",       UpdateSlug).RequireAuthorization("OwnerOnly");
 
         // Issuer: list all studios + suspension controls
         group.MapGet("/",                      GetStudios).RequireAuthorization("IssuerOnly");
@@ -70,6 +72,16 @@ public static class StudioEndpoints
     {
         StudioResponse result = await mediator.Send(new UpdateMyStudioCommand(request), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateSlug(
+        Guid                      id,
+        UpdateStudioSlugRequest   request,
+        ISender                   mediator,
+        CancellationToken         ct)
+    {
+        await mediator.Send(new UpdateStudioSlugCommand(id, request.NewSlug), ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> UpdateBranding(

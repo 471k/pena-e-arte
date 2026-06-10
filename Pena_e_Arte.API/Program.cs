@@ -63,6 +63,7 @@ try
     app.MapHealthChecks("/health");
     app.MapPrometheusScrapingEndpoint();
 
+    app.MapPublicEndpoints();
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();
     app.MapDepositRuleEndpoints();
