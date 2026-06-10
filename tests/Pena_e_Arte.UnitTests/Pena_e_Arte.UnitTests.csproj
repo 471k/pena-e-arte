@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\Pena_e_Arte.Application\Pena_e_Arte.Application.csproj" />
     <ProjectReference Include="..\..\Pena_e_Arte.Domain\Pena_e_Arte.Domain.csproj" />
     <ProjectReference Include="..\..\Pena_e_Arte.Contracts\Pena_e_Arte.Contracts.csproj" />
+    <ProjectReference Include="..\..\Pena_e_Arte.Infrastructure\Pena_e_Arte.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

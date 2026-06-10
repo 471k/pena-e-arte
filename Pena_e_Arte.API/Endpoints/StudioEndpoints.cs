@@ -3,6 +3,7 @@ using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Application.Studios.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Microsoft.AspNetCore.Mvc;
 using Unit = MediatR.Unit;
 
 namespace Pena_e_Arte.API.Endpoints;
@@ -14,6 +15,7 @@ public static class StudioEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/studios");
 
         group.MapGet("/map",     GetStudioMap).AllowAnonymous();
+        group.MapGet("{id:guid}/qr", GetQrCode).AllowAnonymous();
         group.MapPost("/",       RegisterStudio).AllowAnonymous();
         group.MapPost("/connect", ConnectStudio).RequireAuthorization("OwnerOnly");
 
@@ -119,5 +121,16 @@ public static class StudioEndpoints
     {
         await mediator.Send(new UnsuspendStudioCommand(id), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetQrCode(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct,
+        [FromQuery] string? format = "png")
+    {
+        string fmt = format?.ToLowerInvariant() ?? "png";
+        QrCodeResponse result = await mediator.Send(new GetStudioQrCodeQuery(id, fmt), ct);
+        return Results.File(result.Data, result.ContentType, $"{result.Slug}-qr.{fmt}");
     }
 }

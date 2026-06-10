@@ -9,6 +9,7 @@ import { Label } from "@/shared/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation } from "../studiosApi";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
+import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 
 const schema = z.object({
@@ -130,6 +131,7 @@ export function StudioProfilePage() {
         </Card>
 
         <BrandingSettingsCard />
+        <QrCodeSection />
         <ReferralCodeCard />
       </main>
     </div>

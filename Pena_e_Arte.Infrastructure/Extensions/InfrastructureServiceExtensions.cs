@@ -103,6 +103,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IStripeBillingService,      StripeBillingService>();
         services.AddScoped<IStripeDiscountService,     StripeDiscountService>();
         services.AddScoped<IPortableProfileService,    PortableProfileService>();
+        services.AddScoped<IQrCodeService,             QrCodeService>();
         services.AddScoped<INotificationService,       NotificationService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
         services.AddSingleton<IEmailRenderer,          EmailRenderer>();

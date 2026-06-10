@@ -109,6 +109,14 @@ export const studiosApi = createApi({
       query: (id) => ({ url: `studios/${id}/unsuspend`, method: "PATCH" }),
       invalidatesTags: ["Studio"],
     }),
+    getStudioQrCode: builder.query<string, string>({
+      query: (id) => ({
+        url:             `studios/${id}/qr`,
+        params:          { format: "png" },
+        responseHandler: async (response) => URL.createObjectURL(await response.blob()),
+      }),
+      keepUnusedDataFor: 60,
+    }),
     generateReferralCode: builder.mutation<ReferralCodeResponse, string>({
       query: (id) => ({ url: `studios/${id}/referral-codes`, method: "POST" }),
       invalidatesTags: ["Referral"],
@@ -134,6 +142,7 @@ export const {
   useGetStudiosQuery,
   useSuspendStudioMutation,
   useUnsuspendStudioMutation,
+  useGetStudioQrCodeQuery,
   useGenerateReferralCodeMutation,
   useGetReferralCodeQuery,
   useGetReferralStatsQuery,
