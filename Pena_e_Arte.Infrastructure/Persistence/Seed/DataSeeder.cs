@@ -114,15 +114,18 @@ public static class DataSeeder
         UserManager<IdentityUser> userManager =
             scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
 
-        // Guard: skip if the first seeded entity (StarterPlan) already exists
+        // Always run: ensure seed credentials + artist slugs are correct
+        await EnsureSeedUsersAsync(userManager);
+        await EnsureArtistSlugsAsync(db);
+
+        // Guard: run entity seeding only once (when plans don't yet exist)
         if (await db.Plans.AnyAsync(p => p.Id == StarterPlanId))
             return;
 
         await SeedPlansAsync(db);
         await SeedStudiosAndSubscriptionsAsync(db);
-        await SeedIssuerAsync(userManager);
-        await SeedStudio1Async(db, userManager);
-        await SeedStudio2Async(db, userManager);
+        await SeedStudio1EntitiesAsync(db);
+        await SeedStudio2EntitiesAsync(db);
     }
 
     // ─── Plans ────────────────────────────────────────────────────────────────
@@ -224,45 +227,65 @@ public static class DataSeeder
         await db.SaveChangesAsync();
     }
 
-    // ─── Issuer ───────────────────────────────────────────────────────────────
+    // ─── Always-run: sync seed users + artist slugs ──────────────────────────
 
-    private static async Task SeedIssuerAsync(UserManager<IdentityUser> userManager)
+    private static async Task EnsureSeedUsersAsync(UserManager<IdentityUser> userManager)
     {
-        // issuer tenant_id is arbitrary — middleware skips enforcement for issuer role
         await EnsureUserAsync(userManager, IssuerUserId,
-            "issuer@pena-arte.test", "issuer", Studio1Id);
-    }
-
-    // ─── Studio 1: Ink & Soul Studio ──────────────────────────────────────────
-
-    private static async Task SeedStudio1Async(
-        AppDbContext              db,
-        UserManager<IdentityUser> userManager)
-    {
-        await SeedStudio1UsersAsync(userManager);
-        await SeedStudio1EntitiesAsync(db);
-    }
-
-    private static async Task SeedStudio1UsersAsync(UserManager<IdentityUser> userManager)
-    {
+            "issuer@pena-arte.test",              "issuer", Studio1Id);
         await EnsureUserAsync(userManager, S1OwnerUserId,
-            "owner@ink-soul.test",           "owner",  Studio1Id);
+            "owner@ink-soul.test",                "owner",  Studio1Id);
         await EnsureUserAsync(userManager, S1Artist1UserId,
-            "elena.martins@ink-soul.test",   "artist", Studio1Id);
+            "elena.martins@ink-soul.test",        "artist", Studio1Id);
         await EnsureUserAsync(userManager, S1Artist2UserId,
-            "marco.santos@ink-soul.test",    "artist", Studio1Id);
+            "marco.santos@ink-soul.test",         "artist", Studio1Id);
         await EnsureUserAsync(userManager, S1Artist3UserId,
-            "sofia.alves@ink-soul.test",     "artist", Studio1Id);
+            "sofia.alves@ink-soul.test",          "artist", Studio1Id);
         await EnsureUserAsync(userManager, S1Client1UserId,
-            "ana.costa@client.test",         "client", Studio1Id);
+            "ana.costa@client.test",              "client", Studio1Id);
         await EnsureUserAsync(userManager, S1Client2UserId,
-            "pedro.oliveira@client.test",    "client", Studio1Id);
+            "pedro.oliveira@client.test",         "client", Studio1Id);
         await EnsureUserAsync(userManager, S1Client3UserId,
-            "julia.ferreira@client.test",    "client", Studio1Id);
+            "julia.ferreira@client.test",         "client", Studio1Id);
         await EnsureUserAsync(userManager, S1Client4UserId,
-            "rafael.mendes@client.test",     "client", Studio1Id);
+            "rafael.mendes@client.test",          "client", Studio1Id);
         await EnsureUserAsync(userManager, S1Client5UserId,
-            "mia.carvalho@client.test",      "client", Studio1Id);
+            "mia.carvalho@client.test",           "client", Studio1Id);
+        await EnsureUserAsync(userManager, S2OwnerUserId,
+            "owner@dark-canvas.test",             "owner",  Studio2Id);
+        await EnsureUserAsync(userManager, S2Artist1UserId,
+            "luis.rodrigues@dark-canvas.test",    "artist", Studio2Id);
+        await EnsureUserAsync(userManager, S2Client1UserId,
+            "sara.lima@dark-canvas.test",         "client", Studio2Id);
+        await EnsureUserAsync(userManager, S2Client2UserId,
+            "tomas.gomes@dark-canvas.test",       "client", Studio2Id);
+    }
+
+    private static async Task EnsureArtistSlugsAsync(AppDbContext db)
+    {
+        Dictionary<Guid, string> assignments = new()
+        {
+            [S1Artist1Id] = "elena-martins",
+            [S1Artist2Id] = "marco-santos",
+            [S1Artist3Id] = "sofia-alves",
+            [S2Artist1Id] = "luis-rodrigues",
+        };
+
+        bool changed = false;
+        foreach ((Guid id, string slug) in assignments)
+        {
+            // Approved: public portfolio query — see architecture.md AllowAnonymous Exceptions
+            Artist? artist = await db.Artists
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(a => a.Id == id && a.Slug == null);
+            if (artist is not null)
+            {
+                artist.SetSlug(slug);
+                changed = true;
+            }
+        }
+
+        if (changed) await db.SaveChangesAsync();
     }
 
     private static async Task SeedStudio1EntitiesAsync(AppDbContext db)
@@ -283,6 +306,7 @@ public static class DataSeeder
             Specializations = "Traditional,Japanese,Neo-Traditional",
             UpdatedAt       = now
         };
+        s1a1.SetSlug("elena-martins");
         Artist s1a2 = new()
         {
             Id              = S1Artist2Id,
@@ -294,6 +318,7 @@ public static class DataSeeder
             Specializations = "Realism,Portraits,Black & Grey",
             UpdatedAt       = now
         };
+        s1a2.SetSlug("marco-santos");
         Artist s1a3 = new()
         {
             Id              = S1Artist3Id,
@@ -305,6 +330,7 @@ public static class DataSeeder
             Specializations = "Geometric,Minimalist,Fine Line",
             UpdatedAt       = now
         };
+        s1a3.SetSlug("sofia-alves");
 
         db.Artists.AddRange(s1a1, s1a2, s1a3);
 
@@ -1299,26 +1325,6 @@ public static class DataSeeder
 
     // ─── Studio 2: Dark Canvas Tattoo ─────────────────────────────────────────
 
-    private static async Task SeedStudio2Async(
-        AppDbContext              db,
-        UserManager<IdentityUser> userManager)
-    {
-        await SeedStudio2UsersAsync(userManager);
-        await SeedStudio2EntitiesAsync(db);
-    }
-
-    private static async Task SeedStudio2UsersAsync(UserManager<IdentityUser> userManager)
-    {
-        await EnsureUserAsync(userManager, S2OwnerUserId,
-            "owner@dark-canvas.test",       "owner",  Studio2Id);
-        await EnsureUserAsync(userManager, S2Artist1UserId,
-            "luis.rodrigues@dark-canvas.test", "artist", Studio2Id);
-        await EnsureUserAsync(userManager, S2Client1UserId,
-            "sara.lima@dark-canvas.test",   "client", Studio2Id);
-        await EnsureUserAsync(userManager, S2Client2UserId,
-            "tomas.gomes@dark-canvas.test", "client", Studio2Id);
-    }
-
     private static async Task SeedStudio2EntitiesAsync(AppDbContext db)
     {
         DateTime now   = DateTime.UtcNow;
@@ -1326,7 +1332,7 @@ public static class DataSeeder
 
         // ── Artist ────────────────────────────────────────────────────────────
 
-        db.Artists.Add(new Artist
+        Artist s2a1 = new()
         {
             Id              = S2Artist1Id,
             StudioId        = Studio2Id,
@@ -1336,7 +1342,9 @@ public static class DataSeeder
             Email           = "luis.rodrigues@dark-canvas.test",
             Specializations = "Black & Grey,Lettering,Blackwork",
             UpdatedAt       = now
-        });
+        };
+        s2a1.SetSlug("luis-rodrigues");
+        db.Artists.Add(s2a1);
 
         // ── Clients ───────────────────────────────────────────────────────────
 
@@ -1674,17 +1682,24 @@ public static class DataSeeder
         string                    role,
         Guid                      studioId)
     {
-        if (await userManager.FindByIdAsync(userId) is not null)
-            return;
+        IdentityUser? existing = await userManager.FindByIdAsync(userId);
 
-        IdentityUser user = new() { Id = userId, UserName = email, Email = email };
-        IdentityResult result = await userManager.CreateAsync(user, Password);
+        if (existing is null)
+        {
+            IdentityUser user = new() { Id = userId, UserName = email, Email = email };
+            IdentityResult result = await userManager.CreateAsync(user, Password);
 
-        if (!result.Succeeded)
-            throw new InvalidOperationException(
-                $"Seed user '{email}' failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    $"Seed user '{email}' failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
 
-        await userManager.AddToRoleAsync(user, role);
-        await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+            await userManager.AddToRoleAsync(user, role);
+            await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+        }
+        else if (!await userManager.CheckPasswordAsync(existing, Password))
+        {
+            await userManager.RemovePasswordAsync(existing);
+            await userManager.AddPasswordAsync(existing, Password);
+        }
     }
 }

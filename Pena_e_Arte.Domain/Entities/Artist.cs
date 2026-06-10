@@ -7,7 +7,7 @@ public class Artist : TenantEntity
     public string       LastName        { get; set; } = string.Empty;
     public string       Email           { get; set; } = string.Empty;
     public string?      Specializations { get; set; }
-    public string       Slug            { get; private set; } = string.Empty;
+    public string?      Slug            { get; private set; }
     public string?      Bio             { get; set; }
     public List<string> PortfolioImages { get; set; } = [];
 

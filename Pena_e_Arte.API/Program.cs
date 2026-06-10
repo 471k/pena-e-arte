@@ -9,6 +9,8 @@ using Pena_e_Arte.API.Middleware;
 using Pena_e_Arte.Application.Common.Behaviors;
 using Pena_e_Arte.Infrastructure.Extensions;
 using Pena_e_Arte.Infrastructure.Hubs;
+using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Persistence.Seed;
 using Serilog;
 
@@ -44,6 +46,12 @@ try
     builder.Services.AddHealthChecks();
 
     WebApplication app = builder.Build();
+
+    using (IServiceScope migrationScope = app.Services.CreateScope())
+    {
+        AppDbContext migDb = migrationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await migDb.Database.MigrateAsync();
+    }
 
     await SeedRolesAsync(app);
     await DataSeeder.SeedAsync(app.Services);
