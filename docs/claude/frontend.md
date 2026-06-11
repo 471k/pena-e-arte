@@ -43,7 +43,7 @@ src/frontend/src/
 ## Redux Store Structure
 
 ```typescript
-// app/store.ts — actual slices as of 2026-06-10
+// app/store.ts — actual slices as of 2026-06-11
 export const store = configureStore({
   reducer: {
     auth:          authReducer,
@@ -60,6 +60,7 @@ export const store = configureStore({
     [intakeFormsApi.reducerPath]:   intakeFormsApi.reducer,
     [consentFormsApi.reducerPath]:  consentFormsApi.reducer,
     [depositRulesApi.reducerPath]:  depositRulesApi.reducer,
+    [platformApi.reducerPath]:      platformApi.reducer,   // issuer platform admin
   },
   middleware: (getDefault) =>
     getDefault()
@@ -72,7 +73,8 @@ export const store = configureStore({
       .concat(filesApi.middleware)
       .concat(intakeFormsApi.middleware)
       .concat(consentFormsApi.middleware)
-      .concat(depositRulesApi.middleware),
+      .concat(depositRulesApi.middleware)
+      .concat(platformApi.middleware),
 });
 
 export type RootState   = ReturnType<typeof store.getState>;
@@ -165,11 +167,28 @@ const router = createBrowserRouter([
       { path: "book",      element: <ClientLayout />,  ... },
       { path: "schedule",  element: <ArtistLayout />,  ... },
       { path: "dashboard", element: <OwnerLayout />,   ... },
-      { path: "platform",  element: <IssuerLayout />,  ... },
+      {
+        path: "platform",
+        element: <RoleGuard allowedRoles={["issuer"]} />,
+        children: [
+          { index: true,           element: <IssuerDashboardPage /> },
+          { path: "studios",       element: <IssuerStudioListPage /> },
+          { path: "plans",         element: <PlanManagementPage /> },
+          { path: "subscriptions", element: <SubscriptionOversightPage /> },
+          { path: "referrals",     element: <PlatformReferralPage /> },
+          { path: "reports",       element: <IndustryReportsPage /> },
+        ],
+      },
     ],
   },
   { path: "/login", element: <LoginPage /> },
 ]);
+
+// After login, redirect by role:
+// client  → /book
+// artist  → /schedule
+// owner   → /dashboard
+// issuer  → /platform   ← NOT /dashboard
 
 // shared/hooks/usePermission.ts — use this for conditional UI rendering
 export function usePermission(requiredRole: Role): boolean {
@@ -177,6 +196,29 @@ export function usePermission(requiredRole: Role): boolean {
   return hasPermission(role, requiredRole); // rank-based check
 }
 ```
+
+## Issuer Feature Slice
+
+All issuer platform-admin data lives in `features/platform/`.
+
+```
+features/platform/
+├── platform.types.ts          PlatformStatsResponse, PlatformSubscriptionResponse,
+│                              PlatformReferralCodeResponse, IndustryReportSummaryResponse
+├── platformApi.ts             RTK Query slice (reducerPath: "platformApi")
+├── index.ts                   public exports
+└── components/
+    ├── IssuerDashboardPage.tsx    home screen (KPI cards, at-risk widget, quick nav)
+    ├── IssuerStudioListPage.tsx   all studios + suspend/unsuspend
+    ├── PlanManagementPage.tsx     plan CRUD (incl. AllowBrandingRemoval toggle)
+    ├── SubscriptionOversightPage.tsx  all subscriptions + trial extension
+    ├── PlatformReferralPage.tsx   all referral codes + deactivate
+    └── IndustryReportsPage.tsx    monthly report links
+```
+
+`platformApi` tag types: `PlatformStats`, `PlatformSubscription`, `PlatformReferral`, `IndustryReport`.
+
+Do NOT add issuer platform queries to `billingApi` or `studiosApi` — keep them in `platformApi`.
 
 ---
 
