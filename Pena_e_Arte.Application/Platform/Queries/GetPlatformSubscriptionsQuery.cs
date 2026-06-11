@@ -13,6 +13,7 @@ public class GetPlatformSubscriptionsHandler(IAppDbContext db)
     public async Task<List<PlatformSubscriptionResponse>> Handle(
         GetPlatformSubscriptionsQuery query, CancellationToken ct)
     {
+        // IgnoreQueryFilters approved: usage #5 — all subscriptions cross-tenant, IssuerOnly. See architecture.md.
         List<Domain.Entities.Studio> studios = await db.Studios
             .IgnoreQueryFilters()
             .Include(s => s.Subscription)

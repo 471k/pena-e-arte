@@ -13,6 +13,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
 {
     public async Task<PlatformStatsResponse> Handle(GetPlatformStatsQuery query, CancellationToken ct)
     {
+        // IgnoreQueryFilters approved: usage #4 — platform KPI aggregate, IssuerOnly. See architecture.md.
         int totalStudios = await db.Studios
             .IgnoreQueryFilters()
             .CountAsync(ct);

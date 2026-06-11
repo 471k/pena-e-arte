@@ -13,6 +13,7 @@ public class GetPlatformReferralCodesHandler(IAppDbContext db)
     public async Task<List<PlatformReferralCodeResponse>> Handle(
         GetPlatformReferralCodesQuery query, CancellationToken ct)
     {
+        // IgnoreQueryFilters approved: usage #6 — all referral codes cross-tenant, IssuerOnly. See architecture.md.
         List<Domain.Entities.ReferralCode> codes = await db.ReferralCodes
             .IgnoreQueryFilters()
             .Include(r => r.Studio)
