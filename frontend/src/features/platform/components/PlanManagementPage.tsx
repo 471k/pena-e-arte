@@ -19,9 +19,9 @@ import type { PlanResponse } from "@/features/billing/billing.types";
 const schema = z.object({
   name:                 z.string().min(1, "Name is required").max(100),
   billingInterval:      z.enum(["Monthly", "Yearly"]),
-  priceMonthly:         z.number({ invalid_type_error: "Required" }).positive(),
-  priceYearly:          z.number({ invalid_type_error: "Required" }).positive(),
-  yearlyDiscountPercent: z.number({ invalid_type_error: "Required" }).min(0).max(100),
+  priceMonthly:         z.number({ message: "Required" }).positive(),
+  priceYearly:          z.number({ message: "Required" }).positive(),
+  yearlyDiscountPercent: z.number({ message: "Required" }).min(0).max(100),
 });
 
 type FormValues = z.infer<typeof schema>;

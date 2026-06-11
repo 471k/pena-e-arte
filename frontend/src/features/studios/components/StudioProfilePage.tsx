@@ -15,8 +15,8 @@ import { ReferralCodeCard } from "./ReferralCodeCard";
 const schema = z.object({
   name:      z.string().min(1, "Name is required").max(200),
   city:      z.string().min(1, "City is required").max(200),
-  latitude:  z.number({ invalid_type_error: "Must be a number" }).min(-90).max(90),
-  longitude: z.number({ invalid_type_error: "Must be a number" }).min(-180).max(180),
+  latitude:  z.number({ message: "Must be a number" }).min(-90).max(90),
+  longitude: z.number({ message: "Must be a number" }).min(-180).max(180),
 });
 
 type FormValues = z.infer<typeof schema>;
