@@ -13,17 +13,20 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ClientProfile>   ClientProfiles   => Set<ClientProfile>();
     public DbSet<TattooRecord>    TattooRecords    => Set<TattooRecord>();
     public DbSet<Artist>          Artists          => Set<Artist>();
-    public DbSet<Design>          Designs          => Set<Design>();
-    public DbSet<DesignRevision>  DesignRevisions  => Set<DesignRevision>();
-    public DbSet<DesignApproval>  DesignApprovals  => Set<DesignApproval>();
+    public DbSet<Design>           Designs           => Set<Design>();
+    public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
+    public DbSet<DesignApproval>   DesignApprovals   => Set<DesignApproval>();
+    public DbSet<DesignShareToken> DesignShareTokens => Set<DesignShareToken>();
     public DbSet<Payment>         Payments         => Set<Payment>();
     public DbSet<SessionSplit>    SessionSplits    => Set<SessionSplit>();
     public DbSet<IntakeForm>      IntakeForms      => Set<IntakeForm>();
     public DbSet<ConsentForm>     ConsentForms     => Set<ConsentForm>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
-    public DbSet<Studio>          Studios          => Set<Studio>();
-    public DbSet<Plan>            Plans            => Set<Plan>();
-    public DbSet<Subscription>    Subscriptions    => Set<Subscription>();
+    public DbSet<Studio>             Studios             => Set<Studio>();
+    public DbSet<Plan>               Plans               => Set<Plan>();
+    public DbSet<Subscription>       Subscriptions       => Set<Subscription>();
+    public DbSet<ReferralCode>       ReferralCodes       => Set<ReferralCode>();
+    public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,6 +40,11 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .WithOne(a => a.DesignRevision)
             .HasForeignKey<DesignApproval>(a => a.DesignRevisionId);
 
+        modelBuilder.Entity<DesignShareToken>()
+            .HasOne(t => t.DesignRevision)
+            .WithMany()
+            .HasForeignKey(t => t.DesignRevisionId);
+
         modelBuilder.Entity<ClientProfile>()
             .HasOne(cp => cp.Client)
             .WithOne(c => c.Profile)
@@ -44,6 +52,16 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
 
         modelBuilder.Entity<ClientProfile>()
             .OwnsOne(cp => cp.BodyMap);
+
+        modelBuilder.Entity<ReferralCode>()
+            .HasOne(r => r.Studio)
+            .WithMany()
+            .HasForeignKey(r => r.StudioId);
+
+        modelBuilder.Entity<ReferralCode>()
+            .HasMany(r => r.Redemptions)
+            .WithOne()
+            .HasForeignKey(rr => rr.ReferralCodeId);
     }
 
     public static FakeDbContext Create() =>

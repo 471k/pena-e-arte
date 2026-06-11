@@ -23,7 +23,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
         // Approved: public portfolio query — see architecture.md AllowAnonymous Exceptions
         List<Artist> artists = await db.Artists
             .IgnoreQueryFilters()
-            .Where(a => a.StudioId == studio.Id && a.DeletedAt == null && a.Slug != string.Empty)
+            .Where(a => a.StudioId == studio.Id && a.DeletedAt == null && a.Slug != null)
             .ToListAsync(ct);
 
         return new PublicStudioResponse(
@@ -34,7 +34,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
             studio.Description,
             studio.CoverImageUrl,
             artists.Select(a => new PublicArtistSummary(
-                a.Id, $"{a.FirstName} {a.LastName}", a.Slug, a.Bio)).ToList(),
+                a.Id, $"{a.FirstName} {a.LastName}", a.Slug!, a.Bio)).ToList(),
             ShowBookingCta: true);
     }
 }

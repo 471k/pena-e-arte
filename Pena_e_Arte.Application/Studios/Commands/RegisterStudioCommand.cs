@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -12,7 +13,10 @@ namespace Pena_e_Arte.Application.Studios.Commands;
 
 public record RegisterStudioCommand(RegisterStudioRequest Request) : IRequest<StudioResponse>;
 
-public class RegisterStudioHandler(IAppDbContext db, IJobScheduler jobs)
+public class RegisterStudioHandler(
+    IAppDbContext                db,
+    IJobScheduler                jobs,
+    ILogger<RegisterStudioHandler> logger)
     : IRequestHandler<RegisterStudioCommand, StudioResponse>
 {
     public async Task<StudioResponse> Handle(RegisterStudioCommand command, CancellationToken ct)
@@ -22,20 +26,39 @@ public class RegisterStudioHandler(IAppDbContext db, IJobScheduler jobs)
         bool slugTaken = await db.Studios.AnyAsync(s => s.Slug == req.Slug, ct);
         if (slugTaken) throw new BusinessRuleViolationException("Studio slug is already taken.");
 
+        // Validate referral code if provided
+        Guid? pendingReferralCodeId = null;
+        if (!string.IsNullOrWhiteSpace(req.ReferralCode))
+        {
+            ReferralCode? referralCode = await db.ReferralCodes
+                .FirstOrDefaultAsync(r => r.Code == req.ReferralCode && r.IsActive, ct);
+
+            if (referralCode is null)
+                throw new BusinessRuleViolationException("Referral code is invalid or no longer active.");
+
+            if (referralCode.ExpiresAt.HasValue && referralCode.ExpiresAt < DateTime.UtcNow)
+                throw new BusinessRuleViolationException("Referral code has expired.");
+
+            pendingReferralCodeId = referralCode.Id;
+            logger.LogInformation("Applying referral code {@ReferralCodeId} to new studio registration",
+                referralCode.Id);
+        }
+
         DateTime now      = DateTime.UtcNow;
         DateTime trialEnd = now.AddDays(14);
         DateTime graceEnd = trialEnd.AddDays(7);
 
         Studio studio = new()
         {
-            Name           = req.Name,
-            Slug           = req.Slug,
-            City           = req.City,
-            OwnerEmail     = req.OwnerEmail,
-            Latitude       = req.Latitude,
-            Longitude      = req.Longitude,
-            IsActive       = true,
-            TrialExpiresAt = trialEnd
+            Name                  = req.Name,
+            Slug                  = req.Slug,
+            City                  = req.City,
+            OwnerEmail            = req.OwnerEmail,
+            Latitude              = req.Latitude,
+            Longitude             = req.Longitude,
+            IsActive              = true,
+            TrialExpiresAt        = trialEnd,
+            PendingReferralCodeId = pendingReferralCodeId,
         };
 
         Subscription subscription = new()

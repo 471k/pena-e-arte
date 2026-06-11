@@ -7,6 +7,7 @@ import type {
   DesignRevisionResponse,
   UploadRevisionRequest,
   ReviewRevisionRequest,
+  DesignShareTokenResponse,
 } from "./design.types";
 
 export const designsApi = createApi({
@@ -55,6 +56,18 @@ export const designsApi = createApi({
       }),
       invalidatesTags: ["Design"],
     }),
+    createShareToken: builder.mutation<DesignShareTokenResponse, string>({
+      query: (revisionId) => ({
+        url:    `designs/revisions/${revisionId}/share-token`,
+        method: "POST",
+      }),
+    }),
+    revokeShareToken: builder.mutation<void, string>({
+      query: (tokenId) => ({
+        url:    `designs/share-tokens/${tokenId}`,
+        method: "DELETE",
+      }),
+    }),
   }),
 });
 
@@ -65,4 +78,6 @@ export const {
   useGetRevisionsQuery,
   useReviewRevisionMutation,
   useDeleteRevisionMutation,
+  useCreateShareTokenMutation,
+  useRevokeShareTokenMutation,
 } = designsApi;

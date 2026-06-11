@@ -320,7 +320,6 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasColumnType("json");
 
                     b.Property<string>("Slug")
-                        .IsRequired()
                         .HasMaxLength(60)
                         .HasColumnType("varchar(60)");
 
@@ -417,6 +416,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
 
+                    b.Property<bool>("AllowCrossTenantRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("BodyMap")
                         .IsRequired()
                         .HasColumnType("json")
@@ -426,6 +430,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasColumnType("char(36)");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("CrossTenantOptInAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateOnly?>("DateOfBirth")
@@ -446,6 +453,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_client_profiles");
+
+                    b.HasIndex("AllowCrossTenantRead")
+                        .HasDatabaseName("ix_client_profiles_allow_cross_tenant_read");
 
                     b.HasIndex("ClientId")
                         .IsUnique()
@@ -687,6 +697,62 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("design_revisions", (string)null);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.DesignShareToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("DesignRevisionId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("pk_design_share_tokens");
+
+                    b.HasIndex("DesignRevisionId");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_design_share_tokens_expires_at");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_design_share_tokens_studio_id");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_design_share_tokens_token");
+
+                    b.ToTable("design_share_tokens", (string)null);
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.IntakeForm", b =>
                 {
                     b.Property<Guid>("Id")
@@ -885,6 +951,76 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("plans", (string)null);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ReferralCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("varchar(8)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsSingleUse")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_referral_codes");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_referral_codes_code");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_referral_codes_studio_id");
+
+                    b.ToTable("referral_codes", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ReferralRedemption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("DiscountApplied")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("NewStudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("RedeemedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("ReferralCodeId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_referral_redemptions");
+
+                    b.HasIndex("NewStudioId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_referral_redemptions_new_studio_id");
+
+                    b.HasIndex("ReferralCodeId")
+                        .HasDatabaseName("ix_referral_redemptions_code_id");
+
+                    b.ToTable("referral_redemptions", (string)null);
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.SessionSplit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -969,6 +1105,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
 
+                    b.Property<Guid?>("PendingReferralCodeId")
+                        .HasColumnType("char(36)");
+
                     b.Property<bool>("ShowPlatformBranding")
                         .HasColumnType("tinyint(1)");
 
@@ -996,6 +1135,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_studios_is_active");
+
+                    b.HasIndex("PendingReferralCodeId")
+                        .HasDatabaseName("ix_studios_pending_referral_code_id");
 
                     b.HasIndex("Slug")
                         .IsUnique()
@@ -1257,6 +1399,17 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasConstraintName("fk_design_revisions_designs");
 
                     b.Navigation("Design");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.DesignShareToken", b =>
+                {
+                    b.HasOne("Pena_e_Arte.Domain.Entities.DesignRevision", "DesignRevision")
+                        .WithMany()
+                        .HasForeignKey("DesignRevisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DesignRevision");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.IntakeForm", b =>

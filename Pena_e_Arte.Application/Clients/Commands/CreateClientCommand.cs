@@ -38,5 +38,5 @@ public class CreateClientHandler(IAppDbContext db, ICurrentTenant tenant)
     }
 
     internal static ClientResponse Map(Client c) =>
-        new(c.Id, c.StudioId, c.FirstName, c.LastName, c.Email, c.Phone, c.CreatedAt);
+        new(c.Id, c.StudioId, c.FirstName, c.LastName, c.Email, c.Phone, c.CreatedAt, c.UserId);
 }

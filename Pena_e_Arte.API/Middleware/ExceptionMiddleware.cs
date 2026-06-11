@@ -34,6 +34,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             SubscriptionRequiredException       => (StatusCodes.Status402PaymentRequired,     ex.Message),
             StripeAccountNotConnectedException  => (StatusCodes.Status422UnprocessableEntity, ex.Message),
             BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message),
+            ServiceUnavailableException         => (StatusCodes.Status503ServiceUnavailable,  ex.Message),
             UnauthorizedAccessException     => (StatusCodes.Status401Unauthorized,          ex.Message),
             _                               => (StatusCodes.Status500InternalServerError,   "An unexpected error occurred.")
         };

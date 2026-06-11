@@ -21,6 +21,7 @@ public class GetPlansHandler(IAppDbContext db)
                 p.PriceMonthly,
                 p.PriceYearly,
                 p.YearlyDiscountPercent,
+                p.AllowBrandingRemoval,
                 p.StripePriceIdMonthly,
                 p.StripePriceIdYearly))
             .ToListAsync(ct);

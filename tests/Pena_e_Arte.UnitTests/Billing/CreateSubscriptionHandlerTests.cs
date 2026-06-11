@@ -13,21 +13,24 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class CreateSubscriptionHandlerTests
 {
-    private readonly FakeDbContext        _db      = FakeDbContext.Create();
-    private readonly ICurrentTenant       _tenant  = Substitute.For<ICurrentTenant>();
-    private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
-    private readonly Guid                 _studioId = Guid.NewGuid();
+    private readonly FakeDbContext         _db       = FakeDbContext.Create();
+    private readonly ICurrentTenant        _tenant   = Substitute.For<ICurrentTenant>();
+    private readonly IStripeBillingService _billing  = Substitute.For<IStripeBillingService>();
+    private readonly IStripeDiscountService _discounts = Substitute.For<IStripeDiscountService>();
+    private readonly Guid                  _studioId = Guid.NewGuid();
 
     public CreateSubscriptionHandlerTests()
     {
         _tenant.StudioId.Returns(_studioId);
         _billing.CreateCustomerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns("cus_test123");
-        _billing.CreateSubscriptionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _billing.CreateSubscriptionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(("sub_test123", DateTime.UtcNow.AddMonths(1)));
     }
 
-    private CreateSubscriptionHandler CreateSut() => new(_db, _tenant, _billing);
+    private CreateSubscriptionHandler CreateSut() =>
+        new(_db, _tenant, _billing, _discounts,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
 
     [Fact]
     public async Task Handle_ValidPlanAndTrialingSubscription_ReturnsActiveSubscription()
@@ -111,7 +114,7 @@ public class CreateSubscriptionHandlerTests
             .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
 
         await _billing.Received(1).CreateSubscriptionAsync(
-            Arg.Any<string>(), "price_monthly_abc", Arg.Any<CancellationToken>());
+            Arg.Any<string>(), "price_monthly_abc", Arg.Any<string?>(), Arg.Any<CancellationToken>());
 
         _db.Subscriptions.Single(s => s.StudioId == _studioId)
             .StripeSubscriptionId.Should().Be("sub_test123");
@@ -140,7 +143,7 @@ public class CreateSubscriptionHandlerTests
             .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
 
         await _billing.DidNotReceive().CreateSubscriptionAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     private async Task<Guid> SeedPlan(string? stripePriceIdMonthly = null)

@@ -42,3 +42,10 @@ export interface ReviewRevisionRequest {
   approved:   boolean;
   notes:      string | null;
 }
+
+export interface DesignShareTokenResponse {
+  id:        string;
+  token:     string;
+  shareUrl:  string;
+  expiresAt: string;
+}

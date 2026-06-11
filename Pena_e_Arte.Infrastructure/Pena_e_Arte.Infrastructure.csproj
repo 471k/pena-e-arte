@@ -14,6 +14,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.*" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.8" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.13.17" />
     <PackageReference Include="Stripe.net" Version="51.2.0" />
     <PackageReference Include="Twilio" Version="7.14.9" />
@@ -26,7 +27,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Services\MailKit\Templates\*.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Pena_e_Arte.UnitTests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
 </Project>

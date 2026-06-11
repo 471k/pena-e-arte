@@ -30,7 +30,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
         return new PublicArtistResponse(
             artist.Id,
             $"{artist.FirstName} {artist.LastName}",
-            artist.Slug,
+            artist.Slug!,
             artist.Bio,
             artist.PortfolioImages,
             studio.Name,

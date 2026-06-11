@@ -11,12 +11,13 @@ export interface SubscriptionResponse {
 }
 
 export interface PlanResponse {
-  id:                   string;
-  name:                 string;
-  billingInterval:      "Monthly" | "Yearly";
-  priceMonthly:         number;
-  priceYearly:          number;
+  id:                    string;
+  name:                  string;
+  billingInterval:       "Monthly" | "Yearly";
+  priceMonthly:          number;
+  priceYearly:           number;
   yearlyDiscountPercent: number;
+  allowBrandingRemoval:  boolean;
 }
 
 export interface CreateSubscriptionRequest {

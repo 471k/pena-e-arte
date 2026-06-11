@@ -5,5 +5,5 @@ public interface IStripeBillingService
     Task<string> CreateCustomerAsync(string email, CancellationToken ct);
 
     Task<(string SubscriptionId, DateTime CurrentPeriodEnd)> CreateSubscriptionAsync(
-        string customerId, string priceId, CancellationToken ct);
+        string customerId, string priceId, string? couponId, CancellationToken ct);
 }

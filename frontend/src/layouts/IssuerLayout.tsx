@@ -1,11 +1,14 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Building2, CreditCard, Globe, PenLine } from "lucide-react";
+import { BarChart3, Building2, CreditCard, LayoutDashboard, PenLine, Receipt, Share2 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 
 const NAV_ITEMS = [
-  { label: "Studios",  href: "/platform/studios", icon: <Building2 className="h-4 w-4" /> },
-  { label: "Plans",    href: "/platform/plans",   icon: <CreditCard className="h-4 w-4" /> },
-  { label: "Map",      href: "/map",               icon: <Globe className="h-4 w-4" /> },
+  { label: "Dashboard",     href: "/platform",               icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: "Studios",       href: "/platform/studios",       icon: <Building2       className="h-4 w-4" /> },
+  { label: "Plans",         href: "/platform/plans",         icon: <CreditCard      className="h-4 w-4" /> },
+  { label: "Subscriptions", href: "/platform/subscriptions", icon: <Receipt         className="h-4 w-4" /> },
+  { label: "Referrals",     href: "/platform/referrals",     icon: <Share2          className="h-4 w-4" /> },
+  { label: "Reports",       href: "/platform/reports",       icon: <BarChart3       className="h-4 w-4" /> },
 ];
 
 export function IssuerLayout() {
@@ -20,6 +23,7 @@ export function IssuerLayout() {
             <NavLink
               key={href}
               to={href}
+              end={href === "/platform"}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors",

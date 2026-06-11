@@ -17,7 +17,7 @@ public class ArtistConfiguration : TenantEntityConfiguration<Artist>
         builder.Property(a => a.LastName).HasMaxLength(100).IsRequired();
         builder.Property(a => a.Email).HasMaxLength(256).IsRequired();
         builder.Property(a => a.Specializations).HasMaxLength(1000);
-        builder.Property(a => a.Slug).HasMaxLength(60).IsRequired();
+        builder.Property(a => a.Slug).HasMaxLength(60).IsRequired(false);
         builder.Property(a => a.Bio).HasMaxLength(2000);
 
         builder.Property(a => a.PortfolioImages)

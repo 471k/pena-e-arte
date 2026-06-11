@@ -144,7 +144,7 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<StudioResponse> RunRegisterHandler(RegisterStudioRequest req)
     {
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        RegisterStudioHandler handler = new(db, _jobs);
+        RegisterStudioHandler handler = new(db, _jobs, Microsoft.Extensions.Logging.Abstractions.NullLogger<RegisterStudioHandler>.Instance);
         return await handler.Handle(new RegisterStudioCommand(req), default);
     }
 

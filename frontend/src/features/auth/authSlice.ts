@@ -5,27 +5,30 @@ import type { AuthPayload, Role, User } from "@/shared/types/roles";
 const TOKEN_KEY = "auth_token";
 
 interface AuthState {
-  user: User | null;
-  token: string | null;
-  tenantId: string | null;
-  role: Role | null;
+  user:                 User | null;
+  token:                string | null;
+  tenantId:             string | null;
+  role:                 Role | null;
+  pendingReferralCode:  string | null;
 }
+
+const EMPTY: AuthState = { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null };
 
 function loadInitialState(): AuthState {
   try {
     const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return { user: null, token: null, tenantId: null, role: null };
+    if (!token) return EMPTY;
 
     const payload = decodeToken(token);
     // Discard expired tokens (exp is in seconds)
     if (payload.exp && Date.now() / 1000 > payload.exp) {
       localStorage.removeItem(TOKEN_KEY);
-      return { user: null, token: null, tenantId: null, role: null };
+      return EMPTY;
     }
 
-    return { user: payload.user, token, tenantId: payload.tenantId, role: payload.role };
+    return { user: payload.user, token, tenantId: payload.tenantId, role: payload.role, pendingReferralCode: null };
   } catch {
-    return { user: null, token: null, tenantId: null, role: null };
+    return EMPTY;
   }
 }
 
@@ -40,12 +43,15 @@ const authSlice = createSlice({
       state.role     = payload.role;
       localStorage.setItem(TOKEN_KEY, payload.token);
     },
+    setPendingReferralCode: (state, { payload }: PayloadAction<string | null>) => {
+      state.pendingReferralCode = payload;
+    },
     logout: () => {
       localStorage.removeItem(TOKEN_KEY);
-      return { user: null, token: null, tenantId: null, role: null };
+      return EMPTY;
     },
   },
 });
 
-export const { setCredentials, logout } = authSlice.actions;
+export const { setCredentials, setPendingReferralCode, logout } = authSlice.actions;
 export default authSlice.reducer;

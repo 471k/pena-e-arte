@@ -16,7 +16,8 @@ public class RegisterStudioHandlerTests
     private readonly FakeDbContext _db   = FakeDbContext.Create();
     private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
 
-    private RegisterStudioHandler CreateSut() => new(_db, _jobs);
+    private RegisterStudioHandler CreateSut() =>
+        new(_db, _jobs, Microsoft.Extensions.Logging.Abstractions.NullLogger<RegisterStudioHandler>.Instance);
 
     [Fact]
     public async Task Handle_NewSlug_ReturnsStudioResponse()

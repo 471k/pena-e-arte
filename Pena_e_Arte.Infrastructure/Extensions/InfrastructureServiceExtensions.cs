@@ -10,6 +10,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
+using Pena_e_Arte.Infrastructure.Services.MailKit;
 using StackExchange.Redis;
 using Twilio;
 
@@ -66,6 +67,7 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<Stripe.AccountLinkService>();
         services.AddSingleton<Stripe.CustomerService>();
         services.AddSingleton<Stripe.SubscriptionService>();
+        services.AddSingleton<Stripe.CouponService>();
 
         TwilioClient.Init(
             configuration["Twilio:AccountSid"]!,
@@ -99,8 +101,12 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IStripePaymentService,      StripePaymentService>();
         services.AddScoped<IStripeConnectService,      StripeConnectService>();
         services.AddScoped<IStripeBillingService,      StripeBillingService>();
+        services.AddScoped<IStripeDiscountService,     StripeDiscountService>();
+        services.AddScoped<IPortableProfileService,    PortableProfileService>();
+        services.AddScoped<IQrCodeService,             QrCodeService>();
         services.AddScoped<INotificationService,       NotificationService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
+        services.AddSingleton<IEmailRenderer,          EmailRenderer>();
 
         return services;
     }

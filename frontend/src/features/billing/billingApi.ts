@@ -11,10 +11,11 @@ export interface CreatePlanRequest {
 }
 
 export interface UpdatePlanRequest {
-  name:                 string;
-  priceMonthly:         number;
-  priceYearly:          number;
+  name:                  string;
+  priceMonthly:          number;
+  priceYearly:           number;
   yearlyDiscountPercent: number;
+  allowBrandingRemoval:  boolean;
 }
 
 export const billingApi = createApi({

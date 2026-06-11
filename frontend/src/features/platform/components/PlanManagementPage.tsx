@@ -17,11 +17,12 @@ import {
 import type { PlanResponse } from "@/features/billing/billing.types";
 
 const schema = z.object({
-  name:                 z.string().min(1, "Name is required").max(100),
-  billingInterval:      z.enum(["Monthly", "Yearly"]),
-  priceMonthly:         z.number({ invalid_type_error: "Required" }).positive(),
-  priceYearly:          z.number({ invalid_type_error: "Required" }).positive(),
-  yearlyDiscountPercent: z.number({ invalid_type_error: "Required" }).min(0).max(100),
+  name:                  z.string().min(1, "Name is required").max(100),
+  billingInterval:       z.enum(["Monthly", "Yearly"]),
+  priceMonthly:          z.number({ message: "Required" }).positive(),
+  priceYearly:           z.number({ message: "Required" }).positive(),
+  yearlyDiscountPercent: z.number({ message: "Required" }).min(0).max(100),
+  allowBrandingRemoval:  z.boolean(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -40,7 +41,7 @@ interface PlanFormProps {
 function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { billingInterval: "Monthly", yearlyDiscountPercent: 17, ...defaultValues },
+    defaultValues: { billingInterval: "Monthly", yearlyDiscountPercent: 17, allowBrandingRemoval: false, ...defaultValues },
   });
 
   const selectClass = cn(
@@ -89,6 +90,16 @@ function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
         )}
       </div>
 
+      <div className="flex items-center gap-2">
+        <input
+          id="allowBrandingRemoval"
+          type="checkbox"
+          className="h-4 w-4 rounded border-input accent-primary"
+          {...register("allowBrandingRemoval")}
+        />
+        <Label htmlFor="allowBrandingRemoval" className="cursor-pointer">Allow branding removal</Label>
+      </div>
+
       <div className="flex gap-2 pt-1">
         <Button type="submit" size="sm" disabled={saving} className="flex-1">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
@@ -121,11 +132,12 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
     return (
       <PlanForm
         defaultValues={{
-          name:                 plan.name,
-          billingInterval:      plan.billingInterval,
-          priceMonthly:         plan.priceMonthly,
-          priceYearly:          plan.priceYearly,
+          name:                  plan.name,
+          billingInterval:       plan.billingInterval,
+          priceMonthly:          plan.priceMonthly,
+          priceYearly:           plan.priceYearly,
           yearlyDiscountPercent: plan.yearlyDiscountPercent,
+          allowBrandingRemoval:  plan.allowBrandingRemoval,
         }}
         onSave={handleUpdate}
         onClose={() => setEditing(false)}
@@ -138,9 +150,14 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
     <Card>
       <CardContent className="p-4 flex items-start justify-between gap-4">
         <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm">{plan.name}</span>
             <span className="text-xs text-muted-foreground">{plan.billingInterval}</span>
+            {plan.allowBrandingRemoval && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                no-branding
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             {formatCurrency(plan.priceMonthly)}/mo · {formatCurrency(plan.priceYearly)}/yr

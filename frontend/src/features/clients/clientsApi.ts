@@ -9,6 +9,7 @@ export interface ClientResponse {
   email:     string;
   phone:     string | null;
   createdAt: string;
+  userId:    string | null;
 }
 
 export interface ClientProfileResponse {
@@ -63,10 +64,24 @@ export interface UpdateTattooRecordRequest {
   completedAt:  string;
 }
 
+export interface PortableTattooRecord {
+  bodyLocation:    string;
+  photoUrls:       string[];
+  description:     string;
+  completedAt:     string;
+  artistFirstName: string;
+}
+
+export interface PortableClientProfile {
+  displayName:      string;
+  bodyMapLocations: string[];
+  tattooHistory:    PortableTattooRecord[];
+}
+
 export const clientsApi = createApi({
   reducerPath: "clientsApi",
   baseQuery,
-  tagTypes: ["Client", "ClientProfile", "TattooRecord"],
+  tagTypes: ["Client", "ClientProfile", "TattooRecord", "PortableProfile"],
   endpoints: (builder) => ({
     getClients: builder.query<ClientResponse[], string | undefined>({
       query: (search) => ({
@@ -159,6 +174,18 @@ export const clientsApi = createApi({
         { type: "ClientProfile", id: clientId },
       ],
     }),
+    updatePortableProfileOptIn: builder.mutation<void, boolean>({
+      query: (optIn) => ({
+        url: "clients/me/portable-profile",
+        method: "PATCH",
+        body: { optIn },
+      }),
+      invalidatesTags: ["PortableProfile"],
+    }),
+    getPortableProfile: builder.query<PortableClientProfile | null, string>({
+      query: (userId) => `clients/${userId}/portable-profile`,
+      providesTags: (_result, _error, userId) => [{ type: "PortableProfile", id: userId }],
+    }),
   }),
 });
 
@@ -174,4 +201,6 @@ export const {
   useAddTattooRecordMutation,
   useUpdateTattooRecordMutation,
   useDeleteTattooRecordMutation,
+  useUpdatePortableProfileOptInMutation,
+  useGetPortableProfileQuery,
 } = clientsApi;

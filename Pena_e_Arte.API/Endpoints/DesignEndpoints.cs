@@ -20,6 +20,8 @@ public static class DesignEndpoints
         group.MapPost("{id:guid}/revisions",                       UploadRevision).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{id:guid}/revisions/{revisionId:guid}",   DeleteRevision).RequireAuthorization("ArtistAndAbove");
         group.MapPost("revisions/{revisionId:guid}/review",        ReviewDesign).RequireAuthorization("ClientAndAbove");
+        group.MapPost("revisions/{revisionId:guid}/share-token",   CreateShareToken).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("share-tokens/{id:guid}",                  RevokeShareToken).RequireAuthorization("ArtistAndAbove");
     }
 
     private static async Task<IResult> GetDesigns(
@@ -80,5 +82,23 @@ public static class DesignEndpoints
         ReviewDesignRequest withRevisionId = request with { DesignRevisionId = revisionId };
         DesignRevisionResponse result = await mediator.Send(new ReviewDesignCommand(withRevisionId), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CreateShareToken(
+        Guid              revisionId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        DesignShareTokenResponse result = await mediator.Send(new CreateDesignShareTokenCommand(revisionId), ct);
+        return Results.Created($"/api/v1/designs/share-tokens/{result.Id}", result);
+    }
+
+    private static async Task<IResult> RevokeShareToken(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new RevokeDesignShareTokenCommand(id), ct);
+        return Results.NoContent();
     }
 }

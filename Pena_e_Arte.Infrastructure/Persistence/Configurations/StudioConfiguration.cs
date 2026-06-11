@@ -22,5 +22,6 @@ public class StudioConfiguration : IEntityTypeConfiguration<Studio>
 
         builder.HasIndex(s => s.Slug).IsUnique().HasDatabaseName("ix_studios_slug");
         builder.HasIndex(s => s.IsActive).HasDatabaseName("ix_studios_is_active");
+        builder.HasIndex(s => s.PendingReferralCodeId).HasDatabaseName("ix_studios_pending_referral_code_id");
     }
 }

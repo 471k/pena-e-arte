@@ -7,4 +7,5 @@ public record ClientResponse(
     string   LastName,
     string   Email,
     string?  Phone,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    Guid?    UserId);

@@ -2,12 +2,13 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 
 export interface RegisterStudioRequest {
-  name: string;
-  slug: string;
-  city: string;
-  latitude: number;
-  longitude: number;
-  ownerEmail: string;
+  name:          string;
+  slug:          string;
+  city:          string;
+  latitude:      number;
+  longitude:     number;
+  ownerEmail:    string;
+  referralCode?: string;
 }
 
 export interface StudioResponse {
@@ -32,6 +33,22 @@ export interface StudioMapItem {
   city: string;
 }
 
+export interface ReferralCodeResponse {
+  id:          string;
+  code:        string;
+  shareUrl:    string;
+  isActive:    boolean;
+  isSingleUse: boolean;
+  createdAt:   string;
+  expiresAt:   string | null;
+}
+
+export interface ReferralStatsResponse {
+  code:             string | null;
+  redemptionCount:  number;
+  discountsApplied: number;
+}
+
 export interface ConnectStudioRequest {
   returnUrl:  string;
   refreshUrl: string;
@@ -52,7 +69,7 @@ export interface UpdateStudioRequest {
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
-  tagTypes: ["Studio"],
+  tagTypes: ["Studio", "Referral"],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),
@@ -92,6 +109,26 @@ export const studiosApi = createApi({
       query: (id) => ({ url: `studios/${id}/unsuspend`, method: "PATCH" }),
       invalidatesTags: ["Studio"],
     }),
+    getStudioQrCode: builder.query<string, string>({
+      query: (id) => ({
+        url:             `studios/${id}/qr`,
+        params:          { format: "png" },
+        responseHandler: async (response) => URL.createObjectURL(await response.blob()),
+      }),
+      keepUnusedDataFor: 60,
+    }),
+    generateReferralCode: builder.mutation<ReferralCodeResponse, string>({
+      query: (id) => ({ url: `studios/${id}/referral-codes`, method: "POST" }),
+      invalidatesTags: ["Referral"],
+    }),
+    getReferralCode: builder.query<ReferralCodeResponse | null, string>({
+      query: (id) => `studios/${id}/referral-codes`,
+      providesTags: ["Referral"],
+    }),
+    getReferralStats: builder.query<ReferralStatsResponse, string>({
+      query: (id) => `studios/${id}/referral-stats`,
+      providesTags: ["Referral"],
+    }),
   }),
 });
 
@@ -105,4 +142,8 @@ export const {
   useGetStudiosQuery,
   useSuspendStudioMutation,
   useUnsuspendStudioMutation,
+  useGetStudioQrCodeQuery,
+  useGenerateReferralCodeMutation,
+  useGetReferralCodeQuery,
+  useGetReferralStatsQuery,
 } = studiosApi;

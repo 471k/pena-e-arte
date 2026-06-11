@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentValidation;
 using Hangfire;
 using MediatR;
+using Pena_e_Arte.Infrastructure.Jobs;
 using Microsoft.AspNetCore.Identity;
 using Pena_e_Arte.API.Endpoints;
 using Pena_e_Arte.API.Extensions;
@@ -9,6 +10,8 @@ using Pena_e_Arte.API.Middleware;
 using Pena_e_Arte.Application.Common.Behaviors;
 using Pena_e_Arte.Infrastructure.Extensions;
 using Pena_e_Arte.Infrastructure.Hubs;
+using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Persistence.Seed;
 using Serilog;
 
@@ -45,8 +48,23 @@ try
 
     WebApplication app = builder.Build();
 
+    using (IServiceScope migrationScope = app.Services.CreateScope())
+    {
+        AppDbContext migDb = migrationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await migDb.Database.MigrateAsync();
+    }
+
     await SeedRolesAsync(app);
     await DataSeeder.SeedAsync(app.Services);
+
+    using (IServiceScope jobScope = app.Services.CreateScope())
+    {
+        IRecurringJobManager recurringJobs = jobScope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        recurringJobs.AddOrUpdate<IndustryReportJob>(
+            "industry-report",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Monthly());
+    }
 
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionMiddleware>();
@@ -64,6 +82,7 @@ try
     app.MapPrometheusScrapingEndpoint();
 
     app.MapPublicEndpoints();
+    app.MapPublicDesignEndpoints();
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();
     app.MapDepositRuleEndpoints();
@@ -76,7 +95,8 @@ try
     app.MapPaymentEndpoints();
     app.MapNotificationEndpoints();
     app.MapFileEndpoints();
-    app.MapIssuerEndpoints();
+    app.MapReferralEndpoints();
+    app.MapPlatformEndpoints();
 
     app.Run();
 }

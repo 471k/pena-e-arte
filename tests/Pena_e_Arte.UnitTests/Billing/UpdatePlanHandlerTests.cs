@@ -21,7 +21,7 @@ public class UpdatePlanHandlerTests
         Guid planId = await SeedPlan("Old Name", 49m);
 
         PlanResponse result = await CreateSut().Handle(
-            new UpdatePlanCommand(planId, new UpdatePlanRequest("New Name", 59m, 590m, 17)), default);
+            new UpdatePlanCommand(planId, new UpdatePlanRequest("New Name", 59m, 590m, 17, AllowBrandingRemoval: false)), default);
 
         result.Name.Should().Be("New Name");
         result.PriceMonthly.Should().Be(59m);
@@ -33,7 +33,7 @@ public class UpdatePlanHandlerTests
         Guid planId = await SeedPlan("Original", 29m);
 
         await CreateSut().Handle(
-            new UpdatePlanCommand(planId, new UpdatePlanRequest("Updated", 39m, 390m, 17)), default);
+            new UpdatePlanCommand(planId, new UpdatePlanRequest("Updated", 39m, 390m, 17, AllowBrandingRemoval: false)), default);
 
         _db.Plans.Single(p => p.Id == planId).Name.Should().Be("Updated");
     }
@@ -46,6 +46,7 @@ public class UpdatePlanHandlerTests
         PlanResponse result = await CreateSut().Handle(
             new UpdatePlanCommand(planId, new UpdatePlanRequest(
                 "Pro", 49m, 490m, 17,
+                AllowBrandingRemoval: false,
                 StripePriceIdMonthly: "price_monthly_new",
                 StripePriceIdYearly:  "price_yearly_new")), default);
 
@@ -57,9 +58,21 @@ public class UpdatePlanHandlerTests
     public async Task Handle_NonExistentPlan_ThrowsNotFoundException()
     {
         Func<Task> act = () => CreateSut().Handle(
-            new UpdatePlanCommand(Guid.NewGuid(), new UpdatePlanRequest("X", 10m, 100m, 0)), default);
+            new UpdatePlanCommand(Guid.NewGuid(), new UpdatePlanRequest("X", 10m, 100m, 0, AllowBrandingRemoval: false)), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_WithAllowBrandingRemoval_PersistsAndReturnsFlag()
+    {
+        Guid planId = await SeedPlan("Premium", 99m);
+
+        PlanResponse result = await CreateSut().Handle(
+            new UpdatePlanCommand(planId, new UpdatePlanRequest("Premium", 99m, 990m, 15, AllowBrandingRemoval: true)), default);
+
+        result.AllowBrandingRemoval.Should().BeTrue();
+        _db.Plans.Single(p => p.Id == planId).AllowBrandingRemoval.Should().BeTrue();
     }
 
     private async Task<Guid> SeedPlan(string name, decimal price)
