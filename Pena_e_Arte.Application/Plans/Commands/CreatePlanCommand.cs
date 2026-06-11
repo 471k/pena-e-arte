@@ -36,6 +36,7 @@ public class CreatePlanHandler(IAppDbContext db)
         return new PlanResponse(
             plan.Id, plan.Name, plan.BillingInterval.ToString(),
             plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent,
+            plan.AllowBrandingRemoval,
             plan.StripePriceIdMonthly, plan.StripePriceIdYearly);
     }
 }

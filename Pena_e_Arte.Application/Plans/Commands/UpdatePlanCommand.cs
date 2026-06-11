@@ -24,6 +24,7 @@ public class UpdatePlanHandler(IAppDbContext db)
         plan.PriceMonthly          = req.PriceMonthly;
         plan.PriceYearly           = req.PriceYearly;
         plan.YearlyDiscountPercent = req.YearlyDiscountPercent;
+        plan.AllowBrandingRemoval  = req.AllowBrandingRemoval;
         plan.StripePriceIdMonthly  = req.StripePriceIdMonthly;
         plan.StripePriceIdYearly   = req.StripePriceIdYearly;
 
@@ -32,6 +33,7 @@ public class UpdatePlanHandler(IAppDbContext db)
         return new PlanResponse(
             plan.Id, plan.Name, plan.BillingInterval.ToString(),
             plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent,
+            plan.AllowBrandingRemoval,
             plan.StripePriceIdMonthly, plan.StripePriceIdYearly);
     }
 }

@@ -5,5 +5,6 @@ public record UpdatePlanRequest(
     decimal PriceMonthly,
     decimal PriceYearly,
     int     YearlyDiscountPercent,
+    bool    AllowBrandingRemoval  = false,
     string? StripePriceIdMonthly = null,
     string? StripePriceIdYearly  = null);

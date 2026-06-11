@@ -16,5 +16,15 @@ public class ReferralCodeConfiguration : IEntityTypeConfiguration<ReferralCode>
 
         builder.HasIndex(r => r.Code).IsUnique().HasDatabaseName("ix_referral_codes_code");
         builder.HasIndex(r => r.StudioId).HasDatabaseName("ix_referral_codes_studio_id");
+
+        builder.HasOne(r => r.Studio)
+               .WithMany()
+               .HasForeignKey(r => r.StudioId)
+               .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(r => r.Redemptions)
+               .WithOne()
+               .HasForeignKey(rr => rr.ReferralCodeId)
+               .OnDelete(DeleteBehavior.Cascade);
     }
 }

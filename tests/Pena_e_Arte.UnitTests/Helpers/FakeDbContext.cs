@@ -52,6 +52,16 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
 
         modelBuilder.Entity<ClientProfile>()
             .OwnsOne(cp => cp.BodyMap);
+
+        modelBuilder.Entity<ReferralCode>()
+            .HasOne(r => r.Studio)
+            .WithMany()
+            .HasForeignKey(r => r.StudioId);
+
+        modelBuilder.Entity<ReferralCode>()
+            .HasMany(r => r.Redemptions)
+            .WithOne()
+            .HasForeignKey(rr => rr.ReferralCodeId);
     }
 
     public static FakeDbContext Create() =>

@@ -20,7 +20,14 @@ import {
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage } from "@/features/payments";
-import { IssuerStudioListPage, PlanManagementPage, IndustryReportsPanel } from "@/features/platform";
+import {
+  IssuerDashboardPage,
+  IssuerStudioListPage,
+  PlanManagementPage,
+  SubscriptionOversightPage,
+  PlatformReferralPage,
+  IndustryReportsPage,
+} from "@/features/platform";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage } from "@/features/public";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
@@ -44,7 +51,7 @@ export function getRoleRedirectPath(role: Role): string {
     case Role.Client: return "/book";
     case Role.Artist: return "/schedule";
     case Role.Owner: return "/dashboard";
-    case Role.Issuer: return "/platform/studios";
+    case Role.Issuer: return "/platform";
   }
 }
 
@@ -126,10 +133,12 @@ export const router = createBrowserRouter([
                 path: "platform",
                 element: <RoleGuard allowedRoles={[Role.Issuer]} />,
                 children: [
-                  { index: true,     element: <Navigate to="/platform/studios" replace /> },
-                  { path: "studios", element: <IssuerStudioListPage /> },
-                  { path: "plans",   element: <PlanManagementPage /> },
-                  { path: "reports", element: <IndustryReportsPanel /> },
+                  { index: true,             element: <IssuerDashboardPage /> },
+                  { path: "studios",         element: <IssuerStudioListPage /> },
+                  { path: "plans",           element: <PlanManagementPage /> },
+                  { path: "subscriptions",   element: <SubscriptionOversightPage /> },
+                  { path: "referrals",       element: <PlatformReferralPage /> },
+                  { path: "reports",         element: <IndustryReportsPage /> },
                 ],
               },
 

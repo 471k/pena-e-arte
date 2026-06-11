@@ -9,4 +9,7 @@ public class ReferralCode
     public bool      IsSingleUse  { get; set; }  = true;
     public DateTime  CreatedAt    { get; init; } = DateTime.UtcNow;
     public DateTime? ExpiresAt    { get; set; }
+
+    public Studio                       Studio      { get; set; } = null!;
+    public ICollection<ReferralRedemption> Redemptions { get; set; } = [];
 }

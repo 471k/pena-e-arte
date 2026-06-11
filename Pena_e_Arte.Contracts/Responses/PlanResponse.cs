@@ -7,5 +7,6 @@ public record PlanResponse(
     decimal PriceMonthly,
     decimal PriceYearly,
     int     YearlyDiscountPercent,
+    bool    AllowBrandingRemoval,
     string? StripePriceIdMonthly,
     string? StripePriceIdYearly);
