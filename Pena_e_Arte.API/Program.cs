@@ -57,10 +57,14 @@ try
     await SeedRolesAsync(app);
     await DataSeeder.SeedAsync(app.Services);
 
-    RecurringJob.AddOrUpdate<IndustryReportJob>(
-        "industry-report",
-        j => j.RunAsync(CancellationToken.None),
-        Cron.Monthly());
+    using (IServiceScope jobScope = app.Services.CreateScope())
+    {
+        IRecurringJobManager recurringJobs = jobScope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        recurringJobs.AddOrUpdate<IndustryReportJob>(
+            "industry-report",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Monthly());
+    }
 
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionMiddleware>();
