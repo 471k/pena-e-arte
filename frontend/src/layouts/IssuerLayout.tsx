@@ -1,5 +1,8 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { BarChart3, Building2, CreditCard, LayoutDashboard, PenLine, Receipt, Share2 } from "lucide-react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { BarChart3, Building2, CreditCard, LayoutDashboard, LogOut, PenLine, Receipt, Share2 } from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
+import { useAppDispatch } from "@/app/hooks";
+import { logout } from "@/features/auth/authSlice";
 import { cn } from "@/shared/utils/cn";
 
 const NAV_ITEMS = [
@@ -12,6 +15,14 @@ const NAV_ITEMS = [
 ];
 
 export function IssuerLayout() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    dispatch(logout());
+    navigate("/login", { replace: true });
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
@@ -38,6 +49,16 @@ export function IssuerLayout() {
             </NavLink>
           ))}
         </nav>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto text-muted-foreground hover:text-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4 mr-1.5" />
+          Log out
+        </Button>
       </header>
 
       <div className="flex-1">

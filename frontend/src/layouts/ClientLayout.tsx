@@ -1,9 +1,12 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  CalendarDays, Palette, FileText, ScrollText, User, PenLine,
+  CalendarDays, Palette, FileText, ScrollText, User, PenLine, LogOut,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
+import { Button } from "@/shared/components/ui/button";
+import { useAppDispatch } from "@/app/hooks";
+import { logout } from "@/features/auth/authSlice";
 
 const NAV_ITEMS = [
   { label: "Book Appointment", href: "/book",           icon: <CalendarDays className="h-4 w-4" /> },
@@ -14,6 +17,14 @@ const NAV_ITEMS = [
 ];
 
 export function ClientLayout() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    dispatch(logout());
+    navigate("/login", { replace: true });
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <ReadOnlyBanner />
@@ -40,6 +51,16 @@ export function ClientLayout() {
             </NavLink>
           ))}
         </nav>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto text-muted-foreground hover:text-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4 mr-1.5" />
+          Log out
+        </Button>
       </header>
 
       <div className="flex-1">
