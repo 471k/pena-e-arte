@@ -6,6 +6,7 @@ import { Building2, Loader2, Save } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation } from "../studiosApi";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
@@ -25,8 +26,12 @@ export function StudioProfilePage() {
   const { data: studio, isLoading } = useGetMyStudioQuery();
   const [updateStudio, { isLoading: saving, isSuccess }] = useUpdateMyStudioMutation();
 
-  const { register, handleSubmit, reset, formState: { errors, isDirty } } =
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({ resolver: zodResolver(schema) });
+
+  const latValue  = watch("latitude");
+  const lngValue  = watch("longitude");
+  const cityValue = watch("city");
 
   useEffect(() => {
     if (studio) {
@@ -87,35 +92,26 @@ export function StudioProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="city">City</Label>
-                <Input id="city" {...register("city")} aria-invalid={!!errors.city} />
-                {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="latitude">Latitude</Label>
-                  <Input
-                    id="latitude"
-                    type="number"
-                    step="any"
-                    {...register("latitude", { valueAsNumber: true })}
-                    aria-invalid={!!errors.latitude}
-                  />
-                  {errors.latitude && <p className="text-xs text-destructive">{errors.latitude.message}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="longitude">Longitude</Label>
-                  <Input
-                    id="longitude"
-                    type="number"
-                    step="any"
-                    {...register("longitude", { valueAsNumber: true })}
-                    aria-invalid={!!errors.longitude}
-                  />
-                  {errors.longitude && <p className="text-xs text-destructive">{errors.longitude.message}</p>}
-                </div>
+                <Label>Location</Label>
+                {/* key forces remount once studio data arrives so the pin initialises correctly */}
+                <LocationPicker
+                  key={studio ? `${studio.latitude},${studio.longitude}` : "unset"}
+                  value={
+                    latValue != null && !isNaN(latValue) && lngValue != null && !isNaN(lngValue)
+                      ? { lat: latValue, lng: lngValue, city: cityValue ?? "" }
+                      : undefined
+                  }
+                  onChange={({ lat, lng, city }) => {
+                    setValue("latitude",  lat,  { shouldDirty: true, shouldValidate: true });
+                    setValue("longitude", lng,  { shouldDirty: true, shouldValidate: true });
+                    setValue("city",      city, { shouldDirty: true, shouldValidate: true });
+                  }}
+                  error={
+                    errors.latitude?.message ??
+                    errors.longitude?.message ??
+                    errors.city?.message
+                  }
+                />
               </div>
 
               <Button

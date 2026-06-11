@@ -37,7 +37,12 @@ Pena_e_Arte.Infrastructure/
 │   ├── AppDbContext.cs
 │   ├── Configurations/     IEntityTypeConfiguration per entity
 │   └── Migrations/
-├── Services/               Stripe, Twilio, MailKit, R2 implementations
+├── Services/
+│   ├── Stripe*/            Stripe Billing + aggregator payment (no Connect)
+│   ├── PayPal/             PayPalOptions, PayPalTokenCache,
+│   │                       PayPalCheckoutService, PayPalPayoutService
+│   ├── MailKit/            email templates
+│   └── *.cs                Twilio, R2, Hangfire, Identity, etc.
 ├── Hubs/                   SignalR hubs
 ├── Jobs/                   Hangfire job classes
 └── Caching/                Redis wrappers
@@ -208,6 +213,43 @@ public class SlotAlreadyBookedException()
 ```
 
 ExceptionMiddleware maps exception types to HTTP status codes centrally.
+
+---
+
+## PayPal Service Pattern
+
+PayPal is integrated via raw `HttpClient` (no SDK). All PayPal services live in
+`Infrastructure/Services/PayPal/`.
+
+```csharp
+// Options — bound from "PayPal" config section, never hardcoded
+public class PayPalOptions
+{
+    public string ClientId     { get; init; } = string.Empty;
+    public string ClientSecret { get; init; } = string.Empty;
+    public string BaseUrl      { get; init; } = "https://api-m.sandbox.paypal.com";
+    public string WebhookId    { get; init; } = string.Empty;
+}
+
+// Token cache — singleton, refreshes 60s before expiry
+services.AddSingleton<PayPalTokenCache>();
+
+// Named HttpClient registered once
+services.AddHttpClient("PayPal", (sp, client) =>
+{
+    var opts = sp.GetRequiredService<IOptions<PayPalOptions>>().Value;
+    client.BaseAddress = new Uri(opts.BaseUrl);
+});
+
+// Interfaces defined in Domain, implementations in Infrastructure
+IPayPalCheckoutService  → PayPalCheckoutService   (Orders API v2)
+IPayPalPayoutService    → PayPalPayoutService      (Payouts API v1)
+```
+
+Never call `new HttpClient()` directly — always inject `IHttpClientFactory` and call
+`CreateClient("PayPal")`.
+
+Never log `ClientSecret`, `access_token`, or any PayPal credential.
 
 ---
 

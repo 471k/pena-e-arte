@@ -1,4 +1,4 @@
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, User } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -11,8 +11,32 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function formatDateShort(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
+
+function parseFormData(raw: string): { name: string | null; dob: string | null } {
+  try {
+    const obj: unknown = JSON.parse(raw);
+    if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
+      const data = obj as Record<string, unknown>;
+      const name = typeof data.fullName === "string" && data.fullName ? data.fullName : null;
+      const dob  = typeof data.dateOfBirth === "string" && data.dateOfBirth ? data.dateOfBirth : null;
+      return { name, dob };
+    }
+  } catch { /* plain text */ }
+  return { name: null, dob: null };
+}
+
 function IntakeFormRow({ form }: { form: IntakeFormResponse }) {
   const navigate = useNavigate();
+  const { name, dob } = parseFormData(form.formData);
+
+  const headline = name ?? (
+    form.formData.length > 60 ? form.formData.slice(0, 60) + "…" : form.formData
+  );
 
   return (
     <Card
@@ -21,20 +45,23 @@ function IntakeFormRow({ form }: { form: IntakeFormResponse }) {
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-0.5 min-w-0">
-            <p className="text-sm font-medium truncate">
-              {form.formData.length > 80
-                ? form.formData.slice(0, 80) + "…"
-                : form.formData}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Client: <span className="font-mono">{form.clientId.slice(0, 8)}…</span>
-            </p>
-            {form.appointmentId && (
-              <p className="text-xs text-muted-foreground">
-                Appt: <span className="font-mono">{form.appointmentId.slice(0, 8)}…</span>
-              </p>
-            )}
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="mt-0.5 shrink-0 rounded-full bg-muted p-1.5">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <p className="text-sm font-medium truncate">{headline}</p>
+              {dob && (
+                <p className="text-xs text-muted-foreground">
+                  DOB: {formatDateShort(dob)}
+                </p>
+              )}
+              {form.appointmentId && (
+                <p className="text-xs text-muted-foreground">
+                  Appt: <span className="font-mono">{form.appointmentId.slice(0, 8)}…</span>
+                </p>
+              )}
+            </div>
           </div>
           <div className="shrink-0 text-right space-y-0.5">
             <p className="text-xs text-muted-foreground">

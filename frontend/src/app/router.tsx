@@ -19,7 +19,7 @@ import {
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
 import { NotificationLogListPage } from "@/features/notifications";
-import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage } from "@/features/payments";
+import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
 import {
   IssuerDashboardPage,
   IssuerStudioListPage,
@@ -284,6 +284,13 @@ export const router = createBrowserRouter([
                   { path: "new",            element: <CreatePaymentIntentPage /> },
                   { path: ":appointmentId", element: <PaymentDetailPage /> },
                 ],
+              },
+
+              // ── Client: deposit checkout ────────────────────────────────────
+              {
+                path: "pay/:paymentId",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Owner, Role.Artist, Role.Issuer]} />,
+                children: [{ index: true, element: <DepositCheckoutPage /> }],
               },
             ],
           },

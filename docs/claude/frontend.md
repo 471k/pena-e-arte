@@ -248,6 +248,41 @@ export function useSignalR(studioId: string) {
 
 ---
 
+## Payment UI Pattern
+
+Client-facing payments use a two-tab selector: Stripe Payment Element and PayPal Buttons.
+Both are wrapped in their respective providers at the app root.
+
+```tsx
+// main.tsx — providers wrapping the app
+<PayPalScriptProvider options={{ clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
+  <App />
+</PayPalScriptProvider>
+
+// Stripe Elements is initialised per-payment (needs the clientSecret):
+<Elements stripe={stripePromise} options={{ clientSecret }}>
+  <PaymentElement />
+</Elements>
+```
+
+**Environment variables (never hardcoded in source):**
+
+```
+VITE_STRIPE_PUBLISHABLE_KEY   — Stripe publishable key (pk_test_... or pk_live_...)
+VITE_PAYPAL_CLIENT_ID         — PayPal app client ID
+```
+
+Both go in `.env.local` (gitignored). A `.env.example` with placeholder values is committed.
+
+**`PaymentMethodSelector`** (`features/payments/components/PaymentMethodSelector.tsx`)
+is the single component that renders both payment options. Use it wherever a client needs
+to pay. Do not duplicate payment UI in other components.
+
+**`PayoutMethodSettings`** (`features/studios/components/PayoutMethodSettings.tsx`)
+is the owner-facing form for configuring how they receive payouts (PayPal email or bank).
+
+---
+
 ## Component Rules
 
 - One component per file. File name matches component name.

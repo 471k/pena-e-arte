@@ -133,25 +133,43 @@ Never push directly from an endpoint handler.
 
 ---
 
-## Stripe Connect Flow
+## Payment Architecture — Aggregator Model
+
+> **Stripe Connect is not available in the platform's country.**
+> The platform uses the aggregator model: all client payments are collected into
+> the platform's own Stripe account. Studio payouts are handled via PayPal Payouts API.
 
 ```
-Studio onboarding:
-  1. Owner triggers ConnectStudio command
-  2. Infrastructure creates Stripe Connect account
-  3. Stores stripe_account_id on Studio entity
-  4. Returns onboarding URL — owner completes in browser
+CLIENT PAYMENTS (into platform Stripe account — no StripeAccount header)
+  Option A: Stripe Payment Element  → cards, Apple Pay, Google Pay
+  Option B: PayPal Checkout         → PayPal balance, cards via PayPal
+  Both options use manual capture (hold then capture at session end)
 
-Payment at booking:
-  1. Client creates appointment → CreateAppointmentCommand
-  2. Handler creates PaymentIntent on studio's Connect account
-  3. Deposit amount held, remainder charged at session end
-  4. Webhook confirms payment → updates Appointment.DepositStatus
+STUDIO PAYOUTS (platform → studio, after session captured)
+  Primary:  PayPal Payouts API      → studio's registered PayPal email
+  Fallback: BankTransfer            → issuer manually marks completed
 
-Payout:
-  Stripe handles automatically to studio's Connect account.
-  Platform fee deducted at the Stripe level — not in our code.
+PLATFORM SUBSCRIPTIONS (studio → platform)
+  Stripe Billing                    → unchanged, uses platform Stripe account
 ```
+
+**Key rule:** `IStripePaymentService` must NEVER pass `RequestOptions { StripeAccount = ... }`.
+Every PaymentIntent goes to the platform account. This is enforced by the interface — the
+`connectedAccountId` parameter no longer exists.
+
+**`StripeConnectService`** is marked `[Obsolete]`. Do not call it. `ConnectStudio`
+endpoint is replaced with a status endpoint explaining PayPal is used instead.
+
+**Payout entities:**
+- `StudioPayoutMethod` — how a studio wants to receive payouts (PayPal email or bank details)
+- `StudioPayout` — individual payout record linked to a `Payment`
+
+**PayPal integration:**
+- Uses raw `HttpClient` (named `"PayPal"`) with PayPal REST API v2 — no SDK.
+- `PayPalTokenCache` (singleton) caches the OAuth 2.0 access token.
+- `IPayPalCheckoutService` — creates and captures PayPal Orders for client checkout.
+- `IPayPalPayoutService` — sends payouts to studio's PayPal email.
+- Options bound from `PayPal:*` config section (never hardcoded).
 
 ---
 
@@ -242,13 +260,14 @@ Yearly plan = monthly price × 10 (2 months free — ~17% discount).
 Surface the saving prominently on the pricing page and in trial expiry emails.
 BillingInterval enum: Monthly | Yearly.
 
-### Stripe Billing vs Stripe Connect — do not confuse
+### Stripe Billing vs Stripe Connect — important distinction
 
-- Stripe Billing  = platform charges studios for SaaS access (subscriptions)
-- Stripe Connect  = studios charge their clients for tattoo sessions (payments)
+- Stripe Billing       = platform charges studios for SaaS access (subscriptions) — **ACTIVE**
+- Stripe (aggregator)  = platform collects client payments into its own account — **ACTIVE**
+- Stripe Connect       = NOT USED — not available in the platform's country
 
-Both coexist. Billing uses the platform's main Stripe account.
-Connect uses per-studio connected accounts.
+Studio payouts go via PayPal Payouts API, not Stripe.
+See "Payment Architecture — Aggregator Model" section for the full picture.
 
 ---
 
@@ -298,6 +317,7 @@ The following are the only documented exceptions:
 | `GET /api/v1/studios/{id}/qr` | QR code image download | None — points to public portfolio URL only |
 | `POST /api/webhooks/stripe/billing` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
 | `POST /api/webhooks/stripe/connect` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
+| `POST /api/v1/webhooks/paypal` | Called by PayPal servers, no JWT | `PayPal-Transmission-Sig` HMAC validated against `PayPal:WebhookId` config value |
 
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
@@ -500,3 +520,10 @@ does not re-litigate them.
 | `AllowBrandingRemoval` on UpdatePlan | Exposed via `UpdatePlanRequest.AllowBrandingRemoval` (bool) | Issuer needs to control which plans unlock branding removal; was missing from update contract |
 | Duplicate plan routes | Deleted `IssuerEndpoints.cs`; canonical plan CRUD is under `/api/v1/billing/plans` | Eliminated duplicate route registration; frontend always used billing path |
 | `platformApi` RTK Query slice | New `features/platform/platformApi.ts` for all issuer platform endpoints | Keeps issuer platform concerns isolated from billing/studio slices |
+| Payment model: aggregator vs marketplace | Aggregator (platform collects all, then pays out) | Stripe Connect not available in platform country; aggregator avoids connected accounts entirely |
+| Studio payouts | PayPal Payouts API (primary) + BankTransfer fallback | PayPal has broad country support including Albania; no Stripe Connect needed |
+| PayPal integration approach | Raw `HttpClient` + PayPal REST API v2, no SDK | PayPal's .NET SDK is poorly maintained; raw HTTP is simpler and more maintainable |
+| Client payment options | Stripe Payment Element + PayPal Checkout (two tabs) | Maximum reach — card users use Stripe, PayPal-preferring users use PayPal |
+| PayPal token caching | Singleton `PayPalTokenCache` refreshes 60s before expiry | Avoids per-request OAuth round-trips; thread-safe with SemaphoreSlim |
+| Stripe keys in config | `Stripe:PublishableKey`, `Stripe:SecretKey` in `appsettings.Development.json` (gitignored) | Never in source; env vars in production |
+| PayPal keys in config | `PayPal:ClientId`, `PayPal:ClientSecret`, `PayPal:BaseUrl`, `PayPal:WebhookId` in gitignored config | Never in source; `BaseUrl` switches between sandbox and production |

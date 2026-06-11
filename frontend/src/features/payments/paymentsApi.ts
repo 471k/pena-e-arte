@@ -3,6 +3,7 @@ import { baseQuery } from "@/shared/api/baseQuery";
 import type {
   PaymentResponse,
   PaymentIntentResponse,
+  ClientSecretResponse,
   CreatePaymentIntentRequest,
   UpdateSessionSplitsRequest,
   GetPaymentsParams,
@@ -46,6 +47,9 @@ export const paymentsApi = createApi({
       query: ({ id, body }) => ({ url: `payments/${id}/splits`, method: "PUT", body }),
       invalidatesTags: ["Payment"],
     }),
+    getPaymentClientSecret: builder.query<ClientSecretResponse, string>({
+      query: (id) => `payments/${id}/client-secret`,
+    }),
   }),
 });
 
@@ -56,4 +60,5 @@ export const {
   useCaptureDepositMutation,
   useRefundPaymentMutation,
   useUpdateSessionSplitsMutation,
+  useGetPaymentClientSecretQuery,
 } = paymentsApi;

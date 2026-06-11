@@ -30,6 +30,9 @@ public static class PaymentEndpoints
 
         group.MapPost("/{id:guid}/refund",
             RefundPayment).RequireAuthorization("OwnerOnly");
+
+        group.MapGet("/{id:guid}/client-secret",
+            GetClientSecret).RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> CreatePaymentIntent(
@@ -86,6 +89,15 @@ public static class PaymentEndpoints
         decimal?          amount = null)
     {
         PaymentResponse result = await mediator.Send(new RefundPaymentCommand(id, amount), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetClientSecret(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        PaymentClientSecretResponse result = await mediator.Send(new GetPaymentClientSecretQuery(id), ct);
         return Results.Ok(result);
     }
 }

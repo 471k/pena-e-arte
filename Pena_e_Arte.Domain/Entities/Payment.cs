@@ -9,6 +9,7 @@ public class Payment : TenantEntity
     public decimal       Amount                 { get; set; }
     public PaymentStatus Status                 { get; set; }
     public string?       StripePaymentIntentId  { get; set; }
+    public string?       ClientSecret           { get; set; }
     public DateTime?     PaidAt                 { get; set; }
 
     public Appointment Appointment { get; set; } = null!;

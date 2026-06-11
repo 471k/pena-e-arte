@@ -6,19 +6,61 @@ import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 import { useConnectStudioMutation } from "../studiosApi";
 
+// Full list of countries supported by Stripe Connect (Express accounts)
 const COUNTRIES = [
-  { code: "US", label: "United States" },
-  { code: "GB", label: "United Kingdom" },
-  { code: "DE", label: "Germany" },
-  { code: "FR", label: "France" },
-  { code: "ES", label: "Spain" },
-  { code: "IT", label: "Italy" },
-  { code: "NL", label: "Netherlands" },
   { code: "AU", label: "Australia" },
-  { code: "CA", label: "Canada" },
-  { code: "PT", label: "Portugal" },
+  { code: "AT", label: "Austria" },
+  { code: "BE", label: "Belgium" },
   { code: "BR", label: "Brazil" },
-  { code: "OTHER", label: "Other" },
+  { code: "BG", label: "Bulgaria" },
+  { code: "CA", label: "Canada" },
+  { code: "HR", label: "Croatia" },
+  { code: "CY", label: "Cyprus" },
+  { code: "CZ", label: "Czech Republic" },
+  { code: "DK", label: "Denmark" },
+  { code: "EE", label: "Estonia" },
+  { code: "FI", label: "Finland" },
+  { code: "FR", label: "France" },
+  { code: "DE", label: "Germany" },
+  { code: "GH", label: "Ghana" },
+  { code: "GI", label: "Gibraltar" },
+  { code: "GR", label: "Greece" },
+  { code: "HK", label: "Hong Kong" },
+  { code: "HU", label: "Hungary" },
+  { code: "IN", label: "India" },
+  { code: "ID", label: "Indonesia" },
+  { code: "IE", label: "Ireland" },
+  { code: "IL", label: "Israel" },
+  { code: "IT", label: "Italy" },
+  { code: "JP", label: "Japan" },
+  { code: "KE", label: "Kenya" },
+  { code: "LV", label: "Latvia" },
+  { code: "LI", label: "Liechtenstein" },
+  { code: "LT", label: "Lithuania" },
+  { code: "LU", label: "Luxembourg" },
+  { code: "MY", label: "Malaysia" },
+  { code: "MT", label: "Malta" },
+  { code: "MX", label: "Mexico" },
+  { code: "NL", label: "Netherlands" },
+  { code: "NZ", label: "New Zealand" },
+  { code: "NG", label: "Nigeria" },
+  { code: "NO", label: "Norway" },
+  { code: "PL", label: "Poland" },
+  { code: "PT", label: "Portugal" },
+  { code: "RO", label: "Romania" },
+  { code: "SG", label: "Singapore" },
+  { code: "SK", label: "Slovakia" },
+  { code: "SI", label: "Slovenia" },
+  { code: "ZA", label: "South Africa" },
+  { code: "ES", label: "Spain" },
+  { code: "SE", label: "Sweden" },
+  { code: "CH", label: "Switzerland" },
+  { code: "TH", label: "Thailand" },
+  { code: "TT", label: "Trinidad & Tobago" },
+  { code: "AE", label: "United Arab Emirates" },
+  { code: "GB", label: "United Kingdom" },
+  { code: "US", label: "United States" },
+  { code: "UY", label: "Uruguay" },
 ];
 
 const SELECT_CLS = cn(
@@ -46,7 +88,8 @@ export function ConnectStudioPage() {
 
     const result = await connectStudio({ country, returnUrl, refreshUrl });
     if ("error" in result) {
-      setError("Failed to start Stripe onboarding. Please try again.");
+      const err = result.error as { data?: { message?: string } } | undefined;
+      setError(err?.data?.message ?? "Failed to start Stripe onboarding. Please try again.");
       return;
     }
     window.location.href = result.data.onboardingUrl;
@@ -107,6 +150,9 @@ export function ConnectStudioPage() {
               <option key={c.code} value={c.code}>{c.label}</option>
             ))}
           </select>
+          <p className="text-xs text-muted-foreground">
+            Only countries supported by Stripe Connect are listed. If yours isn't here, Stripe payouts may not be available in your region yet.
+          </p>
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}

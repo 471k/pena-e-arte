@@ -18,6 +18,7 @@ import {
 } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
 
@@ -96,6 +97,9 @@ export function RegisterStudioPage() {
 
   const nameValue = watch("name");
   const slugValue = watch("slug");
+  const latValue  = watch("latitude");
+  const lngValue  = watch("longitude");
+  const cityValue = watch("city");
 
   useEffect(() => {
     if (existingRole) {
@@ -224,47 +228,24 @@ export function RegisterStudioPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      placeholder="Lisbon"
-                      {...register("city")}
-                      aria-invalid={!!errors.city}
+                    <Label>Studio location</Label>
+                    <LocationPicker
+                      value={
+                        !isNaN(latValue) && !isNaN(lngValue)
+                          ? { lat: latValue, lng: lngValue, city: cityValue }
+                          : undefined
+                      }
+                      onChange={({ lat, lng, city }) => {
+                        setValue("latitude",  lat,  { shouldValidate: true });
+                        setValue("longitude", lng,  { shouldValidate: true });
+                        setValue("city",      city, { shouldValidate: true });
+                      }}
+                      error={
+                        errors.latitude?.message ??
+                        errors.longitude?.message ??
+                        errors.city?.message
+                      }
                     />
-                    {errors.city && (
-                      <p className="text-xs text-destructive">{errors.city.message}</p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="latitude">Latitude</Label>
-                      <Input
-                        id="latitude"
-                        type="number"
-                        step="any"
-                        placeholder="38.7169"
-                        {...register("latitude", { valueAsNumber: true })}
-                        aria-invalid={!!errors.latitude}
-                      />
-                      {errors.latitude && (
-                        <p className="text-xs text-destructive">{errors.latitude.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="longitude">Longitude</Label>
-                      <Input
-                        id="longitude"
-                        type="number"
-                        step="any"
-                        placeholder="-9.1395"
-                        {...register("longitude", { valueAsNumber: true })}
-                        aria-invalid={!!errors.longitude}
-                      />
-                      {errors.longitude && (
-                        <p className="text-xs text-destructive">{errors.longitude.message}</p>
-                      )}
-                    </div>
                   </div>
 
                   {serverError && (

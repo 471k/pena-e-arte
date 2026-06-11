@@ -18,6 +18,7 @@ public class PaymentConfiguration : TenantEntityConfiguration<Payment>
                .HasConversion<string>().HasMaxLength(32).IsRequired();
 
         builder.Property(p => p.StripePaymentIntentId).HasMaxLength(255);
+        builder.Property(p => p.ClientSecret).HasMaxLength(500);
 
         builder.HasOne(p => p.Appointment)
                .WithMany()

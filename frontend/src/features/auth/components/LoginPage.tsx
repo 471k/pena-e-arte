@@ -10,6 +10,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useLoginMutation } from "../authApi";
 import { setCredentials } from "../authSlice";
@@ -109,9 +110,8 @@ export function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   autoComplete="current-password"
                   {...register("password")}
                   aria-invalid={!!errors.password}

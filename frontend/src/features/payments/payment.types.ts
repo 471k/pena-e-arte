@@ -53,3 +53,7 @@ export interface GetPaymentsParams {
   lastSeenId?: string;
   pageSize?:   number;
 }
+
+export interface ClientSecretResponse {
+  clientSecret: string;
+}

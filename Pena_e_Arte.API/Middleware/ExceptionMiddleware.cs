@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FluentValidation;
 using Pena_e_Arte.Domain.Exceptions;
+using Stripe;
 
 namespace Pena_e_Arte.API.Middleware;
 
@@ -36,6 +37,8 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message),
             ServiceUnavailableException         => (StatusCodes.Status503ServiceUnavailable,  ex.Message),
             UnauthorizedAccessException     => (StatusCodes.Status401Unauthorized,          ex.Message),
+            StripeException stripeEx        => (StatusCodes.Status502BadGateway,
+                                                stripeEx.StripeError?.Message ?? stripeEx.Message),
             _                               => (StatusCodes.Status500InternalServerError,   "An unexpected error occurred.")
         };
 

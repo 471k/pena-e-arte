@@ -53,7 +53,8 @@ public class CreatePaymentIntentHandler(
             ClientId              = req.ClientId,
             Amount                = req.Amount,
             Status                = PaymentStatus.Pending,
-            StripePaymentIntentId = intentId
+            StripePaymentIntentId = intentId,
+            ClientSecret          = clientSecret
         };
 
         db.Payments.Add(payment);

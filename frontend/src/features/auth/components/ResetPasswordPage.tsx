@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { useResetPasswordMutation } from "../authApi";
 
 const schema = z.object({
@@ -91,13 +92,13 @@ export function ResetPasswordPage() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="newPassword">New password</Label>
-                  <Input id="newPassword" type="password" autoComplete="new-password" {...register("newPassword")} aria-invalid={!!errors.newPassword} />
+                  <PasswordInput id="newPassword" autoComplete="new-password" {...register("newPassword")} aria-invalid={!!errors.newPassword} />
                   {errors.newPassword && <p className="text-xs text-destructive">{errors.newPassword.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="confirm">Confirm password</Label>
-                  <Input id="confirm" type="password" autoComplete="new-password" {...register("confirm")} aria-invalid={!!errors.confirm} />
+                  <PasswordInput id="confirm" autoComplete="new-password" {...register("confirm")} aria-invalid={!!errors.confirm} />
                   {errors.confirm && <p className="text-xs text-destructive">{errors.confirm.message}</p>}
                 </div>
 
