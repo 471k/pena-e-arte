@@ -56,6 +56,7 @@ try
 
     await SeedRolesAsync(app);
     await DataSeeder.SeedAsync(app.Services);
+    await StripeDemoSeeder.SeedAsync(app.Services, app.Configuration);
 
     using (IServiceScope jobScope = app.Services.CreateScope())
     {

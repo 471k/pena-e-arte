@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -7,6 +8,7 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
@@ -26,9 +28,26 @@ public class CreateAppointmentHandler(
         CreateAppointmentRequest req = command.Request;
 
         // Clients cannot book on behalf of another client — always enforce JWT identity.
-        Guid clientId = currentUser.Role == "client" ? currentUser.UserId : req.ClientId;
+        // The JWT carries the IdentityUser id; resolve it to the tenant's Client record.
+        Guid clientId;
+        if (currentUser.Role == "client")
+        {
+            Client client = await db.FindClientForUserAsync(currentUser, ct)
+                ?? throw new NotFoundException(nameof(Client), currentUser.UserId);
+            clientId = client.Id;
+        }
+        else
+        {
+            clientId = req.ClientId;
+        }
 
         DateTime requestEnd = req.Date.AddMinutes(req.DurationMinutes);
+
+        // Validate the artist up front (clean 404 instead of an FK violation),
+        // and load the hourly rate that percent deposit rules are based on.
+        Artist artist = await db.Artists
+            .FirstOrDefaultAsync(a => a.Id == req.ArtistId, ct)
+            ?? throw new NotFoundException(nameof(Artist), req.ArtistId);
 
         bool locked = await slotLocker.TryAcquireLockAsync(tenant.StudioId, req.ArtistId, req.Date, ct);
         if (!locked) throw new SlotAlreadyBookedException();
@@ -43,13 +62,14 @@ public class CreateAppointmentHandler(
 
             if (conflict) throw new SlotAlreadyBookedException();
 
-            DepositRule? rule = await db.DepositRules.FirstOrDefaultAsync(r => r.IsActive, ct);
-            decimal depositAmount = rule switch
-            {
-                { AmountFixed: decimal f }   => f,
-                { AmountPercent: decimal _ } => 0m, // percent requires session price, not yet tracked
-                _                            => 0m,
-            };
+            // Single-active is enforced by the deposit rule handlers; ordering by
+            // UpdatedAt keeps selection deterministic even against legacy data.
+            DepositRule? rule = await db.DepositRules
+                .Where(r => r.IsActive)
+                .OrderByDescending(r => r.UpdatedAt)
+                .FirstOrDefaultAsync(ct);
+
+            decimal depositAmount = DepositCalculator.Calculate(rule, artist.HourlyRate, req.DurationMinutes);
 
             Appointment appointment = new()
             {

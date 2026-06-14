@@ -5,7 +5,9 @@ using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Interfaces;
 using Stripe;
+using Stripe.Checkout;
 using System.Collections.Generic;
 
 namespace Pena_e_Arte.API.Endpoints;
@@ -24,6 +26,10 @@ public static class BillingEndpoints
 
         billingGroup.MapGet("/subscription",   GetSubscription).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/subscription",  CreateSubscription).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/subscription/checkout",          CreateCheckout).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/subscription/checkout/finalize", FinalizeCheckout).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPut("/subscription/plan",            ChangePlan).RequireAuthorization("OwnerOnly");
+        billingGroup.MapDelete("/subscription/plan/pending", CancelPlanChange).RequireAuthorization("OwnerOnly");
 
         RouteGroupBuilder webhookGroup = app.MapGroup("/api/v1/webhooks/stripe");
 
@@ -84,6 +90,45 @@ public static class BillingEndpoints
         return Results.Ok(result);
     }
 
+    private static async Task<IResult> CreateCheckout(
+        CreateCheckoutRequest request,
+        ISender               mediator,
+        CancellationToken     ct)
+    {
+        CheckoutSessionResponse result = await mediator.Send(new CreateSubscriptionCheckoutCommand(request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> FinalizeCheckout(
+        FinalizeCheckoutRequest request,
+        ICurrentTenant          tenant,
+        ISender                 mediator,
+        CancellationToken       ct)
+    {
+        SubscriptionResponse? result = await mediator.Send(
+            new ActivateCheckoutSubscriptionCommand(request.SessionId, tenant.StudioId), ct);
+
+        // Null = checkout not yet completed at Stripe; tell the client to keep waiting.
+        return result is null ? Results.Accepted() : Results.Ok(result);
+    }
+
+    private static async Task<IResult> ChangePlan(
+        ChangePlanRequest request,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        SubscriptionResponse result = await mediator.Send(new ChangePlanCommand(request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CancelPlanChange(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        SubscriptionResponse result = await mediator.Send(new CancelPlanChangeCommand(), ct);
+        return Results.Ok(result);
+    }
+
     private static async Task<IResult> HandleBillingWebhook(
         HttpRequest       httpRequest,
         IConfiguration    configuration,
@@ -111,6 +156,11 @@ public static class BillingEndpoints
 
         switch (stripeEvent.Type)
         {
+            // Owner completed the hosted Checkout — activate their subscription.
+            case "checkout.session.completed" when stripeEvent.Data.Object is Session session:
+                await mediator.Send(new ActivateCheckoutSubscriptionCommand(session.Id, null), ct);
+                break;
+
             case "invoice.paid" when stripeEvent.Data.Object is Invoice invoice:
             {
                 string? stripeSubId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
@@ -164,18 +214,17 @@ public static class BillingEndpoints
 
         switch (stripeEvent.Type)
         {
+            // Manual-capture flow: client authorized the card — deposit is now held
+            case "payment_intent.amount_capturable_updated" when stripeEvent.Data.Object is PaymentIntent intent:
+                await mediator.Send(new MarkPaymentAuthorizedCommand(intent.Id), ct);
+                break;
+
             case "payment_intent.succeeded" when stripeEvent.Data.Object is PaymentIntent intent:
                 await mediator.Send(new ConfirmPaymentCommand(intent.Id), ct);
                 break;
 
             case "payment_intent.payment_failed" when stripeEvent.Data.Object is PaymentIntent intent:
                 await mediator.Send(new MarkPaymentFailedCommand(intent.Id), ct);
-                break;
-
-            case "account.updated" when stripeEvent.Data.Object is Stripe.Account account:
-                if (account.ChargesEnabled)
-                    logger.LogInformation(
-                        "Stripe Connect account onboarding complete {@StripeAccountId}", account.Id);
                 break;
         }
 

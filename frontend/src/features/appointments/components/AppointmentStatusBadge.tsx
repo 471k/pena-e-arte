@@ -15,7 +15,9 @@ const STATUS_STYLES: Record<AppointmentStatus, string> = {
 };
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
-  [AppointmentStatus.Pending]:   "Pending",
+  // "Requested" instead of "Pending" — avoids reading as a payment state
+  // (the payments UI uses "Pending" for unpaid card intents)
+  [AppointmentStatus.Pending]:   "Requested",
   [AppointmentStatus.Confirmed]: "Confirmed",
   [AppointmentStatus.Cancelled]: "Cancelled",
   [AppointmentStatus.Completed]: "Completed",

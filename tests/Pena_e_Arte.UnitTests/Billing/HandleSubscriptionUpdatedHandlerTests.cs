@@ -70,6 +70,40 @@ public class HandleSubscriptionUpdatedHandlerTests
     }
 
     [Fact]
+    public async Task Handle_PriceMatchesPendingPlan_ClearsPendingPlanId()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+
+        Plan plan = new()
+        {
+            Name                 = "Basic",
+            BillingInterval      = BillingInterval.Monthly,
+            PriceMonthly         = 29m,
+            StripePriceIdMonthly = "price_basic_pending"
+        };
+        _db.Plans.Add(plan);
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId             = Guid.NewGuid(),
+            StripeSubscriptionId = stripeSubId,
+            Status               = SubscriptionStatus.Active,
+            PendingPlanId        = plan.Id,
+            TrialExpiresAt       = DateTime.UtcNow.AddDays(-20),
+            CurrentPeriodEnd     = DateTime.UtcNow.AddDays(1),
+            GracePeriodEnd       = DateTime.UtcNow.AddDays(-13)
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "active", _nextPeriodEnd, "price_basic_pending"), default);
+
+        Subscription stored = _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId);
+        stored.PlanId.Should().Be(plan.Id);
+        stored.PendingPlanId.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_UnknownStripeStatus_DoesNotChangeStatus()
     {
         string stripeSubId = "sub_abc";

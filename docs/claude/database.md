@@ -81,7 +81,7 @@ public class Studio  // NOT a TenantEntity — issuer-owned
     public double   Longitude        { get; set; }
     public bool     IsActive         { get; set; }
     public DateTime TrialExpiresAt   { get; set; }  // CreatedAt + 14 days
-    public string?  StripeAccountId  { get; set; }  // Stripe Connect
+    public string?  StripeCustomerId { get; set; }  // Stripe Billing (SaaS subscription)
     public DateTime CreatedAt        { get; init; } = DateTime.UtcNow;
 }
 ```

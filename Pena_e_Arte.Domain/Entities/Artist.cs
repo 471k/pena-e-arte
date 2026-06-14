@@ -7,6 +7,9 @@ public class Artist : TenantEntity
     public string       LastName        { get; set; } = string.Empty;
     public string       Email           { get; set; } = string.Empty;
     public string?      Specializations { get; set; }
+
+    /// <summary>Hourly rate in EUR — the base for percent deposit rules. Null = not set.</summary>
+    public decimal?     HourlyRate      { get; set; }
     public string?      Slug            { get; private set; }
     public string?      Bio             { get; set; }
     public List<string> PortfolioImages { get; set; } = [];

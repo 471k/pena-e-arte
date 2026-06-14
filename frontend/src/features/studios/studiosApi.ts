@@ -22,6 +22,7 @@ export interface StudioResponse {
   allowBrandingRemoval: boolean;
   trialExpiresAt:       string;
   createdAt:            string;
+  isActive:             boolean;
 }
 
 export interface StudioMapItem {
@@ -49,16 +50,6 @@ export interface ReferralStatsResponse {
   discountsApplied: number;
 }
 
-export interface ConnectStudioRequest {
-  returnUrl:  string;
-  refreshUrl: string;
-  country:    string;
-}
-
-export interface ConnectOnboardingResponse {
-  onboardingUrl: string;
-}
-
 export interface UpdateStudioRequest {
   name:      string;
   city:      string;
@@ -76,9 +67,6 @@ export const studiosApi = createApi({
     }),
     getStudioMap: builder.query<StudioMapItem[], void>({
       query: () => "studios/map",
-    }),
-    connectStudio: builder.mutation<ConnectOnboardingResponse, ConnectStudioRequest>({
-      query: (body) => ({ url: "studios/connect", method: "POST", body }),
     }),
     getMyStudio: builder.query<StudioResponse, void>({
       query: () => "studios/me",
@@ -104,10 +92,28 @@ export const studiosApi = createApi({
     suspendStudio: builder.mutation<void, string>({
       query: (id) => ({ url: `studios/${id}/suspend`, method: "PATCH" }),
       invalidatesTags: ["Studio"],
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          studiosApi.util.updateQueryData("getStudios", undefined, (draft) => {
+            const s = draft.find((x) => x.id === id);
+            if (s) s.isActive = false;
+          }),
+        );
+        try { await queryFulfilled; } catch { patch.undo(); }
+      },
     }),
     unsuspendStudio: builder.mutation<void, string>({
       query: (id) => ({ url: `studios/${id}/unsuspend`, method: "PATCH" }),
       invalidatesTags: ["Studio"],
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          studiosApi.util.updateQueryData("getStudios", undefined, (draft) => {
+            const s = draft.find((x) => x.id === id);
+            if (s) s.isActive = true;
+          }),
+        );
+        try { await queryFulfilled; } catch { patch.undo(); }
+      },
     }),
     getStudioQrCode: builder.query<string, string>({
       query: (id) => ({
@@ -135,7 +141,6 @@ export const studiosApi = createApi({
 export const {
   useRegisterStudioMutation,
   useGetStudioMapQuery,
-  useConnectStudioMutation,
   useGetMyStudioQuery,
   useUpdateMyStudioMutation,
   useUpdateStudioBrandingMutation,

@@ -26,7 +26,7 @@ public class CreatePaymentIntentHandlerTests
     {
         _tenant.StudioId.Returns(_studioId);
         _stripe.CreatePaymentIntentAsync(
-                Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string>(),
+                Arg.Any<long>(), Arg.Any<string>(),
                 Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(("pi_test_123", "pi_test_123_secret"));
     }
@@ -131,32 +131,20 @@ public class CreatePaymentIntentHandlerTests
         await act.Should().NotThrowAsync();
     }
 
-    [Fact]
-    public async Task Handle_StudioHasNoStripeAccount_ThrowsStripeAccountNotConnectedException()
-    {
-        await SeedStudioAndAppointment(stripeAccountId: null);
-
-        Func<Task> act = () => CreateSut()
-            .Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
-
-        await act.Should().ThrowAsync<StripeAccountNotConnectedException>();
-    }
-
-    private async Task SeedStudio(string? stripeAccountId = "acct_test_123")
+    private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio
         {
-            Id              = _studioId,
-            Name            = "Test Studio",
-            Slug            = "test",
-            StripeAccountId = stripeAccountId
+            Id   = _studioId,
+            Name = "Test Studio",
+            Slug = "test"
         });
         await _db.SaveChangesAsync();
     }
 
-    private async Task SeedStudioAndAppointment(string? stripeAccountId = "acct_test_123")
+    private async Task SeedStudioAndAppointment()
     {
-        await SeedStudio(stripeAccountId);
+        await SeedStudio();
 
         _db.Artists.Add(new Artist { Id = _artistId, StudioId = _studioId, FirstName = "A", LastName = "B", Email = "a@b.com" });
         _db.Clients.Add(new Client { Id = _clientId, StudioId = _studioId, FirstName = "C", LastName = "D", Email = "c@d.com" });

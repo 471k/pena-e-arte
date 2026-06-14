@@ -310,6 +310,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<decimal?>("HourlyRate")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -866,6 +869,13 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("AppointmentId")
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid?>("CashConfirmedByUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CashNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
                     b.Property<Guid>("ClientId")
                         .HasColumnType("char(36)");
 
@@ -878,6 +888,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
 
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime(6)");
@@ -900,7 +915,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_payments");
 
-                    b.HasIndex("AppointmentId");
+                    b.HasIndex("AppointmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_payments_appointment_id");
 
                     b.HasIndex("ClientId");
 
@@ -1123,10 +1140,6 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<DateTime?>("SlugLockedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("StripeAccountId")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
                     b.Property<string>("StripeCustomerId")
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
@@ -1165,6 +1178,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<DateTime>("GracePeriodEnd")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<Guid?>("PendingPlanId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid?>("PlanId")
                         .HasColumnType("char(36)");
 
@@ -1185,6 +1201,8 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_subscriptions");
+
+                    b.HasIndex("PendingPlanId");
 
                     b.HasIndex("PlanId");
 
@@ -1483,6 +1501,12 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Subscription", b =>
                 {
+                    b.HasOne("Pena_e_Arte.Domain.Entities.Plan", null)
+                        .WithMany()
+                        .HasForeignKey("PendingPlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_subscriptions_pending_plans");
+
                     b.HasOne("Pena_e_Arte.Domain.Entities.Plan", "Plan")
                         .WithMany("Subscriptions")
                         .HasForeignKey("PlanId")

@@ -13,9 +13,9 @@ public static class ArtistEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/artists")
             .RequireAuthorization();
 
-        group.MapGet("/",          GetArtists).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/",          GetArtists).RequireAuthorization("ClientAndAbove");
         group.MapPost("/",         CreateArtist).RequireAuthorization("OwnerOnly");
-        group.MapGet("{id:guid}",  GetArtist).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("{id:guid}",  GetArtist).RequireAuthorization("ClientAndAbove");
         group.MapPut("{id:guid}",  UpdateArtist).RequireAuthorization("OwnerOnly");
         group.MapDelete("{id:guid}", DeleteArtist).RequireAuthorization("OwnerOnly");
     }

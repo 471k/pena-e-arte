@@ -16,15 +16,15 @@ public static class FormEndpoints
             .RequireAuthorization();
 
         intake.MapPost("/",        SubmitIntakeForm).RequireAuthorization("ClientAndAbove");
-        intake.MapGet("/",         GetIntakeForms).RequireAuthorization("ArtistAndAbove");
-        intake.MapGet("{id:guid}", GetIntakeFormById).RequireAuthorization("ArtistAndAbove");
+        intake.MapGet("/",         GetIntakeForms).RequireAuthorization("ClientAndAbove");
+        intake.MapGet("{id:guid}", GetIntakeFormById).RequireAuthorization("ClientAndAbove");
 
         RouteGroupBuilder consent = app.MapGroup("/api/v1/consent-forms")
             .RequireAuthorization();
 
         consent.MapPost("/",        SignConsentForm).RequireAuthorization("ClientAndAbove");
-        consent.MapGet("/",         GetConsentForms).RequireAuthorization("ArtistAndAbove");
-        consent.MapGet("{id:guid}", GetConsentFormById).RequireAuthorization("ArtistAndAbove");
+        consent.MapGet("/",         GetConsentForms).RequireAuthorization("ClientAndAbove");
+        consent.MapGet("{id:guid}", GetConsentFormById).RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> SubmitIntakeForm(

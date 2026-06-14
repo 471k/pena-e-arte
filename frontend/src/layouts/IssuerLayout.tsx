@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { BarChart3, Building2, CreditCard, LayoutDashboard, LogOut, PenLine, Receipt, Share2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { UserChip } from "@/shared/components/UserChip";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { cn } from "@/shared/utils/cn";
@@ -50,15 +51,19 @@ export function IssuerLayout() {
           ))}
         </nav>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-auto text-muted-foreground hover:text-foreground"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4 mr-1.5" />
-          Log out
-        </Button>
+        <div className="ml-auto flex items-center gap-3">
+          <UserChip />
+          <div className="w-px h-5 bg-border" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-1.5" />
+            Log out
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1">

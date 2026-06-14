@@ -1,9 +1,17 @@
-import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Calendar, CheckCircle, CreditCard, Loader2, RefreshCw, Zap } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AlertTriangle, Banknote, Calendar, CalendarClock, CreditCard, Loader2, RefreshCw, ShieldX, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
-import { useGetSubscriptionQuery, useGetPlansQuery } from "../billingApi";
+import {
+  useGetSubscriptionQuery,
+  useGetPlansQuery,
+  useCancelPlanChangeMutation,
+  useFinalizeCheckoutMutation,
+} from "../billingApi";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import type { SubscriptionResponse, PlanResponse } from "../billing.types";
 
 function daysUntil(iso: string): number {
@@ -35,10 +43,45 @@ function planName(sub: SubscriptionResponse, plans: PlanResponse[]): string | nu
   return plans.find((p) => p.id === sub.planId)?.name ?? null;
 }
 
+function pendingPlanName(sub: SubscriptionResponse, plans: PlanResponse[]): string | null {
+  if (!sub.pendingPlanId) return null;
+  return plans.find((p) => p.id === sub.pendingPlanId)?.name ?? null;
+}
+
 export function BillingPage() {
   const navigate = useNavigate();
-  const { data: sub,   isLoading: loadingSub,   isError: subError }   = useGetSubscriptionQuery();
-  const { data: plans, isLoading: loadingPlans } = useGetPlansQuery();
+  // Always refetch on mount — subscription/plan can change out of band (webhooks,
+  // issuer actions, a switch in another tab), and stale cache must not mislead the owner.
+  const { data: sub,    isLoading: loadingSub,    isError: subError } =
+    useGetSubscriptionQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: plans,  isLoading: loadingPlans } =
+    useGetPlansQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: studio } =
+    useGetMyStudioQuery(undefined, { refetchOnMountOrArgChange: true });
+  const [cancelPlanChange, { isLoading: cancellingChange }] = useCancelPlanChangeMutation();
+
+  // Returning from Stripe Checkout: reconcile the session (covers a missed webhook),
+  // then strip session_id from the URL. The Subscription query is invalidated, so the
+  // page refreshes to Active automatically.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [finalizeCheckout] = useFinalizeCheckoutMutation();
+  const finalizedRef = useRef(false);
+
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    if (!sessionId || finalizedRef.current) return;
+    finalizedRef.current = true;
+
+    void (async () => {
+      const result = await finalizeCheckout({ sessionId });
+      setSearchParams({}, { replace: true });
+      if ("data" in result && result.data) {
+        toast.success("Subscription active — welcome aboard!");
+      } else {
+        toast("Finalizing your subscription… this can take a moment.");
+      }
+    })();
+  }, [searchParams, finalizeCheckout, setSearchParams]);
 
   if (loadingSub || loadingPlans) {
     return (
@@ -59,7 +102,9 @@ export function BillingPage() {
 
   const cfg   = statusConfig(sub.status);
   const plan  = planName(sub, plans ?? []);
-  const canSubscribe = sub.status !== "Active";
+  const canSubscribe  = sub.status !== "Active";
+  const isCashBilled  = sub.stripeSubscriptionId === null;
+  const canChangePlan = sub.status === "Active" && !isCashBilled;
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,9 +119,41 @@ export function BillingPage() {
             {sub.status === "Trialing" || sub.status === "GracePeriod" ? "Subscribe" : "Reactivate"}
           </Button>
         )}
+        {canChangePlan && (
+          <Button size="sm" variant="outline" onClick={() => navigate("/billing/subscribe")} className="gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Change plan
+          </Button>
+        )}
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-8 space-y-4">
+
+        {/* Studio suspended — shown when issuer has suspended the studio independently of billing */}
+        {studio && !studio.isActive && (
+          <Card className="border-red-500/50">
+            <CardContent className="p-4 flex items-start gap-3 bg-red-500/10 rounded-lg">
+              <ShieldX className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                  Studio suspended
+                </p>
+                <p className="text-xs text-red-600/80 dark:text-red-400/80">
+                  Your studio has been suspended by the platform administrator. Your billing
+                  subscription below remains active, but your studio is not accessible to
+                  clients until the suspension is lifted. Contact{" "}
+                  <a
+                    href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "support@penaearte.com"}`}
+                    className="font-medium underline underline-offset-4"
+                  >
+                    support
+                  </a>{" "}
+                  to resolve this.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Status card */}
         <Card>
@@ -106,7 +183,10 @@ export function BillingPage() {
             {sub.status === "Active" && (
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
-                <span>Renews {formatDate(sub.currentPeriodEnd)}</span>
+                {/* Cash subs don't auto-renew — the issuer re-activates each period */}
+                <span>
+                  {isCashBilled ? "Active until" : "Renews"} {formatDate(sub.currentPeriodEnd)}
+                </span>
               </div>
             )}
 
@@ -135,52 +215,69 @@ export function BillingPage() {
           </CardContent>
         </Card>
 
-        {/* Connect with Stripe */}
-        <Card>
-          <CardContent className="p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Stripe Connect</p>
-              {sub.isStripeConnected && (
-                <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  Connected
-                </span>
-              )}
-            </div>
+        {/* Scheduled plan change (downgrade at period end) */}
+        {sub.pendingPlanId && (
+          <Card>
+            <CardContent className="p-5 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" />
+                Scheduled plan change
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Your plan changes to{" "}
+                <span className="font-medium text-foreground">
+                  {pendingPlanName(sub, plans ?? []) ?? "another plan"}
+                </span>{" "}
+                on {formatDate(sub.currentPeriodEnd)}. You keep your current plan until then.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={cancellingChange}
+                onClick={() => cancelPlanChange()}
+              >
+                {cancellingChange
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : "Keep current plan"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-            {sub.isStripeConnected ? (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  Your studio is connected to Stripe. Clients can pay deposits at booking.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-1.5"
-                  onClick={() => navigate("/studio/connect", { state: { isUpdate: true } })}
+        {/* Cash-billed: keep cash (issuer-handled) or self-serve switch to card billing */}
+        {sub.status === "Active" && isCashBilled && (
+          <Card>
+            <CardContent className="p-5 space-y-3 text-sm">
+              <p className="font-medium flex items-center gap-2">
+                <Banknote className="h-4 w-4" />
+                Cash-billed subscription
+              </p>
+              <p className="text-muted-foreground">
+                Your subscription is settled in cash. Want to pay by card instead and manage
+                your plan yourself? Switch to card billing below.
+              </p>
+              <Button
+                size="sm"
+                className="w-full gap-1.5"
+                onClick={() => navigate("/billing/subscribe")}
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                Switch to card billing
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Prefer to keep paying cash?{" "}
+                <a
+                  href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "contact@penaearte.com"}`}
+                  className="font-medium underline underline-offset-4"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Update Stripe account
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  Connect your studio to Stripe to accept deposit payments from clients.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-1.5"
-                  onClick={() => navigate("/studio/connect")}
-                >
-                  <CreditCard className="h-3.5 w-3.5" />
-                  Set up payments
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                  Contact us
+                </a>
+                .
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
       </main>
     </div>

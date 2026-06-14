@@ -17,8 +17,8 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
     public DbSet<DesignApproval>   DesignApprovals   => Set<DesignApproval>();
     public DbSet<DesignShareToken> DesignShareTokens => Set<DesignShareToken>();
-    public DbSet<Payment>         Payments         => Set<Payment>();
-    public DbSet<SessionSplit>    SessionSplits    => Set<SessionSplit>();
+    public DbSet<Payment>             Payments            => Set<Payment>();
+    public DbSet<SessionSplit>        SessionSplits       => Set<SessionSplit>();
     public DbSet<IntakeForm>      IntakeForms      => Set<IntakeForm>();
     public DbSet<ConsentForm>     ConsentForms     => Set<ConsentForm>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();

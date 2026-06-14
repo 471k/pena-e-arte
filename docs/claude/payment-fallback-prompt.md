@@ -1,3 +1,8 @@
+> ⛔ **SUPERSEDED — DO NOT EXECUTE**
+> This prompt has been replaced by `payment-simplified-prompt.md`.
+> The PayPal integration described here was dropped. Payments are Card + Cash only.
+> Run `payment-simplified-prompt.md` instead.
+
 # Payment Architecture Overhaul — Overnight Execution Prompt
 
 > **Context:** Stripe Connect Express does not support the platform owner's country.

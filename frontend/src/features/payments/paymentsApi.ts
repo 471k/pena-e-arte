@@ -31,6 +31,19 @@ export const paymentsApi = createApi({
       query: (body) => ({ url: "payments", method: "POST", body }),
       invalidatesTags: ["Payment"],
     }),
+    declareCashDeposit: builder.mutation<PaymentResponse, { appointmentId: string; note?: string }>({
+      query: (body) => ({ url: "payments/cash", method: "POST", body }),
+      invalidatesTags: ["Payment"],
+    }),
+    // Client-facing: create (or resume) the card deposit intent for own appointment
+    createDepositPayment: builder.mutation<PaymentIntentResponse, { appointmentId: string }>({
+      query: (body) => ({ url: "payments/deposit", method: "POST", body }),
+      invalidatesTags: ["Payment"],
+    }),
+    confirmCashDeposit: builder.mutation<PaymentResponse, string>({
+      query: (id) => ({ url: `payments/${id}/cash/confirm`, method: "POST" }),
+      invalidatesTags: ["Payment"],
+    }),
     captureDeposit: builder.mutation<PaymentResponse, string>({
       query: (id) => ({ url: `payments/${id}/capture`, method: "POST" }),
       invalidatesTags: ["Payment"],
@@ -57,6 +70,9 @@ export const {
   useGetPaymentsQuery,
   useGetPaymentByAppointmentQuery,
   useCreatePaymentIntentMutation,
+  useDeclareCashDepositMutation,
+  useCreateDepositPaymentMutation,
+  useConfirmCashDepositMutation,
   useCaptureDepositMutation,
   useRefundPaymentMutation,
   useUpdateSessionSplitsMutation,

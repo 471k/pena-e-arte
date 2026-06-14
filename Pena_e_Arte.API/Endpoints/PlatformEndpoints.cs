@@ -1,4 +1,5 @@
 using MediatR;
+using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Platform.Commands;
 using Pena_e_Arte.Application.Platform.Queries;
 using Pena_e_Arte.Contracts.Requests;
@@ -16,6 +17,8 @@ public static class PlatformEndpoints
         group.MapGet("stats",                            GetStats);
         group.MapGet("subscriptions",                    GetSubscriptions);
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
+        group.MapPost("studios/{studioId:guid}/subscription/activate", ActivateSubscriptionManually);
+        group.MapPatch("subscriptions/{studioId:guid}/cancel",         CancelSubscription);
         group.MapGet("referral-codes",                   GetReferralCodes);
         group.MapPatch("referral-codes/{id:guid}/deactivate", DeactivateReferralCode);
         group.MapGet("reports/industry",                 GetIndustryReports);
@@ -63,6 +66,26 @@ public static class PlatformEndpoints
         CancellationToken ct)
     {
         await mediator.Send(new DeactivateReferralCodeCommand(id), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ActivateSubscriptionManually(
+        Guid                                studioId,
+        ActivateSubscriptionManuallyRequest request,
+        ISender                             mediator,
+        CancellationToken                   ct)
+    {
+        SubscriptionResponse result = await mediator.Send(
+            new ActivateSubscriptionManuallyCommand(studioId, request.PlanId, request.Note), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CancelSubscription(
+        Guid              studioId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new CancelSubscriptionCommand(studioId), ct);
         return Results.NoContent();
     }
 

@@ -25,6 +25,7 @@ const ELENA: ArtistResponse = {
   lastName: "Martins",
   email: "elena.martins@ink-soul.test",
   specializations: "Traditional, Realism",
+  hourlyRate: 100,
   createdAt: "2024-01-15T10:00:00.000Z",
   updatedAt: "2024-06-01T10:00:00.000Z",
 };
@@ -38,6 +39,7 @@ const ARTISTS: ArtistResponse[] = [
     lastName: "Silva",
     email: "marco.silva@ink-soul.test",
     specializations: "Neo-Traditional",
+    hourlyRate: null,
     createdAt: "2024-02-10T10:00:00.000Z",
     updatedAt: "2024-05-20T10:00:00.000Z",
   },
@@ -48,6 +50,7 @@ const ARTISTS: ArtistResponse[] = [
     lastName: "Costa",
     email: "sara.costa@ink-soul.test",
     specializations: null,
+    hourlyRate: null,
     createdAt: "2024-03-05T10:00:00.000Z",
     updatedAt: "2024-04-15T10:00:00.000Z",
   },

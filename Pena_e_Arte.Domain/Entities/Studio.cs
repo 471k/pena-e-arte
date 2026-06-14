@@ -17,7 +17,6 @@ public class Studio
 
     public void UpdateBranding(bool show) => ShowPlatformBranding = show;
     public DateTime TrialExpiresAt        { get; set; }
-    public string?  StripeAccountId  { get; set; }
     public string?  StripeCustomerId { get; set; }
     public DateTime CreatedAt       { get; init; } = DateTime.UtcNow;
 

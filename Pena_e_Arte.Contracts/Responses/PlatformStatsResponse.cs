@@ -4,7 +4,7 @@ public record PlatformStatsResponse(
     int     TotalStudios,
     int     ActiveSubscriptions,
     int     TrialStudios,
-    int     SuspendedStudios,
-    decimal MonthlyRecurringRevenue,
-    int     TotalReferralCodes,
-    int     ActiveReferralCodes);
+    int     GracePeriodStudios,
+    decimal Mrr,
+    double  TrialConversionRate,
+    int     NewStudiosThisMonth);

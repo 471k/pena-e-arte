@@ -133,43 +133,37 @@ Never push directly from an endpoint handler.
 
 ---
 
-## Payment Architecture — Aggregator Model
+## Payment Architecture — Card & Cash Only
 
 > **Stripe Connect is not available in the platform's country.**
-> The platform uses the aggregator model: all client payments are collected into
-> the platform's own Stripe account. Studio payouts are handled via PayPal Payouts API.
+> The platform uses the aggregator model for card payments, and records cash
+> payments manually. There is no PayPal, no Connect, no third-party payout service.
 
 ```
-CLIENT PAYMENTS (into platform Stripe account — no StripeAccount header)
-  Option A: Stripe Payment Element  → cards, Apple Pay, Google Pay
-  Option B: PayPal Checkout         → PayPal balance, cards via PayPal
-  Both options use manual capture (hold then capture at session end)
+CLIENT DEPOSITS (client pays studio, at booking)
+  Card  → Stripe Payment Element (platform aggregator Stripe account, manual capture)
+           Client pays → Captured (held) → Paid (captured at session end)
+  Cash  → Client declares intent (CashPending) → Owner/artist confirms receipt (Paid)
 
-STUDIO PAYOUTS (platform → studio, after session captured)
-  Primary:  PayPal Payouts API      → studio's registered PayPal email
-  Fallback: BankTransfer            → issuer manually marks completed
-
-PLATFORM SUBSCRIPTIONS (studio → platform)
-  Stripe Billing                    → unchanged, uses platform Stripe account
+PLATFORM SUBSCRIPTIONS (owner pays platform, SaaS access)
+  Card  → Stripe Billing (unchanged, platform Stripe account)
+  Cash  → Owner contacts issuer out-of-band;
+           Issuer calls ActivateSubscriptionManuallyCommand
 ```
 
 **Key rule:** `IStripePaymentService` must NEVER pass `RequestOptions { StripeAccount = ... }`.
 Every PaymentIntent goes to the platform account. This is enforced by the interface — the
-`connectedAccountId` parameter no longer exists.
+`connectedAccountId` parameter does not exist.
 
-**`StripeConnectService`** is marked `[Obsolete]`. Do not call it. `ConnectStudio`
-endpoint is replaced with a status endpoint explaining PayPal is used instead.
+**`StripeConnectService`** is marked `[Obsolete]`. Do not call it. Do not re-introduce it.
 
-**Payout entities:**
-- `StudioPayoutMethod` — how a studio wants to receive payouts (PayPal email or bank details)
-- `StudioPayout` — individual payout record linked to a `Payment`
-
-**PayPal integration:**
-- Uses raw `HttpClient` (named `"PayPal"`) with PayPal REST API v2 — no SDK.
-- `PayPalTokenCache` (singleton) caches the OAuth 2.0 access token.
-- `IPayPalCheckoutService` — creates and captures PayPal Orders for client checkout.
-- `IPayPalPayoutService` — sends payouts to studio's PayPal email.
-- Options bound from `PayPal:*` config section (never hardcoded).
+**Cash flow:**
+- `DeclareCashDepositCommand` — called by client at booking; creates `Payment` with
+  `Method = Cash`, `Status = CashPending`.
+- `ConfirmCashDepositCommand` — called by artist or owner when cash is physically received;
+  sets `Status = Paid`, mirrors `DepositStatus.Paid` on the `Appointment`.
+- `ActivateSubscriptionManuallyCommand` — IssuerOnly; activates a studio subscription
+  after a cash subscription payment is confirmed out-of-band.
 
 ---
 
@@ -179,11 +173,11 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 
 | # | Feature | Domain Entities | Infrastructure | Scope |
 |---|---|---|---|---|
-| 01 | Appointment Booking + Deposits | `Appointment`, `DepositRule` | Stripe Connect, Hangfire | Per-tenant |
+| 01 | Appointment Booking + Deposits | `Appointment`, `DepositRule` | Stripe (aggregator), Hangfire | Per-tenant |
 | 02 | Consultation & Consent Forms | `IntakeForm`, `ConsentForm` | Cloudflare R2 (PDF storage) | Per-tenant |
 | 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` | Cloudflare R2 (images), SignalR | Per-tenant |
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
-| 05 | Payments & Session Splits | `Payment`, `SessionSplit` | Stripe Connect | Per-tenant |
+| 05 | Payments & Session Splits | `Payment`, `SessionSplit` | Stripe (aggregator, card) + Cash (manual) | Per-tenant |
 | 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + MailKit | Per-tenant |
 | 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth | Platform-wide |
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |
@@ -263,11 +257,11 @@ BillingInterval enum: Monthly | Yearly.
 ### Stripe Billing vs Stripe Connect — important distinction
 
 - Stripe Billing       = platform charges studios for SaaS access (subscriptions) — **ACTIVE**
-- Stripe (aggregator)  = platform collects client payments into its own account — **ACTIVE**
+- Stripe (aggregator)  = platform collects client card deposits into its own account — **ACTIVE**
 - Stripe Connect       = NOT USED — not available in the platform's country
 
-Studio payouts go via PayPal Payouts API, not Stripe.
-See "Payment Architecture — Aggregator Model" section for the full picture.
+Studio payouts are NOT handled by the platform. Client pays studio (deposit) via card or cash.
+See "Payment Architecture — Card & Cash Only" section for the full picture.
 
 ---
 
@@ -300,6 +294,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 4 | `GetPlatformStatsHandler` | Platform KPI aggregate (total studios, MRR, conversion) | IssuerOnly |
 | 5 | `GetPlatformSubscriptionsHandler`, `ExtendTrialHandler` | All subscriptions cross-tenant; trial extension | IssuerOnly |
 | 6 | `GetPlatformReferralCodesHandler`, `DeactivateReferralCodeHandler` | All referral codes cross-tenant | IssuerOnly |
+| 7 | `CancelSubscriptionHandler` | Subscription cancellation cross-tenant | IssuerOnly |
 
 ---
 
@@ -317,8 +312,6 @@ The following are the only documented exceptions:
 | `GET /api/v1/studios/{id}/qr` | QR code image download | None — points to public portfolio URL only |
 | `POST /api/webhooks/stripe/billing` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
 | `POST /api/webhooks/stripe/connect` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
-| `POST /api/v1/webhooks/paypal` | Called by PayPal servers, no JWT | `PayPal-Transmission-Sig` HMAC validated against `PayPal:WebhookId` config value |
-
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
 Never add new AllowAnonymous endpoints without adding a row to this table.
@@ -513,17 +506,18 @@ does not re-litigate them.
 | QR code library | `QRCoder` (NuGet) | Pure .NET, no native deps, zero weight — only pre-approved external lib addition for self-promotion module |
 | Industry reports | Issuer-only Hangfire monthly job writing anonymized JSON to R2 | No PII, no per-studio identifiers in output — aggregate only |
 | Platform stats endpoint | Single `GET /api/v1/platform/stats` aggregate query, no new entity | Simpler than materialised views; acceptable latency at current scale |
-| Subscription oversight | `GET /api/v1/platform/subscriptions` + `PATCH .../trial` | Issuer must see all tenants' subscription health in one view; `IgnoreQueryFilters()` approved (usage #5) |
+| Subscription oversight | `GET /api/v1/platform/subscriptions` + `PATCH .../trial` + `PATCH .../cancel` | Issuer must see all tenants' subscription health in one view; `IgnoreQueryFilters()` approved (usages #5, #7) |
 | Platform referral management | Issuer deactivation of any studio's referral code | Prevents abuse of referral system at the platform level without giving owners cross-tenant access |
 | Trial extension | `PATCH /api/v1/platform/subscriptions/{studioId}/trial` (issuer only, max 90 days) | Common sales/support action; capped at 90 days to prevent abuse |
 | Issuer dashboard routing | Issuer role routes to `/platform` (not `/dashboard`) with its own `IssuerLayout` | Dashboard is owner-specific; issuer needs platform-admin home screen with KPI widgets |
 | `AllowBrandingRemoval` on UpdatePlan | Exposed via `UpdatePlanRequest.AllowBrandingRemoval` (bool) | Issuer needs to control which plans unlock branding removal; was missing from update contract |
 | Duplicate plan routes | Deleted `IssuerEndpoints.cs`; canonical plan CRUD is under `/api/v1/billing/plans` | Eliminated duplicate route registration; frontend always used billing path |
 | `platformApi` RTK Query slice | New `features/platform/platformApi.ts` for all issuer platform endpoints | Keeps issuer platform concerns isolated from billing/studio slices |
-| Payment model: aggregator vs marketplace | Aggregator (platform collects all, then pays out) | Stripe Connect not available in platform country; aggregator avoids connected accounts entirely |
-| Studio payouts | PayPal Payouts API (primary) + BankTransfer fallback | PayPal has broad country support including Albania; no Stripe Connect needed |
-| PayPal integration approach | Raw `HttpClient` + PayPal REST API v2, no SDK | PayPal's .NET SDK is poorly maintained; raw HTTP is simpler and more maintainable |
-| Client payment options | Stripe Payment Element + PayPal Checkout (two tabs) | Maximum reach — card users use Stripe, PayPal-preferring users use PayPal |
-| PayPal token caching | Singleton `PayPalTokenCache` refreshes 60s before expiry | Avoids per-request OAuth round-trips; thread-safe with SemaphoreSlim |
+| Payment model: aggregator vs marketplace | Aggregator (platform's own Stripe account collects all card payments) | Stripe Connect not available in platform country; aggregator avoids connected accounts entirely |
+| Client payment methods | Card (Stripe Payment Element) + Cash (manual) — no PayPal | Simplest model matching actual studio workflow; studios often accept cash deposits in person |
+| Cash payment flow | `DeclareCashDepositCommand` (client) → `ConfirmCashDepositCommand` (owner/artist) | Two-step prevents fraud; owner must physically confirm before status changes to Paid |
+| Cash subscription activation | `ActivateSubscriptionManuallyCommand` (IssuerOnly) | Issuer confirms cash payment out-of-band then activates in-platform; rare but necessary |
+| Studio payouts | Not handled by the platform — out of scope | Platform collects deposit; studio-to-artist split is an internal business matter |
 | Stripe keys in config | `Stripe:PublishableKey`, `Stripe:SecretKey` in `appsettings.Development.json` (gitignored) | Never in source; env vars in production |
-| PayPal keys in config | `PayPal:ClientId`, `PayPal:ClientSecret`, `PayPal:BaseUrl`, `PayPal:WebhookId` in gitignored config | Never in source; `BaseUrl` switches between sandbox and production |
+| `ClientPaymentMethod` enum | `Card` \| `Cash` (removed `Stripe`, removed `PayPal`) | Matches the two accepted payment methods; `Card` is technology-agnostic (Stripe is the impl) |
+| `PaymentStatus.CashPending` | Added to `PaymentStatus` enum | Represents the window between client's cash declaration and owner's confirmation |

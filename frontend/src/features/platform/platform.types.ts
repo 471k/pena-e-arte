@@ -1,11 +1,11 @@
 export interface PlatformStatsResponse {
-  totalStudios:             number;
-  activeSubscriptions:      number;
-  trialStudios:             number;
-  suspendedStudios:         number;
-  monthlyRecurringRevenue:  number;
-  totalReferralCodes:       number;
-  activeReferralCodes:      number;
+  totalStudios:        number;
+  activeSubscriptions: number;
+  trialStudios:        number;
+  gracePeriodStudios:  number;
+  mrr:                 number;
+  trialConversionRate: number;
+  newStudiosThisMonth: number;
 }
 
 export type SubscriptionStatus =

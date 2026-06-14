@@ -8,6 +8,7 @@ export interface ArtistResponse {
   lastName:        string;
   email:           string;
   specializations: string | null;
+  hourlyRate:      number | null;
   createdAt:       string;
   updatedAt:       string;
 }
@@ -17,6 +18,7 @@ export interface CreateArtistRequest {
   lastName:        string;
   email:           string;
   specializations: string | null;
+  hourlyRate:      number | null;
 }
 
 export interface UpdateArtistRequest {
@@ -24,6 +26,7 @@ export interface UpdateArtistRequest {
   lastName:        string;
   email:           string;
   specializations: string | null;
+  hourlyRate:      number | null;
 }
 
 export const artistsApi = createApi({

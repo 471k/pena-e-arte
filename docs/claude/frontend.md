@@ -250,16 +250,12 @@ export function useSignalR(studioId: string) {
 
 ## Payment UI Pattern
 
-Client-facing payments use a two-tab selector: Stripe Payment Element and PayPal Buttons.
-Both are wrapped in their respective providers at the app root.
+Client-facing payments use a two-tab selector: Card (Stripe) and Cash.
+No PayPal. No wallet providers. No `PayPalScriptProvider` at the app root.
 
 ```tsx
-// main.tsx — providers wrapping the app
-<PayPalScriptProvider options={{ clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
-  <App />
-</PayPalScriptProvider>
-
-// Stripe Elements is initialised per-payment (needs the clientSecret):
+// main.tsx — NO PayPal provider. Stripe Elements is initialised per-payment only.
+// Stripe Elements needs the clientSecret from the server, so it is created per-component:
 <Elements stripe={stripePromise} options={{ clientSecret }}>
   <PaymentElement />
 </Elements>
@@ -269,17 +265,26 @@ Both are wrapped in their respective providers at the app root.
 
 ```
 VITE_STRIPE_PUBLISHABLE_KEY   — Stripe publishable key (pk_test_... or pk_live_...)
-VITE_PAYPAL_CLIENT_ID         — PayPal app client ID
+VITE_CONTACT_EMAIL            — Platform contact email shown on cash subscription info
 ```
 
 Both go in `.env.local` (gitignored). A `.env.example` with placeholder values is committed.
+Do NOT add `VITE_PAYPAL_CLIENT_ID` — PayPal is not used.
 
 **`PaymentMethodSelector`** (`features/payments/components/PaymentMethodSelector.tsx`)
-is the single component that renders both payment options. Use it wherever a client needs
-to pay. Do not duplicate payment UI in other components.
+is the single component that renders Card and Cash tabs. Use it wherever a client needs
+to pay a deposit. Do not duplicate payment UI in other components.
 
-**`PayoutMethodSettings`** (`features/studios/components/PayoutMethodSettings.tsx`)
-is the owner-facing form for configuring how they receive payouts (PayPal email or bank).
+**Card tab:** Stripe `PaymentElement` (handles cards, Apple Pay, Google Pay automatically).
+Uses manual capture — deposit is held then captured when the session is complete.
+
+**Cash tab:** Informational panel explaining the client will pay at the studio.
+On confirm, calls `declareCashDeposit` mutation → creates `Payment { Status = CashPending }`.
+No Stripe call.
+
+**`CashDepositConfirmButton`** (`features/payments/components/CashDepositConfirmButton.tsx`)
+is the owner/artist-facing button shown in the dashboard for `CashPending` payments.
+Calls `confirmCashDeposit` mutation on approval.
 
 ---
 

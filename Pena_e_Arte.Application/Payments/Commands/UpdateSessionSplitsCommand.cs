@@ -49,8 +49,6 @@ public class UpdateSessionSplitsHandler(IAppDbContext db)
 
         await db.SaveChangesAsync(ct);
 
-        List<SessionSplitResponse> splitResponses = newSplits
-            .Select(CreatePaymentIntentHandler.MapSplit).ToList();
-        return CreatePaymentIntentHandler.Map(payment, splitResponses);
+        return payment.ToResponse();
     }
 }

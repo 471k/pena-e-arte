@@ -4,9 +4,9 @@ public record SubscriptionResponse(
     Guid      Id,
     Guid      StudioId,
     Guid?     PlanId,
+    Guid?     PendingPlanId,
     string    Status,
     DateTime  TrialExpiresAt,
     DateTime  CurrentPeriodEnd,
     DateTime  GracePeriodEnd,
-    string?   StripeSubscriptionId,
-    bool      IsStripeConnected);
+    string?   StripeSubscriptionId);

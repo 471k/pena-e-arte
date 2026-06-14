@@ -35,6 +35,27 @@ export const billingApi = createApi({
       query: (body) => ({ url: "billing/subscription", method: "POST", body }),
       invalidatesTags: ["Subscription"],
     }),
+    // Card subscribe via Stripe-hosted Checkout — returns a URL to redirect to.
+    createCheckout: builder.mutation<
+      { url: string },
+      { planId: string; successUrl: string; cancelUrl: string }
+    >({
+      query: (body) => ({ url: "billing/subscription/checkout", method: "POST", body }),
+    }),
+    // Reconcile after returning from Checkout (in case the webhook was missed).
+    finalizeCheckout: builder.mutation<SubscriptionResponse | null, { sessionId: string }>({
+      query: (body) => ({ url: "billing/subscription/checkout/finalize", method: "POST", body }),
+      invalidatesTags: ["Subscription"],
+    }),
+    // Plan switching: upgrades apply immediately (prorated), downgrades at period end
+    changePlan: builder.mutation<SubscriptionResponse, { planId: string }>({
+      query: (body) => ({ url: "billing/subscription/plan", method: "PUT", body }),
+      invalidatesTags: ["Subscription"],
+    }),
+    cancelPlanChange: builder.mutation<SubscriptionResponse, void>({
+      query: () => ({ url: "billing/subscription/plan/pending", method: "DELETE" }),
+      invalidatesTags: ["Subscription"],
+    }),
     // Issuer plan management
     getIssuerPlans: builder.query<PlanResponse[], void>({
       query: () => "billing/plans",
@@ -59,6 +80,10 @@ export const {
   useGetPlansQuery,
   useGetSubscriptionQuery,
   useCreateSubscriptionMutation,
+  useCreateCheckoutMutation,
+  useFinalizeCheckoutMutation,
+  useChangePlanMutation,
+  useCancelPlanChangeMutation,
   useGetIssuerPlansQuery,
   useCreatePlanMutation,
   useUpdatePlanMutation,

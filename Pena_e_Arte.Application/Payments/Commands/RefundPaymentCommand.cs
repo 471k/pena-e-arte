@@ -13,14 +13,13 @@ public record RefundPaymentCommand(Guid PaymentId, decimal? Amount) : IRequest<P
 
 public class RefundPaymentHandler(
     IAppDbContext         db,
-    ICurrentTenant        tenant,
     IStripePaymentService stripePayments)
     : IRequestHandler<RefundPaymentCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(RefundPaymentCommand command, CancellationToken ct)
     {
         Payment? payment = await db.Payments
-            .Include(p => p.SessionSplits.Where(ss => ss.DeletedAt == null))
+            .Include(p => p.Client)
             .FirstOrDefaultAsync(p => p.Id == command.PaymentId, ct);
         if (payment is null)
             throw new NotFoundException(nameof(Payment), command.PaymentId);
@@ -31,27 +30,19 @@ public class RefundPaymentHandler(
         if (payment.StripePaymentIntentId is null)
             throw new BusinessRuleViolationException("Payment has no associated Stripe intent.");
 
-        Studio studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == tenant.StudioId, ct)
-            ?? throw new NotFoundException(nameof(Studio), tenant.StudioId);
-
-        if (studio.StripeAccountId is null)
-            throw new StripeAccountNotConnectedException();
-
         decimal refundAmount = command.Amount ?? payment.Amount;
         if (refundAmount > payment.Amount)
             throw new BusinessRuleViolationException("Refund amount cannot exceed the original payment amount.");
 
         long amountInCents = (long)(refundAmount * 100);
         await stripePayments.RefundPaymentIntentAsync(
-            payment.StripePaymentIntentId, studio.StripeAccountId, amountInCents, ct);
+            payment.StripePaymentIntentId, amountInCents, ct);
 
         payment.Status    = PaymentStatus.Refunded;
         payment.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 
-        List<SessionSplitResponse> splits = payment.SessionSplits
-            .Select(CreatePaymentIntentHandler.MapSplit).ToList();
-        return CreatePaymentIntentHandler.Map(payment, splits);
+        return payment.ToResponse();
     }
 }

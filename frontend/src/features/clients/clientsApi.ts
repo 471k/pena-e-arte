@@ -83,6 +83,10 @@ export const clientsApi = createApi({
   baseQuery,
   tagTypes: ["Client", "ClientProfile", "TattooRecord", "PortableProfile"],
   endpoints: (builder) => ({
+    getMyClient: builder.query<ClientResponse, void>({
+      query: () => "clients/me",
+      providesTags: [{ type: "Client", id: "me" }],
+    }),
     getClients: builder.query<ClientResponse[], string | undefined>({
       query: (search) => ({
         url: "clients",
@@ -190,6 +194,7 @@ export const clientsApi = createApi({
 });
 
 export const {
+  useGetMyClientQuery,
   useGetClientsQuery,
   useGetClientByIdQuery,
   useCreateClientMutation,

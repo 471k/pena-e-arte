@@ -11,7 +11,7 @@ public class GetDesignsHandlerTests
     private readonly FakeDbContext _db       = FakeDbContext.Create();
     private readonly Guid          _studioId = Guid.NewGuid();
 
-    private GetDesignsHandler CreateSut() => new(_db);
+    private GetDesignsHandler CreateSut() => new(_db, FakeCurrentUser.Artist());
 
     [Fact]
     public async Task Handle_NoFilter_ReturnsAllDesignsNewestFirst()

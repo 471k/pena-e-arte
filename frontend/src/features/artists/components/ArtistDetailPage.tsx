@@ -6,6 +6,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  Banknote,
   Calendar,
   ChevronRight,
   Loader2,
@@ -19,6 +20,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +52,7 @@ const editSchema = z.object({
   lastName:        z.string().min(1, "Last name is required"),
   email:           z.string().email("Invalid email"),
   specializations: z.string().optional(),
+  hourlyRate:      z.number({ message: "Must be a number" }).positive("Must be positive").max(10_000).optional(),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -102,6 +105,7 @@ export function ArtistDetailPage() {
       lastName:        artist.lastName,
       email:           artist.email,
       specializations: artist.specializations ?? "",
+      hourlyRate:      artist.hourlyRate ?? undefined,
     });
     setIsEditing(true);
   }
@@ -115,6 +119,7 @@ export function ArtistDetailPage() {
         lastName:        values.lastName,
         email:           values.email,
         specializations: values.specializations?.trim() || null,
+        hourlyRate:      values.hourlyRate ?? null,
       },
     });
     if ("data" in result) {
@@ -269,7 +274,25 @@ export function ArtistDetailPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSaving}>
+            <div className="space-y-1.5">
+              <Label htmlFor="hourlyRate">Hourly rate (€, optional)</Label>
+              <Input
+                id="hourlyRate"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="e.g. 90"
+                {...register("hourlyRate", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used to calculate percentage-based booking deposits.
+              </p>
+              {errors.hourlyRate && (
+                <p className="text-xs text-destructive">{errors.hourlyRate.message}</p>
+              )}
+            </div>
+
+            <SubscriptionGatedButton type="submit" className="w-full" disabled={isSaving}>
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -278,7 +301,7 @@ export function ArtistDetailPage() {
               ) : (
                 "Save Changes"
               )}
-            </Button>
+            </SubscriptionGatedButton>
           </form>
         ) : (
           <Tabs defaultValue="profile">
@@ -301,6 +324,13 @@ export function ArtistDetailPage() {
                     <div className="flex items-start gap-2 text-sm">
                       <Tag className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                       <span>{artist.specializations}</span>
+                    </div>
+                  )}
+
+                  {artist.hourlyRate != null && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Banknote className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>€{artist.hourlyRate.toFixed(2)} / hour</span>
                     </div>
                   )}
 

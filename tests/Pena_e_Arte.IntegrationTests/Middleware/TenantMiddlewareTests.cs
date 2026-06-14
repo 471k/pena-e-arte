@@ -15,11 +15,16 @@ public class TenantMiddlewareTests
     private readonly ISubscriptionAccessService _subscriptions = Substitute.For<ISubscriptionAccessService>();
     private readonly Guid                       _studioId      = Guid.NewGuid();
 
-    public TenantMiddlewareTests() =>
+    public TenantMiddlewareTests()
+    {
+        _subscriptions
+            .IsStudioActiveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
         _subscriptions
             .GetSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<SubscriptionSnapshot?>(
                 new SubscriptionSnapshot(SubscriptionStatus.Active, DateTime.UtcNow.AddDays(14), DateTime.UtcNow.AddDays(21))));
+    }
 
     private TenantMiddleware CreateSut(RequestDelegate next) => new(next);
 
@@ -120,7 +125,7 @@ public class TenantMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_NoSubscriptionRecord_AllowsRequest()
+    public async Task InvokeAsync_NoSubscriptionRecord_Throws()
     {
         _subscriptions
             .GetSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -130,7 +135,7 @@ public class TenantMiddlewareTests
         Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
             .InvokeAsync(context, _tenant, _subscriptions);
 
-        await act.Should().NotThrowAsync();
+        await act.Should().ThrowAsync<SubscriptionRequiredException>();
     }
 
     // ------------------------------------------------------------------
@@ -189,6 +194,20 @@ public class TenantMiddlewareTests
     // ------------------------------------------------------------------
     // Blocked scenarios (rules 4, 5, 6)
     // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task InvokeAsync_CancelledSubscription_FutureTrialDate_BlocksRequest()
+    {
+        // Regression: the old `now < TrialExpiresAt` check fired for any status, so a Cancelled
+        // subscription whose trial date hadn't been cleaned up yet would pass through as allowed.
+        SetupSnapshot(SubscriptionStatus.Cancelled, DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(14));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/appointments", "GET");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions);
+
+        await act.Should().ThrowAsync<SubscriptionRequiredException>();
+    }
 
     [Fact]
     public async Task InvokeAsync_CancelledSubscription_BlocksReadRequest()
@@ -314,6 +333,119 @@ public class TenantMiddlewareTests
         await act.Should().NotThrowAsync();
         await _subscriptions.DidNotReceive()
             .GetSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // ------------------------------------------------------------------
+    // Suspension (checked before subscription)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task InvokeAsync_SuspendedStudio_ThrowsTenantSuspendedException()
+    {
+        _subscriptions
+            .IsStudioActiveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(false));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/appointments", "GET");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions);
+
+        await act.Should().ThrowAsync<TenantSuspendedException>();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SuspendedStudio_DoesNotCheckSubscription()
+    {
+        _subscriptions
+            .IsStudioActiveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(false));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/appointments", "POST");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions);
+
+        await act.Should().ThrowAsync<TenantSuspendedException>();
+        await _subscriptions.DidNotReceive()
+            .GetSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // ------------------------------------------------------------------
+    // GET /api/v1/studios/me exemption (suspension visibility)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task InvokeAsync_SuspendedStudio_GetStudiosMe_BypassesSuspensionCheck()
+    {
+        _subscriptions
+            .IsStudioActiveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(false));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "GET");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions);
+
+        await act.Should().NotThrowAsync();
+        // Returns early after the suspension check — subscription is not evaluated.
+        await _subscriptions.DidNotReceive()
+            .GetSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CancelledSubscription_GetStudiosMe_StillEnforcesSubscription()
+    {
+        // The studios/me exemption only bypasses the *suspension* check for suspended studios.
+        // An active studio with a cancelled subscription still hits subscription enforcement.
+        SetupSnapshot(SubscriptionStatus.Cancelled, DateTime.UtcNow.AddDays(-21), DateTime.UtcNow.AddDays(-7));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "GET");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions);
+
+        await act.Should().ThrowAsync<SubscriptionRequiredException>();
+        await _subscriptions.Received(1)
+            .GetSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SuspendedStudio_PostStudiosMe_StillBlocked()
+    {
+        _subscriptions
+            .IsStudioActiveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(false));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "POST");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions);
+
+        await act.Should().ThrowAsync<TenantSuspendedException>();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SuspendedStudio_PutStudiosMe_StillBlocked()
+    {
+        _subscriptions
+            .IsStudioActiveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(false));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "PUT");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions);
+
+        await act.Should().ThrowAsync<TenantSuspendedException>();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SuspendedStudio_PatchStudiosMe_StillBlocked()
+    {
+        _subscriptions
+            .IsStudioActiveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(false));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "PATCH");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions);
+
+        await act.Should().ThrowAsync<TenantSuspendedException>();
     }
 
     // ------------------------------------------------------------------

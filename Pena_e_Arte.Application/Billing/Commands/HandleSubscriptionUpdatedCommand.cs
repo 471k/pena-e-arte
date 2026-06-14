@@ -38,7 +38,13 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
                      p.StripePriceIdYearly  == command.StripePriceId, ct);
 
             if (plan is not null)
+            {
                 subscription.PlanId = plan.Id;
+
+                // A scheduled downgrade has landed — the pending change is no longer pending
+                if (subscription.PendingPlanId == plan.Id)
+                    subscription.PendingPlanId = null;
+            }
         }
 
         await db.SaveChangesAsync(ct);

@@ -7,5 +7,6 @@ public record ArtistResponse(
     string   LastName,
     string   Email,
     string?  Specializations,
+    decimal? HourlyRate,
     DateTime CreatedAt,
     DateTime UpdatedAt);

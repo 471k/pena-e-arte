@@ -13,19 +13,21 @@ public class IdentityService(
     UserManager<IdentityUser> userManager,
     IConfiguration            configuration) : IIdentityService
 {
-    public async Task<(bool Success, string[] Errors)> CreateUserAsync(
-        string email, string password, string role, Guid studioId)
+    public async Task<(bool Success, Guid UserId, string[] Errors)> CreateUserAsync(
+        string email, string password, string role, Guid studioId, string? firstName = null)
     {
         IdentityUser user = new() { UserName = email, Email = email };
         IdentityResult result = await userManager.CreateAsync(user, password);
 
         if (!result.Succeeded)
-            return (false, result.Errors.Select(e => e.Description).ToArray());
+            return (false, Guid.Empty, result.Errors.Select(e => e.Description).ToArray());
 
         await userManager.AddToRoleAsync(user, role);
         await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+        if (firstName is not null)
+            await userManager.AddClaimAsync(user, new Claim(JwtRegisteredClaimNames.GivenName, firstName));
 
-        return (true, []);
+        return (true, Guid.Parse(user.Id), []);
     }
 
     public async Task<(bool Success, string? Token, string? Error)> LoginAsync(string email, string password)

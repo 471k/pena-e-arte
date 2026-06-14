@@ -2,6 +2,7 @@ import { PenLine } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { BookingWidget } from "@/features/booking/components/BookingWidget";
 import { BookAppointmentForm } from "./BookAppointmentForm";
+import { MyBookingsSection } from "./MyBookingsSection";
 
 export function BookPage() {
   return (
@@ -21,6 +22,8 @@ export function BookPage() {
               <BookAppointmentForm />
             </CardContent>
           </Card>
+
+          <MyBookingsSection />
         </div>
       </div>
     </BookingWidget>

@@ -12,7 +12,7 @@ public class GetConsentFormByIdHandlerTests
     private readonly FakeDbContext _db       = FakeDbContext.Create();
     private readonly Guid          _studioId = Guid.NewGuid();
 
-    private GetConsentFormByIdHandler CreateSut() => new(_db);
+    private GetConsentFormByIdHandler CreateSut() => new(_db, FakeCurrentUser.Artist());
 
     private async Task<Guid> SeedForm()
     {

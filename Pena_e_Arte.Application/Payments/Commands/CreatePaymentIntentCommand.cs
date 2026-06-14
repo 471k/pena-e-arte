@@ -28,48 +28,52 @@ public class CreatePaymentIntentHandler(
         if (!appointmentExists)
             throw new NotFoundException(nameof(Appointment), req.AppointmentId);
 
-        bool duplicate = await db.Payments
-            .AnyAsync(p => p.AppointmentId == req.AppointmentId && p.Status != PaymentStatus.Failed, ct);
-        if (duplicate)
+        // Single payment row per appointment (unique index) — failed attempts are
+        // reused in place rather than duplicated.
+        Payment? existing = await db.Payments
+            .FirstOrDefaultAsync(p => p.AppointmentId == req.AppointmentId, ct);
+        if (existing is not null && existing.Status != PaymentStatus.Failed)
             throw new BusinessRuleViolationException("A payment already exists for this appointment.");
 
-        Studio studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == tenant.StudioId, ct)
-            ?? throw new NotFoundException(nameof(Studio), tenant.StudioId);
-
-        if (studio.StripeAccountId is null)
-            throw new StripeAccountNotConnectedException();
-
-        Guid paymentId     = Guid.NewGuid();
+        Guid paymentId     = existing?.Id ?? Guid.NewGuid();
         long amountInCents = (long)(req.Amount * 100);
 
         (string intentId, string clientSecret) = await stripePayments.CreatePaymentIntentAsync(
-            studio.StripeAccountId, amountInCents, req.Currency, paymentId, ct);
+            amountInCents, req.Currency, paymentId, ct);
 
-        Payment payment = new()
+        Payment payment;
+        if (existing is null)
         {
-            Id                    = paymentId,
-            StudioId              = tenant.StudioId,
-            AppointmentId         = req.AppointmentId,
-            ClientId              = req.ClientId,
-            Amount                = req.Amount,
-            Status                = PaymentStatus.Pending,
-            StripePaymentIntentId = intentId,
-            ClientSecret          = clientSecret
-        };
+            payment = new Payment
+            {
+                Id                    = paymentId,
+                StudioId              = tenant.StudioId,
+                AppointmentId         = req.AppointmentId,
+                ClientId              = req.ClientId,
+                Amount                = req.Amount,
+                Status                = PaymentStatus.Pending,
+                Method                = ClientPaymentMethod.Card,
+                StripePaymentIntentId = intentId,
+                ClientSecret          = clientSecret
+            };
+            db.Payments.Add(payment);
+        }
+        else
+        {
+            // Retry after a failed attempt — reuse the row with a fresh intent
+            payment = existing;
+            payment.Amount                = req.Amount;
+            payment.Status                = PaymentStatus.Pending;
+            payment.Method                = ClientPaymentMethod.Card;
+            payment.StripePaymentIntentId = intentId;
+            payment.ClientSecret          = clientSecret;
+            payment.UpdatedAt             = DateTime.UtcNow;
+        }
 
-        db.Payments.Add(payment);
         await db.SaveChangesAsync(ct);
 
-        await realtime.NotifyStudioAsync(tenant.StudioId, "PaymentIntentCreated", Map(payment, []), ct);
+        await realtime.NotifyStudioAsync(tenant.StudioId, "PaymentIntentCreated", payment.ToResponse(), ct);
 
         return new PaymentIntentResponse(payment.Id, clientSecret, payment.Status.ToString());
     }
-
-    internal static PaymentResponse Map(Payment p, List<SessionSplitResponse> splits) => new(
-        p.Id, p.StudioId, p.AppointmentId, p.ClientId,
-        p.Amount, p.Status.ToString(), p.StripePaymentIntentId,
-        p.PaidAt, p.CreatedAt, splits);
-
-    internal static SessionSplitResponse MapSplit(SessionSplit ss) => new(
-        ss.Id, ss.PaymentId, ss.Label, ss.Amount, ss.PaidAt);
 }

@@ -39,7 +39,8 @@ public class CreateArtistHandler(IAppDbContext db, ICurrentTenant tenant)
             FirstName       = req.FirstName,
             LastName        = req.LastName,
             Email           = req.Email,
-            Specializations = req.Specializations
+            Specializations = req.Specializations,
+            HourlyRate      = req.HourlyRate
         };
         artist.SetSlug(slug);
 
@@ -50,5 +51,5 @@ public class CreateArtistHandler(IAppDbContext db, ICurrentTenant tenant)
     }
 
     internal static ArtistResponse Map(Artist a) =>
-        new(a.Id, a.StudioId, a.FirstName, a.LastName, a.Email, a.Specializations, a.CreatedAt, a.UpdatedAt);
+        new(a.Id, a.StudioId, a.FirstName, a.LastName, a.Email, a.Specializations, a.HourlyRate, a.CreatedAt, a.UpdatedAt);
 }

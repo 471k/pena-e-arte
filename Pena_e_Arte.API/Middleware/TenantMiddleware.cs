@@ -48,15 +48,28 @@ public class TenantMiddleware(RequestDelegate next)
         Guid                       studioId,
         ISubscriptionAccessService subscriptions)
     {
+        bool isActive = await subscriptions.IsStudioActiveAsync(studioId, context.RequestAborted);
+        if (!isActive)
+        {
+            // GET /api/v1/studios/me passes through when suspended so the owner can
+            // read isActive=false and the frontend can render the SuspensionBanner.
+            // All other paths — including writes to this endpoint — remain blocked.
+            if (context.Request.Method.Equals("GET", StringComparison.OrdinalIgnoreCase) &&
+                context.Request.Path.Equals("/api/v1/studios/me", StringComparison.OrdinalIgnoreCase))
+                return;
+            throw new TenantSuspendedException();
+        }
+
         SubscriptionSnapshot? snapshot =
             await subscriptions.GetSnapshotAsync(studioId, context.RequestAborted);
 
-        if (snapshot is null) return;
+        if (snapshot is null)
+            throw new SubscriptionRequiredException("No active subscription found.");
 
         DateTime now = DateTime.UtcNow;
 
         if (snapshot.Status == SubscriptionStatus.Active) return;
-        if (now < snapshot.TrialExpiresAt) return;
+        if (snapshot.Status == SubscriptionStatus.Trialing && now < snapshot.TrialExpiresAt) return;
 
         if (snapshot.Status == SubscriptionStatus.GracePeriod && now < snapshot.GracePeriodEnd)
         {

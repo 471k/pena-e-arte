@@ -22,6 +22,11 @@ export const appointmentsApi = createApi({
       query: (id) => `appointments/${id}`,
       providesTags: ["Appointment"],
     }),
+    // Client-facing: the caller's own appointments only
+    getMyAppointments: builder.query<AppointmentResponse[], void>({
+      query: () => "appointments/mine",
+      providesTags: ["Appointment"],
+    }),
     createAppointment: builder.mutation<AppointmentResponse, CreateAppointmentRequest>({
       query: (body) => ({ url: "appointments", method: "POST", body }),
       invalidatesTags: ["Appointment"],
@@ -48,6 +53,7 @@ export const appointmentsApi = createApi({
 export const {
   useGetAppointmentsQuery,
   useGetAppointmentQuery,
+  useGetMyAppointmentsQuery,
   useCreateAppointmentMutation,
   useCancelAppointmentMutation,
   useConfirmAppointmentMutation,

@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
+import { UserChip } from "@/shared/components/UserChip";
 import { Button } from "@/shared/components/ui/button";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
@@ -52,15 +53,19 @@ export function ClientLayout() {
           ))}
         </nav>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-auto text-muted-foreground hover:text-foreground"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4 mr-1.5" />
-          Log out
-        </Button>
+        <div className="ml-auto flex items-center gap-3">
+          <UserChip />
+          <div className="w-px h-5 bg-border" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-1.5" />
+            Log out
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1">

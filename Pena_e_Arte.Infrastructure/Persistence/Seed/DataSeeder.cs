@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,10 @@ public static class DataSeeder
     private static readonly string S1Artist1UserId = "dddd0001-0000-0000-0000-000000000002";
     private static readonly string S1Artist2UserId = "dddd0001-0000-0000-0000-000000000003";
     private static readonly string S1Artist3UserId = "dddd0001-0000-0000-0000-000000000004";
+
+    // Single source of truth for Sofia's login email — the Identity user and the Artist
+    // record MUST share it, or FindByEmailAsync fails and login silently breaks.
+    private const string S1Artist3Email = "sofia1.alves@ink-soul.test";
     private static readonly string S1Client1UserId = "dddd0001-0000-0000-0000-000000000005";
     private static readonly string S1Client2UserId = "dddd0001-0000-0000-0000-000000000006";
     private static readonly string S1Client3UserId = "dddd0001-0000-0000-0000-000000000007";
@@ -182,7 +187,6 @@ public static class DataSeeder
             Longitude      = -9.1399,
             IsActive       = true,
             TrialExpiresAt = now.AddDays(-16),
-            StripeAccountId = "acct_seed_studio1",
             CreatedAt      = now.AddDays(-30)
         });
 
@@ -195,7 +199,9 @@ public static class DataSeeder
             TrialExpiresAt       = now.AddDays(-16),
             CurrentPeriodEnd     = now.AddDays(14),
             GracePeriodEnd       = now.AddDays(21),
-            StripeSubscriptionId = "sub_seed_studio1"
+            // Null = cash-billed semantics: there is no real Stripe subscription behind
+            // seed data, and a fake id breaks plan switching / webhook reconciliation.
+            StripeSubscriptionId = null
         });
 
         // Studio 2: trialing, 10 days left
@@ -232,33 +238,33 @@ public static class DataSeeder
     private static async Task EnsureSeedUsersAsync(UserManager<IdentityUser> userManager)
     {
         await EnsureUserAsync(userManager, IssuerUserId,
-            "issuer@pena-arte.test",              "issuer", Studio1Id);
+            "issuer@pena-arte.test",              "issuer", Studio1Id, "Gabriel");
         await EnsureUserAsync(userManager, S1OwnerUserId,
-            "owner@ink-soul.test",                "owner",  Studio1Id);
+            "owner@ink-soul.test",                "owner",  Studio1Id, "Inês");
         await EnsureUserAsync(userManager, S1Artist1UserId,
-            "elena.martins@ink-soul.test",        "artist", Studio1Id);
+            "elena.martins@ink-soul.test",        "artist", Studio1Id, "Elena");
         await EnsureUserAsync(userManager, S1Artist2UserId,
-            "marco.santos@ink-soul.test",         "artist", Studio1Id);
+            "marco.santos@ink-soul.test",         "artist", Studio1Id, "Marco");
         await EnsureUserAsync(userManager, S1Artist3UserId,
-            "sofia.alves@ink-soul.test",          "artist", Studio1Id);
+            S1Artist3Email,                       "artist", Studio1Id, "Sofia");
         await EnsureUserAsync(userManager, S1Client1UserId,
-            "ana.costa@client.test",              "client", Studio1Id);
+            "ana.costa@client.test",              "client", Studio1Id, "Ana");
         await EnsureUserAsync(userManager, S1Client2UserId,
-            "pedro.oliveira@client.test",         "client", Studio1Id);
+            "pedro.oliveira@client.test",         "client", Studio1Id, "Pedro");
         await EnsureUserAsync(userManager, S1Client3UserId,
-            "julia.ferreira@client.test",         "client", Studio1Id);
+            "julia.ferreira@client.test",         "client", Studio1Id, "Júlia");
         await EnsureUserAsync(userManager, S1Client4UserId,
-            "rafael.mendes@client.test",          "client", Studio1Id);
+            "rafael.mendes@client.test",          "client", Studio1Id, "Rafael");
         await EnsureUserAsync(userManager, S1Client5UserId,
-            "mia.carvalho@client.test",           "client", Studio1Id);
+            "mia.carvalho@client.test",           "client", Studio1Id, "Mia");
         await EnsureUserAsync(userManager, S2OwnerUserId,
-            "owner@dark-canvas.test",             "owner",  Studio2Id);
+            "owner@dark-canvas.test",             "owner",  Studio2Id, "Carlos");
         await EnsureUserAsync(userManager, S2Artist1UserId,
-            "luis.rodrigues@dark-canvas.test",    "artist", Studio2Id);
+            "luis.rodrigues@dark-canvas.test",    "artist", Studio2Id, "Luís");
         await EnsureUserAsync(userManager, S2Client1UserId,
-            "sara.lima@dark-canvas.test",         "client", Studio2Id);
+            "sara.lima@dark-canvas.test",         "client", Studio2Id, "Sara");
         await EnsureUserAsync(userManager, S2Client2UserId,
-            "tomas.gomes@dark-canvas.test",       "client", Studio2Id);
+            "tomas.gomes@dark-canvas.test",       "client", Studio2Id, "Tomás");
     }
 
     private static async Task EnsureArtistSlugsAsync(AppDbContext db)
@@ -304,6 +310,7 @@ public static class DataSeeder
             LastName        = "Martins",
             Email           = "elena.martins@ink-soul.test",
             Specializations = "Traditional,Japanese,Neo-Traditional",
+            HourlyRate      = 100m,
             UpdatedAt       = now
         };
         s1a1.SetSlug("elena-martins");
@@ -316,6 +323,7 @@ public static class DataSeeder
             LastName        = "Santos",
             Email           = "marco.santos@ink-soul.test",
             Specializations = "Realism,Portraits,Black & Grey",
+            HourlyRate      = 120m,
             UpdatedAt       = now
         };
         s1a2.SetSlug("marco-santos");
@@ -326,8 +334,9 @@ public static class DataSeeder
             UserId          = Guid.Parse(S1Artist3UserId),
             FirstName       = "Sofia",
             LastName        = "Alves",
-            Email           = "sofia.alves@ink-soul.test",
+            Email           = S1Artist3Email,
             Specializations = "Geometric,Minimalist,Fine Line",
+            HourlyRate      = 90m,
             UpdatedAt       = now
         };
         s1a3.SetSlug("sofia-alves");
@@ -459,7 +468,10 @@ public static class DataSeeder
                 Name          = "Standard Deposit (20%)",
                 AmountFixed   = null,
                 AmountPercent = 20m,
-                IsActive      = true,
+                // Inactive: percent rules resolve to €0 deposits until session price is
+                // tracked, and CreateAppointment picks an arbitrary active rule — keep
+                // the fixed rule as the only active one so seeded bookings get deposits.
+                IsActive      = false,
                 UpdatedAt     = now
             },
             new DepositRule
@@ -1341,6 +1353,7 @@ public static class DataSeeder
             LastName        = "Rodrigues",
             Email           = "luis.rodrigues@dark-canvas.test",
             Specializations = "Black & Grey,Lettering,Blackwork",
+            HourlyRate      = 80m,
             UpdatedAt       = now
         };
         s2a1.SetSlug("luis-rodrigues");
@@ -1680,7 +1693,8 @@ public static class DataSeeder
         string                    userId,
         string                    email,
         string                    role,
-        Guid                      studioId)
+        Guid                      studioId,
+        string                    firstName)
     {
         IdentityUser? existing = await userManager.FindByIdAsync(userId);
 
@@ -1695,11 +1709,23 @@ public static class DataSeeder
 
             await userManager.AddToRoleAsync(user, role);
             await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+            await userManager.AddClaimAsync(user, new Claim(JwtRegisteredClaimNames.GivenName, firstName));
         }
-        else if (!await userManager.CheckPasswordAsync(existing, Password))
+        else
         {
-            await userManager.RemovePasswordAsync(existing);
-            await userManager.AddPasswordAsync(existing, Password);
+            if (!await userManager.CheckPasswordAsync(existing, Password))
+            {
+                await userManager.RemovePasswordAsync(existing);
+                await userManager.AddPasswordAsync(existing, Password);
+            }
+
+            // Sync given_name: add if absent, replace if the seed name changed.
+            IList<Claim> claims = await userManager.GetClaimsAsync(existing);
+            Claim? existingNameClaim = claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.GivenName);
+            if (existingNameClaim is null)
+                await userManager.AddClaimAsync(existing, new Claim(JwtRegisteredClaimNames.GivenName, firstName));
+            else if (existingNameClaim.Value != firstName)
+                await userManager.ReplaceClaimAsync(existing, existingNameClaim, new Claim(JwtRegisteredClaimNames.GivenName, firstName));
         }
     }
 }

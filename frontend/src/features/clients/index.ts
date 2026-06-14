@@ -1,5 +1,6 @@
 export {
   clientsApi,
+  useGetMyClientQuery,
   useGetClientsQuery,
   useGetClientByIdQuery,
   useCreateClientMutation,
@@ -24,5 +25,6 @@ export type {
 export { ClientListPage } from "./components/ClientListPage";
 export { CreateClientPage } from "./components/CreateClientPage";
 export { ClientDetailPage } from "./components/ClientDetailPage";
+export { MyProfilePage } from "./components/MyProfilePage";
 export { TattooRecordDetailPage } from "./components/TattooRecordDetailPage";
 export { BodyMap, ALL_BODY_ZONES } from "./components/BodyMap";

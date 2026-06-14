@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 
@@ -16,18 +17,38 @@ public class ExtendTrialHandler(IAppDbContext db)
     public async Task Handle(ExtendTrialCommand command, CancellationToken ct)
     {
         // IgnoreQueryFilters approved: usage #5 — trial extension cross-tenant, IssuerOnly. See architecture.md.
-        Domain.Entities.Subscription subscription = await db.Subscriptions
+        Studio studio = await db.Studios
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.StudioId == command.StudioId, ct)
-            ?? throw new NotFoundException(nameof(Domain.Entities.Subscription), command.StudioId);
+            .Include(s => s.Subscription)
+            .FirstOrDefaultAsync(s => s.Id == command.StudioId, ct)
+            ?? throw new NotFoundException(nameof(Studio), command.StudioId);
 
-        if (subscription.Status != SubscriptionStatus.Trialing)
-            throw new BusinessRuleViolationException("Trial extension is only allowed for studios in Trialing status.");
+        if (studio.Subscription?.Status == SubscriptionStatus.Active)
+            throw new BusinessRuleViolationException(
+                "Trial extension is not applicable to studios with an active subscription.");
 
-        subscription.TrialExpiresAt = subscription.TrialExpiresAt.AddDays(command.Request.AdditionalDays);
+        int days = command.Request.AdditionalDays;
+
+        studio.TrialExpiresAt = Extend(studio.TrialExpiresAt, days);
+
+        if (studio.Subscription is not null)
+        {
+            studio.Subscription.TrialExpiresAt = Extend(studio.Subscription.TrialExpiresAt, days);
+            studio.Subscription.GracePeriodEnd = studio.Subscription.TrialExpiresAt.AddDays(7);
+
+            // A grace-period studio whose trial is extended goes back to trialing
+            if (studio.Subscription.Status == SubscriptionStatus.GracePeriod)
+                studio.Subscription.Status = SubscriptionStatus.Trialing;
+        }
 
         await db.SaveChangesAsync(ct);
     }
+
+    // Extend from the current expiry while the trial is still running; from now once expired
+    private static DateTime Extend(DateTime current, int days) =>
+        current > DateTime.UtcNow
+            ? current.AddDays(days)
+            : DateTime.UtcNow.AddDays(days);
 }
 
 public class ExtendTrialValidator : AbstractValidator<ExtendTrialCommand>

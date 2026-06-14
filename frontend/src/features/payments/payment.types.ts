@@ -1,30 +1,31 @@
 export const PaymentStatus = {
-  Pending:  "Pending",
-  Paid:     "Paid",
-  Refunded: "Refunded",
-  Failed:   "Failed",
+  Pending:     "Pending",
+  CashPending: "CashPending",
+  Captured:    "Captured",
+  Paid:        "Paid",
+  Refunded:    "Refunded",
+  Failed:      "Failed",
 } as const;
 export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
 
-export interface SessionSplitResponse {
-  id:        string;
-  paymentId: string;
-  label:     string;
-  amount:    number;
-  paidAt:    string | null;
-}
+export const PaymentMethod = {
+  Card: "Card",
+  Cash: "Cash",
+} as const;
+export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
 
 export interface PaymentResponse {
   id:                    string;
-  studioId:              string;
   appointmentId:         string;
-  clientId:              string;
   amount:                number;
   status:                PaymentStatus;
+  method:                PaymentMethod;
   stripePaymentIntentId: string | null;
+  clientSecret:          string | null;
+  cashNote:              string | null;
   paidAt:                string | null;
-  createdAt:             string;
-  sessionSplits:         SessionSplitResponse[];
+  clientName:            string;
+  appointmentDate:       string | null;
 }
 
 export interface PaymentIntentResponse {
@@ -43,6 +44,14 @@ export interface CreatePaymentIntentRequest {
 export interface SessionSplitItem {
   label:  string;
   amount: number;
+}
+
+export interface SessionSplitResponse {
+  id:        string;
+  paymentId: string;
+  label:     string;
+  amount:    number;
+  paidAt:    string | null;
 }
 
 export interface UpdateSessionSplitsRequest {

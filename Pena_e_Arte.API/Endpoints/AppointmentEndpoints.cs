@@ -14,6 +14,7 @@ public static class AppointmentEndpoints
             .RequireAuthorization();
 
         group.MapGet("/",                       GetAppointments).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/mine",                   GetMyAppointments).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}",               GetAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/",                      CreateAppointment).RequireAuthorization("ClientAndAbove");
         group.MapDelete("{id:guid}",            CancelAppointment).RequireAuthorization("ArtistAndAbove");
@@ -30,6 +31,14 @@ public static class AppointmentEndpoints
         CancellationToken ct)
     {
         List<AppointmentResponse> result = await mediator.Send(new GetAppointmentsQuery(from, to), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetMyAppointments(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<AppointmentResponse> result = await mediator.Send(new GetMyAppointmentsQuery(), ct);
         return Results.Ok(result);
     }
 

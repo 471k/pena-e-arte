@@ -13,19 +13,17 @@ namespace Pena_e_Arte.UnitTests.Payments;
 public class RefundPaymentHandlerTests
 {
     private readonly FakeDbContext        _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant       _tenant   = Substitute.For<ICurrentTenant>();
     private readonly IStripePaymentService _stripe   = Substitute.For<IStripePaymentService>();
     private readonly Guid                 _studioId = Guid.NewGuid();
 
     public RefundPaymentHandlerTests()
     {
-        _tenant.StudioId.Returns(_studioId);
         _stripe.RefundPaymentIntentAsync(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Returns("re_test_123");
     }
 
-    private RefundPaymentHandler CreateSut() => new(_db, _tenant, _stripe);
+    private RefundPaymentHandler CreateSut() => new(_db, _stripe);
 
     [Fact]
     public async Task Handle_PaidPayment_ReturnsRefundedStatus()
@@ -59,7 +57,7 @@ public class RefundPaymentHandlerTests
         await CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
 
         await _stripe.Received(1).RefundPaymentIntentAsync(
-            "pi_test", "acct_test", 20000L, Arg.Any<CancellationToken>());
+            "pi_test", 20000L, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -71,7 +69,7 @@ public class RefundPaymentHandlerTests
         await CreateSut().Handle(new RefundPaymentCommand(paymentId, 50m), default);
 
         await _stripe.Received(1).RefundPaymentIntentAsync(
-            "pi_test", "acct_test", 5000L, Arg.Any<CancellationToken>());
+            "pi_test", 5000L, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -108,36 +106,34 @@ public class RefundPaymentHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
-    [Fact]
-    public async Task Handle_NoStripeAccount_ThrowsStripeAccountNotConnectedException()
-    {
-        await SeedStudio(stripeAccountId: null);
-        Guid paymentId = await SeedPayment(200m, PaymentStatus.Paid, "pi_test");
-
-        Func<Task> act = () => CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
-
-        await act.Should().ThrowAsync<StripeAccountNotConnectedException>();
-    }
-
-    private async Task SeedStudio(string? stripeAccountId = "acct_test")
+    private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio
         {
-            Id              = _studioId,
-            Name            = "Test",
-            Slug            = "test",
-            StripeAccountId = stripeAccountId
+            Id   = _studioId,
+            Name = "Test",
+            Slug = "test"
         });
         await _db.SaveChangesAsync();
     }
 
     private async Task<Guid> SeedPayment(decimal amount, PaymentStatus status, string? stripeIntentId)
     {
+        Client client = new()
+        {
+            StudioId  = _studioId,
+            FirstName = "Test",
+            LastName  = "Client",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+
         Payment payment = new()
         {
             StudioId              = _studioId,
             AppointmentId         = Guid.NewGuid(),
-            ClientId              = Guid.NewGuid(),
+            ClientId              = client.Id,
             Amount                = amount,
             Status                = status,
             StripePaymentIntentId = stripeIntentId

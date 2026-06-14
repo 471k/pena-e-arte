@@ -7,6 +7,10 @@ public class Subscription
     public Guid               Id                   { get; init; } = Guid.NewGuid();
     public Guid               StudioId             { get; set; }
     public Guid?              PlanId               { get; set; }
+
+    /// <summary>Plan a scheduled downgrade switches to at the end of the current period. Null when no change is pending.</summary>
+    public Guid?              PendingPlanId        { get; set; }
+
     public SubscriptionStatus Status               { get; set; }
     public DateTime           TrialExpiresAt       { get; set; }
     public DateTime           CurrentPeriodEnd     { get; set; }

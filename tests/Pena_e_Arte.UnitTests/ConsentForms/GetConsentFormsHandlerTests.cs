@@ -11,7 +11,7 @@ public class GetConsentFormsHandlerTests
     private readonly FakeDbContext _db       = FakeDbContext.Create();
     private readonly Guid          _studioId = Guid.NewGuid();
 
-    private GetConsentFormsHandler CreateSut() => new(_db);
+    private GetConsentFormsHandler CreateSut() => new(_db, FakeCurrentUser.Artist());
 
     private async Task SeedForm(Guid clientId, Guid appointmentId)
     {

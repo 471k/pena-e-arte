@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, Loader2 } from "lucide-react";
+import { CreditCard, Loader2, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { DataTable } from "@/shared/components/DataTable";
@@ -12,29 +12,28 @@ import { PaymentStatus } from "../payment.types";
 
 const PAGE_SIZE = 20;
 
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
   });
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
-
 const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
-  [PaymentStatus.Pending]:  "border-yellow-300 bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
-  [PaymentStatus.Paid]:     "border-green-300 bg-green-100 text-green-800 hover:bg-green-100",
-  [PaymentStatus.Refunded]: "border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-100",
-  [PaymentStatus.Failed]:   "border-red-300 bg-red-100 text-red-800 hover:bg-red-100",
+  [PaymentStatus.Pending]:     "border-yellow-300 bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
+  [PaymentStatus.CashPending]: "border-orange-300 bg-orange-100 text-orange-800 hover:bg-orange-100",
+  [PaymentStatus.Captured]:    "border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-100",
+  [PaymentStatus.Paid]:        "border-green-300 bg-green-100 text-green-800 hover:bg-green-100",
+  [PaymentStatus.Refunded]:    "border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-100",
+  [PaymentStatus.Failed]:      "border-red-300 bg-red-100 text-red-800 hover:bg-red-100",
 };
 
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   return (
-    <Badge
-      variant="outline"
-      className={cn(PAYMENT_STATUS_STYLES[status])}
-    >
+    <Badge variant="outline" className={cn(PAYMENT_STATUS_STYLES[status])}>
       {status}
     </Badge>
   );
@@ -53,32 +52,27 @@ function PaymentRowSkeleton() {
 
 export function PaymentListPage() {
   const navigate = useNavigate();
-  const [cursor, setCursor]           = useState<string | undefined>(undefined);
-  const [allPayments, setAllPayments] = useState<PaymentResponse[]>([]);
+  const [cursor, setCursor]                 = useState<string | undefined>(undefined);
+  const [previousPages, setPreviousPages]   = useState<PaymentResponse[]>([]);
 
   const { data, isLoading, isFetching, isError } = useGetPaymentsQuery({
     lastSeenId: cursor,
     pageSize:   PAGE_SIZE,
   });
 
-  useEffect(() => {
-    if (!data) return;
-    if (cursor === undefined) {
-      setAllPayments(data);
-    } else {
-      setAllPayments((prev) => {
-        const lastId = prev[prev.length - 1]?.id;
-        if (lastId !== cursor) return prev;
-        return [...prev, ...data];
-      });
-    }
-  }, [data, cursor]);
+  // Pages already loaded are captured at "Load more" click time; the current
+  // page comes straight from the query — no effect-based accumulation needed.
+  const allPayments = cursor === undefined
+    ? data ?? []
+    : [...previousPages, ...(data ?? [])];
 
   const hasMore = (data?.length ?? 0) === PAGE_SIZE;
 
   function handleLoadMore() {
     const last = allPayments[allPayments.length - 1];
-    if (last) setCursor(last.id);
+    if (!last) return;
+    setPreviousPages(allPayments);
+    setCursor(last.id);
   }
 
   return (
@@ -88,9 +82,15 @@ export function PaymentListPage() {
           <CreditCard className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Payments</span>
         </div>
-        {allPayments.length > 0 && (
-          <span className="text-xs text-muted-foreground">{allPayments.length} loaded</span>
-        )}
+        <div className="flex items-center gap-3">
+          {allPayments.length > 0 && (
+            <span className="text-xs text-muted-foreground">{allPayments.length} loaded</span>
+          )}
+          <Button size="sm" className="gap-1.5" onClick={() => navigate("/payments/new")}>
+            <Plus className="h-4 w-4" />
+            New payment
+          </Button>
+        </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
@@ -112,12 +112,21 @@ export function PaymentListPage() {
           <DataTable<PaymentResponse>
             columns={[
               {
-                header: "ID",
+                header: "Client",
                 cell: (p) => (
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {p.id.slice(0, 8)}…
+                  <span className="text-sm font-medium">
+                    {p.clientName || <span className="text-muted-foreground">—</span>}
                   </span>
                 ),
+              },
+              {
+                header: "Session",
+                cell: (p) =>
+                  p.appointmentDate ? (
+                    <span className="text-sm text-muted-foreground">{formatDate(p.appointmentDate)}</span>
+                  ) : (
+                    "—"
+                  ),
               },
               {
                 header: "Status",
@@ -130,8 +139,8 @@ export function PaymentListPage() {
                 ),
               },
               {
-                header: "Date",
-                cell: (p) => formatDate(p.createdAt),
+                header: "Method",
+                cell: (p) => p.method,
               },
               {
                 header: "Paid",

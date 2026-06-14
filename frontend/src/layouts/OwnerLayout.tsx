@@ -5,9 +5,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
+import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
+import { UserChip } from "@/shared/components/UserChip";
 import { Button } from "@/shared/components/ui/button";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
+import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 
 const NAV_ITEMS = [
   { label: "Dashboard",       href: "/dashboard",    icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -23,6 +27,9 @@ const NAV_ITEMS = [
 export function OwnerLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  // Primes RTK Query caches so subscription + suspension state is known before child forms render.
+  useGetSubscriptionQuery();
+  const { data: studio } = useGetMyStudioQuery();
 
   function handleLogout() {
     dispatch(logout());
@@ -31,6 +38,7 @@ export function OwnerLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <SuspensionBanner studio={studio} />
       <ReadOnlyBanner />
       <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
         <PenLine className="h-5 w-5" />
@@ -56,15 +64,19 @@ export function OwnerLayout() {
           ))}
         </nav>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-auto text-muted-foreground hover:text-foreground"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4 mr-1.5" />
-          Log out
-        </Button>
+        <div className="ml-auto flex items-center gap-3">
+          <UserChip />
+          <div className="w-px h-5 bg-border" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-1.5" />
+            Log out
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1">

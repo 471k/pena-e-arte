@@ -27,22 +27,22 @@ public class CaptureDepositHandlerTests
     private CaptureDepositHandler CreateSut() => new(_db, _tenant, _stripe, _realtime);
 
     [Fact]
-    public async Task Handle_PendingPayment_CallsStripeCapture()
+    public async Task Handle_AuthorizedPayment_CallsStripeCapture()
     {
         await SeedStudio();
-        Guid paymentId = await SeedPayment(PaymentStatus.Pending, "pi_test");
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_test");
 
         await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
         await _stripe.Received(1)
-            .CapturePaymentAsync("pi_test", "acct_test", Arg.Any<CancellationToken>());
+            .CapturePaymentAsync("pi_test", Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_PendingPayment_UpdatesPaymentStatusToPaid()
+    public async Task Handle_AuthorizedPayment_UpdatesPaymentStatusToPaid()
     {
         await SeedStudio();
-        Guid paymentId = await SeedPayment(PaymentStatus.Pending, "pi_test");
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_test");
 
         await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
@@ -50,10 +50,10 @@ public class CaptureDepositHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PendingPayment_SetsPaidAt()
+    public async Task Handle_AuthorizedPayment_SetsPaidAt()
     {
         await SeedStudio();
-        Guid paymentId = await SeedPayment(PaymentStatus.Pending, "pi_test");
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_test");
 
         await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
@@ -61,11 +61,11 @@ public class CaptureDepositHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PendingPayment_UpdatesAppointmentDepositStatusToPaid()
+    public async Task Handle_AuthorizedPayment_UpdatesAppointmentDepositStatusToPaid()
     {
         await SeedStudio();
         await SeedAppointment();
-        Guid paymentId = await SeedPayment(PaymentStatus.Pending, "pi_test");
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_test");
 
         await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
@@ -74,10 +74,10 @@ public class CaptureDepositHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PendingPayment_NotifiesRealtime()
+    public async Task Handle_AuthorizedPayment_NotifiesRealtime()
     {
         await SeedStudio();
-        Guid paymentId = await SeedPayment(PaymentStatus.Pending, "pi_test");
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_test");
 
         await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
@@ -86,15 +86,28 @@ public class CaptureDepositHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PendingPayment_ReturnsPaymentResponse()
+    public async Task Handle_AuthorizedPayment_ReturnsPaymentResponse()
     {
         await SeedStudio();
-        Guid paymentId = await SeedPayment(PaymentStatus.Pending, "pi_test");
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_test");
 
         PaymentResponse result = await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
         result.Id.Should().Be(paymentId);
         result.Status.Should().Be(PaymentStatus.Paid.ToString());
+    }
+
+    [Fact]
+    public async Task Handle_PendingNotYetAuthorized_ThrowsBusinessRuleViolationException()
+    {
+        await SeedStudio();
+        Guid paymentId = await SeedPayment(PaymentStatus.Pending, "pi_test");
+
+        Func<Task> act = () => CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*not completed card authorization*");
+        await _stripe.DidNotReceive().CapturePaymentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -116,14 +129,14 @@ public class CaptureDepositHandlerTests
         Func<Task> act = () => CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
-            .WithMessage("*pending*");
+            .WithMessage("*authorized*");
     }
 
     [Fact]
     public async Task Handle_NoStripeIntentId_ThrowsBusinessRuleViolationException()
     {
         await SeedStudio();
-        Guid paymentId = await SeedPayment(PaymentStatus.Pending, stripeIntentId: null);
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, stripeIntentId: null);
 
         Func<Task> act = () => CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
@@ -131,25 +144,13 @@ public class CaptureDepositHandlerTests
             .WithMessage("*Stripe intent*");
     }
 
-    [Fact]
-    public async Task Handle_StudioHasNoStripeAccount_ThrowsStripeAccountNotConnectedException()
-    {
-        await SeedStudio(stripeAccountId: null);
-        Guid paymentId = await SeedPayment(PaymentStatus.Pending, "pi_test");
-
-        Func<Task> act = () => CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
-
-        await act.Should().ThrowAsync<StripeAccountNotConnectedException>();
-    }
-
-    private async Task SeedStudio(string? stripeAccountId = "acct_test")
+    private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio
         {
-            Id              = _studioId,
-            Name            = "Test Studio",
-            Slug            = "test",
-            StripeAccountId = stripeAccountId
+            Id   = _studioId,
+            Name = "Test Studio",
+            Slug = "test"
         });
         await _db.SaveChangesAsync();
     }
@@ -173,11 +174,21 @@ public class CaptureDepositHandlerTests
 
     private async Task<Guid> SeedPayment(PaymentStatus status, string? stripeIntentId)
     {
+        Client client = new()
+        {
+            StudioId  = _studioId,
+            FirstName = "Test",
+            LastName  = "Client",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+
         Payment payment = new()
         {
             StudioId              = _studioId,
             AppointmentId         = _appointmentId,
-            ClientId              = Guid.NewGuid(),
+            ClientId              = client.Id,
             Amount                = 100m,
             Status                = status,
             StripePaymentIntentId = stripeIntentId

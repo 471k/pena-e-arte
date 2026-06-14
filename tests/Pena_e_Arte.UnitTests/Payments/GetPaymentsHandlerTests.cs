@@ -61,25 +61,6 @@ public class GetPaymentsHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PaymentsHaveSplits_IncludesSplitsInResponse()
-    {
-        Guid paymentId = await SeedPayment(200m);
-        _db.SessionSplits.Add(new SessionSplit
-        {
-            StudioId  = _studioId,
-            PaymentId = paymentId,
-            Label     = "Deposit",
-            Amount    = 200m
-        });
-        await _db.SaveChangesAsync();
-
-        List<PaymentResponse> result = await CreateSut()
-            .Handle(new GetPaymentsQuery(), default);
-
-        result.Single().SessionSplits.Should().ContainSingle(s => s.Label == "Deposit");
-    }
-
-    [Fact]
     public async Task Handle_WithCursor_SameCreatedAt_DoesNotSkipRecords()
     {
         DateTime sharedTimestamp = DateTime.UtcNow;
@@ -113,13 +94,41 @@ public class GetPaymentsHandlerTests
             await SeedPayment(100m * (i + 1));
     }
 
+    private Guid SeedAppointment(Guid clientId)
+    {
+        Appointment appointment = new()
+        {
+            StudioId        = _studioId,
+            ArtistId        = Guid.NewGuid(),
+            ClientId        = clientId,
+            Date            = DateTime.UtcNow.AddDays(3),
+            EndDate         = DateTime.UtcNow.AddDays(3).AddMinutes(60),
+            DurationMinutes = 60,
+            Status          = AppointmentStatus.Pending,
+            DepositStatus   = DepositStatus.Pending,
+        };
+        _db.Appointments.Add(appointment);
+        _db.SaveChanges();
+        return appointment.Id;
+    }
+
     private async Task<Guid> SeedPayment(decimal amount)
     {
+        Client client = new()
+        {
+            StudioId  = _studioId,
+            FirstName = "Test",
+            LastName  = "Client",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+
         Payment payment = new()
         {
             StudioId      = _studioId,
-            AppointmentId = Guid.NewGuid(),
-            ClientId      = Guid.NewGuid(),
+            AppointmentId = SeedAppointment(client.Id),
+            ClientId      = client.Id,
             Amount        = amount,
             Status        = PaymentStatus.Pending
         };
@@ -130,12 +139,22 @@ public class GetPaymentsHandlerTests
 
     private async Task SeedPaymentWithId(Guid id, DateTime createdAt)
     {
+        Client client = new()
+        {
+            StudioId  = _studioId,
+            FirstName = "Test",
+            LastName  = "Client",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+
         Payment payment = new()
         {
             Id            = id,
             StudioId      = _studioId,
-            AppointmentId = Guid.NewGuid(),
-            ClientId      = Guid.NewGuid(),
+            AppointmentId = SeedAppointment(client.Id),
+            ClientId      = client.Id,
             Amount        = 100m,
             Status        = PaymentStatus.Pending,
             CreatedAt     = createdAt

@@ -59,7 +59,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
         IdentityService sut          = CreateSut(um);
 
-        (bool success, string[] errors) = await sut.CreateUserAsync(
+        (bool success, Guid _, string[] errors) = await sut.CreateUserAsync(
             UniqueEmail(), "Password1!", "owner", Guid.NewGuid());
 
         success.Should().BeTrue();
@@ -74,7 +74,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         string email = UniqueEmail();
 
         await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
-        (bool success, string[] errors) = await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
+        (bool success, Guid _, string[] errors) = await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
 
         success.Should().BeFalse();
         errors.Should().NotBeEmpty();
@@ -86,7 +86,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
         IdentityService           sut = CreateSut(um);
 
-        (bool success, string[] errors) = await sut.CreateUserAsync(UniqueEmail(), "123", "owner", Guid.NewGuid());
+        (bool success, Guid _, string[] errors) = await sut.CreateUserAsync(UniqueEmail(), "123", "owner", Guid.NewGuid());
 
         success.Should().BeFalse();
         errors.Should().NotBeEmpty();

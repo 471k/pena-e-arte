@@ -57,7 +57,8 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
     <form onSubmit={handleSubmit} className="space-y-6">
       {amount && (
         <p className="text-sm text-muted-foreground">
-          You are authorising a deposit of <span className="font-semibold text-foreground">{amount}</span>.
+          You are authorising a deposit of{" "}
+          <span className="font-semibold text-foreground">{amount}</span>.
           Your card will not be charged until the studio confirms your appointment.
         </p>
       )}
@@ -89,10 +90,10 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
 }
 
 export function DepositCheckoutPage() {
-  const { paymentId }   = useParams<{ paymentId: string }>();
-  const [searchParams]  = useSearchParams();
-  const redirectStatus  = searchParams.get("status");
-  const amount          = searchParams.get("amount");
+  const { paymentId }  = useParams<{ paymentId: string }>();
+  const [searchParams] = useSearchParams();
+  const redirectStatus = searchParams.get("status");
+  const amount         = searchParams.get("amount");
 
   const { data, isLoading, isError } = useGetPaymentClientSecretQuery(paymentId!, {
     skip: !paymentId || redirectStatus === "complete",
@@ -150,7 +151,7 @@ export function DepositCheckoutPage() {
                 stripe={stripePromise}
                 options={{
                   clientSecret: data.clientSecret,
-                  appearance: { theme: "stripe" },
+                  appearance:   { theme: "stripe" },
                 }}
               >
                 <CheckoutForm paymentId={paymentId!} amount={amount} />

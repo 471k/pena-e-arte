@@ -8,6 +8,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import { useCreateArtistMutation } from "../artistsApi";
 
 const createSchema = z.object({
@@ -15,6 +16,7 @@ const createSchema = z.object({
   lastName:        z.string().min(1, "Last name is required"),
   email:           z.string().email("Invalid email"),
   specializations: z.string().optional(),
+  hourlyRate:      z.number({ message: "Must be a number" }).positive("Must be positive").max(10_000).optional(),
 });
 
 type CreateFormValues = z.infer<typeof createSchema>;
@@ -35,6 +37,7 @@ export function CreateArtistPage() {
       lastName:        values.lastName,
       email:           values.email,
       specializations: values.specializations?.trim() || null,
+      hourlyRate:      values.hourlyRate ?? null,
     });
     if ("data" in result) {
       toast.success("Artist created.");
@@ -111,7 +114,26 @@ export function CreateArtistPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <div className="space-y-1.5">
+            <Label htmlFor="hourlyRate">Hourly rate (€, optional)</Label>
+            <Input
+              id="hourlyRate"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="e.g. 90"
+              {...register("hourlyRate", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
+              className={cn(errors.hourlyRate && "border-destructive")}
+            />
+            <p className="text-xs text-muted-foreground">
+              Used to calculate percentage-based booking deposits.
+            </p>
+            {errors.hourlyRate && (
+              <p className="text-xs text-destructive">{errors.hourlyRate.message}</p>
+            )}
+          </div>
+
+          <SubscriptionGatedButton type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -120,7 +142,7 @@ export function CreateArtistPage() {
             ) : (
               "Create Artist"
             )}
-          </Button>
+          </SubscriptionGatedButton>
         </form>
       </main>
     </div>

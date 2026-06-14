@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { Navigate, Outlet, createBrowserRouter, useNavigate } from "react-router-dom";
 import { LoginPage, ForgotPasswordPage, ResetPasswordPage } from "@/features/auth";
-import { RegisterStudioPage, ConnectStudioPage, ConnectReturnPage, ConnectRefreshPage, StudioProfilePage } from "@/features/studios";
+import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
 import { DashboardPage } from "@/features/dashboard";
 import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage, AppointmentDetailPage } from "@/features/appointments";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
-import { ClientListPage, CreateClientPage, ClientDetailPage, TattooRecordDetailPage } from "@/features/clients";
+import { ClientListPage, CreateClientPage, ClientDetailPage, MyProfilePage, TattooRecordDetailPage } from "@/features/clients";
 import { DesignListPage, CreateDesignPage, UploadRevisionPage, DesignDetailPage } from "@/features/designs";
 import {
   SubmitIntakeFormPage,
@@ -166,6 +166,13 @@ export const router = createBrowserRouter([
                 ],
               },
 
+              // ── Client: self-profile ────────────────────────────────────────
+              {
+                path: "clients/me",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [{ index: true, element: <MyProfilePage /> }],
+              },
+
               // ── Shared: clients ─────────────────────────────────────────────
               {
                 path: "clients",
@@ -183,10 +190,10 @@ export const router = createBrowserRouter([
                 path: "designs",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [
+                  { index: true, element: <DesignListPage /> },
                   {
                     element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
                     children: [
-                      { index: true,        element: <DesignListPage /> },
                       { path: "new",        element: <CreateDesignPage /> },
                       { path: ":id/upload", element: <UploadRevisionPage /> },
                     ],
@@ -218,7 +225,7 @@ export const router = createBrowserRouter([
                   { path: "intake/new", element: <SubmitIntakeFormPage /> },
                   {
                     path: "intake",
-                    element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                    element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
                     children: [
                       { index: true, element: <IntakeFormListPage /> },
                       { path: ":id", element: <IntakeFormDetailPage /> },
@@ -227,7 +234,7 @@ export const router = createBrowserRouter([
                   { path: "consent/new", element: <SignConsentFormPage /> },
                   {
                     path: "consent",
-                    element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                    element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
                     children: [
                       { index: true, element: <ConsentFormListPage /> },
                       { path: ":id", element: <ConsentFormDetailPage /> },
@@ -261,17 +268,6 @@ export const router = createBrowserRouter([
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
                 children: [
                   { path: "me", element: <StudioProfilePage /> },
-                ],
-              },
-
-              // ── Owner: studio connect (Stripe OAuth — no sub-nav needed) ────
-              {
-                path: "studio",
-                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-                children: [
-                  { path: "connect",         element: <ConnectStudioPage /> },
-                  { path: "connect/return",  element: <ConnectReturnPage /> },
-                  { path: "connect/refresh", element: <ConnectRefreshPage /> },
                 ],
               },
 

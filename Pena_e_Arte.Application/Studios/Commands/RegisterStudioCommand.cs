@@ -83,6 +83,6 @@ public class RegisterStudioHandler(
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
             AllowBrandingRemoval: false,
-            studio.TrialExpiresAt, studio.CreatedAt);
+            studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive);
     }
 }

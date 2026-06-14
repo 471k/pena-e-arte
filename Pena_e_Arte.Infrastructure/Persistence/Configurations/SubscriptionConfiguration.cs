@@ -28,6 +28,13 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
                .IsRequired(false)
                .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne<Plan>()
+               .WithMany()
+               .HasForeignKey(s => s.PendingPlanId)
+               .HasConstraintName("fk_subscriptions_pending_plans")
+               .IsRequired(false)
+               .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(s => s.StudioId).IsUnique().HasDatabaseName("ix_subscriptions_studio_id");
         builder.HasIndex(s => s.StripeSubscriptionId).HasDatabaseName("ix_subscriptions_stripe_id");
     }

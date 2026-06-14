@@ -1,18 +1,23 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Payments.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Payments;
 
 public class GetPaymentByAppointmentHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db          = FakeDbContext.Create();
+    private readonly ICurrentUser  _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid          _studioId    = Guid.NewGuid();
 
-    private GetPaymentByAppointmentHandler CreateSut() => new(_db);
+    public GetPaymentByAppointmentHandlerTests() => _currentUser.Role.Returns("owner");
+
+    private GetPaymentByAppointmentHandler CreateSut() => new(_db, _currentUser);
 
     [Fact]
     public async Task Handle_ExistingPayment_ReturnsPaymentResponse()
@@ -38,7 +43,7 @@ public class GetPaymentByAppointmentHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PaymentWithSplits_IncludesSplits()
+    public async Task Handle_PaymentWithSplits_ReturnsCoreFields()
     {
         Guid appointmentId = Guid.NewGuid();
         Guid paymentId     = await SeedPayment(300m, appointmentId);
@@ -48,59 +53,34 @@ public class GetPaymentByAppointmentHandlerTests
             StudioId  = _studioId,
             PaymentId = paymentId,
             Label     = "Deposit",
-            Amount    = 100m
-        });
-        _db.SessionSplits.Add(new SessionSplit
-        {
-            StudioId  = _studioId,
-            PaymentId = paymentId,
-            Label     = "Final",
-            Amount    = 200m
+            Amount    = 300m
         });
         await _db.SaveChangesAsync();
 
         PaymentResponse? result = await CreateSut()
             .Handle(new GetPaymentByAppointmentQuery(appointmentId), default);
 
-        result!.SessionSplits.Should().HaveCount(2);
-    }
-
-    [Fact]
-    public async Task Handle_PaymentWithSoftDeletedSplits_ExcludesDeletedSplits()
-    {
-        Guid appointmentId = Guid.NewGuid();
-        Guid paymentId     = await SeedPayment(100m, appointmentId);
-
-        _db.SessionSplits.Add(new SessionSplit
-        {
-            StudioId  = _studioId,
-            PaymentId = paymentId,
-            Label     = "Active",
-            Amount    = 100m
-        });
-        _db.SessionSplits.Add(new SessionSplit
-        {
-            StudioId  = _studioId,
-            PaymentId = paymentId,
-            Label     = "Deleted",
-            Amount    = 50m,
-            DeletedAt = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync();
-
-        PaymentResponse? result = await CreateSut()
-            .Handle(new GetPaymentByAppointmentQuery(appointmentId), default);
-
-        result!.SessionSplits.Should().ContainSingle(s => s.Label == "Active");
+        result!.AppointmentId.Should().Be(appointmentId);
+        result.Amount.Should().Be(300m);
     }
 
     private async Task<Guid> SeedPayment(decimal amount, Guid? appointmentId = null)
     {
+        Client client = new()
+        {
+            StudioId  = _studioId,
+            FirstName = "Test",
+            LastName  = "Client",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+
         Payment payment = new()
         {
             StudioId      = _studioId,
             AppointmentId = appointmentId ?? Guid.NewGuid(),
-            ClientId      = Guid.NewGuid(),
+            ClientId      = client.Id,
             Amount        = amount,
             Status        = PaymentStatus.Pending
         };

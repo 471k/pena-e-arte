@@ -39,6 +39,11 @@ function stepLabel(step: UploadStep): string {
   }
 }
 
+// Module-level so the timestamp call stays out of the component body
+function buildObjectKey(designId: string, ext: string): string {
+  return `designs/${designId}/${Date.now()}.${ext}`;
+}
+
 export function UploadRevisionPage() {
   const { id: designId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -81,7 +86,7 @@ export function UploadRevisionPage() {
 
     try {
       const ext       = ACCEPTED_TYPES[file.type];
-      const objectKey = `designs/${designId}/${Date.now()}.${ext}`;
+      const objectKey = buildObjectKey(designId, ext);
 
       // Step 1 — get presigned URL
       setStep("presigning");

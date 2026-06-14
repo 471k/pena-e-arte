@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, Loader2, Zap } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle, Loader2, RefreshCw, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
-import { useGetPlansQuery, useCreateSubscriptionMutation } from "../billingApi";
+import {
+  useGetPlansQuery,
+  useGetSubscriptionQuery,
+  useCreateCheckoutMutation,
+  useChangePlanMutation,
+} from "../billingApi";
 import type { PlanResponse } from "../billing.types";
 
 function formatPrice(price: number): string {
@@ -16,11 +22,13 @@ function PlanCard({
   selected,
   onSelect,
   disabled,
+  isCurrent = false,
 }: {
-  plan:     PlanResponse;
-  selected: boolean;
-  onSelect: () => void;
-  disabled: boolean;
+  plan:       PlanResponse;
+  selected:   boolean;
+  onSelect:   () => void;
+  disabled:   boolean;
+  isCurrent?: boolean;
 }) {
   const isYearly   = plan.billingInterval === "Yearly";
   const price      = isYearly ? plan.priceYearly : plan.priceMonthly;
@@ -30,18 +38,25 @@ function PlanCard({
     <button
       type="button"
       onClick={onSelect}
-      disabled={disabled}
+      disabled={disabled || isCurrent}
       className={cn(
         "w-full text-left rounded-lg border-2 p-4 transition-colors",
         selected
           ? "border-primary bg-primary/5"
           : "border-input hover:border-ring",
-        disabled && "opacity-50 cursor-not-allowed",
+        (disabled || isCurrent) && "opacity-50 cursor-not-allowed",
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
-          <p className="font-medium text-sm">{plan.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-sm">{plan.name}</p>
+            {isCurrent && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                Current plan
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {plan.billingInterval === "Yearly" ? "Billed yearly" : "Billed monthly"}
           </p>
@@ -67,21 +82,57 @@ function PlanCard({
 
 export function SubscribePage() {
   const navigate = useNavigate();
-  const { data: plans = [], isLoading: loadingPlans, isError: plansError } = useGetPlansQuery();
-  const [createSubscription, { isLoading: subscribing }] = useCreateSubscriptionMutation();
+  const { data: plans = [], isLoading: loadingPlans, isError: plansError } =
+    useGetPlansQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: sub } = useGetSubscriptionQuery(undefined, { refetchOnMountOrArgChange: true });
+  const [createCheckout,     { isLoading: checkingOut }] = useCreateCheckoutMutation();
+  const [changePlan,         { isLoading: switching }]   = useChangePlanMutation();
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [submitError,    setSubmitError]    = useState<string | null>(null);
 
+  // Card-billed active studios change plans via Stripe (proration). Everyone else —
+  // new subscribers AND cash-billed studios setting up card billing — goes via Checkout.
+  const isActive          = sub?.status === "Active";
+  const isCardBilled      = isActive && sub.stripeSubscriptionId !== null;
+  const isCashBilled      = isActive && sub.stripeSubscriptionId === null;
+  const hasPendingChange  = isCardBilled && sub.pendingPlanId !== null;
+  const busy              = checkingOut || switching;
+
   async function onSubscribe() {
     if (!selectedPlanId) return;
     setSubmitError(null);
-    const result = await createSubscription({ planId: selectedPlanId });
-    if ("error" in result) {
-      setSubmitError("Failed to create subscription. Please try again.");
-    } else {
+
+    if (isCardBilled) {
+      const result = await changePlan({ planId: selectedPlanId });
+      if ("error" in result) {
+        const err = result.error as { data?: { message?: string } } | undefined;
+        setSubmitError(err?.data?.message ?? "Failed to change plan. Please try again.");
+        return;
+      }
+      // Backend decides: upgrade = immediate, downgrade = scheduled at period end
+      if (result.data.pendingPlanId) {
+        toast.success("Plan change scheduled for the end of your current billing period.");
+      } else {
+        toast.success("Plan upgraded — the prorated difference has been charged.");
+      }
       navigate("/billing");
+      return;
     }
+
+    // New subscription OR cash → card switch → Stripe-hosted Checkout collects the card.
+    const origin = window.location.origin;
+    const result = await createCheckout({
+      planId:     selectedPlanId,
+      successUrl: `${origin}/billing?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl:  `${origin}/billing/subscribe`,
+    });
+    if ("error" in result) {
+      const err = result.error as { data?: { message?: string } } | undefined;
+      setSubmitError(err?.data?.message ?? "Could not start checkout. Please try again.");
+      return;
+    }
+    window.location.href = result.data.url;
   }
 
   return (
@@ -92,21 +143,36 @@ export function SubscribePage() {
           size="sm"
           onClick={() => navigate("/billing")}
           className="gap-1.5"
-          disabled={subscribing}
+          disabled={busy}
         >
           <ArrowLeft className="h-4 w-4" />
           Billing
         </Button>
         <div className="flex items-center gap-2">
           <Zap className="h-5 w-5" />
-          <span className="font-semibold tracking-tight">Choose a Plan</span>
+          <span className="font-semibold tracking-tight">
+            {isCardBilled ? "Change Plan" : isCashBilled ? "Set up card billing" : "Choose a Plan"}
+          </span>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-8 space-y-6">
         <p className="text-sm text-muted-foreground">
-          Select a plan to unlock full access for your studio.
+          {isCardBilled
+            ? "Upgrades apply immediately (you pay only the prorated difference). Downgrades take effect at the end of your current billing period."
+            : isCashBilled
+            ? "Switch from cash to automatic card billing. Pick a plan and pay securely by card — you stay active throughout."
+            : "Select a plan to unlock full access for your studio."}
         </p>
+
+        {hasPendingChange && (
+          <Card>
+            <CardContent className="p-5 text-sm text-muted-foreground">
+              A plan change is already scheduled. Cancel it from the Billing page before
+              choosing another plan.
+            </CardContent>
+          </Card>
+        )}
 
         {loadingPlans && (
           <div className="flex justify-center py-8">
@@ -126,7 +192,7 @@ export function SubscribePage() {
           </Card>
         )}
 
-        {plans.length > 0 && (
+        {plans.length > 0 && !hasPendingChange && (
           <div className="space-y-3">
             {plans.map((plan) => (
               <PlanCard
@@ -134,7 +200,8 @@ export function SubscribePage() {
                 plan={plan}
                 selected={selectedPlanId === plan.id}
                 onSelect={() => setSelectedPlanId(plan.id)}
-                disabled={subscribing}
+                disabled={busy}
+                isCurrent={isCardBilled && plan.id === sub?.planId}
               />
             ))}
           </div>
@@ -144,23 +211,49 @@ export function SubscribePage() {
           <p className="text-sm text-destructive">{submitError}</p>
         )}
 
-        <Button
-          className="w-full gap-1.5"
-          disabled={!selectedPlanId || subscribing || loadingPlans}
-          onClick={onSubscribe}
-        >
-          {subscribing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Subscribing…
-            </>
-          ) : (
-            <>
-              <Zap className="h-4 w-4" />
-              Subscribe
-            </>
-          )}
-        </Button>
+        {!hasPendingChange && (
+          <Button
+            className="w-full gap-1.5"
+            disabled={!selectedPlanId || busy || loadingPlans}
+            onClick={onSubscribe}
+          >
+            {busy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {isCardBilled ? "Switching…" : "Redirecting to checkout…"}
+              </>
+            ) : isCardBilled ? (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Switch plan
+              </>
+            ) : (
+              <>
+                <Zap className="h-4 w-4" />
+                Continue to checkout
+              </>
+            )}
+          </Button>
+        )}
+
+        {!isActive && (
+        <div className="mt-6 rounded-lg border border-input p-4 space-y-2 text-sm">
+          <p className="font-medium flex items-center gap-2">
+            <Banknote className="h-4 w-4" />
+            Prefer to pay cash?
+          </p>
+          <p className="text-muted-foreground">
+            Contact us and we'll activate your subscription once payment is confirmed.
+            Your trial continues until then.
+          </p>
+          <a
+            href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "contact@penaearte.com"}`}
+            className="text-sm font-medium underline underline-offset-4"
+          >
+            Get in touch
+          </a>
+        </div>
+        )}
       </main>
     </div>
   );

@@ -1,6 +1,5 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -15,7 +14,8 @@ public class GetPaymentsHandler(IAppDbContext db)
     public async Task<List<PaymentResponse>> Handle(GetPaymentsQuery query, CancellationToken ct)
     {
         IQueryable<Payment> q = db.Payments
-            .Include(p => p.SessionSplits.Where(ss => ss.DeletedAt == null))
+            .Include(p => p.Client)
+            .Include(p => p.Appointment)
             .OrderBy(p => p.CreatedAt)
             .ThenBy(p => p.Id);
 
@@ -32,12 +32,6 @@ public class GetPaymentsHandler(IAppDbContext db)
         }
 
         List<Payment> payments = await q.Take(query.PageSize).ToListAsync(ct);
-
-        return payments.Select(p =>
-        {
-            List<SessionSplitResponse> splits = p.SessionSplits
-                .Select(CreatePaymentIntentHandler.MapSplit).ToList();
-            return CreatePaymentIntentHandler.Map(p, splits);
-        }).ToList();
+        return payments.Select(p => p.ToResponse()).ToList();
     }
 }

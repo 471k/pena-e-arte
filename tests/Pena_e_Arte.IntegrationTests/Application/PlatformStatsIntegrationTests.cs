@@ -38,10 +38,11 @@ public class PlatformStatsIntegrationTests(DatabaseFixture fixture)
 
         PlatformStatsResponse result = await handler.Handle(new GetPlatformStatsQuery(), default);
 
-        result.TotalStudios.Should().BeGreaterThanOrEqualTo(2);
+        result.TotalStudios.Should().BeGreaterThanOrEqualTo(1);
         result.ActiveSubscriptions.Should().BeGreaterThanOrEqualTo(1);
-        result.SuspendedStudios.Should().BeGreaterThanOrEqualTo(1);
-        result.MonthlyRecurringRevenue.Should().BeGreaterThanOrEqualTo(49m);
+        result.NewStudiosThisMonth.Should().BeGreaterThanOrEqualTo(2);
+        result.Mrr.Should().BeGreaterThanOrEqualTo(49m);
+        result.TrialConversionRate.Should().BeInRange(0, 1);
     }
 
     private static Studio SeedStudio(bool isActive) => new()

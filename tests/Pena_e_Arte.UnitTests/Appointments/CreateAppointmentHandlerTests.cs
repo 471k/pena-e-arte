@@ -193,16 +193,40 @@ public class CreateAppointmentHandlerTests
     [Fact]
     public async Task Handle_ClientRole_IgnoresRequestClientIdAndUsesJwtIdentity()
     {
-        Guid jwtUserId    = Guid.NewGuid();
-        Guid spoofedId    = Guid.NewGuid();
+        Guid jwtUserId = Guid.NewGuid();
+        Guid spoofedId = Guid.NewGuid();
         _user.Role.Returns("client");
         _user.UserId.Returns(jwtUserId);
+
+        // The JWT carries the IdentityUser id; the handler must resolve the Client record
+        Client ownClient = new()
+        {
+            StudioId  = _studioId,
+            UserId    = jwtUserId,
+            FirstName = "Jwt",
+            LastName  = "Client",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(ownClient);
+        await _db.SaveChangesAsync();
 
         CreateAppointmentRequest req = ValidRequest() with { ClientId = spoofedId };
         AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
 
-        result.ClientId.Should().Be(jwtUserId);
+        result.ClientId.Should().Be(ownClient.Id);
         result.ClientId.Should().NotBe(spoofedId);
+        result.ClientId.Should().NotBe(jwtUserId); // ClientId is the Client entity, not the user id
+    }
+
+    [Fact]
+    public async Task Handle_ClientRoleWithoutClientRecord_ThrowsNotFoundException()
+    {
+        _user.Role.Returns("client");
+        _user.UserId.Returns(Guid.NewGuid());
+
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Fact]
@@ -217,6 +241,76 @@ public class CreateAppointmentHandlerTests
         result.ClientId.Should().Be(targetClientId);
     }
 
-    private static CreateAppointmentRequest ValidRequest() =>
-        new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+    [Fact]
+    public async Task Handle_ArtistNotFound_ThrowsNotFoundException()
+    {
+        CreateAppointmentRequest req = new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_PercentRuleWithArtistRate_ComputesDepositFromRateAndDuration()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "20%", AmountPercent = 20m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        // 90 min at €100/h = €150 estimated -> 20% = €30
+        CreateAppointmentRequest req = ValidRequest(artistHourlyRate: 100m);
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(30m);
+    }
+
+    [Fact]
+    public async Task Handle_PercentRuleWithoutArtistRate_DepositAmountIsZero()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "20%", AmountPercent = 20m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        result.DepositAmount.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Handle_MultipleActiveRules_LatestUpdatedRuleWins()
+    {
+        // Legacy data can violate the single-active invariant — selection must be deterministic
+        _db.DepositRules.Add(new DepositRule
+        {
+            StudioId = _studioId, Name = "Old", AmountFixed = 10m, IsActive = true,
+            UpdatedAt = DateTime.UtcNow.AddDays(-10),
+        });
+        _db.DepositRules.Add(new DepositRule
+        {
+            StudioId = _studioId, Name = "Newest", AmountFixed = 75m, IsActive = true,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        result.DepositAmount.Should().Be(75m);
+    }
+
+    private Guid SeedArtist(decimal? hourlyRate = null)
+    {
+        Artist artist = new()
+        {
+            StudioId   = _studioId,
+            FirstName  = "Seed",
+            LastName   = "Artist",
+            Email      = $"{Guid.NewGuid()}@artist.test",
+            HourlyRate = hourlyRate,
+        };
+        _db.Artists.Add(artist);
+        _db.SaveChanges();
+        return artist.Id;
+    }
+
+    private CreateAppointmentRequest ValidRequest(decimal? artistHourlyRate = null) =>
+        new(SeedArtist(artistHourlyRate), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
 }

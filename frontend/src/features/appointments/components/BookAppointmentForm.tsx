@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Banknote, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -21,6 +22,8 @@ import { Role } from "@/shared/types/roles";
 import { useCreateAppointmentMutation } from "../appointmentsApi";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetClientsQuery } from "@/features/clients/clientsApi";
+import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
+import type { AppointmentResponse } from "../appointment.types";
 
 const schema = z.object({
   artistId:        z.string().min(1, "Select an artist"),
@@ -47,8 +50,11 @@ export function BookAppointmentForm() {
     skip: isClientRole,
   });
 
-  const [createAppointment, { isLoading, isSuccess, reset: resetMutation }] =
-    useCreateAppointmentMutation();
+  const [createAppointment, { isLoading }] = useCreateAppointmentMutation();
+
+  // Post-booking deposit step state
+  const [booked,      setBooked]      = useState<AppointmentResponse | null>(null);
+  const [depositDone, setDepositDone] = useState<"paid" | "cash" | "skipped" | null>(null);
 
   const {
     register,
@@ -75,18 +81,70 @@ export function BookAppointmentForm() {
     });
     if ("data" in result) {
       toast.success("Appointment requested.");
+      setBooked(result.data);
     } else {
       toast.error("Failed to book appointment.");
     }
     resetForm({ durationMinutes: 60, clientId: isClientRole ? (user?.id ?? "") : "" });
   }
 
-  if (isSuccess) {
+  function startOver() {
+    setBooked(null);
+    setDepositDone(null);
+  }
+
+  // Step 2 — deposit (clients only, when the appointment requires one)
+  if (booked && isClientRole && booked.depositAmount > 0 && !depositDone) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center space-y-1">
+          <p className="text-sm font-medium">Appointment requested!</p>
+          <p className="text-xs text-muted-foreground">
+            Secure your slot with a deposit of{" "}
+            <span className="font-medium text-foreground">€{booked.depositAmount.toFixed(2)}</span>.
+          </p>
+        </div>
+
+        <PaymentMethodSelector
+          appointmentId={booked.id}
+          amount={booked.depositAmount}
+          onSuccess={(method) => setDepositDone(method === "cash" ? "cash" : "paid")}
+          onError={(message) => toast.error(message)}
+        />
+
+        <button
+          type="button"
+          onClick={() => setDepositDone("skipped")}
+          className="w-full text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          I&apos;ll sort the deposit out later
+        </button>
+      </div>
+    );
+  }
+
+  // Step 3 — confirmation
+  if (booked) {
     return (
       <div className="text-center space-y-3 py-6">
+        {depositDone === "skipped" || depositDone === null ? (
+          <CheckCircle2 className="h-8 w-8 mx-auto text-green-500" />
+        ) : depositDone === "cash" ? (
+          <Banknote className="h-8 w-8 mx-auto text-green-500" />
+        ) : (
+          <CheckCircle2 className="h-8 w-8 mx-auto text-green-500" />
+        )}
         <p className="text-sm font-medium">Appointment requested!</p>
-        <p className="text-xs text-muted-foreground">The artist will confirm soon.</p>
-        <Button variant="outline" size="sm" onClick={resetMutation}>
+        <p className="text-xs text-muted-foreground">
+          {depositDone === "paid"
+            ? "Your deposit is authorised — the artist will confirm soon."
+            : depositDone === "cash"
+            ? "Bring the deposit in cash to the studio. The artist will confirm soon."
+            : depositDone === "skipped"
+            ? "The studio will contact you about the deposit. The artist will confirm soon."
+            : "The artist will confirm soon."}
+        </p>
+        <Button variant="outline" size="sm" onClick={startOver}>
           Book another
         </Button>
       </div>

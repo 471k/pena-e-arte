@@ -31,9 +31,10 @@ artifacts/
 nuget.config
 
 ## ASP.NET Core
+# appsettings.Development.json is intentionally ignored — it carries local secrets
+# (Stripe keys, connection strings). Base appsettings.json has empty placeholders only.
 **/appsettings.*.json
 !**/appsettings.json
-!**/appsettings.Development.json
 
 ## Secrets / env
 .env

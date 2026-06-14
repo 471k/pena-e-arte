@@ -2,12 +2,12 @@ export interface SubscriptionResponse {
   id:                   string;
   studioId:             string;
   planId:               string | null;
+  pendingPlanId:        string | null;
   status:               "Trialing" | "Active" | "PastDue" | "Cancelled" | "GracePeriod";
   trialExpiresAt:       string;
   currentPeriodEnd:     string;
   gracePeriodEnd:       string;
   stripeSubscriptionId: string | null;
-  isStripeConnected:    boolean;
 }
 
 export interface PlanResponse {

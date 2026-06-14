@@ -67,7 +67,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         await SubmitForm(tenantId, clientB, "{\"b\":2}");
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        List<IntakeFormResponse> result = await new GetIntakeFormsHandler(db)
+        List<IntakeFormResponse> result = await new GetIntakeFormsHandler(db, StaffUser())
             .Handle(new GetIntakeFormsQuery(clientA, null), default);
 
         result.Should().ContainSingle(f => f.ClientId == clientA);
@@ -83,7 +83,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         IntakeFormResponse created = await SubmitForm(tenantId, clientId, "{}");
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        IntakeFormResponse result = await new GetIntakeFormByIdHandler(db)
+        IntakeFormResponse result = await new GetIntakeFormByIdHandler(db, StaffUser())
             .Handle(new GetIntakeFormByIdQuery(created.Id), default);
 
         result.Id.Should().Be(created.Id);
@@ -95,7 +95,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid tenantId = Guid.NewGuid();
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        Func<Task> act = () => new GetIntakeFormByIdHandler(db)
+        Func<Task> act = () => new GetIntakeFormByIdHandler(db, StaffUser())
             .Handle(new GetIntakeFormByIdQuery(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
@@ -159,7 +159,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         await SignConsent(tenantId, clientB, apptB, "sig-b");
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        List<ConsentFormResponse> result = await new GetConsentFormsHandler(db)
+        List<ConsentFormResponse> result = await new GetConsentFormsHandler(db, StaffUser())
             .Handle(new GetConsentFormsQuery(null, apptA), default);
 
         result.Should().ContainSingle(f => f.AppointmentId == apptA);
@@ -175,7 +175,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         ConsentFormResponse created = await SignConsent(tenantId, clientId, appointmentId, "sig");
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        ConsentFormResponse result = await new GetConsentFormByIdHandler(db)
+        ConsentFormResponse result = await new GetConsentFormByIdHandler(db, StaffUser())
             .Handle(new GetConsentFormByIdQuery(created.Id), default);
 
         result.Id.Should().Be(created.Id);
@@ -187,7 +187,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid tenantId = Guid.NewGuid();
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        Func<Task> act = () => new GetConsentFormByIdHandler(db)
+        Func<Task> act = () => new GetConsentFormByIdHandler(db, StaffUser())
             .Handle(new GetConsentFormByIdQuery(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
@@ -267,5 +267,12 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         CurrentTenantService t = new();
         t.SetTenant(tenantId);
         return t;
+    }
+
+    private static ICurrentUser StaffUser() => new StubCurrentUser(Guid.NewGuid(), "artist");
+
+    private sealed record StubCurrentUser(Guid UserId, string Role, string? Email = null) : ICurrentUser
+    {
+        public bool IsAuthenticated => true;
     }
 }

@@ -28,7 +28,7 @@ export function useSignalR(studioId: string | null | undefined) {
       dispatch(designsApi.util.invalidateTags(["Design"]));
     });
 
-    connection
+    const startPromise = connection
       .start()
       .then(() => connection.invoke("JoinStudio", studioId))
       .catch(() => {
@@ -36,7 +36,9 @@ export function useSignalR(studioId: string | null | undefined) {
       });
 
     return () => {
-      connection.stop();
+      // Wait for the start handshake to settle before stopping — calling stop()
+      // mid-negotiation makes SignalR log a spurious error on StrictMode remounts.
+      void startPromise.finally(() => connection.stop());
     };
   }, [studioId, token, dispatch]);
 }

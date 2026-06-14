@@ -12,7 +12,7 @@ public class GetIntakeFormByIdHandlerTests
     private readonly FakeDbContext _db       = FakeDbContext.Create();
     private readonly Guid          _studioId = Guid.NewGuid();
 
-    private GetIntakeFormByIdHandler CreateSut() => new(_db);
+    private GetIntakeFormByIdHandler CreateSut() => new(_db, FakeCurrentUser.Artist());
 
     private async Task<Guid> SeedForm()
     {

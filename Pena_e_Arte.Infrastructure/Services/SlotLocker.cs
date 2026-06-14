@@ -14,9 +14,12 @@ public class SlotLocker(IConnectionMultiplexer redis) : ISlotLocker
             string key = $"slot:{studioId}:{artistId}:{date:yyyyMMddHHmm}";
             return await db.StringSetAsync(key, "1", TimeSpan.FromSeconds(30), When.NotExists);
         }
-        catch (RedisConnectionException ex)
+        catch (RedisConnectionException)
         {
-            throw new ServiceUnavailableException("Booking service temporarily unavailable. Please try again shortly.") { Data = { ["inner"] = ex.Message } };
+            // Fail-open: Redis is unavailable, allow booking to proceed.
+            // The 30-second lock window is a UX guard, not a hard business rule;
+            // the DB-level unique appointment constraint is the authoritative guard.
+            return true;
         }
     }
 

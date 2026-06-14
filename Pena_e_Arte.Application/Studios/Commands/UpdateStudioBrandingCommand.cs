@@ -40,7 +40,7 @@ public class UpdateStudioBrandingHandler(IAppDbContext db)
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
             allowBrandingRemoval,
-            studio.TrialExpiresAt, studio.CreatedAt);
+            studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive);
     }
 }
 

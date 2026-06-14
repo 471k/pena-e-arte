@@ -10,4 +10,5 @@ public record StudioResponse(
     bool     ShowPlatformBranding,
     bool     AllowBrandingRemoval,
     DateTime TrialExpiresAt,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool     IsActive);

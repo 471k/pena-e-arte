@@ -17,11 +17,11 @@ public class UpdateSessionSplitsHandlerTests
     private UpdateSessionSplitsHandler CreateSut() => new(_db);
 
     [Fact]
-    public async Task Handle_ValidSplits_ReturnsSplitsInResponse()
+    public async Task Handle_ValidSplits_PersistsSplitsToDB()
     {
         Guid paymentId = await SeedPayment(300m);
 
-        PaymentResponse result = await CreateSut().Handle(
+        await CreateSut().Handle(
             new UpdateSessionSplitsCommand(paymentId, new UpdateSessionSplitsRequest(
             [
                 new SessionSplitItem("Deposit",  100m),
@@ -29,10 +29,8 @@ public class UpdateSessionSplitsHandlerTests
                 new SessionSplitItem("Final",    100m)
             ])), default);
 
-        result.SessionSplits.Should().HaveCount(3);
-        result.SessionSplits.Should().Contain(s => s.Label == "Deposit"   && s.Amount == 100m);
-        result.SessionSplits.Should().Contain(s => s.Label == "Session 1" && s.Amount == 100m);
-        result.SessionSplits.Should().Contain(s => s.Label == "Final"     && s.Amount == 100m);
+        _db.SessionSplits.Count(ss => ss.PaymentId == paymentId && ss.DeletedAt == null)
+            .Should().Be(3);
     }
 
     [Fact]

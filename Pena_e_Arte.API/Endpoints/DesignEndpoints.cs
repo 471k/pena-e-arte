@@ -14,7 +14,7 @@ public static class DesignEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/designs")
             .RequireAuthorization();
 
-        group.MapGet("/",                                          GetDesigns).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/",                                          GetDesigns).RequireAuthorization("ClientAndAbove");
         group.MapPost("/",                                         CreateDesign).RequireAuthorization("ArtistAndAbove");
         group.MapGet("{id:guid}/revisions",                        GetRevisions).RequireAuthorization("ClientAndAbove");
         group.MapPost("{id:guid}/revisions",                       UploadRevision).RequireAuthorization("ArtistAndAbove");

@@ -1,5 +1,7 @@
 using System.Text.Json;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using Pena_e_Arte.Domain.Exceptions;
 using Stripe;
 
@@ -29,11 +31,14 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
                                                 string.Join("; ", ve.Errors.Select(e => e.ErrorMessage))),
             NotFoundException               => (StatusCodes.Status404NotFound,              ex.Message),
             SlotAlreadyBookedException      => (StatusCodes.Status409Conflict,              ex.Message),
+            // Unique-index race (e.g. two payment attempts for one appointment) — 1062 = duplicate key
+            DbUpdateException { InnerException: MySqlException { Number: 1062 } }
+                                            => (StatusCodes.Status409Conflict,
+                                                "This action was already completed by another request. Refresh and try again."),
             DesignAlreadyApprovedException      => (StatusCodes.Status409Conflict,              ex.Message),
             ConsentFormAlreadySignedException   => (StatusCodes.Status409Conflict,              ex.Message),
             TenantSuspendedException            => (StatusCodes.Status403Forbidden,           ex.Message),
             SubscriptionRequiredException       => (StatusCodes.Status402PaymentRequired,     ex.Message),
-            StripeAccountNotConnectedException  => (StatusCodes.Status422UnprocessableEntity, ex.Message),
             BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message),
             ServiceUnavailableException         => (StatusCodes.Status503ServiceUnavailable,  ex.Message),
             UnauthorizedAccessException     => (StatusCodes.Status401Unauthorized,          ex.Message),

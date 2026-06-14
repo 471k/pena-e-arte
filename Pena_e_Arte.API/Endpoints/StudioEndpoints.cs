@@ -4,7 +4,6 @@ using Pena_e_Arte.Application.Studios.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Microsoft.AspNetCore.Mvc;
-using Unit = MediatR.Unit;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -17,10 +16,9 @@ public static class StudioEndpoints
         group.MapGet("/map",     GetStudioMap).AllowAnonymous();
         group.MapGet("{id:guid}/qr", GetQrCode).AllowAnonymous();
         group.MapPost("/",       RegisterStudio).AllowAnonymous();
-        group.MapPost("/connect", ConnectStudio).RequireAuthorization("OwnerOnly");
 
-        // Owner: view + edit own studio profile
-        group.MapGet("/me",  GetMyStudio).RequireAuthorization("OwnerOnly");
+        // All authenticated users can read their own studio (clients need it for booking context)
+        group.MapGet("/me",  GetMyStudio).RequireAuthorization("ClientAndAbove");
         group.MapPut("/me",  UpdateMyStudio).RequireAuthorization("OwnerOnly");
 
         // Owner: manage branding and slug for their studio
@@ -48,15 +46,6 @@ public static class StudioEndpoints
     {
         StudioResponse result = await mediator.Send(new RegisterStudioCommand(request), ct);
         return Results.Created($"/api/v1/studios/{result.Id}", result);
-    }
-
-    private static async Task<IResult> ConnectStudio(
-        ConnectStudioRequest  request,
-        ISender               mediator,
-        CancellationToken     ct)
-    {
-        ConnectOnboardingResponse result = await mediator.Send(new ConnectStudioCommand(request), ct);
-        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetMyStudio(

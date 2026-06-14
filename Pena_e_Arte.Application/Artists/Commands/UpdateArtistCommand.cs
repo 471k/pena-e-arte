@@ -29,6 +29,7 @@ public class UpdateArtistHandler(IAppDbContext db)
         artist.LastName        = req.LastName;
         artist.Email           = req.Email;
         artist.Specializations = req.Specializations;
+        artist.HourlyRate      = req.HourlyRate;
         artist.UpdatedAt       = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

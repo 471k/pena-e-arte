@@ -22,8 +22,8 @@ public class AppDbContext(
     public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
     public DbSet<DesignApproval>   DesignApprovals   => Set<DesignApproval>();
     public DbSet<DesignShareToken> DesignShareTokens => Set<DesignShareToken>();
-    public DbSet<Payment>         Payments         => Set<Payment>();
-    public DbSet<SessionSplit>    SessionSplits    => Set<SessionSplit>();
+    public DbSet<Payment>              Payments             => Set<Payment>();
+    public DbSet<SessionSplit>         SessionSplits        => Set<SessionSplit>();
     public DbSet<IntakeForm>      IntakeForms      => Set<IntakeForm>();
     public DbSet<ConsentForm>     ConsentForms     => Set<ConsentForm>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
@@ -34,6 +34,15 @@ public class AppDbContext(
     public DbSet<Subscription>       Subscriptions       => Set<Subscription>();
     public DbSet<ReferralCode>       ReferralCodes       => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+
+        // See UtcDateTimeConverter — keeps API timestamps consistently UTC ('Z')
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<UtcNullableDateTimeConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -50,8 +59,8 @@ public class AppDbContext(
         builder.Entity<DesignRevision>()   .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<DesignApproval>()   .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<DesignShareToken>() .HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
-        builder.Entity<Payment>()        .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
-        builder.Entity<SessionSplit>()   .HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
+        builder.Entity<Payment>()             .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+        builder.Entity<SessionSplit>()        .HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<IntakeForm>()     .HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         builder.Entity<ConsentForm>()    .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>().HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);

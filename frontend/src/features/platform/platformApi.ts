@@ -6,6 +6,7 @@ import type {
   PlatformReferralCodeResponse,
   IndustryReportSummary,
 } from "./platform.types";
+import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
 export const platformApi = createApi({
   reducerPath: "platformApi",
@@ -43,6 +44,24 @@ export const platformApi = createApi({
       }),
       invalidatesTags: ["PlatformReferral"],
     }),
+    activateSubscriptionManually: builder.mutation<
+      SubscriptionResponse,
+      { studioId: string; planId: string; note?: string }
+    >({
+      query: ({ studioId, ...body }) => ({
+        url:    `platform/studios/${studioId}/subscription/activate`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["PlatformSubscription", "PlatformStats"],
+    }),
+    cancelSubscription: builder.mutation<void, string>({
+      query: (studioId) => ({
+        url:    `platform/subscriptions/${studioId}/cancel`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["PlatformSubscription", "PlatformStats"],
+    }),
   }),
 });
 
@@ -53,4 +72,6 @@ export const {
   useGetIndustryReportsQuery,
   useGetPlatformReferralCodesQuery,
   useDeactivateReferralCodeMutation,
+  useActivateSubscriptionManuallyMutation,
+  useCancelSubscriptionMutation,
 } = platformApi;

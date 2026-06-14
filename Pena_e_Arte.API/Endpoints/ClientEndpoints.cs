@@ -3,7 +3,6 @@ using Pena_e_Arte.Application.Clients.Commands;
 using Pena_e_Arte.Application.Clients.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
-using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Models;
 
 namespace Pena_e_Arte.API.Endpoints;
@@ -29,8 +28,17 @@ public static class ClientEndpoints
         group.MapPatch("{clientId:guid}/tattoos/{id:guid}",  UpdateTattooRecord).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{clientId:guid}/tattoos/{id:guid}", DeleteTattooRecord).RequireAuthorization("ArtistAndAbove");
 
+        group.MapGet("me",                     GetMyClient).RequireAuthorization("ClientAndAbove");
         group.MapPatch("me/portable-profile", UpdatePortableProfileOptIn).RequireAuthorization("ClientAndAbove");
         group.MapGet("{userId:guid}/portable-profile",  GetPortableProfile).RequireAuthorization("ArtistAndAbove");
+    }
+
+    private static async Task<IResult> GetMyClient(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        ClientResponse result = await mediator.Send(new GetMyClientQuery(), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetClientById(

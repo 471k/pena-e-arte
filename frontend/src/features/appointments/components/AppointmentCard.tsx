@@ -75,10 +75,10 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             <span className="text-xs text-muted-foreground">{appointment.durationMinutes} min</span>
             <AppointmentStatusBadge status={appointment.status} />
           </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-            Deposit: {formatCurrency(appointment.depositAmount)}
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <span>Deposit: {formatCurrency(appointment.depositAmount)}</span>
             <DepositStatusBadge status={appointment.depositStatus} />
-          </p>
+          </div>
           {appointment.notes && (
             <p className="text-xs text-muted-foreground truncate">{appointment.notes}</p>
           )}

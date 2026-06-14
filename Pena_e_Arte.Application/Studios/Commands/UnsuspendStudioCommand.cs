@@ -3,12 +3,13 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Studios.Commands;
 
 public record UnsuspendStudioCommand(Guid StudioId) : IRequest;
 
-public class UnsuspendStudioHandler(IAppDbContext db)
+public class UnsuspendStudioHandler(IAppDbContext db, ISubscriptionAccessService subscriptionAccess)
     : IRequestHandler<UnsuspendStudioCommand>
 {
     public async Task Handle(UnsuspendStudioCommand command, CancellationToken ct)
@@ -19,6 +20,7 @@ public class UnsuspendStudioHandler(IAppDbContext db)
 
         studio.IsActive = true;
         await db.SaveChangesAsync(ct);
+        await subscriptionAccess.InvalidateCacheAsync(command.StudioId, ct);
     }
 }
 

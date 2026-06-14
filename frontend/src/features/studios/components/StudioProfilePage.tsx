@@ -8,6 +8,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation } from "../studiosApi";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { QrCodeSection } from "./QrCodeSection";
@@ -114,14 +115,14 @@ export function StudioProfilePage() {
                 />
               </div>
 
-              <Button
+              <SubscriptionGatedButton
                 type="submit"
                 className="w-full gap-2"
                 disabled={saving || !isDirty}
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save changes
-              </Button>
+              </SubscriptionGatedButton>
             </form>
           </CardContent>
         </Card>

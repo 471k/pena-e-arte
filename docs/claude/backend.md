@@ -38,9 +38,7 @@ Pena_e_Arte.Infrastructure/
 │   ├── Configurations/     IEntityTypeConfiguration per entity
 │   └── Migrations/
 ├── Services/
-│   ├── Stripe*/            Stripe Billing + aggregator payment (no Connect)
-│   ├── PayPal/             PayPalOptions, PayPalTokenCache,
-│   │                       PayPalCheckoutService, PayPalPayoutService
+│   ├── Stripe*/            Stripe Billing + aggregator card payment (no Connect)
 │   ├── MailKit/            email templates
 │   └── *.cs                Twilio, R2, Hangfire, Identity, etc.
 ├── Hubs/                   SignalR hubs
@@ -216,40 +214,34 @@ ExceptionMiddleware maps exception types to HTTP status codes centrally.
 
 ---
 
-## PayPal Service Pattern
+## Cash Payment Pattern
 
-PayPal is integrated via raw `HttpClient` (no SDK). All PayPal services live in
-`Infrastructure/Services/PayPal/`.
+Cash payments do not touch any external service. They follow a two-step manual
+confirmation flow entirely within the domain.
 
-```csharp
-// Options — bound from "PayPal" config section, never hardcoded
-public class PayPalOptions
-{
-    public string ClientId     { get; init; } = string.Empty;
-    public string ClientSecret { get; init; } = string.Empty;
-    public string BaseUrl      { get; init; } = "https://api-m.sandbox.paypal.com";
-    public string WebhookId    { get; init; } = string.Empty;
-}
+```
+1. Client books → DeclareCashDepositCommand
+   Creates Payment { Method = Cash, Status = CashPending }
+   No Stripe call. No external request.
 
-// Token cache — singleton, refreshes 60s before expiry
-services.AddSingleton<PayPalTokenCache>();
+2. Owner/artist confirms receipt → ConfirmCashDepositCommand
+   Sets Payment.Status = Paid, Payment.PaidAt = UtcNow
+   Sets Appointment.DepositStatus = Paid
+   Sets Payment.CashConfirmedByUserId = currentUser.UserId
 
-// Named HttpClient registered once
-services.AddHttpClient("PayPal", (sp, client) =>
-{
-    var opts = sp.GetRequiredService<IOptions<PayPalOptions>>().Value;
-    client.BaseAddress = new Uri(opts.BaseUrl);
-});
-
-// Interfaces defined in Domain, implementations in Infrastructure
-IPayPalCheckoutService  → PayPalCheckoutService   (Orders API v2)
-IPayPalPayoutService    → PayPalPayoutService      (Payouts API v1)
+3. Issuer activates cash subscription → ActivateSubscriptionManuallyCommand
+   Sets Subscription.Status = Active, CurrentPeriodEnd = UtcNow + 1 month
+   Uses IgnoreQueryFilters() — IssuerOnly command
 ```
 
-Never call `new HttpClient()` directly — always inject `IHttpClientFactory` and call
-`CreateClient("PayPal")`.
+Cash fields on `Payment`:
+- `Method` — `ClientPaymentMethod.Cash`
+- `Status` — starts as `CashPending`, becomes `Paid` after confirmation
+- `CashNote` — optional freetext (max 500 chars)
+- `CashConfirmedByUserId` — set on confirmation (not on declaration)
 
-Never log `ClientSecret`, `access_token`, or any PayPal credential.
+Card (`Stripe`) fields remain null for cash payments.
+Never call `IStripePaymentService` from cash payment handlers.
 
 ---
 
