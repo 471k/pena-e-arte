@@ -99,6 +99,18 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task SendReminderAsync_CancelledAppointment_DoesNotSendEmail()
+    {
+        (Guid appointmentId, _) = await SeedAppointmentWithClient(withPhone: false, status: AppointmentStatus.Cancelled);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendReminderAsync(appointmentId, "24h");
+
+        await _notifications.DidNotReceive()
+            .SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task SendReminderAsync_Subject_Contains48hForType48h()
     {
         (Guid appointmentId, _) = await SeedAppointmentWithClient(withPhone: false);
@@ -113,7 +125,9 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
             Arg.Any<CancellationToken>());
     }
 
-    private async Task<(Guid AppointmentId, Guid StudioId)> SeedAppointmentWithClient(bool withPhone)
+    private async Task<(Guid AppointmentId, Guid StudioId)> SeedAppointmentWithClient(
+        bool withPhone,
+        AppointmentStatus status = AppointmentStatus.Pending)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);
 
@@ -148,7 +162,7 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
             Date            = DateTime.UtcNow.AddDays(2),
             EndDate         = DateTime.UtcNow.AddDays(2).AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Pending,
+            Status          = status,
             DepositStatus   = DepositStatus.Paid,
             DepositAmount   = 50m
         };

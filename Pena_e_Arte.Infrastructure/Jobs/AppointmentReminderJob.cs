@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Domain.Entities;
@@ -22,6 +23,12 @@ public class AppointmentReminderJob(
         if (appointment is null)
         {
             logger.LogWarning("Appointment {@AppointmentId} not found for reminder job", appointmentId);
+            return;
+        }
+
+        if (appointment.Status == AppointmentStatus.Cancelled)
+        {
+            logger.LogInformation("Skipping reminder for cancelled appointment {@AppointmentId}", appointmentId);
             return;
         }
 
@@ -92,11 +99,11 @@ public class AppointmentReminderJob(
         <html>
         <body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto">
           <h2 style="color:#1a1a1a">Your appointment is in {timeLabel}</h2>
-          <p>Hi {appointment.Client.FirstName},</p>
+          <p>Hi {WebUtility.HtmlEncode(appointment.Client.FirstName)},</p>
           <p>This is a reminder that your tattoo appointment is scheduled for:</p>
           <p style="font-size:1.1em;font-weight:bold">{appointment.Date:dddd, dd MMMM yyyy 'at' HH:mm}</p>
           <p>Duration: {appointment.DurationMinutes} minutes</p>
-          {(appointment.Notes is not null ? $"<p>Notes: {appointment.Notes}</p>" : string.Empty)}
+          {(appointment.Notes is not null ? $"<p>Notes: {WebUtility.HtmlEncode(appointment.Notes)}</p>" : string.Empty)}
           <p>If you need to reschedule, please contact us as soon as possible.</p>
           <hr/>
           <p style="font-size:0.85em;color:#666">Pena e Arte — Your Tattoo Studio</p>

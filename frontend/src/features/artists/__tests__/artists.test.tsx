@@ -11,6 +11,8 @@ import authReducer from "@/features/auth/authSlice";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { billingApi } from "@/features/billing/billingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { ArtistListPage } from "@/features/artists/components/ArtistListPage";
 import { ArtistDetailPage } from "@/features/artists/components/ArtistDetailPage";
@@ -95,6 +97,14 @@ const server = setupServer(
 
   http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments", () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/billing/subscription", () =>
+    HttpResponse.json({ status: "Active", planName: "Starter", currentPeriodEnd: null, trialExpiresAt: null, gracePeriodEnd: null }),
+  ),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "stud-0001", name: "Ink Soul", slug: "ink-soul", city: "Porto",
+      latitude: 41.1, longitude: -8.6, showPlatformBranding: true, allowBrandingRemoval: false,
+      trialExpiresAt: "2099-01-01T00:00:00Z", createdAt: "2024-01-01T00:00:00Z", isActive: true }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -110,9 +120,17 @@ function makeStore(role: Role = Role.Owner) {
       [artistsApi.reducerPath]:      artistsApi.reducer,
       [designsApi.reducerPath]:      designsApi.reducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+      [billingApi.reducerPath]:      billingApi.reducer,
+      [studiosApi.reducerPath]:      studiosApi.reducer,
     },
     middleware: (gd) =>
-      gd().concat(artistsApi.middleware, designsApi.middleware, appointmentsApi.middleware),
+      gd().concat(
+        artistsApi.middleware,
+        designsApi.middleware,
+        appointmentsApi.middleware,
+        billingApi.middleware,
+        studiosApi.middleware,
+      ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@ink-soul.test" }, token: "fake", tenantId: "t1", role } as any,

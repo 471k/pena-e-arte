@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
@@ -49,9 +50,11 @@ public class SendAppointmentConfirmationHandler(
 
         string subject = $"Appointment Confirmed — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
 
+        bool success = false;
         try
         {
             await notifications.SendEmailAsync(appointment.Client.Email, subject, body, ct);
+            success = true;
             logger.LogInformation(
                 "Confirmation email sent for appointment {@AppointmentId}",
                 appointment.Id);
@@ -62,6 +65,18 @@ public class SendAppointmentConfirmationHandler(
                 "Failed to send confirmation email for appointment {@AppointmentId}",
                 appointment.Id);
         }
+
+        db.NotificationLogs.Add(new NotificationLog
+        {
+            StudioId    = appointment.StudioId,
+            RecipientId = appointment.ClientId,
+            Channel     = NotificationChannel.Email,
+            Subject     = subject,
+            Body        = body,
+            SentAt      = DateTime.UtcNow,
+            IsSuccess   = success,
+        });
+        await db.SaveChangesAsync(ct);
 
         return Unit.Value;
     }

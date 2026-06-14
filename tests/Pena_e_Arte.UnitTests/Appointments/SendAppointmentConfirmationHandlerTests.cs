@@ -1,6 +1,8 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -127,5 +129,37 @@ public class SendAppointmentConfirmationHandlerTests
             CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
 
         await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_ValidAppointment_WritesSuccessNotificationLog()
+    {
+        (Guid appointmentId, Studio studio) = await SeedData(showBranding: true);
+
+        await CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
+
+        NotificationLog? log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.Channel == NotificationChannel.Email);
+        log.Should().NotBeNull();
+        log!.IsSuccess.Should().BeTrue();
+        log.StudioId.Should().Be(studio.Id);
+    }
+
+    [Fact]
+    public async Task Handle_EmailFails_WritesFailedNotificationLog()
+    {
+        (Guid appointmentId, _) = await SeedData(showBranding: true);
+
+        _notifications
+            .SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP error"));
+
+        await CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
+
+        NotificationLog? log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.Channel == NotificationChannel.Email);
+        log.Should().NotBeNull();
+        log!.IsSuccess.Should().BeFalse();
     }
 }

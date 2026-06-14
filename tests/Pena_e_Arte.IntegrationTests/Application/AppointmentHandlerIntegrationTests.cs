@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
@@ -22,6 +23,7 @@ public class AppointmentHandlerIntegrationTests
     private readonly ISlotLocker       _locker;
     private readonly IJobScheduler     _jobs;
     private readonly IRealtimeNotifier _realtime;
+    private readonly ISender           _sender = Substitute.For<ISender>();
 
     public AppointmentHandlerIntegrationTests(DatabaseFixture fixture)
     {
@@ -136,7 +138,7 @@ public class AppointmentHandlerIntegrationTests
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender);
         await handler.Handle(new CancelAppointmentCommand(apptId), default);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -150,7 +152,7 @@ public class AppointmentHandlerIntegrationTests
     {
         Guid tenantId = Guid.NewGuid();
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(Guid.NewGuid()), default);
 
@@ -168,7 +170,7 @@ public class AppointmentHandlerIntegrationTests
                                             AppointmentStatus.Completed);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(apptId), default);
 

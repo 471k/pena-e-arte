@@ -36,7 +36,7 @@ public class NotificationService(
         await smtp.SendAsync(message, ct);
         await smtp.DisconnectAsync(true, ct);
 
-        logger.LogInformation("Email sent to {@Recipient} subject {@Subject}", to, subject);
+        logger.LogInformation("Email sent subject {@Subject}", subject);
     }
 
     public async Task SendSmsAsync(string to, string body, CancellationToken ct = default)
@@ -46,6 +46,6 @@ public class NotificationService(
             from: new PhoneNumber(configuration["Twilio:FromNumber"]!),
             to:   new PhoneNumber(to));
 
-        logger.LogInformation("SMS sent to {@Recipient} SID {@MessageSid}", to, message.Sid);
+        logger.LogInformation("SMS sent SID {@MessageSid}", message.Sid);
     }
 }

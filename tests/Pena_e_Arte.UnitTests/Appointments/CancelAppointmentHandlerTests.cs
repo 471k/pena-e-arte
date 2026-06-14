@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Domain.Entities;
@@ -14,12 +15,13 @@ public class CancelAppointmentHandlerTests
     private readonly FakeDbContext     _db       = FakeDbContext.Create();
     private readonly ICurrentTenant    _tenant   = Substitute.For<ICurrentTenant>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender           _sender   = Substitute.For<ISender>();
     private readonly Guid              _studioId = Guid.NewGuid();
 
     public CancelAppointmentHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
 
-    private CancelAppointmentHandler CreateSut() => new(_db, _tenant, _realtime);
+    private CancelAppointmentHandler CreateSut() => new(_db, _tenant, _realtime, _sender);
 
     [Fact]
     public async Task Handle_PendingAppointment_SetsStatusToCancelled()
@@ -69,6 +71,42 @@ public class CancelAppointmentHandlerTests
         try { await CreateSut().Handle(new CancelAppointmentCommand(id), default); } catch { }
 
         _db.Appointments.Single(a => a.Id == id).Status.Should().Be(AppointmentStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyCancelledAppointment_IsNoOp()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Cancelled);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _sender.DidNotReceive()
+            .Send(Arg.Any<SendAppointmentCancellationCommand>(), Arg.Any<CancellationToken>());
+        await _realtime.DidNotReceive()
+            .NotifyStudioAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ValidCancel_DispatchesCancellationEmail()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Pending);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _sender.Received(1)
+            .Send(Arg.Is<SendAppointmentCancellationCommand>(c => c.AppointmentId == id),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_CompletedAppointment_DoesNotDispatchCancellationEmail()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Completed);
+
+        try { await CreateSut().Handle(new CancelAppointmentCommand(id), default); } catch { }
+
+        await _sender.DidNotReceive()
+            .Send(Arg.Any<SendAppointmentCancellationCommand>(), Arg.Any<CancellationToken>());
     }
 
     private async Task<Guid> SeedAppointment(AppointmentStatus status)

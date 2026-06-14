@@ -12,7 +12,8 @@ public record CancelAppointmentCommand(Guid AppointmentId) : IRequest;
 public class CancelAppointmentHandler(
     IAppDbContext     db,
     ICurrentTenant    tenant,
-    IRealtimeNotifier realtime)
+    IRealtimeNotifier realtime,
+    ISender           sender)
     : IRequestHandler<CancelAppointmentCommand>
 {
     public async Task Handle(CancelAppointmentCommand command, CancellationToken ct)
@@ -20,6 +21,9 @@ public class CancelAppointmentHandler(
         var appointment = await db.Appointments
             .FirstOrDefaultAsync(a => a.Id == command.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
+
+        if (appointment.Status == AppointmentStatus.Cancelled)
+            return;
 
         if (appointment.Status == AppointmentStatus.Completed)
             throw new BusinessRuleViolationException("Completed appointments cannot be cancelled.");
@@ -30,5 +34,7 @@ public class CancelAppointmentHandler(
         await db.SaveChangesAsync(ct);
         await realtime.NotifyStudioAsync(
             tenant.StudioId, "AppointmentCancelled", new { command.AppointmentId }, ct);
+
+        await sender.Send(new SendAppointmentCancellationCommand(appointment.Id), ct);
     }
 }
