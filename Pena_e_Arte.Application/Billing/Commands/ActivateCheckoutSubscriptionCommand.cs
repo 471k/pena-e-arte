@@ -1,3 +1,4 @@
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -68,14 +69,14 @@ public class ActivateCheckoutSubscriptionHandler(
         subscription.Status               = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd     = result.CurrentPeriodEnd;
 
-        await RecordReferralRedemptionAsync(subscription.Studio, ct);
+        await RecordReferralRedemptionAsync(subscription.Studio, result.HasDiscount, ct);
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Subscription activated via checkout for studio {@StudioId}", studioId);
         return CreateSubscriptionHandler.Map(subscription);
     }
 
-    private async Task RecordReferralRedemptionAsync(Studio? studio, CancellationToken ct)
+    private async Task RecordReferralRedemptionAsync(Studio? studio, bool hasDiscount, CancellationToken ct)
     {
         if (studio?.PendingReferralCodeId is not Guid refCodeId) return;
 
@@ -85,12 +86,20 @@ public class ActivateCheckoutSubscriptionHandler(
         {
             ReferralCodeId  = refCodeId,
             NewStudioId     = studio.Id,
-            DiscountApplied = true,
+            DiscountApplied = hasDiscount,
         });
 
-        if (code is { IsSingleUse: true })
+        if (code is { IsSingleUse: true } && hasDiscount)
             code.IsActive = false;
 
         studio.PendingReferralCodeId = null;
+    }
+}
+
+public class ActivateCheckoutSubscriptionValidator : AbstractValidator<ActivateCheckoutSubscriptionCommand>
+{
+    public ActivateCheckoutSubscriptionValidator()
+    {
+        RuleFor(x => x.SessionId).NotEmpty();
     }
 }

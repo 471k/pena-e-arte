@@ -1,0 +1,46 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "email": "owner@teststudio.example"
+      }
+    },
+    {
+      "name": "checkout_session",
+      "path": "/v1/checkout/sessions",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "mode": "subscription",
+        "line_items": [
+          {
+            "price": "${PRICE_ID}",
+            "quantity": 1
+          }
+        ],
+        "success_url": "http://localhost:5173/billing/success?session_id={CHECKOUT_SESSION_ID}",
+        "cancel_url": "http://localhost:5173/billing/cancel",
+        "client_reference_id": "${STUDIO_ID}"
+      }
+    },
+    {
+      "name": "payment_page",
+      "path": "/v1/payment_pages/${checkout_session:id}",
+      "method": "get"
+    },
+    {
+      "name": "payment_confirm",
+      "path": "/v1/payment_intents/${checkout_session:payment_intent}/confirm",
+      "method": "post",
+      "params": {
+        "payment_method": "pm_card_visa"
+      }
+    }
+  ]
+}

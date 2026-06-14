@@ -10,7 +10,8 @@ public record CheckoutSubscriptionResult(
     string?   StripeCustomerId,
     string?   ClientReferenceId,
     string?   PriceId,
-    DateTime  CurrentPeriodEnd);
+    DateTime  CurrentPeriodEnd,
+    bool      HasDiscount);
 
 public interface IStripeBillingService
 {

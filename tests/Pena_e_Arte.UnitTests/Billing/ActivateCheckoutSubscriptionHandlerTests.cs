@@ -22,11 +22,12 @@ public class ActivateCheckoutSubscriptionHandlerTests
 
     private void StripeReturns(
         bool complete, string subId = "sub_new", string cust = "cus_new",
-        string price = "price_growth", Guid? studioRef = null)
+        string price = "price_growth", Guid? studioRef = null, bool hasDiscount = true)
     {
         _billing.GetCheckoutSubscriptionAsync("cs_123", Arg.Any<CancellationToken>())
             .Returns(new CheckoutSubscriptionResult(
-                complete, subId, cust, (studioRef ?? _studioId).ToString(), price, DateTime.UtcNow.AddMonths(1)));
+                complete, subId, cust, (studioRef ?? _studioId).ToString(), price,
+                DateTime.UtcNow.AddMonths(1), HasDiscount: hasDiscount));
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public class ActivateCheckoutSubscriptionHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PendingReferral_RecordsRedemptionAndDeactivatesSingleUse()
+    public async Task Handle_PendingReferral_SessionHasDiscount_RecordsDiscountAppliedTrueAndDeactivatesSingleUse()
     {
         await SeedPlan("price_growth");
         Guid codeId = Guid.NewGuid();
@@ -100,13 +101,38 @@ public class ActivateCheckoutSubscriptionHandlerTests
         });
         await _db.SaveChangesAsync();
         await SeedStudioSubscription(SubscriptionStatus.Trialing, pendingReferralCodeId: codeId);
-        StripeReturns(complete: true);
+        StripeReturns(complete: true, hasDiscount: true);
 
         await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
 
-        _db.ReferralRedemptions.Count(r => r.ReferralCodeId == codeId).Should().Be(1);
+        ReferralRedemption redemption = _db.ReferralRedemptions.Single(r => r.ReferralCodeId == codeId);
+        redemption.DiscountApplied.Should().BeTrue();
+        redemption.NewStudioId.Should().Be(_studioId);
         _db.Studios.Single(s => s.Id == _studioId).PendingReferralCodeId.Should().BeNull();
         _db.ReferralCodes.Single(r => r.Id == codeId).IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_PendingReferral_SessionHasNoDiscount_RecordsDiscountAppliedFalseAndKeepsCodeActive()
+    {
+        await SeedPlan("price_growth");
+        Guid codeId = Guid.NewGuid();
+        _db.ReferralCodes.Add(new ReferralCode
+        {
+            Id = codeId, StudioId = Guid.NewGuid(), Code = "REF99999", IsActive = true, IsSingleUse = true,
+        });
+        await _db.SaveChangesAsync();
+        await SeedStudioSubscription(SubscriptionStatus.Trialing, pendingReferralCodeId: codeId);
+        StripeReturns(complete: true, hasDiscount: false);
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        ReferralRedemption redemption = _db.ReferralRedemptions.Single(r => r.ReferralCodeId == codeId);
+        redemption.DiscountApplied.Should().BeFalse(
+            "coupon creation failed so no discount was attached to the session");
+        _db.ReferralCodes.Single(r => r.Id == codeId).IsActive.Should().BeTrue(
+            "single-use code should not be consumed if no discount was applied");
+        _db.Studios.Single(s => s.Id == _studioId).PendingReferralCodeId.Should().BeNull();
     }
 
     private async Task<Plan> SeedPlan(string priceMonthly)

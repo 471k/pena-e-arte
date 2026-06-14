@@ -62,7 +62,7 @@ public class StripeBillingService(
         string?  priceId   = sub?.Items?.Data?.FirstOrDefault()?.Price?.Id;
         DateTime periodEnd = sub?.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd ?? DateTime.UtcNow.AddMonths(1);
 
-        // "no_payment_required" covers 100%-discounted (referral) first invoices.
+        // "paid" covers zero-amount invoices (100% coupon); "no_payment_required" covers setup-mode sessions.
         bool complete = session.Status == "complete"
                      && session.PaymentStatus is "paid" or "no_payment_required";
 
@@ -72,7 +72,8 @@ public class StripeBillingService(
             session.CustomerId,
             session.ClientReferenceId,
             priceId,
-            periodEnd);
+            periodEnd,
+            HasDiscount: session.Discounts?.Count > 0);
     }
 
     public async Task<(string SubscriptionId, DateTime CurrentPeriodEnd)> CreateSubscriptionAsync(
