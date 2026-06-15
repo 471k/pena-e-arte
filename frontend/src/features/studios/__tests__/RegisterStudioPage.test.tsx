@@ -1,0 +1,341 @@
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Provider } from "react-redux";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { configureStore } from "@reduxjs/toolkit";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+
+import authReducer from "@/features/auth/authSlice";
+import { authApi } from "@/features/auth/authApi";
+import { studiosApi } from "@/features/studios/studiosApi";
+import { RegisterStudioPage } from "@/features/studios/components/RegisterStudioPage";
+import type { LocationPickerValue } from "@/shared/components/ui/location-picker";
+
+// ── Mock LocationPicker ────────────────────────────────────────────────────────
+// LocationPicker uses Leaflet and real map tiles — not viable in jsdom.
+// The mock renders a button that fires onChange with a preset location.
+
+vi.mock("@/shared/components/ui/location-picker", () => ({
+  LocationPicker: ({
+    onChange,
+    error,
+  }: {
+    onChange: (val: LocationPickerValue) => void;
+    error?: string;
+  }) => (
+    <div>
+      <button
+        type="button"
+        data-testid="mock-location-picker"
+        onClick={() => onChange({ lat: 38.7169, lng: -9.1395, city: "Lisbon" })}
+      >
+        Pick location
+      </button>
+      {error && <p data-testid="location-error">{error}</p>}
+    </div>
+  ),
+}));
+
+// ── Fake JWT ───────────────────────────────────────────────────────────────────
+
+const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+
+function makeFakeJwt(role: string, email = "owner@test.com") {
+  const header  = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    sub:          "u-reg-test",
+    email,
+    [ROLE_CLAIM]:  role,
+    tenant_id:    "t-reg",
+    exp:           9_999_999_999,
+  })).toString("base64url");
+  return `${header}.${payload}.fake-sig`;
+}
+
+// ── MSW server ─────────────────────────────────────────────────────────────────
+
+const STUDIO_RESPONSE = {
+  id:                   "stud-001",
+  name:                 "Ink & Soul Studio",
+  slug:                 "ink-soul-studio",
+  city:                 "Lisbon",
+  latitude:             38.7169,
+  longitude:            -9.1395,
+  showPlatformBranding: true,
+  allowBrandingRemoval: false,
+  trialExpiresAt:       "2099-01-01T00:00:00Z",
+  createdAt:            "2025-01-01T00:00:00Z",
+  isActive:             true,
+};
+
+const server = setupServer(
+  http.post("http://localhost/api/v1/studios", () =>
+    HttpResponse.json(STUDIO_RESPONSE, { status: 201 }),
+  ),
+  http.post("http://localhost/api/v1/auth/register", () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
+  http.post("http://localhost/api/v1/auth/login", () =>
+    HttpResponse.json({ accessToken: makeFakeJwt("owner"), tokenType: "Bearer" }),
+  ),
+);
+
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => { server.resetHandlers(); localStorage.clear(); cleanup(); });
+afterAll(() => server.close());
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function makeStore() {
+  return configureStore({
+    reducer: {
+      auth:                    authReducer,
+      [authApi.reducerPath]:   authApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
+    },
+    middleware: (gd) => gd().concat(authApi.middleware, studiosApi.middleware),
+  });
+}
+
+function renderPage(initialPath = "/register") {
+  const store = makeStore();
+  render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path="/register"  element={<RegisterStudioPage />} />
+          <Route path="/dashboard" element={<div data-testid="dashboard" />} />
+          <Route path="/book"      element={<div data-testid="client-home" />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+  return store;
+}
+
+// ── Step helpers ──────────────────────────────────────────────────────────────
+
+async function fillStep1(user: ReturnType<typeof userEvent.setup>, studioName = "Ink & Soul Studio") {
+  await user.type(screen.getByLabelText(/studio name/i), studioName);
+  await user.click(screen.getByTestId("mock-location-picker"));
+}
+
+async function advanceToStep2(user: ReturnType<typeof userEvent.setup>, studioName = "Ink & Soul Studio") {
+  await fillStep1(user, studioName);
+  await user.click(screen.getByRole("button", { name: /next/i }));
+  await screen.findByLabelText(/^email$/i);
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────────
+
+describe("RegisterStudioPage — step 1", () => {
+  it("renders step 1 form fields", () => {
+    renderPage();
+    expect(screen.getByRole("heading", { name: /register your studio/i })).toBeInTheDocument();
+    expect(screen.getByText(/step 1 of 2/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/studio name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/url slug/i)).toBeInTheDocument();
+    expect(screen.getByTestId("mock-location-picker")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /next/i })).toBeInTheDocument();
+  });
+
+  it("auto-generates a slug from the studio name", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/studio name/i), "Ink & Soul Studio");
+
+    const slugInput = screen.getByLabelText<HTMLInputElement>(/url slug/i);
+    // & is stripped, spaces become hyphens, consecutive hyphens collapsed
+    expect(slugInput.value).toBe("ink-soul-studio");
+  });
+
+  it("slug shown in URL preview below the field", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+
+    expect(screen.getByText(/penaearte\.com\//i)).toBeInTheDocument();
+  });
+
+  it("shows validation errors when Next is clicked with no data", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    expect(await screen.findByText(/studio name is required/i)).toBeInTheDocument();
+  });
+
+  it("shows location error when Next is clicked without picking a location", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+    // Do NOT pick a location
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    // Latitude or city will be required
+    expect(await screen.findByTestId("location-error")).toBeInTheDocument();
+  });
+
+  it("advances to step 2 when all step-1 fields are valid", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+
+    expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/owner account/i)).toBeInTheDocument();
+  });
+
+  it("dispatches the referral code from ?ref= query param", () => {
+    const store = renderPage("/register?ref=PROMO50");
+    // Effect fires on mount
+    expect(store.getState().auth.pendingReferralCode).toBe("PROMO50");
+  });
+});
+
+describe("RegisterStudioPage — step 2", () => {
+  it("renders step 2 form fields", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+
+    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /register/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
+  });
+
+  it("Back button returns to step 1", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.click(screen.getByRole("button", { name: /back/i }));
+
+    expect(screen.getByText(/step 1 of 2/i)).toBeInTheDocument();
+  });
+
+  it("shows email-required error on empty submit", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    expect(await screen.findByText(/email is required/i)).toBeInTheDocument();
+  });
+
+  it("shows password-min-length error when password is too short", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "short");
+    await user.type(screen.getByLabelText(/confirm password/i), "short");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    expect(await screen.findByText(/password must be at least 8 characters/i)).toBeInTheDocument();
+  });
+
+  it("shows password-mismatch error when passwords differ", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "Different1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
+  });
+
+  it("successful registration navigates to /dashboard", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await screen.findByTestId("dashboard");
+  });
+
+  it("dispatches credentials after successful registration", async () => {
+    const user  = userEvent.setup();
+    const store = renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await screen.findByTestId("dashboard");
+
+    expect(store.getState().auth.role).toBe("owner");
+    expect(store.getState().auth.token).toBeTruthy();
+  });
+
+  it("clears the pending referral code after successful registration", async () => {
+    const user  = userEvent.setup();
+    const store = renderPage("/register?ref=PROMO50");
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await screen.findByTestId("dashboard");
+
+    expect(store.getState().auth.pendingReferralCode).toBeNull();
+  });
+
+  it("shows server error when studio registration fails", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/studios", () =>
+        HttpResponse.json({ message: "Slug already taken." }, { status: 409 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    expect(await screen.findByText("Slug already taken.")).toBeInTheDocument();
+  });
+
+  it("shows network-error message when fetch fails", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/studios", () => HttpResponse.error()),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    expect(await screen.findByText(/unable to reach the server/i)).toBeInTheDocument();
+  });
+});
