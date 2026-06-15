@@ -21,7 +21,6 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
     if (result.error?.status === 401) {
       api.dispatch(logout());
       api.dispatch(setSessionExpired());
-      window.location.href = "/login?reason=session_expired";
       return result;
     }
 
