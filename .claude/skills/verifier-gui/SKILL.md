@@ -45,6 +45,34 @@ await page.goto("http://localhost:5173/designs", { waitUntil: "networkidle" });
 | `owner`  | `/dashboard`                             |
 | `issuer` | `/platform`                              |
 
+## Route mocking pitfalls
+
+**Don't use `**/api/**` as a catch-all.** That glob also matches Vite's own
+source-file requests like `http://localhost:5173/src/shared/api/filesApi.ts`,
+which aborts the JS module graph and produces a blank page. Use an `isApiCall`
+predicate instead:
+
+```js
+const isApiCall = (url) =>
+  url.hostname === "localhost" && url.pathname.startsWith("/api/");
+await page.route(isApiCall, (r) => r.abort());
+```
+
+**RTK Query appends a bare `?` on empty params.** `fetchBaseQuery` with
+`params: {}` emits `/api/v1/designs?`, not `/api/v1/designs`. An exact string
+pattern won't match. Use a URL-predicate function or a `*` suffix:
+
+```js
+// Predicate (recommended — no ambiguity):
+await page.route((url) => url.pathname === "/api/v1/designs", handler);
+
+// Glob suffix (also works):
+await page.route(`${BASE}/api/v1/designs*`, handler);
+```
+
+**Route priority is last-in, first-matched.** Register your catch-all route
+*first*, then add specific mocks *after* — they will take priority.
+
 ## Boilerplate script
 
 Write a `.mjs` file and run with `node`:

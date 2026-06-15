@@ -14,10 +14,12 @@ import {
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/utils/cn";
+import { useAppSelector } from "@/app/hooks";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useDeleteRevisionMutation, useGetRevisionsQuery, useReviewRevisionMutation } from "../designsApi";
 import type { DesignRevisionResponse } from "../design.types";
+import { ShareDesignButton } from "./ShareDesignButton";
 
 const notesSchema = z.object({
   notes: z.string().max(2000, "Max 2000 characters").optional(),
@@ -119,6 +121,9 @@ function RevisionCard({ revision, canReview, canDelete }: RevisionCardProps) {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{formatDate(revision.uploadedAt)}</span>
+            {canDelete && (
+              <ShareDesignButton revisionId={revision.id} />
+            )}
             {canDelete && (
               <Button
                 variant="ghost"
@@ -258,7 +263,8 @@ function RevisionCard({ revision, canReview, canDelete }: RevisionCardProps) {
 export function DesignDetailPage() {
   const { id: designId } = useParams<{ id: string }>();
   const navigate  = useNavigate();
-  const canReview = usePermission(Role.Client);
+  const role      = useAppSelector((s) => s.auth.role);
+  const canReview = role === Role.Client;
   const canUpload = usePermission(Role.Artist);
 
   const { data: revisions, isLoading, isError } =

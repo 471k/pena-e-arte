@@ -111,7 +111,7 @@ export function UploadRevisionPage() {
       });
       if ("error" in revResult) throw new Error("save");
 
-      navigate("/designs");
+      navigate(`/designs/${designId}`);
     } catch (err: unknown) {
       const phase = err instanceof Error ? err.message : "unknown";
       setUploadError(

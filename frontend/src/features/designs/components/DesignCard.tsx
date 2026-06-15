@@ -2,6 +2,8 @@ import { Palette, Upload } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
+import { usePermission } from "@/shared/hooks/usePermission";
+import { Role } from "@/shared/types/roles";
 import type { DesignResponse } from "../design.types";
 
 interface DesignCardProps {
@@ -17,7 +19,8 @@ function formatDate(dateStr: string): string {
 }
 
 export function DesignCard({ design }: DesignCardProps) {
-  const navigate = useNavigate();
+  const navigate   = useNavigate();
+  const canUpload  = usePermission(Role.Artist);
 
   return (
     <Card className="hover:bg-muted/40 transition-colors">
@@ -39,15 +42,17 @@ export function DesignCard({ design }: DesignCardProps) {
           </div>
         </Link>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="shrink-0 h-8 w-8 p-0"
-          aria-label="Upload revision"
-          onClick={() => navigate(`/designs/${design.id}/upload`)}
-        >
-          <Upload className="h-4 w-4" />
-        </Button>
+        {canUpload && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 h-8 w-8 p-0"
+            aria-label="Upload revision"
+            onClick={() => navigate(`/designs/${design.id}/upload`)}
+          >
+            <Upload className="h-4 w-4" />
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

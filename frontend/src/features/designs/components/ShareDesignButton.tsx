@@ -78,7 +78,7 @@ export function ShareDesignButton({ revisionId }: ShareDesignButtonProps) {
             <div className="space-y-4">
               <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
                 <code className="text-xs flex-1 break-all">{tokenData.shareUrl}</code>
-                <Button variant="ghost" size="icon" onClick={handleCopy} className="shrink-0">
+                <Button variant="ghost" size="icon" onClick={handleCopy} className="shrink-0" aria-label="Copy link">
                   {copied
                     ? <Check className="h-4 w-4 text-green-500" />
                     : <Copy className="h-4 w-4" />}
