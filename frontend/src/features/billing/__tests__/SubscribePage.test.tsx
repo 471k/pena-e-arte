@@ -143,39 +143,114 @@ describe("SubscribePage", () => {
     expect(await screen.findByText(/no plans available/i)).toBeInTheDocument();
   });
 
-  // --- Plan listing ---
+  // --- Billing cycle toggle ---
 
-  it("renders a card for every plan returned by the API", async () => {
+  it("renders Monthly and Yearly toggle buttons", async () => {
     renderPage();
-    expect(await screen.findByText("Starter")).toBeInTheDocument();
-    expect(screen.getByText("Pro Annual")).toBeInTheDocument();
+    await screen.findByRole("button", { name: /^monthly/i });
+    expect(screen.getByRole("button", { name: /^monthly/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^yearly/i })).toBeInTheDocument();
   });
 
-  it("shows the correct billing interval label for each plan", async () => {
+  it("defaults to the Monthly billing cycle", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    expect(screen.getByRole("button", { name: /^monthly/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^yearly/i })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("Yearly toggle button always shows the discount badge", async () => {
+    renderPage();
+    await screen.findByRole("button", { name: /^monthly/i });
+    expect(screen.getByRole("button", { name: /^yearly/i })).toHaveTextContent(/save 17%/i);
+  });
+
+  // --- Plan listing ---
+
+  it("shows only monthly plans by default", async () => {
+    renderPage();
+    expect(await screen.findByText("Starter")).toBeInTheDocument();
+    expect(screen.queryByText("Pro Annual")).not.toBeInTheDocument();
+  });
+
+  it("shows only yearly plans after clicking the Yearly toggle", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^monthly/i });
+
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+
+    expect(await screen.findByText("Pro Annual")).toBeInTheDocument();
+    expect(screen.queryByText("Starter")).not.toBeInTheDocument();
+  });
+
+  it("shows Billed monthly label on monthly plan cards", async () => {
     renderPage();
     await screen.findByText("Starter");
     expect(screen.getByText("Billed monthly")).toBeInTheDocument();
+  });
+
+  it("shows Billed yearly label on yearly plan cards after switching cycle", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^monthly/i });
+
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    await screen.findByText("Pro Annual");
+
     expect(screen.getByText("Billed yearly")).toBeInTheDocument();
   });
 
-  it("shows the yearly discount percentage on yearly plans", async () => {
+  it("shows the per-month breakdown on yearly plan cards", async () => {
+    const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Pro Annual");
-    expect(screen.getByText(/save 17%/i)).toBeInTheDocument();
-  });
+    await screen.findByRole("button", { name: /^monthly/i });
 
-  it("shows the per-month equivalent price on yearly plans", async () => {
-    renderPage();
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
     await screen.findByText("Pro Annual");
-    // $490 / 12 ≈ $40.83
+
+    // $490 / 12 ≈ $40.83 shown in the plan card (not the toggle badge)
     expect(screen.getByText(/\$40\.83\/mo/i)).toBeInTheDocument();
+    expect(screen.getByText(/save 17%/i, { selector: "p" })).toBeInTheDocument();
   });
 
-  it("does not show a discount line on monthly plans", async () => {
+  it("monthly plan cards show no per-month breakdown line", async () => {
     renderPage();
     await screen.findByText("Starter");
-    // Only one "save X%" line (for the yearly plan)
-    expect(screen.getAllByText(/save \d+%/i)).toHaveLength(1);
+    // No "save X%"  inside a <p> (only the toggle badge which is inside a <span> in a <button>)
+    expect(screen.queryByText(/save \d+%/i, { selector: "p" })).not.toBeInTheDocument();
+  });
+
+  it("switching billing cycle resets the plan selection", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^monthly/i });
+
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    await screen.findByText("Pro Annual");
+    await user.click(screen.getByRole("button", { name: /pro annual/i }));
+    expect(screen.getByText("Selected")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^monthly/i }));
+    await screen.findByText("Starter");
+
+    expect(screen.queryByText("Selected")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue to checkout/i })).toBeDisabled();
+  });
+
+  it("shows a no-plans message when no plans exist for the selected cycle", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([PLANS[1]]), // only the yearly plan
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    // Monthly is default — no monthly plans in this fixture
+    expect(await screen.findByText(/no monthly plans available/i)).toBeInTheDocument();
+    // Switch to yearly → Pro Annual appears
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    expect(await screen.findByText("Pro Annual")).toBeInTheDocument();
   });
 
   // --- Plan selection ---
@@ -361,6 +436,9 @@ describe("SubscribePage", () => {
 
     const user = userEvent.setup();
     renderPage();
+    // Card-billed: Starter is current (monthly). Switch to Yearly to see Pro Annual.
+    await screen.findByRole("button", { name: /^monthly/i });
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
     await screen.findByText("Pro Annual");
 
     await user.click(screen.getByRole("button", { name: /pro annual/i }));
@@ -386,6 +464,8 @@ describe("SubscribePage", () => {
 
     const user = userEvent.setup();
     renderPage();
+    await screen.findByRole("button", { name: /^monthly/i });
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
     await screen.findByText("Pro Annual");
 
     await user.click(screen.getByRole("button", { name: /pro annual/i }));
@@ -407,6 +487,8 @@ describe("SubscribePage", () => {
 
     const user = userEvent.setup();
     renderPage();
+    await screen.findByRole("button", { name: /^monthly/i });
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
     await screen.findByText("Pro Annual");
 
     await user.click(screen.getByRole("button", { name: /pro annual/i }));

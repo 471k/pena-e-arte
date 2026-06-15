@@ -90,6 +90,7 @@ export function SubscribePage() {
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [submitError,    setSubmitError]    = useState<string | null>(null);
+  const [billingCycle,   setBillingCycle]   = useState<"Monthly" | "Yearly">("Monthly");
 
   // Card-billed active studios change plans via Stripe (proration). Everyone else —
   // new subscribers AND cash-billed studios setting up card billing — goes via Checkout.
@@ -98,6 +99,15 @@ export function SubscribePage() {
   const isCashBilled      = isActive && sub.stripeSubscriptionId === null;
   const hasPendingChange  = isCardBilled && sub.pendingPlanId !== null;
   const busy              = checkingOut || switching;
+
+  // Derive once — used by the toggle label and the plan list.
+  const yearlyDiscount = plans.find((p) => p.billingInterval === "Yearly")?.yearlyDiscountPercent ?? 0;
+  const filteredPlans  = plans.filter((p) => p.billingInterval === billingCycle);
+
+  function handleCycleChange(cycle: "Monthly" | "Yearly") {
+    setBillingCycle(cycle);
+    setSelectedPlanId(null);   // reset selection — different cycle = different plan IDs
+  }
 
   async function onSubscribe() {
     if (!selectedPlanId) return;
@@ -194,7 +204,37 @@ export function SubscribePage() {
 
         {plans.length > 0 && !hasPendingChange && (
           <div className="space-y-3">
-            {plans.map((plan) => (
+            {/* Monthly / Yearly billing cycle toggle */}
+            <div
+              role="group"
+              aria-label="Billing cycle"
+              className="flex items-center rounded-lg border border-input bg-muted p-1 text-sm font-medium"
+            >
+              {(["Monthly", "Yearly"] as const).map((cycle) => (
+                <button
+                  key={cycle}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => handleCycleChange(cycle)}
+                  aria-pressed={billingCycle === cycle}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-md px-4 py-1.5 transition-colors",
+                    billingCycle === cycle
+                      ? "bg-background shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {cycle}
+                  {cycle === "Yearly" && yearlyDiscount > 0 && (
+                    <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-xs font-normal text-green-600 dark:text-green-400">
+                      Save {yearlyDiscount}%
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {filteredPlans.map((plan) => (
               <PlanCard
                 key={plan.id}
                 plan={plan}
@@ -204,6 +244,14 @@ export function SubscribePage() {
                 isCurrent={isCardBilled && plan.id === sub?.planId}
               />
             ))}
+
+            {filteredPlans.length === 0 && (
+              <Card>
+                <CardContent className="p-5 text-center text-sm text-muted-foreground">
+                  No {billingCycle.toLowerCase()} plans available.
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
