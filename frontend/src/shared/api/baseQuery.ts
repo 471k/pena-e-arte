@@ -1,7 +1,6 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { RootState } from "@/app/store";
-import { logout } from "@/features/auth/authSlice";
 import { setReadOnlyError, setSessionExpired } from "@/features/ui/uiSlice";
 
 const rawBaseQuery = fetchBaseQuery({
@@ -19,7 +18,6 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
     const result = await rawBaseQuery(args, api, extraOptions);
 
     if (result.error?.status === 401) {
-      api.dispatch(logout());
       api.dispatch(setSessionExpired());
       return result;
     }

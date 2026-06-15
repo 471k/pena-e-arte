@@ -34,10 +34,11 @@ import { ArtistLayout } from "@/layouts/ArtistLayout";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
 import { IssuerLayout } from "@/layouts/IssuerLayout";
 import { Role } from "@/shared/types/roles";
+import { logout } from "@/features/auth/authSlice";
 import { clearSessionExpired } from "@/features/ui/uiSlice";
 import { useAppDispatch, useAppSelector } from "./hooks";
 
-function RoleGuard({ allowedRoles }: { allowedRoles: Role[] }) {
+export function RoleGuard({ allowedRoles }: { allowedRoles: Role[] }) {
   const role = useAppSelector((s) => s.auth.role);
 
   if (!role) return <Navigate to="/login" replace />;
@@ -61,7 +62,7 @@ function IndexRedirect() {
   return <Navigate to={getRoleRedirectPath(role)} replace />;
 }
 
-function AppRoot() {
+export function AppRoot() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const sessionExpired = useAppSelector((s) => s.ui.sessionExpired);
@@ -69,6 +70,7 @@ function AppRoot() {
   useEffect(() => {
     if (sessionExpired) {
       dispatch(clearSessionExpired());
+      dispatch(logout());
       navigate("/login?reason=session_expired", { replace: true });
     }
   }, [sessionExpired, dispatch, navigate]);
