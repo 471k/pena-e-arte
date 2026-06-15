@@ -116,10 +116,10 @@ export const router = createBrowserRouter([
                 children: [{ index: true, element: <BookPage /> }],
               },
 
-              // ── Artist ──────────────────────────────────────────────────────
+              // ── Artist + Owner ───────────────────────────────────────────────
               {
                 path: "schedule",
-                element: <RoleGuard allowedRoles={[Role.Artist, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [{ index: true, element: <SchedulePage /> }],
               },
 
