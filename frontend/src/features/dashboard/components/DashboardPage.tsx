@@ -58,7 +58,7 @@ interface BannerConfig {
 }
 
 // Must match SubscriptionStatus JSON output from backend
-function bannerConfig(sub: SubscriptionResponse): BannerConfig | null {
+export function bannerConfig(sub: SubscriptionResponse): BannerConfig | null {
   switch (sub.status) {
     case "Trialing":
       return {

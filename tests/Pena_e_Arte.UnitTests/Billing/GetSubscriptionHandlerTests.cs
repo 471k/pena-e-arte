@@ -33,6 +33,33 @@ public class GetSubscriptionHandlerTests
         result.Status.Should().Be(SubscriptionStatus.Trialing.ToString());
     }
 
+    // Contract test: verifies the string values emitted over the wire match
+    // the PascalCase cases the frontend switch statement expects.
+    [Theory]
+    [InlineData(SubscriptionStatus.Trialing,    "Trialing")]
+    [InlineData(SubscriptionStatus.Active,      "Active")]
+    [InlineData(SubscriptionStatus.PastDue,     "PastDue")]
+    [InlineData(SubscriptionStatus.Cancelled,   "Cancelled")]
+    [InlineData(SubscriptionStatus.GracePeriod, "GracePeriod")]
+    public async Task Handle_Status_SerializesAsPascalCaseString(
+        SubscriptionStatus status, string expected)
+    {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test" });
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId         = _studioId,
+            Status           = status,
+            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd   = DateTime.UtcNow.AddDays(21),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(14),
+        });
+        await _db.SaveChangesAsync();
+
+        SubscriptionResponse result = await CreateSut().Handle(new GetSubscriptionQuery(), default);
+
+        result.Status.Should().Be(expected);
+    }
+
     [Fact]
     public async Task Handle_NoSubscriptionForTenant_ThrowsNotFoundException()
     {
