@@ -2,7 +2,7 @@ import { ShieldX } from "lucide-react";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 
 export function SuspensionBanner({ studio }: { studio?: StudioResponse }) {
-  if (!studio || studio.isActive) return null;
+  if (studio?.isActive !== false) return null;
 
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 bg-red-500/10 border-b border-red-500/30 text-red-700 dark:text-red-400 text-sm">

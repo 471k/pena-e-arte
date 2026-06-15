@@ -191,6 +191,33 @@ describe("OwnerLayout", () => {
     expect(await screen.findByText(/studio has been suspended/i)).toBeInTheDocument();
   });
 
+  it("SuspensionBanner stays hidden when the studios/me query fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 }),
+      ),
+    );
+
+    renderLayout();
+    await screen.findByTestId("outlet");
+
+    expect(screen.queryByText(/studio has been suspended/i)).not.toBeInTheDocument();
+  });
+
+  it("SuspensionBanner stays hidden when isActive is absent from the response", async () => {
+    // Simulates a partial/unexpected API response shape — isActive omitted
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "stud-0001", name: "Ink Soul" }),
+      ),
+    );
+
+    renderLayout();
+    await screen.findByTestId("outlet");
+
+    expect(screen.queryByText(/studio has been suspended/i)).not.toBeInTheDocument();
+  });
+
   it("active nav link gets the primary background class", () => {
     renderLayout({}, "/dashboard");
     const dashboardLink = screen.getByRole("link", { name: /^dashboard$/i });
