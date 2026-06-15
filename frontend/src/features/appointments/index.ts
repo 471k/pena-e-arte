@@ -6,6 +6,7 @@ export { appointmentsApi } from "./appointmentsApi";
 export {
   useGetAppointmentsQuery,
   useGetAppointmentQuery,
+  useGetMyAppointmentsQuery,
   useCreateAppointmentMutation,
   useCancelAppointmentMutation,
   useConfirmAppointmentMutation,

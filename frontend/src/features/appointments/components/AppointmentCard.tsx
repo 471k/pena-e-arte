@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, CreditCard, Loader2, Slash, Trash2, UserX } from "lucide-react";
+import { Check, CreditCard, Loader2, Trash2, UserX } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { usePermission } from "@/shared/hooks/usePermission";
@@ -176,12 +176,6 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               >
                 {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
               </Button>
-            )}
-
-            {isTerminal && (
-              <span className="text-xs text-muted-foreground">
-                <Slash className="h-3 w-3 inline" />
-              </span>
             )}
           </div>
         )}

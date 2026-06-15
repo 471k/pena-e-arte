@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,7 +21,8 @@ import { cn } from "@/shared/utils/cn";
 import { Role } from "@/shared/types/roles";
 import { useCreateAppointmentMutation } from "../appointmentsApi";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
-import { useGetClientsQuery } from "@/features/clients/clientsApi";
+import { useGetClientsQuery, useGetMyClientQuery } from "@/features/clients/clientsApi";
+import { useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
 import type { AppointmentResponse } from "../appointment.types";
 
@@ -33,6 +34,7 @@ const schema = z.object({
     "Appointment must be in the future"
   ),
   durationMinutes: z.number().int().min(30, "Minimum 30 minutes").max(480, "Maximum 8 hours"),
+  depositRuleId:   z.string().nullable().optional(),
   notes:           z.string().optional(),
 });
 
@@ -45,14 +47,15 @@ export function BookAppointmentForm() {
   const isClientRole = role === Role.Client;
   const isStaffRole  = role === Role.Artist || role === Role.Owner || role === Role.Issuer;
 
-  const { data: artists, isLoading: loadingArtists } = useGetArtistsQuery(undefined);
-  const { data: clients, isLoading: loadingClients }  = useGetClientsQuery(undefined, {
+  const { data: artists,      isLoading: loadingArtists } = useGetArtistsQuery(undefined);
+  const { data: clients,      isLoading: loadingClients } = useGetClientsQuery(undefined, {
     skip: isClientRole,
   });
+  const { data: myClient }     = useGetMyClientQuery(undefined, { skip: !isClientRole });
+  const { data: depositRules } = useGetDepositRulesQuery();
 
   const [createAppointment, { isLoading }] = useCreateAppointmentMutation();
 
-  // Post-booking deposit step state
   const [booked,      setBooked]      = useState<AppointmentResponse | null>(null);
   const [depositDone, setDepositDone] = useState<"paid" | "cash" | "skipped" | null>(null);
 
@@ -60,23 +63,36 @@ export function BookAppointmentForm() {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
     reset: resetForm,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       durationMinutes: 60,
-      clientId: isClientRole ? (user?.id ?? "") : "",
+      clientId:        isClientRole ? (user?.id ?? "") : "",
+      depositRuleId:   null,
     },
   });
 
+  // Keep clientId current: for client role use the resolved Client entity id,
+  // not the auth user id (they have different GUIDs).
+  useEffect(() => {
+    if (isClientRole && myClient?.id) {
+      setValue("clientId", myClient.id);
+    }
+  }, [isClientRole, myClient?.id, setValue]);
+
+  const activeRules = depositRules?.filter((r) => r.isActive) ?? [];
+
   async function onSubmit(values: FormValues) {
-    const clientId = isClientRole ? (user?.id ?? values.clientId) : values.clientId;
+    const clientId = isClientRole ? (myClient?.id ?? values.clientId) : values.clientId;
     const result = await createAppointment({
       artistId:        values.artistId,
       clientId,
       date:            new Date(values.scheduledAt).toISOString(),
       durationMinutes: values.durationMinutes,
+      depositRuleId:   values.depositRuleId ?? null,
       notes:           values.notes ?? null,
     });
     if ("data" in result) {
@@ -85,7 +101,11 @@ export function BookAppointmentForm() {
     } else {
       toast.error("Failed to book appointment.");
     }
-    resetForm({ durationMinutes: 60, clientId: isClientRole ? (user?.id ?? "") : "" });
+    resetForm({
+      durationMinutes: 60,
+      clientId:        isClientRole ? (myClient?.id ?? user?.id ?? "") : "",
+      depositRuleId:   null,
+    });
   }
 
   function startOver() {
@@ -127,9 +147,7 @@ export function BookAppointmentForm() {
   if (booked) {
     return (
       <div className="text-center space-y-3 py-6">
-        {depositDone === "skipped" || depositDone === null ? (
-          <CheckCircle2 className="h-8 w-8 mx-auto text-green-500" />
-        ) : depositDone === "cash" ? (
+        {depositDone === "cash" ? (
           <Banknote className="h-8 w-8 mx-auto text-green-500" />
         ) : (
           <CheckCircle2 className="h-8 w-8 mx-auto text-green-500" />
@@ -246,6 +264,35 @@ export function BookAppointmentForm() {
           <p className="text-xs text-destructive">{errors.durationMinutes.message}</p>
         )}
       </div>
+
+      {/* Deposit rule — shown when the studio has at least one active rule */}
+      {activeRules.length > 0 && (
+        <div className="space-y-1.5">
+          <Label htmlFor="depositRuleId">Deposit rule</Label>
+          <Controller
+            control={control}
+            name="depositRuleId"
+            render={({ field }) => (
+              <Select
+                value={field.value ?? "none"}
+                onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+              >
+                <SelectTrigger id="depositRuleId">
+                  <SelectValue placeholder="No deposit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No deposit</SelectItem>
+                  {activeRules.map((rule) => (
+                    <SelectItem key={rule.id} value={rule.id}>
+                      {rule.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
+      )}
 
       {/* Notes */}
       <div className="space-y-1.5">

@@ -35,6 +35,7 @@ export interface CreateAppointmentRequest {
   clientId:        string;
   date:            string;
   durationMinutes: number;
+  depositRuleId:   string | null;
   notes:           string | null;
 }
 

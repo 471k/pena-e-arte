@@ -2,6 +2,21 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
 import { cleanup } from "@testing-library/react";
 
+// Radix UI uses DOM APIs that JSDOM does not implement.
+// Polyfill them so Radix Select / Popover / Dialog / etc. work in tests.
+window.HTMLElement.prototype.hasPointerCapture    = () => false;
+window.HTMLElement.prototype.setPointerCapture    = () => {};
+window.HTMLElement.prototype.releasePointerCapture = () => {};
+window.HTMLElement.prototype.scrollIntoView       = () => {};
+
+// Radix UI's floating positioning uses ResizeObserver.
+class MockResizeObserver {
+  observe()    {}
+  unobserve()  {}
+  disconnect() {}
+}
+window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
 // globals: false means @testing-library/react never auto-registers afterEach(cleanup).
 // Each test would otherwise accumulate the previous test's DOM.
 afterEach(() => {
