@@ -51,11 +51,13 @@ function fmtCurrency(amount: number) {
 
 function CheckoutLinkPanel({
   result,
+  appointmentId,
   clientName,
   appointmentDate,
   amount,
 }: {
   result:          PaymentIntentResponse;
+  appointmentId:   string;
   clientName:      string;
   appointmentDate: string;
   amount:          number;
@@ -106,7 +108,7 @@ function CheckoutLinkPanel({
           <ExternalLink className="h-4 w-4" />
           Preview link
         </Button>
-        <Button className="flex-1" onClick={() => navigate(`/payments/${result.paymentId}`, { replace: true })}>
+        <Button className="flex-1" onClick={() => navigate(`/payments/${appointmentId}`, { replace: true })}>
           View payment
         </Button>
       </div>
@@ -147,7 +149,7 @@ function CashResultPanel({
         </p>
       </div>
 
-      <Button className="w-full" onClick={() => navigate(`/payments/${result.id}`, { replace: true })}>
+      <Button className="w-full" onClick={() => navigate(`/payments/${result.appointmentId}`, { replace: true })}>
         View payment
       </Button>
     </div>
@@ -517,6 +519,7 @@ export function CreatePaymentIntentPage() {
           pageResult.kind === "card" ? (
             <CheckoutLinkPanel
               result={pageResult.data}
+              appointmentId={selected?.id ?? ""}
               clientName={selected?.clientName ?? "Client"}
               appointmentDate={selected ? fmtDate(selected.date) : ""}
               amount={pageResult.amount}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -51,8 +52,12 @@ export function SessionSplitsEditor({ paymentId, currentSplits }: SessionSplitsE
   async function handleSave() {
     const valid = splits.filter((s) => s.label.trim() && s.amount > 0);
     if (valid.length === 0) return;
-    await updateSplits({ id: paymentId, body: { splits: valid } });
-    setEditing(false);
+    try {
+      await updateSplits({ id: paymentId, body: { splits: valid } }).unwrap();
+      setEditing(false);
+    } catch {
+      toast.error("Failed to save splits. Please try again.");
+    }
   }
 
   const canSave = splits.some((s) => s.label.trim() && s.amount > 0);
