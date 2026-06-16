@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Calendar,
@@ -30,7 +31,7 @@ const editSchema = z
   .object({
     name:        z.string().min(1, "Name is required").max(100, "Max 100 characters"),
     depositType: z.enum(["fixed", "percent"]),
-    amount:      z.number().positive("Must be greater than 0"),
+    amount:      z.number({ error: "Amount is required" }).positive("Must be greater than 0"),
     isActive:    z.boolean(),
   })
   .superRefine((data, ctx) => {
@@ -94,13 +95,22 @@ export function DepositRuleDetailPage() {
       amountPercent: values.depositType === "percent" ? values.amount : null,
       isActive:      values.isActive,
     };
-    await updateRule({ id, body });
-    setMode("view");
+    const result = await updateRule({ id, body });
+    if ("data" in result) {
+      toast.success("Deposit rule updated.");
+      setMode("view");
+    } else {
+      toast.error("Failed to update deposit rule.");
+    }
   }
 
   async function onDelete() {
     if (!id) return;
-    await deleteRule(id);
+    const result = await deleteRule(id);
+    if ("error" in result) {
+      toast.error("Failed to delete deposit rule.");
+      return;
+    }
     navigate("/deposit-rules");
   }
 

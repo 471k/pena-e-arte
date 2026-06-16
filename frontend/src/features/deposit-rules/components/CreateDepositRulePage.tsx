@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -14,7 +15,7 @@ const createSchema = z
   .object({
     name:        z.string().min(1, "Name is required").max(100, "Max 100 characters"),
     depositType: z.enum(["fixed", "percent"]),
-    amount:      z.number().positive("Must be greater than 0"),
+    amount:      z.number({ error: "Amount is required" }).positive("Must be greater than 0"),
     isActive:    z.boolean(),
   })
   .superRefine((data, ctx) => {
@@ -50,7 +51,10 @@ export function CreateDepositRulePage() {
     };
     const result = await createRule(body);
     if ("data" in result) {
+      toast.success("Deposit rule created.");
       navigate(`/deposit-rules/${result.data!.id}`);
+    } else {
+      toast.error("Failed to create deposit rule.");
     }
   }
 
