@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -14,6 +15,7 @@ public class SendAppointmentConfirmationHandler(
     IAppDbContext                                      db,
     IEmailRenderer                                     emailRenderer,
     INotificationService                               notifications,
+    IRealtimeNotifier                                  realtime,
     ILogger<SendAppointmentConfirmationHandler>        logger)
     : IRequestHandler<SendAppointmentConfirmationCommand, Unit>
 {
@@ -66,7 +68,7 @@ public class SendAppointmentConfirmationHandler(
                 appointment.Id);
         }
 
-        db.NotificationLogs.Add(new NotificationLog
+        NotificationLog log = new()
         {
             StudioId    = appointment.StudioId,
             RecipientId = appointment.ClientId,
@@ -75,8 +77,12 @@ public class SendAppointmentConfirmationHandler(
             Body        = body,
             SentAt      = DateTime.UtcNow,
             IsSuccess   = success,
-        });
+        };
+        db.NotificationLogs.Add(log);
         await db.SaveChangesAsync(ct);
+
+        await realtime.NotifyStudioAsync(
+            appointment.StudioId, "NotificationReceived", GetNotificationsHandler.Map(log), ct);
 
         return Unit.Value;
     }

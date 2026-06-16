@@ -5,6 +5,7 @@ import { configureStore, type EnhancedStore } from "@reduxjs/toolkit";
 import React from "react";
 
 import authReducer from "@/features/auth/authSlice";
+import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
@@ -54,6 +55,7 @@ function makeStore(): EnhancedStore<any> {
   return configureStore({
     reducer: {
       auth:                              authReducer,
+      notifications:                     notificationsReducer,
       [appointmentsApi.reducerPath]:     appointmentsApi.reducer,
       [designsApi.reducerPath]:          designsApi.reducer,
       [notificationsApi.reducerPath]:    notificationsApi.reducer,
@@ -224,12 +226,12 @@ describe("useSignalR", () => {
 
   // ── Notification event ───────────────────────────────────────────────────────
 
-  it("NotificationCreated dispatches notificationsApi tag invalidation", async () => {
+  it("NotificationReceived dispatches notificationsApi tag invalidation", async () => {
     renderSignalR(store, "studio-0001");
     await act(async () => { /* flush */ });
     dispatchSpy.mockClear();
 
-    act(() => { eventHandlers["NotificationCreated"](); });
+    act(() => { eventHandlers["NotificationReceived"](); });
 
     const types = dispatchSpy.mock.calls.map(([a]) =>
       (a as { type: string }).type,
@@ -237,17 +239,50 @@ describe("useSignalR", () => {
     expect(types).toContain(notificationsApi.util.invalidateTags.type);
   });
 
-  it("NotificationCreated does NOT dispatch designsApi tag invalidation", async () => {
+  it("NotificationReceived does NOT dispatch designsApi tag invalidation", async () => {
     renderSignalR(store, "studio-0001");
     await act(async () => { /* flush */ });
     dispatchSpy.mockClear();
 
-    act(() => { eventHandlers["NotificationCreated"](); });
+    act(() => { eventHandlers["NotificationReceived"](); });
 
     const types = dispatchSpy.mock.calls.map(([a]) =>
       (a as { type: string }).type,
     );
     expect(types).not.toContain(designsApi.util.invalidateTags.type);
+  });
+
+  it("NotificationReceived increments the unread notification count", async () => {
+    renderSignalR(store, "studio-0001");
+    await act(async () => { /* flush */ });
+
+    expect(store.getState().notifications.unreadCount).toBe(0);
+
+    act(() => { eventHandlers["NotificationReceived"](); });
+
+    expect(store.getState().notifications.unreadCount).toBe(1);
+  });
+
+  it("NotificationReceived increments the unread count once per event", async () => {
+    renderSignalR(store, "studio-0001");
+    await act(async () => { /* flush */ });
+
+    act(() => {
+      eventHandlers["NotificationReceived"]();
+      eventHandlers["NotificationReceived"]();
+      eventHandlers["NotificationReceived"]();
+    });
+
+    expect(store.getState().notifications.unreadCount).toBe(3);
+  });
+
+  it("AppointmentCreated does NOT increment the unread notification count", async () => {
+    renderSignalR(store, "studio-0001");
+    await act(async () => { /* flush */ });
+
+    act(() => { eventHandlers["AppointmentCreated"](); });
+
+    expect(store.getState().notifications.unreadCount).toBe(0);
   });
 
   // ── Correct invalidation payload ─────────────────────────────────────────────

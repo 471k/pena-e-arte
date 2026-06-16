@@ -9,9 +9,11 @@ import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
+import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { billingApi } from "@/features/billing/billingApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import type { StudioResponse } from "@/features/studios/studiosApi";
+import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -53,6 +55,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () =>
     HttpResponse.json(ACTIVE_STUDIO),
   ),
+  http.get("http://localhost/api/v1/notifications", () =>
+    HttpResponse.json([]),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -68,12 +73,14 @@ type StoreOverrides = {
 function makeStore(overrides: StoreOverrides = {}) {
   return configureStore({
     reducer: {
-      auth:                      authReducer,
-      ui:                        uiReducer,
-      [billingApi.reducerPath]:  billingApi.reducer,
-      [studiosApi.reducerPath]:  studiosApi.reducer,
+      auth:                            authReducer,
+      ui:                              uiReducer,
+      notifications:                   notificationsReducer,
+      [billingApi.reducerPath]:        billingApi.reducer,
+      [studiosApi.reducerPath]:        studiosApi.reducer,
+      [notificationsApi.reducerPath]:  notificationsApi.reducer,
     },
-    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, notificationsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,

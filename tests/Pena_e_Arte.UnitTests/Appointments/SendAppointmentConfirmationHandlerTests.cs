@@ -16,6 +16,7 @@ public class SendAppointmentConfirmationHandlerTests
     private readonly FakeDbContext       _db            = FakeDbContext.Create();
     private readonly IEmailRenderer      _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
 
     public SendAppointmentConfirmationHandlerTests()
     {
@@ -27,7 +28,7 @@ public class SendAppointmentConfirmationHandlerTests
     }
 
     private SendAppointmentConfirmationHandler CreateSut() =>
-        new(_db, _emailRenderer, _notifications,
+        new(_db, _emailRenderer, _notifications, _realtime,
             NullLogger<SendAppointmentConfirmationHandler>.Instance);
 
     private async Task<(Guid appointmentId, Studio studio)> SeedData(bool showBranding)
@@ -161,5 +162,16 @@ public class SendAppointmentConfirmationHandlerTests
             .FirstOrDefaultAsync(n => n.Channel == NotificationChannel.Email);
         log.Should().NotBeNull();
         log!.IsSuccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_ValidAppointment_PushesNotificationReceivedEvent()
+    {
+        (Guid appointmentId, Studio studio) = await SeedData(showBranding: true);
+
+        await CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
+
+        await _realtime.Received(1).NotifyStudioAsync(
+            studio.Id, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 }

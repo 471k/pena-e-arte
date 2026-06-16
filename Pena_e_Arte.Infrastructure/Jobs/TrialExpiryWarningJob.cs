@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
@@ -9,6 +10,7 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 public class TrialExpiryWarningJob(
     INotificationService              notifications,
     AppDbContext                      db,
+    IRealtimeNotifier                 realtime,
     ILogger<TrialExpiryWarningJob>    logger)
 {
     public async Task ExecuteAsync(Guid studioId, CancellationToken ct = default)
@@ -34,7 +36,7 @@ public class TrialExpiryWarningJob(
             logger.LogWarning(ex, "Failed to send trial expiry warning email for studio {@StudioId}", studioId);
         }
 
-        db.NotificationLogs.Add(new NotificationLog
+        NotificationLog log = new()
         {
             StudioId    = studio.Id,
             RecipientId = studio.Id,
@@ -43,10 +45,18 @@ public class TrialExpiryWarningJob(
             Body        = emailBody,
             SentAt      = DateTime.UtcNow,
             IsSuccess   = success
-        });
+        };
+        db.NotificationLogs.Add(log);
 
         await db.SaveChangesAsync(ct);
+
+        await realtime.NotifyStudioAsync(
+            studio.Id, "NotificationReceived", ToResponse(log), ct);
     }
+
+    private static NotificationLogResponse ToResponse(NotificationLog log) => new(
+        log.Id, log.RecipientId, log.Channel.ToString(),
+        log.Subject, log.Body, log.SentAt, log.IsSuccess, log.CreatedAt);
 
     private static string BuildEmailBody(Studio studio) =>
         $"""

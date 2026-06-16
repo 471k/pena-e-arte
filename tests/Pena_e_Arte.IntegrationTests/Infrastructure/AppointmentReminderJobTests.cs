@@ -15,9 +15,10 @@ namespace Pena_e_Arte.IntegrationTests.Infrastructure;
 public class AppointmentReminderJobTests(DatabaseFixture fixture)
 {
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
 
     private AppointmentReminderJob CreateSut(AppDbContext db) =>
-        new(_notifications, db, NullLogger<AppointmentReminderJob>.Instance);
+        new(_notifications, db, _realtime, NullLogger<AppointmentReminderJob>.Instance);
 
     [Fact]
     public async Task SendReminderAsync_ValidAppointment_SendsEmail()
@@ -123,6 +124,30 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
             Arg.Is<string>(s => s.Contains("Reminder")),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SendReminderAsync_ValidAppointment_PushesNotificationReceivedEvent()
+    {
+        (Guid appointmentId, Guid studioId) = await SeedAppointmentWithClient(withPhone: false);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendReminderAsync(appointmentId, "48h");
+
+        await _realtime.Received(1).NotifyStudioAsync(
+            studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SendReminderAsync_ClientHasPhone_PushesNotificationReceivedTwice()
+    {
+        (Guid appointmentId, Guid studioId) = await SeedAppointmentWithClient(withPhone: true);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendReminderAsync(appointmentId, "48h");
+
+        await _realtime.Received(2).NotifyStudioAsync(
+            studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 
     private async Task<(Guid AppointmentId, Guid StudioId)> SeedAppointmentWithClient(

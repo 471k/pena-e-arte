@@ -12,6 +12,7 @@ import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { NotificationBell } from "@/features/notifications";
 
 const NAV_ITEMS = [
   { label: "Dashboard",       href: "/dashboard",    icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -65,6 +66,7 @@ export function OwnerLayout() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <NotificationBell />
           <UserChip />
           <div className="w-px h-5 bg-border" />
           <Button

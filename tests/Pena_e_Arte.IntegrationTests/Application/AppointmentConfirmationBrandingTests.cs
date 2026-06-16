@@ -15,9 +15,10 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class AppointmentConfirmationBrandingTests(DatabaseFixture fixture)
 {
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
 
     private SendAppointmentConfirmationHandler CreateSut(AppDbContext db) =>
-        new(db, new EmailRenderer(), _notifications,
+        new(db, new EmailRenderer(), _notifications, _realtime,
             NullLogger<SendAppointmentConfirmationHandler>.Instance);
 
     [Fact]

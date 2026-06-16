@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
+import { incrementUnread } from "@/features/notifications/notificationsSlice";
 
 export function useSignalR(studioId: string | null | undefined) {
   const token    = useAppSelector((s) => s.auth.token);
@@ -18,12 +19,21 @@ export function useSignalR(studioId: string | null | undefined) {
       .configureLogging(LogLevel.Warning)
       .build();
 
-    connection.on("AppointmentCreated",   () => dispatch(appointmentsApi.util.invalidateTags(["Appointment"])));
-    connection.on("AppointmentConfirmed", () => dispatch(appointmentsApi.util.invalidateTags(["Appointment"])));
-    connection.on("AppointmentCompleted", () => dispatch(appointmentsApi.util.invalidateTags(["Appointment"])));
-    connection.on("AppointmentNoShow",    () => dispatch(appointmentsApi.util.invalidateTags(["Appointment"])));
-    connection.on("AppointmentCancelled", () => dispatch(appointmentsApi.util.invalidateTags(["Appointment"])));
-    connection.on("NotificationCreated",  () => dispatch(notificationsApi.util.invalidateTags(["NotificationLog"])));
+    // Every handler below must have a block body. A single-expression arrow function
+    // (`() => dispatch(...)`) implicitly returns dispatch's return value, which SignalR's
+    // client then tries to send back to the server as an invocation *result* — but these
+    // are fire-and-forget server-to-client pushes the server never asked for a result on.
+    // That mismatch doesn't just log a warning: it has been observed to disrupt processing
+    // of the next message on the same connection, silently dropping it client-side.
+    connection.on("AppointmentCreated",   () => { dispatch(appointmentsApi.util.invalidateTags(["Appointment"])); });
+    connection.on("AppointmentConfirmed", () => { dispatch(appointmentsApi.util.invalidateTags(["Appointment"])); });
+    connection.on("AppointmentCompleted", () => { dispatch(appointmentsApi.util.invalidateTags(["Appointment"])); });
+    connection.on("AppointmentNoShow",    () => { dispatch(appointmentsApi.util.invalidateTags(["Appointment"])); });
+    connection.on("AppointmentCancelled", () => { dispatch(appointmentsApi.util.invalidateTags(["Appointment"])); });
+    connection.on("NotificationReceived", () => {
+      dispatch(notificationsApi.util.invalidateTags(["NotificationLog"]));
+      dispatch(incrementUnread());
+    });
     connection.on("DesignRevisionUploaded", () => {
       dispatch(designsApi.util.invalidateTags(["Design"]));
     });

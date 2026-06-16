@@ -1,3 +1,4 @@
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
@@ -42,4 +43,19 @@ public class GetNotificationsHandler(IAppDbContext db)
     internal static NotificationLogResponse Map(NotificationLog n) => new(
         n.Id, n.RecipientId, n.Channel.ToString(),
         n.Subject, n.Body, n.SentAt, n.IsSuccess, n.CreatedAt);
+}
+
+public class GetNotificationsValidator : AbstractValidator<GetNotificationsQuery>
+{
+    public GetNotificationsValidator()
+    {
+        RuleFor(x => x.Channel)
+            .Must(c => c is null or "Email" or "Sms")
+            .WithMessage("Channel must be 'Email' or 'Sms'.");
+
+        RuleFor(x => x)
+            .Must(x => x.From is null || x.To is null || x.From <= x.To)
+            .WithMessage("'from' must be before or equal to 'to'.")
+            .OverridePropertyName("From");
+    }
 }

@@ -9,6 +9,7 @@ import { UserChip } from "@/shared/components/UserChip";
 import { Button } from "@/shared/components/ui/button";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
+import { NotificationBell } from "@/features/notifications";
 
 const NAV_ITEMS = [
   { label: "Schedule",      href: "/schedule",        icon: <CalendarDays className="h-4 w-4" /> },
@@ -57,6 +58,7 @@ export function ArtistLayout() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <NotificationBell />
           <UserChip />
           <div className="w-px h-5 bg-border" />
           <Button

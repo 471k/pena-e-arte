@@ -15,9 +15,10 @@ namespace Pena_e_Arte.IntegrationTests.Infrastructure;
 public class TrialExpiryWarningJobTests(DatabaseFixture fixture)
 {
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
 
     private TrialExpiryWarningJob CreateSut(AppDbContext db) =>
-        new(_notifications, db, NullLogger<TrialExpiryWarningJob>.Instance);
+        new(_notifications, db, _realtime, NullLogger<TrialExpiryWarningJob>.Instance);
 
     [Fact]
     public async Task ExecuteAsync_ValidStudio_SendsEmailToOwner()
@@ -92,6 +93,18 @@ public class TrialExpiryWarningJobTests(DatabaseFixture fixture)
 
         await act.Should().NotThrowAsync();
         await _notifications.DidNotReceive().SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ValidStudio_PushesNotificationReceivedEvent()
+    {
+        Guid studioId = await SeedStudio("owner@realtime.com");
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).ExecuteAsync(studioId);
+
+        await _realtime.Received(1).NotifyStudioAsync(
+            studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

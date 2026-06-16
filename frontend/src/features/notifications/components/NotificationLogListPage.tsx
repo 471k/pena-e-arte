@@ -1,32 +1,13 @@
-import { useState } from "react";
-import { Bell, CheckCircle2, Mail, MessageSquare, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useAppDispatch } from "@/app/hooks";
+import { clearUnread } from "../notificationsSlice";
 import { useGetNotificationsQuery } from "../notificationsApi";
+import { ChannelBadge } from "./ChannelBadge";
+import { formatDate } from "../notification.utils";
 import type { NotificationLogResponse, NotificationsFilter } from "../notification.types";
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-}
-
-function ChannelBadge({ channel }: { channel: "Email" | "Sms" }) {
-  if (channel === "Email") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
-        <Mail className="h-3 w-3" />
-        Email
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-600 dark:text-purple-400">
-      <MessageSquare className="h-3 w-3" />
-      SMS
-    </span>
-  );
-}
 
 function NotificationRow({ log }: { log: NotificationLogResponse }) {
   return (
@@ -70,14 +51,22 @@ function NotificationRow({ log }: { log: NotificationLogResponse }) {
 }
 
 export function NotificationLogListPage() {
+  const dispatch = useAppDispatch();
   const [channel, setChannel] = useState<"Email" | "Sms" | "">("");
   const [from, setFrom]       = useState("");
   const [to, setTo]           = useState("");
 
+  // Viewing the log marks all previously-received notifications as read.
+  useEffect(() => {
+    dispatch(clearUnread());
+  }, [dispatch]);
+
   const filter: NotificationsFilter = {
     channel: channel || undefined,
     from:    from    || undefined,
-    to:      to      || undefined,
+    // "to" is a date-only picker — extend to the end of that day so notifications
+    // sent later on the selected day aren't excluded by the SentAt <= to comparison.
+    to:      to      ? `${to}T23:59:59.999` : undefined,
   };
 
   const { data: logs, isLoading, isError } = useGetNotificationsQuery(filter);
@@ -101,8 +90,9 @@ export function NotificationLogListPage() {
       <div className="border-b bg-muted/30 px-6 py-3">
         <div className="max-w-2xl mx-auto flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">Channel</label>
+            <label htmlFor="notification-channel-filter" className="text-xs text-muted-foreground">Channel</label>
             <select
+              id="notification-channel-filter"
               value={channel}
               onChange={(e) => setChannel(e.target.value as "Email" | "Sms" | "")}
               className="h-8 rounded-md border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -114,8 +104,9 @@ export function NotificationLogListPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">From</label>
+            <label htmlFor="notification-from-filter" className="text-xs text-muted-foreground">From</label>
             <input
+              id="notification-from-filter"
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
@@ -124,8 +115,9 @@ export function NotificationLogListPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">To</label>
+            <label htmlFor="notification-to-filter" className="text-xs text-muted-foreground">To</label>
             <input
+              id="notification-to-filter"
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}

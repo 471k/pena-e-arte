@@ -15,9 +15,10 @@ public class SendAppointmentCancellationHandlerTests
 {
     private readonly FakeDbContext        _db            = FakeDbContext.Create();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
 
     private SendAppointmentCancellationHandler CreateSut() =>
-        new(_db, _notifications,
+        new(_db, _notifications, _realtime,
             NullLogger<SendAppointmentCancellationHandler>.Instance);
 
     private async Task<(Guid appointmentId, Guid studioId)> SeedData()
@@ -134,5 +135,16 @@ public class SendAppointmentCancellationHandlerTests
             Arg.Is<string>(s => s.Contains("Cancelled")),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ValidAppointment_PushesNotificationReceivedEvent()
+    {
+        (Guid appointmentId, Guid studioId) = await SeedData();
+
+        await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
+
+        await _realtime.Received(1).NotifyStudioAsync(
+            studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 }
