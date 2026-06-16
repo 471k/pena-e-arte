@@ -8,8 +8,9 @@ import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserChip } from "@/shared/components/UserChip";
 import { Button } from "@/shared/components/ui/button";
-import { useAppDispatch } from "@/app/hooks";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
+import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { NotificationBell } from "@/features/notifications";
@@ -28,6 +29,8 @@ const NAV_ITEMS = [
 export function OwnerLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const tenantId = useAppSelector((s) => s.auth.tenantId);
+  useSignalR(tenantId);
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
   useGetSubscriptionQuery();
   const { data: studio } = useGetMyStudioQuery();

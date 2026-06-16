@@ -7,9 +7,10 @@ import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { UserChip } from "@/shared/components/UserChip";
 import { Button } from "@/shared/components/ui/button";
-import { useAppDispatch } from "@/app/hooks";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { NotificationBell } from "@/features/notifications";
+import { useSignalR } from "@/shared/hooks/useSignalR";
 
 const NAV_ITEMS = [
   { label: "Schedule",      href: "/schedule",        icon: <CalendarDays className="h-4 w-4" /> },
@@ -24,6 +25,8 @@ const NAV_ITEMS = [
 export function ArtistLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const tenantId = useAppSelector((s) => s.auth.tenantId);
+  useSignalR(tenantId);
 
   function handleLogout() {
     dispatch(logout());

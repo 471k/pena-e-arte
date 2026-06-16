@@ -1,7 +1,5 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppSelector } from "@/app/hooks";
-import { useSignalR } from "@/shared/hooks/useSignalR";
 import {
   AlertTriangle, Banknote, Bell, BookOpen, CalendarDays, CreditCard,
   LayoutDashboard, Loader2, ScrollText, Scroll, Users, Zap,
@@ -297,9 +295,6 @@ function QuickNav() {
 // ── page ──────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
-  const tenantId = useAppSelector((s) => s.auth.tenantId);
-  useSignalR(tenantId);
-
   const today       = useMemo(() => new Date(), []);
   const todayStart  = useMemo(() => startOfDay(today), [today]);
   const tomorrow    = useMemo(() => addDays(todayStart, 1), [todayStart]);

@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2, PenLine } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { useAppSelector } from "@/app/hooks";
-import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetAppointmentsQuery } from "../appointmentsApi";
 import { AppointmentCard } from "./AppointmentCard";
 
@@ -32,9 +30,6 @@ function isSameDay(a: Date, b: Date): boolean {
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function SchedulePage() {
-  const tenantId = useAppSelector((s) => s.auth.tenantId);
-  useSignalR(tenantId);
-
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
 
   const weekEnd = addDays(weekStart, 7);
