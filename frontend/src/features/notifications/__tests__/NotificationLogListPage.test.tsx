@@ -16,25 +16,27 @@ import type { NotificationLogResponse } from "@/features/notifications/notificat
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const EMAIL_LOG: NotificationLogResponse = {
-  id:          "log-001",
-  recipientId: "11111111-2222-3333-4444-555555555555",
-  channel:     "Email",
-  subject:     "Appointment Confirmed — Mon, 15 Jun 2026 at 14:00",
-  body:        "<html>confirmation</html>",
-  sentAt:      "2026-06-10T10:00:00Z",
-  isSuccess:   true,
-  createdAt:   "2026-06-10T10:00:00Z",
+  id:            "log-001",
+  recipientId:   "11111111-2222-3333-4444-555555555555",
+  recipientName: "Ana Silva",
+  channel:       "Email",
+  subject:       "Appointment Confirmed — Mon, 15 Jun 2026 at 14:00",
+  body:          "<html>confirmation</html>",
+  sentAt:        "2026-06-10T10:00:00Z",
+  isSuccess:     true,
+  createdAt:     "2026-06-10T10:00:00Z",
 };
 
 const SMS_LOG: NotificationLogResponse = {
-  id:          "log-002",
-  recipientId: "66666666-7777-8888-9999-000000000000",
-  channel:     "Sms",
-  subject:     null,
-  body:        "Reminder: Your tattoo session is in 48 hours.",
-  sentAt:      "2026-06-09T09:00:00Z",
-  isSuccess:   false,
-  createdAt:   "2026-06-09T09:00:00Z",
+  id:            "log-002",
+  recipientId:   "66666666-7777-8888-9999-000000000000",
+  recipientName: null,
+  channel:       "Sms",
+  subject:       null,
+  body:          "Reminder: Your tattoo session is in 48 hours.",
+  sentAt:        "2026-06-09T09:00:00Z",
+  isSuccess:     false,
+  createdAt:     "2026-06-09T09:00:00Z",
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -122,6 +124,17 @@ describe("NotificationLogListPage", () => {
     renderPage();
     expect(await screen.findByText(/Appointment Confirmed/)).toBeInTheDocument();
     expect(screen.getByText(/Reminder: Your tattoo session/)).toBeInTheDocument();
+  });
+
+  it("shows the resolved recipient name when available", async () => {
+    renderPage();
+    expect(await screen.findByText("Recipient: Ana Silva")).toBeInTheDocument();
+  });
+
+  it("falls back to a raw recipient id prefix when no name was resolved", async () => {
+    renderPage();
+    await screen.findByText(/Appointment Confirmed/);
+    expect(screen.getByText(/Recipient ID: 66666666…/)).toBeInTheDocument();
   });
 
   it("shows the Email and SMS channel badges", async () => {

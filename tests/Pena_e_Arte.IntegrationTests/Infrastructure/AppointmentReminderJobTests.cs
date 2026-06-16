@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
@@ -68,6 +69,7 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
             .FirstOrDefaultAsync(n => n.Channel == NotificationChannel.Email);
         log.Should().NotBeNull();
         log!.IsSuccess.Should().BeTrue();
+        log.RecipientType.Should().Be(NotificationRecipientType.Client);
     }
 
     [Fact]
@@ -148,6 +150,20 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
 
         await _realtime.Received(2).NotifyStudioAsync(
             studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SendReminderAsync_ValidAppointment_PushesRecipientNameResolvedFromClient()
+    {
+        (Guid appointmentId, Guid studioId) = await SeedAppointmentWithClient(withPhone: false);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendReminderAsync(appointmentId, "48h");
+
+        await _realtime.Received(1).NotifyStudioAsync(
+            studioId, "NotificationReceived",
+            Arg.Is<NotificationLogResponse>(r => r.RecipientName == "Ana Silva"),
+            Arg.Any<CancellationToken>());
     }
 
     private async Task<(Guid AppointmentId, Guid StudioId)> SeedAppointmentWithClient(

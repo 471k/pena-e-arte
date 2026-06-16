@@ -16,14 +16,15 @@ import type { NotificationLogResponse } from "@/features/notifications/notificat
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const LOGS: NotificationLogResponse[] = Array.from({ length: 7 }, (_, i) => ({
-  id:          `log-${i}`,
-  recipientId: "11111111-2222-3333-4444-555555555555",
-  channel:     i % 2 === 0 ? "Email" : "Sms",
-  subject:     i % 2 === 0 ? `Subject ${i}` : null,
-  body:        `Body ${i}`,
-  sentAt:      `2026-06-${String(10 - i).padStart(2, "0")}T10:00:00Z`,
-  isSuccess:   true,
-  createdAt:   `2026-06-${String(10 - i).padStart(2, "0")}T10:00:00Z`,
+  id:            `log-${i}`,
+  recipientId:   "11111111-2222-3333-4444-555555555555",
+  recipientName: "Ana Silva",
+  channel:       i % 2 === 0 ? "Email" : "Sms",
+  subject:       i % 2 === 0 ? `Subject ${i}` : null,
+  body:          `Body ${i}`,
+  sentAt:        `2026-06-${String(10 - i).padStart(2, "0")}T10:00:00Z`,
+  isSuccess:     true,
+  createdAt:     `2026-06-${String(10 - i).padStart(2, "0")}T10:00:00Z`,
 }));
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

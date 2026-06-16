@@ -55,13 +55,14 @@ public class AppointmentReminderJob(
 
         await db.SaveChangesAsync(ct);
 
+        string recipientName = $"{appointment.Client.FirstName} {appointment.Client.LastName}";
         foreach (NotificationLog log in logs)
             await realtime.NotifyStudioAsync(
-                appointment.StudioId, "NotificationReceived", ToResponse(log), ct);
+                appointment.StudioId, "NotificationReceived", ToResponse(log, recipientName), ct);
     }
 
-    private static NotificationLogResponse ToResponse(NotificationLog log) => new(
-        log.Id, log.RecipientId, log.Channel.ToString(),
+    private static NotificationLogResponse ToResponse(NotificationLog log, string? recipientName) => new(
+        log.Id, log.RecipientId, recipientName, log.Channel.ToString(),
         log.Subject, log.Body, log.SentAt, log.IsSuccess, log.CreatedAt);
 
     private async Task<bool> TrySendEmailAsync(Appointment appointment, string subject, string body, CancellationToken ct)
@@ -99,13 +100,14 @@ public class AppointmentReminderJob(
         string              body,
         bool                success) => new()
     {
-        StudioId    = appointment.StudioId,
-        RecipientId = appointment.ClientId,
-        Channel     = channel,
-        Subject     = subject,
-        Body        = body,
-        SentAt      = DateTime.UtcNow,
-        IsSuccess   = success
+        StudioId      = appointment.StudioId,
+        RecipientId   = appointment.ClientId,
+        RecipientType = NotificationRecipientType.Client,
+        Channel       = channel,
+        Subject       = subject,
+        Body          = body,
+        SentAt        = DateTime.UtcNow,
+        IsSuccess     = success
     };
 
     private static string BuildEmailBody(Appointment appointment, string timeLabel) =>

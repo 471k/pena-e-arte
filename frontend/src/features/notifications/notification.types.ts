@@ -1,7 +1,8 @@
 export interface NotificationLogResponse {
-  id:          string;
-  recipientId: string;
-  channel:     "Email" | "Sms";
+  id:            string;
+  recipientId:   string;
+  recipientName: string | null;
+  channel:       "Email" | "Sms";
   subject:     string | null;
   body:        string;
   sentAt:      string | null;

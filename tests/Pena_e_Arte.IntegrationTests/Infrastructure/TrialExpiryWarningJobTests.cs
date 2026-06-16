@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
@@ -49,6 +50,7 @@ public class TrialExpiryWarningJobTests(DatabaseFixture fixture)
         log.Should().NotBeNull();
         log!.IsSuccess.Should().BeTrue();
         log.StudioId.Should().Be(studioId);
+        log.RecipientType.Should().Be(NotificationRecipientType.Studio);
     }
 
     [Fact]
@@ -105,6 +107,20 @@ public class TrialExpiryWarningJobTests(DatabaseFixture fixture)
 
         await _realtime.Received(1).NotifyStudioAsync(
             studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ValidStudio_PushesRecipientNameResolvedFromStudio()
+    {
+        Guid studioId = await SeedStudio("owner@names.com", name: "Tinta Viva");
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).ExecuteAsync(studioId);
+
+        await _realtime.Received(1).NotifyStudioAsync(
+            studioId, "NotificationReceived",
+            Arg.Is<NotificationLogResponse>(r => r.RecipientName == "Tinta Viva"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

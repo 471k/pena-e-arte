@@ -148,6 +148,60 @@ public class GetNotificationsHandlerTests
         item.IsSuccess.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Handle_ClientRecipient_ResolvesRecipientNameFromClient()
+    {
+        Guid studioId = Guid.NewGuid();
+        Guid clientId = Guid.NewGuid();
+
+        _db.Clients.Add(new Client
+        {
+            Id = clientId, StudioId = studioId,
+            FirstName = "Ana", LastName = "Costa", Email = "ana@test.com"
+        });
+        _db.NotificationLogs.Add(BuildLog(
+            studioId, clientId, NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
+        await _db.SaveChangesAsync();
+
+        List<NotificationLogResponse> result = await CreateSut()
+            .Handle(new GetNotificationsQuery(null, null, null, null), default);
+
+        result.Single().RecipientName.Should().Be("Ana Costa");
+    }
+
+    [Fact]
+    public async Task Handle_StudioRecipient_ResolvesRecipientNameFromStudio()
+    {
+        Guid studioId = Guid.NewGuid();
+
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Soul", OwnerEmail = "owner@ink.test" });
+        _db.NotificationLogs.Add(BuildLog(
+            studioId, studioId, NotificationChannel.Email, recipientType: NotificationRecipientType.Studio));
+        await _db.SaveChangesAsync();
+
+        List<NotificationLogResponse> result = await CreateSut()
+            .Handle(new GetNotificationsQuery(null, null, null, null), default);
+
+        result.Single().RecipientName.Should().Be("Ink Soul");
+    }
+
+    [Fact]
+    public async Task Handle_RecipientNoLongerExists_RecipientNameIsNull()
+    {
+        Guid studioId = Guid.NewGuid();
+        Guid deletedClientId = Guid.NewGuid();
+
+        // No matching Client row seeded — simulates a deleted/missing recipient.
+        _db.NotificationLogs.Add(BuildLog(
+            studioId, deletedClientId, NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
+        await _db.SaveChangesAsync();
+
+        List<NotificationLogResponse> result = await CreateSut()
+            .Handle(new GetNotificationsQuery(null, null, null, null), default);
+
+        result.Single().RecipientName.Should().BeNull();
+    }
+
     private void SeedLogs(Guid studioId, int count)
     {
         for (int i = 0; i < count; i++)
@@ -156,14 +210,16 @@ public class GetNotificationsHandlerTests
 
     private static NotificationLog BuildLog(
         Guid studioId, Guid recipientId, NotificationChannel channel,
-        DateTime? sentAt = null) => new()
+        DateTime? sentAt = null,
+        NotificationRecipientType recipientType = NotificationRecipientType.Client) => new()
     {
-        StudioId    = studioId,
-        RecipientId = recipientId,
-        Channel     = channel,
-        Subject     = "Subject",
-        Body        = "Body",
-        SentAt      = sentAt ?? DateTime.UtcNow,
-        IsSuccess   = true
+        StudioId      = studioId,
+        RecipientId   = recipientId,
+        RecipientType = recipientType,
+        Channel       = channel,
+        Subject       = "Subject",
+        Body          = "Body",
+        SentAt        = sentAt ?? DateTime.UtcNow,
+        IsSuccess     = true
     };
 }

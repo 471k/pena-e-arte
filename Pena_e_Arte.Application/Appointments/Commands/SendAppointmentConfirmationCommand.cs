@@ -70,19 +70,21 @@ public class SendAppointmentConfirmationHandler(
 
         NotificationLog log = new()
         {
-            StudioId    = appointment.StudioId,
-            RecipientId = appointment.ClientId,
-            Channel     = NotificationChannel.Email,
-            Subject     = subject,
-            Body        = body,
-            SentAt      = DateTime.UtcNow,
-            IsSuccess   = success,
+            StudioId      = appointment.StudioId,
+            RecipientId   = appointment.ClientId,
+            RecipientType = NotificationRecipientType.Client,
+            Channel       = NotificationChannel.Email,
+            Subject       = subject,
+            Body          = body,
+            SentAt        = DateTime.UtcNow,
+            IsSuccess     = success,
         };
         db.NotificationLogs.Add(log);
         await db.SaveChangesAsync(ct);
 
         await realtime.NotifyStudioAsync(
-            appointment.StudioId, "NotificationReceived", GetNotificationsHandler.Map(log), ct);
+            appointment.StudioId, "NotificationReceived",
+            GetNotificationsHandler.Map(log, $"{appointment.Client.FirstName} {appointment.Client.LastName}"), ct);
 
         return Unit.Value;
     }

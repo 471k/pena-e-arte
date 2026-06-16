@@ -24,8 +24,12 @@ function NotificationRow({ log }: { log: NotificationLogResponse }) {
             <p className="text-xs text-muted-foreground line-clamp-2">
               {log.body.length > 120 ? log.body.slice(0, 120) + "…" : log.body}
             </p>
-            <p className="text-xs text-muted-foreground font-mono">
-              Recipient: {log.recipientId.slice(0, 8)}…
+            <p className="text-xs text-muted-foreground">
+              {log.recipientName ? (
+                <>Recipient: {log.recipientName}</>
+              ) : (
+                <span className="font-mono">Recipient ID: {log.recipientId.slice(0, 8)}…</span>
+              )}
             </p>
           </div>
           <div className="shrink-0 text-right space-y-1">

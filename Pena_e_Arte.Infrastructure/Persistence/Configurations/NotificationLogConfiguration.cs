@@ -15,6 +15,9 @@ public class NotificationLogConfiguration : TenantEntityConfiguration<Notificati
         builder.Property(n => n.Channel)
                .HasConversion<string>().HasMaxLength(32).IsRequired();
 
+        builder.Property(n => n.RecipientType)
+               .HasConversion<string>().HasMaxLength(32).IsRequired();
+
         builder.Property(n => n.Subject).HasMaxLength(500);
         builder.Property(n => n.Body).HasColumnType("text").IsRequired();
 

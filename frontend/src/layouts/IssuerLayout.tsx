@@ -1,10 +1,11 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { BarChart3, Building2, CreditCard, LayoutDashboard, LogOut, PenLine, Receipt, Share2 } from "lucide-react";
+import { BarChart3, Bell, Building2, CreditCard, LayoutDashboard, LogOut, PenLine, Receipt, Share2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { UserChip } from "@/shared/components/UserChip";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { cn } from "@/shared/utils/cn";
+import { NotificationBell } from "@/features/notifications";
 
 const NAV_ITEMS = [
   { label: "Dashboard",     href: "/platform",               icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
   { label: "Subscriptions", href: "/platform/subscriptions", icon: <Receipt         className="h-4 w-4" /> },
   { label: "Referrals",     href: "/platform/referrals",     icon: <Share2          className="h-4 w-4" /> },
   { label: "Reports",       href: "/platform/reports",       icon: <BarChart3       className="h-4 w-4" /> },
+  { label: "Notifications", href: "/notifications",          icon: <Bell            className="h-4 w-4" /> },
 ];
 
 export function IssuerLayout() {
@@ -52,6 +54,7 @@ export function IssuerLayout() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <NotificationBell />
           <UserChip />
           <div className="w-px h-5 bg-border" />
           <Button

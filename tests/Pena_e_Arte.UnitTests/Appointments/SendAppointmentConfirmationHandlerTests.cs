@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Pena_e_Arte.Application.Appointments.Commands;
+using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
@@ -144,6 +145,7 @@ public class SendAppointmentConfirmationHandlerTests
         log.Should().NotBeNull();
         log!.IsSuccess.Should().BeTrue();
         log.StudioId.Should().Be(studio.Id);
+        log.RecipientType.Should().Be(NotificationRecipientType.Client);
     }
 
     [Fact]
@@ -173,5 +175,18 @@ public class SendAppointmentConfirmationHandlerTests
 
         await _realtime.Received(1).NotifyStudioAsync(
             studio.Id, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ValidAppointment_PushesRecipientNameResolvedFromClient()
+    {
+        (Guid appointmentId, Studio studio) = await SeedData(showBranding: true);
+
+        await CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
+
+        await _realtime.Received(1).NotifyStudioAsync(
+            studio.Id, "NotificationReceived",
+            Arg.Is<NotificationLogResponse>(r => r.RecipientName == "Ana Silva"),
+            Arg.Any<CancellationToken>());
     }
 }

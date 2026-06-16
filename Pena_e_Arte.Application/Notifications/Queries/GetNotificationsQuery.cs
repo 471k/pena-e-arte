@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Application.Notifications.Queries;
 
@@ -37,11 +38,62 @@ public class GetNotificationsHandler(IAppDbContext db)
             .OrderByDescending(n => n.SentAt)
             .ToListAsync(ct);
 
-        return logs.Select(Map).ToList();
+        Dictionary<Guid, string> names = await ResolveRecipientNamesAsync(logs, ct);
+
+        return logs
+            .Select(n => Map(n, names.GetValueOrDefault(n.RecipientId)))
+            .ToList();
     }
 
-    internal static NotificationLogResponse Map(NotificationLog n) => new(
-        n.Id, n.RecipientId, n.Channel.ToString(),
+    // RecipientId is polymorphic (a Client.Id or a Studio.Id, per RecipientType) — batch-resolve
+    // both in two queries rather than N+1-ing per row. A missing lookup (e.g. a deleted client)
+    // leaves the name out of the dictionary; callers fall back to showing the raw id.
+    private async Task<Dictionary<Guid, string>> ResolveRecipientNamesAsync(
+        List<NotificationLog> logs, CancellationToken ct)
+    {
+        List<Guid> clientIds = logs
+            .Where(n => n.RecipientType == NotificationRecipientType.Client)
+            .Select(n => n.RecipientId)
+            .Distinct()
+            .ToList();
+
+        List<Guid> studioIds = logs
+            .Where(n => n.RecipientType == NotificationRecipientType.Studio)
+            .Select(n => n.RecipientId)
+            .Distinct()
+            .ToList();
+
+        Dictionary<Guid, string> names = [];
+
+        if (clientIds.Count > 0)
+        {
+            List<(Guid Id, string Name)> clients = await db.Clients
+                .AsNoTracking()
+                .Where(c => clientIds.Contains(c.Id))
+                .Select(c => new ValueTuple<Guid, string>(c.Id, c.FirstName + " " + c.LastName))
+                .ToListAsync(ct);
+
+            foreach ((Guid id, string name) in clients)
+                names[id] = name;
+        }
+
+        if (studioIds.Count > 0)
+        {
+            List<(Guid Id, string Name)> studios = await db.Studios
+                .AsNoTracking()
+                .Where(s => studioIds.Contains(s.Id))
+                .Select(s => new ValueTuple<Guid, string>(s.Id, s.Name))
+                .ToListAsync(ct);
+
+            foreach ((Guid id, string name) in studios)
+                names[id] = name;
+        }
+
+        return names;
+    }
+
+    internal static NotificationLogResponse Map(NotificationLog n, string? recipientName = null) => new(
+        n.Id, n.RecipientId, recipientName, n.Channel.ToString(),
         n.Subject, n.Body, n.SentAt, n.IsSuccess, n.CreatedAt);
 }
 

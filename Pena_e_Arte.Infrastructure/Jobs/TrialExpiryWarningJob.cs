@@ -38,24 +38,25 @@ public class TrialExpiryWarningJob(
 
         NotificationLog log = new()
         {
-            StudioId    = studio.Id,
-            RecipientId = studio.Id,
-            Channel     = NotificationChannel.Email,
-            Subject     = subject,
-            Body        = emailBody,
-            SentAt      = DateTime.UtcNow,
-            IsSuccess   = success
+            StudioId      = studio.Id,
+            RecipientId   = studio.Id,
+            RecipientType = NotificationRecipientType.Studio,
+            Channel       = NotificationChannel.Email,
+            Subject       = subject,
+            Body          = emailBody,
+            SentAt        = DateTime.UtcNow,
+            IsSuccess     = success
         };
         db.NotificationLogs.Add(log);
 
         await db.SaveChangesAsync(ct);
 
         await realtime.NotifyStudioAsync(
-            studio.Id, "NotificationReceived", ToResponse(log), ct);
+            studio.Id, "NotificationReceived", ToResponse(log, studio.Name), ct);
     }
 
-    private static NotificationLogResponse ToResponse(NotificationLog log) => new(
-        log.Id, log.RecipientId, log.Channel.ToString(),
+    private static NotificationLogResponse ToResponse(NotificationLog log, string? recipientName) => new(
+        log.Id, log.RecipientId, recipientName, log.Channel.ToString(),
         log.Subject, log.Body, log.SentAt, log.IsSuccess, log.CreatedAt);
 
     private static string BuildEmailBody(Studio studio) =>
