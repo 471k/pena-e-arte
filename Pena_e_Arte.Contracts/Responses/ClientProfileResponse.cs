@@ -8,4 +8,5 @@ public record ClientProfileResponse(
     string?      MedicalNotes,
     string?      Allergies,
     List<string> BodyMapLocations,
-    DateTime     UpdatedAt);
+    DateTime     UpdatedAt,
+    bool         AllowCrossTenantRead);

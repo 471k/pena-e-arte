@@ -25,5 +25,6 @@ public class GetClientProfileHandler(IAppDbContext db)
 
     internal static ClientProfileResponse Map(ClientProfile cp) =>
         new(cp.Id, cp.ClientId, cp.StudioId, cp.DateOfBirth,
-            cp.MedicalNotes, cp.Allergies, cp.BodyMap.Locations, cp.UpdatedAt);
+            cp.MedicalNotes, cp.Allergies, cp.BodyMap.Locations, cp.UpdatedAt,
+            cp.AllowCrossTenantRead);
 }

@@ -1,6 +1,8 @@
 export {
   clientsApi,
   useGetMyClientQuery,
+  useGetMyClientProfileQuery,
+  useGetMyTattooRecordsQuery,
   useGetClientsQuery,
   useGetClientByIdQuery,
   useCreateClientMutation,
@@ -12,6 +14,8 @@ export {
   useAddTattooRecordMutation,
   useUpdateTattooRecordMutation,
   useDeleteTattooRecordMutation,
+  useUpdatePortableProfileOptInMutation,
+  useGetPortableProfileQuery,
 } from "./clientsApi";
 export type {
   ClientResponse,
@@ -21,10 +25,14 @@ export type {
   TattooRecordResponse,
   AddTattooRecordRequest,
   UpdateTattooRecordRequest,
+  PortableTattooRecord,
+  PortableClientProfile,
 } from "./clientsApi";
 export { ClientListPage } from "./components/ClientListPage";
 export { CreateClientPage } from "./components/CreateClientPage";
 export { ClientDetailPage } from "./components/ClientDetailPage";
 export { MyProfilePage } from "./components/MyProfilePage";
 export { TattooRecordDetailPage } from "./components/TattooRecordDetailPage";
+export { TattooHistorySection } from "./components/TattooHistorySection";
+export { PortableProfileToggle } from "./components/PortableProfileToggle";
 export { BodyMap, ALL_BODY_ZONES } from "./components/BodyMap";

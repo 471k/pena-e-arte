@@ -21,6 +21,7 @@ export interface ClientProfileResponse {
   allergies:        string | null;
   bodyMapLocations: string[];
   updatedAt:        string;
+  allowCrossTenantRead: boolean;
 }
 
 export interface CreateClientRequest {
@@ -86,6 +87,14 @@ export const clientsApi = createApi({
     getMyClient: builder.query<ClientResponse, void>({
       query: () => "clients/me",
       providesTags: [{ type: "Client", id: "me" }],
+    }),
+    getMyClientProfile: builder.query<ClientProfileResponse, void>({
+      query: () => "clients/me/profile",
+      providesTags: [{ type: "ClientProfile", id: "me" }],
+    }),
+    getMyTattooRecords: builder.query<TattooRecordResponse[], void>({
+      query: () => "clients/me/tattoos",
+      providesTags: [{ type: "TattooRecord", id: "me" }],
     }),
     getClients: builder.query<ClientResponse[], string | undefined>({
       query: (search) => ({
@@ -195,6 +204,8 @@ export const clientsApi = createApi({
 
 export const {
   useGetMyClientQuery,
+  useGetMyClientProfileQuery,
+  useGetMyTattooRecordsQuery,
   useGetClientsQuery,
   useGetClientByIdQuery,
   useCreateClientMutation,
