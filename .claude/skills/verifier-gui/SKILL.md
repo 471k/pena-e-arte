@@ -36,6 +36,15 @@ await page.evaluate((t) => localStorage.setItem("auth_token", t), artistToken);
 await page.goto("http://localhost:5173/designs", { waitUntil: "networkidle" });
 ```
 
+**If the real backend is running, mock `/api/*` calls too.** The fake JWT has
+no valid signature, so a real backend correctly 401s it — and the app's
+global `baseQuery` 401-handler treats that as session-expired, logging out
+and redirecting to `/login`. This silently masks whatever route/role behavior
+you're testing (every role appears to land on the login page). Either stop
+the backend so failures are network errors instead of 401s, or install
+`page.route` mocks for `/api/*` (see Route mocking pitfalls below) so the
+fake session never reaches real auth.
+
 ## Role → redirect map
 
 | Role     | Default redirect (`getRoleRedirectPath`) |

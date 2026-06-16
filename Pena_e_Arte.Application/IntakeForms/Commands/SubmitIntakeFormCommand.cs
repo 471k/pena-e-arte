@@ -1,25 +1,47 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.IntakeForms.Commands;
 
 public record SubmitIntakeFormCommand(SubmitIntakeFormRequest Request) : IRequest<IntakeFormResponse>;
 
-public class SubmitIntakeFormHandler(IAppDbContext db, ICurrentTenant tenant)
+public class SubmitIntakeFormHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser)
     : IRequestHandler<SubmitIntakeFormCommand, IntakeFormResponse>
 {
     public async Task<IntakeFormResponse> Handle(SubmitIntakeFormCommand command, CancellationToken ct)
     {
         SubmitIntakeFormRequest req = command.Request;
 
+        // Clients cannot submit a form on behalf of another client — always enforce JWT identity.
+        Guid clientId = req.ClientId;
+        if (currentUser.Role == "client")
+        {
+            Client client = await db.FindClientForUserAsync(currentUser, ct)
+                ?? throw new NotFoundException(nameof(Client), currentUser.UserId);
+            clientId = client.Id;
+        }
+
+        if (req.AppointmentId.HasValue)
+        {
+            Appointment appointment = await db.Appointments
+                .FirstOrDefaultAsync(a => a.Id == req.AppointmentId.Value, ct)
+                ?? throw new NotFoundException(nameof(Appointment), req.AppointmentId.Value);
+
+            if (appointment.ClientId != clientId)
+                throw new NotFoundException(nameof(Appointment), req.AppointmentId.Value);
+        }
+
         IntakeForm form = new()
         {
             StudioId      = tenant.StudioId,
-            ClientId      = req.ClientId,
+            ClientId      = clientId,
             AppointmentId = req.AppointmentId,
             FormData      = req.FormData,
             FileUrl       = req.FileUrl,

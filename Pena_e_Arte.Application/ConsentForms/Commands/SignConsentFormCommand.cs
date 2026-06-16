@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -11,12 +12,25 @@ namespace Pena_e_Arte.Application.ConsentForms.Commands;
 
 public record SignConsentFormCommand(SignConsentFormRequest Request) : IRequest<ConsentFormResponse>;
 
-public class SignConsentFormHandler(IAppDbContext db, ICurrentTenant tenant)
+public class SignConsentFormHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser)
     : IRequestHandler<SignConsentFormCommand, ConsentFormResponse>
 {
     public async Task<ConsentFormResponse> Handle(SignConsentFormCommand command, CancellationToken ct)
     {
         SignConsentFormRequest req = command.Request;
+
+        Appointment appointment = await db.Appointments
+            .FirstOrDefaultAsync(a => a.Id == req.AppointmentId, ct)
+            ?? throw new NotFoundException(nameof(Appointment), req.AppointmentId);
+
+        // Clients may only sign a consent form for their own appointment —
+        // ownership resolved (and healed) through Client.UserId / email.
+        if (currentUser.Role == "client")
+        {
+            Client? me = await db.FindClientForUserAsync(currentUser, ct);
+            if (me is null || me.Id != appointment.ClientId)
+                throw new NotFoundException(nameof(Appointment), req.AppointmentId);
+        }
 
         bool alreadySigned = await db.ConsentForms
             .AnyAsync(c => c.AppointmentId == req.AppointmentId, ct);
@@ -26,8 +40,8 @@ public class SignConsentFormHandler(IAppDbContext db, ICurrentTenant tenant)
         ConsentForm form = new()
         {
             StudioId      = tenant.StudioId,
-            ClientId      = req.ClientId,
-            AppointmentId = req.AppointmentId,
+            ClientId      = appointment.ClientId,
+            AppointmentId = appointment.Id,
             SignatureData = req.SignatureData,
             FileUrl       = req.FileUrl,
             SignedAt      = DateTime.UtcNow

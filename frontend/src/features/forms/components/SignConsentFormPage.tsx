@@ -45,7 +45,10 @@ export function SignConsentFormPage() {
     handleSubmit,
     reset: resetForm,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { appointmentId: "", signatureData: "" },
+  });
 
   async function onSubmit(values: FormValues) {
     if (!user) return;

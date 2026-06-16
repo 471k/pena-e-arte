@@ -224,7 +224,11 @@ export const router = createBrowserRouter([
                 path: "forms",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [
-                  { path: "intake/new", element: <SubmitIntakeFormPage /> },
+                  {
+                    path: "intake/new",
+                    element: <RoleGuard allowedRoles={[Role.Client]} />,
+                    children: [{ index: true, element: <SubmitIntakeFormPage /> }],
+                  },
                   {
                     path: "intake",
                     element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
@@ -233,7 +237,11 @@ export const router = createBrowserRouter([
                       { path: ":id", element: <IntakeFormDetailPage /> },
                     ],
                   },
-                  { path: "consent/new", element: <SignConsentFormPage /> },
+                  {
+                    path: "consent/new",
+                    element: <RoleGuard allowedRoles={[Role.Client]} />,
+                    children: [{ index: true, element: <SignConsentFormPage /> }],
+                  },
                   {
                     path: "consent",
                     element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,

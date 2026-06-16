@@ -27,7 +27,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid clientId = await SeedClient(tenantId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        SubmitIntakeFormHandler handler = new(db, TenantFor(tenantId));
+        SubmitIntakeFormHandler handler = new(db, TenantFor(tenantId), StaffUser());
 
         IntakeFormResponse result = await handler.Handle(
             new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, "{\"allergies\":\"none\"}", null)),
@@ -46,7 +46,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid clientId = await SeedClient(tenantA);
 
         await using AppDbContext dbA = fixture.CreateDbContext(tenantA);
-        IntakeFormResponse result = await new SubmitIntakeFormHandler(dbA, TenantFor(tenantA))
+        IntakeFormResponse result = await new SubmitIntakeFormHandler(dbA, TenantFor(tenantA), StaffUser())
             .Handle(new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, "{}", null)), default);
 
         await using AppDbContext dbB = fixture.CreateDbContext(tenantB);
@@ -110,7 +110,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         (Guid clientId, Guid appointmentId) = await SeedClientAndAppointment(tenantId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        ConsentFormResponse result = await new SignConsentFormHandler(db, TenantFor(tenantId))
+        ConsentFormResponse result = await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser())
             .Handle(new SignConsentFormCommand(
                 new SignConsentFormRequest(clientId, appointmentId, "data:image/png;base64,abc", null)), default);
 
@@ -249,7 +249,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<IntakeFormResponse> SubmitForm(Guid tenantId, Guid clientId, string formData)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        return await new SubmitIntakeFormHandler(db, TenantFor(tenantId))
+        return await new SubmitIntakeFormHandler(db, TenantFor(tenantId), StaffUser())
             .Handle(new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, formData, null)), default);
     }
 
@@ -257,7 +257,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid tenantId, Guid clientId, Guid appointmentId, string signature)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        return await new SignConsentFormHandler(db, TenantFor(tenantId))
+        return await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser())
             .Handle(new SignConsentFormCommand(
                 new SignConsentFormRequest(clientId, appointmentId, signature, null)), default);
     }
