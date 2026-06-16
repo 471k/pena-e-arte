@@ -3,11 +3,13 @@ import { baseQuery } from "@/shared/api/baseQuery";
 import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest } from "./billing.types";
 
 export interface CreatePlanRequest {
-  name:                 string;
-  billingInterval:      string;
-  priceMonthly:         number;
-  priceYearly:          number;
+  name:                  string;
+  billingInterval:       string;
+  priceMonthly:          number;
+  priceYearly:           number;
   yearlyDiscountPercent: number;
+  stripePriceIdMonthly?: string | null;
+  stripePriceIdYearly?:  string | null;
 }
 
 export interface UpdatePlanRequest {
@@ -16,6 +18,8 @@ export interface UpdatePlanRequest {
   priceYearly:           number;
   yearlyDiscountPercent: number;
   allowBrandingRemoval:  boolean;
+  stripePriceIdMonthly?: string | null;
+  stripePriceIdYearly?:  string | null;
 }
 
 export const billingApi = createApi({

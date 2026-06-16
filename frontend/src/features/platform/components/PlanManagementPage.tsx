@@ -23,6 +23,8 @@ const schema = z.object({
   priceYearly:           z.number({ message: "Required" }).positive(),
   yearlyDiscountPercent: z.number({ message: "Required" }).min(0).max(100),
   allowBrandingRemoval:  z.boolean(),
+  stripePriceIdMonthly:  z.string().max(200).optional().nullable(),
+  stripePriceIdYearly:   z.string().max(200).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -100,6 +102,37 @@ function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
         <Label htmlFor="allowBrandingRemoval" className="cursor-pointer">Allow branding removal</Label>
       </div>
 
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="stripePriceIdMonthly" className="text-xs text-muted-foreground">
+            Stripe Monthly Price ID
+          </Label>
+          <Input
+            id="stripePriceIdMonthly"
+            placeholder="price_…"
+            {...register("stripePriceIdMonthly")}
+            className="text-xs font-mono"
+          />
+          {errors.stripePriceIdMonthly && (
+            <p className="text-xs text-destructive">{errors.stripePriceIdMonthly.message}</p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="stripePriceIdYearly" className="text-xs text-muted-foreground">
+            Stripe Yearly Price ID
+          </Label>
+          <Input
+            id="stripePriceIdYearly"
+            placeholder="price_…"
+            {...register("stripePriceIdYearly")}
+            className="text-xs font-mono"
+          />
+          {errors.stripePriceIdYearly && (
+            <p className="text-xs text-destructive">{errors.stripePriceIdYearly.message}</p>
+          )}
+        </div>
+      </div>
+
       <div className="flex gap-2 pt-1">
         <Button type="submit" size="sm" disabled={saving} className="flex-1">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
@@ -138,6 +171,8 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
           priceYearly:           plan.priceYearly,
           yearlyDiscountPercent: plan.yearlyDiscountPercent,
           allowBrandingRemoval:  plan.allowBrandingRemoval,
+          stripePriceIdMonthly:  plan.stripePriceIdMonthly ?? null,
+          stripePriceIdYearly:   plan.stripePriceIdYearly ?? null,
         }}
         onSave={handleUpdate}
         onClose={() => setEditing(false)}

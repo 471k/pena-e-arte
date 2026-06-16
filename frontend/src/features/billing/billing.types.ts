@@ -18,6 +18,8 @@ export interface PlanResponse {
   priceYearly:           number;
   yearlyDiscountPercent: number;
   allowBrandingRemoval:  boolean;
+  stripePriceIdMonthly?: string | null;
+  stripePriceIdYearly?:  string | null;
 }
 
 export interface CreateSubscriptionRequest {

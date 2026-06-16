@@ -1,5 +1,28 @@
 import "@testing-library/jest-dom/vitest";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
+
+// Mock SignalR globally — prevents real WebSocket connections in JSDOM.
+// HubConnectionBuilder.build() throws "Cannot resolve '/hubs/schedule'" without this.
+vi.mock("@microsoft/signalr", () => {
+  const noop = () => {};
+  const connection = {
+    on:     noop,
+    start:  () => Promise.resolve(),
+    stop:   () => Promise.resolve(),
+    invoke: () => Promise.resolve(),
+  };
+  const builder = {
+    withUrl:               () => builder,
+    withAutomaticReconnect:() => builder,
+    configureLogging:      () => builder,
+    build:                 () => connection,
+  };
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    HubConnectionBuilder: vi.fn(function(this: any) { return builder; }),
+    LogLevel:             { Warning: 1, Information: 2, Error: 3, None: 6 },
+  };
+});
 import { cleanup } from "@testing-library/react";
 
 // Radix UI uses DOM APIs that JSDOM does not implement.

@@ -1,13 +1,28 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
+import notificationsReducer from "@/features/notifications/notificationsSlice";
+import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { ClientLayout } from "@/layouts/ClientLayout";
+
+// ── MSW server ─────────────────────────────────────────────────────────────────
+
+const server = setupServer(
+  http.get("http://localhost/api/v1/notifications", () =>
+    HttpResponse.json([]),
+  ),
+);
+
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -18,9 +33,12 @@ type StoreOverrides = {
 function makeStore(overrides: StoreOverrides = {}) {
   return configureStore({
     reducer: {
-      auth: authReducer,
-      ui:   uiReducer,
+      auth:                            authReducer,
+      ui:                              uiReducer,
+      notifications:                   notificationsReducer,
+      [notificationsApi.reducerPath]:  notificationsApi.reducer,
     },
+    middleware: (gd) => gd().concat(notificationsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: "client", pendingReferralCode: null } as any,
@@ -50,7 +68,7 @@ function renderLayout(overrides: StoreOverrides = {}, initialPath = "/book") {
   return store;
 }
 
-afterEach(cleanup);
+afterEach(() => { server.resetHandlers(); cleanup(); });
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
