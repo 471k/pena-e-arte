@@ -78,6 +78,9 @@ const server = setupServer(
   http.post("http://localhost/api/v1/payments/:id/refund", ({ params }) =>
     HttpResponse.json({ ...PAYMENT_CARD_PAID, id: params.id as string, status: "Refunded" }),
   ),
+  http.put("http://localhost/api/v1/payments/:id/splits", ({ params }) =>
+    HttpResponse.json({ ...PAYMENT_CARD_CAPTURED, id: params.id as string }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -292,5 +295,45 @@ describe("PaymentDetailPage", () => {
     await screen.findByText(/100/);
     await user.click(screen.getByRole("button", { name: /payments/i }));
     expect(screen.getByTestId("list-page")).toBeInTheDocument();
+  });
+
+  // ── Session Splits integration ───────────────────────────────────────────────
+
+  it("owner sees 'Session Splits' section", async () => {
+    renderPage("appt-001", Role.Owner);
+    await screen.findByText(/100/);
+    expect(screen.getByText("Session Splits")).toBeInTheDocument();
+  });
+
+  it("splits editor shows 'No session splits defined.' when payment has no splits", async () => {
+    renderPage("appt-001", Role.Owner);
+    await screen.findByText(/100/);
+    expect(await screen.findByText("No session splits defined.")).toBeInTheDocument();
+  });
+
+  it("splits editor shows existing splits returned with payment", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments/appointment/:appointmentId", ({ params }) => {
+        if (params.appointmentId === "appt-001") {
+          return HttpResponse.json({
+            ...PAYMENT_CARD_CAPTURED,
+            splits: [
+              { id: "sp-001", paymentId: "pay-001", label: "Outline session", amount: 60, paidAt: null },
+              { id: "sp-002", paymentId: "pay-001", label: "Shading session", amount: 40, paidAt: "2026-06-15T10:00:00Z" },
+            ],
+          });
+        }
+        return HttpResponse.json({ message: "Not found" }, { status: 404 });
+      }),
+    );
+    renderPage("appt-001", Role.Owner);
+    expect(await screen.findByText("Outline session")).toBeInTheDocument();
+    expect(screen.getByText("Shading session")).toBeInTheDocument();
+  });
+
+  it("non-owner (artist) does NOT see Session Splits section", async () => {
+    renderPage("appt-001", Role.Artist);
+    await screen.findByText(/100/);
+    expect(screen.queryByText("Session Splits")).not.toBeInTheDocument();
   });
 });

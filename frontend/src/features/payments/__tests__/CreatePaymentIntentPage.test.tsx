@@ -98,6 +98,9 @@ const server = setupServer(
   http.post("http://localhost/api/v1/payments/cash", () =>
     HttpResponse.json(CASH_RESULT),
   ),
+  http.put("http://localhost/api/v1/payments/:id/splits", ({ params }) =>
+    HttpResponse.json({ ...CASH_RESULT, id: params.id as string }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -363,5 +366,30 @@ describe("CreatePaymentIntentPage", () => {
     await screen.findByText("New payment");
     await user.click(screen.getByRole("button", { name: /payments/i }));
     expect(screen.getByTestId("list-page")).toBeInTheDocument();
+  });
+
+  // ── SessionSplitsEditor integration ──────────────────────────────────────────
+
+  it("CheckoutLinkPanel shows SessionSplitsEditor after card payment created", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByText("Maria Silva"));
+    await screen.findByText(/selected appointment/i);
+    await user.click(screen.getByRole("button", { name: /create card payment/i }));
+    await screen.findByText(/card payment intent created/i);
+    expect(screen.getByText("No session splits defined.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add splits/i })).toBeInTheDocument();
+  });
+
+  it("CashResultPanel shows SessionSplitsEditor after cash payment declared", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByText("Maria Silva"));
+    await screen.findByText(/selected appointment/i);
+    await user.click(screen.getByRole("button", { name: /^cash$/i }));
+    await user.click(screen.getByRole("button", { name: /record cash payment/i }));
+    await screen.findByText(/cash payment recorded/i);
+    expect(screen.getByText("No session splits defined.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add splits/i })).toBeInTheDocument();
   });
 });

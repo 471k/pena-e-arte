@@ -23,6 +23,7 @@ import {
   useConfirmCashDepositMutation,
 } from "../paymentsApi";
 import { PaymentMethod, PaymentStatus } from "../payment.types";
+import { SessionSplitsEditor } from "./SessionSplitsEditor";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -303,6 +304,13 @@ export function PaymentDetailPage() {
           <div className="rounded-lg border border-orange-200 bg-orange-50/30 p-4 text-sm text-orange-800">
             Awaiting cash collection from client.
           </div>
+        )}
+
+        {canOwner && (
+          <SessionSplitsEditor
+            paymentId={payment.id}
+            currentSplits={payment.splits ?? []}
+          />
         )}
       </main>
     </div>

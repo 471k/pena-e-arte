@@ -26,6 +26,7 @@ export interface PaymentResponse {
   paidAt:                string | null;
   clientName:            string;
   appointmentDate:       string | null;
+  splits?:               SessionSplitResponse[];
 }
 
 export interface PaymentIntentResponse {

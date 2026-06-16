@@ -27,6 +27,7 @@ import {
   useDeclareCashDepositMutation,
 }                                          from "../paymentsApi";
 import type { PaymentIntentResponse, PaymentResponse } from "../payment.types";
+import { SessionSplitsEditor }             from "./SessionSplitsEditor";
 import type { AppointmentResponse }        from "@/features/appointments/appointment.types";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -103,6 +104,8 @@ function CheckoutLinkPanel({
         </p>
       </div>
 
+      <SessionSplitsEditor paymentId={result.paymentId} currentSplits={[]} />
+
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1 gap-2" onClick={() => window.open(checkoutUrl, "_blank")}>
           <ExternalLink className="h-4 w-4" />
@@ -148,6 +151,8 @@ function CashResultPanel({
           The payment is waiting for cash collection. Open the payment detail to confirm receipt once the client pays.
         </p>
       </div>
+
+      <SessionSplitsEditor paymentId={result.id} currentSplits={[]} />
 
       <Button className="w-full" onClick={() => navigate(`/payments/${result.appointmentId}`, { replace: true })}>
         View payment
