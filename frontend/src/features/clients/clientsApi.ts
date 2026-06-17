@@ -187,6 +187,14 @@ export const clientsApi = createApi({
         { type: "ClientProfile", id: clientId },
       ],
     }),
+    updateMyBodyMap: builder.mutation<ClientProfileResponse, string[]>({
+      query: (locations) => ({
+        url: "clients/me/profile/body-map",
+        method: "PATCH",
+        body: { locations },
+      }),
+      invalidatesTags: [{ type: "ClientProfile", id: "me" }],
+    }),
     updatePortableProfileOptIn: builder.mutation<void, boolean>({
       query: (optIn) => ({
         url: "clients/me/portable-profile",
@@ -212,6 +220,7 @@ export const {
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
   useUpdateBodyMapMutation,
+  useUpdateMyBodyMapMutation,
   useGetTattooRecordsQuery,
   useGetTattooRecordQuery,
   useAddTattooRecordMutation,

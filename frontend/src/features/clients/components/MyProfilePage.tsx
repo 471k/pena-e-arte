@@ -1,4 +1,6 @@
-import { User, MapPin } from "lucide-react";
+import { useState } from "react";
+import { Loader2, MapPin, Pencil, User } from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
@@ -6,6 +8,7 @@ import {
   useGetMyClientQuery,
   useGetMyClientProfileQuery,
   useGetMyTattooRecordsQuery,
+  useUpdateMyBodyMapMutation,
 } from "../clientsApi";
 import { BodyMap } from "./BodyMap";
 import { PortableProfileToggle } from "./PortableProfileToggle";
@@ -31,10 +34,22 @@ function ProfileField({ label, value }: { label: string; value: string | null | 
 
 export function MyProfilePage() {
   const { data: client, isLoading, isError } = useGetMyClientQuery();
-
   const { data: profile, isLoading: profileLoading, isError: profileError } = useGetMyClientProfileQuery();
-
   const { data: tattoos = [], isLoading: tattoosLoading } = useGetMyTattooRecordsQuery();
+  const [updateMyBodyMap, { isLoading: isSavingMap }] = useUpdateMyBodyMapMutation();
+
+  const [bodyMapMode,  setBodyMapMode]  = useState<"view" | "edit">("view");
+  const [bodyMapDraft, setBodyMapDraft] = useState<string[]>([]);
+
+  function startBodyMapEdit() {
+    setBodyMapDraft(profile?.bodyMapLocations ?? []);
+    setBodyMapMode("edit");
+  }
+
+  async function saveBodyMap() {
+    await updateMyBodyMap(bodyMapDraft);
+    setBodyMapMode("view");
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -100,11 +115,50 @@ export function MyProfilePage() {
                 {!profileLoading && profile && (
                   <Card>
                     <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <h2 className="text-sm font-medium">Body Map</h2>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <h2 className="text-sm font-medium">Body Map</h2>
+                        </div>
+                        {bodyMapMode === "view" ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={startBodyMapEdit}
+                            className="h-7 gap-1 text-xs px-2"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Edit
+                          </Button>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setBodyMapMode("view")}
+                              disabled={isSavingMap}
+                              className="h-7 text-xs px-2"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={saveBodyMap}
+                              disabled={isSavingMap}
+                              className="h-7 text-xs px-3"
+                            >
+                              {isSavingMap
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : "Save"}
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      <BodyMap locations={profile.bodyMapLocations} readOnly />
+                      <BodyMap
+                        locations={bodyMapMode === "edit" ? bodyMapDraft : profile.bodyMapLocations}
+                        readOnly={bodyMapMode === "view"}
+                        onChange={bodyMapMode === "edit" ? setBodyMapDraft : undefined}
+                      />
                     </CardContent>
                   </Card>
                 )}
