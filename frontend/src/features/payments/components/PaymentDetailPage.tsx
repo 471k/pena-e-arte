@@ -5,6 +5,7 @@ import {
   Banknote,
   CheckCircle2,
   CreditCard,
+  Download,
   Loader2,
   RotateCcw,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import {
   useCaptureDepositMutation,
   useRefundPaymentMutation,
   useConfirmCashDepositMutation,
+  useDownloadInvoiceMutation,
 } from "../paymentsApi";
 import { PaymentMethod, PaymentStatus } from "../payment.types";
 import { SessionSplitsEditor } from "./SessionSplitsEditor";
@@ -142,6 +144,7 @@ export function PaymentDetailPage() {
 
   const [capture,     { isLoading: isCapturing }]  = useCaptureDepositMutation();
   const [confirmCash, { isLoading: isConfirming }] = useConfirmCashDepositMutation();
+  const [downloadInvoice, { isLoading: isDownloading }] = useDownloadInvoiceMutation();
 
   async function handleCapture(paymentId: string) {
     try {
@@ -150,6 +153,20 @@ export function PaymentDetailPage() {
     } catch (e) {
       const err = e as { data?: { message?: string } } | undefined;
       toast.error(err?.data?.message ?? "Capture failed. Please try again.");
+    }
+  }
+
+  async function handleDownloadInvoice(paymentId: string) {
+    try {
+      const blob = await downloadInvoice(paymentId).unwrap();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `invoice-${paymentId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Failed to download invoice. Please try again.");
     }
   }
 
@@ -196,9 +213,11 @@ export function PaymentDetailPage() {
 
   const isAwaitingAction = payment.status === PaymentStatus.Pending
     || payment.status === PaymentStatus.CashPending;
-  const isPaid    = payment.status === PaymentStatus.Paid;
-  const isCard    = payment.method === PaymentMethod.Card;
-  const isCash    = payment.method === PaymentMethod.Cash;
+  const isPaid       = payment.status === PaymentStatus.Paid;
+  const isRefunded   = payment.status === PaymentStatus.Refunded;
+  const isCard       = payment.method === PaymentMethod.Card;
+  const isCash       = payment.method === PaymentMethod.Cash;
+  const hasReceipt   = isPaid || isRefunded;
 
   return (
     <div className="min-h-screen bg-background">
@@ -263,6 +282,28 @@ export function PaymentDetailPage() {
           )}
 
           {isPaid && canOwner && isCard && <RefundSection paymentId={payment.id} />}
+
+          {hasReceipt && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDownloadInvoice(payment.id)}
+              disabled={isDownloading}
+              className="gap-1.5"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Downloading…
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  Download receipt
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </header>
 

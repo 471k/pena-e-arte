@@ -42,6 +42,9 @@ public static class PaymentEndpoints
 
         group.MapGet("/{id:guid}/client-secret",
             GetClientSecret).RequireAuthorization("ClientAndAbove");
+
+        group.MapGet("/{id:guid}/invoice",
+            DownloadInvoice).RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> CreatePaymentIntent(
@@ -137,5 +140,14 @@ public static class PaymentEndpoints
     {
         PaymentClientSecretResponse result = await mediator.Send(new GetPaymentClientSecretQuery(id), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> DownloadInvoice(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        byte[] pdf = await mediator.Send(new GetPaymentInvoiceQuery(id), ct);
+        return Results.File(pdf, "application/pdf", $"invoice-{id:N}.pdf");
     }
 }

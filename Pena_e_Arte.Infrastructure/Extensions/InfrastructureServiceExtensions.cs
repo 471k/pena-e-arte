@@ -107,6 +107,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IPortableProfileService,    PortableProfileService>();
         services.AddScoped<IQrCodeService,             QrCodeService>();
         services.AddSingleton<IConsentFormPdfService, ConsentFormPdfService>();
+        services.AddSingleton<IPaymentInvoiceService, PaymentInvoiceService>();
         services.AddScoped<INotificationService,           NotificationService>();
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();

@@ -63,6 +63,13 @@ export const paymentsApi = createApi({
     getPaymentClientSecret: builder.query<ClientSecretResponse, string>({
       query: (id) => `payments/${id}/client-secret`,
     }),
+    downloadInvoice: builder.mutation<Blob, string>({
+      query: (id) => ({
+        url:             `payments/${id}/invoice`,
+        method:          "GET",
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
   }),
 });
 
@@ -77,4 +84,5 @@ export const {
   useRefundPaymentMutation,
   useUpdateSessionSplitsMutation,
   useGetPaymentClientSecretQuery,
+  useDownloadInvoiceMutation,
 } = paymentsApi;
