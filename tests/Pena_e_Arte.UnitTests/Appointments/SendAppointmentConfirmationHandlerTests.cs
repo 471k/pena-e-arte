@@ -32,7 +32,7 @@ public class SendAppointmentConfirmationHandlerTests
         new(_db, _emailRenderer, _notifications, _realtime,
             NullLogger<SendAppointmentConfirmationHandler>.Instance);
 
-    private async Task<(Guid appointmentId, Studio studio)> SeedData(bool showBranding)
+    private async Task<(Guid appointmentId, Studio studio)> SeedData(bool showBranding, string? phone = null)
     {
         Studio studio = new()
         {
@@ -49,6 +49,7 @@ public class SendAppointmentConfirmationHandlerTests
             FirstName = "Ana",
             LastName  = "Silva",
             Email     = "ana@example.com",
+            Phone     = phone,
         };
         _db.Clients.Add(client);
 
@@ -188,5 +189,57 @@ public class SendAppointmentConfirmationHandlerTests
             studio.Id, "NotificationReceived",
             Arg.Is<NotificationLogResponse>(r => r.RecipientName == "Ana Silva"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ClientHasPhone_SendsSms()
+    {
+        (Guid appointmentId, _) = await SeedData(showBranding: true, phone: "+351912345678");
+
+        await CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
+
+        await _notifications.Received(1)
+            .SendSmsAsync("+351912345678", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ClientHasNoPhone_DoesNotSendSms()
+    {
+        (Guid appointmentId, _) = await SeedData(showBranding: true, phone: null);
+
+        await CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
+
+        await _notifications.DidNotReceive()
+            .SendSmsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_SmsFails_DoesNotThrow()
+    {
+        (Guid appointmentId, _) = await SeedData(showBranding: true, phone: "+351912345678");
+        _notifications
+            .SendSmsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Twilio down"));
+
+        Func<Task> act = () =>
+            CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_SmsFails_WritesFailedSmsLog()
+    {
+        (Guid appointmentId, _) = await SeedData(showBranding: true, phone: "+351912345678");
+        _notifications
+            .SendSmsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Twilio down"));
+
+        await CreateSut().Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
+
+        NotificationLog? smsLog = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.Channel == NotificationChannel.Sms);
+        smsLog.Should().NotBeNull();
+        smsLog!.IsSuccess.Should().BeFalse();
     }
 }
