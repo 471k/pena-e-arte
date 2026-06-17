@@ -11,7 +11,17 @@ public class Studio
     public string?  CoverImageUrl   { get; set; }
     public double   Latitude        { get; set; }
     public double   Longitude       { get; set; }
-    public bool     IsActive              { get; set; }
+    /// <summary>
+    /// Controls whether this studio is visible in public-facing endpoints
+    /// (public portfolio, studio map) and whether tenant access is permitted.
+    /// <para>
+    /// NOTE: The SP-02 spec referenced an <c>IsPublished</c> field. No such field
+    /// exists. <c>IsActive</c> serves the same purpose — a studio that should not
+    /// appear publicly is simply deactivated by the issuer. Do not add
+    /// <c>IsPublished</c> without first updating <c>docs/claude/architecture.md</c>.
+    /// </para>
+    /// </summary>
+    public bool     IsActive              { get; set; } = true;
     public bool     ShowPlatformBranding  { get; private set; } = true;
     public DateTime? SlugLockedAt   { get; set; }
 

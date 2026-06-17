@@ -270,6 +270,22 @@ See "Payment Architecture — Card & Cash Only" section for the full picture.
 Public endpoint — no authentication required, no tenant filter.
 Returns only published/active studios.
 
+### IsActive vs IsPublished — intentional design decision
+
+The SP-02 spec referred to an `IsPublished` boolean on `Studio`. No such
+field exists or is planned. The public portfolio endpoints (`GetPublicStudioQuery`,
+`GetPublicArtistQuery`) and the studio map endpoint filter on `Studio.IsActive`
+instead.
+
+This is **intentional**: `IsActive` already covers the intended behaviour —
+deactivated studios (suspended, manually disabled by issuer) do not appear in
+public-facing endpoints. A separate `IsPublished` field would add complexity
+without adding expressive power given the current subscription and trial model.
+
+If a future feature requires a studio to be active but unlisted (e.g. soft-launch
+mode), add `IsPublished bool` to `Studio` at that time and update this section.
+Until then, do not add `IsPublished` to the entity or the EF Core config.
+
 ```
 GET /api/studios/map
 Response: [{ studioId, name, slug, latitude, longitude, city }]
@@ -521,3 +537,4 @@ does not re-litigate them.
 | Stripe keys in config | `Stripe:PublishableKey`, `Stripe:SecretKey` in `appsettings.Development.json` (gitignored) | Never in source; env vars in production |
 | `ClientPaymentMethod` enum | `Card` \| `Cash` (removed `Stripe`, removed `PayPal`) | Matches the two accepted payment methods; `Card` is technology-agnostic (Stripe is the impl) |
 | `PaymentStatus.CashPending` | Added to `PaymentStatus` enum | Represents the window between client's cash declaration and owner's confirmation |
+| `IsPublished` vs `IsActive` on `Studio` | Use `IsActive` only | `IsPublished` was in the SP-02 spec but never implemented. `IsActive` covers the same use case. Adding a second flag would create redundant state. |
