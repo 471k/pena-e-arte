@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Design Changes Requested</title></head>
+<body style="font-family:sans-serif;color:#1a1a1a;max-width:560px;margin:0 auto;padding:24px">
+  <h2 style="margin-bottom:4px">Changes requested</h2>
+  <p style="color:#555;margin-top:0">Hi {{artist_first_name}},</p>
+  <p>Your client has requested <strong>changes</strong> to the design
+     <em>{{design_title}}</em>.</p>
+  {{#if client_notes}}
+  <blockquote style="border-left:3px solid #f59e0b;margin:16px 0;padding:8px 16px;color:#555">
+    {{client_notes}}
+  </blockquote>
+  {{/if}}
+  <p style="color:#555;font-size:13px">Log in to review the feedback and upload a revised design.</p>
+  {{#if show_branding}}
+  <hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0">
+  <p style="font-size:11px;color:#aaa;text-align:center">Powered by Pena e Art&#235;</p>
+  {{/if}}
+</body>
+</html>
