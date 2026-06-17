@@ -20,7 +20,8 @@ public class CreateAppointmentHandler(
     ICurrentUser      currentUser,
     ISlotLocker       slotLocker,
     IJobScheduler     jobs,
-    IRealtimeNotifier realtime)
+    IRealtimeNotifier realtime,
+    ISender           sender)
     : IRequestHandler<CreateAppointmentCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(CreateAppointmentCommand command, CancellationToken ct)
@@ -93,6 +94,8 @@ public class CreateAppointmentHandler(
 
             AppointmentResponse response = Map(appointment);
             await realtime.NotifyStudioAsync(tenant.StudioId, "AppointmentCreated", response, ct);
+
+            await sender.Send(new SendAppointmentCreatedNotificationCommand(appointment.Id), ct);
 
             return response;
         }

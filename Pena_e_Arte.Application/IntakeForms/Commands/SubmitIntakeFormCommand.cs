@@ -12,7 +12,7 @@ namespace Pena_e_Arte.Application.IntakeForms.Commands;
 
 public record SubmitIntakeFormCommand(SubmitIntakeFormRequest Request) : IRequest<IntakeFormResponse>;
 
-public class SubmitIntakeFormHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser)
+public class SubmitIntakeFormHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser, ISender sender)
     : IRequestHandler<SubmitIntakeFormCommand, IntakeFormResponse>
 {
     public async Task<IntakeFormResponse> Handle(SubmitIntakeFormCommand command, CancellationToken ct)
@@ -50,6 +50,8 @@ public class SubmitIntakeFormHandler(IAppDbContext db, ICurrentTenant tenant, IC
 
         db.IntakeForms.Add(form);
         await db.SaveChangesAsync(ct);
+
+        await sender.Send(new SendIntakeFormSubmittedNotificationCommand(form.Id), ct);
 
         return Map(form);
     }

@@ -63,6 +63,12 @@ public class GetNotificationsHandler(IAppDbContext db)
             .Distinct()
             .ToList();
 
+        List<Guid> artistIds = logs
+            .Where(n => n.RecipientType == NotificationRecipientType.Artist)
+            .Select(n => n.RecipientId)
+            .Distinct()
+            .ToList();
+
         Dictionary<Guid, string> names = [];
 
         if (clientIds.Count > 0)
@@ -86,6 +92,18 @@ public class GetNotificationsHandler(IAppDbContext db)
                 .ToListAsync(ct);
 
             foreach ((Guid id, string name) in studios)
+                names[id] = name;
+        }
+
+        if (artistIds.Count > 0)
+        {
+            List<(Guid Id, string Name)> artists = await db.Artists
+                .AsNoTracking()
+                .Where(a => artistIds.Contains(a.Id))
+                .Select(a => new ValueTuple<Guid, string>(a.Id, a.FirstName + " " + a.LastName))
+                .ToListAsync(ct);
+
+            foreach ((Guid id, string name) in artists)
                 names[id] = name;
         }
 

@@ -13,7 +13,8 @@ public record RefundPaymentCommand(Guid PaymentId, decimal? Amount) : IRequest<P
 
 public class RefundPaymentHandler(
     IAppDbContext         db,
-    IStripePaymentService stripePayments)
+    IStripePaymentService stripePayments,
+    ISender               sender)
     : IRequestHandler<RefundPaymentCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(RefundPaymentCommand command, CancellationToken ct)
@@ -42,6 +43,8 @@ public class RefundPaymentHandler(
         payment.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
+
+        await sender.Send(new SendPaymentRefundedNotificationCommand(payment.Id), ct);
 
         return payment.ToResponse();
     }

@@ -15,7 +15,8 @@ public class CaptureDepositHandler(
     IAppDbContext         db,
     ICurrentTenant        tenant,
     IStripePaymentService stripePayments,
-    IRealtimeNotifier     realtime)
+    IRealtimeNotifier     realtime,
+    ISender               sender)
     : IRequestHandler<CaptureDepositCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(CaptureDepositCommand command, CancellationToken ct)
@@ -54,6 +55,8 @@ public class CaptureDepositHandler(
 
         PaymentResponse response = payment.ToResponse();
         await realtime.NotifyStudioAsync(tenant.StudioId, "DepositCaptured", response, ct);
+
+        await sender.Send(new SendDepositCapturedNotificationCommand(payment.Id), ct);
 
         return response;
     }

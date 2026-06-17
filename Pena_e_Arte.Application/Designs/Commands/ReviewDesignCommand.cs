@@ -16,7 +16,8 @@ public record ReviewDesignCommand(ReviewDesignRequest Request) : IRequest<Design
 public class ReviewDesignHandler(
     IAppDbContext     db,
     ICurrentTenant    tenant,
-    IRealtimeNotifier realtime)
+    IRealtimeNotifier realtime,
+    ISender           sender)
     : IRequestHandler<ReviewDesignCommand, DesignRevisionResponse>
 {
     public async Task<DesignRevisionResponse> Handle(ReviewDesignCommand command, CancellationToken ct)
@@ -62,6 +63,8 @@ public class ReviewDesignHandler(
         string eventName = req.Approved ? "DesignApproved" : "DesignChangeRequested";
         DesignRevisionResponse response = UploadDesignRevisionHandler.Map(revision, approval);
         await realtime.NotifyStudioAsync(tenant.StudioId, eventName, response, ct);
+
+        await sender.Send(new SendDesignReviewNotificationCommand(req.DesignRevisionId, req.Approved), ct);
 
         return response;
     }
