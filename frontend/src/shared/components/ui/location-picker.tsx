@@ -102,6 +102,17 @@ export function LocationPicker({ value, onChange, error, className }: LocationPi
   );
   const [locating,  setLocating]  = useState(false);
 
+  // Sync pin/label/flyTarget when value arrives externally (e.g. form reset from API).
+  // useState only initialises once on mount; if value wasn't available then (async load),
+  // this effect catches the update without needing a key-driven remount.
+  useEffect(() => {
+    if (value == null || isNaN(value.lat) || value.lat === 0) return;
+    setPin([value.lat, value.lng]);
+    if (value.city) setLabel({ city: value.city, country: "" });
+    setFlyTarget({ lat: value.lat, lng: value.lng, zoom: 13 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value?.lat, value?.lng]);
+
   // Auto-detect location on first mount when there's no existing pin
   useEffect(() => {
     if (hasInitial) return;

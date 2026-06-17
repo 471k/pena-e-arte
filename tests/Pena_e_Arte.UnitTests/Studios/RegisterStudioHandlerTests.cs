@@ -81,16 +81,20 @@ public class RegisterStudioHandlerTests
     }
 
     [Fact]
-    public async Task Handle_DuplicateSlug_ThrowsBusinessRuleViolationException()
+    public async Task Handle_SlugCollision_AppendsSuffixUntilUnique()
     {
-        _db.Studios.Add(new Studio { Name = "Existing", Slug = "my-studio", City = "Lisbon" });
+        // Arrange
+        _db.Studios.Add(new Studio { Name = "Existing",   Slug = "my-studio",   City = "Lisbon" });
+        _db.Studios.Add(new Studio { Name = "Existing 2", Slug = "my-studio-2", City = "Lisbon" });
         await _db.SaveChangesAsync();
 
-        Func<Task> act = () => CreateSut()
+        // Act
+        StudioResponse result = await CreateSut()
             .Handle(new RegisterStudioCommand(ValidRequest() with { Slug = "my-studio" }), default);
 
-        await act.Should().ThrowAsync<BusinessRuleViolationException>()
-            .WithMessage("*slug*");
+        // Assert
+        result.Slug.Should().Be("my-studio-3");
+        _db.Studios.Should().ContainSingle(s => s.Slug == "my-studio-3");
     }
 
     [Fact]

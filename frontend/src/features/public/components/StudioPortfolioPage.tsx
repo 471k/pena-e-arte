@@ -1,9 +1,10 @@
-import { useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { MapPin, Loader2, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { useGetPublicStudioQuery, type PublicArtistSummary } from "../publicApi";
+import { useAppSelector } from "@/app/hooks";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 
 function ArtistCard({ artist }: { artist: PublicArtistSummary }) {
   return (
@@ -20,16 +21,25 @@ function ArtistCard({ artist }: { artist: PublicArtistSummary }) {
   );
 }
 
+function StudioMeta({ name, slug, description, coverImageUrl }: {
+  name: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+}) {
+  useDocumentMeta({
+    title:       `${name} — Book a Tattoo on Pena e Artë`,
+    description: description ?? `Book your next tattoo at ${name}.`,
+    ogImage:     coverImageUrl ?? undefined,
+    canonical:   `https://penaearte.com/s/${slug}`,
+  });
+  return null;
+}
+
 export function StudioPortfolioPage() {
   const { slug = "" } = useParams<{ slug: string }>();
-  const navigate      = useNavigate();
+  const token = useAppSelector((s) => s.auth.token);
   const { data: studio, isLoading, isError } = useGetPublicStudioQuery(slug, { skip: !slug });
-
-  useEffect(() => {
-    if (studio) {
-      document.title = `${studio.name} — Book a Tattoo on Pena e Artë`;
-    }
-  }, [studio]);
 
   if (isLoading) {
     return (
@@ -43,13 +53,25 @@ export function StudioPortfolioPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <p className="text-muted-foreground">Studio not found.</p>
-        <Button variant="outline" onClick={() => navigate("/")}>Go home</Button>
+        <Button variant="outline" asChild>
+          <Link to="/">Go home</Link>
+        </Button>
       </div>
     );
   }
 
+  const bookUrl = `/book?studio=${studio.slug}`;
+  const ctaUrl  = token ? bookUrl : `/login?redirect=${encodeURIComponent(bookUrl)}`;
+
   return (
     <div className="min-h-screen bg-background">
+      <StudioMeta
+        name={studio.name}
+        slug={studio.slug}
+        description={studio.description}
+        coverImageUrl={studio.coverImageUrl}
+      />
+
       {studio.coverImageUrl && (
         <div className="h-48 bg-muted overflow-hidden">
           <img
@@ -73,8 +95,8 @@ export function StudioPortfolioPage() {
         </div>
 
         {studio.showBookingCta && (
-          <Button className="w-full" onClick={() => navigate(`/book?studio=${studio.slug}`)}>
-            Book here
+          <Button className="w-full" asChild>
+            <Link to={ctaUrl}>Book here</Link>
           </Button>
         )}
 

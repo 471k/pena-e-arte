@@ -1,9 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Building2, Loader2, Save } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
@@ -26,6 +25,7 @@ type FormValues = z.infer<typeof schema>;
 export function StudioProfilePage() {
   const { data: studio, isLoading } = useGetMyStudioQuery();
   const [updateStudio, { isLoading: saving, isSuccess }] = useUpdateMyStudioMutation();
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({ resolver: zodResolver(schema) });
@@ -46,8 +46,18 @@ export function StudioProfilePage() {
   }, [studio, reset]);
 
   async function onSubmit(values: FormValues) {
-    await updateStudio(values).unwrap();
-    reset(values);
+    setServerError(null);
+    try {
+      await updateStudio(values).unwrap();
+      reset(values);
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "data" in err &&
+        err.data && typeof err.data === "object" && "message" in err.data
+          ? String((err.data as { message: string }).message)
+          : "Unable to save changes.";
+      setServerError(msg);
+    }
   }
 
   if (isLoading) {
@@ -84,6 +94,9 @@ export function StudioProfilePage() {
           <CardContent>
             {isSuccess && (
               <p className="text-sm text-green-600 mb-4">Changes saved.</p>
+            )}
+            {serverError && (
+              <p className="text-sm text-destructive mb-4">{serverError}</p>
             )}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-1.5">

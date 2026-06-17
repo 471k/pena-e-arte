@@ -23,8 +23,10 @@ public class RegisterStudioHandler(
     {
         RegisterStudioRequest req = command.Request;
 
-        bool slugTaken = await db.Studios.AnyAsync(s => s.Slug == req.Slug, ct);
-        if (slugTaken) throw new BusinessRuleViolationException("Studio slug is already taken.");
+        string slug   = req.Slug;
+        int    suffix = 2;
+        while (await db.Studios.AnyAsync(s => s.Slug == slug, ct))
+            slug = $"{req.Slug}-{suffix++}";
 
         // Validate referral code if provided
         Guid? pendingReferralCodeId = null;
@@ -51,7 +53,7 @@ public class RegisterStudioHandler(
         Studio studio = new()
         {
             Name                  = req.Name,
-            Slug                  = req.Slug,
+            Slug                  = slug,
             City                  = req.City,
             OwnerEmail            = req.OwnerEmail,
             Latitude              = req.Latitude,

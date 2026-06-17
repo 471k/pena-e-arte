@@ -1,4 +1,5 @@
 import { ShieldX } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 
 export function SuspensionBanner({ studio }: { studio?: StudioResponse }) {
@@ -15,6 +16,10 @@ export function SuspensionBanner({ studio }: { studio?: StudioResponse }) {
         >
           support
         </a>{" "}
+        or{" "}
+        <Link to="/subscribe" className="font-medium underline underline-offset-4">
+          reactivate your subscription
+        </Link>{" "}
         to resolve this.
       </span>
     </div>

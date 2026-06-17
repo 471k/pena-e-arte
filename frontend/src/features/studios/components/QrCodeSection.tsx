@@ -29,9 +29,18 @@ export function QrCodeSection() {
           Scan to book — add this to your window, business cards, or social bio.
         </p>
 
+        <a
+          href={`https://penaearte.com/s/${studio.slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-mono text-muted-foreground hover:text-foreground underline underline-offset-2 break-all"
+        >
+          penaearte.com/s/{studio.slug}
+        </a>
+
         <div className="flex flex-col items-start gap-4">
           {isLoading && (
-            <div className="flex h-48 w-48 items-center justify-center rounded-md border bg-muted">
+            <div data-testid="qr-loading" className="flex h-48 w-48 items-center justify-center rounded-md border bg-muted">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           )}
@@ -42,6 +51,7 @@ export function QrCodeSection() {
 
           {blobUrl && !isLoading && (
             <img
+              data-testid="qr-image"
               src={blobUrl}
               alt={`QR code for ${studio.name}`}
               className="h-48 w-48 rounded-md border object-contain"
