@@ -16,6 +16,7 @@ public class SendPaymentRefundedNotificationHandler(
     IAppDbContext                                            db,
     IEmailRenderer                                          emailRenderer,
     INotificationService                                    notifications,
+    INotificationPreferenceService                          prefs,
     IRealtimeNotifier                                       realtime,
     ILogger<SendPaymentRefundedNotificationHandler>         logger)
     : IRequestHandler<SendPaymentRefundedNotificationCommand, Unit>
@@ -47,6 +48,11 @@ public class SendPaymentRefundedNotificationHandler(
 
         string amountFormatted = payment.Amount.ToString("C", new CultureInfo("pt-PT"));
 
+        bool emailEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.PaymentRefunded, NotificationChannel.Email, ct);
+        bool smsEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.PaymentRefunded, NotificationChannel.Sms, ct);
+
         // Email to client
         string emailSubject = "Refund processed";
         string emailBody = emailRenderer.RenderPaymentRefunded(
@@ -54,38 +60,42 @@ public class SendPaymentRefundedNotificationHandler(
             amountFormatted,
             studio.ShowPlatformBranding);
 
-        bool emailSuccess = true;
-        try
+        NotificationLog? emailLog = null;
+        if (emailEnabled)
         {
-            await notifications.SendEmailAsync(payment.Client.Email, emailSubject, emailBody, ct);
-            logger.LogInformation(
-                "Payment refunded email sent for payment {@PaymentId}",
-                payment.Id);
-        }
-        catch (Exception ex)
-        {
-            emailSuccess = false;
-            logger.LogWarning(ex,
-                "Failed to send payment refunded email for payment {@PaymentId}",
-                payment.Id);
-        }
+            bool emailSuccess = true;
+            try
+            {
+                await notifications.SendEmailAsync(payment.Client.Email, emailSubject, emailBody, ct);
+                logger.LogInformation(
+                    "Payment refunded email sent for payment {@PaymentId}",
+                    payment.Id);
+            }
+            catch (Exception ex)
+            {
+                emailSuccess = false;
+                logger.LogWarning(ex,
+                    "Failed to send payment refunded email for payment {@PaymentId}",
+                    payment.Id);
+            }
 
-        NotificationLog emailLog = new()
-        {
-            StudioId      = studio.Id,
-            RecipientId   = payment.ClientId,
-            RecipientType = NotificationRecipientType.Client,
-            Channel       = NotificationChannel.Email,
-            Subject       = emailSubject,
-            Body          = emailBody,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = emailSuccess,
-        };
-        db.NotificationLogs.Add(emailLog);
-        await db.SaveChangesAsync(ct);
+            emailLog = new()
+            {
+                StudioId      = studio.Id,
+                RecipientId   = payment.ClientId,
+                RecipientType = NotificationRecipientType.Client,
+                Channel       = NotificationChannel.Email,
+                Subject       = emailSubject,
+                Body          = emailBody,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = emailSuccess,
+            };
+            db.NotificationLogs.Add(emailLog);
+            await db.SaveChangesAsync(ct);
+        }
 
         // SMS to client
-        if (payment.Client.Phone is not null)
+        if (smsEnabled && payment.Client.Phone is not null)
         {
             string smsBody =
                 $"Hi {payment.Client.FirstName}, a refund of {amountFormatted} " +
@@ -104,7 +114,7 @@ public class SendPaymentRefundedNotificationHandler(
                     payment.Id);
             }
 
-            NotificationLog smsLog = new()
+            db.NotificationLogs.Add(new NotificationLog
             {
                 StudioId      = studio.Id,
                 RecipientId   = payment.ClientId,
@@ -114,14 +124,16 @@ public class SendPaymentRefundedNotificationHandler(
                 Body          = smsBody,
                 SentAt        = DateTime.UtcNow,
                 IsSuccess     = smsSuccess,
-            };
-            db.NotificationLogs.Add(smsLog);
+            });
             await db.SaveChangesAsync(ct);
         }
 
-        await realtime.NotifyStudioAsync(
-            studio.Id, "NotificationReceived",
-            GetNotificationsHandler.Map(emailLog, $"{payment.Client.FirstName} {payment.Client.LastName}"), ct);
+        if (emailLog is not null)
+        {
+            await realtime.NotifyStudioAsync(
+                studio.Id, "NotificationReceived",
+                GetNotificationsHandler.Map(emailLog, $"{payment.Client.FirstName} {payment.Client.LastName}"), ct);
+        }
 
         return Unit.Value;
     }

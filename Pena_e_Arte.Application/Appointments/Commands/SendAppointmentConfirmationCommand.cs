@@ -15,6 +15,7 @@ public class SendAppointmentConfirmationHandler(
     IAppDbContext                                      db,
     IEmailRenderer                                     emailRenderer,
     INotificationService                               notifications,
+    INotificationPreferenceService                     prefs,
     IRealtimeNotifier                                  realtime,
     ILogger<SendAppointmentConfirmationHandler>        logger)
     : IRequestHandler<SendAppointmentConfirmationCommand, Unit>
@@ -52,41 +53,53 @@ public class SendAppointmentConfirmationHandler(
 
         string subject = $"Appointment Confirmed — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
 
-        bool success = false;
-        try
+        bool emailEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.AppointmentConfirmed, NotificationChannel.Email, ct);
+        bool smsEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.AppointmentConfirmed, NotificationChannel.Sms, ct);
+
+        NotificationLog? log = null;
+        if (emailEnabled)
         {
-            await notifications.SendEmailAsync(appointment.Client.Email, subject, body, ct);
-            success = true;
-            logger.LogInformation(
-                "Confirmation email sent for appointment {@AppointmentId}",
-                appointment.Id);
+            bool success = false;
+            try
+            {
+                await notifications.SendEmailAsync(appointment.Client.Email, subject, body, ct);
+                success = true;
+                logger.LogInformation(
+                    "Confirmation email sent for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Failed to send confirmation email for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
+
+            log = new()
+            {
+                StudioId      = appointment.StudioId,
+                RecipientId   = appointment.ClientId,
+                RecipientType = NotificationRecipientType.Client,
+                Channel       = NotificationChannel.Email,
+                Subject       = subject,
+                Body          = body,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = success,
+            };
+            db.NotificationLogs.Add(log);
+            await db.SaveChangesAsync(ct);
         }
-        catch (Exception ex)
+
+        if (log is not null)
         {
-            logger.LogWarning(ex,
-                "Failed to send confirmation email for appointment {@AppointmentId}",
-                appointment.Id);
+            await realtime.NotifyStudioAsync(
+                appointment.StudioId, "NotificationReceived",
+                GetNotificationsHandler.Map(log, $"{appointment.Client.FirstName} {appointment.Client.LastName}"), ct);
         }
 
-        NotificationLog log = new()
-        {
-            StudioId      = appointment.StudioId,
-            RecipientId   = appointment.ClientId,
-            RecipientType = NotificationRecipientType.Client,
-            Channel       = NotificationChannel.Email,
-            Subject       = subject,
-            Body          = body,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = success,
-        };
-        db.NotificationLogs.Add(log);
-        await db.SaveChangesAsync(ct);
-
-        await realtime.NotifyStudioAsync(
-            appointment.StudioId, "NotificationReceived",
-            GetNotificationsHandler.Map(log, $"{appointment.Client.FirstName} {appointment.Client.LastName}"), ct);
-
-        if (appointment.Client.Phone is not null)
+        if (smsEnabled && appointment.Client.Phone is not null)
         {
             string smsBody =
                 $"Hi {appointment.Client.FirstName}, your tattoo appointment at " +
@@ -106,7 +119,7 @@ public class SendAppointmentConfirmationHandler(
                     command.AppointmentId, studio.Id);
             }
 
-            NotificationLog smsLog = new()
+            db.NotificationLogs.Add(new NotificationLog
             {
                 StudioId      = studio.Id,
                 RecipientId   = appointment.ClientId,
@@ -116,8 +129,7 @@ public class SendAppointmentConfirmationHandler(
                 Body          = smsBody,
                 SentAt        = DateTime.UtcNow,
                 IsSuccess     = smsSent,
-            };
-            db.NotificationLogs.Add(smsLog);
+            });
             await db.SaveChangesAsync(ct);
         }
 

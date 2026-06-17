@@ -15,6 +15,7 @@ public class SendDesignReviewNotificationHandler(
     IAppDbContext                                         db,
     IEmailRenderer                                       emailRenderer,
     INotificationService                                 notifications,
+    INotificationPreferenceService                       prefs,
     IRealtimeNotifier                                    realtime,
     ILogger<SendDesignReviewNotificationHandler>         logger)
     : IRequestHandler<SendDesignReviewNotificationCommand, Unit>
@@ -64,75 +65,84 @@ public class SendDesignReviewNotificationHandler(
                 clientNotes,
                 studio.ShowPlatformBranding);
 
-        // Email to studio owner
-        bool studioSuccess = true;
-        try
-        {
-            await notifications.SendEmailAsync(studio.OwnerEmail, subject, body, ct);
-            logger.LogInformation(
-                "Design review studio email sent for revision {@DesignRevisionId}",
-                revision.Id);
-        }
-        catch (Exception ex)
-        {
-            studioSuccess = false;
-            logger.LogWarning(ex,
-                "Failed to send design review studio email for revision {@DesignRevisionId}",
-                revision.Id);
-        }
+        bool emailEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.DesignReviewed, NotificationChannel.Email, ct);
 
-        NotificationLog studioLog = new()
+        NotificationLog? studioLog = null;
+        if (emailEnabled)
         {
-            StudioId      = studio.Id,
-            RecipientId   = studio.Id,
-            RecipientType = NotificationRecipientType.Studio,
-            Channel       = NotificationChannel.Email,
-            Subject       = subject,
-            Body          = body,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = studioSuccess,
-        };
-        db.NotificationLogs.Add(studioLog);
-        await db.SaveChangesAsync(ct);
-
-        // Email to artist (if non-empty email and different from studio owner)
-        if (!string.IsNullOrWhiteSpace(artist.Email) &&
-            !string.Equals(artist.Email, studio.OwnerEmail, StringComparison.OrdinalIgnoreCase))
-        {
-            bool artistSuccess = true;
+            // Email to studio owner
+            bool studioSuccess = true;
             try
             {
-                await notifications.SendEmailAsync(artist.Email, subject, body, ct);
+                await notifications.SendEmailAsync(studio.OwnerEmail, subject, body, ct);
                 logger.LogInformation(
-                    "Design review artist email sent for revision {@DesignRevisionId}",
+                    "Design review studio email sent for revision {@DesignRevisionId}",
                     revision.Id);
             }
             catch (Exception ex)
             {
-                artistSuccess = false;
+                studioSuccess = false;
                 logger.LogWarning(ex,
-                    "Failed to send design review artist email for revision {@DesignRevisionId}",
+                    "Failed to send design review studio email for revision {@DesignRevisionId}",
                     revision.Id);
             }
 
-            NotificationLog artistLog = new()
+            studioLog = new()
             {
                 StudioId      = studio.Id,
-                RecipientId   = artist.Id,
-                RecipientType = NotificationRecipientType.Artist,
+                RecipientId   = studio.Id,
+                RecipientType = NotificationRecipientType.Studio,
                 Channel       = NotificationChannel.Email,
                 Subject       = subject,
                 Body          = body,
                 SentAt        = DateTime.UtcNow,
-                IsSuccess     = artistSuccess,
+                IsSuccess     = studioSuccess,
             };
-            db.NotificationLogs.Add(artistLog);
+            db.NotificationLogs.Add(studioLog);
             await db.SaveChangesAsync(ct);
+
+            // Email to artist (if non-empty email and different from studio owner)
+            if (!string.IsNullOrWhiteSpace(artist.Email) &&
+                !string.Equals(artist.Email, studio.OwnerEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                bool artistSuccess = true;
+                try
+                {
+                    await notifications.SendEmailAsync(artist.Email, subject, body, ct);
+                    logger.LogInformation(
+                        "Design review artist email sent for revision {@DesignRevisionId}",
+                        revision.Id);
+                }
+                catch (Exception ex)
+                {
+                    artistSuccess = false;
+                    logger.LogWarning(ex,
+                        "Failed to send design review artist email for revision {@DesignRevisionId}",
+                        revision.Id);
+                }
+
+                db.NotificationLogs.Add(new NotificationLog
+                {
+                    StudioId      = studio.Id,
+                    RecipientId   = artist.Id,
+                    RecipientType = NotificationRecipientType.Artist,
+                    Channel       = NotificationChannel.Email,
+                    Subject       = subject,
+                    Body          = body,
+                    SentAt        = DateTime.UtcNow,
+                    IsSuccess     = artistSuccess,
+                });
+                await db.SaveChangesAsync(ct);
+            }
         }
 
-        await realtime.NotifyStudioAsync(
-            studio.Id, "NotificationReceived",
-            GetNotificationsHandler.Map(studioLog, studio.Name), ct);
+        if (studioLog is not null)
+        {
+            await realtime.NotifyStudioAsync(
+                studio.Id, "NotificationReceived",
+                GetNotificationsHandler.Map(studioLog, studio.Name), ct);
+        }
 
         return Unit.Value;
     }

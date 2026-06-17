@@ -15,6 +15,7 @@ public record SendAppointmentCancellationCommand(Guid AppointmentId) : IRequest<
 public class SendAppointmentCancellationHandler(
     IAppDbContext                                       db,
     INotificationService                               notifications,
+    INotificationPreferenceService                     prefs,
     IRealtimeNotifier                                  realtime,
     ILogger<SendAppointmentCancellationHandler>        logger)
     : IRequestHandler<SendAppointmentCancellationCommand, Unit>
@@ -35,39 +36,49 @@ public class SendAppointmentCancellationHandler(
         string subject = $"Appointment Cancelled — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
         string body    = BuildEmailBody(appointment);
 
-        bool success = false;
-        try
+        bool emailEnabled = await prefs.IsEnabledAsync(
+            appointment.StudioId, NotificationType.AppointmentCancelled, NotificationChannel.Email, ct);
+
+        NotificationLog? log = null;
+        if (emailEnabled)
         {
-            await notifications.SendEmailAsync(appointment.Client.Email, subject, body, ct);
-            success = true;
-            logger.LogInformation(
-                "Cancellation email sent for appointment {@AppointmentId}",
-                appointment.Id);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Failed to send cancellation email for appointment {@AppointmentId}",
-                appointment.Id);
+            bool success = false;
+            try
+            {
+                await notifications.SendEmailAsync(appointment.Client.Email, subject, body, ct);
+                success = true;
+                logger.LogInformation(
+                    "Cancellation email sent for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Failed to send cancellation email for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
+
+            log = new()
+            {
+                StudioId      = appointment.StudioId,
+                RecipientId   = appointment.ClientId,
+                RecipientType = NotificationRecipientType.Client,
+                Channel       = NotificationChannel.Email,
+                Subject       = subject,
+                Body          = body,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = success,
+            };
+            db.NotificationLogs.Add(log);
+            await db.SaveChangesAsync(ct);
         }
 
-        NotificationLog log = new()
+        if (log is not null)
         {
-            StudioId      = appointment.StudioId,
-            RecipientId   = appointment.ClientId,
-            RecipientType = NotificationRecipientType.Client,
-            Channel       = NotificationChannel.Email,
-            Subject       = subject,
-            Body          = body,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = success,
-        };
-        db.NotificationLogs.Add(log);
-        await db.SaveChangesAsync(ct);
-
-        await realtime.NotifyStudioAsync(
-            appointment.StudioId, "NotificationReceived",
-            GetNotificationsHandler.Map(log, $"{appointment.Client.FirstName} {appointment.Client.LastName}"), ct);
+            await realtime.NotifyStudioAsync(
+                appointment.StudioId, "NotificationReceived",
+                GetNotificationsHandler.Map(log, $"{appointment.Client.FirstName} {appointment.Client.LastName}"), ct);
+        }
 
         return Unit.Value;
     }

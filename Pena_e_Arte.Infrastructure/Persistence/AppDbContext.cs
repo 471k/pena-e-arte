@@ -26,7 +26,8 @@ public class AppDbContext(
     public DbSet<SessionSplit>         SessionSplits        => Set<SessionSplit>();
     public DbSet<IntakeForm>      IntakeForms      => Set<IntakeForm>();
     public DbSet<ConsentForm>     ConsentForms     => Set<ConsentForm>();
-    public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
+    public DbSet<NotificationLog>               NotificationLogs              => Set<NotificationLog>();
+    public DbSet<StudioNotificationPreference>  StudioNotificationPreferences => Set<StudioNotificationPreference>();
 
     // --- Issuer-level (no tenant filter) ---
     public DbSet<Studio>             Studios             => Set<Studio>();
@@ -63,6 +64,7 @@ public class AppDbContext(
         builder.Entity<SessionSplit>()        .HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<IntakeForm>()     .HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         builder.Entity<ConsentForm>()    .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
-        builder.Entity<NotificationLog>().HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
+        builder.Entity<NotificationLog>()              .HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
+        builder.Entity<StudioNotificationPreference>() .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
     }
 }

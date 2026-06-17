@@ -16,6 +16,7 @@ public class SendDepositCapturedNotificationHandler(
     IAppDbContext                                             db,
     IEmailRenderer                                           emailRenderer,
     INotificationService                                     notifications,
+    INotificationPreferenceService                           prefs,
     IRealtimeNotifier                                        realtime,
     ILogger<SendDepositCapturedNotificationHandler>          logger)
     : IRequestHandler<SendDepositCapturedNotificationCommand, Unit>
@@ -49,6 +50,11 @@ public class SendDepositCapturedNotificationHandler(
         string appointmentDate  = payment.Appointment.Date.ToString(
             "dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
 
+        bool emailEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.DepositCaptured, NotificationChannel.Email, ct);
+        bool smsEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.DepositCaptured, NotificationChannel.Sms, ct);
+
         // Email to client
         string emailSubject = "Deposit received — your appointment is secured";
         string emailBody = emailRenderer.RenderDepositCaptured(
@@ -57,38 +63,42 @@ public class SendDepositCapturedNotificationHandler(
             appointmentDate,
             studio.ShowPlatformBranding);
 
-        bool emailSuccess = true;
-        try
+        NotificationLog? emailLog = null;
+        if (emailEnabled)
         {
-            await notifications.SendEmailAsync(payment.Client.Email, emailSubject, emailBody, ct);
-            logger.LogInformation(
-                "Deposit captured email sent for payment {@PaymentId}",
-                payment.Id);
-        }
-        catch (Exception ex)
-        {
-            emailSuccess = false;
-            logger.LogWarning(ex,
-                "Failed to send deposit captured email for payment {@PaymentId}",
-                payment.Id);
-        }
+            bool emailSuccess = true;
+            try
+            {
+                await notifications.SendEmailAsync(payment.Client.Email, emailSubject, emailBody, ct);
+                logger.LogInformation(
+                    "Deposit captured email sent for payment {@PaymentId}",
+                    payment.Id);
+            }
+            catch (Exception ex)
+            {
+                emailSuccess = false;
+                logger.LogWarning(ex,
+                    "Failed to send deposit captured email for payment {@PaymentId}",
+                    payment.Id);
+            }
 
-        NotificationLog emailLog = new()
-        {
-            StudioId      = studio.Id,
-            RecipientId   = payment.ClientId,
-            RecipientType = NotificationRecipientType.Client,
-            Channel       = NotificationChannel.Email,
-            Subject       = emailSubject,
-            Body          = emailBody,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = emailSuccess,
-        };
-        db.NotificationLogs.Add(emailLog);
-        await db.SaveChangesAsync(ct);
+            emailLog = new()
+            {
+                StudioId      = studio.Id,
+                RecipientId   = payment.ClientId,
+                RecipientType = NotificationRecipientType.Client,
+                Channel       = NotificationChannel.Email,
+                Subject       = emailSubject,
+                Body          = emailBody,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = emailSuccess,
+            };
+            db.NotificationLogs.Add(emailLog);
+            await db.SaveChangesAsync(ct);
+        }
 
         // SMS to client
-        if (payment.Client.Phone is not null)
+        if (smsEnabled && payment.Client.Phone is not null)
         {
             string smsBody =
                 $"Hi {payment.Client.FirstName}, your deposit of {amountFormatted} " +
@@ -107,7 +117,7 @@ public class SendDepositCapturedNotificationHandler(
                     payment.Id);
             }
 
-            NotificationLog smsLog = new()
+            db.NotificationLogs.Add(new NotificationLog
             {
                 StudioId      = studio.Id,
                 RecipientId   = payment.ClientId,
@@ -117,14 +127,16 @@ public class SendDepositCapturedNotificationHandler(
                 Body          = smsBody,
                 SentAt        = DateTime.UtcNow,
                 IsSuccess     = smsSuccess,
-            };
-            db.NotificationLogs.Add(smsLog);
+            });
             await db.SaveChangesAsync(ct);
         }
 
-        await realtime.NotifyStudioAsync(
-            studio.Id, "NotificationReceived",
-            GetNotificationsHandler.Map(emailLog, $"{payment.Client.FirstName} {payment.Client.LastName}"), ct);
+        if (emailLog is not null)
+        {
+            await realtime.NotifyStudioAsync(
+                studio.Id, "NotificationReceived",
+                GetNotificationsHandler.Map(emailLog, $"{payment.Client.FirstName} {payment.Client.LastName}"), ct);
+        }
 
         return Unit.Value;
     }

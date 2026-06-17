@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -16,7 +16,8 @@ public class SendIntakeFormSubmittedNotificationHandlerTests
     private readonly FakeDbContext        _db            = FakeDbContext.Create();
     private readonly IEmailRenderer       _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
 
     public SendIntakeFormSubmittedNotificationHandlerTests() =>
         _emailRenderer
@@ -24,7 +25,7 @@ public class SendIntakeFormSubmittedNotificationHandlerTests
             .Returns("<html>intake</html>");
 
     private SendIntakeFormSubmittedNotificationHandler CreateSut() =>
-        new(_db, _emailRenderer, _notifications, _realtime,
+        new(_db, _emailRenderer, _notifications, _prefs, _realtime,
             NullLogger<SendIntakeFormSubmittedNotificationHandler>.Instance);
 
     private async Task<(Guid formId, Studio studio)> SeedData(bool withAppointment = false)
@@ -173,3 +174,5 @@ public class SendIntakeFormSubmittedNotificationHandlerTests
             Arg.Any<bool>());
     }
 }
+
+

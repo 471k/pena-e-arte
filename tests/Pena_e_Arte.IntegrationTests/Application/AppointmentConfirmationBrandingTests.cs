@@ -12,13 +12,22 @@ using Pena_e_Arte.IntegrationTests.Infrastructure;
 namespace Pena_e_Arte.IntegrationTests.Application;
 
 [Collection("Database")]
-public class AppointmentConfirmationBrandingTests(DatabaseFixture fixture)
+public class AppointmentConfirmationBrandingTests
 {
-    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly DatabaseFixture fixture;
+    private readonly INotificationService           _notifications = Substitute.For<INotificationService>();
+    private readonly INotificationPreferenceService _prefs         = Substitute.For<INotificationPreferenceService>();
+    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
+
+    public AppointmentConfirmationBrandingTests(DatabaseFixture fixture)
+    {
+        this.fixture = fixture;
+        _prefs.IsEnabledAsync(default, default, default, default)
+              .ReturnsForAnyArgs(Task.FromResult(true));
+    }
 
     private SendAppointmentConfirmationHandler CreateSut(AppDbContext db) =>
-        new(db, new EmailRenderer(), _notifications, _realtime,
+        new(db, new EmailRenderer(), _notifications, _prefs, _realtime,
             NullLogger<SendAppointmentConfirmationHandler>.Instance);
 
     [Fact]

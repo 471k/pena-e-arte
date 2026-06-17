@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -17,7 +17,8 @@ public class SendAppointmentConfirmationHandlerTests
     private readonly FakeDbContext       _db            = FakeDbContext.Create();
     private readonly IEmailRenderer      _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
 
     public SendAppointmentConfirmationHandlerTests()
     {
@@ -29,7 +30,7 @@ public class SendAppointmentConfirmationHandlerTests
     }
 
     private SendAppointmentConfirmationHandler CreateSut() =>
-        new(_db, _emailRenderer, _notifications, _realtime,
+        new(_db, _emailRenderer, _notifications, _prefs, _realtime,
             NullLogger<SendAppointmentConfirmationHandler>.Instance);
 
     private async Task<(Guid appointmentId, Studio studio)> SeedData(bool showBranding, string? phone = null)
@@ -243,3 +244,5 @@ public class SendAppointmentConfirmationHandlerTests
         smsLog!.IsSuccess.Should().BeFalse();
     }
 }
+
+

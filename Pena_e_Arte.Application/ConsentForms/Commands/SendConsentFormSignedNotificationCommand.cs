@@ -16,6 +16,7 @@ public class SendConsentFormSignedNotificationHandler(
     IAppDbContext                                             db,
     IEmailRenderer                                           emailRenderer,
     INotificationService                                     notifications,
+    INotificationPreferenceService                           prefs,
     IRealtimeNotifier                                        realtime,
     ILogger<SendConsentFormSignedNotificationHandler>        logger)
     : IRequestHandler<SendConsentFormSignedNotificationCommand, Unit>
@@ -56,39 +57,49 @@ public class SendConsentFormSignedNotificationHandler(
             appointmentDate,
             studio.ShowPlatformBranding);
 
-        bool success = true;
-        try
+        bool emailEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.ConsentFormSigned, NotificationChannel.Email, ct);
+
+        NotificationLog? log = null;
+        if (emailEnabled)
         {
-            await notifications.SendEmailAsync(studio.OwnerEmail, subject, body, ct);
-            logger.LogInformation(
-                "Consent form signed email sent for form {@ConsentFormId}",
-                form.Id);
-        }
-        catch (Exception ex)
-        {
-            success = false;
-            logger.LogWarning(ex,
-                "Failed to send consent form signed email for form {@ConsentFormId}",
-                form.Id);
+            bool success = true;
+            try
+            {
+                await notifications.SendEmailAsync(studio.OwnerEmail, subject, body, ct);
+                logger.LogInformation(
+                    "Consent form signed email sent for form {@ConsentFormId}",
+                    form.Id);
+            }
+            catch (Exception ex)
+            {
+                success = false;
+                logger.LogWarning(ex,
+                    "Failed to send consent form signed email for form {@ConsentFormId}",
+                    form.Id);
+            }
+
+            log = new()
+            {
+                StudioId      = studio.Id,
+                RecipientId   = studio.Id,
+                RecipientType = NotificationRecipientType.Studio,
+                Channel       = NotificationChannel.Email,
+                Subject       = subject,
+                Body          = body,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = success,
+            };
+            db.NotificationLogs.Add(log);
+            await db.SaveChangesAsync(ct);
         }
 
-        NotificationLog log = new()
+        if (log is not null)
         {
-            StudioId      = studio.Id,
-            RecipientId   = studio.Id,
-            RecipientType = NotificationRecipientType.Studio,
-            Channel       = NotificationChannel.Email,
-            Subject       = subject,
-            Body          = body,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = success,
-        };
-        db.NotificationLogs.Add(log);
-        await db.SaveChangesAsync(ct);
-
-        await realtime.NotifyStudioAsync(
-            studio.Id, "NotificationReceived",
-            GetNotificationsHandler.Map(log, studio.Name), ct);
+            await realtime.NotifyStudioAsync(
+                studio.Id, "NotificationReceived",
+                GetNotificationsHandler.Map(log, studio.Name), ct);
+        }
 
         return Unit.Value;
     }

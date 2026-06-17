@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -16,7 +16,8 @@ public class SendConsentFormSignedNotificationHandlerTests
     private readonly FakeDbContext        _db            = FakeDbContext.Create();
     private readonly IEmailRenderer       _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
 
     public SendConsentFormSignedNotificationHandlerTests() =>
         _emailRenderer
@@ -24,7 +25,7 @@ public class SendConsentFormSignedNotificationHandlerTests
             .Returns("<html>signed</html>");
 
     private SendConsentFormSignedNotificationHandler CreateSut() =>
-        new(_db, _emailRenderer, _notifications, _realtime,
+        new(_db, _emailRenderer, _notifications, _prefs, _realtime,
             NullLogger<SendConsentFormSignedNotificationHandler>.Instance);
 
     private async Task<(Guid formId, Studio studio)> SeedData()
@@ -143,3 +144,5 @@ public class SendConsentFormSignedNotificationHandlerTests
             .NotifyStudioAsync(studio.Id, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 }
+
+

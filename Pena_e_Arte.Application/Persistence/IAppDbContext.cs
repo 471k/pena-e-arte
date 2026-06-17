@@ -20,7 +20,8 @@ public interface IAppDbContext
     DbSet<SessionSplit>        SessionSplits       { get; }
     DbSet<IntakeForm>      IntakeForms      { get; }
     DbSet<ConsentForm>     ConsentForms     { get; }
-    DbSet<NotificationLog> NotificationLogs { get; }
+    DbSet<NotificationLog>               NotificationLogs               { get; }
+    DbSet<StudioNotificationPreference>  StudioNotificationPreferences  { get; }
 
     // Issuer-level
     DbSet<Studio>              Studios             { get; }

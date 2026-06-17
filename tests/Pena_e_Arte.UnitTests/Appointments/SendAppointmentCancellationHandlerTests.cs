@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -16,10 +16,11 @@ public class SendAppointmentCancellationHandlerTests
 {
     private readonly FakeDbContext        _db            = FakeDbContext.Create();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
 
     private SendAppointmentCancellationHandler CreateSut() =>
-        new(_db, _notifications, _realtime,
+        new(_db, _notifications, _prefs, _realtime,
             NullLogger<SendAppointmentCancellationHandler>.Instance);
 
     private async Task<(Guid appointmentId, Guid studioId)> SeedData()
@@ -163,3 +164,5 @@ public class SendAppointmentCancellationHandlerTests
             Arg.Any<CancellationToken>());
     }
 }
+
+

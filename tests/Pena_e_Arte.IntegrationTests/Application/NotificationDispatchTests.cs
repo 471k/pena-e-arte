@@ -17,11 +17,20 @@ using Pena_e_Arte.IntegrationTests.Infrastructure;
 namespace Pena_e_Arte.IntegrationTests.Application;
 
 [Collection("Database")]
-public class NotificationDispatchTests(DatabaseFixture fixture)
+public class NotificationDispatchTests
 {
-    private readonly IEmailRenderer       _renderer      = Substitute.For<IEmailRenderer>();
-    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly DatabaseFixture               fixture;
+    private readonly IEmailRenderer                 _renderer      = Substitute.For<IEmailRenderer>();
+    private readonly INotificationService           _notifications = Substitute.For<INotificationService>();
+    private readonly INotificationPreferenceService _prefs         = Substitute.For<INotificationPreferenceService>();
+    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
+
+    public NotificationDispatchTests(DatabaseFixture fixture)
+    {
+        this.fixture = fixture;
+        _prefs.IsEnabledAsync(default, default, default, default)
+              .ReturnsForAnyArgs(Task.FromResult(true));
+    }
 
     // ── Seed helpers ─────────────────────────────────────────────────────────────
 
@@ -158,7 +167,7 @@ public class NotificationDispatchTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendAppointmentCreatedNotificationHandler(
-            db, _renderer, _notifications, _realtime,
+            db, _renderer, _notifications, _prefs, _realtime,
             NullLogger<SendAppointmentCreatedNotificationHandler>.Instance)
             .Handle(new SendAppointmentCreatedNotificationCommand(appointmentId), default);
 
@@ -182,7 +191,7 @@ public class NotificationDispatchTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendAppointmentCreatedNotificationHandler(
-            db, _renderer, _notifications, _realtime,
+            db, _renderer, _notifications, _prefs, _realtime,
             NullLogger<SendAppointmentCreatedNotificationHandler>.Instance)
             .Handle(new SendAppointmentCreatedNotificationCommand(appointmentId), default);
 
@@ -201,7 +210,7 @@ public class NotificationDispatchTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendDesignReviewNotificationHandler(
-            db, _renderer, _notifications, _realtime,
+            db, _renderer, _notifications, _prefs, _realtime,
             NullLogger<SendDesignReviewNotificationHandler>.Instance)
             .Handle(new SendDesignReviewNotificationCommand(revisionId, Approved: true), default);
 
@@ -233,7 +242,7 @@ public class NotificationDispatchTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendIntakeFormSubmittedNotificationHandler(
-            db, _renderer, _notifications, _realtime,
+            db, _renderer, _notifications, _prefs, _realtime,
             NullLogger<SendIntakeFormSubmittedNotificationHandler>.Instance)
             .Handle(new SendIntakeFormSubmittedNotificationCommand(form.Id), default);
 
@@ -266,7 +275,7 @@ public class NotificationDispatchTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendConsentFormSignedNotificationHandler(
-            db, _renderer, _notifications, _realtime,
+            db, _renderer, _notifications, _prefs, _realtime,
             NullLogger<SendConsentFormSignedNotificationHandler>.Instance)
             .Handle(new SendConsentFormSignedNotificationCommand(form.Id), default);
 
@@ -288,7 +297,7 @@ public class NotificationDispatchTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendDepositCapturedNotificationHandler(
-            db, _renderer, _notifications, _realtime,
+            db, _renderer, _notifications, _prefs, _realtime,
             NullLogger<SendDepositCapturedNotificationHandler>.Instance)
             .Handle(new SendDepositCapturedNotificationCommand(paymentId), default);
 
@@ -311,7 +320,7 @@ public class NotificationDispatchTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendPaymentRefundedNotificationHandler(
-            db, _renderer, _notifications, _realtime,
+            db, _renderer, _notifications, _prefs, _realtime,
             NullLogger<SendPaymentRefundedNotificationHandler>.Instance)
             .Handle(new SendPaymentRefundedNotificationCommand(paymentId), default);
 
@@ -332,7 +341,7 @@ public class NotificationDispatchTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendDepositCapturedNotificationHandler(
-            db, _renderer, _notifications, _realtime,
+            db, _renderer, _notifications, _prefs, _realtime,
             NullLogger<SendDepositCapturedNotificationHandler>.Instance)
             .Handle(new SendDepositCapturedNotificationCommand(bogusId), default);
 

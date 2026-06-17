@@ -16,6 +16,7 @@ public class SendAppointmentCreatedNotificationHandler(
     IAppDbContext                                             db,
     IEmailRenderer                                           emailRenderer,
     INotificationService                                     notifications,
+    INotificationPreferenceService                           prefs,
     IRealtimeNotifier                                        realtime,
     ILogger<SendAppointmentCreatedNotificationHandler>       logger)
     : IRequestHandler<SendAppointmentCreatedNotificationCommand, Unit>
@@ -48,6 +49,11 @@ public class SendAppointmentCreatedNotificationHandler(
         string appointmentDate = appointment.Date.ToString(
             "dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
 
+        bool emailEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.AppointmentCreated, NotificationChannel.Email, ct);
+        bool smsEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.AppointmentCreated, NotificationChannel.Sms, ct);
+
         // Email to client
         string clientEmailBody = emailRenderer.RenderAppointmentCreatedClient(
             appointment.Client.FirstName,
@@ -57,76 +63,80 @@ public class SendAppointmentCreatedNotificationHandler(
             studio.ShowPlatformBranding);
 
         string clientSubject = $"Booking request received — {studio.Name}";
-        bool clientEmailSuccess = true;
-        try
-        {
-            await notifications.SendEmailAsync(appointment.Client.Email, clientSubject, clientEmailBody, ct);
-            logger.LogInformation(
-                "Appointment created client email sent for appointment {@AppointmentId}",
-                appointment.Id);
-        }
-        catch (Exception ex)
-        {
-            clientEmailSuccess = false;
-            logger.LogWarning(ex,
-                "Failed to send appointment created client email for appointment {@AppointmentId}",
-                appointment.Id);
-        }
+        NotificationLog? clientLog = null;
 
-        NotificationLog clientLog = new()
+        if (emailEnabled)
         {
-            StudioId      = studio.Id,
-            RecipientId   = appointment.ClientId,
-            RecipientType = NotificationRecipientType.Client,
-            Channel       = NotificationChannel.Email,
-            Subject       = clientSubject,
-            Body          = clientEmailBody,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = clientEmailSuccess,
-        };
-        db.NotificationLogs.Add(clientLog);
-        await db.SaveChangesAsync(ct);
+            bool clientEmailSuccess = true;
+            try
+            {
+                await notifications.SendEmailAsync(appointment.Client.Email, clientSubject, clientEmailBody, ct);
+                logger.LogInformation(
+                    "Appointment created client email sent for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
+            catch (Exception ex)
+            {
+                clientEmailSuccess = false;
+                logger.LogWarning(ex,
+                    "Failed to send appointment created client email for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
 
-        // Email to studio owner
-        string studioEmailBody = emailRenderer.RenderAppointmentCreatedStudio(
-            clientFullName,
-            appointment.Date,
-            appointment.DurationMinutes,
-            appointment.Notes);
+            clientLog = new()
+            {
+                StudioId      = studio.Id,
+                RecipientId   = appointment.ClientId,
+                RecipientType = NotificationRecipientType.Client,
+                Channel       = NotificationChannel.Email,
+                Subject       = clientSubject,
+                Body          = clientEmailBody,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = clientEmailSuccess,
+            };
+            db.NotificationLogs.Add(clientLog);
 
-        string studioSubject = $"New booking request from {clientFullName}";
-        bool studioEmailSuccess = true;
-        try
-        {
-            await notifications.SendEmailAsync(studio.OwnerEmail, studioSubject, studioEmailBody, ct);
-            logger.LogInformation(
-                "Appointment created studio email sent for appointment {@AppointmentId}",
-                appointment.Id);
+            // Email to studio owner
+            string studioEmailBody = emailRenderer.RenderAppointmentCreatedStudio(
+                clientFullName,
+                appointment.Date,
+                appointment.DurationMinutes,
+                appointment.Notes);
+
+            string studioSubject = $"New booking request from {clientFullName}";
+            bool studioEmailSuccess = true;
+            try
+            {
+                await notifications.SendEmailAsync(studio.OwnerEmail, studioSubject, studioEmailBody, ct);
+                logger.LogInformation(
+                    "Appointment created studio email sent for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
+            catch (Exception ex)
+            {
+                studioEmailSuccess = false;
+                logger.LogWarning(ex,
+                    "Failed to send appointment created studio email for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
+
+            db.NotificationLogs.Add(new NotificationLog
+            {
+                StudioId      = studio.Id,
+                RecipientId   = studio.Id,
+                RecipientType = NotificationRecipientType.Studio,
+                Channel       = NotificationChannel.Email,
+                Subject       = studioSubject,
+                Body          = studioEmailBody,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = studioEmailSuccess,
+            });
+
+            await db.SaveChangesAsync(ct);
         }
-        catch (Exception ex)
-        {
-            studioEmailSuccess = false;
-            logger.LogWarning(ex,
-                "Failed to send appointment created studio email for appointment {@AppointmentId}",
-                appointment.Id);
-        }
-
-        NotificationLog studioLog = new()
-        {
-            StudioId      = studio.Id,
-            RecipientId   = studio.Id,
-            RecipientType = NotificationRecipientType.Studio,
-            Channel       = NotificationChannel.Email,
-            Subject       = studioSubject,
-            Body          = studioEmailBody,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = studioEmailSuccess,
-        };
-        db.NotificationLogs.Add(studioLog);
-        await db.SaveChangesAsync(ct);
 
         // SMS to client
-        if (appointment.Client.Phone is not null)
+        if (smsEnabled && appointment.Client.Phone is not null)
         {
             string smsBody =
                 $"Hi {appointment.Client.FirstName}, your booking request at {studio.Name} " +
@@ -145,7 +155,7 @@ public class SendAppointmentCreatedNotificationHandler(
                     appointment.Id);
             }
 
-            NotificationLog smsLog = new()
+            db.NotificationLogs.Add(new NotificationLog
             {
                 StudioId      = studio.Id,
                 RecipientId   = appointment.ClientId,
@@ -155,14 +165,16 @@ public class SendAppointmentCreatedNotificationHandler(
                 Body          = smsBody,
                 SentAt        = DateTime.UtcNow,
                 IsSuccess     = smsSent,
-            };
-            db.NotificationLogs.Add(smsLog);
+            });
             await db.SaveChangesAsync(ct);
         }
 
-        await realtime.NotifyStudioAsync(
-            studio.Id, "NotificationReceived",
-            GetNotificationsHandler.Map(clientLog, clientFullName), ct);
+        if (clientLog is not null)
+        {
+            await realtime.NotifyStudioAsync(
+                studio.Id, "NotificationReceived",
+                GetNotificationsHandler.Map(clientLog, clientFullName), ct);
+        }
 
         return Unit.Value;
     }

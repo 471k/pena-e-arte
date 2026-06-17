@@ -1,11 +1,16 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
-import type { NotificationLogResponse, NotificationsFilter } from "./notification.types";
+import type {
+  NotificationLogResponse,
+  NotificationPreferenceItem,
+  NotificationPreferencesResponse,
+  NotificationsFilter,
+} from "./notification.types";
 
 export const notificationsApi = createApi({
   reducerPath: "notificationsApi",
   baseQuery,
-  tagTypes: ["NotificationLog"],
+  tagTypes: ["NotificationLog", "NotificationPreferences"],
   endpoints: (builder) => ({
     getNotifications: builder.query<NotificationLogResponse[], NotificationsFilter>({
       query: ({ recipientId, channel, from, to } = {}) => {
@@ -19,7 +24,23 @@ export const notificationsApi = createApi({
       },
       providesTags: ["NotificationLog"],
     }),
+    getNotificationPreferences: builder.query<NotificationPreferencesResponse, void>({
+      query: () => "notifications/preferences",
+      providesTags: ["NotificationPreferences"],
+    }),
+    updateNotificationPreferences: builder.mutation<void, NotificationPreferenceItem[]>({
+      query: (preferences) => ({
+        url:    "notifications/preferences",
+        method: "PUT",
+        body:   { preferences },
+      }),
+      invalidatesTags: ["NotificationPreferences"],
+    }),
   }),
 });
 
-export const { useGetNotificationsQuery } = notificationsApi;
+export const {
+  useGetNotificationsQuery,
+  useGetNotificationPreferencesQuery,
+  useUpdateNotificationPreferencesMutation,
+} = notificationsApi;

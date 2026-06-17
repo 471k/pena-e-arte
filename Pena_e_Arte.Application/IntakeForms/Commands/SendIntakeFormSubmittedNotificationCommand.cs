@@ -16,6 +16,7 @@ public class SendIntakeFormSubmittedNotificationHandler(
     IAppDbContext                                               db,
     IEmailRenderer                                             emailRenderer,
     INotificationService                                       notifications,
+    INotificationPreferenceService                             prefs,
     IRealtimeNotifier                                          realtime,
     ILogger<SendIntakeFormSubmittedNotificationHandler>        logger)
     : IRequestHandler<SendIntakeFormSubmittedNotificationCommand, Unit>
@@ -62,39 +63,49 @@ public class SendIntakeFormSubmittedNotificationHandler(
             appointmentDate,
             studio.ShowPlatformBranding);
 
-        bool success = true;
-        try
+        bool emailEnabled = await prefs.IsEnabledAsync(
+            studio.Id, NotificationType.IntakeFormSubmitted, NotificationChannel.Email, ct);
+
+        NotificationLog? log = null;
+        if (emailEnabled)
         {
-            await notifications.SendEmailAsync(studio.OwnerEmail, subject, body, ct);
-            logger.LogInformation(
-                "Intake form submitted email sent for form {@IntakeFormId}",
-                form.Id);
-        }
-        catch (Exception ex)
-        {
-            success = false;
-            logger.LogWarning(ex,
-                "Failed to send intake form submitted email for form {@IntakeFormId}",
-                form.Id);
+            bool success = true;
+            try
+            {
+                await notifications.SendEmailAsync(studio.OwnerEmail, subject, body, ct);
+                logger.LogInformation(
+                    "Intake form submitted email sent for form {@IntakeFormId}",
+                    form.Id);
+            }
+            catch (Exception ex)
+            {
+                success = false;
+                logger.LogWarning(ex,
+                    "Failed to send intake form submitted email for form {@IntakeFormId}",
+                    form.Id);
+            }
+
+            log = new()
+            {
+                StudioId      = studio.Id,
+                RecipientId   = studio.Id,
+                RecipientType = NotificationRecipientType.Studio,
+                Channel       = NotificationChannel.Email,
+                Subject       = subject,
+                Body          = body,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = success,
+            };
+            db.NotificationLogs.Add(log);
+            await db.SaveChangesAsync(ct);
         }
 
-        NotificationLog log = new()
+        if (log is not null)
         {
-            StudioId      = studio.Id,
-            RecipientId   = studio.Id,
-            RecipientType = NotificationRecipientType.Studio,
-            Channel       = NotificationChannel.Email,
-            Subject       = subject,
-            Body          = body,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = success,
-        };
-        db.NotificationLogs.Add(log);
-        await db.SaveChangesAsync(ct);
-
-        await realtime.NotifyStudioAsync(
-            studio.Id, "NotificationReceived",
-            GetNotificationsHandler.Map(log, studio.Name), ct);
+            await realtime.NotifyStudioAsync(
+                studio.Id, "NotificationReceived",
+                GetNotificationsHandler.Map(log, studio.Name), ct);
+        }
 
         return Unit.Value;
     }
