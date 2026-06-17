@@ -1,0 +1,18 @@
+{
+  "pkg": "pena-e-arte-ui",
+  "globalName": "PenaEArteUI",
+  "projectId": "27dc5c6c-4cd7-4a93-a613-0fa7c0824b74",
+  "shape": "package",
+  "srcDir": "src/shared/components",
+  "tsconfig": "tsconfig.app.json",
+  "buildCmd": "pnpm exec vite build",
+  "componentSrcMap": {
+    "UserChip": null,
+    "ReadOnlyBanner": null,
+    "SuspensionBanner": null
+  },
+  "overrides": {
+    "SubscriptionGatedButton": { "skip": true },
+    "FileUploadField": { "skip": true }
+  }
+}

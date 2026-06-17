@@ -17,6 +17,13 @@ test-results/
 playwright-report/
 .playwright-cache/
 
+# Design sync tooling
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
