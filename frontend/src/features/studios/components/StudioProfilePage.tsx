@@ -13,6 +13,7 @@ import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
+import { EmbedCodeCard } from "./EmbedCodeCard";
 
 const schema = z.object({
   name:      z.string().min(1, "Name is required").max(200),
@@ -143,6 +144,7 @@ export function StudioProfilePage() {
 
         <BrandingSettingsCard />
         <QrCodeSection />
+        <EmbedCodeCard />
         <ReferralCodeCard />
         <NotificationPreferencesCard />
       </main>
