@@ -19,7 +19,6 @@ import { cn } from "@/shared/utils/cn";
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSignConsentFormMutation } from "../consentFormsApi";
-import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { FileUploadField, PDF_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
 
 const schema = z.object({
@@ -100,7 +99,6 @@ export function SignConsentFormPage() {
           <span className="font-semibold tracking-tight">Consent Form</span>
         </div>
       </header>
-      <ReadOnlyBanner />
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <p className="text-sm text-muted-foreground mb-6">

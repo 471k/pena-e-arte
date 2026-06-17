@@ -10,7 +10,6 @@ import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { cn } from "@/shared/utils/cn";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSubmitIntakeFormMutation } from "../intakeFormsApi";
-import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 
 const TEXTAREA_CLS = cn(
   "flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
@@ -93,7 +92,6 @@ export function SubmitIntakeFormPage() {
           <span className="font-semibold tracking-tight">Intake Form</span>
         </div>
       </header>
-      <ReadOnlyBanner />
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <p className="text-sm text-muted-foreground mb-6">

@@ -23,25 +23,19 @@ _All P0 bugs resolved. See closed items below._
 
 ## P1 — Missing Core UI Structure
 
-### #4 — ClientLayout.tsx missing
-- **Where:** `frontend/src/layouts/` (file does not exist)
-- **What:** Clients land on `/book` with no navigation to tattoo history, designs, forms, or any other page.
-- **Fix:** Create `layouts/ClientLayout.tsx` with a nav linking to: Book (`/book`), My Designs (`/designs`), My Forms (`/forms/intake`, `/forms/consent`), My Profile (`/clients/me`).
+_All P1 issues resolved. See closed items below._
 
-### #5 — ArtistLayout.tsx missing
-- **Where:** `frontend/src/layouts/` (file does not exist)
-- **What:** Artists on `/schedule` have no navigation to clients, designs, forms, deposit-rules, or notifications.
-- **Fix:** Create `layouts/ArtistLayout.tsx` with a nav linking to: Schedule (`/schedule`), Clients (`/clients`), Designs (`/designs`), Forms (`/forms`), Deposit Rules (`/deposit-rules`), Notifications (`/notifications`).
+~~### #4 — ClientLayout.tsx missing~~
+~~**Fixed:** `layouts/ClientLayout.tsx` exists with full nav + `ReadOnlyBanner`.~~
 
-### #6 — OwnerLayout.tsx missing
-- **Where:** `frontend/src/layouts/` (file does not exist)
-- **What:** Owner `/dashboard` has a QuickNav tile grid but no persistent sidebar/header nav — inconsistent with `IssuerLayout` which has a proper nav bar.
-- **Fix:** Create `layouts/OwnerLayout.tsx` matching the pattern of `IssuerLayout`. Nav links: Dashboard (`/dashboard`), Artists (`/artists`), Clients (`/clients`), Designs (`/designs`), Payments (`/payments`), Billing (`/billing`), Studio Settings (`/studios/me`).
+~~### #5 — ArtistLayout.tsx missing~~
+~~**Fixed:** `layouts/ArtistLayout.tsx` exists with full nav + `ReadOnlyBanner` + `useSignalR`.~~
 
-### #7 — ReadOnlyBanner placed inline per-page
-- **Where:** `DashboardPage`, `SchedulePage`
-- **What:** Should be rendered once in each role layout, not manually repeated in every page. Missing layouts are the root cause.
-- **Fix:** Move `<ReadOnlyBanner />` into each layout component. Remove inline placement from individual pages.
+~~### #6 — OwnerLayout.tsx missing~~
+~~**Fixed:** `layouts/OwnerLayout.tsx` exists with full nav + `SuspensionBanner` + `ReadOnlyBanner` + `useSignalR`.~~
+
+~~### #7 — ReadOnlyBanner placed inline per-page~~
+~~**Fixed:** Layouts own the banner. Removed duplicate inline usage from `SignConsentFormPage` and `SubmitIntakeFormPage` (2026-06-17).~~
 
 ---
 
@@ -68,70 +62,55 @@ After adding each component: replace all raw HTML usages in consuming files. Run
 
 ## P3 — Missing Hooks and Slices
 
-### #18 — useCurrentUser hook missing
-- **Where:** `frontend/src/shared/hooks/` (does not exist)
-- **What:** Documented in `frontend.md` as required. Currently replaced by scattered inline `useAppSelector((s) => s.auth.user)` calls in components.
-- **Fix:** Create `shared/hooks/useCurrentUser.ts`. Replace all inline selector calls.
+_All P3 issues resolved._
 
-### #19 — notificationsSlice.ts missing
-- **Where:** `frontend/src/features/notifications/` (does not exist)
-- **What:** `frontend.md` store spec includes `notifications: notificationReducer` for local UI notification state (unread count, inbox open/close). Store currently has only `notificationsApi` — no local state slice.
-- **Fix:** Create `features/notifications/notificationsSlice.ts` with `unreadCount: number`, `isInboxOpen: boolean`. Add `notificationsReducer` to store.
+~~### #18 — useCurrentUser hook missing~~
+~~**Fixed:** `shared/hooks/useCurrentUser.ts` exists.~~
 
-### #20 — sessionExpired never triggers logout
-- **Where:** `frontend/src/features/ui/uiSlice.ts:18`
-- **What:** `sessionExpired: boolean` flag exists and `setSessionExpired` is exported, but nothing in `baseQuery.ts` or `authSlice.ts` dispatches it or uses it to redirect to `/login` on 401 responses. Token expiry is silently ignored.
-- **Fix:** In `baseQuery.ts`, on 401 response, dispatch `setSessionExpired(true)`. In `app/router.tsx` or a top-level component, listen for `sessionExpired === true` and redirect to `/login` then clear the flag.
+~~### #19 — notificationsSlice.ts missing~~
+~~**Fixed:** `features/notifications/notificationsSlice.ts` exists with `unreadCount` + `isInboxOpen`.~~
+
+~~### #20 — sessionExpired never triggers logout~~
+~~**Fixed:** `baseQuery.ts` dispatches `setSessionExpired()` on 401; `AppRoot` in `router.tsx` handles redirect.~~
 
 ---
 
 ## P4 — Route and Access Control Gaps
 
-### #21 — Client has no navigation after /book
-- **Where:** `app/router.tsx`
-- **What:** No layout wraps client routes. Routes for `/designs/:id` (client view), `/forms/intake/new`, `/forms/consent/new` exist but are unreachable without layout nav.
-- **Fix:** Wrap client routes with `<ClientLayout />` (created in P1 #4).
+_All P4 issues resolved._
 
-### #22 — /dashboard reachable by artists and clients
-- **Where:** `app/router.tsx:63`
-- **What:** `DashboardPage` is inside the global `RoleGuard` that allows all roles. Artists and clients can navigate to `/dashboard`.
-- **Fix:** Add a nested `<RoleGuard allowedRoles={["owner", "issuer"]} />` around the `dashboard` route.
+~~### #21 — Client has no navigation after /book~~
+~~**Fixed:** `AppLayout` dispatches to `ClientLayout` for all client routes.~~
 
-### #23 — /schedule reachable by owners and issuers
-- **Where:** `app/router.tsx`
-- **What:** No guard on `"schedule"` path — owners and issuers can hit it.
-- **Fix:** Add a nested `<RoleGuard allowedRoles={["artist", "issuer"]} />` around the `schedule` route.
+~~### #22 — /dashboard reachable by artists and clients~~
+~~**Fixed:** Route has `RoleGuard allowedRoles={[Role.Owner, Role.Issuer]}`.~~
+
+~~### #23 — /schedule reachable by owners and issuers~~
+~~**Fixed (intentionally different):** Owners allowed — `RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]}`. Owner QuickNav links to schedule; this is intentional.~~
 
 ---
 
 ## P5 — Code Quality / Doc Staleness
 
-### #24 — frontend.md shows TypeScript enum (wrong)
-- **Where:** `docs/claude/frontend.md:218`
-- **What:** Example shows `export enum Role { ... }` but the project uses `erasableSyntaxOnly: true`, which disallows TypeScript enums. Doc is stale and misleading.
-- **Fix:** Update `frontend.md` to show the correct const-object + type-alias pattern.
+~~### #24 — frontend.md shows TypeScript enum (wrong)~~
+~~**Fixed:** `roles.ts` uses `const Role = { ... }` pattern; `frontend.md` already updated.~~
 
 ### #25 — Raw `<select>` with 5-line inline Tailwind class
-- **Where:** `BookAppointmentForm.tsx:28–33`
-- **What:** `selectClass` constant duplicates shadcn Input styling manually. Resolved by P2 #8.
+- **Where:** `BookAppointmentForm.tsx`
+- **What:** `selectClass` constant duplicates shadcn Input styling manually. Resolved when P2 #8 is done.
 
 ### #26 — Raw `<textarea>` with 4-line inline Tailwind class
-- **Where:** `BookAppointmentForm.tsx:169–177`
-- **What:** No `Textarea` component. Resolved by P2 #9.
+- **Where:** `SubmitIntakeFormPage.tsx` — `TEXTAREA_CLS` and `SELECT_CLS` constants also present
+- **What:** No `Textarea` shadcn component. Resolved when P2 #9 is done.
 
-### #27 — Each page builds its own sticky header
-- **Where:** `SchedulePage`, `DashboardPage`, `BookPage`, `ClientListPage`, etc.
-- **What:** Every page re-implements `<header className="flex items-center ... sticky top-0 z-10">`. Resolved by P1 layouts.
+~~### #27 — Each page builds its own sticky header~~
+~~**Fixed:** Layouts own the nav header; pages retain page-level back-nav headers (expected).~~
 
-### #28 — IssuerLayout.tsx in wrong directory
-- **Where:** `frontend/src/features/platform/components/IssuerLayout.tsx`
-- **What:** Should be in `layouts/` per `frontend.md` spec. Sets wrong precedent.
-- **Fix:** Move to `frontend/src/layouts/IssuerLayout.tsx`. Update all imports.
+~~### #28 — IssuerLayout.tsx in wrong directory~~
+~~**Fixed:** `layouts/IssuerLayout.tsx` in correct location.~~
 
-### #29 — store.ts diverges from frontend.md spec
-- **Where:** `frontend/src/app/store.ts`
-- **What:** Spec shows 5 API slices; actual store has more (`authApi`, `filesApi`, `intakeFormsApi`, `consentFormsApi`, `depositRulesApi`). Not a bug, but the spec in `frontend.md` is outdated.
-- **Fix:** Update `frontend.md` store spec to reflect the actual reducers.
+~~### #29 — store.ts diverges from frontend.md spec~~
+~~**Fixed:** `frontend.md` updated to reflect actual reducers.~~
 
 ---
 
