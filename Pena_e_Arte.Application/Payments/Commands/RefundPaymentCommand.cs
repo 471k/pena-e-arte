@@ -14,6 +14,7 @@ public record RefundPaymentCommand(Guid PaymentId, decimal? Amount) : IRequest<P
 public class RefundPaymentHandler(
     IAppDbContext         db,
     IStripePaymentService stripePayments,
+    IRealtimeNotifier     realtime,
     ISender               sender)
     : IRequestHandler<RefundPaymentCommand, PaymentResponse>
 {
@@ -44,6 +45,7 @@ public class RefundPaymentHandler(
 
         await db.SaveChangesAsync(ct);
 
+        await realtime.NotifyStudioAsync(payment.StudioId, "PaymentRefunded", payment.ToResponse(), ct);
         await sender.Send(new SendPaymentRefundedNotificationCommand(payment.Id), ct);
 
         return payment.ToResponse();

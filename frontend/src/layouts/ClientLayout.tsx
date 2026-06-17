@@ -6,8 +6,9 @@ import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { UserChip } from "@/shared/components/UserChip";
 import { Button } from "@/shared/components/ui/button";
-import { useAppDispatch } from "@/app/hooks";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
+import { useSignalR } from "@/shared/hooks/useSignalR";
 import { NotificationBell } from "@/features/notifications";
 
 const NAV_ITEMS = [
@@ -19,8 +20,10 @@ const NAV_ITEMS = [
 ];
 
 export function ClientLayout() {
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
+  const dispatch  = useAppDispatch();
+  const navigate  = useNavigate();
+  const tenantId  = useAppSelector((s) => s.auth.tenantId);
+  useSignalR(tenantId);
 
   function handleLogout() {
     dispatch(logout());

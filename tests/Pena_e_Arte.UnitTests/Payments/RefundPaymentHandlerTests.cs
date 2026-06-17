@@ -15,6 +15,7 @@ public class RefundPaymentHandlerTests
 {
     private readonly FakeDbContext        _db       = FakeDbContext.Create();
     private readonly IStripePaymentService _stripe   = Substitute.For<IStripePaymentService>();
+    private readonly IRealtimeNotifier    _realtime = Substitute.For<IRealtimeNotifier>();
     private readonly ISender               _sender   = Substitute.For<ISender>();
     private readonly Guid                 _studioId = Guid.NewGuid();
 
@@ -25,7 +26,7 @@ public class RefundPaymentHandlerTests
             .Returns("re_test_123");
     }
 
-    private RefundPaymentHandler CreateSut() => new(_db, _stripe, _sender);
+    private RefundPaymentHandler CreateSut() => new(_db, _stripe, _realtime, _sender);
 
     [Fact]
     public async Task Handle_PaidPayment_ReturnsRefundedStatus()

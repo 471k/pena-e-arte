@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
@@ -12,7 +13,7 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 /// </summary>
 public record MarkPaymentAuthorizedCommand(string StripePaymentIntentId) : IRequest;
 
-public class MarkPaymentAuthorizedHandler(IAppDbContext db)
+public class MarkPaymentAuthorizedHandler(IAppDbContext db, IRealtimeNotifier realtime)
     : IRequestHandler<MarkPaymentAuthorizedCommand>
 {
     public async Task Handle(MarkPaymentAuthorizedCommand command, CancellationToken ct)
@@ -29,5 +30,10 @@ public class MarkPaymentAuthorizedHandler(IAppDbContext db)
         payment.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
+
+        await realtime.NotifyStudioAsync(
+            payment.StudioId, "PaymentAuthorized",
+            new { paymentId = payment.Id, appointmentId = payment.AppointmentId, status = "Captured" },
+            ct);
     }
 }

@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
+import { paymentsApi } from "@/features/payments/paymentsApi";
 import { incrementUnread } from "@/features/notifications/notificationsSlice";
 
 export function useSignalR(studioId: string | null | undefined) {
@@ -36,6 +37,12 @@ export function useSignalR(studioId: string | null | undefined) {
     scheduleConn.on("AppointmentCompleted", () => { dispatch(appointmentsApi.util.invalidateTags(["Appointment"])); });
     scheduleConn.on("AppointmentNoShow",    () => { dispatch(appointmentsApi.util.invalidateTags(["Appointment"])); });
     scheduleConn.on("AppointmentCancelled", () => { dispatch(appointmentsApi.util.invalidateTags(["Appointment"])); });
+    scheduleConn.on("DepositCaptured",      () => {
+      dispatch(paymentsApi.util.invalidateTags(["Payment"]));
+      dispatch(appointmentsApi.util.invalidateTags(["Appointment"]));
+    });
+    scheduleConn.on("PaymentAuthorized",    () => { dispatch(paymentsApi.util.invalidateTags(["Payment"])); });
+    scheduleConn.on("PaymentRefunded",      () => { dispatch(paymentsApi.util.invalidateTags(["Payment"])); });
 
     designConn.on("DesignUploaded",        () => { dispatch(designsApi.util.invalidateTags(["Design"])); });
     designConn.on("DesignReviewed",        () => { dispatch(designsApi.util.invalidateTags(["Design"])); });

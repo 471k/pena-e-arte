@@ -1,16 +1,19 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Payments;
 
 public class MarkPaymentAuthorizedHandlerTests
 {
-    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly FakeDbContext     _db       = FakeDbContext.Create();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
-    private MarkPaymentAuthorizedHandler CreateSut() => new(_db);
+    private MarkPaymentAuthorizedHandler CreateSut() => new(_db, _realtime);
 
     [Fact]
     public async Task Handle_PendingPayment_SetsStatusCaptured()
