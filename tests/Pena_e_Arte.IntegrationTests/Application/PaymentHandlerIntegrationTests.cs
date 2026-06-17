@@ -542,7 +542,7 @@ public class PaymentHandlerIntegrationTests
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         CurrentTenantService tenant = new();
         tenant.SetTenant(tenantId);
-        RefundPaymentHandler handler = new(db, _stripe, _sender);
+        RefundPaymentHandler handler = new(db, _stripe, _realtime, _sender);
         return await handler.Handle(new RefundPaymentCommand(paymentId, refundAmount), default);
     }
 }

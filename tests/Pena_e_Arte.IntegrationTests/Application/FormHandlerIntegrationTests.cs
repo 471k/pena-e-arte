@@ -20,7 +20,9 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class FormHandlerIntegrationTests(DatabaseFixture fixture)
 {
-    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly ISender                _sender = Substitute.For<ISender>();
+    private readonly IConsentFormPdfService _pdf    = Substitute.For<IConsentFormPdfService>();
+    private readonly IR2Service             _r2     = Substitute.For<IR2Service>();
 
     // ── SubmitIntakeForm ──────────────────────────────────────────────────────────
 
@@ -114,9 +116,9 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         (Guid clientId, Guid appointmentId) = await SeedClientAndAppointment(tenantId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        ConsentFormResponse result = await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _sender)
+        ConsentFormResponse result = await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _pdf, _r2, _sender)
             .Handle(new SignConsentFormCommand(
-                new SignConsentFormRequest(clientId, appointmentId, "data:image/png;base64,abc", null)), default);
+                new SignConsentFormRequest(clientId, appointmentId, "data:image/png;base64,abc")), default);
 
         await using AppDbContext verify = fixture.CreateDbContext(tenantId);
         bool exists = await verify.ConsentForms.AnyAsync(f => f.Id == result.Id);
@@ -261,9 +263,9 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid tenantId, Guid clientId, Guid appointmentId, string signature)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        return await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _sender)
+        return await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _pdf, _r2, _sender)
             .Handle(new SignConsentFormCommand(
-                new SignConsentFormRequest(clientId, appointmentId, signature, null)), default);
+                new SignConsentFormRequest(clientId, appointmentId, signature)), default);
     }
 
     private static ICurrentTenant TenantFor(Guid tenantId)
