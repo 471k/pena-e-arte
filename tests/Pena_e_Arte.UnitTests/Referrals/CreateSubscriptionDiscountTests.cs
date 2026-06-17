@@ -26,7 +26,7 @@ public class CreateSubscriptionDiscountTests
         _billing.CreateSubscriptionAsync(
                     Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(("sub_ref_test", DateTime.UtcNow.AddMonths(1)));
-        _discounts.CreateOneMonthFreeCouponAsync(Arg.Any<CancellationToken>())
+        _discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                   .Returns("coup_free1m");
     }
 
@@ -44,7 +44,7 @@ public class CreateSubscriptionDiscountTests
         await CreateSut().Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
 
-        await _discounts.Received(1).CreateOneMonthFreeCouponAsync(Arg.Any<CancellationToken>());
+        await _discounts.Received(1).CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _billing.Received(1).CreateSubscriptionAsync(
             Arg.Any<string>(), Arg.Any<string>(), "coup_free1m", Arg.Any<CancellationToken>());
 
@@ -64,7 +64,7 @@ public class CreateSubscriptionDiscountTests
         await CreateSut().Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
 
-        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
     }
 
@@ -78,7 +78,7 @@ public class CreateSubscriptionDiscountTests
         await CreateSut().Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
 
-        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
     }
 
@@ -104,7 +104,7 @@ public class CreateSubscriptionDiscountTests
         await CreateSut().Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
 
-        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
     }
 

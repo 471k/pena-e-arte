@@ -78,6 +78,17 @@ public class GetSharedDesignHandlerTests
     {
         Guid studioId = Guid.NewGuid();
 
+        _db.Studios.Add(new Pena_e_Arte.Domain.Entities.Studio
+        {
+            Id           = studioId,
+            Name         = "Test Studio",
+            Slug         = $"test-{studioId:N}",
+            City         = "Lisboa",
+            OwnerEmail   = "test@test.com",
+            IsActive     = true,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+        });
+
         Design design = new()
         {
             StudioId    = studioId,

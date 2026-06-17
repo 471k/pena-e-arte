@@ -1,9 +1,11 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.IntegrationTests.Infrastructure;
 
@@ -24,7 +26,7 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
         await seed.SaveChangesAsync();
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        UpdateStudioBrandingHandler handler = new(db);
+        UpdateStudioBrandingHandler handler = new(db, MakeTenant(studio.Id));
         await handler.Handle(new UpdateStudioBrandingCommand(studio.Id, ShowPlatformBranding: true), default);
 
         await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
@@ -38,7 +40,7 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
         (Studio studio, _) = await SeedStudioWithPlan(allowBrandingRemoval: true);
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        UpdateStudioBrandingHandler handler = new(db);
+        UpdateStudioBrandingHandler handler = new(db, MakeTenant(studio.Id));
         StudioResponse result = await handler.Handle(
             new UpdateStudioBrandingCommand(studio.Id, ShowPlatformBranding: false), default);
 
@@ -55,7 +57,7 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
         (Studio studio, _) = await SeedStudioWithPlan(allowBrandingRemoval: false);
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        UpdateStudioBrandingHandler handler = new(db);
+        UpdateStudioBrandingHandler handler = new(db, MakeTenant(studio.Id));
 
         Func<Task> act = () => handler.Handle(
             new UpdateStudioBrandingCommand(studio.Id, ShowPlatformBranding: false), default);
@@ -82,7 +84,7 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
         await seed.SaveChangesAsync();
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        UpdateStudioBrandingHandler handler = new(db);
+        UpdateStudioBrandingHandler handler = new(db, MakeTenant(studio.Id));
 
         Func<Task> act = () => handler.Handle(
             new UpdateStudioBrandingCommand(studio.Id, ShowPlatformBranding: false), default);
@@ -125,4 +127,11 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
 
     private static string UniqueSlug() =>
         ("b-" + Guid.NewGuid().ToString("N")).Substring(0, 20);
+
+    private static ICurrentTenant MakeTenant(Guid studioId)
+    {
+        ICurrentTenant tenant = Substitute.For<ICurrentTenant>();
+        tenant.StudioId.Returns(studioId);
+        return tenant;
+    }
 }

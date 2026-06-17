@@ -1,11 +1,10 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { useGetSharedDesignQuery } from "../publicApi";
 
 export function SharedDesignPage() {
   const { token = "" }  = useParams<{ token: string }>();
-  const navigate         = useNavigate();
   const { data: design, isLoading, isError } = useGetSharedDesignQuery(token, { skip: !token });
 
   if (isLoading) {
@@ -23,8 +22,8 @@ export function SharedDesignPage() {
         <p className="text-sm text-muted-foreground text-center">
           The design share link is no longer available or has been revoked.
         </p>
-        <Button variant="outline" onClick={() => navigate("/")}>
-          Go home
+        <Button variant="outline" asChild>
+          <Link to="/">Go home</Link>
         </Button>
       </div>
     );
@@ -48,12 +47,11 @@ export function SharedDesignPage() {
               By {design.studioName} · Expires {new Date(design.expiresAt).toLocaleDateString()}
             </p>
           </div>
-          <Button
-            className="w-full"
-            onClick={() => navigate(`/s/${design.studioSlug}`)}
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Book your own tattoo
+          <Button className="w-full" asChild>
+            <Link to={`/s/${design.studioSlug}`}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Book your own tattoo
+            </Link>
           </Button>
         </div>
       </div>

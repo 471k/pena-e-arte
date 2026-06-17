@@ -7,7 +7,6 @@ using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
-using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.IntegrationTests.Infrastructure;
@@ -69,15 +68,14 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     }
 
     [Fact]
-    public async Task RegisterStudio_DuplicateSlug_ThrowsBusinessRuleViolationException()
+    public async Task RegisterStudio_DuplicateSlug_AppendsSuffixUntilUnique()
     {
         string slug = UniqueSlug();
         await RunRegisterHandler(new("Studio One", slug, "Lisboa", 38.7, -9.1, "owner@one.com"));
 
-        Func<Task> act = () => RunRegisterHandler(new("Studio Two", slug, "Porto", 41.1, -8.6, "owner@two.com"));
+        StudioResponse result = await RunRegisterHandler(new("Studio Two", slug, "Porto", 41.1, -8.6, "owner@two.com"));
 
-        await act.Should().ThrowAsync<BusinessRuleViolationException>()
-            .WithMessage("*slug*");
+        result.Slug.Should().Be($"{slug}-2");
     }
 
     [Fact]

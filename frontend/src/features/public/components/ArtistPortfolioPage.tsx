@@ -1,19 +1,27 @@
-import { useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { useGetPublicArtistQuery } from "../publicApi";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+
+function ArtistMeta({ name, slug, bio, coverImage }: {
+  name: string;
+  slug: string;
+  bio: string | null;
+  coverImage?: string;
+}) {
+  useDocumentMeta({
+    title:       `${name} — Tattoo Artist on Pena e Artë`,
+    description: bio ?? `View the portfolio of ${name}.`,
+    ogImage:     coverImage,
+    canonical:   `https://penaearte.com/artist/${slug}`,
+  });
+  return null;
+}
 
 export function ArtistPortfolioPage() {
   const { slug = "" } = useParams<{ slug: string }>();
-  const navigate       = useNavigate();
   const { data: artist, isLoading, isError } = useGetPublicArtistQuery(slug, { skip: !slug });
-
-  useEffect(() => {
-    if (artist) {
-      document.title = `${artist.name} — Tattoo Artist on Pena e Artë`;
-    }
-  }, [artist]);
 
   if (isLoading) {
     return (
@@ -27,13 +35,22 @@ export function ArtistPortfolioPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <p className="text-muted-foreground">Artist not found.</p>
-        <Button variant="outline" onClick={() => navigate("/")}>Go home</Button>
+        <Button variant="outline" asChild>
+          <Link to="/">Go home</Link>
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
+      <ArtistMeta
+        name={artist.name}
+        slug={artist.slug}
+        bio={artist.bio}
+        coverImage={artist.portfolioImages[0]}
+      />
+
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         <Link
           to={`/s/${artist.studioSlug}`}
@@ -53,9 +70,11 @@ export function ArtistPortfolioPage() {
         {artist.showBookingCta && (
           <Button
             className="w-full"
-            onClick={() => navigate(`/book?studio=${artist.studioSlug}&artist=${artist.slug}`)}
+            asChild
           >
-            Book with {artist.name}
+            <Link to={`/book?studio=${artist.studioSlug}&artist=${artist.slug}`}>
+              Book with {artist.name}
+            </Link>
           </Button>
         )}
 

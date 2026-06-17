@@ -116,7 +116,7 @@ public class CreateSubscriptionCheckoutHandlerTests
         _db.ReferralCodes.Add(new ReferralCode { Id = codeId, StudioId = Guid.NewGuid(), Code = "REF12345", IsActive = true });
         await _db.SaveChangesAsync();
         await SeedStudioSubscription(SubscriptionStatus.Trialing, stripeCustomerId: "cus_x", pendingReferralCodeId: codeId);
-        _discounts.CreateOneMonthFreeCouponAsync(Arg.Any<CancellationToken>()).Returns("coupon_abc");
+        _discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("coupon_abc");
 
         await CreateSut().Handle(new CreateSubscriptionCheckoutCommand(Req(plan.Id)), default);
 

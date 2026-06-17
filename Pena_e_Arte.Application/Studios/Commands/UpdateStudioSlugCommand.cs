@@ -20,6 +20,9 @@ public class UpdateStudioSlugHandler(IAppDbContext db)
         if (studio.SlugLockedAt.HasValue)
             throw new BusinessRuleViolationException("Studio slug has already been changed once and cannot be changed again.");
 
+        if (studio.Slug == command.NewSlug)
+            return Unit.Value;
+
         bool taken = await db.Studios
             .IgnoreQueryFilters()
             .AnyAsync(s => s.Slug == command.NewSlug && s.Id != command.StudioId, ct);

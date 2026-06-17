@@ -28,7 +28,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         Guid studioId = await SeedReferringStudio();
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        GenerateReferralCodeHandler handler = new(db, NullLogger<GenerateReferralCodeHandler>.Instance);
+        GenerateReferralCodeHandler handler = new(db, MakeTenant(studioId), NullLogger<GenerateReferralCodeHandler>.Instance);
 
         ReferralCodeResponse result =
             await handler.Handle(new GenerateReferralCodeCommand(studioId), default);
@@ -52,7 +52,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         string code   = await GenerateCode(studioId);
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        GetReferralCodeHandler handler = new(db);
+        GetReferralCodeHandler handler = new(db, MakeTenant(studioId));
 
         ReferralCodeResponse? result =
             await handler.Handle(new GetReferralCodeQuery(studioId), default);
@@ -67,7 +67,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         Guid studioId = await SeedReferringStudio();
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        GetReferralCodeHandler handler = new(db);
+        GetReferralCodeHandler handler = new(db, MakeTenant(studioId));
 
         ReferralCodeResponse? result =
             await handler.Handle(new GetReferralCodeQuery(studioId), default);
@@ -118,7 +118,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                .Returns(("sub_flow_test", DateTime.UtcNow.AddMonths(1)));
 
         IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
-        discounts.CreateOneMonthFreeCouponAsync(Arg.Any<CancellationToken>())
+        discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                  .Returns("coup_flow_test");
 
         CurrentTenantService tenantSvc = new();
@@ -201,9 +201,16 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
     private async Task<string> GenerateCode(Guid studioId)
     {
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        GenerateReferralCodeHandler handler = new(db, NullLogger<GenerateReferralCodeHandler>.Instance);
+        GenerateReferralCodeHandler handler = new(db, MakeTenant(studioId), NullLogger<GenerateReferralCodeHandler>.Instance);
         ReferralCodeResponse result = await handler.Handle(new GenerateReferralCodeCommand(studioId), default);
         return result.Code;
+    }
+
+    private static ICurrentTenant MakeTenant(Guid studioId)
+    {
+        ICurrentTenant tenant = Substitute.For<ICurrentTenant>();
+        tenant.StudioId.Returns(studioId);
+        return tenant;
     }
 
     private async Task<Guid> SeedPlan()

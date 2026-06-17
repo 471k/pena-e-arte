@@ -4,17 +4,21 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Studios.Commands;
 
 public record UpdateStudioBrandingCommand(Guid StudioId, bool ShowPlatformBranding)
     : IRequest<StudioResponse>;
 
-public class UpdateStudioBrandingHandler(IAppDbContext db)
+public class UpdateStudioBrandingHandler(IAppDbContext db, ICurrentTenant tenant)
     : IRequestHandler<UpdateStudioBrandingCommand, StudioResponse>
 {
     public async Task<StudioResponse> Handle(UpdateStudioBrandingCommand command, CancellationToken ct)
     {
+        if (command.StudioId != tenant.StudioId)
+            throw new NotFoundException(nameof(Domain.Entities.Studio), command.StudioId);
+
         Domain.Entities.Studio studio = await db.Studios
             .Include(s => s.Subscription)
             .ThenInclude(sub => sub == null ? null : sub.Plan)

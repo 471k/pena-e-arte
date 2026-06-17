@@ -54,7 +54,9 @@ public class CreateSubscriptionHandler(
             {
                 try
                 {
-                    couponId = await discounts.CreateOneMonthFreeCouponAsync(ct);
+                    // Idempotency key ensures retries don't create a second coupon for the same studio.
+                    string idempotencyKey = $"referral-coupon-{tenant.StudioId}";
+                    couponId = await discounts.CreateOneMonthFreeCouponAsync(idempotencyKey, ct);
                     discountApplied = true;
                     logger.LogInformation(
                         "Applying referral discount via coupon for studio {@StudioId} from code {@ReferralCodeId}",

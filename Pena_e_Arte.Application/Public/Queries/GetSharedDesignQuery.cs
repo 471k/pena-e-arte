@@ -30,20 +30,22 @@ public class GetSharedDesignHandler(IAppDbContext db, IR2Service r2)
 
         if (revision is null) return null;
 
+        Studio? studio = await db.Studios
+            .FirstOrDefaultAsync(s => s.Id == shareToken.StudioId, ct);
+
+        if (studio is null) return null;
+
         shareToken.ViewCount++;
         shareToken.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-
-        Studio? studio = await db.Studios
-            .FirstOrDefaultAsync(s => s.Id == shareToken.StudioId, ct);
 
         string signedImageUrl = await r2.GeneratePresignedReadUrlAsync(revision.FileUrl, ct);
 
         return new SharedDesignResponse(
             signedImageUrl,
             revision.Design.Title,
-            studio?.Name ?? string.Empty,
-            studio?.Slug ?? string.Empty,
+            studio.Name,
+            studio.Slug,
             shareToken.ExpiresAt);
     }
 }

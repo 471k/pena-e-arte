@@ -5,7 +5,7 @@ namespace Pena_e_Arte.Infrastructure.Services;
 
 public class StripeDiscountService(CouponService couponService) : IStripeDiscountService
 {
-    public async Task<string> CreateOneMonthFreeCouponAsync(CancellationToken ct)
+    public async Task<string> CreateOneMonthFreeCouponAsync(string idempotencyKey, CancellationToken ct)
     {
         CouponCreateOptions options = new()
         {
@@ -14,7 +14,8 @@ public class StripeDiscountService(CouponService couponService) : IStripeDiscoun
             DurationInMonths = 1,
         };
 
-        Coupon coupon = await couponService.CreateAsync(options, null, ct);
+        RequestOptions requestOptions = new() { IdempotencyKey = idempotencyKey };
+        Coupon coupon = await couponService.CreateAsync(options, requestOptions, ct);
         return coupon.Id;
     }
 }

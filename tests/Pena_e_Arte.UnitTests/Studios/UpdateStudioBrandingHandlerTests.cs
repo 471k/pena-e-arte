@@ -1,17 +1,20 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Studios;
 
 public class UpdateStudioBrandingHandlerTests
 {
-    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly FakeDbContext _db     = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
 
-    private UpdateStudioBrandingHandler CreateSut() => new(_db);
+    private UpdateStudioBrandingHandler CreateSut() => new(_db, _tenant);
 
     private async Task<Studio> SeedStudioWithPlan(bool allowBrandingRemoval)
     {
@@ -41,6 +44,7 @@ public class UpdateStudioBrandingHandlerTests
         studio.Subscription = subscription;
 
         await _db.SaveChangesAsync();
+        _tenant.StudioId.Returns(studio.Id);
         return studio;
     }
 
