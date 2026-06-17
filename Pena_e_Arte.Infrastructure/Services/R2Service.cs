@@ -67,6 +67,9 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         return Task.FromResult(s3.GetPreSignedURL(request));
     }
 
+    public string GetPublicUrl(string objectKey) =>
+        $"{_opts.PublicUrl.TrimEnd('/')}/{objectKey}";
+
     public async Task UploadAsync(string objectKey, byte[] data, string contentType, CancellationToken ct)
     {
         using MemoryStream stream = new(data);

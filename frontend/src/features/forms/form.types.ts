@@ -36,7 +36,6 @@ export interface SignConsentFormRequest {
   clientId:      string;
   appointmentId: string;
   signatureData: string;
-  fileUrl:       string | null;
 }
 
 export interface GetConsentFormsParams {

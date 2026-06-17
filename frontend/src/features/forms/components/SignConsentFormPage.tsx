@@ -1,9 +1,8 @@
-import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle, FileSignature, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, FileSignature, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { Label } from "@/shared/components/ui/label";
@@ -19,7 +18,6 @@ import { cn } from "@/shared/utils/cn";
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSignConsentFormMutation } from "../consentFormsApi";
-import { FileUploadField, PDF_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
 
 const schema = z.object({
   appointmentId: z.string().min(1, "Please select an appointment"),
@@ -35,8 +33,6 @@ export function SignConsentFormPage() {
   const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
   const [signConsentForm, { isLoading, isSuccess, isError, reset: resetMutation }] =
     useSignConsentFormMutation();
-
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const {
     register,
@@ -55,12 +51,10 @@ export function SignConsentFormPage() {
       clientId:      user.id,
       appointmentId: values.appointmentId,
       signatureData: values.signatureData,
-      fileUrl:       pdfUrl,
     });
     if ("data" in result) {
       toast.success("Consent form signed.");
       resetForm();
-      setPdfUrl(null);
     } else {
       toast.error("Failed to sign consent form.");
     }
@@ -73,7 +67,7 @@ export function SignConsentFormPage() {
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
           <p className="text-base font-medium">Consent form signed!</p>
           <p className="text-sm text-muted-foreground">
-            Your signature has been recorded for this appointment.
+            Your signature has been recorded. A PDF copy has been generated and attached to your appointment.
           </p>
           <div className="flex gap-3 justify-center pt-2">
             <Button variant="outline" size="sm" onClick={resetMutation}>
@@ -103,7 +97,8 @@ export function SignConsentFormPage() {
       <main className="max-w-lg mx-auto px-4 py-6">
         <p className="text-sm text-muted-foreground mb-6">
           By signing this consent form you acknowledge the risks and procedures associated with your
-          tattoo session. Type your full legal name below to provide your digital signature.
+          tattoo session. Type your full legal name below to provide your digital signature. A PDF
+          document will be generated and attached to your appointment record automatically.
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -155,30 +150,6 @@ export function SignConsentFormPage() {
             />
             {errors.signatureData && (
               <p className="text-xs text-destructive">{errors.signatureData.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <FileUploadField
-              acceptedTypes={PDF_ACCEPTED_TYPES}
-              keyPrefix={`consent/${user?.id ?? "anon"}`}
-              label="Consent document (optional)"
-              disabled={isLoading}
-              onUploaded={(url) => setPdfUrl(url)}
-            />
-            {pdfUrl && (
-              <div className="flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm">
-                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="flex-1 truncate text-xs text-muted-foreground">PDF uploaded</span>
-                <button
-                  type="button"
-                  onClick={() => setPdfUrl(null)}
-                  className="text-xs text-destructive hover:underline shrink-0"
-                  disabled={isLoading}
-                >
-                  Remove
-                </button>
-              </div>
             )}
           </div>
 

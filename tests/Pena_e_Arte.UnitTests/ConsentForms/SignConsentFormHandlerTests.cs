@@ -14,26 +14,31 @@ namespace Pena_e_Arte.UnitTests.ConsentForms;
 
 public class SignConsentFormHandlerTests
 {
-    private readonly FakeDbContext  _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant      = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
-    private readonly ISender        _sender      = Substitute.For<ISender>();
-    private readonly Guid           _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext         _db          = FakeDbContext.Create();
+    private readonly ICurrentTenant        _tenant      = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser          _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IConsentFormPdfService _pdf        = Substitute.For<IConsentFormPdfService>();
+    private readonly IR2Service            _r2          = Substitute.For<IR2Service>();
+    private readonly ISender               _sender      = Substitute.For<ISender>();
+    private readonly Guid                  _studioId    = Guid.NewGuid();
 
     public SignConsentFormHandlerTests()
     {
         _tenant.StudioId.Returns(_studioId);
         _currentUser.Role.Returns("artist");
+        _pdf.Generate(Arg.Any<ConsentFormPdfData>()).Returns([0x25, 0x50, 0x44, 0x46]); // "%PDF"
+        _r2.GetPublicUrl(Arg.Any<string>()).Returns("https://r2.example.com/consent/test.pdf");
     }
 
-    private SignConsentFormHandler CreateSut() => new(_db, _tenant, _currentUser, _sender);
+    private SignConsentFormHandler CreateSut() =>
+        new(_db, _tenant, _currentUser, _pdf, _r2, _sender);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsConsentFormResponse()
     {
         Guid clientId      = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
-        SignConsentFormRequest req = new(clientId, appointmentId, "data:image/png;base64,abc123", null);
+        SignConsentFormRequest req = new(clientId, appointmentId, "data:image/png;base64,abc123");
 
         ConsentFormResponse result = await CreateSut().Handle(new SignConsentFormCommand(req), default);
 
@@ -50,12 +55,45 @@ public class SignConsentFormHandlerTests
     {
         Guid clientId      = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
-        SignConsentFormRequest req = new(clientId, appointmentId, "data:image/png;base64,abc123", null);
+        SignConsentFormRequest req = new(clientId, appointmentId, "data:image/png;base64,abc123");
 
         await CreateSut().Handle(new SignConsentFormCommand(req), default);
 
         _db.ConsentForms.Should().ContainSingle(f =>
             f.AppointmentId == appointmentId && f.StudioId == _studioId);
+    }
+
+    [Fact]
+    public async Task Handle_ValidRequest_GeneratesPdfAndPersistsFileUrl()
+    {
+        Guid clientId      = await SeedClient();
+        Guid appointmentId = await SeedAppointment(clientId);
+        SignConsentFormRequest req = new(clientId, appointmentId, "Jane Doe");
+
+        ConsentFormResponse result = await CreateSut().Handle(new SignConsentFormCommand(req), default);
+
+        _pdf.Received(1).Generate(Arg.Any<ConsentFormPdfData>());
+        await _r2.Received(1).UploadAsync(
+            Arg.Is<string>(k => k.StartsWith("consent/") && k.EndsWith(".pdf")),
+            Arg.Any<byte[]>(),
+            "application/pdf",
+            Arg.Any<CancellationToken>());
+        result.FileUrl.Should().Be("https://r2.example.com/consent/test.pdf");
+    }
+
+    [Fact]
+    public async Task Handle_PdfServiceThrows_SigningStillSucceeds()
+    {
+        _pdf.When(p => p.Generate(Arg.Any<ConsentFormPdfData>()))
+            .Do(_ => throw new InvalidOperationException("pdf error"));
+        Guid clientId      = await SeedClient();
+        Guid appointmentId = await SeedAppointment(clientId);
+        SignConsentFormRequest req = new(clientId, appointmentId, "sig");
+
+        ConsentFormResponse result = await CreateSut().Handle(new SignConsentFormCommand(req), default);
+
+        result.Id.Should().NotBeEmpty();
+        result.FileUrl.Should().BeNull();
     }
 
     [Fact]
@@ -74,7 +112,7 @@ public class SignConsentFormHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
 
-        SignConsentFormRequest req = new(clientId, appointmentId, "new-sig", null);
+        SignConsentFormRequest req = new(clientId, appointmentId, "new-sig");
 
         Func<Task> act = () => CreateSut().Handle(new SignConsentFormCommand(req), default);
 
@@ -88,26 +126,11 @@ public class SignConsentFormHandlerTests
         Guid appointmentId1 = await SeedAppointment(clientId1);
         Guid clientId2      = await SeedClient();
         Guid appointmentId2 = await SeedAppointment(clientId2);
-        SignConsentFormRequest req1 = new(clientId1, appointmentId1, "sig1", null);
-        SignConsentFormRequest req2 = new(clientId2, appointmentId2, "sig2", null);
 
-        await CreateSut().Handle(new SignConsentFormCommand(req1), default);
-        await CreateSut().Handle(new SignConsentFormCommand(req2), default);
+        await CreateSut().Handle(new SignConsentFormCommand(new(clientId1, appointmentId1, "sig1")), default);
+        await CreateSut().Handle(new SignConsentFormCommand(new(clientId2, appointmentId2, "sig2")), default);
 
         _db.ConsentForms.Should().HaveCount(2);
-    }
-
-    [Fact]
-    public async Task Handle_WithFileUrl_PersistsFileUrl()
-    {
-        Guid clientId      = await SeedClient();
-        Guid appointmentId = await SeedAppointment(clientId);
-        const string fileUrl = "https://r2.example.com/consent.pdf";
-        SignConsentFormRequest req = new(clientId, appointmentId, "sig", fileUrl);
-
-        ConsentFormResponse result = await CreateSut().Handle(new SignConsentFormCommand(req), default);
-
-        result.FileUrl.Should().Be(fileUrl);
     }
 
     [Fact]
@@ -115,10 +138,10 @@ public class SignConsentFormHandlerTests
     {
         Guid clientId      = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
-        SignConsentFormRequest req = new(clientId, appointmentId, "sig", null);
-        DateTime before = DateTime.UtcNow;
+        DateTime before    = DateTime.UtcNow;
 
-        ConsentFormResponse result = await CreateSut().Handle(new SignConsentFormCommand(req), default);
+        ConsentFormResponse result = await CreateSut().Handle(
+            new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
 
         result.SignedAt.Should().BeOnOrAfter(before);
     }
@@ -126,7 +149,7 @@ public class SignConsentFormHandlerTests
     [Fact]
     public async Task Handle_AppointmentDoesNotExist_ThrowsNotFoundException()
     {
-        SignConsentFormRequest req = new(Guid.NewGuid(), Guid.NewGuid(), "sig", null);
+        SignConsentFormRequest req = new(Guid.NewGuid(), Guid.NewGuid(), "sig");
 
         Func<Task> act = () => CreateSut().Handle(new SignConsentFormCommand(req), default);
 
@@ -143,7 +166,7 @@ public class SignConsentFormHandlerTests
         Guid appointmentId = await SeedAppointment(clientId);
 
         // Request carries a different (spoofed) ClientId — handler must derive it from the appointment instead.
-        SignConsentFormRequest req = new(Guid.NewGuid(), appointmentId, "sig", null);
+        SignConsentFormRequest req = new(Guid.NewGuid(), appointmentId, "sig");
 
         ConsentFormResponse result = await CreateSut().Handle(new SignConsentFormCommand(req), default);
 
@@ -158,7 +181,7 @@ public class SignConsentFormHandlerTests
         Guid otherClientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(otherClientId);
 
-        SignConsentFormRequest req = new(otherClientId, appointmentId, "sig", null);
+        SignConsentFormRequest req = new(otherClientId, appointmentId, "sig");
 
         Func<Task> act = () => CreateSut().Handle(new SignConsentFormCommand(req), default);
 

@@ -15,5 +15,7 @@ public interface IR2Service
 
     Task UploadAsync(string objectKey, byte[] data, string contentType, CancellationToken ct);
 
+    string GetPublicUrl(string objectKey);
+
     Task<IReadOnlyList<R2ObjectInfo>> ListByPrefixAsync(string prefix, CancellationToken ct);
 }

@@ -12,7 +12,13 @@ namespace Pena_e_Arte.Application.ConsentForms.Commands;
 
 public record SignConsentFormCommand(SignConsentFormRequest Request) : IRequest<ConsentFormResponse>;
 
-public class SignConsentFormHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser, ISender sender)
+public class SignConsentFormHandler(
+    IAppDbContext          db,
+    ICurrentTenant         tenant,
+    ICurrentUser           currentUser,
+    IConsentFormPdfService pdfService,
+    IR2Service             r2,
+    ISender                sender)
     : IRequestHandler<SignConsentFormCommand, ConsentFormResponse>
 {
     public async Task<ConsentFormResponse> Handle(SignConsentFormCommand command, CancellationToken ct)
@@ -43,16 +49,61 @@ public class SignConsentFormHandler(IAppDbContext db, ICurrentTenant tenant, ICu
             ClientId      = appointment.ClientId,
             AppointmentId = appointment.Id,
             SignatureData = req.SignatureData,
-            FileUrl       = req.FileUrl,
             SignedAt      = DateTime.UtcNow
         };
 
         db.ConsentForms.Add(form);
         await db.SaveChangesAsync(ct);
 
+        // Generate the PDF and upload it to R2 now that we have the form ID.
+        string? fileUrl = await TryGeneratePdfAsync(form, appointment, ct);
+        if (fileUrl is not null)
+        {
+            form.FileUrl = fileUrl;
+            await db.SaveChangesAsync(ct);
+        }
+
         await sender.Send(new SendConsentFormSignedNotificationCommand(form.Id), ct);
 
         return Map(form);
+    }
+
+    private async Task<string?> TryGeneratePdfAsync(
+        ConsentForm form, Appointment appointment, CancellationToken ct)
+    {
+        try
+        {
+            Client? client = await db.Clients
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == form.ClientId, ct);
+
+            Artist? artist = await db.Artists
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == appointment.ArtistId, ct);
+
+            Studio? studio = await db.Studios
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == form.StudioId, ct);
+
+            ConsentFormPdfData data = new(
+                StudioName:      studio?.Name ?? "Studio",
+                ClientFullName:  client is null ? "Client" : $"{client.FirstName} {client.LastName}",
+                ArtistFullName:  artist is null ? "Artist" : $"{artist.FirstName} {artist.LastName}",
+                AppointmentDate: appointment.Date,
+                SignatureText:   form.SignatureData ?? string.Empty,
+                SignedAt:        form.SignedAt ?? DateTime.UtcNow);
+
+            byte[]  pdfBytes  = pdfService.Generate(data);
+            string  objectKey = $"consent/{form.StudioId}/{form.Id}.pdf";
+
+            await r2.UploadAsync(objectKey, pdfBytes, "application/pdf", ct);
+            return r2.GetPublicUrl(objectKey);
+        }
+        catch
+        {
+            // PDF generation / upload is best-effort: signing must succeed regardless.
+            return null;
+        }
     }
 
     internal static ConsentFormResponse Map(ConsentForm f) =>
