@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
@@ -20,6 +21,7 @@ public class CreateAppointmentHandlerTests
     private readonly ISlotLocker       _locker   = Substitute.For<ISlotLocker>();
     private readonly IJobScheduler     _jobs     = Substitute.For<IJobScheduler>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender           _sender   = Substitute.For<ISender>();
     private readonly Guid              _studioId = Guid.NewGuid();
 
     public CreateAppointmentHandlerTests()
@@ -31,7 +33,7 @@ public class CreateAppointmentHandlerTests
     }
 
     private CreateAppointmentHandler CreateSut() =>
-        new(_db, _tenant, _user, _locker, _jobs, _realtime);
+        new(_db, _tenant, _user, _locker, _jobs, _realtime, _sender);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsAppointmentResponse()

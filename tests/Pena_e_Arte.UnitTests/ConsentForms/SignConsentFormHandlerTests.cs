@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.ConsentForms.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -16,6 +17,7 @@ public class SignConsentFormHandlerTests
     private readonly FakeDbContext  _db          = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant      = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
+    private readonly ISender        _sender      = Substitute.For<ISender>();
     private readonly Guid           _studioId    = Guid.NewGuid();
 
     public SignConsentFormHandlerTests()
@@ -24,7 +26,7 @@ public class SignConsentFormHandlerTests
         _currentUser.Role.Returns("artist");
     }
 
-    private SignConsentFormHandler CreateSut() => new(_db, _tenant, _currentUser);
+    private SignConsentFormHandler CreateSut() => new(_db, _tenant, _currentUser, _sender);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsConsentFormResponse()

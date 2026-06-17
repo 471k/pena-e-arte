@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -19,6 +20,7 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class CashPaymentIntegrationTests
 {
     private readonly DatabaseFixture _fixture;
+    private readonly ISender         _sender = Substitute.For<ISender>();
 
     public CashPaymentIntegrationTests(DatabaseFixture fixture) => _fixture = fixture;
 
@@ -320,7 +322,7 @@ public class CashPaymentIntegrationTests
         await using AppDbContext db  = _fixture.CreateDbContext(tenantId);
         ICurrentUser currentUser     = Substitute.For<ICurrentUser>();
         currentUser.UserId.Returns(confirmerUserId);
-        ConfirmCashDepositHandler handler = new(db, currentUser);
+        ConfirmCashDepositHandler handler = new(db, currentUser, _sender);
         return await handler.Handle(new ConfirmCashDepositCommand(paymentId), default);
     }
 

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Contracts.Responses;
@@ -16,6 +17,7 @@ public class CaptureDepositHandlerTests
     private readonly ICurrentTenant       _tenant    = Substitute.For<ICurrentTenant>();
     private readonly IStripePaymentService _stripe    = Substitute.For<IStripePaymentService>();
     private readonly IRealtimeNotifier    _realtime  = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender              _sender    = Substitute.For<ISender>();
     private readonly Guid                 _studioId  = Guid.NewGuid();
     private readonly Guid                 _appointmentId = Guid.NewGuid();
 
@@ -24,7 +26,7 @@ public class CaptureDepositHandlerTests
         _tenant.StudioId.Returns(_studioId);
     }
 
-    private CaptureDepositHandler CreateSut() => new(_db, _tenant, _stripe, _realtime);
+    private CaptureDepositHandler CreateSut() => new(_db, _tenant, _stripe, _realtime, _sender);
 
     [Fact]
     public async Task Handle_AuthorizedPayment_CallsStripeCapture()

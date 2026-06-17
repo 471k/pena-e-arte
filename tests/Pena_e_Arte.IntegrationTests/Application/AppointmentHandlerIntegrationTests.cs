@@ -216,7 +216,7 @@ public class AppointmentHandlerIntegrationTests
     private async Task<AppointmentResponse> RunCreateHandler(Guid tenantId, CreateAppointmentRequest req)
     {
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CreateAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _locker, _jobs, _realtime);
+        CreateAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _locker, _jobs, _realtime, _sender);
         return await handler.Handle(new CreateAppointmentCommand(req), default);
     }
 
