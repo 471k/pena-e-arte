@@ -86,6 +86,41 @@ public class SendAppointmentConfirmationHandler(
             appointment.StudioId, "NotificationReceived",
             GetNotificationsHandler.Map(log, $"{appointment.Client.FirstName} {appointment.Client.LastName}"), ct);
 
+        if (appointment.Client.Phone is not null)
+        {
+            string smsBody =
+                $"Hi {appointment.Client.FirstName}, your tattoo appointment at " +
+                $"{studio.Name} on {appointment.Date:dd MMM yyyy 'at' HH:mm} is confirmed. " +
+                $"See you soon!";
+
+            bool smsSent = true;
+            try
+            {
+                await notifications.SendSmsAsync(appointment.Client.Phone, smsBody, ct);
+            }
+            catch (Exception ex)
+            {
+                smsSent = false;
+                logger.LogWarning(ex,
+                    "SMS confirmation failed for appointment {@AppointmentId} tenant {@TenantId}",
+                    command.AppointmentId, studio.Id);
+            }
+
+            NotificationLog smsLog = new()
+            {
+                StudioId      = studio.Id,
+                RecipientId   = appointment.ClientId,
+                RecipientType = NotificationRecipientType.Client,
+                Channel       = NotificationChannel.Sms,
+                Subject       = "Appointment Confirmation",
+                Body          = smsBody,
+                SentAt        = DateTime.UtcNow,
+                IsSuccess     = smsSent,
+            };
+            db.NotificationLogs.Add(smsLog);
+            await db.SaveChangesAsync(ct);
+        }
+
         return Unit.Value;
     }
 }
