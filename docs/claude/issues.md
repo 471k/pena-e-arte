@@ -41,22 +41,22 @@ _All P1 issues resolved. See closed items below._
 
 ## P2 — Missing Shared UI Components
 
-All absent from `frontend/src/shared/components/ui/`. Use shadcn/ui primitives — do not write from scratch.
+_All P2 issues resolved (2026-06-17). Components existed; raw-HTML consumers updated._
 
-| # | Component | Used by |
+~~All absent from `frontend/src/shared/components/ui/`.~~
+
+| # | Component | Status |
 |---|---|---|
-| 8 | `select.tsx` | `BookAppointmentForm`, `CreateArtistPage`, `CreateClientPage`, `CreateDepositRulePage` — all use raw `<select>` |
-| 9 | `textarea.tsx` | `BookAppointmentForm` notes field — raw `<textarea>` with 4-line inline class block |
-| 10 | `badge.tsx` | `AppointmentStatusBadge`, `DepositStatusBadge` — both render custom inline spans |
-| 11 | `skeleton.tsx` | Every list/detail page shows `Loader2` spinner — no skeleton loaders |
-| 12 | `dialog.tsx` | Cancel appointment, delete design, delete tattoo record — actions are fire-and-forget with no confirmation |
-| 13 | `toast.tsx` / Sonner | Success/error feedback after mutations — no toast system; success states are inline-form only |
-| 14 | `table.tsx` / DataTable | Client, artist, payment, form list pages — lists render as stacked cards, no table component |
-| 15 | `avatar.tsx` | Artist/client cards — mentioned in frontend.md spec |
-| 16 | `separator.tsx` | Sectional dividers |
-| 17 | `tabs.tsx` | `ClientDetailPage`, `ArtistDetailPage` (profile tabs) |
-
-After adding each component: replace all raw HTML usages in consuming files. Run `pnpm lint` after each replacement.
+| 8 | `select.tsx` | ✓ Exists. `SubmitIntakeFormPage` migrated to `<Select>` + `Controller` (2026-06-17). Others already using it. |
+| 9 | `textarea.tsx` | ✓ Exists. `SubmitIntakeFormPage` migrated to `<Textarea>` (2026-06-17). |
+| 10 | `badge.tsx` | ✓ Exists. `AppointmentStatusBadge`, `DepositStatusBadge`, `PaymentStatusBadge` all use `<Badge>`. |
+| 11 | `skeleton.tsx` | ✓ Exists. All list/detail pages use `<Skeleton>`. |
+| 12 | `dialog.tsx` | ✓ Exists. `AppointmentDetailPage`, `DesignDetailPage` use `<Dialog>` for confirmation. |
+| 13 | `sonner.tsx` | ✓ Exists. All mutation pages use `toast.success` / `toast.error`. |
+| 14 | `table.tsx` | ✓ Exists. `ClientListPage`, `ArtistListPage`, `PaymentListPage` use `<DataTable>`. |
+| 15 | `avatar.tsx` | ✓ Exists. `ArtistDetailPage` and `ClientDetailPage` migrated to `<Avatar>` + `<AvatarFallback>` (2026-06-17). |
+| 16 | `separator.tsx` | ✓ Exists. Used in `DashboardPage`, `SchedulePage`, etc. |
+| 17 | `tabs.tsx` | ✓ Exists. `ClientDetailPage` and `ArtistDetailPage` use `<Tabs>`. |
 
 ---
 

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Calendar, ChevronRight, Mail, Pencil, Phone, Loader2, MapPin } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -181,9 +182,9 @@ export function ClientDetailPage() {
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         {/* Client identity — always read-only */}
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-muted text-base font-semibold text-muted-foreground select-none">
-            {getInitials(client.firstName, client.lastName)}
-          </div>
+          <Avatar className="h-14 w-14 text-base">
+            <AvatarFallback>{getInitials(client.firstName, client.lastName)}</AvatarFallback>
+          </Avatar>
           <div>
             <h1 className="text-lg font-semibold leading-tight">
               {client.firstName} {client.lastName}

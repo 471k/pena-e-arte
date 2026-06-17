@@ -15,6 +15,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -212,9 +213,9 @@ export function ArtistDetailPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-muted text-base font-semibold text-muted-foreground select-none">
-            {getInitials(artist.firstName, artist.lastName)}
-          </div>
+          <Avatar className="h-14 w-14 text-base">
+            <AvatarFallback>{getInitials(artist.firstName, artist.lastName)}</AvatarFallback>
+          </Avatar>
           <div>
             <h1 className="text-lg font-semibold leading-tight">
               {artist.firstName} {artist.lastName}

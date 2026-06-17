@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, CheckCircle, ClipboardList, Loader2 } from "lucide-react";
@@ -6,24 +6,18 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { cn } from "@/shared/utils/cn";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSubmitIntakeFormMutation } from "../intakeFormsApi";
-
-const TEXTAREA_CLS = cn(
-  "flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-  "ring-offset-background placeholder:text-muted-foreground",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-  "disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-);
-
-const SELECT_CLS = cn(
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-  "ring-offset-background focus-visible:outline-none focus-visible:ring-2",
-  "focus-visible:ring-ring focus-visible:ring-offset-2",
-  "disabled:cursor-not-allowed disabled:opacity-50"
-);
 
 const schema = z.object({
   formData:      z.string().min(10, "Please provide at least 10 characters"),
@@ -43,6 +37,7 @@ export function SubmitIntakeFormPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset: resetForm,
     formState: { errors },
@@ -101,13 +96,13 @@ export function SubmitIntakeFormPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
             <Label htmlFor="formData">Medical history &amp; notes</Label>
-            <textarea
+            <Textarea
               id="formData"
               rows={6}
               placeholder="List any allergies, skin conditions, medications, or other relevant health information…"
               disabled={isLoading}
               {...register("formData")}
-              className={cn(TEXTAREA_CLS, errors.formData && "border-destructive")}
+              className={cn("resize-none", errors.formData && "border-destructive")}
             />
             {errors.formData && (
               <p className="text-xs text-destructive">{errors.formData.message}</p>
@@ -116,23 +111,33 @@ export function SubmitIntakeFormPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="appointmentId">Appointment (optional)</Label>
-            <select
-              id="appointmentId"
-              disabled={loadingAppts || isLoading}
-              {...register("appointmentId")}
-              className={SELECT_CLS}
-            >
-              <option value="">
-                {loadingAppts ? "Loading appointments…" : "Not linked to an appointment"}
-              </option>
-              {appointments?.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {new Date(a.date).toLocaleDateString("en-GB", {
-                    day: "numeric", month: "short", year: "numeric",
-                  })}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="appointmentId"
+              render={({ field }) => (
+                <Select
+                  disabled={loadingAppts || isLoading}
+                  value={field.value ?? ""}
+                  onValueChange={(v) => field.onChange(v === "__none__" ? undefined : v)}
+                >
+                  <SelectTrigger id="appointmentId">
+                    <SelectValue
+                      placeholder={loadingAppts ? "Loading appointments…" : "Not linked to an appointment"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Not linked to an appointment</SelectItem>
+                    {appointments?.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {new Date(a.date).toLocaleDateString("en-GB", {
+                          day: "numeric", month: "short", year: "numeric",
+                        })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           <div className="space-y-1.5">
