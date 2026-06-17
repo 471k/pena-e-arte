@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { useAppSelector } from "@/app/hooks";
 import { useGetPublicArtistQuery } from "../publicApi";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 
@@ -21,6 +22,7 @@ function ArtistMeta({ name, slug, bio, coverImage }: {
 
 export function ArtistPortfolioPage() {
   const { slug = "" } = useParams<{ slug: string }>();
+  const token = useAppSelector((s) => s.auth.token);
   const { data: artist, isLoading, isError } = useGetPublicArtistQuery(slug, { skip: !slug });
 
   if (isLoading) {
@@ -67,16 +69,15 @@ export function ArtistPortfolioPage() {
           )}
         </div>
 
-        {artist.showBookingCta && (
-          <Button
-            className="w-full"
-            asChild
-          >
-            <Link to={`/book?studio=${artist.studioSlug}&artist=${artist.slug}`}>
-              Book with {artist.name}
-            </Link>
-          </Button>
-        )}
+        {artist.showBookingCta && (() => {
+          const bookUrl = `/book?studio=${artist.studioSlug}&artist=${artist.slug}`;
+          const ctaUrl  = token ? bookUrl : `/login?redirect=${encodeURIComponent(bookUrl)}`;
+          return (
+            <Button className="w-full" asChild>
+              <Link to={ctaUrl}>Book with {artist.name}</Link>
+            </Button>
+          );
+        })()}
 
         {artist.portfolioImages.length > 0 && (
           <div className="space-y-3">

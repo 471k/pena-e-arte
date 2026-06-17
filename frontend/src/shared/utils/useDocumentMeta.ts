@@ -1,45 +1,52 @@
 import { useEffect } from "react";
 
 export interface DocMeta {
-  title: string;
+  title:        string;
   description?: string;
-  ogImage?: string;
-  canonical: string;
+  ogImage?:     string;
+  canonical:    string;
 }
+
+const ATTR = "data-doc-meta";
 
 export function useDocumentMeta({ title, description, ogImage, canonical }: DocMeta): void {
   useEffect(() => {
-    const previousTitle = document.title;
-    const injected: Element[] = [];
+    const prevTitle = document.title;
 
-    function injectMeta(attrs: Record<string, string>): void {
-      const el = document.createElement("meta");
+    // Remove any tags this hook injected on the previous render (handles StrictMode
+    // double-fire and hot reloads without leaving duplicate tags in <head>).
+    document.querySelectorAll(`[${ATTR}]`).forEach((el) => el.remove());
+
+    function inject(tag: "meta" | "link", attrs: Record<string, string>): void {
+      const el = document.createElement(tag);
       Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+      el.setAttribute(ATTR, "1");
       document.head.appendChild(el);
-      injected.push(el);
     }
 
     document.title = title;
-    injectMeta({ property: "og:title", content: title });
+    inject("meta", { property: "og:title",   content: title });
+    inject("meta", { property: "og:type",    content: "website" });
+    inject("meta", { property: "og:url",     content: canonical });
+    inject("meta", { name: "twitter:card",   content: "summary_large_image" });
+    inject("meta", { name: "twitter:title",  content: title });
 
     if (description) {
-      injectMeta({ name: "description", content: description });
-      injectMeta({ property: "og:description", content: description });
+      inject("meta", { name: "description",             content: description });
+      inject("meta", { property: "og:description",      content: description });
+      inject("meta", { name: "twitter:description",     content: description });
     }
 
     if (ogImage) {
-      injectMeta({ property: "og:image", content: ogImage });
+      inject("meta", { property: "og:image",  content: ogImage });
+      inject("meta", { name: "twitter:image", content: ogImage });
     }
 
-    const link = document.createElement("link");
-    link.setAttribute("rel", "canonical");
-    link.setAttribute("href", canonical);
-    document.head.appendChild(link);
-    injected.push(link);
+    inject("link", { rel: "canonical", href: canonical });
 
     return () => {
-      document.title = previousTitle;
-      injected.forEach((el) => el.remove());
+      document.title = prevTitle;
+      document.querySelectorAll(`[${ATTR}]`).forEach((el) => el.remove());
     };
   }, [title, description, ogImage, canonical]);
 }
