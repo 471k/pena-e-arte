@@ -233,6 +233,14 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
     {
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
+        Studio studio = new()
+        {
+            Id         = tenantId,
+            Name       = "Test Studio",
+            Slug       = tenantId.ToString("N")[..16],
+            OwnerEmail = "owner@test.studio",
+        };
+        ctx.Studios.Add(studio);
         Design design = new() { StudioId = tenantId, ClientId = clientId, ArtistId = artistId, Title = "Rose" };
         ctx.Designs.Add(design);
         await ctx.SaveChangesAsync();
