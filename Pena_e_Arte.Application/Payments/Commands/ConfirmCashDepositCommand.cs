@@ -11,7 +11,7 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 
 public record ConfirmCashDepositCommand(Guid PaymentId) : IRequest<PaymentResponse>;
 
-public class ConfirmCashDepositHandler(IAppDbContext db, ICurrentUser currentUser)
+public class ConfirmCashDepositHandler(IAppDbContext db, ICurrentUser currentUser, ISender sender)
     : IRequestHandler<ConfirmCashDepositCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(ConfirmCashDepositCommand command, CancellationToken ct)
@@ -41,6 +41,9 @@ public class ConfirmCashDepositHandler(IAppDbContext db, ICurrentUser currentUse
         }
 
         await db.SaveChangesAsync(ct);
+
+        await sender.Send(new SendDepositCapturedNotificationCommand(payment.Id), ct);
+
         return payment.ToResponse();
     }
 }

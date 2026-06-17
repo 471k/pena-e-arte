@@ -12,7 +12,7 @@ namespace Pena_e_Arte.Application.ConsentForms.Commands;
 
 public record SignConsentFormCommand(SignConsentFormRequest Request) : IRequest<ConsentFormResponse>;
 
-public class SignConsentFormHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser)
+public class SignConsentFormHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser, ISender sender)
     : IRequestHandler<SignConsentFormCommand, ConsentFormResponse>
 {
     public async Task<ConsentFormResponse> Handle(SignConsentFormCommand command, CancellationToken ct)
@@ -49,6 +49,8 @@ public class SignConsentFormHandler(IAppDbContext db, ICurrentTenant tenant, ICu
 
         db.ConsentForms.Add(form);
         await db.SaveChangesAsync(ct);
+
+        await sender.Send(new SendConsentFormSignedNotificationCommand(form.Id), ct);
 
         return Map(form);
     }
