@@ -98,7 +98,8 @@ public class CreateSubscriptionCheckoutHandler(
 
         try
         {
-            string couponId = await discounts.CreateOneMonthFreeCouponAsync(ct);
+            string couponId = await discounts.CreateOneMonthFreeCouponAsync(
+                $"referral-coupon-{studio.Id}", ct);
             logger.LogInformation(
                 "Attaching referral coupon to checkout for studio {@StudioId}", studio.Id);
             return couponId;

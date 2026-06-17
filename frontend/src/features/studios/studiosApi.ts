@@ -121,7 +121,7 @@ export const studiosApi = createApi({
         params:          { format: "png" },
         responseHandler: async (response) => URL.createObjectURL(await response.blob()),
       }),
-      keepUnusedDataFor: 60,
+      keepUnusedDataFor: 0,
     }),
     generateReferralCode: builder.mutation<ReferralCodeResponse, string>({
       query: (id) => ({ url: `studios/${id}/referral-codes`, method: "POST" }),

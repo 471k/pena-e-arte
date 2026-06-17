@@ -1,19 +1,22 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Pena_e_Arte.Application.Referrals.Commands;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Referrals;
 
 public class GenerateReferralCodeHandlerTests
 {
-    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly FakeDbContext  _db     = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
 
     private GenerateReferralCodeHandler CreateSut() =>
-        new(_db, NullLogger<GenerateReferralCodeHandler>.Instance);
+        new(_db, _tenant, NullLogger<GenerateReferralCodeHandler>.Instance);
 
     [Fact]
     public async Task Handle_ValidStudio_ReturnsReferralCodeResponse()
@@ -86,6 +89,7 @@ public class GenerateReferralCodeHandlerTests
         Studio studio = new() { Name = "Test", Slug = "test", City = "Porto", OwnerEmail = "x@x.com", IsActive = true, TrialExpiresAt = DateTime.UtcNow.AddDays(14) };
         _db.Studios.Add(studio);
         await _db.SaveChangesAsync();
+        _tenant.StudioId.Returns(studio.Id);
         return studio.Id;
     }
 }

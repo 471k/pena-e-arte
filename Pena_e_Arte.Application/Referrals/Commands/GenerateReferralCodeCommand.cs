@@ -14,6 +14,7 @@ public record GenerateReferralCodeCommand(Guid StudioId) : IRequest<ReferralCode
 
 public class GenerateReferralCodeHandler(
     IAppDbContext                          db,
+    ICurrentTenant                         tenant,
     ILogger<GenerateReferralCodeHandler>   logger)
     : IRequestHandler<GenerateReferralCodeCommand, ReferralCodeResponse>
 {
@@ -21,6 +22,9 @@ public class GenerateReferralCodeHandler(
 
     public async Task<ReferralCodeResponse> Handle(GenerateReferralCodeCommand command, CancellationToken ct)
     {
+        if (command.StudioId != tenant.StudioId)
+            throw new NotFoundException(nameof(Studio), command.StudioId);
+
         Studio? studio = await db.Studios
             .FirstOrDefaultAsync(s => s.Id == command.StudioId, ct)
             ?? throw new NotFoundException(nameof(Studio), command.StudioId);

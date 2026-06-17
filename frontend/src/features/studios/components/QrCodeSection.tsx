@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -8,6 +9,12 @@ export function QrCodeSection() {
   const { data: blobUrl, isLoading, isError } = useGetStudioQrCodeQuery(studio?.id ?? "", {
     skip: !studio?.id,
   });
+
+  useEffect(() => {
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [blobUrl]);
 
   if (!studio) return null;
 

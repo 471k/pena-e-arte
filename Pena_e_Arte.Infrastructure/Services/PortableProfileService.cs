@@ -33,7 +33,13 @@ public class PortableProfileService(AppDbContext db) : IPortableProfileService
             .IgnoreQueryFilters()
             .Include(t => t.Artist)
             .Include(t => t.Client)
-            .Where(t => t.Client.UserId == userId && t.DeletedAt == null)
+            .Where(t => t.Client.UserId == userId
+                     && t.DeletedAt == null
+                     && db.ClientProfiles
+                           .IgnoreQueryFilters()
+                           .Any(cp => cp.ClientId == t.ClientId
+                                   && cp.AllowCrossTenantRead
+                                   && cp.DeletedAt == null))
             .OrderByDescending(t => t.CompletedAt)
             .ToListAsync(ct);
 

@@ -145,7 +145,7 @@ internal record IndustryReportDocument(
 
 internal record IndustryMetrics(
     [property: JsonPropertyName("avg_appointments_per_studio_per_month")] double?                  AvgAppointmentsPerStudioPerMonth,
-    [property: JsonPropertyName("peak_booking_hour")]                     int?                     PeakBookingHour,
+    [property: JsonPropertyName("peak_booking_hour_utc")]                 int?                     PeakBookingHour,
     [property: JsonPropertyName("top_session_durations_minutes")]         Dictionary<string, int>? TopSessionDurationsMinutes,
     [property: JsonPropertyName("trial_to_paid_conversion_rate")]         double?                  TrialToPaidConversionRate,
     [property: JsonPropertyName("avg_retention_months")]                  double?                  AvgRetentionMonths
