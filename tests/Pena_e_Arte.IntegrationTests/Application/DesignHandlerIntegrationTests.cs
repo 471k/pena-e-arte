@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Pena_e_Arte.Application.Designs.Commands;
@@ -20,6 +21,7 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
 {
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender           _sender   = Substitute.For<ISender>();
 
     // ── CreateDesign ─────────────────────────────────────────────────────────────
 
@@ -247,7 +249,7 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task RunReviewHandler(Guid tenantId, ReviewDesignRequest req)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        ReviewDesignHandler handler = new(db, TenantFor(tenantId), _realtime);
+        ReviewDesignHandler handler = new(db, TenantFor(tenantId), _realtime, _sender);
         await handler.Handle(new ReviewDesignCommand(req), default);
     }
 

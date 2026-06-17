@@ -1,5 +1,7 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 using Pena_e_Arte.Application.ConsentForms.Commands;
 using Pena_e_Arte.Application.ConsentForms.Queries;
 using Pena_e_Arte.Application.IntakeForms.Commands;
@@ -18,6 +20,8 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class FormHandlerIntegrationTests(DatabaseFixture fixture)
 {
+    private readonly ISender _sender = Substitute.For<ISender>();
+
     // ── SubmitIntakeForm ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -27,7 +31,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid clientId = await SeedClient(tenantId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        SubmitIntakeFormHandler handler = new(db, TenantFor(tenantId), StaffUser());
+        SubmitIntakeFormHandler handler = new(db, TenantFor(tenantId), StaffUser(), _sender);
 
         IntakeFormResponse result = await handler.Handle(
             new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, "{\"allergies\":\"none\"}", null)),
@@ -46,7 +50,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid clientId = await SeedClient(tenantA);
 
         await using AppDbContext dbA = fixture.CreateDbContext(tenantA);
-        IntakeFormResponse result = await new SubmitIntakeFormHandler(dbA, TenantFor(tenantA), StaffUser())
+        IntakeFormResponse result = await new SubmitIntakeFormHandler(dbA, TenantFor(tenantA), StaffUser(), _sender)
             .Handle(new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, "{}", null)), default);
 
         await using AppDbContext dbB = fixture.CreateDbContext(tenantB);
@@ -110,7 +114,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         (Guid clientId, Guid appointmentId) = await SeedClientAndAppointment(tenantId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        ConsentFormResponse result = await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser())
+        ConsentFormResponse result = await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _sender)
             .Handle(new SignConsentFormCommand(
                 new SignConsentFormRequest(clientId, appointmentId, "data:image/png;base64,abc", null)), default);
 
@@ -249,7 +253,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<IntakeFormResponse> SubmitForm(Guid tenantId, Guid clientId, string formData)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        return await new SubmitIntakeFormHandler(db, TenantFor(tenantId), StaffUser())
+        return await new SubmitIntakeFormHandler(db, TenantFor(tenantId), StaffUser(), _sender)
             .Handle(new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, formData, null)), default);
     }
 
@@ -257,7 +261,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid tenantId, Guid clientId, Guid appointmentId, string signature)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        return await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser())
+        return await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _sender)
             .Handle(new SignConsentFormCommand(
                 new SignConsentFormRequest(clientId, appointmentId, signature, null)), default);
     }

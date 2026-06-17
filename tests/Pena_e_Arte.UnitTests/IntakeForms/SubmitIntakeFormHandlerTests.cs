@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.IntakeForms.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -16,6 +17,7 @@ public class SubmitIntakeFormHandlerTests
     private readonly FakeDbContext  _db          = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant      = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
+    private readonly ISender        _sender      = Substitute.For<ISender>();
     private readonly Guid           _studioId    = Guid.NewGuid();
 
     public SubmitIntakeFormHandlerTests()
@@ -24,7 +26,7 @@ public class SubmitIntakeFormHandlerTests
         _currentUser.Role.Returns("artist");
     }
 
-    private SubmitIntakeFormHandler CreateSut() => new(_db, _tenant, _currentUser);
+    private SubmitIntakeFormHandler CreateSut() => new(_db, _tenant, _currentUser, _sender);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsIntakeFormResponse()

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Pena_e_Arte.Application.Payments.Commands;
@@ -21,6 +22,7 @@ public class PaymentHandlerIntegrationTests
     private readonly DatabaseFixture      _fixture;
     private readonly IStripePaymentService _stripe;
     private readonly IRealtimeNotifier    _realtime;
+    private readonly ISender              _sender   = Substitute.For<ISender>();
 
     public PaymentHandlerIntegrationTests(DatabaseFixture fixture)
     {
@@ -531,7 +533,7 @@ public class PaymentHandlerIntegrationTests
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         CurrentTenantService tenant = new();
         tenant.SetTenant(tenantId);
-        CaptureDepositHandler handler = new(db, tenant, _stripe, _realtime);
+        CaptureDepositHandler handler = new(db, tenant, _stripe, _realtime, _sender);
         return await handler.Handle(new CaptureDepositCommand(paymentId), default);
     }
 
@@ -540,7 +542,7 @@ public class PaymentHandlerIntegrationTests
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         CurrentTenantService tenant = new();
         tenant.SetTenant(tenantId);
-        RefundPaymentHandler handler = new(db, _stripe);
+        RefundPaymentHandler handler = new(db, _stripe, _sender);
         return await handler.Handle(new RefundPaymentCommand(paymentId, refundAmount), default);
     }
 }

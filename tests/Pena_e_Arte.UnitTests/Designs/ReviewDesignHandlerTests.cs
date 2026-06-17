@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.Designs.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -16,12 +17,13 @@ public class ReviewDesignHandlerTests
     private readonly FakeDbContext     _db       = FakeDbContext.Create();
     private readonly ICurrentTenant    _tenant   = Substitute.For<ICurrentTenant>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender           _sender   = Substitute.For<ISender>();
     private readonly Guid              _studioId = Guid.NewGuid();
 
     public ReviewDesignHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
 
-    private ReviewDesignHandler CreateSut() => new(_db, _tenant, _realtime);
+    private ReviewDesignHandler CreateSut() => new(_db, _tenant, _realtime, _sender);
 
     [Fact]
     public async Task Handle_ApproveRevisionWithNoExistingApproval_CreatesApprovalWithApprovedStatus()
