@@ -1,6 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 import type {
+  MrrDataPoint,
   PlatformStatsResponse,
   PlatformSubscriptionResponse,
   PlatformReferralCodeResponse,
@@ -11,11 +12,15 @@ import type { SubscriptionResponse } from "@/features/billing/billing.types";
 export const platformApi = createApi({
   reducerPath: "platformApi",
   baseQuery,
-  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport"],
+  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory"],
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStatsResponse, void>({
       query: () => "platform/stats",
       providesTags: ["PlatformStats"],
+    }),
+    getMrrHistory: builder.query<MrrDataPoint[], void>({
+      query: () => "platform/mrr-history",
+      providesTags: ["MrrHistory"],
     }),
     getPlatformSubscriptions: builder.query<PlatformSubscriptionResponse[], void>({
       query: () => "platform/subscriptions",
@@ -67,6 +72,7 @@ export const platformApi = createApi({
 
 export const {
   useGetPlatformStatsQuery,
+  useGetMrrHistoryQuery,
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,
   useGetIndustryReportsQuery,

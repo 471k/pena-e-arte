@@ -18,6 +18,7 @@ import {
   useGetPlatformStatsQuery,
   useGetPlatformSubscriptionsQuery,
 } from "@/features/platform/platformApi";
+import { MrrChart } from "./MrrChart";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
 type KpiAccent = "default" | "info" | "warning" | "success";
@@ -194,6 +195,9 @@ export function IssuerDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* MRR chart */}
+        <MrrChart />
 
         {/* At-risk studios */}
         <Card>

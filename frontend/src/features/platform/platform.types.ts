@@ -44,3 +44,8 @@ export interface IndustryReportSummary {
   generatedAt: string;
   downloadUrl: string;
 }
+
+export interface MrrDataPoint {
+  month: string;
+  mrr:   number;
+}
