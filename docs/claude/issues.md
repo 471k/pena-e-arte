@@ -1,27 +1,23 @@
 # Known Issues — Prioritized Backlog
 
-> Last updated: 2026-06-10
-> Total: 36 issues across 8 priority levels.
+> Last updated: 2026-06-17
+> Total: 33 issues across 7 priority levels.
 > Start every session by checking this file and fixing P0 first.
 
 ---
 
 ## P0 — Active Bugs (broken right now)
 
-### #1 — DesignRevisionUploaded invalidates wrong cache
-- **Where:** `frontend/src/shared/hooks/useSignalR.ts:27`
-- **What:** SignalR `DesignRevisionUploaded` event fires `appointmentsApi.util.invalidateTags(["Appointment"])` instead of `designsApi.util.invalidateTags(["Design"])`. Design pages never refresh on real-time updates.
-- **Fix:** Change the invalidation target to `["Design"]`.
+_All P0 bugs resolved. See closed items below._
 
-### #2 — Subscription status string casing mismatch
-- **Where:** `frontend/src/features/dashboard/components/DashboardPage.tsx:61`
-- **What:** Checks `"Trialing"`, `"GracePeriod"`, `"PastDue"`, `"Cancelled"` (PascalCase). Must match exactly what the backend JSON serializer emits — likely `"trialing"`, `"grace_period"`, `"past_due"`, `"cancelled"`. Banners silently never show.
-- **Fix:** Align casing with the backend `SubscriptionStatus` enum serialization. Check `Pena_e_Arte.Infrastructure` JSON options to confirm the exact strings.
+~~### #1 — DesignRevisionUploaded invalidates wrong cache~~
+~~**Fixed:** `useSignalR.ts` already dispatches `designsApi.util.invalidateTags(["Design"])` (resolved before 2026-06-17).~~
 
-### #3 — JWT double-decoded in authSlice
-- **Where:** `frontend/src/features/auth/authSlice.ts:19–22`
-- **What:** `decodeToken(token)` is called (line 19), then `JSON.parse(atob(token.split(".")[1]))` is called again (line 21) to extract `exp`. The `exp` field is already on the decoded object.
-- **Fix:** Add `exp?: number` to `JwtClaims` in `shared/types/jwt.ts`. Remove the second decode. Use the result of the single `decodeToken` call for both claims and expiry.
+~~### #2 — Subscription status string casing mismatch~~
+~~**Fixed:** Backend uses `.Status.ToString()` (PascalCase); frontend matches PascalCase throughout. `bannerConfig.test.tsx` pins the contract.~~
+
+~~### #3 — JWT double-decoded in authSlice~~
+~~**Fixed:** `authSlice.ts` calls `decodeToken` once and reads `payload.exp` directly.~~
 
 ---
 
