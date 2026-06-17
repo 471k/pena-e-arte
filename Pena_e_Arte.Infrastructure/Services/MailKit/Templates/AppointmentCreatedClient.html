@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Booking Received</title></head>
+<body style="font-family:sans-serif;color:#1a1a1a;max-width:560px;margin:0 auto;padding:24px">
+  <h2 style="margin-bottom:4px">Booking request received</h2>
+  <p style="color:#555;margin-top:0">Hi {{client_first_name}},</p>
+  <p>Your booking request at <strong>{{studio_name}}</strong> has been received
+     and is pending confirmation from the studio.</p>
+  <table style="width:100%;border-collapse:collapse;margin:16px 0">
+    <tr><td style="padding:8px 0;border-bottom:1px solid #e5e5e5;color:#555;width:40%">Date</td>
+        <td style="padding:8px 0;border-bottom:1px solid #e5e5e5;font-weight:600">{{appointment_date}}</td></tr>
+    <tr><td style="padding:8px 0;color:#555">Duration</td>
+        <td style="padding:8px 0;font-weight:600">{{duration_minutes}} min</td></tr>
+  </table>
+  <p style="color:#555;font-size:13px">You will receive another email once the studio confirms your appointment.</p>
+  {{#if show_branding}}
+  <hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0">
+  <p style="font-size:11px;color:#aaa;text-align:center">Powered by Pena e Art&#235;</p>
+  {{/if}}
+</body>
+</html>
