@@ -12,15 +12,16 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class UploadDesignRevisionHandlerTests
 {
-    private readonly FakeDbContext     _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant    _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly Guid              _studioId = Guid.NewGuid();
+    private readonly FakeDbContext     _db           = FakeDbContext.Create();
+    private readonly ICurrentTenant    _tenant       = Substitute.For<ICurrentTenant>();
+    private readonly IRealtimeNotifier _realtime     = Substitute.For<IRealtimeNotifier>();
+    private readonly IJobScheduler     _jobScheduler = Substitute.For<IJobScheduler>();
+    private readonly Guid              _studioId     = Guid.NewGuid();
 
     public UploadDesignRevisionHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
 
-    private UploadDesignRevisionHandler CreateSut() => new(_db, _tenant, _realtime);
+    private UploadDesignRevisionHandler CreateSut() => new(_db, _tenant, _realtime, _jobScheduler);
 
     [Fact]
     public async Task Handle_FirstRevision_SetsVersionNumberToOne()
@@ -77,6 +78,19 @@ public class UploadDesignRevisionHandlerTests
 
         await _realtime.Received(1)
             .NotifyStudioAsync(_studioId, "DesignUploaded", Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ValidRevision_SchedulesTimeoutJob()
+    {
+        Guid designId = await SeedDesign();
+
+        await CreateSut()
+            .Handle(new UploadDesignRevisionCommand(new(designId, "https://r2.example.com/v1.png", null)), default);
+
+        _jobScheduler.Received(1).ScheduleDesignRevisionTimeout(
+            Arg.Any<Guid>(),
+            Arg.Is<DateTimeOffset>(d => d > DateTimeOffset.UtcNow.AddDays(13)));
     }
 
     [Fact]

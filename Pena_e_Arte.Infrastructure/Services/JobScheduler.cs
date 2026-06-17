@@ -21,4 +21,8 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
     public void ScheduleGracePeriodEnd(Guid studioId, DateTimeOffset enqueueAt) =>
         backgroundJobs.Schedule<GracePeriodEndJob>(
             j => j.ExecuteAsync(studioId, default), enqueueAt);
+
+    public void ScheduleDesignRevisionTimeout(Guid revisionId, DateTimeOffset enqueueAt) =>
+        backgroundJobs.Schedule<DesignRevisionTimeoutJob>(
+            j => j.ExecuteAsync(revisionId, default), enqueueAt);
 }

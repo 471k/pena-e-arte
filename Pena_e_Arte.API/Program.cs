@@ -65,6 +65,11 @@ try
             "industry-report",
             j => j.RunAsync(CancellationToken.None),
             Cron.Monthly());
+
+        recurringJobs.AddOrUpdate<PaymentReconciliationJob>(
+            "payment-reconciliation",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(2));
     }
 
     app.UseSerilogRequestLogging();
@@ -79,6 +84,8 @@ try
         new DashboardOptions { Authorization = [new HangfireDashboardAuthFilter()] });
 
     app.MapHub<ScheduleHub>("/hubs/schedule");
+    app.MapHub<DesignHub>("/hubs/design");
+    app.MapHub<NotificationHub>("/hubs/notification");
     app.MapHealthChecks("/health");
     app.MapPrometheusScrapingEndpoint();
 

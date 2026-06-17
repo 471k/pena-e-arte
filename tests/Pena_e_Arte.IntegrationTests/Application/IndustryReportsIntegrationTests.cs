@@ -159,7 +159,7 @@ public class IndustryReportsIntegrationTests(DatabaseFixture fixture)
 
         JsonElement metrics = doc.RootElement.GetProperty("metrics");
         metrics.GetProperty("avg_appointments_per_studio_per_month").ValueKind.Should().Be(JsonValueKind.Null);
-        metrics.GetProperty("peak_booking_hour").ValueKind.Should().Be(JsonValueKind.Null);
+        metrics.GetProperty("peak_booking_hour_utc").ValueKind.Should().Be(JsonValueKind.Null);
         metrics.GetProperty("trial_to_paid_conversion_rate").ValueKind.Should().Be(JsonValueKind.Null);
         metrics.GetProperty("avg_retention_months").ValueKind.Should().Be(JsonValueKind.Null);
     }

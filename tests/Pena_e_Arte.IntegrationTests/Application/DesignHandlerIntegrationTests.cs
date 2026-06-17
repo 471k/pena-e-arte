@@ -20,8 +20,9 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
 {
-    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender           _sender   = Substitute.For<ISender>();
+    private readonly IRealtimeNotifier _realtime     = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender           _sender       = Substitute.For<ISender>();
+    private readonly IJobScheduler     _jobScheduler = Substitute.For<IJobScheduler>();
 
     // ── CreateDesign ─────────────────────────────────────────────────────────────
 
@@ -250,7 +251,7 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<DesignRevisionResponse> RunUploadHandler(Guid tenantId, UploadDesignRevisionRequest req)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        UploadDesignRevisionHandler handler = new(db, TenantFor(tenantId), _realtime);
+        UploadDesignRevisionHandler handler = new(db, TenantFor(tenantId), _realtime, _jobScheduler);
         return await handler.Handle(new UploadDesignRevisionCommand(req), default);
     }
 

@@ -6,4 +6,5 @@ public interface IJobScheduler
     void ScheduleTrialExpiryWarning(Guid studioId, DateTimeOffset enqueueAt);
     void ScheduleTrialExpiry(Guid studioId, DateTimeOffset enqueueAt);
     void ScheduleGracePeriodEnd(Guid studioId, DateTimeOffset enqueueAt);
+    void ScheduleDesignRevisionTimeout(Guid revisionId, DateTimeOffset enqueueAt);
 }

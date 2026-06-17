@@ -4,5 +4,6 @@ public enum DesignApprovalStatus
 {
     Pending,
     Approved,
-    ChangesRequested
+    ChangesRequested,
+    Expired,
 }

@@ -4,10 +4,25 @@ using Pena_e_Arte.Infrastructure.Hubs;
 
 namespace Pena_e_Arte.Infrastructure.Services;
 
-public class RealtimeNotifier(IHubContext<ScheduleHub> hub) : IRealtimeNotifier
+public class RealtimeNotifier(
+    IHubContext<ScheduleHub>     scheduleHub,
+    IHubContext<DesignHub>       designHub,
+    IHubContext<NotificationHub> notificationHub) : IRealtimeNotifier
 {
-    public async Task NotifyStudioAsync(Guid studioId, string eventName, object payload, CancellationToken ct) =>
-        await hub.Clients
-            .Group($"studio:{studioId}")
-            .SendAsync(eventName, payload, ct);
+    private static readonly HashSet<string> DesignEvents =
+    [
+        "DesignUploaded", "DesignReviewed", "DesignRevisionExpired"
+    ];
+
+    public async Task NotifyStudioAsync(Guid studioId, string eventName, object payload, CancellationToken ct)
+    {
+        string group = $"studio:{studioId}";
+        IClientProxy target = eventName switch
+        {
+            "NotificationReceived" => notificationHub.Clients.Group(group),
+            _ when DesignEvents.Contains(eventName) => designHub.Clients.Group(group),
+            _ => scheduleHub.Clients.Group(group)
+        };
+        await target.SendAsync(eventName, payload, ct);
+    }
 }

@@ -139,18 +139,19 @@ describe("useSignalR", () => {
     renderSignalR(store, "studio-0001");
     await act(async () => { /* flush microtasks */ });
 
-    expect(mockStart).toHaveBeenCalledOnce();
+    // Three hubs: schedule, design, notification
+    expect(mockStart).toHaveBeenCalledTimes(3);
     expect(mockInvoke).toHaveBeenCalledWith("JoinStudio", "studio-0001");
   });
 
-  // ── DesignRevisionUploaded — the critical regression guard ───────────────────
+  // ── DesignUploaded — the critical regression guard ──────────────────────────
 
-  it("DesignRevisionUploaded dispatches designsApi tag invalidation", async () => {
+  it("DesignUploaded dispatches designsApi tag invalidation", async () => {
     renderSignalR(store, "studio-0001");
     await act(async () => { /* flush connection start */ });
     dispatchSpy.mockClear();
 
-    act(() => { eventHandlers["DesignRevisionUploaded"](); });
+    act(() => { eventHandlers["DesignUploaded"](); });
 
     const types = dispatchSpy.mock.calls.map(([a]) =>
       (a as { type: string }).type,
@@ -158,12 +159,12 @@ describe("useSignalR", () => {
     expect(types).toContain(designsApi.util.invalidateTags.type);
   });
 
-  it("DesignRevisionUploaded does NOT dispatch appointmentsApi tag invalidation", async () => {
+  it("DesignUploaded does NOT dispatch appointmentsApi tag invalidation", async () => {
     renderSignalR(store, "studio-0001");
     await act(async () => { /* flush connection start */ });
     dispatchSpy.mockClear();
 
-    act(() => { eventHandlers["DesignRevisionUploaded"](); });
+    act(() => { eventHandlers["DesignUploaded"](); });
 
     const types = dispatchSpy.mock.calls.map(([a]) =>
       (a as { type: string }).type,
@@ -171,12 +172,12 @@ describe("useSignalR", () => {
     expect(types).not.toContain(appointmentsApi.util.invalidateTags.type);
   });
 
-  it("DesignRevisionUploaded does NOT dispatch notificationsApi tag invalidation", async () => {
+  it("DesignUploaded does NOT dispatch notificationsApi tag invalidation", async () => {
     renderSignalR(store, "studio-0001");
     await act(async () => { /* flush connection start */ });
     dispatchSpy.mockClear();
 
-    act(() => { eventHandlers["DesignRevisionUploaded"](); });
+    act(() => { eventHandlers["DesignUploaded"](); });
 
     const types = dispatchSpy.mock.calls.map(([a]) =>
       (a as { type: string }).type,
@@ -287,12 +288,12 @@ describe("useSignalR", () => {
 
   // ── Correct invalidation payload ─────────────────────────────────────────────
 
-  it("DesignRevisionUploaded invalidates the [Design] tag specifically", async () => {
+  it("DesignUploaded invalidates the [Design] tag specifically", async () => {
     renderSignalR(store, "studio-0001");
     await act(async () => { /* flush */ });
     dispatchSpy.mockClear();
 
-    act(() => { eventHandlers["DesignRevisionUploaded"](); });
+    act(() => { eventHandlers["DesignUploaded"](); });
 
     const designInvalidations = dispatchSpy.mock.calls
       .map(([a]) => a as ReturnType<typeof designsApi.util.invalidateTags>)

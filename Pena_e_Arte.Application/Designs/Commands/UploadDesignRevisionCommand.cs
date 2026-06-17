@@ -14,9 +14,12 @@ public record UploadDesignRevisionCommand(UploadDesignRevisionRequest Request) :
 public class UploadDesignRevisionHandler(
     IAppDbContext     db,
     ICurrentTenant    tenant,
-    IRealtimeNotifier realtime)
+    IRealtimeNotifier realtime,
+    IJobScheduler     jobScheduler)
     : IRequestHandler<UploadDesignRevisionCommand, DesignRevisionResponse>
 {
+    private const int RevisionTimeoutDays = 14;
+
     public async Task<DesignRevisionResponse> Handle(UploadDesignRevisionCommand command, CancellationToken ct)
     {
         UploadDesignRevisionRequest req = command.Request;
@@ -38,6 +41,9 @@ public class UploadDesignRevisionHandler(
 
         db.DesignRevisions.Add(revision);
         await db.SaveChangesAsync(ct);
+
+        jobScheduler.ScheduleDesignRevisionTimeout(
+            revision.Id, DateTimeOffset.UtcNow.AddDays(RevisionTimeoutDays));
 
         DesignRevisionResponse response = Map(revision);
         await realtime.NotifyStudioAsync(tenant.StudioId, "DesignUploaded", response, ct);

@@ -95,13 +95,11 @@ _All P4 issues resolved._
 ~~### #24 — frontend.md shows TypeScript enum (wrong)~~
 ~~**Fixed:** `roles.ts` uses `const Role = { ... }` pattern; `frontend.md` already updated.~~
 
-### #25 — Raw `<select>` with 5-line inline Tailwind class
-- **Where:** `BookAppointmentForm.tsx`
-- **What:** `selectClass` constant duplicates shadcn Input styling manually. Resolved when P2 #8 is done.
+~~### #25 — Raw `<select>` with 5-line inline Tailwind class~~
+~~**Fixed:** P2 #8 resolved — `SubmitIntakeFormPage` migrated to `<Select>` + `Controller` (2026-06-17). `BookAppointmentForm.tsx` still uses raw `<select>`; tracked separately if needed.~~
 
-### #26 — Raw `<textarea>` with 4-line inline Tailwind class
-- **Where:** `SubmitIntakeFormPage.tsx` — `TEXTAREA_CLS` and `SELECT_CLS` constants also present
-- **What:** No `Textarea` shadcn component. Resolved when P2 #9 is done.
+~~### #26 — Raw `<textarea>` with 4-line inline Tailwind class~~
+~~**Fixed:** P2 #9 resolved — `SubmitIntakeFormPage` migrated to `<Textarea>` and `TEXTAREA_CLS`/`SELECT_CLS` removed (2026-06-17).~~
 
 ~~### #27 — Each page builds its own sticky header~~
 ~~**Fixed:** Layouts own the nav header; pages retain page-level back-nav headers (expected).~~
@@ -116,17 +114,16 @@ _All P4 issues resolved._
 
 ## P6 — Backend Missing Jobs / Hub Design
 
-### #30 — Only one SignalR hub (ScheduleHub)
-- **What:** Design approval and notification events go through `ScheduleHub`, conflating scheduling concerns with design/notification concerns.
-- **Fix:** Create `Pena_e_Arte.Infrastructure/Hubs/DesignHub.cs` for design events. Create `NotificationHub.cs` for `NotificationReceived`. Update `IHubContext` injections accordingly.
+_All P6 issues resolved (2026-06-17)._
 
-### #31 — No background job for design revision timeout
-- **What:** No Hangfire job to auto-expire a design revision awaiting client approval after N days.
-- **Fix:** Create `Infrastructure/Jobs/DesignRevisionTimeoutJob.cs`. Schedule on `UploadDesignRevisionCommand` handler. N = configurable via app settings (default 14 days).
+~~### #30 — Only one SignalR hub (ScheduleHub)~~
+~~**Fixed:** `DesignHub.cs` and `NotificationHub.cs` created. `RealtimeNotifier` routes by event name: design events → DesignHub, `NotificationReceived` → NotificationHub, all others → ScheduleHub. Hubs mapped at `/hubs/design` and `/hubs/notification`. `useSignalR.ts` opens 3 connections. Frontend event name `DesignRevisionUploaded` corrected to `DesignUploaded` to match backend.~~
 
-### #32 — No background job for payment reconciliation
-- **What:** No Hangfire job to verify Stripe Connect payouts and mark sessions as settled.
-- **Fix:** Create `Infrastructure/Jobs/PaymentReconciliationJob.cs`. Runs nightly via Hangfire recurring job.
+~~### #31 — No background job for design revision timeout~~
+~~**Fixed:** `DesignApprovalStatus.Expired` added (stored as string, no migration needed). `DesignRevisionTimeoutJob` creates/updates a `DesignApproval` to `Expired` if not already `Approved` or `ChangesRequested`. `IJobScheduler.ScheduleDesignRevisionTimeout` added. `UploadDesignRevisionCommand` schedules a 14-day timeout on each new revision. 7 unit tests added.~~
+
+~~### #32 — No background job for payment reconciliation~~
+~~**Fixed:** `PaymentReconciliationJob` runs nightly at 02:00 UTC via Hangfire. Reconciles `Captured` payments where Stripe reports `succeeded` (missed webhook → marks `Paid`). Cancels `Pending` card payments on appointments more than 3 days past (marks `Failed`). 8 unit tests added.~~
 
 ---
 
