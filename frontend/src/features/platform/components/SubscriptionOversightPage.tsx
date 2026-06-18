@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Banknote, Loader2, Receipt } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -213,10 +214,19 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   );
 }
 
+const ALL_STATUSES = ["Active", "Trialing", "GracePeriod", "PastDue", "Cancelled", "NoSubscription"];
+
 export function SubscriptionOversightPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = searchParams.get("status") ?? "";
+
   // Refetch on mount so the issuer always sees current subscription state.
   const { data: subscriptions, isLoading, isError } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
+
+  const filtered = subscriptions?.filter((s) =>
+    statusFilter ? s.status === statusFilter : true
+  ) ?? [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -224,11 +234,45 @@ export function SubscriptionOversightPage() {
         <Receipt className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Subscriptions</span>
         {subscriptions && (
-          <span className="text-xs text-muted-foreground ml-1">({subscriptions.length})</span>
+          <span className="text-xs text-muted-foreground ml-1">
+            {filtered.length === subscriptions.length
+              ? `(${subscriptions.length})`
+              : `(${filtered.length} of ${subscriptions.length})`}
+          </span>
         )}
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-3">
+        {!isLoading && !isError && subscriptions && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => setSearchParams({})}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                !statusFilter ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
+              }`}
+            >
+              All ({subscriptions.length})
+            </button>
+            {ALL_STATUSES.map((s) => {
+              const count = subscriptions.filter((sub) => sub.status === s).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={s}
+                  onClick={() => setSearchParams({ status: s })}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    statusFilter === s
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  {s} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {isLoading && (
           <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -240,11 +284,11 @@ export function SubscriptionOversightPage() {
           <p className="text-center text-sm text-destructive py-16">Failed to load subscriptions.</p>
         )}
 
-        {!isLoading && !isError && subscriptions?.length === 0 && (
+        {!isLoading && !isError && filtered.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-16">No studios found.</p>
         )}
 
-        {!isLoading && !isError && subscriptions?.map((sub) => (
+        {!isLoading && !isError && filtered.map((sub) => (
           <SubscriptionRow key={sub.studioId} sub={sub} />
         ))}
       </main>
