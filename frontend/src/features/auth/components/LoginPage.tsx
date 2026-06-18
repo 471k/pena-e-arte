@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, PenLine } from "lucide-react";
+import { AlertCircle, Loader2, PenLine } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath } from "@/app/router";
+import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -55,9 +56,11 @@ export function LoginPage() {
 
   const serverError = error
     ? "data" in error
-      ? (error.data as { message?: string; detail?: string })?.message ??
-        (error.data as { message?: string; detail?: string })?.detail ??
-        "Invalid email or password."
+      ? error.status === 429
+        ? "Too many sign-in attempts. Please try again in a few minutes."
+        : (error.data as { message?: string; detail?: string })?.message ??
+          (error.data as { message?: string; detail?: string })?.detail ??
+          "Invalid email or password."
       : "Unable to reach the server. Please try again."
     : null;
 
@@ -130,9 +133,10 @@ export function LoginPage() {
               </div>
 
               {serverError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {serverError}
-                </p>
+                <Alert variant="destructive" role="alert">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{serverError}</AlertDescription>
+                </Alert>
               )}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
