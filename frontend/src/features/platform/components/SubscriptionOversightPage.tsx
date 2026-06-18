@@ -166,7 +166,10 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
         </div>
 
         {extending && (
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-2 border-t">
+            <span className="text-xs text-muted-foreground">
+              {trialExpired ? "Grant extension of" : "Extend trial by"}
+            </span>
             <Input
               type="number"
               min="1"
