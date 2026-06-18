@@ -20,9 +20,12 @@ public static class PlatformEndpoints
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
         group.MapPost("studios/{studioId:guid}/subscription/activate", ActivateSubscriptionManually);
         group.MapPatch("subscriptions/{studioId:guid}/cancel",         CancelSubscription);
-        group.MapGet("referral-codes",                   GetReferralCodes);
-        group.MapPatch("referral-codes/{id:guid}/deactivate", DeactivateReferralCode);
-        group.MapGet("reports/industry",                 GetIndustryReports);
+        group.MapGet("referral-codes",                              GetReferralCodes);
+        group.MapPatch("referral-codes/{id:guid}/deactivate",       DeactivateReferralCode);
+        group.MapPost("studios/{studioId:guid}/referral-codes",     GenerateReferralCodeForStudio);
+        group.MapPatch("referral-codes/{id:guid}/reactivate",       ReactivateReferralCode);
+        group.MapDelete("referral-codes/{id:guid}",                 DeleteReferralCode);
+        group.MapGet("reports/industry",                            GetIndustryReports);
     }
 
     private static async Task<IResult> GetStats(
@@ -97,6 +100,34 @@ public static class PlatformEndpoints
         CancellationToken ct)
     {
         await mediator.Send(new CancelSubscriptionCommand(studioId), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GenerateReferralCodeForStudio(
+        Guid              studioId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        PlatformReferralCodeResponse result =
+            await mediator.Send(new IssuerGenerateReferralCodeCommand(studioId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ReactivateReferralCode(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new ReactivateReferralCodeCommand(id), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> DeleteReferralCode(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new DeleteReferralCodeCommand(id), ct);
         return Results.NoContent();
     }
 
