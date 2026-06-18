@@ -78,7 +78,7 @@ describe("IssuerLayout", () => {
     expect(screen.queryByText("Pena e Artë")).not.toBeInTheDocument();
   });
 
-  it("renders all seven issuer nav links", () => {
+  it("renders all six issuer nav links (Notifications moved to bell icon)", () => {
     renderLayout();
     expect(screen.getByRole("link", { name: /^dashboard$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^studios$/i })).toBeInTheDocument();
@@ -86,7 +86,12 @@ describe("IssuerLayout", () => {
     expect(screen.getByRole("link", { name: /^subscriptions$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^referrals$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^reports$/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /notifications/i })).toBeInTheDocument();
+  });
+
+  it("does not render a 'Notifications' text link in the nav", () => {
+    renderLayout();
+    // NotificationBell renders a bell icon, not a "Notifications" text nav link
+    expect(screen.queryByRole("link", { name: /^notifications$/i })).not.toBeInTheDocument();
   });
 
   it("renders the NotificationBell", () => {
@@ -102,16 +107,24 @@ describe("IssuerLayout", () => {
     expect(screen.getAllByText("Platform Admin").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("shows the Log out button", () => {
+  it("does not show Log out as a persistent top-level button", () => {
     renderLayout();
-    expect(screen.getByRole("button", { name: /log out/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /log out/i })).not.toBeInTheDocument();
+  });
+
+  it("reveals Log out inside the user menu dropdown on click", async () => {
+    const user = userEvent.setup();
+    renderLayout();
+    await user.click(screen.getByRole("button", { name: /user menu/i }));
+    expect(await screen.findByRole("button", { name: /log out/i })).toBeInTheDocument();
   });
 
   it("clicking Log out clears the Redux auth state", async () => {
     const user  = userEvent.setup();
     const store = renderLayout();
 
-    await user.click(screen.getByRole("button", { name: /log out/i }));
+    await user.click(screen.getByRole("button", { name: /user menu/i }));
+    await user.click(await screen.findByRole("button", { name: /log out/i }));
 
     expect(store.getState().auth.user).toBeNull();
     expect(store.getState().auth.token).toBeNull();
@@ -121,7 +134,8 @@ describe("IssuerLayout", () => {
     const user = userEvent.setup();
     renderLayout();
 
-    await user.click(screen.getByRole("button", { name: /log out/i }));
+    await user.click(screen.getByRole("button", { name: /user menu/i }));
+    await user.click(await screen.findByRole("button", { name: /log out/i }));
 
     expect(screen.getByTestId("login-page")).toBeInTheDocument();
   });

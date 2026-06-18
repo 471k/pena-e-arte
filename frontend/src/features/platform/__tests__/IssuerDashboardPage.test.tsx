@@ -18,9 +18,13 @@ const STATS: PlatformStatsResponse = {
   activeSubscriptions: 8,
   trialStudios:        3,
   gracePeriodStudios:  1,
+  pastDueStudios:      0,
+  cancelledStudios:    0,
+  suspendedStudios:    0,
   mrr:                 392,
+  mrrGrowthPercent:    12.5,
   trialConversionRate: 0.727,
-  newStudiosThisMonth: 2,
+  newStudiosThisMonth: 5, // chosen to avoid collision with atRisk badge count (2)
 };
 
 const SUBSCRIPTIONS: PlatformSubscriptionResponse[] = [
@@ -64,6 +68,9 @@ const server = setupServer(
   ),
   http.get("http://localhost/api/v1/platform/subscriptions", () =>
     HttpResponse.json(SUBSCRIPTIONS),
+  ),
+  http.get("http://localhost/api/v1/platform/mrr-history", () =>
+    HttpResponse.json([]), // empty — MrrChart renders gracefully with no data
   ),
 );
 
@@ -128,7 +135,7 @@ describe("IssuerDashboardPage", () => {
     expect(screen.getByText("8")).toBeInTheDocument();         // activeSubscriptions
     expect(screen.getByText("3")).toBeInTheDocument();         // trialStudios
     expect(screen.getByText("1")).toBeInTheDocument();         // gracePeriodStudios
-    expect(screen.getByText("2")).toBeInTheDocument();         // newStudiosThisMonth
+    expect(screen.getByText("5")).toBeInTheDocument();         // newStudiosThisMonth
   });
 
   it("shows MRR formatted as currency", async () => {
@@ -164,15 +171,35 @@ describe("IssuerDashboardPage", () => {
     expect(await screen.findByText("No at-risk studios.")).toBeInTheDocument();
   });
 
-  it("renders all quick nav links", async () => {
+  it("KPI card 'Active Subscriptions' links to subscriptions filtered by Active", async () => {
     renderPage();
-    await screen.findByText("12"); // wait for stats to load
-    // Use exact names so KPI card links ("Total Studios 12") don't conflict
-    expect(screen.getByRole("link", { name: "Studios" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Plans" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Subscriptions" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Referrals" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Reports" })).toBeInTheDocument();
+    await screen.findByText("8"); // active subscriptions value
+    const link = screen.getByRole("link", { name: /active subscriptions/i });
+    expect(link).toHaveAttribute("href", "/platform/subscriptions?status=Active");
+  });
+
+  it("KPI card 'Past Due' links to subscriptions filtered by PastDue", async () => {
+    renderPage();
+    await screen.findByText("8");
+    const link = screen.getByRole("link", { name: /past due/i });
+    expect(link).toHaveAttribute("href", "/platform/subscriptions?status=PastDue");
+  });
+
+  it("shows MRR growth percentage in the MRR card subtitle", async () => {
+    renderPage();
+    expect(await screen.findByText(/\+12\.5% vs last month/i)).toBeInTheDocument();
+  });
+
+  it("shows 'Payment overdue' label for PastDue studios in at-risk widget", async () => {
+    renderPage();
+    expect(await screen.findByText("Payment overdue")).toBeInTheDocument();
+  });
+
+  it("shows count badge on At-Risk section title", async () => {
+    renderPage();
+    await screen.findByText("GracePeriod Studio");
+    // atRisk.length = 2 (one GracePeriod + one PastDue); newStudiosThisMonth = 5 (no conflict)
+    expect(screen.getByText("2")).toBeInTheDocument();
   });
 
   it("shows error state when stats load fails", async () => {
