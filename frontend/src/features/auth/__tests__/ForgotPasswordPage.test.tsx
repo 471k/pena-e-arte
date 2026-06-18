@@ -56,6 +56,10 @@ describe("ForgotPasswordPage", () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /send reset link/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to sign in/i })).toBeInTheDocument();
+    // Boilerplate CardDescription must be gone
+    expect(
+      screen.queryByText(/enter your email and we.ll send a reset link/i)
+    ).not.toBeInTheDocument();
   });
 
   it("shows email-required error on empty submit", async () => {
@@ -136,5 +140,59 @@ describe("ForgotPasswordPage", () => {
     await user.click(screen.getByRole("button", { name: /send reset link/i }));
 
     expect(await screen.findByText(/unable to reach the server/i)).toBeInTheDocument();
+  });
+
+  it("does not render the CardDescription subtitle", () => {
+    renderPage();
+    expect(
+      screen.queryByText(/enter your email and we.ll send a reset link/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("email field gets aria-invalid=true and aria-describedby on validation error", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /send reset link/i }));
+    await screen.findByText(/email is required/i);
+
+    const emailInput = screen.getByLabelText(/email/i);
+    expect(emailInput).toHaveAttribute("aria-invalid", "true");
+    expect(emailInput).toHaveAttribute("aria-describedby", "email-error");
+  });
+
+  it("email error paragraph has role=alert for screen reader announcement", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /send reset link/i }));
+
+    const errorEl = await screen.findByText(/email is required/i);
+    expect(errorEl).toHaveAttribute("role", "alert");
+  });
+
+  it("server error is rendered inside an Alert with role=alert", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/auth/forgot-password", () =>
+        HttpResponse.json({ message: "Something went wrong." }, { status: 500 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "owner@test.com");
+    await user.click(screen.getByRole("button", { name: /send reset link/i }));
+
+    const alertEl = await screen.findByRole("alert");
+    expect(alertEl).toHaveTextContent("Something went wrong.");
+  });
+
+  it("Back to sign in link is inside the card with a separator (not inside the form)", () => {
+    renderPage();
+    const link = screen.getByRole("link", { name: /back to sign in/i });
+    expect(link).toBeInTheDocument();
+    // The link's parent container has the border-t separator class
+    expect(link.closest("div")).toHaveClass("border-t");
   });
 });
