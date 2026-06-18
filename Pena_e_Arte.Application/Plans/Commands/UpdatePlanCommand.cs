@@ -30,11 +30,15 @@ public class UpdatePlanHandler(IAppDbContext db)
 
         await db.SaveChangesAsync(ct);
 
+        int subscriberCount = await db.Subscriptions
+            .CountAsync(s => s.PlanId == plan.Id, ct);
+
         return new PlanResponse(
             plan.Id, plan.Name, plan.BillingInterval.ToString(),
             plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent,
             plan.AllowBrandingRemoval,
-            plan.StripePriceIdMonthly, plan.StripePriceIdYearly);
+            plan.StripePriceIdMonthly, plan.StripePriceIdYearly,
+            SubscriberCount: subscriberCount);
     }
 }
 

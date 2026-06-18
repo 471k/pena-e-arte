@@ -23,7 +23,8 @@ public class GetPlansHandler(IAppDbContext db)
                 p.YearlyDiscountPercent,
                 p.AllowBrandingRemoval,
                 p.StripePriceIdMonthly,
-                p.StripePriceIdYearly))
+                p.StripePriceIdYearly,
+                db.Subscriptions.Count(s => s.PlanId == p.Id)))
             .ToListAsync(ct);
     }
 }

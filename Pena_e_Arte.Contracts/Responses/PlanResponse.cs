@@ -9,4 +9,5 @@ public record PlanResponse(
     int     YearlyDiscountPercent,
     bool    AllowBrandingRemoval,
     string? StripePriceIdMonthly,
-    string? StripePriceIdYearly);
+    string? StripePriceIdYearly,
+    int     SubscriberCount);

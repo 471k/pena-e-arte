@@ -37,7 +37,8 @@ public class CreatePlanHandler(IAppDbContext db)
             plan.Id, plan.Name, plan.BillingInterval.ToString(),
             plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent,
             plan.AllowBrandingRemoval,
-            plan.StripePriceIdMonthly, plan.StripePriceIdYearly);
+            plan.StripePriceIdMonthly, plan.StripePriceIdYearly,
+            SubscriberCount: 0);
     }
 }
 
