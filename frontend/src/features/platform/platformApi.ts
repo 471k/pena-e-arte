@@ -18,8 +18,8 @@ export const platformApi = createApi({
       query: () => "platform/stats",
       providesTags: ["PlatformStats"],
     }),
-    getMrrHistory: builder.query<MrrDataPoint[], void>({
-      query: () => "platform/mrr-history",
+    getMrrHistory: builder.query<MrrDataPoint[], number | void>({
+      query: (months) => months ? `platform/mrr-history?months=${months}` : "platform/mrr-history",
       providesTags: ["MrrHistory"],
     }),
     getPlatformSubscriptions: builder.query<PlatformSubscriptionResponse[], void>({

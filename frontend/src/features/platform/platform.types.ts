@@ -3,7 +3,11 @@ export interface PlatformStatsResponse {
   activeSubscriptions: number;
   trialStudios:        number;
   gracePeriodStudios:  number;
+  pastDueStudios:      number;
+  cancelledStudios:    number;
+  suspendedStudios:    number;
   mrr:                 number;
+  mrrGrowthPercent:    number;
   trialConversionRate: number;
   newStudiosThisMonth: number;
 }
