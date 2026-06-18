@@ -5,15 +5,16 @@ using Pena_e_Arte.Contracts.Responses;
 
 namespace Pena_e_Arte.Application.Platform.Queries;
 
-public record GetMrrHistoryQuery : IRequest<List<MrrDataPointResponse>>;
+public record GetMrrHistoryQuery(int Months = 12) : IRequest<List<MrrDataPointResponse>>;
 
 public class GetMrrHistoryHandler(IAppDbContext db)
     : IRequestHandler<GetMrrHistoryQuery, List<MrrDataPointResponse>>
 {
     public async Task<List<MrrDataPointResponse>> Handle(GetMrrHistoryQuery query, CancellationToken ct)
     {
-        // IgnoreQueryFilters approved: usage #5 — platform MRR history, IssuerOnly. See architecture.md.
-        // Subscriptions has no tenant filter but we load plans via Include.
+        int months = Math.Clamp(query.Months, 1, 24);
+
+        // IssuerOnly endpoint — no tenant filter on Subscriptions entity (not a TenantEntity).
         var subscriptions = await db.Subscriptions
             .AsNoTracking()
             .Include(s => s.Plan)
@@ -21,9 +22,9 @@ public class GetMrrHistoryHandler(IAppDbContext db)
             .ToListAsync(ct);
 
         DateTime now    = DateTime.UtcNow;
-        var      result = new List<MrrDataPointResponse>(12);
+        var      result = new List<MrrDataPointResponse>(months);
 
-        for (int i = 11; i >= 0; i--)
+        for (int i = months - 1; i >= 0; i--)
         {
             DateTime monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-i);
             DateTime monthEnd   = monthStart.AddMonths(1);
