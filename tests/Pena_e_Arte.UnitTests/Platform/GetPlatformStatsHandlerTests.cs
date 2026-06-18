@@ -142,6 +142,91 @@ public class GetPlatformStatsHandlerTests
         result.NewStudiosThisMonth.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Handle_WithPastDueStudio_CountsPastDueSeparately()
+    {
+        Studio studio = SeedStudio(isActive: true);
+        await _db.SaveChangesAsync();
+
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId         = studio.Id,
+            Status           = SubscriptionStatus.PastDue,
+            TrialExpiresAt   = DateTime.UtcNow.AddDays(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(-5),
+        });
+        await _db.SaveChangesAsync();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.PastDueStudios.Should().Be(1);
+        result.ActiveSubscriptions.Should().Be(0);
+        result.GracePeriodStudios.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_WithSuspendedStudio_CountsSuspendedSeparately()
+    {
+        SeedStudio(isActive: false); // suspended
+        SeedStudio(isActive: true);  // active trial
+        await _db.SaveChangesAsync();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.SuspendedStudios.Should().Be(1);
+        result.TotalStudios.Should().Be(1); // suspended is excluded from total
+    }
+
+    [Fact]
+    public async Task Handle_TotalStudios_EqualsActivePlusTrial_PlusGrace_PlusPastDue_PlusCancelled()
+    {
+        Studio s1 = SeedStudio(isActive: true);
+        Studio s2 = SeedStudio(isActive: true);
+        Studio s3 = SeedStudio(isActive: true);
+        await _db.SaveChangesAsync();
+
+        _db.Subscriptions.Add(new Subscription { StudioId = s1.Id, Status = SubscriptionStatus.Active,    CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),  TrialExpiresAt = DateTime.UtcNow.AddDays(30) });
+        _db.Subscriptions.Add(new Subscription { StudioId = s2.Id, Status = SubscriptionStatus.PastDue,   CurrentPeriodEnd = DateTime.UtcNow.AddDays(-2),  TrialExpiresAt = DateTime.UtcNow.AddDays(-2) });
+        _db.Subscriptions.Add(new Subscription { StudioId = s3.Id, Status = SubscriptionStatus.Cancelled, CurrentPeriodEnd = DateTime.UtcNow.AddDays(-5),  TrialExpiresAt = DateTime.UtcNow.AddDays(-5) });
+        await _db.SaveChangesAsync();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        int bucketSum = result.ActiveSubscriptions + result.TrialStudios
+                      + result.GracePeriodStudios  + result.PastDueStudios
+                      + result.CancelledStudios;
+        bucketSum.Should().Be(result.TotalStudios);
+    }
+
+    [Fact]
+    public async Task Handle_MrrGrowthPercent_IsZeroWhenSameSubscriptionActiveBothMonths()
+    {
+        // Subscription created last month and still active this month → same in both periods → 0 % growth.
+        Studio studio = SeedStudio(isActive: true);
+        Plan   plan   = new() { Name = "Pro", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m, PriceYearly = 490m };
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        DateTime lastMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1);
+
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId         = studio.Id,
+            PlanId           = plan.Id,
+            Status           = SubscriptionStatus.Active,
+            CreatedAt        = lastMonthStart.AddDays(5),   // created last month
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30), // still active this month
+            TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.Mrr.Should().Be(49m);
+        result.MrrGrowthPercent.Should().Be(0.0); // flat — same sub active both months
+    }
+
     private Studio SeedStudio(bool isActive, DateTime? trialExpiresAt = null)
     {
         Studio studio = new()
