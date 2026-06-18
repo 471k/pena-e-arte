@@ -25,4 +25,7 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
     public void ScheduleDesignRevisionTimeout(Guid revisionId, DateTimeOffset enqueueAt) =>
         backgroundJobs.Schedule<DesignRevisionTimeoutJob>(
             j => j.ExecuteAsync(revisionId, default), enqueueAt);
+
+    public void TriggerIndustryReportNow() =>
+        backgroundJobs.Enqueue<IndustryReportJob>(j => j.RunAsync(CancellationToken.None));
 }
