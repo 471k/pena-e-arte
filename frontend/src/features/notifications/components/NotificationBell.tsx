@@ -1,11 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { clearUnread, toggleInbox } from "../notificationsSlice";
 import { useGetNotificationsQuery } from "../notificationsApi";
 import { ChannelBadge } from "./ChannelBadge";
-import { formatDate } from "../notification.utils";
+import { formatDate, stripHtml } from "../notification.utils";
+import { NotificationDetailModal } from "./NotificationDetailModal";
+import type { NotificationLogResponse } from "../notification.types";
 
 const MAX_RECENT = 5;
 
@@ -14,6 +16,7 @@ export function NotificationBell() {
   const unreadCount  = useAppSelector((s) => s.notifications.unreadCount);
   const isOpen       = useAppSelector((s) => s.notifications.isInboxOpen);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [selectedLog, setSelectedLog] = useState<NotificationLogResponse | null>(null);
 
   // Only fetch once the panel is actually opened — no point polling this on every page.
   const { data: logs, isLoading, isError } = useGetNotificationsQuery({}, { skip: !isOpen });
@@ -77,18 +80,26 @@ export function NotificationBell() {
             )}
 
             {!isLoading && !isError && recent.map((log) => (
-              <div key={log.id} className="px-3 py-2 border-b last:border-b-0 space-y-1">
+              <button
+                key={log.id}
+                type="button"
+                className="w-full text-left px-3 py-2 border-b last:border-b-0 space-y-1 hover:bg-muted/50 transition-colors"
+                onClick={() => setSelectedLog(log)}
+                aria-label={`View notification: ${log.subject ?? log.channel}`}
+              >
                 <div className="flex items-center gap-2 flex-wrap">
                   <ChannelBadge channel={log.channel} />
                   {log.subject && (
                     <p className="text-xs font-medium truncate">{log.subject}</p>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">{log.body}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {stripHtml(log.body)}
+                </p>
                 <p className="text-[10px] text-muted-foreground">
                   {log.sentAt ? formatDate(log.sentAt) : formatDate(log.createdAt)}
                 </p>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -101,6 +112,10 @@ export function NotificationBell() {
           </Link>
         </div>
       )}
+      <NotificationDetailModal
+        log={selectedLog}
+        onClose={() => setSelectedLog(null)}
+      />
     </div>
   );
 }

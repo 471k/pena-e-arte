@@ -3,3 +3,7 @@ export function formatDate(dateStr: string): string {
     day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
 }
+
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}

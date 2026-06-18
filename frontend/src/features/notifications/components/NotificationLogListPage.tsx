@@ -6,12 +6,27 @@ import { useAppDispatch } from "@/app/hooks";
 import { clearUnread } from "../notificationsSlice";
 import { useGetNotificationsQuery } from "../notificationsApi";
 import { ChannelBadge } from "./ChannelBadge";
-import { formatDate } from "../notification.utils";
+import { formatDate, stripHtml } from "../notification.utils";
+import { NotificationDetailModal } from "./NotificationDetailModal";
 import type { NotificationLogResponse, NotificationsFilter } from "../notification.types";
 
-function NotificationRow({ log }: { log: NotificationLogResponse }) {
+function NotificationRow({
+  log,
+  onClick,
+}: {
+  log: NotificationLogResponse;
+  onClick: () => void;
+}) {
+  const preview = stripHtml(log.body);
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:bg-muted/40 transition-colors"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      aria-label={`Open notification: ${log.subject ?? log.channel}`}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1 min-w-0 flex-1">
@@ -22,7 +37,7 @@ function NotificationRow({ log }: { log: NotificationLogResponse }) {
               )}
             </div>
             <p className="text-xs text-muted-foreground line-clamp-2">
-              {log.body.length > 120 ? log.body.slice(0, 120) + "…" : log.body}
+              {preview.length > 120 ? preview.slice(0, 120) + "…" : preview}
             </p>
             <p className="text-xs text-muted-foreground">
               {log.recipientName ? (
@@ -56,9 +71,10 @@ function NotificationRow({ log }: { log: NotificationLogResponse }) {
 
 export function NotificationLogListPage() {
   const dispatch = useAppDispatch();
-  const [channel, setChannel] = useState<"Email" | "Sms" | "">("");
-  const [from, setFrom]       = useState("");
-  const [to, setTo]           = useState("");
+  const [channel, setChannel]       = useState<"Email" | "Sms" | "">("");
+  const [from, setFrom]             = useState("");
+  const [to, setTo]                 = useState("");
+  const [selectedLog, setSelectedLog] = useState<NotificationLogResponse | null>(null);
 
   // Viewing the log marks all previously-received notifications as read.
   useEffect(() => {
@@ -162,9 +178,14 @@ export function NotificationLogListPage() {
         )}
 
         {!isLoading && !isError && logs && logs.length > 0 && logs.map((log) => (
-          <NotificationRow key={log.id} log={log} />
+          <NotificationRow key={log.id} log={log} onClick={() => setSelectedLog(log)} />
         ))}
       </main>
+
+      <NotificationDetailModal
+        log={selectedLog}
+        onClose={() => setSelectedLog(null)}
+      />
     </div>
   );
 }

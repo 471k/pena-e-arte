@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -216,5 +216,51 @@ describe("NotificationBell", () => {
     await user.click(await screen.findByText("View all"));
 
     expect(screen.getByTestId("notifications-page")).toBeInTheDocument();
+  });
+
+  it("clicking a notification item in the panel opens the detail modal", async () => {
+    const user = userEvent.setup();
+    renderBell();
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+    // LOGS[0] is Email, has subject "Subject 0" — wait for data to load
+    const itemBtn = await screen.findByRole("button", { name: /view notification.*subject 0/i });
+    await user.click(itemBtn);
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Subject 0")).toBeInTheDocument();
+  });
+
+  it("bell panel notification preview strips HTML from email body", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/notifications", () =>
+        HttpResponse.json([{
+          id:            "html-log",
+          recipientId:   "11111111-2222-3333-4444-555555555555",
+          recipientName: "Ana Silva",
+          channel:       "Email",
+          subject:       "HTML Email Subject",
+          body:          "<p>Hello <strong>world</strong></p>",
+          sentAt:        "2026-06-10T10:00:00Z",
+          isSuccess:     true,
+          createdAt:     "2026-06-10T10:00:00Z",
+        }]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderBell();
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+    await screen.findByText("HTML Email Subject");
+    expect(screen.getByText("Hello world")).toBeInTheDocument();
+    expect(screen.queryByText(/<p>/)).not.toBeInTheDocument();
+  });
+
+  it("closing the detail modal removes the dialog from the DOM", async () => {
+    const user = userEvent.setup();
+    renderBell();
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+    const itemBtn = await screen.findByRole("button", { name: /view notification.*subject 0/i });
+    await user.click(itemBtn);
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 });

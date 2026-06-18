@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -226,5 +226,49 @@ describe("NotificationLogListPage", () => {
     store.dispatch(setUnreadCount(5));
     renderPage(store);
     expect(store.getState().notifications.unreadCount).toBe(0);
+  });
+
+  it("email body preview strips HTML tags — raw tags are not visible", async () => {
+    renderPage();
+    await screen.findByText(/Appointment Confirmed/);
+    // stripHtml("<html>confirmation</html>") → "confirmation"
+    expect(screen.queryByText(/<html>/)).not.toBeInTheDocument();
+    expect(screen.getByText("confirmation")).toBeInTheDocument();
+  });
+
+  it("clicking a row opens the detail modal with the notification subject", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /open notification.*Appointment Confirmed/i }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Appointment Confirmed — Mon, 15 Jun 2026 at 14:00")).toBeInTheDocument();
+  });
+
+  it("email notification modal renders an iframe for the HTML body", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /open notification.*Appointment Confirmed/i }));
+    await screen.findByRole("dialog");
+    expect(document.querySelector('[data-testid="email-body-iframe"]')).toBeInTheDocument();
+  });
+
+  it("SMS notification modal shows plain text body, not an iframe", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    // SMS row: channel is Sms, no subject — aria-label uses channel name
+    await screen.findByText(/Appointment Confirmed/);
+    await user.click(screen.getByRole("button", { name: /open notification.*sms/i }));
+    const dialog = await screen.findByRole("dialog");
+    expect(screen.queryByTestId("email-body-iframe")).not.toBeInTheDocument();
+    expect(within(dialog).getByText("Reminder: Your tattoo session is in 48 hours.")).toBeInTheDocument();
+  });
+
+  it("closing the modal removes the dialog from the DOM", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /open notification.*Appointment Confirmed/i }));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 });
