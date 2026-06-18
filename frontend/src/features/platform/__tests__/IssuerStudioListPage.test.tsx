@@ -40,6 +40,14 @@ const STUDIO_SUSPENDED: StudioResponse = {
   isActive: false,
 };
 
+// Active studio with Trialing subscription — used to verify "In Trial" badge
+const STUDIO_TRIALING: StudioResponse = {
+  ...STUDIO_ACTIVE,
+  id:   "s3",
+  name: "Trialing Studio",
+  slug: "trialing-studio",
+};
+
 const SUB_ACTIVE: PlatformSubscriptionResponse = {
   studioId:        "s1",
   studioName:      "Ink Soul",
@@ -53,12 +61,12 @@ const SUB_ACTIVE: PlatformSubscriptionResponse = {
 
 const SUB_TRIALING: PlatformSubscriptionResponse = {
   ...SUB_ACTIVE,
-  studioId:        "s2",
+  studioId:        "s3",
   studioName:      "Trialing Studio",
   studioSlug:      "trialing-studio",
   subscriptionId:  "sub-2",
   status:          "Trialing",
-  planName:        "Starter",
+  planName:        null,
 };
 
 const PLANS: PlanResponse[] = [
@@ -77,7 +85,7 @@ const PLANS: PlanResponse[] = [
 
 const server = setupServer(
   http.get("http://localhost/api/v1/studios", () =>
-    HttpResponse.json([STUDIO_ACTIVE, STUDIO_SUSPENDED]),
+    HttpResponse.json([STUDIO_ACTIVE, STUDIO_SUSPENDED, STUDIO_TRIALING]),
   ),
   http.get("http://localhost/api/v1/platform/subscriptions", () =>
     HttpResponse.json([SUB_ACTIVE, SUB_TRIALING]),
@@ -126,9 +134,10 @@ function renderPage() {
 
 describe("IssuerStudioListPage", () => {
 
-  it("shows a loading spinner while loading", () => {
+  it("shows skeleton cards while loading, not a spinner", () => {
     renderPage();
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
   });
 
   it("renders the Studios header", async () => {
@@ -140,12 +149,13 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     expect(await screen.findByText("Ink Soul")).toBeInTheDocument();
     expect(screen.getByText("Suspended Studio")).toBeInTheDocument();
+    expect(screen.getByText("Trialing Studio")).toBeInTheDocument();
   });
 
   it("shows studio count in the header", async () => {
     renderPage();
     await screen.findByText("Ink Soul");
-    expect(screen.getByText("2 studios")).toBeInTheDocument();
+    expect(screen.getByText("3 studios")).toBeInTheDocument();
   });
 
   it("shows Active status badge", async () => {
@@ -192,7 +202,9 @@ describe("IssuerStudioListPage", () => {
   it("shows Suspend button for active studios", async () => {
     renderPage();
     await screen.findByText("Ink Soul");
-    expect(screen.getByRole("button", { name: /suspend/i })).toBeInTheDocument();
+    // Multiple active studios (s1 and s3) both have a Suspend button
+    const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
+    expect(suspendBtns.length).toBeGreaterThan(0);
   });
 
   it("shows Reactivate button for suspended studios", async () => {
@@ -206,7 +218,9 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     await screen.findByText("Ink Soul");
 
-    await user.click(screen.getByRole("button", { name: /suspend/i }));
+    // Multiple active studios have Suspend buttons — click the first one
+    const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
+    await user.click(suspendBtns[0]);
 
     expect(screen.getByText(/suspend\?/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /yes/i })).toBeInTheDocument();
@@ -218,7 +232,8 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     await screen.findByText("Ink Soul");
 
-    await user.click(screen.getByRole("button", { name: /suspend/i }));
+    const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
+    await user.click(suspendBtns[0]);
     await user.click(screen.getByRole("button", { name: /no/i }));
 
     expect(screen.queryByText(/suspend\?/i)).not.toBeInTheDocument();
@@ -237,7 +252,9 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     await screen.findByText("Ink Soul");
 
-    await user.click(screen.getByRole("button", { name: /suspend/i }));
+    // The first Suspend button in the DOM belongs to s1 (rendered first)
+    const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
+    await user.click(suspendBtns[0]);
     await user.click(screen.getByRole("button", { name: /yes/i }));
 
     await waitFor(() => expect(suspendSpy).toHaveBeenCalledOnce());
@@ -265,8 +282,8 @@ describe("IssuerStudioListPage", () => {
   it("shows Extend trial button for non-active studios", async () => {
     renderPage();
     await screen.findByText("Ink Soul");
-    // Suspended studio does not have Active sub → Extend trial should appear
-    const extendBtns = screen.getAllByRole("button", { name: /extend trial/i });
+    // Suspended and Trialing studios both have canExtendTrial=true
+    const extendBtns = screen.getAllByRole("button", { name: /extend trial|grant extension/i });
     expect(extendBtns.length).toBeGreaterThan(0);
   });
 
@@ -275,7 +292,7 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     await screen.findByText("Ink Soul");
 
-    const extendBtns = screen.getAllByRole("button", { name: /extend trial/i });
+    const extendBtns = screen.getAllByRole("button", { name: /extend trial|grant extension/i });
     await user.click(extendBtns[0]);
 
     expect(screen.getByText(/extend trial by/i)).toBeInTheDocument();
@@ -295,7 +312,7 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     await screen.findByText("Suspended Studio");
 
-    const extendBtns = screen.getAllByRole("button", { name: /extend trial/i });
+    const extendBtns = screen.getAllByRole("button", { name: /extend trial|grant extension/i });
     await user.click(extendBtns[0]);
 
     await user.click(screen.getByRole("button", { name: /confirm/i }));
@@ -311,5 +328,49 @@ describe("IssuerStudioListPage", () => {
     );
     renderPage();
     expect(await screen.findByText(/failed to load studios/i)).toBeInTheDocument();
+  });
+
+  it("shows 'In Trial' badge instead of 'Trialing'", async () => {
+    renderPage();
+    await screen.findByText("Trialing Studio");
+    // STUDIO_TRIALING is active + Trialing subscription → badge shows "In Trial"
+    const badges = screen.getAllByText("In Trial", { selector: "span" });
+    expect(badges.length).toBeGreaterThan(0);
+  });
+
+  it("does not render 'No plan' in studio meta lines for studios in trial", async () => {
+    renderPage();
+    await screen.findByText("Trialing Studio");
+    // The meta line (p element) should show "In Trial" not "No plan"
+    // The plan filter dropdown option "No plan" is excluded by the p selector
+    expect(screen.queryByText(/no plan/i, { selector: "p" })).not.toBeInTheDocument();
+  });
+
+  it("View button links to studio detail page", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    const viewLinks = screen.getAllByRole("link", { name: /view/i });
+    expect(viewLinks[0]).toHaveAttribute("href", `/platform/studios/s1`);
+  });
+
+  it("Cancel Subscription button appears last in the button group for Active studios", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    const cancelBtns = screen.getAllByRole("button", { name: /cancel subscription/i });
+    expect(cancelBtns.length).toBeGreaterThan(0);
+    // Verify Suspend appears in the DOM before Cancel (button ordering)
+    const allButtons = screen.getAllByRole("button");
+    const suspendIdx = allButtons.findIndex((b) => /^suspend$/i.test(b.textContent?.trim() ?? ""));
+    const cancelIdx  = allButtons.findIndex((b) => /cancel subscription/i.test(b.textContent ?? ""));
+    expect(suspendIdx).toBeLessThan(cancelIdx);
+  });
+
+  it("plan filter shows available plans in dropdown", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    const planSelect = screen.getByDisplayValue("All plans");
+    expect(planSelect).toBeInTheDocument();
+    // Plans are from MSW seed: "Starter"
+    expect(screen.getByRole("option", { name: "Starter" })).toBeInTheDocument();
   });
 });
