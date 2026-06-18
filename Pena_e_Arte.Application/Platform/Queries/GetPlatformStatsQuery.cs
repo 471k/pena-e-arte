@@ -14,8 +14,9 @@ public class GetPlatformStatsHandler(IAppDbContext db)
 {
     public async Task<PlatformStatsResponse> Handle(GetPlatformStatsQuery query, CancellationToken ct)
     {
-        DateTime now          = DateTime.UtcNow;
-        DateTime monthStart   = new(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime now        = DateTime.UtcNow;
+        DateTime monthStart = new(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime lastMonth  = monthStart.AddMonths(-1);
 
         // IgnoreQueryFilters approved: usage #4 — platform KPI aggregate, IssuerOnly. See architecture.md.
         List<Studio> studios = await db.Studios
@@ -24,36 +25,60 @@ public class GetPlatformStatsHandler(IAppDbContext db)
                 .ThenInclude(sub => sub!.Plan)
             .ToListAsync(ct);
 
-        int totalStudios = studios.Count(s => s.IsActive);
+        // Suspended = manually deactivated by issuer (IsActive = false). These studios are still
+        // in the DB but invisible on the platform. They are NOT included in any subscription bucket.
+        int suspendedStudios = studios.Count(s => !s.IsActive);
 
-        int activeSubscriptions = studios.Count(s =>
-            s.Subscription?.Status == SubscriptionStatus.Active);
+        // All subsequent counts operate only on active studios (IsActive = true).
+        List<Studio> active = studios.Where(s => s.IsActive).ToList();
 
-        int trialStudios = studios.Count(s =>
+        int totalStudios        = active.Count;
+        int activeSubscriptions = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Active);
+        int trialStudios        = active.Count(s =>
             s.Subscription?.Status == SubscriptionStatus.Trialing
             || (s.Subscription is null && s.TrialExpiresAt > now));
+        int gracePeriodStudios  = active.Count(s => s.Subscription?.Status == SubscriptionStatus.GracePeriod);
+        int pastDueStudios      = active.Count(s => s.Subscription?.Status == SubscriptionStatus.PastDue);
+        int cancelledStudios    = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Cancelled);
 
-        int gracePeriodStudios = studios.Count(s =>
-            s.Subscription?.Status == SubscriptionStatus.GracePeriod);
-
-        decimal mrr = studios
-            .Where(s => s.Subscription?.Status == SubscriptionStatus.Active
-                     && s.Subscription.Plan is not null)
+        // MRR — active subscriptions only, sum of plan monthly price.
+        decimal mrr = active
+            .Where(s => s.Subscription?.Status == SubscriptionStatus.Active && s.Subscription.Plan is not null)
             .Sum(s => s.Subscription!.Plan!.PriceMonthly);
+
+        // MRR growth: compare with last calendar month.
+        // Approximation: counts active subs that existed before this month and whose period covered last month.
+        // Undercounts if any subs were active last month but since cancelled — acceptable at current scale.
+        decimal lastMonthMrr = active
+            .Where(s =>
+                s.Subscription is not null
+                && s.Subscription.Plan is not null
+                && s.Subscription.CreatedAt < monthStart       // existed last month
+                && s.Subscription.CurrentPeriodEnd >= lastMonth // was active last month
+                && s.Subscription.Status == SubscriptionStatus.Active)
+            .Sum(s => s.Subscription!.Plan!.PriceMonthly);
+
+        double mrrGrowthPercent = lastMonthMrr == 0
+            ? (mrr > 0 ? 100.0 : 0.0)
+            : Math.Round((double)((mrr - lastMonthMrr) / lastMonthMrr) * 100, 1);
 
         int conversionDenominator = activeSubscriptions + trialStudios + gracePeriodStudios;
         double trialConversionRate = conversionDenominator > 0
             ? Math.Round((double)activeSubscriptions / conversionDenominator, 4)
             : 0;
 
-        int newStudiosThisMonth = studios.Count(s => s.CreatedAt >= monthStart);
+        int newStudiosThisMonth = active.Count(s => s.CreatedAt >= monthStart);
 
         return new PlatformStatsResponse(
             totalStudios,
             activeSubscriptions,
             trialStudios,
             gracePeriodStudios,
+            pastDueStudios,
+            cancelledStudios,
+            suspendedStudios,
             mrr,
+            mrrGrowthPercent,
             trialConversionRate,
             newStudiosThisMonth);
     }
