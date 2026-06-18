@@ -150,15 +150,18 @@ export function LoginPage() {
                 Sign in
               </Button>
             </form>
+
+            <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-muted-foreground">
+              New studio?{" "}
+              <Link
+                to="/register"
+                className="underline underline-offset-4 hover:text-primary"
+              >
+                Register your studio
+              </Link>
+            </div>
           </CardContent>
         </Card>
-
-        <p className="text-center text-sm text-muted-foreground">
-          New studio?{" "}
-          <Link to="/register" className="underline underline-offset-4 hover:text-primary">
-            Register your studio
-          </Link>
-        </p>
       </div>
     </div>
   );
