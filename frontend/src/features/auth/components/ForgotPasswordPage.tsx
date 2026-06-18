@@ -1,8 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle, Loader2, PenLine } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2, PenLine } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { z } from "zod";
+import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -89,7 +90,10 @@ export function ForgotPasswordPage() {
                 </div>
 
                 {serverError && (
-                  <p className="text-sm text-destructive" role="alert">{serverError}</p>
+                  <Alert variant="destructive" role="alert">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{serverError}</AlertDescription>
+                  </Alert>
                 )}
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
