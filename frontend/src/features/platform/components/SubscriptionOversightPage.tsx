@@ -400,7 +400,31 @@ export function SubscriptionOversightPage() {
         )}
 
         {!isLoading && !isError && filtered.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-16">No studios found.</p>
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <Receipt className="h-10 w-10 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">
+              {subscriptions?.length === 0
+                ? "No subscriptions yet."
+                : q && statusFilter
+                  ? `No ${STATUS_LABELS[statusFilter] ?? statusFilter} subscriptions matching "${search}".`
+                  : q
+                    ? `No subscriptions matching "${search}".`
+                    : `No ${STATUS_LABELS[statusFilter] ?? statusFilter} subscriptions.`}
+            </p>
+            {(q || statusFilter) && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={() => {
+                  setSearch("");
+                  setSearchParams({});
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
         )}
 
         {!isLoading && !isError && filtered.map((sub) => (
