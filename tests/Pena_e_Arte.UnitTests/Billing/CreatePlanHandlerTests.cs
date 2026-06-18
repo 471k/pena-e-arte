@@ -23,6 +23,7 @@ public class CreatePlanHandlerTests
         result.Name.Should().Be("Pro");
         result.BillingInterval.Should().Be("Monthly");
         result.PriceMonthly.Should().Be(49m);
+        result.SubscriberCount.Should().Be(0);
     }
 
     [Fact]
