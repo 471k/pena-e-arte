@@ -35,9 +35,11 @@ public static class PlatformEndpoints
 
     private static async Task<IResult> GetMrrHistory(
         ISender           mediator,
+        int?              months,
         CancellationToken ct)
     {
-        List<MrrDataPointResponse> result = await mediator.Send(new GetMrrHistoryQuery(), ct);
+        List<MrrDataPointResponse> result =
+            await mediator.Send(new GetMrrHistoryQuery(Math.Clamp(months ?? 12, 1, 24)), ct);
         return Results.Ok(result);
     }
 
