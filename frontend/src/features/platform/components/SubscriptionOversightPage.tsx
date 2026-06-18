@@ -237,7 +237,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
         {confirming && (
           <div className="flex items-center gap-2 pt-1">
             <span className="text-xs text-destructive font-medium">
-              Cancel this subscription?
+              Cancel subscription for <strong>{sub.studioName}</strong>?
             </span>
             <Button
               size="sm"
@@ -246,7 +246,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
               disabled={cancelling_}
               onClick={handleCancel}
             >
-              {cancelling_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
+              {cancelling_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes, cancel"}
             </Button>
             <Button
               size="sm"
@@ -254,7 +254,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
               className="h-7 px-2 text-xs"
               onClick={() => setConfirming(false)}
             >
-              Back
+              Keep
             </Button>
           </div>
         )}
