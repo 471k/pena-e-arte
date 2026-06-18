@@ -216,7 +216,12 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
 
         {activating && (
           <div className="pt-2 space-y-2 border-t">
-            <p className="text-xs font-medium text-muted-foreground">Activate — Cash Payment</p>
+            <div className="space-y-0.5">
+              <p className="text-xs font-medium">Record Cash Payment</p>
+              <p className="text-xs text-muted-foreground">
+                Manually activates the subscription — use when payment was collected offline.
+              </p>
+            </div>
             <div className="space-y-1">
               <Label htmlFor={`plan-${sub.studioId}`} className="text-xs">Plan</Label>
               <select
