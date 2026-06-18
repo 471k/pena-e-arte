@@ -26,6 +26,7 @@ public static class PlatformEndpoints
         group.MapPatch("referral-codes/{id:guid}/reactivate",       ReactivateReferralCode);
         group.MapDelete("referral-codes/{id:guid}",                 DeleteReferralCode);
         group.MapGet("reports/industry",                            GetIndustryReports);
+        group.MapPost("reports/industry/trigger",                   TriggerIndustryReport);
     }
 
     private static async Task<IResult> GetStats(
@@ -138,5 +139,13 @@ public static class PlatformEndpoints
         IReadOnlyList<IndustryReportSummaryResponse> result =
             await mediator.Send(new GetIndustryReportsQuery(), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> TriggerIndustryReport(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new TriggerIndustryReportCommand(), ct);
+        return Results.Accepted();
     }
 }
