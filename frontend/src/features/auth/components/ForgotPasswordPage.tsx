@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useRequestPasswordResetMutation } from "../authApi";
@@ -49,9 +49,6 @@ export function ForgotPasswordPage() {
         <Card>
           <CardHeader>
             <CardTitle>Reset password</CardTitle>
-            <CardDescription>
-              Enter your email and we&apos;ll send a reset link.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             {isSuccess ? (
