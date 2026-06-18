@@ -25,6 +25,7 @@ const PLANS: PlanResponse[] = [
     allowBrandingRemoval:  false,
     stripePriceIdMonthly:  "price_monthly_starter",
     stripePriceIdYearly:   null,
+    subscriberCount:       4,
   },
   {
     id:                    "plan-2",
@@ -36,6 +37,7 @@ const PLANS: PlanResponse[] = [
     allowBrandingRemoval:  true,
     stripePriceIdMonthly:  null,
     stripePriceIdYearly:   "price_yearly_pro",
+    subscriberCount:       0,
   },
 ];
 
@@ -83,9 +85,10 @@ function renderPage() {
 
 describe("PlanManagementPage", () => {
 
-  it("shows a loading spinner while plans are loading", () => {
+  it("shows skeleton cards while plans are loading", () => {
     renderPage();
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
   });
 
   it("renders the Plans header", async () => {
@@ -99,10 +102,11 @@ describe("PlanManagementPage", () => {
     expect(screen.getByText("Pro")).toBeInTheDocument();
   });
 
-  it("shows 'no-branding' badge for plans with allowBrandingRemoval", async () => {
+  it("shows 'White-label' badge for plans with allowBrandingRemoval", async () => {
     renderPage();
     await screen.findByText("Pro");
-    expect(screen.getByText("no-branding")).toBeInTheDocument();
+    expect(screen.getByText("White-label")).toBeInTheDocument();
+    expect(screen.queryByText("no-branding")).not.toBeInTheDocument();
   });
 
   it("renders the New plan button", async () => {
@@ -118,7 +122,6 @@ describe("PlanManagementPage", () => {
     await user.click(screen.getByRole("button", { name: /new plan/i }));
 
     expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
-    // Use exact strings — /monthly price/i also matches "Stripe Monthly Price ID"
     expect(screen.getByLabelText("Monthly price (€)")).toBeInTheDocument();
     expect(screen.getByLabelText("Yearly price (€)")).toBeInTheDocument();
   });
@@ -140,7 +143,7 @@ describe("PlanManagementPage", () => {
       http.post("http://localhost/api/v1/billing/plans", async ({ request }) => {
         const body = await request.json();
         createSpy(body);
-        return HttpResponse.json({ id: "plan-new", ...(body as object) });
+        return HttpResponse.json({ id: "plan-new", ...(body as object), subscriberCount: 0 });
       }),
     );
 
@@ -171,9 +174,7 @@ describe("PlanManagementPage", () => {
     renderPage();
     await screen.findByText("Starter");
 
-    // Click the edit (pencil) button — first ghost icon button in the first plan card
-    const editBtns = screen.getAllByRole("button", { name: "" });
-    await user.click(editBtns[0]);
+    await user.click(screen.getByRole("button", { name: /edit starter plan/i }));
 
     const monthlyInput = screen.getByLabelText(/stripe monthly price id/i);
     expect((monthlyInput as HTMLInputElement).value).toBe("price_monthly_starter");
@@ -193,9 +194,7 @@ describe("PlanManagementPage", () => {
     renderPage();
     await screen.findByText("Starter");
 
-    const editBtns = screen.getAllByRole("button", { name: "" });
-    await user.click(editBtns[0]);
-
+    await user.click(screen.getByRole("button", { name: /edit starter plan/i }));
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
     await waitFor(() => expect(updateSpy).toHaveBeenCalledOnce());
@@ -204,35 +203,31 @@ describe("PlanManagementPage", () => {
     });
   });
 
-  it("shows delete confirmation on first delete click", async () => {
+  it("shows delete confirmation on trash button click", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("Starter");
 
-    // Trash icon button is the second icon button per card
-    const trashBtns = screen.getAllByRole("button", { name: "" });
-    await user.click(trashBtns[1]);
+    await user.click(screen.getByRole("button", { name: /delete starter plan/i }));
 
-    expect(screen.getByText(/delete\?/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /yes/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /no/i })).toBeInTheDocument();
+    expect(screen.getByText(/delete "starter" permanently\?/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /yes, delete/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   });
 
-  it("cancels delete when clicking No", async () => {
+  it("cancels delete when clicking Cancel", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("Starter");
 
-    const trashBtns = screen.getAllByRole("button", { name: "" });
-    await user.click(trashBtns[1]);
-    await user.click(screen.getByRole("button", { name: /no/i }));
+    await user.click(screen.getByRole("button", { name: /delete starter plan/i }));
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
 
-    expect(screen.queryByText(/delete\?/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/delete "starter" permanently\?/i)).not.toBeInTheDocument();
   });
 
   it("calls DELETE /billing/plans/:id on confirm", async () => {
     const deleteSpy = vi.fn();
-    // Only add the DELETE handler; no GET override so initial load still gets PLANS
     server.use(
       http.delete("http://localhost/api/v1/billing/plans/plan-1", () => {
         deleteSpy();
@@ -244,9 +239,8 @@ describe("PlanManagementPage", () => {
     renderPage();
     await screen.findByText("Starter");
 
-    const trashBtns = screen.getAllByRole("button", { name: "" });
-    await user.click(trashBtns[1]);
-    await user.click(screen.getByRole("button", { name: /yes/i }));
+    await user.click(screen.getByRole("button", { name: /delete starter plan/i }));
+    await user.click(screen.getByRole("button", { name: /yes, delete/i }));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledOnce());
   });
@@ -269,5 +263,62 @@ describe("PlanManagementPage", () => {
     );
     renderPage();
     expect(await screen.findByText(/no plans yet/i)).toBeInTheDocument();
+  });
+
+  it("shows subscriber count badge on plan cards", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+  });
+
+  it("shows subscriber warning in delete dialog when plan has subscribers", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Starter");
+
+    await user.click(screen.getByRole("button", { name: /delete starter plan/i }));
+
+    // "4 studios" is in a <strong> element; "are on this plan" is a sibling text node
+    expect(screen.getByText("4 studios")).toBeInTheDocument();
+    expect(screen.getByText(/are on this plan/i)).toBeInTheDocument();
+  });
+
+  it("shows safe-to-delete message when plan has no subscribers", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Pro");
+
+    await user.click(screen.getByRole("button", { name: /delete pro plan/i }));
+
+    expect(screen.getByText(/no active subscribers/i)).toBeInTheDocument();
+  });
+
+  it("shows 'Save X% vs monthly billing' savings badge", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    expect(screen.getAllByText(/save 17% vs monthly billing/i).length).toBe(2);
+  });
+
+  it("shows 'White-label' badge for plans with allowBrandingRemoval", async () => {
+    renderPage();
+    await screen.findByText("Pro");
+    expect(screen.getByText("White-label")).toBeInTheDocument();
+    expect(screen.queryByText("no-branding")).not.toBeInTheDocument();
+  });
+
+  it("clicking empty state CTA opens the create form", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText(/no plans yet/i);
+
+    await user.click(screen.getByRole("button", { name: /create first plan/i }));
+
+    expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
   });
 });
