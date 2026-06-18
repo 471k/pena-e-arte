@@ -115,15 +115,7 @@ export function LoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-xs text-muted-foreground underline underline-offset-4 hover:text-primary"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <PasswordInput
                   id="password"
                   autoComplete="current-password"
@@ -136,6 +128,14 @@ export function LoginPage() {
                     {errors.password.message}
                   </p>
                 )}
+                <div className="flex justify-end">
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-muted-foreground underline underline-offset-4 hover:text-primary"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
 
               {serverError && (
