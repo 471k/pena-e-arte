@@ -23,6 +23,15 @@ const STATUS_CLASSES: Record<string, string> = {
   NoSubscription: "bg-muted text-muted-foreground",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  Active:         "Active",
+  Trialing:       "In Trial",
+  PastDue:        "Past Due",
+  GracePeriod:    "Grace Period",
+  Cancelled:      "Cancelled",
+  NoSubscription: "No Subscription",
+};
+
 interface SubscriptionRowProps {
   sub: PlatformSubscriptionResponse;
 }
@@ -80,7 +89,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
               <span className="font-medium text-sm">{sub.studioName}</span>
               <span className="text-xs text-muted-foreground font-mono">{sub.studioSlug}</span>
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusClass}`}>
-                {sub.status}
+                {STATUS_LABELS[sub.status] ?? sub.status}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -266,7 +275,7 @@ export function SubscriptionOversightPage() {
                       : "hover:bg-muted"
                   }`}
                 >
-                  {s} ({count})
+                  {STATUS_LABELS[s] ?? s} ({count})
                 </button>
               );
             })}
