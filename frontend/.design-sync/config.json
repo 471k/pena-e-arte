@@ -6,13 +6,17 @@
   "srcDir": "src/shared/components",
   "tsconfig": "tsconfig.app.json",
   "buildCmd": "pnpm exec vite build",
+  "cssEntry": "dist/assets/index-DgR6B_YM.css",
+  "entry": "src/shared/components/index.ts",
   "componentSrcMap": {
     "UserChip": null,
     "ReadOnlyBanner": null,
     "SuspensionBanner": null
   },
+  "readmeHeader": ".design-sync/conventions.md",
   "overrides": {
     "SubscriptionGatedButton": { "skip": true },
-    "FileUploadField": { "skip": true }
+    "FileUploadField": { "skip": true },
+    "DataTable": { "cardMode": "column" }
   }
 }

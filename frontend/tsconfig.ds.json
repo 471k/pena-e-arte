@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "./src",
+    "outDir": "./dist/types",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src/shared/components", "src/shared/utils/cn.ts"],
+  "exclude": [
+    "src/shared/components/__tests__",
+    "src/shared/components/UserChip.tsx",
+    "src/shared/components/ReadOnlyBanner.tsx",
+    "src/shared/components/SuspensionBanner.tsx",
+    "src/shared/components/SubscriptionGatedButton.tsx",
+    "src/shared/components/FileUploadField.tsx"
+  ]
+}
