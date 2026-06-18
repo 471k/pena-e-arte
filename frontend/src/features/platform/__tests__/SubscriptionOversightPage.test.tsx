@@ -58,6 +58,7 @@ const PLANS: PlanResponse[] = [
     priceYearly:           290,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
+    subscriberCount:       2,
   },
 ];
 
@@ -110,9 +111,10 @@ function renderPage() {
 
 describe("SubscriptionOversightPage", () => {
 
-  it("shows a loading spinner while loading", () => {
+  it("shows skeleton cards while loading, not a spinner", () => {
     renderPage();
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
   });
 
   it("renders the Subscriptions header", async () => {
@@ -139,10 +141,14 @@ describe("SubscriptionOversightPage", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
-  it("shows the Trialing status badge", async () => {
+  it("shows the 'In Trial' status badge for trialing subscriptions", async () => {
     renderPage();
     await screen.findByText("Trialing Studio");
-    expect(screen.getByText("Trialing")).toBeInTheDocument();
+    // STATUS_LABELS["Trialing"] = "In Trial"
+    const badges = screen.getAllByText("In Trial", { selector: "span" });
+    expect(badges.length).toBeGreaterThan(0);
+    // The raw string "Trialing" must not appear as a badge
+    expect(screen.queryByText("Trialing", { selector: "span" })).not.toBeInTheDocument();
   });
 
   it("shows the Cancelled status badge", async () => {
@@ -211,12 +217,14 @@ describe("SubscriptionOversightPage", () => {
     renderPage();
     await screen.findByText("Active Studio");
 
-    const cancelBtns = screen.getAllByRole("button", { name: /cancel subscription/i });
-    await user.click(cancelBtns[0]);
+    await user.click(
+      screen.getByRole("button", { name: /cancel subscription for active studio/i })
+    );
 
-    expect(screen.getByText(/cancel this subscription\?/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /confirm/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
+    // Text spans a <strong> child; check via the confirmation panel's textContent
+    const yesBtn = screen.getByRole("button", { name: /yes, cancel/i });
+    expect(yesBtn.closest("div")?.textContent).toMatch(/cancel subscription for active studio/i);
+    expect(screen.getByRole("button", { name: /keep/i })).toBeInTheDocument();
   });
 
   it("calls PATCH subscriptions/:id/cancel on confirm", async () => {
@@ -232,9 +240,10 @@ describe("SubscriptionOversightPage", () => {
     renderPage();
     await screen.findByText("Active Studio");
 
-    const cancelBtns = screen.getAllByRole("button", { name: /cancel subscription/i });
-    await user.click(cancelBtns[0]);
-    await user.click(screen.getByRole("button", { name: /confirm/i }));
+    await user.click(
+      screen.getByRole("button", { name: /cancel subscription for active studio/i })
+    );
+    await user.click(screen.getByRole("button", { name: /yes, cancel/i }));
 
     await waitFor(() => expect(cancelSpy).toHaveBeenCalledOnce());
   });
@@ -246,7 +255,7 @@ describe("SubscriptionOversightPage", () => {
       ),
     );
     renderPage();
-    expect(await screen.findByText(/no studios found/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no subscriptions yet/i)).toBeInTheDocument();
   });
 
   it("shows error state when subscriptions fetch fails", async () => {
@@ -257,5 +266,144 @@ describe("SubscriptionOversightPage", () => {
     );
     renderPage();
     expect(await screen.findByText(/failed to load subscriptions/i)).toBeInTheDocument();
+  });
+
+  it("shows aria-label with studio name on Cancel Subscription button", async () => {
+    renderPage();
+    await screen.findByText("Active Studio");
+    expect(
+      screen.getByRole("button", { name: /cancel subscription for active studio/i })
+    ).toBeInTheDocument();
+  });
+
+  it("shows aria-label with studio name on Extend Trial button", async () => {
+    renderPage();
+    await screen.findByText("Trialing Studio");
+    expect(
+      screen.getByRole("button", { name: /extend trial for trialing studio/i })
+    ).toBeInTheDocument();
+  });
+
+  it("search input filters by studio name", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Active Studio");
+
+    await user.type(
+      screen.getByPlaceholderText(/search by studio name or slug/i),
+      "active"
+    );
+
+    expect(screen.getByText("Active Studio")).toBeInTheDocument();
+    expect(screen.queryByText("Trialing Studio")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cancelled Studio")).not.toBeInTheDocument();
+  });
+
+  it("shows 'No subscriptions matching' when search has no results", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Active Studio");
+
+    await user.type(
+      screen.getByPlaceholderText(/search by studio name or slug/i),
+      "zzznomatch"
+    );
+
+    expect(screen.getByText(/no subscriptions matching/i)).toBeInTheDocument();
+  });
+
+  it("shows 'Clear filters' button when search yields no results", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Active Studio");
+
+    await user.type(
+      screen.getByPlaceholderText(/search by studio name or slug/i),
+      "zzznomatch"
+    );
+
+    const clearBtn = screen.getByRole("button", { name: /clear filters/i });
+    expect(clearBtn).toBeInTheDocument();
+
+    await user.click(clearBtn);
+
+    expect(screen.getByText("Active Studio")).toBeInTheDocument();
+  });
+
+  it("sort dropdown is present and defaults to trial end (soonest first)", async () => {
+    renderPage();
+    await screen.findByText("Active Studio");
+    const sortSelect = screen.getByDisplayValue(/trial end/i);
+    expect(sortSelect).toBeInTheDocument();
+  });
+
+  it("filter pills show human-readable labels, not raw enum values", async () => {
+    renderPage();
+    await screen.findByText("Active Studio");
+    // "In Trial" pill, not "Trialing" pill
+    const trialPill = screen.getByRole("button", { name: /in trial/i });
+    expect(trialPill).toBeInTheDocument();
+    // "GracePeriod" pill must not appear
+    expect(screen.queryByRole("button", { name: /^GracePeriod/i })).not.toBeInTheDocument();
+  });
+
+  it("shows 'Grace Period' label in status badge, not 'GracePeriod'", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([
+          {
+            studioId:        "sg1",
+            studioName:      "Grace Studio",
+            studioSlug:      "grace-studio",
+            subscriptionId:  "sub-g1",
+            status:          "GracePeriod",
+            planName:        "Pro",
+            trialExpiresAt:  new Date(Date.now() - 14 * 86_400_000).toISOString(),
+            currentPeriodEnd: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+          },
+        ]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Grace Studio");
+    expect(screen.getByText("Grace Period", { selector: "span" })).toBeInTheDocument();
+    expect(screen.queryByText("GracePeriod", { selector: "span" })).not.toBeInTheDocument();
+  });
+
+  it("extend trial form shows 'Extend trial by' label", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Trialing Studio");
+
+    const extendBtns = screen.getAllByRole("button", { name: /extend trial/i });
+    await user.click(extendBtns[0]);
+
+    expect(screen.getByText(/extend trial by/i)).toBeInTheDocument();
+  });
+
+  it("'Record Cash Payment' form header appears when Activate is clicked", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([
+          {
+            studioId:        "sg1",
+            studioName:      "Grace Studio",
+            studioSlug:      "grace-studio",
+            subscriptionId:  "sub-g1",
+            status:          "GracePeriod",
+            planName:        "Pro",
+            trialExpiresAt:  new Date(Date.now() - 14 * 86_400_000).toISOString(),
+            currentPeriodEnd: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+          },
+        ]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Grace Studio");
+
+    await user.click(screen.getByRole("button", { name: /activate subscription for grace studio/i }));
+
+    expect(screen.getByText(/record cash payment/i)).toBeInTheDocument();
   });
 });
