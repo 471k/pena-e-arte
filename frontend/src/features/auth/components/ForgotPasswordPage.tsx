@@ -37,13 +37,23 @@ export function ForgotPasswordPage() {
     : null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+      {/* Decorative background glow — purely visual */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 90% 55% at 50% -5%, rgba(113,113,122,0.18) 0%, transparent 100%)",
+        }}
+        aria-hidden="true"
+      />
+      <div className="w-full max-w-md space-y-6 relative">
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-2">
             <PenLine className="h-8 w-8" />
             <span className="text-2xl font-semibold tracking-tight">Pena e Arte</span>
           </div>
+          <p className="text-sm text-muted-foreground">Tattoo Studio Management</p>
         </div>
 
         <Card>
