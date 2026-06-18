@@ -20,6 +20,7 @@ export interface PlanResponse {
   allowBrandingRemoval:  boolean;
   stripePriceIdMonthly?: string | null;
   stripePriceIdYearly?:  string | null;
+  subscriberCount:       number;
 }
 
 export interface CreateSubscriptionRequest {
