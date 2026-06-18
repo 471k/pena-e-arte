@@ -109,12 +109,19 @@ function ReportRow({ report }: ReportRowProps) {
 
 function GenerateTriggerButton() {
   const [queued, setQueued] = useState(false);
+  const [error, setError] = useState(false);
   const [trigger, { isLoading }] = useTriggerIndustryReportMutation();
 
   async function handleTrigger() {
-    await trigger().unwrap();
-    setQueued(true);
-    setTimeout(() => setQueued(false), 4000);
+    setError(false);
+    try {
+      await trigger().unwrap();
+      setQueued(true);
+      setTimeout(() => setQueued(false), 4000);
+    } catch {
+      setError(true);
+      setTimeout(() => setError(false), 4000);
+    }
   }
 
   if (queued) {
@@ -122,6 +129,14 @@ function GenerateTriggerButton() {
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Check className="h-3.5 w-3.5 text-green-500" />
         Queued — report will appear shortly
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-destructive">
+        Failed to queue — try again
       </div>
     );
   }

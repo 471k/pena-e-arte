@@ -224,4 +224,23 @@ describe("IndustryReportsPage", () => {
     const jsonLabels = screen.getAllByText("JSON");
     expect(jsonLabels).toHaveLength(2);
   });
+
+  it("shows error message when trigger endpoint returns 500", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/platform/reports/industry/trigger", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("May 2026");
+
+    await user.click(
+      screen.getByRole("button", { name: /trigger industry report generation now/i })
+    );
+
+    expect(await screen.findByText(/failed to queue — try again/i)).toBeInTheDocument();
+    expect(screen.queryByText(/queued — report will appear shortly/i)).not.toBeInTheDocument();
+  });
 });
