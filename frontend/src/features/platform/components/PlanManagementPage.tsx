@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CreditCard, Edit2, Loader2, Plus, Trash2, X } from "lucide-react";
+import { CreditCard, Edit2, Loader2, Plus, Trash2, Users, X } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import {
   useGetIssuerPlansQuery,
@@ -30,7 +31,12 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
+  return new Intl.NumberFormat("en-GB", {
+    style:                 "currency",
+    currency:              "EUR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 interface PlanFormProps {
@@ -145,6 +151,27 @@ function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
   );
 }
 
+function PlanCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-5 w-28 rounded-full" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-6 w-6" />
+            <Skeleton className="h-7 w-7 rounded" />
+            <Skeleton className="h-7 w-7 rounded" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function PlanCard({ plan }: { plan: PlanResponse }) {
   const [editing,  setEditing]  = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -157,69 +184,136 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
   }
 
   async function handleDelete() {
-    if (!deleting) { setDeleting(true); return; }
-    await deletePlan(plan.id);
-  }
-
-  if (editing) {
-    return (
-      <PlanForm
-        defaultValues={{
-          name:                  plan.name,
-          billingInterval:       plan.billingInterval,
-          priceMonthly:          plan.priceMonthly,
-          priceYearly:           plan.priceYearly,
-          yearlyDiscountPercent: plan.yearlyDiscountPercent,
-          allowBrandingRemoval:  plan.allowBrandingRemoval,
-          stripePriceIdMonthly:  plan.stripePriceIdMonthly ?? null,
-          stripePriceIdYearly:   plan.stripePriceIdYearly ?? null,
-        }}
-        onSave={handleUpdate}
-        onClose={() => setEditing(false)}
-        saving={saving}
-      />
-    );
+    await deletePlan(plan.id).unwrap();
   }
 
   return (
-    <Card>
-      <CardContent className="p-4 flex items-start justify-between gap-4">
-        <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">{plan.name}</span>
-            <span className="text-xs text-muted-foreground">{plan.billingInterval}</span>
-            {plan.allowBrandingRemoval && (
-              <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                no-branding
-              </span>
+    <Card className="hover:border-border/60 transition-colors">
+      <CardContent className="p-4 space-y-3">
+        {/* ── Info row ─────────────────────────── */}
+        <div className="flex items-start justify-between gap-4">
+          {/* left: info */}
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-base font-semibold">{plan.name}</span>
+              <span className="text-xs text-muted-foreground">Billing: {plan.billingInterval}</span>
+              {plan.allowBrandingRemoval && (
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                  White-label
+                </span>
+              )}
+            </div>
+            <div className="space-y-1 mt-1">
+              <p className="text-sm font-mono">
+                <span>
+                  {formatCurrency(plan.priceMonthly)}
+                  <span className="text-xs text-muted-foreground">/mo</span>
+                </span>
+                <span className="text-muted-foreground mx-1">·</span>
+                <span>
+                  {formatCurrency(plan.priceYearly)}
+                  <span className="text-xs text-muted-foreground">/yr</span>
+                </span>
+              </p>
+              {plan.yearlyDiscountPercent > 0 && (
+                <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium">
+                  Save {plan.yearlyDiscountPercent}% vs monthly billing
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* right: subscriber count + actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Studios on this plan">
+              <Users className="h-3.5 w-3.5" />
+              {plan.subscriberCount}
+            </span>
+
+            {!editing && !deleting && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={() => setEditing(true)}
+                  aria-label={`Edit ${plan.name} plan`}
+                  title="Edit"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive transition-colors"
+                  onClick={() => setDeleting(true)}
+                  aria-label={`Delete ${plan.name} plan`}
+                  title="Delete"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(plan.priceMonthly)}/mo · {formatCurrency(plan.priceYearly)}/yr
-            {" · "}{plan.yearlyDiscountPercent}% yearly discount
-          </p>
         </div>
-        <div className="flex gap-1.5 shrink-0">
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditing(true)}>
-            <Edit2 className="h-3.5 w-3.5" />
-          </Button>
-          {deleting ? (
-            <>
-              <span className="text-xs text-destructive self-center">Delete?</span>
-              <Button size="sm" variant="destructive" className="h-7 px-2 text-xs"
-                disabled={removing} onClick={handleDelete}>
-                {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes"}
+
+        {/* ── Edit form ────────────────────────── */}
+        {editing && (
+          <div className="border-t pt-3">
+            <PlanForm
+              defaultValues={{
+                name:                  plan.name,
+                billingInterval:       plan.billingInterval,
+                priceMonthly:          plan.priceMonthly,
+                priceYearly:           plan.priceYearly,
+                yearlyDiscountPercent: plan.yearlyDiscountPercent,
+                allowBrandingRemoval:  plan.allowBrandingRemoval,
+                stripePriceIdMonthly:  plan.stripePriceIdMonthly ?? null,
+                stripePriceIdYearly:   plan.stripePriceIdYearly ?? null,
+              }}
+              onSave={handleUpdate}
+              onClose={() => setEditing(false)}
+              saving={saving}
+            />
+          </div>
+        )}
+
+        {/* ── Delete confirmation ──────────────── */}
+        {deleting && (
+          <div className="border-t pt-3 space-y-2">
+            {plan.subscriberCount > 0 ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                <strong>{plan.subscriberCount} studio{plan.subscriberCount !== 1 ? "s" : ""}</strong>{" "}
+                {plan.subscriberCount === 1 ? "is" : "are"} on this plan.
+                Deleting it will prevent new signups — existing subscribers are not affected.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">No active subscribers. Safe to delete.</p>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-destructive font-medium">
+                Delete &quot;{plan.name}&quot; permanently?
+              </span>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7 px-2 text-xs"
+                disabled={removing}
+                onClick={handleDelete}
+              >
+                {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes, delete"}
               </Button>
-              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                onClick={() => setDeleting(false)}>No</Button>
-            </>
-          ) : (
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground"
-              onClick={() => setDeleting(true)}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs"
+                onClick={() => setDeleting(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -248,19 +342,22 @@ export function PlanManagementPage() {
         </Button>
       </header>
 
-      <main className="max-w-xl mx-auto px-4 py-6 space-y-3">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         {creating && (
-          <PlanForm
-            onSave={handleCreate}
-            onClose={() => setCreating(false)}
-            saving={saving}
-          />
+          <div className="max-w-xl mb-6">
+            <PlanForm
+              onSave={handleCreate}
+              onClose={() => setCreating(false)}
+              saving={saving}
+            />
+          </div>
         )}
 
         {isLoading && (
-          <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading…</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <PlanCardSkeleton />
+            <PlanCardSkeleton />
+            <PlanCardSkeleton />
           </div>
         )}
 
@@ -269,12 +366,27 @@ export function PlanManagementPage() {
         )}
 
         {!isLoading && !isError && plans?.length === 0 && !creating && (
-          <p className="text-center text-sm text-muted-foreground py-16">No plans yet.</p>
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <CreditCard className="h-10 w-10 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">No plans yet.</p>
+            <p className="text-xs text-muted-foreground max-w-xs text-center">
+              Create your first plan to allow studios to subscribe.
+            </p>
+            <Button size="sm" variant="outline" className="gap-1.5 mt-2"
+              onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4" />
+              Create first plan
+            </Button>
+          </div>
         )}
 
-        {!isLoading && !isError && plans?.map((p) => (
-          <PlanCard key={p.id} plan={p} />
-        ))}
+        {!isLoading && !isError && plans && plans.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {plans.map((p) => (
+              <PlanCard key={p.id} plan={p} />
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
