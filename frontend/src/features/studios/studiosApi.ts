@@ -81,6 +81,11 @@ export const studiosApi = createApi({
       query: () => "studios",
       providesTags: ["Studio"],
     }),
+    // Issuer: get single studio by id
+    getStudioById: builder.query<StudioResponse, string>({
+      query: (id) => `studios/${id}`,
+      providesTags: ["Studio"],
+    }),
     updateStudioBranding: builder.mutation<StudioResponse, { id: string; showPlatformBranding: boolean }>({
       query: ({ id, showPlatformBranding }) => ({
         url:    `studios/${id}/branding`,
@@ -145,6 +150,7 @@ export const {
   useUpdateMyStudioMutation,
   useUpdateStudioBrandingMutation,
   useGetStudiosQuery,
+  useGetStudioByIdQuery,
   useSuspendStudioMutation,
   useUnsuspendStudioMutation,
   useGetStudioQrCodeQuery,
