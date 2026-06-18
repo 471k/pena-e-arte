@@ -5,6 +5,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,
@@ -37,6 +38,30 @@ const STATUS_LABELS: Record<string, string> = {
   Cancelled:      "Cancelled",
   NoSubscription: "No Subscription",
 };
+
+function SubscriptionRowSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-56" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-7 w-28" />
+            <Skeleton className="h-7 w-20" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 interface SubscriptionRowProps {
   sub: PlatformSubscriptionResponse;
@@ -323,9 +348,8 @@ export function SubscriptionOversightPage() {
         )}
 
         {isLoading && (
-          <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading…</span>
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => <SubscriptionRowSkeleton key={i} />)}
           </div>
         )}
 
