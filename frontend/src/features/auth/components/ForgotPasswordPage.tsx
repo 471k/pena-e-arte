@@ -83,9 +83,12 @@ export function ForgotPasswordPage() {
                     placeholder="you@example.com"
                     {...register("email")}
                     aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? "email-error" : undefined}
                   />
                   {errors.email && (
-                    <p className="text-xs text-destructive">{errors.email.message}</p>
+                    <p id="email-error" className="text-xs text-destructive" role="alert">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
 
