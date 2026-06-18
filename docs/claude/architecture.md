@@ -310,8 +310,11 @@ Never add a new one without updating this table and the Decisions Log.
 | 4 | `GetPlatformStatsHandler` | Platform KPI aggregate (total studios, MRR, conversion) | IssuerOnly |
 | 5 | `GetPlatformSubscriptionsHandler`, `ExtendTrialHandler` | All subscriptions cross-tenant; trial extension | IssuerOnly |
 | 6 | `GetPlatformReferralCodesHandler`, `DeactivateReferralCodeHandler` | All referral codes cross-tenant | IssuerOnly |
-| 7 | `CancelSubscriptionHandler` | Subscription cancellation cross-tenant | IssuerOnly |
-| 8 | `GetStudioByIdHandler` | Cross-tenant single-studio read for admin detail page | IssuerOnly |
+| 7  | `CancelSubscriptionHandler`             | Subscription cancellation cross-tenant                           | IssuerOnly |
+| 8  | `GetStudioByIdHandler`                  | Cross-tenant single-studio read for admin detail page            | IssuerOnly |
+| 9  | `IssuerGenerateReferralCodeHandler`     | Cross-tenant studio lookup + referral code generation for issuer | IssuerOnly |
+| 10 | `ReactivateReferralCodeHandler`         | Cross-tenant referral code reactivation                          | IssuerOnly |
+| 11 | `DeleteReferralCodeHandler`             | Cross-tenant referral code deletion (unredeemed only)            | IssuerOnly |
 
 ---
 
