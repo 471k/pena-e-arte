@@ -38,6 +38,14 @@ export const platformApi = createApi({
       query: () => "platform/reports/industry",
       providesTags: ["IndustryReport"],
     }),
+    triggerIndustryReport: builder.mutation<void, void>({
+      query: () => ({
+        url:    "platform/reports/industry/trigger",
+        method: "POST",
+      }),
+      // No cache invalidation — the Hangfire job is async and takes minutes.
+      // The page will show a "Queued" confirmation; the user refreshes manually.
+    }),
     getPlatformReferralCodes: builder.query<PlatformReferralCodeResponse[], void>({
       query: () => "platform/referral-codes",
       providesTags: ["PlatformReferral"],
@@ -97,6 +105,7 @@ export const {
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,
   useGetIndustryReportsQuery,
+  useTriggerIndustryReportMutation,
   useGetPlatformReferralCodesQuery,
   useDeactivateReferralCodeMutation,
   useGenerateReferralCodeForStudioMutation,
