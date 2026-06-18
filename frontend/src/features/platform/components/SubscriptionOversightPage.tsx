@@ -334,7 +334,7 @@ export function SubscriptionOversightPage() {
         )}
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-3">
+      <main className="max-w-3xl mx-auto px-4 py-6 space-y-3">
         {/* ── Search + sort toolbar ────────────────────────────────────── */}
         <div className="flex gap-2 flex-wrap mb-3">
           <div className="relative flex-1 min-w-48">
