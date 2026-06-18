@@ -311,6 +311,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 5 | `GetPlatformSubscriptionsHandler`, `ExtendTrialHandler` | All subscriptions cross-tenant; trial extension | IssuerOnly |
 | 6 | `GetPlatformReferralCodesHandler`, `DeactivateReferralCodeHandler` | All referral codes cross-tenant | IssuerOnly |
 | 7 | `CancelSubscriptionHandler` | Subscription cancellation cross-tenant | IssuerOnly |
+| 8 | `GetStudioByIdHandler` | Cross-tenant single-studio read for admin detail page | IssuerOnly |
 
 ---
 

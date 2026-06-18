@@ -27,6 +27,7 @@ public static class StudioEndpoints
 
         // Issuer: list all studios + suspension controls
         group.MapGet("/",                      GetStudios).RequireAuthorization("IssuerOnly");
+        group.MapGet("{id:guid}",              GetStudioById).RequireAuthorization("IssuerOnly");
         group.MapPatch("{id:guid}/suspend",    SuspendStudio).RequireAuthorization("IssuerOnly");
         group.MapPatch("{id:guid}/unsuspend",  UnsuspendStudio).RequireAuthorization("IssuerOnly");
     }
@@ -91,6 +92,15 @@ public static class StudioEndpoints
         CancellationToken ct)
     {
         List<StudioResponse> result = await mediator.Send(new GetStudiosQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetStudioById(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        StudioResponse result = await mediator.Send(new GetStudioByIdQuery(id), ct);
         return Results.Ok(result);
     }
 
