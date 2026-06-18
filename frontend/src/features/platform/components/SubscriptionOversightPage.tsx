@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Banknote, Clock, Loader2, Receipt, XCircle } from "lucide-react";
+import { Banknote, Clock, Loader2, Receipt, Search, XCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -293,14 +293,32 @@ const ALL_STATUSES = ["Active", "Trialing", "GracePeriod", "PastDue", "Cancelled
 export function SubscriptionOversightPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get("status") ?? "";
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<"name" | "trialEnd" | "periodEnd">("trialEnd");
 
   // Refetch on mount so the issuer always sees current subscription state.
   const { data: subscriptions, isLoading, isError } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
 
-  const filtered = subscriptions?.filter((s) =>
+  const baseFiltered = subscriptions?.filter((s) =>
     statusFilter ? s.status === statusFilter : true
   ) ?? [];
+
+  const q = search.trim().toLowerCase();
+
+  const searched = q
+    ? baseFiltered.filter((s) =>
+        s.studioName.toLowerCase().includes(q) ||
+        s.studioSlug.toLowerCase().includes(q)
+      )
+    : baseFiltered;
+
+  const filtered = [...searched].sort((a, b) => {
+    if (sortKey === "name")      return a.studioName.localeCompare(b.studioName);
+    if (sortKey === "trialEnd")  return new Date(a.trialExpiresAt).getTime() - new Date(b.trialExpiresAt).getTime();
+    if (sortKey === "periodEnd") return new Date(a.currentPeriodEnd).getTime() - new Date(b.currentPeriodEnd).getTime();
+    return 0;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -317,7 +335,31 @@ export function SubscriptionOversightPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-3">
-        {!isLoading && !isError && subscriptions && (
+        {/* ── Search + sort toolbar ────────────────────────────────────── */}
+        <div className="flex gap-2 flex-wrap mb-3">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5
+                               text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search by studio name or slug…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as typeof sortKey)}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            aria-label="Sort subscriptions"
+          >
+            <option value="trialEnd">Trial end (soonest first)</option>
+            <option value="periodEnd">Period end (soonest first)</option>
+            <option value="name">Studio name (A–Z)</option>
+          </select>
+        </div>
+
+        {subscriptions && (
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => setSearchParams({})}
