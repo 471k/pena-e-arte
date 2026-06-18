@@ -103,13 +103,15 @@ export function ForgotPasswordPage() {
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Send reset link
                 </Button>
-
-                <p className="text-center text-sm text-muted-foreground">
-                  <Link to="/login" className="underline underline-offset-4 hover:text-primary">
-                    Back to sign in
-                  </Link>
-                </p>
               </form>
+            )}
+
+            {!isSuccess && (
+              <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-muted-foreground">
+                <Link to="/login" className="underline underline-offset-4 hover:text-primary">
+                  Back to sign in
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>
