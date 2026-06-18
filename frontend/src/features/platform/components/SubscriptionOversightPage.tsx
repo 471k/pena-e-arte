@@ -23,6 +23,12 @@ const STATUS_CLASSES: Record<string, string> = {
   NoSubscription: "bg-muted text-muted-foreground",
 };
 
+function fmt(date: string): string {
+  return new Date(date).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
+
 const STATUS_LABELS: Record<string, string> = {
   Active:         "Active",
   Trialing:       "In Trial",
@@ -75,6 +81,16 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   const canActivate = CASH_ACTIVATABLE.has(sub.status);
   const canCancel   = CANCELLABLE.has(sub.status);
 
+  const trialExpired = new Date(sub.trialExpiresAt) < new Date();
+
+  const periodText = (() => {
+    if (sub.status === "Active")       return `Renews: ${fmt(sub.currentPeriodEnd)}`;
+    if (sub.status === "GracePeriod")  return `Grace ends: ${fmt(sub.currentPeriodEnd)}`;
+    if (sub.status === "PastDue")      return `Overdue since: ${fmt(sub.currentPeriodEnd)}`;
+    if (sub.status === "Cancelled")    return `Cancelled — expired ${fmt(sub.currentPeriodEnd)}`;
+    return null;
+  })();
+
   async function handleCancel() {
     await cancelSub(sub.studioId).unwrap();
     setConfirming(false);
@@ -95,13 +111,16 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
                 {STATUS_LABELS[sub.status] ?? sub.status}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {sub.planName ?? "No plan"}
-              {" · "}
-              Trial ends {new Date(sub.trialExpiresAt).toLocaleDateString("en-GB")}
-              {" · "}
-              Period end {new Date(sub.currentPeriodEnd).toLocaleDateString("en-GB")}
-            </p>
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">
+                {sub.status === "Trialing" ? "In Trial" : (sub.planName ?? "No paid plan")}
+                {" · "}
+                {trialExpired ? `Trial expired ${fmt(sub.trialExpiresAt)}` : `Trial ends ${fmt(sub.trialExpiresAt)}`}
+              </p>
+              {periodText && (
+                <p className="text-xs text-muted-foreground">{periodText}</p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
