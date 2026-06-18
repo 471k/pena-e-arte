@@ -49,6 +49,27 @@ export const platformApi = createApi({
       }),
       invalidatesTags: ["PlatformReferral"],
     }),
+    generateReferralCodeForStudio: builder.mutation<PlatformReferralCodeResponse, string>({
+      query: (studioId) => ({
+        url:    `platform/studios/${studioId}/referral-codes`,
+        method: "POST",
+      }),
+      invalidatesTags: ["PlatformReferral", "PlatformStats"],
+    }),
+    reactivateReferralCode: builder.mutation<void, string>({
+      query: (id) => ({
+        url:    `platform/referral-codes/${id}/reactivate`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["PlatformReferral"],
+    }),
+    deleteReferralCode: builder.mutation<void, string>({
+      query: (id) => ({
+        url:    `platform/referral-codes/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["PlatformReferral"],
+    }),
     activateSubscriptionManually: builder.mutation<
       SubscriptionResponse,
       { studioId: string; planId: string; note?: string }
@@ -78,6 +99,9 @@ export const {
   useGetIndustryReportsQuery,
   useGetPlatformReferralCodesQuery,
   useDeactivateReferralCodeMutation,
+  useGenerateReferralCodeForStudioMutation,
+  useReactivateReferralCodeMutation,
+  useDeleteReferralCodeMutation,
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
 } = platformApi;
