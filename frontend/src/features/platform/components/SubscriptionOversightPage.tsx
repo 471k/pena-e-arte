@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Banknote, Loader2, Receipt } from "lucide-react";
+import { Banknote, Clock, Loader2, Receipt, XCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -123,28 +123,43 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {sub.status !== "Active" && !extending && !activating && !confirming && (
-              <Button size="sm" variant="outline" className="h-7 text-xs"
-                onClick={() => setExtending(true)}>
-                Extend trial
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1"
+                onClick={() => setExtending(true)}
+                aria-label={trialExpired
+                  ? `Grant extension for ${sub.studioName}`
+                  : `Extend trial for ${sub.studioName}`}
+              >
+                <Clock className="h-3.5 w-3.5" />
+                {trialExpired ? "Grant Extension" : "Extend Trial (+7 days)"}
               </Button>
             )}
             {canActivate && !activating && !extending && !confirming && (
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                onClick={() => setActivating(true)}>
+              <Button
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => setActivating(true)}
+                aria-label={`Activate subscription for ${sub.studioName}`}
+              >
                 <Banknote className="h-3.5 w-3.5" />
-                Activate — Cash Payment
+                Activate
               </Button>
             )}
             {canCancel && !confirming && !extending && !activating && (
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                className="h-7 text-xs gap-1 text-destructive border-destructive/40
+                           hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => setConfirming(true)}
+                aria-label={`Cancel subscription for ${sub.studioName}`}
               >
-                Cancel subscription
+                <XCircle className="h-3.5 w-3.5" />
+                Cancel Subscription
               </Button>
             )}
           </div>
