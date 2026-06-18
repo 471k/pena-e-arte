@@ -1,16 +1,21 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Banknote,
   Building2,
+  Clock,
+  ExternalLink,
   Loader2,
   PauseCircle,
   PlayCircle,
   Search,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   useGetStudiosQuery,
   useSuspendStudioMutation,
@@ -25,6 +30,7 @@ import {
 } from "@/features/platform/platformApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 import { useGetIssuerPlansQuery } from "@/features/billing/billingApi";
+import type { PlanResponse } from "@/features/billing/billing.types";
 
 // ── Status display config ──────────────────────────────────────────────────────
 
@@ -40,7 +46,7 @@ const STATUS_CLASSES: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   Active:         "Active",
-  Trialing:       "Trialing",
+  Trialing:       "In Trial",
   PastDue:        "Past Due",
   GracePeriod:    "Grace Period",
   Cancelled:      "Cancelled",
@@ -62,14 +68,40 @@ function fmt(date: string) {
   });
 }
 
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function StudioRowSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-64" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-7 w-20" />
+            <Skeleton className="h-7 w-16" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Row ───────────────────────────────────────────────────────────────────────
 
 interface StudioRowProps {
   studio: StudioResponse;
   sub:    PlatformSubscriptionResponse | undefined;
+  plans:  PlanResponse[];
 }
 
-function StudioRow({ studio, sub }: StudioRowProps) {
+function StudioRow({ studio, sub, plans }: StudioRowProps) {
   const isSuspended = !studio.isActive;
   const subStatus   = sub?.status ?? "NoSubscription";
   const badgeStatus = isSuspended ? "Suspended" : subStatus;
@@ -90,12 +122,14 @@ function StudioRow({ studio, sub }: StudioRowProps) {
   const [extendTrial,      { isLoading: extending_  }] = useExtendTrialMutation();
   const [activateManually, { isLoading: activating_ }] = useActivateSubscriptionManuallyMutation();
   const [cancelSub,        { isLoading: cancelling_ }] = useCancelSubscriptionMutation();
-  const { data: plans = [] } = useGetIssuerPlansQuery();
 
   const canExtendTrial = subStatus !== "Active";
   const canActivate    = CASH_ACTIVATABLE.has(subStatus);
   const canCancel      = CANCELLABLE.has(subStatus);
   const anyExpanded    = extending || activating || confirming || confirmPlatform !== null;
+
+  const trialDate    = sub?.trialExpiresAt ?? studio.trialExpiresAt;
+  const trialExpired = new Date(trialDate) < new Date();
 
   async function executePlatform() {
     try {
@@ -128,15 +162,25 @@ function StudioRow({ studio, sub }: StudioRowProps) {
     setConfirming(false);
   }
 
-  // Build the meta line
-  const trialDate = sub?.trialExpiresAt ?? studio.trialExpiresAt;
-  const trialExpired = new Date(trialDate) < new Date();
-  const trialText = trialExpired
-    ? "Trial expired"
-    : `Trial expires ${fmt(trialDate)}`;
-  const periodText = sub?.currentPeriodEnd && sub.status === "Active"
-    ? `Period ends ${fmt(sub.currentPeriodEnd)}`
-    : trialText;
+  const planDisplay = (() => {
+    if (subStatus === "Trialing") return "In Trial";
+    if (subStatus === "NoSubscription") return "No subscription";
+    return sub?.planName ?? "—";
+  })();
+
+  const periodText = (() => {
+    if (sub?.status === "Active" && sub?.currentPeriodEnd) {
+      return `Renews: ${fmt(sub.currentPeriodEnd)}`;
+    }
+    if (sub?.status === "GracePeriod") {
+      return `Grace ends: ${fmt(sub.currentPeriodEnd)}`;
+    }
+    if (sub?.status === "PastDue" && sub?.currentPeriodEnd) {
+      return `Overdue since: ${fmt(sub.currentPeriodEnd)}`;
+    }
+    if (trialExpired) return `Trial expired: ${fmt(trialDate)}`;
+    return `Expires: ${fmt(trialDate)}`;
+  })();
 
   return (
     <Card className={isSuspended ? "border-destructive/40" : ""}>
@@ -145,17 +189,20 @@ function StudioRow({ studio, sub }: StudioRowProps) {
         {/* ── Main row ─────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-0.5 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm">{studio.name}</span>
-              <span className="text-xs text-muted-foreground font-mono">{studio.slug}</span>
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLASSES[badgeStatus]}`}>
+            <div className="flex items-center gap-2 flex-nowrap min-w-0">
+              <span className="font-medium text-sm shrink-0">{studio.name}</span>
+              <span className="text-xs text-muted-foreground font-mono truncate max-w-[180px]"
+                    title={studio.slug}>
+                {studio.slug}
+              </span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${STATUS_CLASSES[badgeStatus]}`}>
                 {STATUS_LABELS[badgeStatus]}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
               {studio.city}
               {" · "}Registered {fmt(studio.createdAt)}
-              {" · "}{sub?.planName ?? "No plan"}
+              {" · "}{planDisplay}
               {" · "}{periodText}
             </p>
           </div>
@@ -163,30 +210,34 @@ function StudioRow({ studio, sub }: StudioRowProps) {
           {/* ── Action buttons ──────────────────────────────────────────── */}
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
 
-            {/* Subscription actions — only when nothing else is expanded */}
+            {/* 0. View detail — always visible, never hidden by anyExpanded */}
+            <Link to={`/platform/studios/${studio.id}`}>
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1"
+                title="View studio details">
+                <ExternalLink className="h-3.5 w-3.5" />
+                View
+              </Button>
+            </Link>
+
+            {/* 1. Extend trial */}
             {!anyExpanded && canExtendTrial && (
-              <Button size="sm" variant="outline" className="h-7 text-xs"
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
                 onClick={() => setExtending(true)}>
-                Extend trial
+                <Clock className="h-3.5 w-3.5" />
+                {trialExpired ? "Grant extension" : "Extend Trial (+7 days)"}
               </Button>
             )}
+
+            {/* 2. Activate (primary — filled) */}
             {!anyExpanded && canActivate && (
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+              <Button size="sm" className="h-7 text-xs gap-1"
                 onClick={() => setActivating(true)}>
                 <Banknote className="h-3.5 w-3.5" />
                 Activate
               </Button>
             )}
-            {!anyExpanded && canCancel && (
-              <Button
-                size="sm" variant="outline"
-                className="h-7 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setConfirming(true)}>
-                Cancel sub
-              </Button>
-            )}
 
-            {/* Platform suspend/reactivate */}
+            {/* 3. Suspend / Reactivate (ghost) */}
             {confirmPlatform ? (
               <>
                 <span className="text-xs text-muted-foreground">
@@ -220,13 +271,26 @@ function StudioRow({ studio, sub }: StudioRowProps) {
                 </Button>
               )
             )}
+
+            {/* 4. Cancel Subscription (destructive outline — LAST) */}
+            {!anyExpanded && canCancel && (
+              <Button
+                size="sm" variant="outline"
+                className="h-7 text-xs gap-1 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setConfirming(true)}>
+                <XCircle className="h-3.5 w-3.5" />
+                Cancel Subscription
+              </Button>
+            )}
           </div>
         </div>
 
         {/* ── Extend trial form ────────────────────────────────────────── */}
         {extending && (
           <div className="flex items-center gap-2 pt-1 border-t">
-            <span className="text-xs text-muted-foreground">Extend trial by</span>
+            <span className="text-xs text-muted-foreground">
+              {trialExpired ? "Grant extension of" : "Extend trial by"}
+            </span>
             <Input
               type="number" min="1" max="90"
               value={days} onChange={(e) => setDays(e.target.value)}
@@ -290,7 +354,7 @@ function StudioRow({ studio, sub }: StudioRowProps) {
         {/* ── Cancel subscription confirm ──────────────────────────────── */}
         {confirming && (
           <div className="flex items-center gap-2 pt-1 border-t">
-            <span className="text-xs text-destructive font-medium">Cancel this subscription?</span>
+            <span className="text-xs text-destructive font-medium">Cancel subscription permanently?</span>
             <Button
               size="sm" variant="destructive" className="h-7 px-2 text-xs"
               disabled={cancelling_} onClick={handleCancel}
@@ -314,11 +378,13 @@ function StudioRow({ studio, sub }: StudioRowProps) {
 export function IssuerStudioListPage() {
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [planFilter,   setPlanFilter]   = useState("all");
 
   const { data: studios,       isLoading: studiosLoading, isError: studiosError } =
     useGetStudiosQuery();
   const { data: subscriptions, isLoading: subsLoading } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: plans = [] } = useGetIssuerPlansQuery();
 
   const subMap = useMemo(() => {
     const m = new Map<string, PlatformSubscriptionResponse>();
@@ -330,8 +396,8 @@ export function IssuerStudioListPage() {
     if (!studios) return [];
     const q = search.trim().toLowerCase();
     return studios.filter((s) => {
-      const sub           = subMap.get(s.id);
-      const subStatus     = sub?.status ?? "NoSubscription";
+      const sub             = subMap.get(s.id);
+      const subStatus       = sub?.status ?? "NoSubscription";
       const effectiveStatus = !s.isActive ? "Suspended" : subStatus;
 
       const matchesSearch = !q ||
@@ -339,10 +405,15 @@ export function IssuerStudioListPage() {
         s.slug.toLowerCase().includes(q);
       const matchesStatus =
         statusFilter === "all" || effectiveStatus === statusFilter;
+      const matchesPlan = (() => {
+        if (planFilter === "all") return true;
+        if (planFilter === "none") return sub?.planName == null;
+        return sub?.planName === planFilter;
+      })();
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus && matchesPlan;
     });
-  }, [studios, subMap, search, statusFilter]);
+  }, [studios, subMap, search, statusFilter, planFilter]);
 
   const isLoading = studiosLoading || subsLoading;
 
@@ -361,7 +432,7 @@ export function IssuerStudioListPage() {
       </header>
 
       {/* ── Search + filter bar ──────────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto px-4 pt-4 flex gap-2">
+      <div className="max-w-3xl mx-auto px-4 pt-4 flex gap-2 flex-wrap">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
@@ -381,13 +452,23 @@ export function IssuerStudioListPage() {
             <option key={s} value={s}>{STATUS_LABELS[s]}</option>
           ))}
         </select>
+        <select
+          value={planFilter}
+          onChange={(e) => setPlanFilter(e.target.value)}
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+        >
+          <option value="all">All plans</option>
+          {plans.map((p) => (
+            <option key={p.id} value={p.name}>{p.name}</option>
+          ))}
+          <option value="none">No plan</option>
+        </select>
       </div>
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-3">
         {isLoading && (
-          <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading…</span>
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => <StudioRowSkeleton key={i} />)}
           </div>
         )}
 
@@ -404,7 +485,7 @@ export function IssuerStudioListPage() {
         )}
 
         {!isLoading && !studiosError && filtered.map((s) => (
-          <StudioRow key={s.id} studio={s} sub={subMap.get(s.id)} />
+          <StudioRow key={s.id} studio={s} sub={subMap.get(s.id)} plans={plans} />
         ))}
       </main>
     </div>
