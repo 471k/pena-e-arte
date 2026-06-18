@@ -23,6 +23,7 @@ import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositChe
 import {
   IssuerDashboardPage,
   IssuerStudioListPage,
+  IssuerStudioDetailPage,
   PlanManagementPage,
   SubscriptionOversightPage,
   PlatformReferralPage,
@@ -136,9 +137,10 @@ export const router = createBrowserRouter([
                 path: "platform",
                 element: <RoleGuard allowedRoles={[Role.Issuer]} />,
                 children: [
-                  { index: true,             element: <IssuerDashboardPage /> },
-                  { path: "studios",         element: <IssuerStudioListPage /> },
-                  { path: "plans",           element: <PlanManagementPage /> },
+                  { index: true,                element: <IssuerDashboardPage /> },
+                  { path: "studios",            element: <IssuerStudioListPage /> },
+                  { path: "studios/:studioId",  element: <IssuerStudioDetailPage /> },
+                  { path: "plans",              element: <PlanManagementPage /> },
                   { path: "subscriptions",   element: <SubscriptionOversightPage /> },
                   { path: "referrals",       element: <PlatformReferralPage /> },
                   { path: "reports",         element: <IndustryReportsPage /> },
