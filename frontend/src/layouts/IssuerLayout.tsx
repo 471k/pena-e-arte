@@ -1,6 +1,6 @@
+import { useState, useEffect, useRef } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { BarChart3, Bell, Building2, CreditCard, LayoutDashboard, LogOut, PenLine, Receipt, Share2 } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { BarChart3, Building2, ChevronDown, CreditCard, LayoutDashboard, LogOut, PenLine, Receipt, Share2 } from "lucide-react";
 import { UserChip } from "@/shared/components/UserChip";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
@@ -14,8 +14,50 @@ const NAV_ITEMS = [
   { label: "Subscriptions", href: "/platform/subscriptions", icon: <Receipt         className="h-4 w-4" /> },
   { label: "Referrals",     href: "/platform/referrals",     icon: <Share2          className="h-4 w-4" /> },
   { label: "Reports",       href: "/platform/reports",       icon: <BarChart3       className="h-4 w-4" /> },
-  { label: "Notifications", href: "/notifications",          icon: <Bell            className="h-4 w-4" /> },
 ];
+
+function UserMenu({ onLogout }: { onLogout: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="User menu"
+        aria-expanded={open}
+        aria-haspopup="true"
+        className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      >
+        <UserChip />
+        <ChevronDown className="h-3 w-3 opacity-50" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-40 rounded-md border bg-background shadow-md z-50 py-1">
+          <button
+            onClick={() => { setOpen(false); onLogout(); }}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function IssuerLayout() {
   const dispatch = useAppDispatch();
@@ -55,17 +97,7 @@ export function IssuerLayout() {
 
         <div className="ml-auto flex items-center gap-3">
           <NotificationBell />
-          <UserChip />
-          <div className="w-px h-5 bg-border" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4 mr-1.5" />
-            Log out
-          </Button>
+          <UserMenu onLogout={handleLogout} />
         </div>
       </header>
 
