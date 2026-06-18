@@ -85,10 +85,13 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
       <CardContent className="p-4 space-y-2">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-0.5 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm">{sub.studioName}</span>
-              <span className="text-xs text-muted-foreground font-mono">{sub.studioSlug}</span>
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusClass}`}>
+            <div className="flex items-center gap-2 flex-nowrap min-w-0">
+              <span className="font-medium text-sm shrink-0">{sub.studioName}</span>
+              <span className="text-xs text-muted-foreground font-mono truncate max-w-[180px]"
+                    title={sub.studioSlug}>
+                {sub.studioSlug}
+              </span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${statusClass}`}>
                 {STATUS_LABELS[sub.status] ?? sub.status}
               </span>
             </div>
