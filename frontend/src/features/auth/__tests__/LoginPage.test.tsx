@@ -104,6 +104,10 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /forgot password/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /register your studio/i })).toBeInTheDocument();
+    // Boilerplate CardDescription must be gone
+    expect(
+      screen.queryByText(/enter your credentials to access your account/i)
+    ).not.toBeInTheDocument();
   });
 
   it("shows the session-expired banner when ?reason=session_expired is in the URL", () => {
@@ -234,5 +238,91 @@ describe("LoginPage", () => {
   it("renders the Pena e Arte brand mark", () => {
     renderPage();
     expect(screen.getByText("Pena e Arte")).toBeInTheDocument();
+  });
+
+  it("does not render the generic credential subtitle", () => {
+    renderPage();
+    expect(
+      screen.queryByText(/enter your credentials to access your account/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows rate-limit message on 429 response", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/auth/login", () =>
+        HttpResponse.json({ message: "Rate limit exceeded." }, { status: 429 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "owner@test.com");
+    await user.type(screen.getByLabelText("Password"), "wrongpass");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(
+      await screen.findByText(/too many sign-in attempts/i)
+    ).toBeInTheDocument();
+  });
+
+  it("server error is rendered inside an Alert with role=alert", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/auth/login", () =>
+        HttpResponse.json({ message: "Invalid credentials." }, { status: 401 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "owner@test.com");
+    await user.type(screen.getByLabelText("Password"), "wrongpass");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    const alertEl = await screen.findByRole("alert");
+    expect(alertEl).toHaveTextContent("Invalid credentials.");
+  });
+
+  it("email field gets aria-invalid=true and aria-describedby on validation error", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByText(/email is required/i);
+
+    const emailInput = screen.getByLabelText(/email/i);
+    expect(emailInput).toHaveAttribute("aria-invalid", "true");
+    expect(emailInput).toHaveAttribute("aria-describedby", "email-error");
+  });
+
+  it("password field gets aria-invalid=true and aria-describedby on validation error", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "owner@test.com");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByText(/password is required/i);
+
+    const passwordInput = screen.getByLabelText("Password");
+    expect(passwordInput).toHaveAttribute("aria-invalid", "true");
+    expect(passwordInput).toHaveAttribute("aria-describedby", "password-error");
+  });
+
+  it("field validation error paragraphs have role=alert for screen reader announcement", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    const errorEl = await screen.findByText(/email is required/i);
+    expect(errorEl).toHaveAttribute("role", "alert");
+  });
+
+  it("registration link is present in the document", () => {
+    renderPage();
+    expect(
+      screen.getByRole("link", { name: /register your studio/i })
+    ).toBeInTheDocument();
   });
 });
