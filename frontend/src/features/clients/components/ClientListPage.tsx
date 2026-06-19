@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Users } from "lucide-react";
+import { ChevronRight, Plus, Search, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -12,10 +12,17 @@ import type { ClientResponse } from "../clientsApi";
 
 function ClientRowSkeleton() {
   return (
-    <div className="flex items-center gap-4 py-3 border-b">
-      <Skeleton className="h-4 w-32" />
-      <Skeleton className="h-4 w-48" />
-      <Skeleton className="h-4 w-28" />
+    <div
+      className="flex items-center gap-3 px-3 py-3 border-b"
+      aria-hidden="true"
+    >
+      <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+      <div className="flex-1 space-y-1.5">
+        <Skeleton className="h-3.5 w-28" />
+        <Skeleton className="h-3 w-40 opacity-60" />
+      </div>
+      <Skeleton className="h-3.5 w-28" />
+      <Skeleton className="h-7 w-14 rounded-md" />
     </div>
   );
 }
@@ -33,6 +40,8 @@ export function ClientListPage() {
 
   const { data: clients, isLoading, isError } = useGetClientsQuery(search);
 
+  const hasClients = (clients?.length ?? 0) > 0;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
@@ -47,7 +56,7 @@ export function ClientListPage() {
               <span>{clients.length} client{clients.length !== 1 ? "s" : ""}</span>
             </div>
           )}
-          {canCreate && (
+          {canCreate && (isLoading || hasClients || !!search) && (
             <Button size="sm" onClick={() => navigate("/clients/new")} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               New Client
@@ -81,7 +90,29 @@ export function ClientListPage() {
           </p>
         )}
 
-        {!isLoading && !isError && (
+        {/* Rich empty state — zero clients, no search active */}
+        {!isLoading && !isError && !hasClients && !search && (
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <Users className="h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm font-medium">No clients yet</p>
+            <p className="text-xs text-muted-foreground">
+              Add your first client to get started.
+            </p>
+            {canCreate && (
+              <Button
+                size="sm"
+                onClick={() => navigate("/clients/new")}
+                className="gap-1.5 mt-1"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New Client
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Table — when clients exist or a search is active */}
+        {!isLoading && !isError && (hasClients || !!search) && (
           <DataTable<ClientResponse>
             columns={[
               {
@@ -95,7 +126,7 @@ export function ClientListPage() {
                   </div>
                 ),
               },
-              { header: "Email",   accessorKey: "email" },
+              { header: "Email", accessorKey: "email" },
               {
                 header: "Phone",
                 cell: (c) =>
@@ -104,6 +135,25 @@ export function ClientListPage() {
                       —
                     </span>
                   ),
+              },
+              {
+                header: "",
+                cell: (c) => (
+                  <div
+                    className="flex items-center justify-end"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                      onClick={() => navigate(`/clients/${c.id}`)}
+                    >
+                      View
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ),
               },
             ]}
             data={clients ?? []}

@@ -179,7 +179,7 @@ describe("Clients feature", () => {
     const user = userEvent.setup();
     renderList();
 
-    await screen.findByText("No clients in this studio yet.");
+    await screen.findByText("No clients yet");
 
     const input = screen.getByPlaceholderText(/search by name or email/i);
     await user.type(input, "XYZ");

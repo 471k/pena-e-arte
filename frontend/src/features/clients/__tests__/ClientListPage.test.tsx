@@ -81,6 +81,7 @@ function renderPage() {
         <Routes>
           <Route path="/clients"     element={<ClientListPage />} />
           <Route path="/clients/:id" element={<div data-testid="client-detail" />} />
+          <Route path="/clients/new" element={<div data-testid="client-new" />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -160,5 +161,75 @@ describe("ClientListPage", () => {
     );
     renderPage();
     await screen.findByText(/no clients/i);
+  });
+
+  // ── View action ─────────────────────────────────────────────────────────────
+
+  it("renders a View button for each loaded client", async () => {
+    renderPage();
+    await screen.findByText("João Silva");
+
+    const viewButtons = screen.getAllByRole("button", { name: /^view$/i });
+    expect(viewButtons.length).toBe(2);
+  });
+
+  it("clicking the View button navigates to /clients/:id", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("João Silva");
+
+    const viewButtons = screen.getAllByRole("button", { name: /^view$/i });
+    await user.click(viewButtons[0]);
+
+    expect(screen.getByTestId("client-detail")).toBeInTheDocument();
+  });
+
+  // ── Rich empty state ─────────────────────────────────────────────────────────
+
+  it("shows rich empty state when no clients exist and no search is active", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients", () => HttpResponse.json([])),
+    );
+    renderPage();
+
+    expect(await screen.findByText("No clients yet")).toBeInTheDocument();
+    expect(screen.getByText(/add your first client/i)).toBeInTheDocument();
+  });
+
+  it("rich empty state shows a New Client button", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients", () => HttpResponse.json([])),
+    );
+    renderPage();
+
+    await screen.findByText("No clients yet");
+    expect(screen.getByRole("button", { name: /new client/i })).toBeInTheDocument();
+  });
+
+  it("rich empty state New Client button navigates to /clients/new", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("http://localhost/api/v1/clients", () => HttpResponse.json([])),
+    );
+    renderPage();
+
+    await screen.findByText("No clients yet");
+    await user.click(screen.getByRole("button", { name: /new client/i }));
+
+    expect(screen.getByTestId("client-new")).toBeInTheDocument();
+  });
+
+  it("shows DataTable with emptyMessage when search returns no clients", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients", () => HttpResponse.json([])),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText("No clients yet");
+    await user.type(screen.getByPlaceholderText(/search/i), "xyz");
+
+    expect(await screen.findByText(/no clients match/i)).toBeInTheDocument();
+    expect(screen.queryByText("No clients yet")).not.toBeInTheDocument();
   });
 });
