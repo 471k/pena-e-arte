@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, Loader2, Plus } from "lucide-react";
+import { ChevronRight, CreditCard, Loader2, Plus, Search } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Input } from "@/shared/components/ui/input";
 import { DataTable } from "@/shared/components/DataTable";
 import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/utils/cn";
@@ -22,6 +23,15 @@ function formatDate(iso: string): string {
   });
 }
 
+const STATUS_LABELS: Record<PaymentStatus, string> = {
+  [PaymentStatus.Pending]:     "Pending",
+  [PaymentStatus.CashPending]: "Cash Pending",
+  [PaymentStatus.Captured]:    "Captured",
+  [PaymentStatus.Paid]:        "Paid",
+  [PaymentStatus.Refunded]:    "Refunded",
+  [PaymentStatus.Failed]:      "Failed",
+};
+
 const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   [PaymentStatus.Pending]:     "border-yellow-300 bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
   [PaymentStatus.CashPending]: "border-orange-300 bg-orange-100 text-orange-800 hover:bg-orange-100",
@@ -34,34 +44,38 @@ const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   return (
     <Badge variant="outline" className={cn(PAYMENT_STATUS_STYLES[status])}>
-      {status}
+      {STATUS_LABELS[status]}
     </Badge>
   );
 }
 
 function PaymentRowSkeleton() {
   return (
-    <div className="flex items-center gap-4 py-3 border-b">
+    <div
+      className="flex items-center gap-4 py-3 border-b"
+      aria-hidden="true"
+    >
+      <Skeleton className="h-4 w-28 flex-1" />
       <Skeleton className="h-4 w-20" />
-      <Skeleton className="h-5 w-16" />
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="h-4 w-16" />
+      <Skeleton className="h-4 w-16 font-semibold" />
+      <Skeleton className="h-5 w-24 rounded-full" />
+      <Skeleton className="h-4 w-10" />
+      <Skeleton className="h-4 w-20" />
+      <Skeleton className="h-7 w-14 rounded-md" />
     </div>
   );
 }
 
 export function PaymentListPage() {
   const navigate = useNavigate();
-  const [cursor, setCursor]                 = useState<string | undefined>(undefined);
-  const [previousPages, setPreviousPages]   = useState<PaymentResponse[]>([]);
+  const [cursor, setCursor]               = useState<string | undefined>(undefined);
+  const [previousPages, setPreviousPages] = useState<PaymentResponse[]>([]);
 
   const { data, isLoading, isFetching, isError } = useGetPaymentsQuery({
     lastSeenId: cursor,
     pageSize:   PAGE_SIZE,
   });
 
-  // Pages already loaded are captured at "Load more" click time; the current
-  // page comes straight from the query — no effect-based accumulation needed.
   const allPayments = cursor === undefined
     ? data ?? []
     : [...previousPages, ...(data ?? [])];
@@ -75,6 +89,33 @@ export function PaymentListPage() {
     setCursor(last.id);
   }
 
+  const [search,       setSearch]       = useState("");
+  const [statusFilter, setStatusFilter] = useState<PaymentStatus | null>(null);
+
+  const presentStatuses = useMemo<PaymentStatus[]>(() => {
+    const set = new Set<PaymentStatus>();
+    allPayments.forEach((p) => set.add(p.status));
+    return [...set];
+  }, [allPayments]);
+
+  const filteredPayments = useMemo<PaymentResponse[]>(() => {
+    let result = allPayments;
+    const term = search.trim().toLowerCase();
+    if (term) {
+      result = result.filter((p) => p.clientName.toLowerCase().includes(term));
+    }
+    if (statusFilter) {
+      result = result.filter((p) => p.status === statusFilter);
+    }
+    return result;
+  }, [allPayments, search, statusFilter]);
+
+  const tableEmptyMessage = search
+    ? `No payments match "${search}".`
+    : statusFilter
+    ? `No ${STATUS_LABELS[statusFilter]} payments found.`
+    : "No payments yet.";
+
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
@@ -84,7 +125,9 @@ export function PaymentListPage() {
         </div>
         <div className="flex items-center gap-3">
           {allPayments.length > 0 && (
-            <span className="text-xs text-muted-foreground">{allPayments.length} loaded</span>
+            <span className="text-xs text-muted-foreground">
+              {allPayments.length} payment{allPayments.length !== 1 ? "s" : ""}
+            </span>
           )}
           <Button size="sm" className="gap-1.5" onClick={() => navigate("/payments/new")}>
             <Plus className="h-4 w-4" />
@@ -94,6 +137,42 @@ export function PaymentListPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search by client name…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Status filter pills — only shown when loaded data contains multiple statuses */}
+        {!isLoading && !isError && presentStatuses.length > 1 && (
+          <div
+            className="flex flex-wrap items-center gap-2"
+            aria-label="Filter by payment status"
+          >
+            {presentStatuses.map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={statusFilter === s}
+                onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+                className={cn(
+                  "rounded-full border px-3 py-0.5 text-xs font-medium transition-colors",
+                  statusFilter === s
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-background text-muted-foreground hover:border-foreground hover:text-foreground",
+                )}
+              >
+                {STATUS_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        )}
+
         {isLoading && (
           <div className="space-y-0">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -108,7 +187,27 @@ export function PaymentListPage() {
           </p>
         )}
 
-        {!isLoading && !isError && (
+        {/* Rich empty state — zero payments loaded at all */}
+        {!isLoading && !isError && allPayments.length === 0 && (
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <CreditCard className="h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm font-medium">No payments yet</p>
+            <p className="text-xs text-muted-foreground">
+              Record your first payment to start tracking studio revenue.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => navigate("/payments/new")}
+              className="gap-1.5 mt-1"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Record payment
+            </Button>
+          </div>
+        )}
+
+        {/* Table — when payments are loaded */}
+        {!isLoading && !isError && allPayments.length > 0 && (
           <DataTable<PaymentResponse>
             columns={[
               {
@@ -120,17 +219,15 @@ export function PaymentListPage() {
                 ),
               },
               {
-                header: "Session",
+                header: "Session Date",
                 cell: (p) =>
                   p.appointmentDate ? (
-                    <span className="text-sm text-muted-foreground">{formatDate(p.appointmentDate)}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {formatDate(p.appointmentDate)}
+                    </span>
                   ) : (
                     "—"
                   ),
-              },
-              {
-                header: "Status",
-                cell: (p) => <PaymentStatusBadge status={p.status} />,
               },
               {
                 header: "Amount",
@@ -139,18 +236,41 @@ export function PaymentListPage() {
                 ),
               },
               {
+                header: "Status",
+                cell: (p) => <PaymentStatusBadge status={p.status} />,
+              },
+              {
                 header: "Method",
                 cell: (p) => p.method,
               },
               {
-                header: "Paid",
+                header: "Date Paid",
                 cell: (p) => (p.paidAt ? formatDate(p.paidAt) : "—"),
               },
+              {
+                header: "",
+                cell: (p) => (
+                  <div
+                    className="flex items-center justify-end"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                      onClick={() => navigate(`/payments/${p.appointmentId}`)}
+                    >
+                      View
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ),
+              },
             ]}
-            data={allPayments}
+            data={filteredPayments}
             keyExtractor={(p) => p.id}
             onRowClick={(p) => navigate(`/payments/${p.appointmentId}`)}
-            emptyMessage="No payments yet."
+            emptyMessage={tableEmptyMessage}
           />
         )}
 

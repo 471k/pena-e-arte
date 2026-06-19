@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -127,9 +127,10 @@ describe("PaymentListPage", () => {
     expect(await screen.findByText(/failed to load payments/i)).toBeInTheDocument();
   });
 
-  it("shows 'No payments yet.' when the list is empty", async () => {
-    renderPage();
-    expect(await screen.findByText("No payments yet.")).toBeInTheDocument();
+  it("shows rich empty state when no payments exist", async () => {
+    renderPage(); // default handler returns []
+    expect(await screen.findByText("No payments yet")).toBeInTheDocument();
+    expect(screen.getByText(/record your first payment/i)).toBeInTheDocument();
   });
 
   it("renders a row for each returned payment", async () => {
@@ -162,9 +163,9 @@ describe("PaymentListPage", () => {
     );
     renderPage();
     await screen.findByText("Maria Silva");
-    // "Paid" appears in both the column header and the badge — at least one badge is expected
+    // "Paid" / "Cash Pending" may appear in both the filter pill and the badge
     expect(screen.getAllByText("Paid").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("CashPending")).toBeInTheDocument();
+    expect(screen.getAllByText("Cash Pending").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows the payment method in each row", async () => {
@@ -221,7 +222,7 @@ describe("PaymentListPage", () => {
     expect(screen.getByRole("button", { name: /load more/i })).toBeInTheDocument();
   });
 
-  it("shows '20 loaded' counter with a full page", async () => {
+  it("shows '20 payments' counter with a full page", async () => {
     server.use(
       http.get("http://localhost/api/v1/payments", () =>
         HttpResponse.json(PAGE_OF_20),
@@ -229,7 +230,7 @@ describe("PaymentListPage", () => {
     );
     renderPage();
     await screen.findByText("Client 0");
-    expect(screen.getByText("20 loaded")).toBeInTheDocument();
+    expect(screen.getByText("20 payments")).toBeInTheDocument();
   });
 
   it("clicking 'Load more' fetches the next page and accumulates results", async () => {
@@ -257,5 +258,141 @@ describe("PaymentListPage", () => {
 
     expect(await screen.findByText("Extra Client")).toBeInTheDocument();
     expect(screen.getByText("Client 0")).toBeInTheDocument(); // previous page still shown
+  });
+
+  // ── Rich empty state ──────────────────────────────────────────────────────────
+
+  it("rich empty state shows a Record payment CTA button", async () => {
+    renderPage(); // default handler returns []
+    await screen.findByText("No payments yet");
+    expect(screen.getByRole("button", { name: /record payment/i })).toBeInTheDocument();
+  });
+
+  it("rich empty state Record payment button navigates to /payments/new", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("No payments yet");
+    await user.click(screen.getByRole("button", { name: /record payment/i }));
+    expect(screen.getByTestId("new-page")).toBeInTheDocument();
+  });
+
+  // ── View action button ────────────────────────────────────────────────────────
+
+  it("renders a View button for each loaded payment", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Maria Silva");
+    expect(screen.getAllByRole("button", { name: /^view$/i })).toHaveLength(2);
+  });
+
+  it("clicking the View button navigates to /payments/:appointmentId", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Maria Silva");
+    await user.click(screen.getByRole("button", { name: /^view$/i }));
+    expect(screen.getByTestId("detail-page")).toBeInTheDocument();
+  });
+
+  // ── Client-name search ────────────────────────────────────────────────────────
+
+  it("search input is present on the page", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Maria Silva");
+    expect(screen.getByPlaceholderText(/search by client name/i)).toBeInTheDocument();
+  });
+
+  it("typing a client name filters the visible payments", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Maria Silva");
+
+    await user.type(screen.getByPlaceholderText(/search by client name/i), "Maria");
+
+    expect(screen.getByText("Maria Silva")).toBeInTheDocument();
+    expect(screen.queryByText("João Santos")).not.toBeInTheDocument();
+  });
+
+  it("search is case-insensitive", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("João Santos");
+
+    await user.type(screen.getByPlaceholderText(/search by client name/i), "joão");
+
+    expect(screen.getByText("João Santos")).toBeInTheDocument();
+    expect(screen.queryByText("Maria Silva")).not.toBeInTheDocument();
+  });
+
+  // ── Status filter pills ───────────────────────────────────────────────────────
+
+  it("status filter pills appear when multiple statuses are present", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Maria Silva");
+
+    // PAYMENT_CARD is "Paid", PAYMENT_CASH is "CashPending" (displayed as "Cash Pending")
+    expect(screen.getByRole("button", { name: "Paid" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cash Pending" })).toBeInTheDocument();
+  });
+
+  it("clicking a status filter pill shows only matching payments", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Maria Silva");
+
+    await user.click(screen.getByRole("button", { name: "Paid" }));
+
+    expect(screen.getByText("Maria Silva")).toBeInTheDocument();   // Paid
+    expect(screen.queryByText("João Santos")).not.toBeInTheDocument(); // CashPending
+  });
+
+  it("clicking the active status pill again clears the filter", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Maria Silva");
+
+    await user.click(screen.getByRole("button", { name: "Paid" }));
+    expect(screen.queryByText("João Santos")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Paid" }));
+    expect(screen.getByText("João Santos")).toBeInTheDocument();
   });
 });
