@@ -1,6 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
-import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest } from "./billing.types";
+import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest, BillingPortalResponse } from "./billing.types";
 
 export interface CreatePlanRequest {
   name:                  string;
@@ -60,6 +60,11 @@ export const billingApi = createApi({
       query: () => ({ url: "billing/subscription/plan/pending", method: "DELETE" }),
       invalidatesTags: ["Subscription"],
     }),
+    // Opens a Stripe Customer Portal session for the owner to manage payment method,
+    // download invoices, and cancel. Returns a Stripe-hosted URL to redirect to.
+    createPortalSession: builder.mutation<BillingPortalResponse, { returnUrl: string }>({
+      query: (body) => ({ url: "billing/portal", method: "POST", body }),
+    }),
     // Issuer plan management
     getIssuerPlans: builder.query<PlanResponse[], void>({
       query: () => "billing/plans",
@@ -88,6 +93,7 @@ export const {
   useFinalizeCheckoutMutation,
   useChangePlanMutation,
   useCancelPlanChangeMutation,
+  useCreatePortalSessionMutation,
   useGetIssuerPlansQuery,
   useCreatePlanMutation,
   useUpdatePlanMutation,

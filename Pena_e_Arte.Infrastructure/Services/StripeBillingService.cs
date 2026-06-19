@@ -8,7 +8,8 @@ public class StripeBillingService(
     CustomerService customerService,
     SubscriptionService subscriptionService,
     SubscriptionScheduleService scheduleService,
-    SessionService checkoutSessions)
+    SessionService checkoutSessions,
+    Stripe.BillingPortal.SessionService portalSessions)
     : IStripeBillingService
 {
     public async Task<string> CreateCustomerAsync(string email, CancellationToken ct)
@@ -159,5 +160,18 @@ public class StripeBillingService(
 
         // Releasing detaches the schedule and leaves the subscription running unchanged.
         await scheduleService.ReleaseAsync(sub.ScheduleId, null, null, ct);
+    }
+
+    public async Task<string> CreatePortalSessionAsync(
+        string stripeCustomerId, string returnUrl, CancellationToken ct)
+    {
+        Stripe.BillingPortal.SessionCreateOptions options = new()
+        {
+            Customer  = stripeCustomerId,
+            ReturnUrl = returnUrl,
+        };
+
+        Stripe.BillingPortal.Session session = await portalSessions.CreateAsync(options, null, ct);
+        return session.Url;
     }
 }

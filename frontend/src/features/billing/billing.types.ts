@@ -26,3 +26,7 @@ export interface PlanResponse {
 export interface CreateSubscriptionRequest {
   planId: string;
 }
+
+export interface BillingPortalResponse {
+  url: string;
+}

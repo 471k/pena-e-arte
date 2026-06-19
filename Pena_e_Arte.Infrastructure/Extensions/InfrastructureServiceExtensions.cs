@@ -69,6 +69,7 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<Stripe.SubscriptionService>();
         services.AddSingleton<Stripe.SubscriptionScheduleService>();
         services.AddSingleton<Stripe.Checkout.SessionService>();
+        services.AddSingleton<Stripe.BillingPortal.SessionService>();
         services.AddSingleton<Stripe.CouponService>();
 
         TwilioClient.Init(

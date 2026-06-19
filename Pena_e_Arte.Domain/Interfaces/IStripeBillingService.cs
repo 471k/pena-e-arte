@@ -54,4 +54,10 @@ public interface IStripeBillingService
 
     /// <summary>Cancels a previously scheduled price change. Idempotent.</summary>
     Task CancelScheduledPriceChangeAsync(string stripeSubscriptionId, CancellationToken ct);
+
+    /// <summary>
+    /// Creates a Stripe-hosted Customer Portal session so the owner can manage their
+    /// payment method, download invoices, and cancel. Returns the redirect URL.
+    /// </summary>
+    Task<string> CreatePortalSessionAsync(string stripeCustomerId, string returnUrl, CancellationToken ct);
 }

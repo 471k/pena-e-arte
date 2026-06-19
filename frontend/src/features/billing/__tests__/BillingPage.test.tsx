@@ -74,6 +74,12 @@ const SUB_GRACE: SubscriptionResponse       = { ...BASE_SUB, status: "GracePerio
 const SUB_PAST_DUE: SubscriptionResponse    = { ...BASE_SUB, status: "PastDue" };
 const SUB_CANCELLED: SubscriptionResponse   = { ...BASE_SUB, status: "Cancelled",   planId: null };
 
+// Portal session redirects use window.location.href — mock it for testing
+Object.defineProperty(window, "location", {
+  value: { href: "", assign: vi.fn() },
+  writable: true,
+});
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -85,6 +91,9 @@ const server = setupServer(
   ),
   http.get("http://localhost/api/v1/studios/me", () =>
     HttpResponse.json(ACTIVE_STUDIO),
+  ),
+  http.post("http://localhost/api/v1/billing/portal", () =>
+    HttpResponse.json({ url: "https://billing.stripe.com/session/test_xxx" }),
   ),
 );
 
@@ -133,9 +142,9 @@ describe("BillingPage", () => {
 
   // --- Loading / error states ---
 
-  it("shows a loading spinner while data is loading", () => {
+  it("shows a skeleton loading state while data is loading", () => {
     renderPage();
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.getByLabelText("Loading billing information")).toBeInTheDocument();
   });
 
   it("shows an error message when the subscription fetch fails", async () => {
@@ -208,7 +217,7 @@ describe("BillingPage", () => {
     expect(await screen.findByRole("button", { name: /change plan/i })).toBeInTheDocument();
   });
 
-  it("shows Renews text (not Active until) for card-billed subscription", async () => {
+  it("shows Next charge text (not Active until) for card-billed subscription", async () => {
     server.use(
       http.get("http://localhost/api/v1/billing/subscription", () =>
         HttpResponse.json(SUB_ACTIVE_CARD),
@@ -216,7 +225,7 @@ describe("BillingPage", () => {
     );
     renderPage();
     await screen.findByText("Active");
-    expect(screen.getByText(/renews/i)).toBeInTheDocument();
+    expect(screen.getByText(/next charge/i)).toBeInTheDocument();
     expect(screen.queryByText(/active until/i)).not.toBeInTheDocument();
   });
 
@@ -495,5 +504,124 @@ describe("BillingPage", () => {
     await screen.findByText("Active");
 
     expect(finalizeSpy).not.toHaveBeenCalled();
+  });
+
+  // ── Plan badge and price display ──────────────────────────────────────────────
+
+  it("shows plan name as a badge (not 'Plan: Starter')", async () => {
+    renderPage();
+    expect(await screen.findByText("Starter")).toBeInTheDocument();
+    expect(screen.queryByText(/^plan:/i)).not.toBeInTheDocument();
+  });
+
+  it("shows monthly price for Active subscription", async () => {
+    renderPage();
+    await screen.findByText("Active");
+    const priceEl = screen.getByText(/29/);
+    expect(priceEl).toBeInTheDocument();
+  });
+
+  it("shows 'Next charge' with amount for Active card-billed subscription", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_CARD),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Active");
+    expect(screen.getByText(/next charge/i)).toBeInTheDocument();
+  });
+
+  it("shows 'Active until' (not 'Next charge') for Active cash-billed subscription", async () => {
+    renderPage();
+    await screen.findByText("Active");
+    expect(await screen.findByText(/active until/i)).toBeInTheDocument();
+    expect(screen.queryByText(/next charge/i)).not.toBeInTheDocument();
+  });
+
+  // ── Status badge visual indicator ─────────────────────────────────────────────
+
+  it("renders the Active status as a pill element (not just colored text)", async () => {
+    renderPage();
+    await screen.findByText("Active");
+    const activePill = screen.getByText("Active");
+    expect(activePill.tagName.toLowerCase()).toBe("span");
+  });
+
+  // ── Change plan button relocation ─────────────────────────────────────────────
+
+  it("Change plan button is NOT in the page header for Active card-billed", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_CARD),
+      ),
+    );
+    renderPage();
+    const changePlanBtn = await screen.findByRole("button", { name: /change plan/i });
+    const header = document.querySelector("header");
+    expect(header).not.toContainElement(changePlanBtn);
+  });
+
+  // ── Manage billing (Stripe Customer Portal) ───────────────────────────────────
+
+  it("shows Manage billing button for Active card-billed subscription", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_CARD),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByRole("button", { name: /manage billing/i })).toBeInTheDocument();
+  });
+
+  it("does NOT show Manage billing button for Active cash-billed subscription", async () => {
+    renderPage();
+    await screen.findByText("Active");
+    expect(screen.queryByRole("button", { name: /manage billing/i })).not.toBeInTheDocument();
+  });
+
+  it("does NOT show Manage billing button when subscription is Trialing", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_TRIALING),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Trial");
+    expect(screen.queryByRole("button", { name: /manage billing/i })).not.toBeInTheDocument();
+  });
+
+  it("does NOT show Manage billing button when subscription is Cancelled", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_CANCELLED),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Cancelled");
+    expect(screen.queryByRole("button", { name: /manage billing/i })).not.toBeInTheDocument();
+  });
+
+  it("clicking Manage billing calls the portal mutation and redirects", async () => {
+    const portalSpy = vi.fn();
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_CARD),
+      ),
+      http.post("http://localhost/api/v1/billing/portal", async ({ request }) => {
+        const body = await request.json() as { returnUrl: string };
+        portalSpy(body);
+        return HttpResponse.json({ url: "https://billing.stripe.com/session/test_xyz" });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /manage billing/i });
+
+    await user.click(screen.getByRole("button", { name: /manage billing/i }));
+
+    await waitFor(() => expect(portalSpy).toHaveBeenCalledOnce());
+    expect(window.location.href).toBe("https://billing.stripe.com/session/test_xyz");
   });
 });

@@ -1,15 +1,21 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertTriangle, Banknote, Calendar, CalendarClock, CreditCard, Loader2, RefreshCw, ShieldX, Zap } from "lucide-react";
+import {
+  AlertTriangle, Banknote, Calendar, CalendarClock,
+  CreditCard, ExternalLink, Loader2, RefreshCw, Settings, ShieldX, Zap,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
+import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import {
   useGetSubscriptionQuery,
   useGetPlansQuery,
   useCancelPlanChangeMutation,
   useFinalizeCheckoutMutation,
+  useCreatePortalSessionMutation,
 } from "../billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import type { SubscriptionResponse, PlanResponse } from "../billing.types";
@@ -22,25 +28,28 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function formatEur(euros: number): string {
+  return new Intl.NumberFormat("pt-PT", {
+    style:                 "currency",
+    currency:              "EUR",
+    minimumFractionDigits: 0,
+  }).format(euros);
+}
+
 interface StatusConfig {
-  label:   string;
-  color:   string;
-  icon:    React.ReactNode;
+  label: string;
+  color: string;
+  icon:  React.ReactNode;
 }
 
 function statusConfig(status: SubscriptionResponse["status"]): StatusConfig {
   switch (status) {
-    case "Trialing":    return { label: "Trial",         color: "text-blue-500",   icon: <Zap className="h-4 w-4" /> };
-    case "Active":      return { label: "Active",        color: "text-green-500",  icon: <Zap className="h-4 w-4" /> };
-    case "GracePeriod": return { label: "Grace Period",  color: "text-amber-500",  icon: <AlertTriangle className="h-4 w-4" /> };
-    case "PastDue":     return { label: "Payment Failed", color: "text-red-500",   icon: <AlertTriangle className="h-4 w-4" /> };
-    case "Cancelled":   return { label: "Cancelled",     color: "text-muted-foreground", icon: <RefreshCw className="h-4 w-4" /> };
+    case "Trialing":    return { label: "Trial",          color: "text-blue-500",          icon: <Zap className="h-3.5 w-3.5" /> };
+    case "Active":      return { label: "Active",         color: "text-green-500",         icon: <Zap className="h-3.5 w-3.5" /> };
+    case "GracePeriod": return { label: "Grace Period",   color: "text-amber-500",         icon: <AlertTriangle className="h-3.5 w-3.5" /> };
+    case "PastDue":     return { label: "Payment Failed", color: "text-red-500",           icon: <AlertTriangle className="h-3.5 w-3.5" /> };
+    case "Cancelled":   return { label: "Cancelled",      color: "text-muted-foreground",  icon: <RefreshCw className="h-3.5 w-3.5" /> };
   }
-}
-
-function planName(sub: SubscriptionResponse, plans: PlanResponse[]): string | null {
-  if (!sub.planId) return null;
-  return plans.find((p) => p.id === sub.planId)?.name ?? null;
 }
 
 function pendingPlanName(sub: SubscriptionResponse, plans: PlanResponse[]): string | null {
@@ -48,17 +57,49 @@ function pendingPlanName(sub: SubscriptionResponse, plans: PlanResponse[]): stri
   return plans.find((p) => p.id === sub.pendingPlanId)?.name ?? null;
 }
 
+function BillingPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-muted-foreground" />
+          <Skeleton className="h-5 w-16" />
+        </div>
+      </header>
+      <main className="max-w-2xl mx-auto px-4 py-8 space-y-4" aria-label="Loading billing information">
+        <div className="rounded-xl border bg-card p-5 space-y-3">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-44" />
+          <div className="flex gap-2 pt-1">
+            <Skeleton className="h-8 w-28 rounded-md" />
+            <Skeleton className="h-8 w-32 rounded-md" />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export function BillingPage() {
   const navigate = useNavigate();
   // Always refetch on mount — subscription/plan can change out of band (webhooks,
   // issuer actions, a switch in another tab), and stale cache must not mislead the owner.
-  const { data: sub,    isLoading: loadingSub,    isError: subError } =
+  const { data: sub,   isLoading: loadingSub,   isError: subError } =
     useGetSubscriptionQuery(undefined, { refetchOnMountOrArgChange: true });
-  const { data: plans,  isLoading: loadingPlans } =
+  const { data: plans, isLoading: loadingPlans } =
     useGetPlansQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: studio } =
     useGetMyStudioQuery(undefined, { refetchOnMountOrArgChange: true });
   const [cancelPlanChange, { isLoading: cancellingChange }] = useCancelPlanChangeMutation();
+  const [createPortalSession, { isLoading: openingPortal }] = useCreatePortalSessionMutation();
+
+  // Resolve the full PlanResponse so we can show price information.
+  // Must be before early returns to satisfy Rules of Hooks.
+  const currentPlan = useMemo<PlanResponse | null>(
+    () => (sub?.planId && plans ? (plans.find((p) => p.id === sub.planId) ?? null) : null),
+    [sub?.planId, plans],
+  );
 
   // Returning from Stripe Checkout: reconcile the session (covers a missed webhook),
   // then strip session_id from the URL. The Subscription query is invalidated, so the
@@ -83,13 +124,16 @@ export function BillingPage() {
     })();
   }, [searchParams, finalizeCheckout, setSearchParams]);
 
+  async function handleManageBilling() {
+    const returnUrl = window.location.href;
+    const result = await createPortalSession({ returnUrl });
+    if ("data" in result && result.data?.url) {
+      window.location.href = result.data.url;
+    }
+  }
+
   if (loadingSub || loadingPlans) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Loading…</span>
-      </div>
-    );
+    return <BillingPageSkeleton />;
   }
 
   if (subError || !sub) {
@@ -100,10 +144,9 @@ export function BillingPage() {
     );
   }
 
-  const cfg   = statusConfig(sub.status);
-  const plan  = planName(sub, plans ?? []);
-  const canSubscribe  = sub.status !== "Active";
-  const isCashBilled  = sub.stripeSubscriptionId === null;
+  const cfg          = statusConfig(sub.status);
+  const canSubscribe = sub.status !== "Active";
+  const isCashBilled = sub.stripeSubscriptionId === null;
   const canChangePlan = sub.status === "Active" && !isCashBilled;
 
   return (
@@ -119,15 +162,9 @@ export function BillingPage() {
             {sub.status === "Trialing" || sub.status === "GracePeriod" ? "Subscribe" : "Reactivate"}
           </Button>
         )}
-        {canChangePlan && (
-          <Button size="sm" variant="outline" onClick={() => navigate("/billing/subscribe")} className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Change plan
-          </Button>
-        )}
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-8 space-y-4">
+      <main className="max-w-2xl mx-auto px-4 py-8 space-y-4">
 
         {/* Studio suspended — shown when issuer has suspended the studio independently of billing */}
         {studio && !studio.isActive && (
@@ -157,18 +194,54 @@ export function BillingPage() {
 
         {/* Status card */}
         <Card>
-          <CardContent className="p-5 space-y-3">
-            <div className={cn("flex items-center gap-2 font-medium", cfg.color)}>
-              {cfg.icon}
-              <span>{cfg.label}</span>
+          <CardContent className="p-5 space-y-4">
+
+            {/* Row 1: Plan badge + Status badge */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {currentPlan ? (
+                <Badge variant="outline" className="text-sm font-medium px-2.5 py-0.5">
+                  {currentPlan.name}
+                </Badge>
+              ) : (
+                <span className="text-sm text-muted-foreground">No plan selected</span>
+              )}
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                  sub.status === "Active"      && "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
+                  sub.status === "Trialing"    && "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                  sub.status === "GracePeriod" && "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                  sub.status === "PastDue"     && "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
+                  sub.status === "Cancelled"   && "border-border bg-muted text-muted-foreground",
+                )}
+              >
+                {cfg.icon}
+                {cfg.label}
+              </span>
             </div>
 
-            {plan && (
-              <p className="text-sm">
-                Plan: <span className="font-medium">{plan}</span>
-              </p>
+            {/* Row 2: Price + renewal date (Active states only) */}
+            {sub.status === "Active" && (
+              <div className="space-y-1">
+                {currentPlan && (
+                  <p className="text-sm font-medium">
+                    {formatEur(currentPlan.priceMonthly)}
+                    <span className="text-muted-foreground font-normal"> / month</span>
+                  </p>
+                )}
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  {isCashBilled
+                    ? <span>Active until {formatDate(sub.currentPeriodEnd)}</span>
+                    : currentPlan
+                      ? <span>Next charge: {formatEur(currentPlan.priceMonthly)} on {formatDate(sub.currentPeriodEnd)}</span>
+                      : <span>Renews {formatDate(sub.currentPeriodEnd)}</span>
+                  }
+                </div>
+              </div>
             )}
 
+            {/* Trial remaining (Trialing) */}
             {sub.status === "Trialing" && (
               <div className="space-y-1">
                 <p className="text-sm">
@@ -180,16 +253,7 @@ export function BillingPage() {
               </div>
             )}
 
-            {sub.status === "Active" && (
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Calendar className="h-3.5 w-3.5 shrink-0" />
-                {/* Cash subs don't auto-renew — the issuer re-activates each period */}
-                <span>
-                  {isCashBilled ? "Active until" : "Renews"} {formatDate(sub.currentPeriodEnd)}
-                </span>
-              </div>
-            )}
-
+            {/* Grace period warning (GracePeriod) */}
             {sub.status === "GracePeriod" && (
               <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400 space-y-0.5">
                 <p className="font-medium">Trial expired — your studio is in read-only mode.</p>
@@ -200,6 +264,7 @@ export function BillingPage() {
               </div>
             )}
 
+            {/* Payment failed warning (PastDue) */}
             {sub.status === "PastDue" && (
               <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
                 <p className="font-medium">Your last payment failed.</p>
@@ -207,10 +272,39 @@ export function BillingPage() {
               </div>
             )}
 
+            {/* Cancelled */}
             {sub.status === "Cancelled" && (
               <p className="text-sm text-muted-foreground">
                 Your subscription has been cancelled. Reactivate to continue using the platform.
               </p>
+            )}
+
+            {/* Actions — Change plan (primary) + Manage billing (secondary) for Active card-billed */}
+            {canChangePlan && (
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => navigate("/billing/subscribe")}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Change plan
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  disabled={openingPortal}
+                  onClick={() => void handleManageBilling()}
+                >
+                  {openingPortal
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Settings className="h-3.5 w-3.5" />
+                  }
+                  Manage billing
+                  {!openingPortal && <ExternalLink className="h-3 w-3 opacity-40" />}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

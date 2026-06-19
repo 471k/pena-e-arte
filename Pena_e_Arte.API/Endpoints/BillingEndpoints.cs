@@ -1,5 +1,6 @@
 using MediatR;
 using Pena_e_Arte.Application.Billing.Commands;
+using Pena_e_Arte.Application.Billing.Commands.CreateBillingPortal;
 using Pena_e_Arte.Application.Billing.Queries;
 using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Application.Plans.Commands;
@@ -30,6 +31,7 @@ public static class BillingEndpoints
         billingGroup.MapPost("/subscription/checkout/finalize", FinalizeCheckout).RequireAuthorization("OwnerOnly");
         billingGroup.MapPut("/subscription/plan",            ChangePlan).RequireAuthorization("OwnerOnly");
         billingGroup.MapDelete("/subscription/plan/pending", CancelPlanChange).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/portal", CreateBillingPortalSession).RequireAuthorization("OwnerOnly");
 
         RouteGroupBuilder webhookGroup = app.MapGroup("/api/v1/webhooks/stripe");
 
@@ -127,6 +129,16 @@ public static class BillingEndpoints
     {
         SubscriptionResponse result = await mediator.Send(new CancelPlanChangeCommand(), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CreateBillingPortalSession(
+        CreateBillingPortalRequest request,
+        ISender                    mediator,
+        CancellationToken          ct)
+    {
+        CreateBillingPortalResult result = await mediator.Send(
+            new CreateBillingPortalCommand(request.ReturnUrl), ct);
+        return Results.Ok(new { url = result.Url });
     }
 
     private static async Task<IResult> HandleBillingWebhook(
