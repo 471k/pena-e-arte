@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  AlertTriangle, Banknote, Bell, BookOpen, CalendarDays, CreditCard,
-  LayoutDashboard, Loader2, ScrollText, Scroll, Users, Zap,
+  AlertTriangle, Banknote, Bell, BookOpen, CalendarDays, ChevronRight, CreditCard,
+  LayoutDashboard, ScrollText, Scroll, Users, Zap,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Separator } from "@/shared/components/ui/separator";
 import { cn } from "@/shared/utils/cn";
@@ -123,6 +124,23 @@ function artistName(artistId: string, artists: ArtistResponse[]): string {
   return a ? `${a.firstName} ${a.lastName}` : "—";
 }
 
+function AppointmentRowSkeleton() {
+  return (
+    <div
+      className="flex items-center gap-3 py-2"
+      data-testid="appointment-skeleton"
+      aria-hidden="true"
+    >
+      <Skeleton className="h-8 w-8 rounded-full" />
+      <div className="flex-1 space-y-1">
+        <Skeleton className="h-3 w-1/3" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+      <Skeleton className="h-5 w-16 rounded-full" />
+    </div>
+  );
+}
+
 function TodayRow({ appt, artists }: { appt: AppointmentResponse; artists: ArtistResponse[] }) {
   return (
     <div className="flex items-center justify-between py-2.5 gap-4">
@@ -166,20 +184,22 @@ function TodaySection({
             )}
           </div>
           <Button
-            variant="ghost"
+            variant="link"
             size="sm"
-            className="h-7 text-xs px-2"
+            className="h-7 text-xs px-2 gap-1"
             onClick={() => navigate("/schedule")}
           >
             Full schedule
+            <ChevronRight className="h-3 w-3" />
           </Button>
         </div>
 
         <div className="px-4 pb-4">
           {isLoading && (
-            <div className="flex items-center gap-2 py-4 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Loading…</span>
+            <div className="space-y-2" aria-label="Loading appointments">
+              <AppointmentRowSkeleton />
+              <AppointmentRowSkeleton />
+              <AppointmentRowSkeleton />
             </div>
           )}
 
@@ -188,9 +208,17 @@ function TodaySection({
           )}
 
           {!isLoading && !isError && appointments?.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              No appointments today.
-            </p>
+            <div className="py-6 flex flex-col items-center gap-3 text-center">
+              <p className="text-sm text-muted-foreground">No appointments today.</p>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => navigate("/appointments/new")}>
+                  Book Appointment
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/schedule")}>
+                  View this week →
+                </Button>
+              </div>
+            </div>
           )}
 
           {!isLoading && !isError && appointments && appointments.length > 0 && (
@@ -263,16 +291,16 @@ const NAV_TILES: NavTile[] = [
   { label: "Clients",       icon: <Users        className="h-5 w-5" />, href: "/clients" },
   { label: "Artists",       icon: <Scroll       className="h-5 w-5" />, href: "/artists" },
   { label: "Designs",       icon: <BookOpen     className="h-5 w-5" />, href: "/designs" },
-  { label: "Deposit Rules", icon: <ScrollText   className="h-5 w-5" />, href: "/deposit-rules" },
-  { label: "Billing",       icon: <CreditCard   className="h-5 w-5" />, href: "/billing" },
-  { label: "Notifications", icon: <Bell         className="h-5 w-5" />, href: "/notifications" },
-  { label: "Studio",        icon: <LayoutDashboard className="h-5 w-5" />, href: "/studios/me" },
+  { label: "Deposits",         icon: <ScrollText      className="h-5 w-5" />, href: "/deposit-rules" },
+  { label: "Billing",          icon: <CreditCard      className="h-5 w-5" />, href: "/billing" },
+  { label: "Notifications",    icon: <Bell            className="h-5 w-5" />, href: "/notifications" },
+  { label: "Studio Settings",  icon: <LayoutDashboard className="h-5 w-5" />, href: "/studios/me" },
 ];
 
 function QuickNav() {
   const navigate = useNavigate();
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-4 gap-3">
       {NAV_TILES.map(({ label, icon, href }) => (
         <button
           key={href}
@@ -320,7 +348,7 @@ export function DashboardPage() {
         <span className="text-xs text-muted-foreground">{formatDate(today)}</span>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {sub && <SubscriptionBanner sub={sub} />}
 
         <TodaySection

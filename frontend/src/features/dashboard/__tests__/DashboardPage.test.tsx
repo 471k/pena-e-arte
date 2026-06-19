@@ -163,6 +163,7 @@ function renderPage() {
           <Route path="/billing"            element={<div data-testid="billing-page" />} />
           <Route path="/billing/subscribe"  element={<div data-testid="subscribe-page" />} />
           <Route path="/schedule"           element={<div data-testid="schedule-page" />} />
+          <Route path="/appointments/new"  element={<div data-testid="new-appointment-page" />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -188,9 +189,9 @@ describe("DashboardPage", () => {
     expect(await screen.findByText("Today")).toBeInTheDocument();
   });
 
-  it("shows a loading spinner while appointments are fetching", () => {
+  it("shows skeleton rows while appointments are fetching", () => {
     renderPage();
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.getAllByTestId("appointment-skeleton")).toHaveLength(3);
   });
 
   it("shows 'No appointments today.' when the appointment list is empty", async () => {
@@ -306,7 +307,7 @@ describe("DashboardPage", () => {
   it("renders all 8 quick-nav tiles", async () => {
     renderPage();
     await screen.findByText("No appointments today.");
-    for (const label of ["Schedule", "Clients", "Artists", "Designs", "Deposit Rules", "Billing", "Notifications", "Studio"]) {
+    for (const label of ["Schedule", "Clients", "Artists", "Designs", "Deposits", "Billing", "Notifications", "Studio Settings"]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });
@@ -511,5 +512,37 @@ describe("DashboardPage", () => {
     await user.click(screen.getByRole("button", { name: /reactivate/i }));
 
     expect(screen.getByTestId("subscribe-page")).toBeInTheDocument();
+  });
+
+  // ── Empty state CTAs ────────────────────────────────────────────────────────
+
+  it("empty state shows 'Book Appointment' button", async () => {
+    renderPage();
+    expect(await screen.findByRole("button", { name: /book appointment/i })).toBeInTheDocument();
+  });
+
+  it("'Book Appointment' button navigates to /appointments/new", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /book appointment/i });
+
+    await user.click(screen.getByRole("button", { name: /book appointment/i }));
+
+    expect(screen.getByTestId("new-appointment-page")).toBeInTheDocument();
+  });
+
+  it("empty state shows 'View this week' button", async () => {
+    renderPage();
+    expect(await screen.findByRole("button", { name: /view this week/i })).toBeInTheDocument();
+  });
+
+  it("'View this week →' button navigates to /schedule", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /view this week/i });
+
+    await user.click(screen.getByRole("button", { name: /view this week/i }));
+
+    expect(screen.getByTestId("schedule-page")).toBeInTheDocument();
   });
 });

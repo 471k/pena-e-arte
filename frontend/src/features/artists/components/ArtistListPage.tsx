@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PenLine, Plus, Search, Users } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -37,7 +37,7 @@ export function ArtistListPage() {
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
         <div className="flex items-center gap-2">
-          <PenLine className="h-5 w-5" />
+          <Users className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Artists</span>
         </div>
         <div className="flex items-center gap-3">
@@ -87,13 +87,41 @@ export function ArtistListPage() {
               {
                 header: "Name",
                 cell: (a) => (
-                  <span className="font-medium">{a.firstName} {a.lastName}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
+                      {a.firstName[0]?.toUpperCase()}{a.lastName[0]?.toUpperCase()}
+                    </div>
+                    <span className="font-medium">{a.firstName} {a.lastName}</span>
+                  </div>
                 ),
               },
               { header: "Email",           accessorKey: "email" },
               {
                 header: "Specializations",
-                cell: (a) => a.specializations ?? "—",
+                cell: (a) => {
+                  if (!a.specializations) {
+                    return <span className="text-muted-foreground/60">—</span>;
+                  }
+                  const chips = a.specializations
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                  if (chips.length === 0) {
+                    return <span className="text-muted-foreground/60">—</span>;
+                  }
+                  return (
+                    <div className="flex flex-wrap gap-1">
+                      {chips.map((spec) => (
+                        <span
+                          key={spec}
+                          className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium"
+                        >
+                          {spec}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                },
               },
             ]}
             data={artists ?? []}

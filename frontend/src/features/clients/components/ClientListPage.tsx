@@ -87,11 +87,24 @@ export function ClientListPage() {
               {
                 header: "Name",
                 cell: (c) => (
-                  <span className="font-medium">{c.firstName} {c.lastName}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
+                      {c.firstName[0]?.toUpperCase()}{c.lastName[0]?.toUpperCase()}
+                    </div>
+                    <span className="font-medium">{c.firstName} {c.lastName}</span>
+                  </div>
                 ),
               },
               { header: "Email",   accessorKey: "email" },
-              { header: "Phone",   cell: (c) => c.phone ?? "—" },
+              {
+                header: "Phone",
+                cell: (c) =>
+                  c.phone ?? (
+                    <span aria-label="Not provided" className="text-muted-foreground/50">
+                      —
+                    </span>
+                  ),
+              },
             ]}
             data={clients ?? []}
             keyExtractor={(c) => c.id}
