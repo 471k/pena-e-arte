@@ -97,13 +97,13 @@ function renderLayout(overrides: StoreOverrides = {}, initialPath = "/dashboard"
         <Routes>
           <Route element={<OwnerLayout />}>
             <Route path="/dashboard"   element={<div data-testid="outlet" />} />
+            <Route path="/schedule"    element={<div data-testid="outlet" />} />
             <Route path="/artists"     element={<div data-testid="outlet" />} />
             <Route path="/clients"     element={<div data-testid="outlet" />} />
             <Route path="/designs"     element={<div data-testid="outlet" />} />
             <Route path="/payments"    element={<div data-testid="outlet" />} />
             <Route path="/billing"     element={<div data-testid="outlet" />} />
             <Route path="/studios/me"  element={<div data-testid="outlet" />} />
-            <Route path="/notifications" element={<div data-testid="outlet" />} />
           </Route>
           <Route path="/login" element={<div data-testid="login-page" />} />
         </Routes>
@@ -124,13 +124,19 @@ describe("OwnerLayout", () => {
   it("renders all eight owner nav links", () => {
     renderLayout();
     expect(screen.getByRole("link", { name: /^dashboard$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^schedule$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^artists$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^clients$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^designs$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^payments$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^billing$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /studio settings/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /notifications/i })).toBeInTheDocument();
+  });
+
+  it("Notifications is not a top-nav link (access via header bell icon)", () => {
+    renderLayout();
+    // The NotificationBell in the header handles notifications — no nav link
+    expect(screen.queryByRole("link", { name: /^notifications$/i })).not.toBeInTheDocument();
   });
 
   it("renders the UserChip with the logged-in owner's identifier", () => {

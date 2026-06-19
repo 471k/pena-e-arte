@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  AlertTriangle, Banknote, Bell, BookOpen, CalendarDays, ChevronRight, CreditCard,
-  LayoutDashboard, ScrollText, Scroll, Users, Zap,
+  AlertTriangle, Banknote, CalendarDays, ChevronRight,
+  LayoutDashboard, Zap,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -11,6 +11,7 @@ import { Separator } from "@/shared/components/ui/separator";
 import { cn } from "@/shared/utils/cn";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
+import { DepositStatus } from "@/features/appointments/appointment.types";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { useGetPaymentsQuery } from "@/features/payments/paymentsApi";
@@ -50,7 +51,7 @@ function daysUntil(iso: string): number {
 
 interface BannerConfig {
   bg:    string;
-  icon:  React.ReactNode;
+  icon:  ReactNode;
   text:  string;
   cta:   string;
   href:  string;
@@ -189,7 +190,7 @@ function TodaySection({
             className="h-7 text-xs px-2 gap-1"
             onClick={() => navigate("/schedule")}
           >
-            Full schedule
+            View schedule
             <ChevronRight className="h-3 w-3" />
           </Button>
         </div>
@@ -278,44 +279,31 @@ function CashPendingSection() {
   );
 }
 
-// ── quick-nav tiles ───────────────────────────────────────────────────────
+// ── stat card ─────────────────────────────────────────────────────────────
 
-interface NavTile {
-  label: string;
-  icon:  React.ReactNode;
-  href:  string;
+interface StatCardProps {
+  label:     string;
+  value:     number;
+  icon:      ReactNode;
+  isLoading: boolean;
+  testId?:   string;
 }
 
-const NAV_TILES: NavTile[] = [
-  { label: "Schedule",      icon: <CalendarDays className="h-5 w-5" />, href: "/schedule" },
-  { label: "Clients",       icon: <Users        className="h-5 w-5" />, href: "/clients" },
-  { label: "Artists",       icon: <Scroll       className="h-5 w-5" />, href: "/artists" },
-  { label: "Designs",       icon: <BookOpen     className="h-5 w-5" />, href: "/designs" },
-  { label: "Deposits",         icon: <ScrollText      className="h-5 w-5" />, href: "/deposit-rules" },
-  { label: "Billing",          icon: <CreditCard      className="h-5 w-5" />, href: "/billing" },
-  { label: "Notifications",    icon: <Bell            className="h-5 w-5" />, href: "/notifications" },
-  { label: "Studio Settings",  icon: <LayoutDashboard className="h-5 w-5" />, href: "/studios/me" },
-];
-
-function QuickNav() {
-  const navigate = useNavigate();
+function StatCard({ label, value, icon, isLoading, testId }: StatCardProps) {
   return (
-    <div className="grid grid-cols-4 gap-3">
-      {NAV_TILES.map(({ label, icon, href }) => (
-        <button
-          key={href}
-          type="button"
-          onClick={() => navigate(href)}
-          className={cn(
-            "flex flex-col items-center justify-center gap-2 rounded-lg border border-input",
-            "bg-background px-3 py-4 text-sm text-muted-foreground",
-            "hover:border-ring hover:text-foreground transition-colors",
-          )}
-        >
-          {icon}
-          <span className="text-xs font-medium leading-tight text-center">{label}</span>
-        </button>
-      ))}
+    <div
+      className="rounded-xl border border-border bg-card p-4 flex flex-col gap-1"
+      data-testid={testId}
+    >
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+      {isLoading ? (
+        <Skeleton className="h-8 w-12 mt-1" />
+      ) : (
+        <span className="text-3xl font-bold tabular-nums">{value}</span>
+      )}
     </div>
   );
 }
@@ -323,9 +311,11 @@ function QuickNav() {
 // ── page ──────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
+  const navigate    = useNavigate();
   const today       = useMemo(() => new Date(), []);
   const todayStart  = useMemo(() => startOfDay(today), [today]);
   const tomorrow    = useMemo(() => addDays(todayStart, 1), [todayStart]);
+  const weekEnd     = useMemo(() => addDays(todayStart, 7), [todayStart]);
 
   const { data: sub } = useGetSubscriptionQuery();
   const {
@@ -336,7 +326,19 @@ export function DashboardPage() {
     from: todayStart.toISOString(),
     to:   tomorrow.toISOString(),
   });
+  const {
+    data:      weekAppts,
+    isLoading: loadingWeekAppts,
+  } = useGetAppointmentsQuery({
+    from: todayStart.toISOString(),
+    to:   weekEnd.toISOString(),
+  });
   const { data: artists = [] } = useGetArtistsQuery(undefined);
+
+  const pendingDeposits = useMemo(
+    () => weekAppts?.filter((a) => a.depositStatus === DepositStatus.Pending).length ?? 0,
+    [weekAppts],
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -345,11 +347,41 @@ export function DashboardPage() {
           <LayoutDashboard className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Dashboard</span>
         </div>
-        <span className="text-xs text-muted-foreground">{formatDate(today)}</span>
+        <div className="flex items-center gap-3">
+          <Button size="sm" onClick={() => navigate("/appointments/new")}>
+            + Book Appointment
+          </Button>
+          <span className="text-xs text-muted-foreground">{formatDate(today)}</span>
+        </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {sub && <SubscriptionBanner sub={sub} />}
+
+        {/* KPI stat cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard
+            label="Today"
+            value={todayAppts?.length ?? 0}
+            icon={<CalendarDays className="h-3.5 w-3.5" />}
+            isLoading={loadingAppts}
+            testId="stat-today"
+          />
+          <StatCard
+            label="This Week"
+            value={weekAppts?.length ?? 0}
+            icon={<CalendarDays className="h-3.5 w-3.5" />}
+            isLoading={loadingWeekAppts}
+            testId="stat-week"
+          />
+          <StatCard
+            label="Deposits Due"
+            value={pendingDeposits}
+            icon={<Banknote className="h-3.5 w-3.5" />}
+            isLoading={loadingWeekAppts}
+            testId="stat-deposits"
+          />
+        </div>
 
         <TodaySection
           appointments={todayAppts}
@@ -359,8 +391,6 @@ export function DashboardPage() {
         />
 
         <CashPendingSection />
-
-        <QuickNav />
       </main>
     </div>
   );

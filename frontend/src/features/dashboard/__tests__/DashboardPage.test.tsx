@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -186,7 +186,8 @@ describe("DashboardPage", () => {
 
   it("shows the Today section heading", async () => {
     renderPage();
-    expect(await screen.findByText("Today")).toBeInTheDocument();
+    // The TodaySection heading is a <span>; the stat card label is a <div> — use selector to disambiguate
+    expect(await screen.findByText("Today", { selector: "span" })).toBeInTheDocument();
   });
 
   it("shows skeleton rows while appointments are fetching", () => {
@@ -250,12 +251,12 @@ describe("DashboardPage", () => {
     expect(await screen.findByText("—")).toBeInTheDocument();
   });
 
-  it("Full schedule button navigates to /schedule", async () => {
+  it("View schedule button navigates to /schedule", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Today");
+    await screen.findByText("No appointments today.");
 
-    await user.click(screen.getByRole("button", { name: /full schedule/i }));
+    await user.click(screen.getByRole("button", { name: /view schedule/i }));
 
     expect(screen.getByTestId("schedule-page")).toBeInTheDocument();
   });
@@ -300,16 +301,6 @@ describe("DashboardPage", () => {
     await screen.findByText("Awaiting Cash");
     // The count badge sits right after the section label
     expect(screen.getByText("1")).toBeInTheDocument();
-  });
-
-  // ── Quick nav ──────────────────────────────────────────────────────────────
-
-  it("renders all 8 quick-nav tiles", async () => {
-    renderPage();
-    await screen.findByText("No appointments today.");
-    for (const label of ["Schedule", "Clients", "Artists", "Designs", "Deposits", "Billing", "Notifications", "Studio Settings"]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    }
   });
 
   // ── Subscription banner — Active ───────────────────────────────────────────
@@ -518,15 +509,15 @@ describe("DashboardPage", () => {
 
   it("empty state shows 'Book Appointment' button", async () => {
     renderPage();
-    expect(await screen.findByRole("button", { name: /book appointment/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Book Appointment$/i })).toBeInTheDocument();
   });
 
   it("'Book Appointment' button navigates to /appointments/new", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole("button", { name: /book appointment/i });
+    await screen.findByText("No appointments today.");
 
-    await user.click(screen.getByRole("button", { name: /book appointment/i }));
+    await user.click(screen.getByRole("button", { name: /^Book Appointment$/i }));
 
     expect(screen.getByTestId("new-appointment-page")).toBeInTheDocument();
   });
@@ -544,5 +535,83 @@ describe("DashboardPage", () => {
     await user.click(screen.getByRole("button", { name: /view this week/i }));
 
     expect(screen.getByTestId("schedule-page")).toBeInTheDocument();
+  });
+
+  // ── Header CTA ──────────────────────────────────────────────────────────────
+
+  it("header shows '+ Book Appointment' button always", async () => {
+    // With appointments present, the empty state is gone but header CTA stays
+    server.use(
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([APPOINTMENT]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Ana Costa");
+    expect(screen.getByRole("button", { name: /\+ book appointment/i })).toBeInTheDocument();
+  });
+
+  it("header '+ Book Appointment' button navigates to /appointments/new", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    // Wait for page to settle (no appointments)
+    await screen.findByText("No appointments today.");
+
+    await user.click(screen.getByRole("button", { name: /\+ book appointment/i }));
+
+    expect(screen.getByTestId("new-appointment-page")).toBeInTheDocument();
+  });
+
+  // ── KPI stat cards ──────────────────────────────────────────────────────────
+
+  it("stat cards section renders Today, This Week, and Deposits Due labels", async () => {
+    renderPage();
+    await screen.findByText("No appointments today.");
+    expect(screen.getByTestId("stat-today")).toBeInTheDocument();
+    expect(screen.getByTestId("stat-week")).toBeInTheDocument();
+    expect(screen.getByTestId("stat-deposits")).toBeInTheDocument();
+  });
+
+  it("Today stat shows 0 when no appointments", async () => {
+    renderPage();
+    await screen.findByText("No appointments today.");
+    expect(within(screen.getByTestId("stat-today")).getByText("0")).toBeInTheDocument();
+  });
+
+  it("Today stat shows correct count when appointments exist", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([APPOINTMENT]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Ana Costa");
+    expect(within(screen.getByTestId("stat-today")).getByText("1")).toBeInTheDocument();
+  });
+
+  it("stat cards show skeleton while appointments are loading", () => {
+    renderPage();
+    // Before data arrives, stat-today should show a skeleton (not the number)
+    const todayCard = screen.getByTestId("stat-today");
+    // The Skeleton component renders — the number span is absent
+    expect(within(todayCard).queryByRole("heading")).not.toBeInTheDocument();
+    // And no numeric text yet
+    expect(within(todayCard).queryByText("0")).not.toBeInTheDocument();
+  });
+
+  it("Deposits Due stat shows count of Pending-deposit appointments", async () => {
+    const pendingDepositAppt: AppointmentResponse = {
+      ...APPOINTMENT,
+      id:            "appt-deposit-pending",
+      depositStatus: "Pending",
+    };
+    server.use(
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([pendingDepositAppt]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Ana Costa");
+    expect(within(screen.getByTestId("stat-deposits")).getByText("1")).toBeInTheDocument();
   });
 });

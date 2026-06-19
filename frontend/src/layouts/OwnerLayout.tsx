@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, Bell, PenLine, LogOut,
+  CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
+  Receipt, Settings, PenLine, LogOut,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -16,14 +16,14 @@ import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { NotificationBell } from "@/features/notifications";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",       href: "/dashboard",    icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "Artists",         href: "/artists",      icon: <Users           className="h-4 w-4" /> },
-  { label: "Clients",         href: "/clients",      icon: <UserSquare      className="h-4 w-4" /> },
-  { label: "Designs",         href: "/designs",      icon: <Palette         className="h-4 w-4" /> },
-  { label: "Payments",        href: "/payments",     icon: <CreditCard      className="h-4 w-4" /> },
-  { label: "Billing",         href: "/billing",      icon: <Receipt         className="h-4 w-4" /> },
-  { label: "Studio Settings", href: "/studios/me",   icon: <Settings        className="h-4 w-4" /> },
-  { label: "Notifications",   href: "/notifications",icon: <Bell            className="h-4 w-4" /> },
+  { label: "Dashboard",       href: "/dashboard",  icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: "Schedule",        href: "/schedule",   icon: <CalendarDays    className="h-4 w-4" /> },
+  { label: "Artists",         href: "/artists",    icon: <Users           className="h-4 w-4" /> },
+  { label: "Clients",         href: "/clients",    icon: <UserSquare      className="h-4 w-4" /> },
+  { label: "Designs",         href: "/designs",    icon: <Palette         className="h-4 w-4" /> },
+  { label: "Payments",        href: "/payments",   icon: <CreditCard      className="h-4 w-4" /> },
+  { label: "Billing",         href: "/billing",    icon: <Receipt         className="h-4 w-4" /> },
+  { label: "Studio Settings", href: "/studios/me", icon: <Settings        className="h-4 w-4" /> },
 ];
 
 export function OwnerLayout() {
