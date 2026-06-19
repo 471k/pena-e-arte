@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -45,6 +45,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/artists", () =>
     HttpResponse.json([ARTIST_A, ARTIST_B]),
   ),
+  http.delete("http://localhost/api/v1/artists/:id", () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -75,6 +78,28 @@ function makeStore() {
   });
 }
 
+function makeStoreAsArtist() {
+  return configureStore({
+    reducer: {
+      auth: authReducer,
+      ui:   uiReducer,
+      [artistsApi.reducerPath]: artistsApi.reducer,
+    },
+    middleware: (gd) => gd().concat(artistsApi.middleware),
+    preloadedState: {
+      auth: {
+        user: { id: "u2", email: "artist@ink.test" },
+        token: "fake-token",
+        tenantId: "stud-0001",
+        role: "artist",
+        pendingReferralCode: null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+      ui: { readOnlyError: null, sessionExpired: false },
+    },
+  });
+}
+
 function renderPage() {
   const store = makeStore();
   render(
@@ -83,6 +108,23 @@ function renderPage() {
         <Routes>
           <Route path="/artists"     element={<ArtistListPage />} />
           <Route path="/artists/:id" element={<div data-testid="artist-detail" />} />
+          <Route path="/artists/new" element={<div data-testid="artist-new" />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+  return store;
+}
+
+function renderPageAsArtist() {
+  const store = makeStoreAsArtist();
+  render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={["/artists"]}>
+        <Routes>
+          <Route path="/artists"     element={<ArtistListPage />} />
+          <Route path="/artists/:id" element={<div data-testid="artist-detail" />} />
+          <Route path="/artists/new" element={<div data-testid="artist-new" />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -119,8 +161,8 @@ describe("ArtistListPage", () => {
   it("renders specialization chips when present", async () => {
     renderPage();
     await screen.findByText("Ana Costa");
-    expect(screen.getByText("Realism")).toBeInTheDocument();
-    expect(screen.getByText("Blackwork")).toBeInTheDocument();
+    expect(screen.getAllByText("Realism").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Blackwork").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders em-dash placeholder when specializations are null", async () => {
@@ -163,5 +205,127 @@ describe("ArtistListPage", () => {
     );
     renderPage();
     await screen.findByText(/no artists/i);
+  });
+
+  // ── Actions column ──────────────────────────────────────────────────────────
+
+  it("Edit button navigates to /artists/:id", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    const editButtons = screen.getAllByRole("button", { name: /^edit$/i });
+    await user.click(editButtons[0]);
+
+    expect(screen.getByTestId("artist-detail")).toBeInTheDocument();
+  });
+
+  it("Delete button is visible to owners", async () => {
+    renderPage();
+    await screen.findByText("Ana Costa");
+    expect(screen.getAllByRole("button", { name: /^delete$/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("Delete button is NOT visible to non-owners", async () => {
+    renderPageAsArtist();
+    await screen.findByText("Ana Costa");
+    expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
+  });
+
+  it("clicking Delete shows inline confirmation for that artist", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
+
+    expect(screen.getByText(/delete ana costa\?/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^cancel$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^confirm$/i })).toBeInTheDocument();
+  });
+
+  it("clicking Cancel hides the delete confirmation", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
+    expect(screen.getByText(/delete ana costa\?/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^cancel$/i }));
+
+    expect(screen.queryByText(/delete ana costa\?/i)).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^delete$/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("confirming delete calls DELETE /artists/:id", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/delete ana costa\?/i)).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Specialization filter ───────────────────────────────────────────────────
+
+  it("spec filter buttons appear for specs in the loaded data", async () => {
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    expect(screen.getByRole("button", { name: "Realism" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Blackwork" })).toBeInTheDocument();
+  });
+
+  it("clicking a spec filter button filters the table to matching artists", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    await user.click(screen.getByRole("button", { name: "Realism" }));
+
+    expect(screen.getByText("Ana Costa")).toBeInTheDocument();
+    expect(screen.queryByText("Marco Silva")).not.toBeInTheDocument();
+  });
+
+  it("clicking the active spec filter button again clears the filter", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    await user.click(screen.getByRole("button", { name: "Realism" }));
+    expect(screen.queryByText("Marco Silva")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Realism" }));
+    expect(screen.getByText("Marco Silva")).toBeInTheDocument();
+  });
+
+  // ── Rich empty state ────────────────────────────────────────────────────────
+
+  it("shows rich empty state with icon text and CTA when zero artists", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists", () => HttpResponse.json([])),
+    );
+    renderPage();
+
+    expect(await screen.findByText("No artists yet")).toBeInTheDocument();
+    expect(screen.getByText(/add your first artist/i)).toBeInTheDocument();
+  });
+
+  it("rich empty state New Artist button navigates to /artists/new", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("http://localhost/api/v1/artists", () => HttpResponse.json([])),
+    );
+    renderPage();
+
+    await screen.findByText("No artists yet");
+    await user.click(screen.getByRole("button", { name: /new artist/i }));
+
+    expect(screen.getByTestId("artist-new")).toBeInTheDocument();
   });
 });
