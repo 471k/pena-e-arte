@@ -101,12 +101,13 @@ describe("DesignListPage", () => {
     expect(await screen.findByText("Failed to load designs. Please try again.")).toBeInTheDocument();
   });
 
-  it("shows empty-state text when no designs exist", async () => {
+  it("shows rich empty state when no designs exist", async () => {
     server.use(
       http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
     );
     renderPage();
-    expect(await screen.findByText("No designs in this studio yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No designs yet")).toBeInTheDocument();
+    expect(screen.getByText(/upload a tattoo design/i)).toBeInTheDocument();
   });
 
   it("renders a card for each design returned by the API", async () => {
@@ -171,5 +172,92 @@ describe("DesignListPage", () => {
     renderPage(Role.Client);
     await screen.findByText("Dragon Sleeve");
     expect(screen.queryByRole("button", { name: /upload revision/i })).not.toBeInTheDocument();
+  });
+
+  // ── Rich empty state ──────────────────────────────────────────────────────────
+
+  it("rich empty state shows a New Design button for owner role", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
+    );
+    renderPage(Role.Owner);
+    await screen.findByText("No designs yet");
+    expect(screen.getByTestId("empty-state-new-design")).toBeInTheDocument();
+  });
+
+  it("rich empty state New Design button navigates to /designs/new", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
+    );
+    renderPage(Role.Owner);
+    await screen.findByText("No designs yet");
+    await user.click(screen.getByTestId("empty-state-new-design"));
+    expect(screen.getByTestId("create-page")).toBeInTheDocument();
+  });
+
+  it("rich empty state does NOT show New Design button for client role", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
+    );
+    renderPage(Role.Client);
+    await screen.findByText("No designs yet");
+    expect(screen.queryByRole("button", { name: /new design/i })).not.toBeInTheDocument();
+  });
+
+  // ── Client-side search ────────────────────────────────────────────────────────
+
+  it("search input is present on the designs page", async () => {
+    renderPage();
+    await screen.findByText("Dragon Sleeve");
+    expect(screen.getByPlaceholderText(/search by title/i)).toBeInTheDocument();
+  });
+
+  it("typing in the search bar filters designs by title", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Dragon Sleeve");
+
+    await user.type(screen.getByPlaceholderText(/search by title/i), "Dragon");
+
+    expect(screen.getByText("Dragon Sleeve")).toBeInTheDocument();
+    expect(screen.queryByText("Rose Chest")).not.toBeInTheDocument();
+  });
+
+  it("search is case-insensitive", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Dragon Sleeve");
+
+    await user.type(screen.getByPlaceholderText(/search by title/i), "rose");
+
+    expect(screen.getByText("Rose Chest")).toBeInTheDocument();
+    expect(screen.queryByText("Dragon Sleeve")).not.toBeInTheDocument();
+  });
+
+  it("shows a no-match message when search finds nothing", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Dragon Sleeve");
+
+    await user.type(screen.getByPlaceholderText(/search by title/i), "xyzzy");
+
+    expect(await screen.findByText(/no designs match/i)).toBeInTheDocument();
+    expect(screen.queryByText("Dragon Sleeve")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rose Chest")).not.toBeInTheDocument();
+  });
+
+  it("clearing the search restores all designs", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Dragon Sleeve");
+
+    const input = screen.getByPlaceholderText(/search by title/i);
+    await user.type(input, "Dragon");
+    expect(screen.queryByText("Rose Chest")).not.toBeInTheDocument();
+
+    await user.clear(input);
+    expect(screen.getByText("Dragon Sleeve")).toBeInTheDocument();
+    expect(screen.getByText("Rose Chest")).toBeInTheDocument();
   });
 });
