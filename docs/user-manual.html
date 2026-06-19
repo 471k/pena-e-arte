@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pena e Arte — User Manual</title>
+<style>
+  :root {
+    --bg: #0f0f10;
+    --surface: #18181b;
+    --surface2: #1f1f23;
+    --border: #2e2e33;
+    --text: #e4e4e7;
+    --muted: #71717a;
+    --accent: #a78bfa;
+    --accent2: #818cf8;
+    --client: #34d399;
+    --artist: #60a5fa;
+    --owner: #fbbf24;
+    --issuer: #f87171;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --radius: 8px;
+    --sidebar-w: 260px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; display: flex; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar-w); min-width: var(--sidebar-w);
+    background: var(--surface); border-right: 1px solid var(--border);
+    position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column;
+    transition: transform .25s ease;
+    z-index: 100;
+  }
+  #sidebar .logo {
+    padding: 20px 16px 12px;
+    font-size: 15px; font-weight: 700; letter-spacing: -.4px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  #sidebar .logo span { color: var(--accent); }
+  #sidebar .search-wrap { padding: 10px 12px; }
+  #sidebar .search-wrap input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 6px 10px; font-size: 12px;
+    outline: none;
+  }
+  #sidebar .search-wrap input::placeholder { color: var(--muted); }
+  #sidebar nav { flex: 1; padding: 4px 0 20px; }
+  .nav-section { padding: 12px 12px 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .nav-link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 16px; font-size: 13px; color: var(--muted);
+    cursor: pointer; transition: color .15s, background .15s;
+    text-decoration: none; border-left: 2px solid transparent;
+  }
+  .nav-link:hover { color: var(--text); background: var(--surface2); }
+  .nav-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(167,139,250,.07); }
+  .nav-link .badge {
+    margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 10px;
+    font-weight: 600; letter-spacing: .3px;
+  }
+  .badge-client  { background: rgba(52,211,153,.15); color: var(--client); }
+  .badge-artist  { background: rgba(96,165,250,.15); color: var(--artist); }
+  .badge-owner   { background: rgba(251,191,36,.15); color: var(--owner); }
+  .badge-issuer  { background: rgba(248,113,113,.15); color: var(--issuer); }
+  .badge-all     { background: rgba(167,139,250,.15); color: var(--accent); }
+  .badge-public  { background: rgba(156,163,175,.15); color: #9ca3af; }
+
+  /* ── Main ── */
+  #main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; }
+  #topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(15,15,16,.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 28px; display: flex; align-items: center; gap: 12px;
+  }
+  #topbar #menu-btn { display: none; background: none; border: none; color: var(--text); cursor: pointer; font-size: 20px; }
+  #topbar #page-title { font-size: 14px; color: var(--muted); }
+
+  /* ── Role filter bar ── */
+  #role-filter { display: flex; gap: 8px; padding: 16px 28px 0; flex-wrap: wrap; }
+  .rf-btn {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: transparent;
+    color: var(--muted); transition: all .15s;
+  }
+  .rf-btn:hover { color: var(--text); border-color: var(--muted); }
+  .rf-btn.active-client  { background: rgba(52,211,153,.15); color: var(--client); border-color: rgba(52,211,153,.4); }
+  .rf-btn.active-artist  { background: rgba(96,165,250,.15); color: var(--artist); border-color: rgba(96,165,250,.4); }
+  .rf-btn.active-owner   { background: rgba(251,191,36,.15); color: var(--owner); border-color: rgba(251,191,36,.4); }
+  .rf-btn.active-issuer  { background: rgba(248,113,113,.15); color: var(--issuer); border-color: rgba(248,113,113,.4); }
+  .rf-btn.active-all     { background: rgba(167,139,250,.15); color: var(--accent); border-color: rgba(167,139,250,.4); }
+
+  /* ── Content ── */
+  #content { padding: 20px 28px 60px; max-width: 900px; }
+
+  /* ── Sections ── */
+  .section {
+    margin-bottom: 12px; border-radius: var(--radius);
+    border: 1px solid var(--border); overflow: hidden;
+    transition: border-color .15s;
+  }
+  .section.highlight { border-color: var(--accent); }
+  .section-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px; cursor: pointer;
+    background: var(--surface); user-select: none;
+    transition: background .15s;
+  }
+  .section-head:hover { background: var(--surface2); }
+  .section-head .title { font-size: 15px; font-weight: 600; flex: 1; }
+  .section-head .chevron { color: var(--muted); font-size: 12px; transition: transform .2s; }
+  .section-head.open .chevron { transform: rotate(90deg); }
+  .section-body { display: none; padding: 0 18px 18px; background: var(--surface); }
+  .section-body.open { display: block; }
+
+  /* ── Role chips ── */
+  .roles { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 14px; }
+  .role-chip {
+    font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 12px;
+    letter-spacing: .3px;
+  }
+  .rc-client  { background: rgba(52,211,153,.15); color: var(--client); }
+  .rc-artist  { background: rgba(96,165,250,.15); color: var(--artist); }
+  .rc-owner   { background: rgba(251,191,36,.15); color: var(--owner); }
+  .rc-issuer  { background: rgba(248,113,113,.15); color: var(--issuer); }
+  .rc-all     { background: rgba(167,139,250,.15); color: var(--accent); }
+
+  /* ── Content typography ── */
+  h2 { font-size: 22px; font-weight: 700; margin: 28px 0 6px; color: var(--text); }
+  h3 { font-size: 16px; font-weight: 600; margin: 18px 0 8px; color: var(--text); }
+  p  { color: #a1a1aa; margin-bottom: 10px; }
+  ul, ol { padding-left: 18px; margin-bottom: 10px; color: #a1a1aa; }
+  li { margin-bottom: 4px; }
+  strong { color: var(--text); }
+
+  /* ── Cards inside sections ── */
+  .card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin: 10px 0; }
+  .card h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  .card p  { font-size: 13px; margin: 0; }
+
+  /* ── Steps ── */
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps li {
+    counter-increment: step; display: flex; gap: 12px;
+    margin-bottom: 12px; align-items: flex-start;
+  }
+  .steps li::before {
+    content: counter(step); min-width: 24px; height: 24px;
+    background: rgba(167,139,250,.2); color: var(--accent);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+  }
+  .steps li p { margin: 0; font-size: 13px; }
+
+  /* ── Examples ── */
+  .example {
+    border-left: 3px solid var(--accent2); padding: 10px 14px;
+    background: rgba(129,140,248,.06); border-radius: 0 var(--radius) var(--radius) 0;
+    margin: 12px 0;
+  }
+  .example .ex-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--accent2); margin-bottom: 4px; }
+  .example p { font-size: 13px; margin: 0; color: #c4c4cf; }
+
+  /* ── Status badges ── */
+  .status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .st-green  { background: rgba(74,222,128,.12); color: var(--green); }
+  .st-yellow { background: rgba(251,191,36,.12); color: var(--yellow); }
+  .st-red    { background: rgba(248,113,113,.12); color: var(--red); }
+  .st-blue   { background: rgba(96,165,250,.12); color: var(--blue); }
+  .st-purple { background: rgba(167,139,250,.12); color: var(--accent); }
+
+  /* ── Flow diagram ── */
+  .flow {
+    display: flex; align-items: flex-start; gap: 0; flex-wrap: wrap;
+    margin: 14px 0; row-gap: 8px;
+  }
+  .flow-step {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 12px; font-size: 12px;
+    min-width: 120px; text-align: center;
+  }
+  .flow-arrow { display: flex; align-items: center; padding: 0 8px; color: var(--muted); font-size: 16px; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; background: var(--surface2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: #a1a1aa; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  /* ── Callout ── */
+  .callout {
+    display: flex; gap: 10px; padding: 12px 14px;
+    border-radius: var(--radius); margin: 12px 0; font-size: 13px;
+  }
+  .callout-warn { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25); color: #d4a017; }
+  .callout-info { background: rgba(96,165,250,.08); border: 1px solid rgba(96,165,250,.25); color: #7db8f7; }
+  .callout-ok   { background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.25); color: #4ade80; }
+  .callout .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Hero ── */
+  .hero { padding: 32px 0 20px; }
+  .hero h1 { font-size: 28px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 8px; }
+  .hero p  { font-size: 15px; color: var(--muted); margin: 0; }
+
+  /* ── Search highlight ── */
+  .search-hidden { display: none; }
+  mark { background: rgba(167,139,250,.3); color: var(--text); border-radius: 2px; padding: 0 1px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 720px) {
+    #sidebar { transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    #content { padding: 16px; }
+    #topbar #menu-btn { display: block; }
+    #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 90; }
+    #overlay.show { display: block; }
+  }
+
+  /* ── Print ── */
+  @media print {
+    #sidebar, #topbar, #role-filter { display: none; }
+    #main { margin: 0; }
+    .section-body { display: block !important; }
+    body { background: #fff; color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<div id="overlay"></div>
+
+<!-- ════ SIDEBAR ════ -->
+<aside id="sidebar">
+  <div class="logo">Pena e <span>Arte</span><br><small style="font-size:11px;font-weight:400;color:var(--muted)">User Manual v1.0</small></div>
+  <div class="search-wrap"><input id="sidebar-search" type="search" placeholder="Search features…" /></div>
+  <nav>
+    <div class="nav-section">Getting Started</div>
+    <a class="nav-link" href="#overview" onclick="goto('overview')">🗺 Overview &amp; Roles</a>
+    <a class="nav-link" href="#auth" onclick="goto('auth')">🔐 Authentication</a>
+    <a class="nav-link" href="#navigation" onclick="goto('navigation')">🧭 Navigation</a>
+
+    <div class="nav-section">Client</div>
+    <a class="nav-link" href="#booking" onclick="goto('booking')">📅 Booking Appointments <span class="badge badge-client">Client</span></a>
+    <a class="nav-link" href="#deposits" onclick="goto('deposits')">💳 Deposits &amp; Payment <span class="badge badge-client">Client</span></a>
+    <a class="nav-link" href="#my-bookings" onclick="goto('my-bookings')">📋 My Bookings <span class="badge badge-client">Client</span></a>
+    <a class="nav-link" href="#design-approval" onclick="goto('design-approval')">🎨 Design Approval <span class="badge badge-client">Client</span></a>
+    <a class="nav-link" href="#profile" onclick="goto('profile')">👤 My Profile &amp; Body Map <span class="badge badge-client">Client</span></a>
+    <a class="nav-link" href="#consent" onclick="goto('consent')">📝 Consent &amp; Intake Forms <span class="badge badge-client">Client</span></a>
+    <a class="nav-link" href="#portable" onclick="goto('portable')">🔗 Portable Profile <span class="badge badge-client">Client</span></a>
+
+    <div class="nav-section">Artist</div>
+    <a class="nav-link" href="#schedule" onclick="goto('schedule')">📆 Schedule View <span class="badge badge-artist">Artist</span></a>
+    <a class="nav-link" href="#design-upload" onclick="goto('design-upload')">🖼 Design Upload <span class="badge badge-artist">Artist</span></a>
+    <a class="nav-link" href="#share-token" onclick="goto('share-token')">🔗 Design Share Token <span class="badge badge-artist">Artist</span></a>
+
+    <div class="nav-section">Owner / Studio Admin</div>
+    <a class="nav-link" href="#dashboard" onclick="goto('dashboard')">🏠 Dashboard <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#client-mgmt" onclick="goto('client-mgmt')">👥 Client Management <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#artist-mgmt" onclick="goto('artist-mgmt')">🧑‍🎨 Artist Management <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#deposit-rules" onclick="goto('deposit-rules')">📏 Deposit Rules <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#payments" onclick="goto('payments')">💰 Payments &amp; Splits <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#cash-confirm" onclick="goto('cash-confirm')">💵 Cash Confirmation <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#forms-mgmt" onclick="goto('forms-mgmt')">📄 Forms Management <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#notifications" onclick="goto('notifications')">🔔 Notifications <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#studio-settings" onclick="goto('studio-settings')">⚙️ Studio Settings <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#referral" onclick="goto('referral')">🎁 Referral Codes <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#billing" onclick="goto('billing')">💳 Billing &amp; Subscriptions <span class="badge badge-owner">Owner</span></a>
+    <a class="nav-link" href="#qr" onclick="goto('qr')">📱 QR Code Generator <span class="badge badge-owner">Owner</span></a>
+
+    <div class="nav-section">Issuer (Platform Admin)</div>
+    <a class="nav-link" href="#issuer-dashboard" onclick="goto('issuer-dashboard')">📊 Platform Dashboard <span class="badge badge-issuer">Issuer</span></a>
+    <a class="nav-link" href="#studio-oversight" onclick="goto('studio-oversight')">🏢 Studio Oversight <span class="badge badge-issuer">Issuer</span></a>
+    <a class="nav-link" href="#sub-oversight" onclick="goto('sub-oversight')">🗂 Subscription Oversight <span class="badge badge-issuer">Issuer</span></a>
+    <a class="nav-link" href="#plan-mgmt" onclick="goto('plan-mgmt')">📦 Plan Management <span class="badge badge-issuer">Issuer</span></a>
+    <a class="nav-link" href="#referral-mgmt" onclick="goto('referral-mgmt')">🎁 Referral Management <span class="badge badge-issuer">Issuer</span></a>
+    <a class="nav-link" href="#industry-reports" onclick="goto('industry-reports')">📈 Industry Reports <span class="badge badge-issuer">Issuer</span></a>
+
+    <div class="nav-section">Public (No Login)</div>
+    <a class="nav-link" href="#studio-map" onclick="goto('studio-map')">🗺 Studio Map <span class="badge badge-public">Public</span></a>
+    <a class="nav-link" href="#portfolio" onclick="goto('portfolio')">🖼 Public Portfolios <span class="badge badge-public">Public</span></a>
+  </nav>
+</aside>
+
+<!-- ════ MAIN ════ -->
+<div id="main">
+  <div id="topbar">
+    <button id="menu-btn" onclick="toggleSidebar()">☰</button>
+    <span id="page-title">Pena e Arte — Complete User Manual</span>
+  </div>
+
+  <!-- Role filter -->
+  <div id="role-filter">
+    <span style="font-size:12px;color:var(--muted);align-self:center">Filter by role:</span>
+    <button class="rf-btn active-all" onclick="filterRole('all')" id="rf-all">All roles</button>
+    <button class="rf-btn" onclick="filterRole('client')" id="rf-client" style="color:var(--client)">Client</button>
+    <button class="rf-btn" onclick="filterRole('artist')" id="rf-artist" style="color:var(--artist)">Artist</button>
+    <button class="rf-btn" onclick="filterRole('owner')" id="rf-owner" style="color:var(--owner)">Owner</button>
+    <button class="rf-btn" onclick="filterRole('issuer')" id="rf-issuer" style="color:var(--issuer)">Issuer</button>
+    <button class="rf-btn" onclick="filterRole('public')" id="rf-public">Public</button>
+  </div>
+
+  <div id="content">
+    <div class="hero">
+      <h1>Pena e Arte — Complete User Manual</h1>
+      <p>Everything you need to know about booking, managing, and administering a tattoo studio on the platform. Use the sidebar to jump to any feature, or use the role filter above to see only what applies to you.</p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- OVERVIEW -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-overview" class="section" data-roles="all">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>🗺</span><span class="title">Overview &amp; Roles</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles">
+          <span class="role-chip rc-all">All roles</span>
+        </div>
+        <p>Pena e Arte is a multi-tenant SaaS platform for tattoo studios. Each studio is a completely isolated <strong>tenant</strong> — clients, artists, bookings, designs, and payments are never shared between studios. Four roles exist:</p>
+
+        <table>
+          <tr><th>Role</th><th>Who</th><th>Default landing page</th><th>Capabilities summary</th></tr>
+          <tr>
+            <td><span class="role-chip rc-client">Client</span></td>
+            <td>The person getting tattooed</td>
+            <td><code>/book</code></td>
+            <td>Book appointments, pay deposits, review designs, sign consent forms, manage own profile</td>
+          </tr>
+          <tr>
+            <td><span class="role-chip rc-artist">Artist</span></td>
+            <td>Tattoo artist at a studio</td>
+            <td><code>/schedule</code></td>
+            <td>View schedule, upload design revisions, manage clients, confirm cash deposits</td>
+          </tr>
+          <tr>
+            <td><span class="role-chip rc-owner">Owner</span></td>
+            <td>Studio owner / manager</td>
+            <td><code>/dashboard</code></td>
+            <td>Full studio management: clients, artists, designs, payments, billing, settings</td>
+          </tr>
+          <tr>
+            <td><span class="role-chip rc-issuer">Issuer</span></td>
+            <td>Platform administrator</td>
+            <td><code>/platform</code></td>
+            <td>Cross-tenant oversight: studios, subscriptions, plans, referrals, analytics</td>
+          </tr>
+        </table>
+
+        <div class="callout callout-info">
+          <span class="icon">ℹ️</span>
+          <div>Every studio gets a <strong>14-day free trial</strong> with full access — no credit card required at signup. After the trial there is a 7-day read-only grace period, then the studio must subscribe to continue taking bookings.</div>
+        </div>
+
+        <h3>Data Isolation</h3>
+        <p>Every database query is automatically scoped to the current studio (tenant). You can never accidentally see another studio's clients, appointments, or payments. The only exceptions are the public portfolio pages, the public studio map, and (with explicit opt-in) the client portable profile feature.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- AUTH -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-auth" class="section" data-roles="all">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>🔐</span><span class="title">Authentication</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles"><span class="role-chip rc-all">All roles</span></div>
+
+        <h3>Logging In</h3>
+        <ol class="steps">
+          <li><p>Navigate to the platform URL. You'll land on <code>/login</code>.</p></li>
+          <li><p>Enter your <strong>email address</strong> and <strong>password</strong>.</p></li>
+          <li><p>Click <strong>Sign in</strong>. The system reads your role from the JWT token and redirects you automatically to the correct dashboard for your role.</p></li>
+        </ol>
+
+        <h3>Forgot Password</h3>
+        <ol class="steps">
+          <li><p>On the login page, click <strong>Forgot password?</strong></p></li>
+          <li><p>Enter your email address and click <strong>Send reset link</strong>.</p></li>
+          <li><p>Check your email. Click the link — it takes you to <code>/reset-password</code>.</p></li>
+          <li><p>Enter your new password twice and confirm. You'll be redirected to login.</p></li>
+        </ol>
+
+        <div class="callout callout-warn">
+          <span class="icon">⚠️</span>
+          <div>Password reset links expire after a short window. If your link has expired, simply request a new one from the forgot-password page.</div>
+        </div>
+
+        <h3>Studio Registration (Owner)</h3>
+        <ol class="steps">
+          <li><p>Visit the registration page (your platform's <code>/register</code> route).</p></li>
+          <li><p>Fill in studio name, your email, and choose a password.</p></li>
+          <li><p>If you received a <strong>referral code</strong> from another studio owner, enter it in the referral code field — this unlocks a discount on your first paid month.</p></li>
+          <li><p>Complete registration. A 14-day trial starts immediately.</p></li>
+        </ol>
+
+        <h3>How Sessions Work</h3>
+        <p>The platform uses short-lived <strong>JWT tokens</strong>. Your session is kept alive automatically while you're actively using the app. If you're inactive for an extended period you'll be asked to log in again — your data is never lost.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- NAVIGATION -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-navigation" class="section" data-roles="all">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🧭</span><span class="title">Navigation Guide</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-all">All roles</span></div>
+        <p>Each role has its own layout with a persistent top navigation bar. After login you are automatically redirected:</p>
+        <table>
+          <tr><th>Role</th><th>Home</th><th>Key navigation items</th></tr>
+          <tr><td><span class="role-chip rc-client">Client</span></td><td><code>/book</code></td><td>Book, My Bookings, Designs, Profile, Forms</td></tr>
+          <tr><td><span class="role-chip rc-artist">Artist</span></td><td><code>/schedule</code></td><td>Schedule, Clients, Designs, Notifications</td></tr>
+          <tr><td><span class="role-chip rc-owner">Owner</span></td><td><code>/dashboard</code></td><td>Schedule, Clients, Artists, Designs, Deposit Rules, Billing, Studio, Notifications</td></tr>
+          <tr><td><span class="role-chip rc-issuer">Issuer</span></td><td><code>/platform</code></td><td>Dashboard, Studios, Plans, Subscriptions, Referrals, Reports</td></tr>
+        </table>
+        <p>Real-time updates are delivered via <strong>SignalR</strong>. When a new appointment is created or a design is approved, all connected users in the same studio see the change instantly — no page refresh needed.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- BOOKING -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-booking" class="section" data-roles="client">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>📅</span><span class="title">Booking an Appointment</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles"><span class="role-chip rc-client">Client</span></div>
+        <p>Clients book appointments from the <strong>Book</strong> page (<code>/book</code>). The booking widget is embedded in the studio's interface.</p>
+
+        <h3>Step-by-step</h3>
+        <ol class="steps">
+          <li><p>Log in. You land on the <strong>Book an Appointment</strong> page.</p></li>
+          <li><p>Select the <strong>Artist</strong> you want from the dropdown. Artists who have been added by the studio owner will appear here.</p></li>
+          <li><p>Pick a <strong>Date and time</strong> for your appointment. The calendar only allows future dates.</p></li>
+          <li><p>Set the expected <strong>Duration</strong> (30 minutes to 8 hours in 30-minute increments).</p></li>
+          <li><p>Add any optional <strong>notes</strong> for the artist (e.g. reference image description, placement preference).</p></li>
+          <li><p>Submit the form. The system checks that the selected slot is not already booked — if it is, you'll see a "slot already taken" error and can choose another time.</p></li>
+          <li><p>After a successful booking, you'll be taken to the <strong>Deposit Payment</strong> step automatically.</p></li>
+        </ol>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Maria wants a sleeve tattoo from artist João. She picks Saturday 14:00 for 4 hours, writes "Black and grey geometric sleeve, full upper arm" in the notes, and submits. The system creates a <span class="status st-purple">Pending</span> appointment and redirects her to pay the deposit.</p>
+        </div>
+
+        <h3>Appointment Statuses</h3>
+        <table>
+          <tr><th>Status</th><th>Meaning</th></tr>
+          <tr><td><span class="status st-purple">Pending</span></td><td>Booked but deposit not yet paid</td></tr>
+          <tr><td><span class="status st-blue">Confirmed</span></td><td>Deposit received, appointment locked in</td></tr>
+          <tr><td><span class="status st-yellow">InProgress</span></td><td>Session currently underway</td></tr>
+          <tr><td><span class="status st-green">Completed</span></td><td>Session done, payment captured</td></tr>
+          <tr><td><span class="status st-red">Cancelled</span></td><td>Cancelled by client or studio</td></tr>
+          <tr><td><span class="status st-red">NoShow</span></td><td>Client did not attend — deposit may be forfeited</td></tr>
+        </table>
+
+        <h3>Cancelling a Booking</h3>
+        <p>From <strong>My Bookings</strong>, find the appointment you wish to cancel and click <strong>Cancel appointment</strong>. Cancellation policies (whether the deposit is refunded) are set by the studio via Deposit Rules — check the studio's policy before cancelling.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- DEPOSITS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-deposits" class="section" data-roles="client owner artist">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>💳</span><span class="title">Deposits &amp; Payment</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles">
+          <span class="role-chip rc-client">Client</span>
+          <span class="role-chip rc-owner">Owner</span>
+          <span class="role-chip rc-artist">Artist</span>
+        </div>
+        <p>Every booking requires a <strong>deposit</strong> before it is confirmed. The deposit amount and rules are configured by the studio owner. Two payment methods are available:</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0">
+          <div class="card">
+            <h4>💳 Card (Stripe)</h4>
+            <p>Pay online with any debit or credit card (Visa, Mastercard, etc.) via Stripe's secure Payment Element. Your card is <em>authorised</em> (held) now, then <em>captured</em> when your session is complete — you are not charged until the appointment is finished.</p>
+          </div>
+          <div class="card">
+            <h4>💵 Cash</h4>
+            <p>Select Cash to declare you'll pay in person at the studio. This creates a pending record. The studio owner or artist must physically confirm receipt of cash before your appointment is marked as deposit-paid.</p>
+          </div>
+        </div>
+
+        <h3>Card Payment Flow (Client)</h3>
+        <div class="flow">
+          <div class="flow-step">Book appointment</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">Redirected to Deposit Checkout</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">Enter card details in Stripe</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><span class="status st-blue">Authorised</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">Session completes → <span class="status st-green">Captured</span></div>
+        </div>
+
+        <h3>Cash Payment Flow</h3>
+        <div class="flow">
+          <div class="flow-step">Select Cash at checkout</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><span class="status st-yellow">CashPending</span> created</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">Bring cash to studio</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">Owner/artist confirms receipt</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><span class="status st-green">Paid</span></div>
+        </div>
+
+        <div class="example">
+          <div class="ex-label">Example — Card</div>
+          <p>Carlos books a 2-hour session. The deposit rule requires €50. He enters his Visa card details — a hold of €50 is placed but not yet charged. After his session, the studio marks it complete and €50 is captured from his card.</p>
+        </div>
+
+        <div class="example">
+          <div class="ex-label">Example — Cash</div>
+          <p>Ana prefers to pay cash. She selects the Cash option during checkout. The dashboard shows her appointment as "CashPending". When she arrives at the studio and pays €50 in cash, the artist clicks the "Confirm cash" button and her appointment becomes fully confirmed.</p>
+        </div>
+
+        <div class="callout callout-info">
+          <span class="icon">ℹ️</span>
+          <div>Card details are <strong>never</strong> stored on our servers or shared with the studio. All card processing is handled by Stripe. Your data is protected by PCI DSS compliance.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- MY BOOKINGS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-my-bookings" class="section" data-roles="client">
+      <div class="section-head" onclick="toggle(this)">
+        <span>📋</span><span class="title">My Bookings</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-client">Client</span></div>
+        <p>The <strong>My Bookings</strong> section is displayed beneath the booking form on the <code>/book</code> page. It lists all your upcoming and past appointments at this studio.</p>
+        <h3>What you can see</h3>
+        <ul>
+          <li>Date, time, and duration of each appointment</li>
+          <li>Artist name</li>
+          <li>Current appointment status (badge)</li>
+          <li>Deposit status (Pending / Paid / CashPending)</li>
+        </ul>
+        <h3>What you can do</h3>
+        <ul>
+          <li><strong>View detail</strong> — click any appointment to see full details including notes and payment information</li>
+          <li><strong>Cancel</strong> — available on upcoming appointments that have not yet started</li>
+          <li><strong>Pay deposit</strong> — if the deposit is still pending, a link to the deposit checkout appears</li>
+        </ul>
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Sofia has two upcoming appointments: one for Saturday (deposit paid by card) and one for next week (deposit still pending — she selected Cash but hasn't visited the studio yet). The second one shows a yellow "CashPending" badge and a "Pay by card instead" option.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- DESIGN APPROVAL -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-design-approval" class="section" data-roles="client artist owner">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>🎨</span><span class="title">Design Approval Workflow</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles">
+          <span class="role-chip rc-client">Client</span>
+          <span class="role-chip rc-artist">Artist</span>
+          <span class="role-chip rc-owner">Owner</span>
+        </div>
+        <p>Designs follow a collaborative revision loop between artist and client. Artists upload design drafts and clients provide feedback before the final tattoo is applied.</p>
+
+        <h3>Full Workflow</h3>
+        <div class="flow" style="flex-direction:column;gap:6px">
+          <div class="flow-step" style="width:100%;text-align:left;padding:10px 14px">1. Owner or Artist creates a Design record (links it to a client)</div>
+          <div class="flow-step" style="width:100%;text-align:left;padding:10px 14px">2. Artist uploads Revision v1 (image file) with optional notes</div>
+          <div class="flow-step" style="width:100%;text-align:left;padding:10px 14px">3. Client is notified — opens the Design and sees the image</div>
+          <div class="flow-step" style="width:100%;text-align:left;padding:10px 14px">4a. Client clicks <strong>Approve</strong> → status becomes <span class="status st-green">Approved</span></div>
+          <div class="flow-step" style="width:100%;text-align:left;padding:10px 14px">4b. Client clicks <strong>Request Changes</strong> + optional notes → status becomes <span class="status st-yellow">Changes Requested</span></div>
+          <div class="flow-step" style="width:100%;text-align:left;padding:10px 14px">5. Artist uploads Revision v2 addressing the feedback</div>
+          <div class="flow-step" style="width:100%;text-align:left;padding:10px 14px">6. Repeat until Approved — each version is stored and visible</div>
+        </div>
+
+        <h3>Client: How to Review a Design</h3>
+        <ol class="steps">
+          <li><p>Navigate to <strong>Designs</strong> in the top menu.</p></li>
+          <li><p>Find the design linked to your appointment and click it.</p></li>
+          <li><p>The latest revision image appears. Scroll down to see earlier versions.</p></li>
+          <li><p>Click <strong>Approve</strong> if you're happy — a green "Approved" badge appears and the artist is notified.</p></li>
+          <li><p>Or click <strong>Request Changes</strong>, type your feedback in the text field (e.g. "Please make the roses larger and add more shading around the stem"), then click Submit.</p></li>
+        </ol>
+
+        <h3>Artist: How to Upload a Revision</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Designs</strong> → click the design → click <strong>Upload Revision</strong> in the top-right corner.</p></li>
+          <li><p>Select your image file (JPEG, PNG, SVG accepted).</p></li>
+          <li><p>Add optional notes describing what changed in this version.</p></li>
+          <li><p>Click <strong>Upload</strong>. The image is stored securely in Cloudflare R2. The client receives an in-app and email notification.</p></li>
+        </ol>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Artist Rui uploads a dragon design sketch (v1) for client Pedro. Pedro opens the design, sees the sketch, and requests changes: "The wings should be wider and I'd like a moon in the background." Rui revises the design and uploads v2. Pedro reviews v2, is satisfied, and clicks Approve. The design is locked and the artist proceeds to tattoo.</p>
+        </div>
+
+        <div class="callout callout-info">
+          <span class="icon">ℹ️</span>
+          <div>All revision versions are permanently stored. You can always go back and view earlier drafts. The artist can <strong>delete</strong> individual revisions if needed.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- PROFILE & BODY MAP -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-profile" class="section" data-roles="client owner artist">
+      <div class="section-head" onclick="toggle(this)">
+        <span>👤</span><span class="title">Client Profile &amp; Body Map</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-client">Client</span>
+          <span class="role-chip rc-artist">Artist</span>
+          <span class="role-chip rc-owner">Owner</span>
+        </div>
+        <p>Each client has a rich profile that stores their tattoo history and body map. This gives artists quick context before a session.</p>
+
+        <h3>Body Map</h3>
+        <p>The interactive body map is an SVG diagram of a human figure split into 20+ named zones on the front and 22+ zones on the back. Artists and clients can click zones to mark where tattoos have been placed or are planned.</p>
+        <ul>
+          <li><strong>Front zones include:</strong> Head, Neck, Chest, Abdomen, Left/Right Shoulder, Upper Arm, Forearm, Hand, Thigh, Knee, Shin, Foot</li>
+          <li><strong>Back zones include:</strong> Skull, Neck (back), Upper Back, Lower Back, Buttock, Calf, Heel — and mirrored arm zones</li>
+        </ul>
+
+        <h3>How to update the body map (Client)</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>My Profile</strong>.</p></li>
+          <li><p>Scroll to the <strong>Body Map</strong> section. The SVG figure is interactive.</p></li>
+          <li><p>Toggle between <strong>Front</strong> and <strong>Back</strong> views using the tab buttons.</p></li>
+          <li><p>Click any body zone to highlight it (primary colour = selected, muted = empty).</p></li>
+          <li><p>Selected zones appear as chips below the figure for easy reading.</p></li>
+          <li><p>Changes are saved automatically.</p></li>
+        </ol>
+
+        <h3>Tattoo History</h3>
+        <p>Every completed appointment generates a <strong>Tattoo Record</strong> in the client's history. Artists can attach photos of completed work to each record. Clients can view — but not edit — their tattoo history.</p>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Client Beatriz has tattoos on her Left Upper Arm and Right Shin. Her body map has these two zones highlighted. When artist Tiago opens her profile, he can immediately see the placement history. He links her new appointment (left forearm sleeve) to a tattoo record with a photo after the session.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- CONSENT & INTAKE FORMS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-consent" class="section" data-roles="client owner artist">
+      <div class="section-head" onclick="toggle(this)">
+        <span>📝</span><span class="title">Consent &amp; Intake Forms</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-client">Client</span>
+          <span class="role-chip rc-artist">Artist</span>
+          <span class="role-chip rc-owner">Owner</span>
+        </div>
+
+        <h3>Intake Forms</h3>
+        <p>An <strong>Intake Form</strong> collects health and preference information from the client before the session. Studios use these to check for contraindications (allergies, medications, skin conditions).</p>
+        <ul>
+          <li>Clients complete intake forms linked to a specific appointment.</li>
+          <li>Owners and artists can view submitted intake forms from the <strong>Forms</strong> section.</li>
+        </ul>
+
+        <h3>Consent Forms</h3>
+        <p>A <strong>Consent Form</strong> is a legal document the client signs before tattooing begins. The platform captures a <strong>digital signature</strong> and timestamps it.</p>
+
+        <h3>Consent Form Workflow</h3>
+        <ol class="steps">
+          <li><p>Studio creates/sends a consent form linked to the client's appointment.</p></li>
+          <li><p>Client receives a notification and opens the form.</p></li>
+          <li><p>Client reviews the consent text, types their signature in the signature field, and submits.</p></li>
+          <li><p>On submission, the system generates a <strong>PDF</strong> of the signed consent form and stores it in Cloudflare R2.</p></li>
+          <li><p>Owner and artist can download the PDF from the Consent Forms list at any time.</p></li>
+        </ol>
+
+        <div class="card">
+          <h4>What the consent form PDF contains</h4>
+          <p>Client name, appointment date, digital signature (as typed), timestamp of signing, and the studio's consent text. If the studio is on a paid plan with branding removal disabled, the Pena e Arte badge appears in the footer.</p>
+        </div>
+
+        <h3>For Owners: Viewing Forms</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Forms</strong> → <strong>Consent Forms</strong> or <strong>Intake Forms</strong>.</p></li>
+          <li><p>Each form shows its status: <span class="status st-yellow">Pending</span> (not yet signed) or <span class="status st-green">Signed</span>.</p></li>
+          <li><p>Click a consent form to see the signature, signing timestamp, and a link to download the PDF.</p></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- PORTABLE PROFILE -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-portable" class="section" data-roles="client">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🔗</span><span class="title">Portable Profile (Cross-Studio)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-client">Client</span></div>
+        <p>By default, your client profile is <strong>private to the studio where it was created</strong>. The Portable Profile feature lets you opt in to share your basic profile information with other studios on the platform — useful if you visit multiple tattoo studios and want each to see your tattoo history.</p>
+
+        <div class="callout callout-warn">
+          <span class="icon">⚠️</span>
+          <div>This feature is <strong>opt-in only</strong>. Your profile is never shared without your explicit consent. Payment history and consent forms are never included in the portable profile.</div>
+        </div>
+
+        <h3>How to enable</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>My Profile</strong>.</p></li>
+          <li><p>Find the <strong>Portable Profile</strong> toggle card.</p></li>
+          <li><p>Toggle it on. A confirmation prompt explains what data will be shared (name, body map, tattoo history — no payments, no forms).</p></li>
+          <li><p>Save. Other studios can now look you up by your user ID if they are adding you as a new client.</p></li>
+        </ol>
+
+        <h3>How to disable</h3>
+        <p>Toggle the same switch off. Your profile becomes private immediately. Any studio that had already loaded your profile can no longer refresh it.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- SCHEDULE VIEW -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-schedule" class="section" data-roles="artist owner">
+      <div class="section-head" onclick="toggle(this)">
+        <span>📆</span><span class="title">Schedule View</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-artist">Artist</span>
+          <span class="role-chip rc-owner">Owner</span>
+        </div>
+        <p>The <strong>Schedule</strong> page (<code>/schedule</code>) is the artist's primary work view. It shows all appointments assigned to this studio, filterable by date.</p>
+
+        <h3>Features</h3>
+        <ul>
+          <li>List of appointments in chronological order, grouped by day</li>
+          <li>Each row shows: time, duration, client name, appointment status badge, deposit status</li>
+          <li>Click any appointment to open its <strong>Detail page</strong></li>
+          <li>Real-time updates — new bookings appear instantly via SignalR without refreshing</li>
+        </ul>
+
+        <h3>Appointment Detail (Artist/Owner)</h3>
+        <p>From any appointment detail page you can:</p>
+        <ul>
+          <li>Update the appointment status (Confirmed → InProgress → Completed)</li>
+          <li>Mark a client as a No-Show</li>
+          <li>View the associated payment and deposit status</li>
+          <li>Access the client profile and body map</li>
+          <li>View / manage linked consent and intake forms</li>
+          <li>Navigate to the linked design for review</li>
+        </ul>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Artist Joana opens Monday's schedule. She sees 3 appointments. The 10:00 appointment is Confirmed (deposit paid). At 10:00 she opens it, sets status to InProgress. After 3 hours, she sets it to Completed — the system triggers a Stripe capture to charge the deposit. She then opens the 14:00 appointment, where the client hasn't arrived — she marks it as NoShow.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- DESIGN UPLOAD -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-design-upload" class="section" data-roles="artist owner">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🖼</span><span class="title">Design Upload &amp; Revision Management</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-artist">Artist</span>
+          <span class="role-chip rc-owner">Owner</span>
+        </div>
+        <p>Artists and owners manage designs from <strong>Designs</strong> (<code>/designs</code>). Each design can have multiple revisions — every upload creates a new versioned revision.</p>
+
+        <h3>Creating a New Design</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Designs</strong> → click <strong>New Design</strong>.</p></li>
+          <li><p>Select the <strong>client</strong> this design is for.</p></li>
+          <li><p>Optionally link to an appointment.</p></li>
+          <li><p>Give the design a name/title and submit.</p></li>
+          <li><p>You'll be taken to the design detail — click <strong>Upload Revision</strong> to add the first draft.</p></li>
+        </ol>
+
+        <h3>Uploading a Revision</h3>
+        <ol class="steps">
+          <li><p>From the design detail, click <strong>Upload Revision</strong>.</p></li>
+          <li><p>Choose an image file (JPEG, PNG, SVG, or PDF).</p></li>
+          <li><p>Add optional notes describing this revision.</p></li>
+          <li><p>Click <strong>Upload</strong>. The file is stored in Cloudflare R2 and the client is notified.</p></li>
+        </ol>
+
+        <h3>Deleting a Revision</h3>
+        <p>Only artists and owners (ArtistAndAbove role) can delete revisions. Click the trash icon on any revision card. A confirmation dialog prevents accidental deletion. This action is <strong>irreversible</strong>.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- SHARE TOKEN -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-share-token" class="section" data-roles="artist owner">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🔗</span><span class="title">Design Share Token</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-artist">Artist</span>
+          <span class="role-chip rc-owner">Owner</span>
+        </div>
+        <p>Artists can generate a <strong>time-limited shareable link</strong> for any design revision. This link can be sent to anyone — no login required to view it.</p>
+
+        <h3>How to create a share link</h3>
+        <ol class="steps">
+          <li><p>Open a design revision.</p></li>
+          <li><p>Click the <strong>Share</strong> button (link icon) next to the revision.</p></li>
+          <li><p>A shareable URL is generated and copied to your clipboard.</p></li>
+          <li><p>Send it to your client via WhatsApp, email, or any messenger.</p></li>
+        </ol>
+
+        <h3>Share link properties</h3>
+        <table>
+          <tr><th>Property</th><th>Value</th></tr>
+          <tr><td>Expiry</td><td>30 days from creation (default)</td></tr>
+          <tr><td>View count</td><td>Tracked — you can see how many times it was opened</td></tr>
+          <tr><td>Revocable</td><td>Yes — owner/artist can revoke at any time</td></tr>
+          <tr><td>Auth required</td><td>No — anyone with the link can view</td></tr>
+          <tr><td>What's visible</td><td>Design image and title only — no client name, no studio details</td></tr>
+        </table>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Artist Fábio finishes a dragon design. He shares a link with his client — the client forwards it to their friend to get feedback. The link expires in 30 days. If the client later asks Fábio to revoke it, he opens the revision and clicks "Revoke share link" — the URL immediately returns a 404.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- OWNER DASHBOARD -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-dashboard" class="section" data-roles="owner">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>🏠</span><span class="title">Owner Dashboard</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles"><span class="role-chip rc-owner">Owner</span></div>
+        <p>The Dashboard (<code>/dashboard</code>) is the owner's command centre. It surfaces critical information at a glance without needing to navigate to individual sections.</p>
+
+        <h3>Dashboard sections</h3>
+        <table>
+          <tr><th>Section</th><th>What it shows</th></tr>
+          <tr><td>Subscription Banner</td><td>Only shown when action is needed (trial expiry, grace period, payment failure, cancellation). Click the CTA to go directly to billing.</td></tr>
+          <tr><td>Today's Schedule</td><td>All appointments for today — time, artist, status badge. Click "Full schedule" for the complete view.</td></tr>
+          <tr><td>Awaiting Cash</td><td>List of <span class="status st-yellow">CashPending</span> deposits — one-click confirm button per entry.</td></tr>
+          <tr><td>Quick Nav</td><td>3-column grid of tiles linking to: Schedule, Clients, Artists, Designs, Deposit Rules, Billing, Notifications, Studio Settings.</td></tr>
+        </table>
+
+        <h3>Subscription Banner states</h3>
+        <table>
+          <tr><th>State</th><th>Banner colour</th><th>Action shown</th></tr>
+          <tr><td>Trial (active)</td><td>Blue</td><td>Subscribe — shows days remaining</td></tr>
+          <tr><td>Grace period</td><td>Amber</td><td>Subscribe now — shows days remaining</td></tr>
+          <tr><td>Payment failed</td><td>Red</td><td>Update billing</td></tr>
+          <tr><td>Cancelled</td><td>Red</td><td>Reactivate</td></tr>
+          <tr><td>Active</td><td>None shown</td><td>—</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- CLIENT MANAGEMENT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-client-mgmt" class="section" data-roles="owner artist">
+      <div class="section-head" onclick="toggle(this)">
+        <span>👥</span><span class="title">Client Management</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-owner">Owner</span>
+          <span class="role-chip rc-artist">Artist</span>
+        </div>
+        <p>All studio clients are managed from <code>/clients</code>. This is the single source of truth for client information within your studio.</p>
+
+        <h3>Adding a new client</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Clients</strong> → click <strong>Add Client</strong>.</p></li>
+          <li><p>Fill in first name, last name, email (required), phone number (optional).</p></li>
+          <li><p>If the person has an existing Pena e Arte account with Portable Profile enabled at another studio, you can optionally import their body map and tattoo history by entering their user ID.</p></li>
+          <li><p>Click <strong>Create client</strong>.</p></li>
+        </ol>
+
+        <h3>Client detail view</h3>
+        <p>Click any client card to open their full profile. From here you can:</p>
+        <ul>
+          <li>View and edit contact details</li>
+          <li>See the interactive body map (read-only from this view)</li>
+          <li>Browse all tattoo history records</li>
+          <li>View linked consent and intake forms</li>
+          <li>See all appointments (past and upcoming)</li>
+          <li>See associated payments</li>
+          <li>Navigate to linked designs</li>
+        </ul>
+
+        <h3>Client search</h3>
+        <p>The client list has a live search bar that filters by name or email. With large client lists, type at least 2 characters to narrow results.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ARTIST MANAGEMENT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-artist-mgmt" class="section" data-roles="owner">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🧑‍🎨</span><span class="title">Artist Management</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-owner">Owner</span></div>
+        <p>Artists are managed from <code>/artists</code>. Each artist gets an account on the platform and can log in to view their schedule and manage designs.</p>
+
+        <h3>Adding an artist</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Artists</strong> → click <strong>Add Artist</strong>.</p></li>
+          <li><p>Enter their first name, last name, email, and optionally a bio and specialties.</p></li>
+          <li><p>The artist receives an invitation email. They set their own password on first login.</p></li>
+        </ol>
+
+        <h3>Artist slug (public portfolio URL)</h3>
+        <p>Each artist gets a unique public URL: <code>https://penaearte.com/artist/{slug}</code>. The slug is auto-generated from the display name on creation. The artist (or owner) can edit it <strong>once</strong> after creation. The URL appears on the artist's public portfolio page and is indexed by search engines.</p>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Owner Margarida adds artist "Tiago Ferreira". His auto-generated slug is <code>tiago-ferreira</code>. His public page is <code>https://penaearte.com/artist/tiago-ferreira</code> and shows his bio and portfolio photos. Tiago can later change it to <code>tiago-tattoo</code> once.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- DEPOSIT RULES -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-deposit-rules" class="section" data-roles="owner">
+      <div class="section-head" onclick="toggle(this)">
+        <span>📏</span><span class="title">Deposit Rules</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-owner">Owner</span></div>
+        <p>Deposit Rules define how much deposit clients must pay at booking, and what happens to deposits if appointments are cancelled or clients don't show up.</p>
+
+        <h3>Creating a Deposit Rule</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Deposit Rules</strong> (<code>/deposit-rules</code>) → click <strong>New Rule</strong>.</p></li>
+          <li><p>Give the rule a name (e.g. "Standard Deposit", "Weekend Surcharge").</p></li>
+          <li><p>Set the deposit amount (fixed value, e.g. €50) or percentage of session cost.</p></li>
+          <li><p>Configure cancellation policy: how many hours before the appointment a client can cancel and receive a refund.</p></li>
+          <li><p>Save. Rules can be assigned to individual artists or applied studio-wide.</p></li>
+        </ol>
+
+        <h3>Rule detail view</h3>
+        <p>Each rule shows which artists it is applied to, when it was created, and its current settings. You can edit or delete a rule from the detail view.</p>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Studio "Ink &amp; Soul" has two rules: "Standard" (€50 deposit, free cancellation up to 48h before) and "Short Notice" (€80 deposit, no refund if cancelled within 24h). Weekend appointments use the Short Notice rule automatically.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- PAYMENTS & SESSION SPLITS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-payments" class="section" data-roles="owner artist">
+      <div class="section-head" onclick="toggle(this)">
+        <span>💰</span><span class="title">Payments &amp; Session Splits</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-owner">Owner</span>
+          <span class="role-chip rc-artist">Artist</span>
+        </div>
+
+        <h3>Payment List</h3>
+        <p>All studio payments are accessible from <code>/payments</code>. Each payment record shows:</p>
+        <ul>
+          <li>Client name, amount, payment method (Card / Cash)</li>
+          <li>Status: <span class="status st-purple">Pending</span> / <span class="status st-yellow">Authorised</span> / <span class="status st-yellow">CashPending</span> / <span class="status st-green">Paid</span> / <span class="status st-red">Failed</span> / <span class="status st-red">Refunded</span></li>
+          <li>Date created and paid</li>
+          <li>Link to the associated appointment</li>
+        </ul>
+
+        <h3>Session Splits</h3>
+        <p>For multi-session projects (e.g. a full sleeve done across 4 sittings), the owner can split a payment into labelled installments using the <strong>Session Splits Editor</strong>.</p>
+
+        <h3>How to add session splits</h3>
+        <ol class="steps">
+          <li><p>Open a payment record.</p></li>
+          <li><p>In the <strong>Session Splits</strong> section, click <strong>Add Splits</strong>.</p></li>
+          <li><p>Click <strong>+ Add Split</strong> for each session: enter a label (e.g. "Session 1 — outline") and the amount.</p></li>
+          <li><p>Repeat for all sessions. The labels and amounts are saved.</p></li>
+          <li><p>As each session is paid, mark it as paid — the timestamp is recorded.</p></li>
+        </ol>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Client Diogo commissions a back piece worth €1200. Owner creates 4 splits: "Session 1 — outline €300", "Session 2 — shading €300", "Session 3 — colour €300", "Session 4 — touch-up €300". As each session is completed, the corresponding split is marked paid, giving a clear audit trail.</p>
+        </div>
+
+        <h3>Generating a Receipt (PDF)</h3>
+        <p>From any completed payment, click <strong>Download Receipt</strong>. A PDF receipt is generated and downloaded instantly. The receipt includes studio details, client name, amount, date, and payment method.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- CASH CONFIRMATION -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-cash-confirm" class="section" data-roles="owner artist">
+      <div class="section-head" onclick="toggle(this)">
+        <span>💵</span><span class="title">Cash Deposit Confirmation</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-owner">Owner</span>
+          <span class="role-chip rc-artist">Artist</span>
+        </div>
+        <p>When a client chooses to pay their deposit in cash, the appointment shows as <span class="status st-yellow">CashPending</span> until physically confirmed by a studio member.</p>
+
+        <h3>Confirming from the Dashboard</h3>
+        <p>The <strong>Awaiting Cash</strong> section on the dashboard shows all pending cash deposits. For each one:</p>
+        <ol class="steps">
+          <li><p>Find the client's row in the "Awaiting Cash" card on the dashboard.</p></li>
+          <li><p>Click the <strong>Confirm</strong> button next to their name and amount.</p></li>
+          <li><p>A confirmation dialog shows the client name and amount — click <strong>Yes, confirm</strong>.</p></li>
+          <li><p>The deposit status changes to <span class="status st-green">Paid</span> and the appointment is fully confirmed.</p></li>
+        </ol>
+
+        <h3>Confirming from the Payment record</h3>
+        <p>Alternatively, go to <strong>Payments</strong>, find the CashPending record, and use the confirm button on the payment detail page. The confirming user's ID is recorded on the payment for auditability.</p>
+
+        <div class="callout callout-warn">
+          <span class="icon">⚠️</span>
+          <div>Only confirm cash deposits when you have <strong>physically received the money</strong>. This action is recorded and timestamped. It cannot be undone without manually editing the payment status.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- FORMS MANAGEMENT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-forms-mgmt" class="section" data-roles="owner artist">
+      <div class="section-head" onclick="toggle(this)">
+        <span>📄</span><span class="title">Forms Management (Owner / Artist)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-owner">Owner</span>
+          <span class="role-chip rc-artist">Artist</span>
+        </div>
+        <p>Intake forms and consent forms for all clients are accessible from <code>/forms</code>. You can filter by type and search by client or appointment.</p>
+
+        <h3>Intake Forms</h3>
+        <ul>
+          <li>View all submitted intake forms</li>
+          <li>Click to open a form and see all submitted health information</li>
+          <li>Forms are linked to a specific appointment</li>
+        </ul>
+
+        <h3>Consent Forms</h3>
+        <ul>
+          <li>View all consent forms — filter by Signed / Pending</li>
+          <li>Click to open: see digital signature, signing timestamp, appointment link</li>
+          <li>Download the auto-generated PDF of the signed form</li>
+          <li>The signing date and signature are legally timestamped by the server</li>
+        </ul>
+
+        <div class="callout callout-ok">
+          <span class="icon">✅</span>
+          <div>Signed consent form PDFs are permanently stored in Cloudflare R2. They will not be deleted even if the appointment is cancelled.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- NOTIFICATIONS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-notifications" class="section" data-roles="owner artist client">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🔔</span><span class="title">Notifications</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles">
+          <span class="role-chip rc-client">Client</span>
+          <span class="role-chip rc-artist">Artist</span>
+          <span class="role-chip rc-owner">Owner</span>
+        </div>
+        <p>The platform sends notifications through multiple channels — in-app, email, and SMS (Twilio). Notifications are logged for reference.</p>
+
+        <h3>Notification Bell</h3>
+        <p>The bell icon in the top navigation bar shows unread notification count. Click it to see a dropdown of recent notifications. Click any notification to navigate to the relevant page.</p>
+
+        <h3>Notification Log</h3>
+        <p>Owners and artists can see the full notification history at <code>/notifications</code>. Each entry shows:</p>
+        <ul>
+          <li>Channel badge (Email / SMS / In-App)</li>
+          <li>Subject / content</li>
+          <li>Timestamp</li>
+          <li>Whether it was delivered successfully</li>
+        </ul>
+
+        <h3>Automated notifications sent by the system</h3>
+        <table>
+          <tr><th>Event</th><th>Who receives it</th><th>Channels</th></tr>
+          <tr><td>Appointment booked</td><td>Client + Artist</td><td>Email + In-app</td></tr>
+          <tr><td>Appointment reminder (48h before)</td><td>Client</td><td>Email + SMS</td></tr>
+          <tr><td>Appointment cancelled</td><td>Client + Artist</td><td>Email + In-app</td></tr>
+          <tr><td>Design revision uploaded</td><td>Client</td><td>Email + In-app</td></tr>
+          <tr><td>Design approved / changes requested</td><td>Artist</td><td>In-app</td></tr>
+          <tr><td>Consent form sent</td><td>Client</td><td>Email</td></tr>
+          <tr><td>Trial expiry warning (48h before)</td><td>Owner</td><td>Email</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- STUDIO SETTINGS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-studio-settings" class="section" data-roles="owner">
+      <div class="section-head" onclick="toggle(this)">
+        <span>⚙️</span><span class="title">Studio Settings</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-owner">Owner</span></div>
+        <p>Studio settings are accessible from <code>/studios/me</code>. Here you configure how your studio appears to clients and on the platform.</p>
+
+        <h3>Basic Information</h3>
+        <ul>
+          <li>Studio name, address, city, phone, email</li>
+          <li>Latitude / Longitude (used for the public Studio Map)</li>
+          <li>Bio / description (appears on public portfolio)</li>
+        </ul>
+
+        <h3>Studio Slug (Vanity URL)</h3>
+        <p>Your studio gets a permanent public URL: <code>https://penaearte.com/s/{slug}</code>. The slug is auto-generated from your studio name on registration. You can edit it <strong>once</strong> after creation. Choose carefully — changing it breaks any shared links to your old URL.</p>
+
+        <h3>Platform Branding</h3>
+        <p>By default, a small "Powered by Pena e Arte" badge appears in booking widget footers, email footers, and PDF consent forms. This is configurable:</p>
+        <ul>
+          <li>If your subscription plan includes branding removal: toggle <strong>Show Platform Branding</strong> off to remove all badges.</li>
+          <li>If your plan does not include branding removal: the toggle is disabled. Upgrade to a paid plan that includes this feature.</li>
+        </ul>
+
+        <div class="callout callout-info">
+          <span class="icon">ℹ️</span>
+          <div>The branding flag is stored on the studio itself and survives plan changes. If you remove branding on a paid plan and then downgrade, the badge will reappear automatically.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- REFERRAL CODES -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-referral" class="section" data-roles="owner">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🎁</span><span class="title">Referral Codes (Studio Owner)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-owner">Owner</span></div>
+        <p>Owners can generate referral codes to share with other studio owners. When a new studio signs up using your code, they get a discount on their first paid month — and you grow the network.</p>
+
+        <h3>Generating a referral code</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Studio Settings</strong> → <strong>Referral Codes</strong> or navigate to <code>/studios/me</code> and find the Referral section.</p></li>
+          <li><p>Click <strong>Generate New Code</strong>.</p></li>
+          <li><p>An 8-character uppercase code is created (e.g. <code>INK4FREE</code>).</p></li>
+          <li><p>Share this code with other studio owners. Tell them to enter it during registration.</p></li>
+        </ol>
+
+        <h3>Referral code cards</h3>
+        <p>Each code card shows the code, when it was created, its active/inactive status, and how many times it has been redeemed. A deactivated code (e.g. if the issuer flagged abuse) shows as inactive and cannot be redeemed.</p>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Owner Ana generates code <code>ANAVIP1</code> and posts it in a Portuguese tattoo artists' Facebook group. Studio "Porto Ink" signs up using the code. On their first subscription payment, Stripe applies a 1-month free coupon. Ana's referral dashboard shows 1 redemption.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- BILLING (OWNER) -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-billing" class="section" data-roles="owner">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>💳</span><span class="title">Billing &amp; Subscriptions (Owner)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles"><span class="role-chip rc-owner">Owner</span></div>
+        <p>The Billing page (<code>/billing</code>) shows your current subscription status and lets you manage your plan.</p>
+
+        <h3>Subscription lifecycle</h3>
+        <table>
+          <tr><th>Status</th><th>Access level</th><th>Action needed</th></tr>
+          <tr><td><span class="status st-blue">Trialing</span></td><td>Full access for 14 days</td><td>Subscribe before trial ends</td></tr>
+          <tr><td><span class="status st-green">Active</span></td><td>Full access</td><td>None — renews automatically</td></tr>
+          <tr><td><span class="status st-yellow">GracePeriod</span></td><td>Read-only for 7 days</td><td>Subscribe urgently</td></tr>
+          <tr><td><span class="status st-red">PastDue</span></td><td>Restricted</td><td>Update payment method</td></tr>
+          <tr><td><span class="status st-red">Cancelled</span></td><td>No access</td><td>Reactivate subscription</td></tr>
+          <tr><td><span class="status st-red">Suspended</span></td><td>No access</td><td>Contact platform support</td></tr>
+        </table>
+
+        <h3>Subscribing (Card)</h3>
+        <ol class="steps">
+          <li><p>Click <strong>Subscribe</strong> on the Billing page or dashboard banner.</p></li>
+          <li><p>Choose a plan — Monthly or Yearly. Yearly saves ~17% (equivalent to 2 months free).</p></li>
+          <li><p>Complete payment via Stripe Checkout.</p></li>
+          <li><p>You're redirected back to the billing page — status updates to <span class="status st-green">Active</span> within seconds.</p></li>
+        </ol>
+
+        <h3>Cash billing</h3>
+        <p>If you cannot pay by card, contact the platform (issuer) out-of-band. The issuer will activate your subscription manually after confirming your cash payment. Your billing page will show "Cash-billed subscription" with the current period end date. You can switch to card billing at any time from the billing page.</p>
+
+        <h3>Scheduled plan changes (downgrades)</h3>
+        <p>When you downgrade to a cheaper plan, the change takes effect at the end of the current billing period — you don't lose any days you've paid for. The billing page shows a "Scheduled plan change" card with a countdown. You can cancel the change and keep your current plan by clicking <strong>Keep current plan</strong>.</p>
+
+        <h3>Suspended by platform</h3>
+        <p>If your studio is suspended by the platform administrator (issuer), a red banner appears at the top of the billing page. Your subscription continues to be charged, but your studio is not accessible to clients. Contact platform support to resolve the suspension.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- QR CODE -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-qr" class="section" data-roles="owner">
+      <div class="section-head" onclick="toggle(this)">
+        <span>📱</span><span class="title">QR Code Generator</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-owner">Owner</span></div>
+        <p>Generate a QR code that links directly to your studio's public portfolio page. Print it and display it in your studio — clients can scan it to book an appointment or browse your work.</p>
+
+        <h3>How to download your QR code</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Studio Settings</strong> (<code>/studios/me</code>).</p></li>
+          <li><p>Scroll to the <strong>QR Code</strong> section.</p></li>
+          <li><p>Choose format: <strong>PNG</strong> (for print) or <strong>SVG</strong> (for scalable use).</p></li>
+          <li><p>Click <strong>Download QR Code</strong>. The file downloads immediately.</p></li>
+        </ol>
+
+        <p>The QR code encodes your public portfolio URL: <code>https://penaearte.com/s/{your-slug}</code>. No login is required to scan it — anyone can view your portfolio and find your booking link.</p>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Studio "Dark Art Tattoo" prints their QR code as an A5 poster displayed at their reception. A walk-in client scans it, lands on the portfolio, browses past work, and books an appointment directly from their phone.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ISSUER DASHBOARD -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-issuer-dashboard" class="section" data-roles="issuer">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>📊</span><span class="title">Platform Dashboard (Issuer)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles"><span class="role-chip rc-issuer">Issuer</span></div>
+        <p>The Issuer lands at <code>/platform</code> — the platform administration home screen. This page provides a real-time overview of the entire platform across all studios.</p>
+
+        <h3>KPI cards</h3>
+        <table>
+          <tr><th>KPI</th><th>What it measures</th></tr>
+          <tr><td>Total studios</td><td>All registered studios (active + inactive)</td></tr>
+          <tr><td>Active subscriptions</td><td>Studios currently on a paid plan</td></tr>
+          <tr><td>MRR</td><td>Monthly Recurring Revenue across all subscriptions</td></tr>
+          <tr><td>Trial conversion rate</td><td>% of trial studios that converted to paid</td></tr>
+          <tr><td>At-risk studios</td><td>Studios in grace period or past-due — need immediate attention</td></tr>
+        </table>
+
+        <h3>At-risk widget</h3>
+        <p>A dedicated widget lists studios that are in GracePeriod or PastDue status. This allows the issuer to proactively reach out to help them subscribe before their studio is suspended.</p>
+
+        <h3>Quick navigation</h3>
+        <p>Tiles link directly to: Studios, Plans, Subscriptions, Referrals, Reports — matching the sidebar.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- STUDIO OVERSIGHT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-studio-oversight" class="section" data-roles="issuer">
+      <div class="section-head open" onclick="toggle(this)">
+        <span>🏢</span><span class="title">Studio Oversight (Issuer)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body open">
+        <div class="roles"><span class="role-chip rc-issuer">Issuer</span></div>
+        <p>The Studios page (<code>/platform/studios</code>) shows every registered studio on the platform. The issuer can search, filter, and take administrative actions on any studio.</p>
+
+        <h3>Search and filters</h3>
+        <ul>
+          <li><strong>Search</strong> by studio name or slug</li>
+          <li><strong>Filter by status:</strong> All, Active, Trialing, GracePeriod, PastDue, Cancelled, NoSubscription, Suspended</li>
+        </ul>
+
+        <h3>Studio card information</h3>
+        <p>Each studio card shows: name, slug, status badge, city, registration date, current plan name, trial/period expiry date.</p>
+
+        <h3>Available actions per studio</h3>
+        <table>
+          <tr><th>Action</th><th>When available</th><th>What it does</th></tr>
+          <tr>
+            <td>Extend trial</td>
+            <td>Studio not on Active subscription</td>
+            <td>Adds N additional days to the trial (max 90). Enter the number of days in the inline form and confirm.</td>
+          </tr>
+          <tr>
+            <td>Activate (cash)</td>
+            <td>Studio is NoSubscription / PastDue / GracePeriod / Cancelled</td>
+            <td>Manually activates a subscription after a cash payment is confirmed out-of-band. Select the plan and optionally add a note (e.g. "Cash paid in person 2026-06-01").</td>
+          </tr>
+          <tr>
+            <td>Cancel subscription</td>
+            <td>Studio has Active/PastDue/Trialing/GracePeriod subscription</td>
+            <td>Cancels the subscription immediately. Studio enters read-only then suspended state.</td>
+          </tr>
+          <tr>
+            <td>Suspend studio</td>
+            <td>Studio is active (isActive = true)</td>
+            <td>Immediately blocks studio access. Billing is not affected — subscription continues to be charged. Use for ToS violations.</td>
+          </tr>
+          <tr>
+            <td>Reactivate studio</td>
+            <td>Studio is suspended</td>
+            <td>Restores studio access. The studio owner sees no interruption to their subscription.</td>
+          </tr>
+        </table>
+
+        <div class="example">
+          <div class="ex-label">Example — Cash activation</div>
+          <p>Studio "Artbody Lisbon" emailed the platform to pay for a yearly plan via bank transfer. The issuer confirms receipt, opens the studio in the oversight page, clicks <strong>Activate (cash)</strong>, selects "Professional Yearly" plan, adds note "Bank transfer received 2026-06-01 ref: ARTBODY-2026", and clicks Activate. The studio now has an active subscription valid until 2027-06-01.</p>
+        </div>
+
+        <div class="example">
+          <div class="ex-label">Example — Trial extension</div>
+          <p>A studio is in GracePeriod — their trial expired but they haven't subscribed yet. The owner emailed saying they need 2 more weeks to decide. The issuer clicks <strong>Extend trial</strong>, enters 14 days, confirms. The studio is back to Trialing for 14 more days, with full access restored.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- SUBSCRIPTION OVERSIGHT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-sub-oversight" class="section" data-roles="issuer">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🗂</span><span class="title">Subscription Oversight (Issuer)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-issuer">Issuer</span></div>
+        <p>The Subscriptions page (<code>/platform/subscriptions</code>) provides a cross-tenant view of all subscription records — every studio's plan, status, and billing dates in one place.</p>
+
+        <h3>What the table shows</h3>
+        <ul>
+          <li>Studio name, plan name, billing interval (Monthly/Yearly)</li>
+          <li>Status badge (Active, Trialing, GracePeriod, PastDue, Cancelled)</li>
+          <li>Trial expiry date, current period end date</li>
+          <li>Whether it's card-billed (Stripe) or cash-billed (manual)</li>
+          <li>Stripe subscription ID (for card-billed subs — for support lookups)</li>
+        </ul>
+
+        <h3>Actions available from this page</h3>
+        <p>Same as Studio Oversight: Extend trial, Activate (cash), Cancel subscription. The subscription page provides a billing-focused view while the Studio list provides a studio-focused view — both have the same action set.</p>
+
+        <div class="callout callout-info">
+          <span class="icon">ℹ️</span>
+          <div>Cash-billed subscriptions show "Active until [date]" instead of "Renews [date]" because they do not auto-renew. The issuer must re-activate them each period after confirming payment.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- PLAN MANAGEMENT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-plan-mgmt" class="section" data-roles="issuer">
+      <div class="section-head" onclick="toggle(this)">
+        <span>📦</span><span class="title">Plan Management (Issuer)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-issuer">Issuer</span></div>
+        <p>Plans define what studio owners can subscribe to. Plans are managed at <code>/platform/plans</code>. They are platform-level — not tied to any studio.</p>
+
+        <h3>Plan fields</h3>
+        <table>
+          <tr><th>Field</th><th>Description</th></tr>
+          <tr><td>Name</td><td>Display name (e.g. "Starter", "Professional", "Enterprise")</td></tr>
+          <tr><td>Billing interval</td><td>Monthly or Yearly</td></tr>
+          <tr><td>Price (monthly)</td><td>Monthly price in EUR</td></tr>
+          <tr><td>Price (yearly)</td><td>Yearly price — typically Monthly × 10 (2 months free)</td></tr>
+          <tr><td>Yearly discount %</td><td>Displayed to studios on the subscribe page (default: 17%)</td></tr>
+          <tr><td>Allow Branding Removal</td><td>Toggle — if true, studios on this plan can disable the Pena e Arte badge</td></tr>
+        </table>
+
+        <h3>Creating a plan</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Plans</strong> → click <strong>New Plan</strong>.</p></li>
+          <li><p>Fill in the name and pricing fields.</p></li>
+          <li><p>Set <strong>Allow Branding Removal</strong> if this is a paid plan where studios should be able to white-label.</p></li>
+          <li><p>Save. The plan immediately appears on the subscribe page for all studios.</p></li>
+        </ol>
+
+        <h3>Editing a plan</h3>
+        <p>Click any plan to edit it. Changes to price affect <strong>new subscriptions only</strong> — existing subscribers keep their current price until they switch plans. The <strong>Allow Branding Removal</strong> flag takes effect immediately for all studios on this plan.</p>
+
+        <div class="callout callout-warn">
+          <span class="icon">⚠️</span>
+          <div>Deleting a plan that has active subscribers is blocked. You must migrate subscribers to another plan first, or cancel their subscriptions.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- REFERRAL MANAGEMENT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-referral-mgmt" class="section" data-roles="issuer">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🎁</span><span class="title">Referral Code Management (Issuer)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-issuer">Issuer</span></div>
+        <p>The Referrals page (<code>/platform/referrals</code>) gives the issuer a cross-tenant view of every referral code created by every studio, along with redemption counts and the ability to deactivate abusive codes.</p>
+
+        <h3>What's shown per code</h3>
+        <ul>
+          <li>The studio that generated the code</li>
+          <li>Code value (8-char uppercase)</li>
+          <li>Created date, expiry date (if set)</li>
+          <li>Active / Inactive status</li>
+          <li>Total redemption count</li>
+        </ul>
+
+        <h3>Deactivating a code</h3>
+        <p>If a referral code is being abused (e.g. shared publicly for mass exploitation of the discount), the issuer can click <strong>Deactivate</strong> on any code. The code becomes immediately invalid — any new studio trying to use it during registration will see an error. Existing redemptions are not reversed.</p>
+
+        <div class="example">
+          <div class="ex-label">Example</div>
+          <p>Studio "X" shared their referral code in a public forum and it has been redeemed 50 times in 2 days. The issuer flags this as abuse, deactivates the code. The studio can generate a new code for legitimate referrals.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- INDUSTRY REPORTS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-industry-reports" class="section" data-roles="issuer">
+      <div class="section-head" onclick="toggle(this)">
+        <span>📈</span><span class="title">Industry Analytics Reports (Issuer)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip rc-issuer">Issuer</span></div>
+        <p>Monthly industry reports are automatically generated on the <strong>1st of each month</strong> by a background job. They contain aggregated, anonymised metrics across all studios — no PII, no studio names.</p>
+
+        <h3>Report contents</h3>
+        <table>
+          <tr><th>Metric</th><th>Description</th></tr>
+          <tr><td>Avg appointments/month</td><td>Platform-wide average across all active studios</td></tr>
+          <tr><td>Peak booking hours</td><td>Most popular times of day for bookings</td></tr>
+          <tr><td>Top session durations</td><td>Distribution of 1h, 2h, 3h+ sessions</td></tr>
+          <tr><td>Retention rate</td><td>% of clients who book more than once</td></tr>
+          <tr><td>Trial-to-paid conversion</td><td>% of trial studios that subscribed within 30 days</td></tr>
+        </table>
+
+        <div class="callout callout-ok">
+          <span class="icon">🔒</span>
+          <div>Reports only show aggregated data with a minimum cohort size of 10 studios. No individual studio or client can be identified from a report. All data is stored as anonymised JSON in Cloudflare R2.</div>
+        </div>
+
+        <h3>Accessing reports</h3>
+        <ol class="steps">
+          <li><p>Go to <strong>Reports</strong> (<code>/platform/reports</code>).</p></li>
+          <li><p>A list of available monthly reports is shown — one per month going back to the platform's first month.</p></li>
+          <li><p>Click a month to download the JSON report or view the formatted summary.</p></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- STUDIO MAP (PUBLIC) -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-studio-map" class="section" data-roles="public">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🗺</span><span class="title">Studio Map (Public)</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip" style="background:rgba(156,163,175,.15);color:#9ca3af">Public — no login required</span></div>
+        <p>The Studio Map (<code>/map</code>) is publicly accessible with no login required. It shows all <strong>active</strong> studios on the platform on an interactive map.</p>
+
+        <h3>What it shows</h3>
+        <ul>
+          <li>Map pins for every active studio with a configured location</li>
+          <li>Click a pin: studio name, city, and a link to their public portfolio page</li>
+          <li>No private information is ever shown — only name, slug, and city</li>
+        </ul>
+
+        <h3>For studio owners</h3>
+        <p>To appear on the map, make sure your studio's <strong>latitude and longitude</strong> are set in Studio Settings. Suspended or inactive studios are excluded from the map automatically.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- PUBLIC PORTFOLIOS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div id="sec-portfolio" class="section" data-roles="public">
+      <div class="section-head" onclick="toggle(this)">
+        <span>🖼</span><span class="title">Public Portfolio Pages</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="section-body">
+        <div class="roles"><span class="role-chip" style="background:rgba(156,163,175,.15);color:#9ca3af">Public — no login required</span></div>
+        <p>Every active studio and every artist gets a public portfolio page with a permanent, SEO-friendly URL. No login is needed to view them.</p>
+
+        <h3>Studio portfolio</h3>
+        <p>URL: <code>https://penaearte.com/s/{studio-slug}</code></p>
+        <ul>
+          <li>Studio name, bio, city</li>
+          <li>List of artists with links to their individual portfolios</li>
+          <li>Booking CTA button (links to the booking page)</li>
+          <li>Platform branding badge (unless the studio has removed it on a paid plan)</li>
+        </ul>
+
+        <h3>Artist portfolio</h3>
+        <p>URL: <code>https://penaearte.com/artist/{artist-slug}</code></p>
+        <ul>
+          <li>Artist name, bio, specialties</li>
+          <li>Portfolio gallery (approved design images)</li>
+          <li>Link back to the studio</li>
+        </ul>
+
+        <h3>Design share page</h3>
+        <p>URL: <code>https://penaearte.com/share/{token}</code></p>
+        <p>Time-limited, revocable. Shows only the design image and title — no client or studio identifiers. Useful for clients sharing designs for feedback before approving.</p>
+
+        <div class="callout callout-info">
+          <span class="icon">ℹ️</span>
+          <div>Portfolio pages are indexed by Google. Studios benefit from organic SEO — clients searching for tattoo studios in their city can discover the studio through Google without needing a paid ad.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ── Toggle section open/closed ──────────────────────────────────────────────
+function toggle(head) {
+  head.classList.toggle('open');
+  const body = head.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ── Smooth-scroll to a section and open it ──────────────────────────────────
+function goto(id) {
+  const el = document.getElementById('sec-' + id);
+  if (!el) return;
+  const head = el.querySelector('.section-head');
+  const body = el.querySelector('.section-body');
+  if (!head.classList.contains('open')) {
+    head.classList.add('open');
+    body.classList.add('open');
+  }
+  setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  // update active nav link
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  const link = document.querySelector('.nav-link[href="#' + id + '"]');
+  if (link) link.classList.add('active');
+  // close sidebar on mobile
+  if (window.innerWidth <= 720) closeSidebar();
+}
+
+// ── Role filter ──────────────────────────────────────────────────────────────
+let currentRole = 'all';
+function filterRole(role) {
+  currentRole = role;
+  // update button states
+  ['all','client','artist','owner','issuer','public'].forEach(r => {
+    const btn = document.getElementById('rf-' + r);
+    if (!btn) return;
+    btn.className = 'rf-btn';
+    if (r === role) btn.classList.add('active-' + r);
+    else btn.style.color = '';
+  });
+  // show/hide sections
+  document.querySelectorAll('.section').forEach(sec => {
+    const roles = (sec.dataset.roles || '').split(' ');
+    if (role === 'all' || roles.includes(role)) {
+      sec.classList.remove('search-hidden');
+      sec.style.display = '';
+    } else {
+      sec.style.display = 'none';
+    }
+  });
+}
+
+// ── Sidebar search ──────────────────────────────────────────────────────────
+document.getElementById('sidebar-search').addEventListener('input', function() {
+  const q = this.value.trim().toLowerCase();
+  document.querySelectorAll('.section').forEach(sec => {
+    if (sec.style.display === 'none' && currentRole !== 'all') return;
+    if (!q) { sec.classList.remove('search-hidden'); sec.classList.remove('highlight'); return; }
+    const text = sec.textContent.toLowerCase();
+    if (text.includes(q)) {
+      sec.classList.remove('search-hidden');
+      sec.classList.add('highlight');
+      // open it
+      const head = sec.querySelector('.section-head');
+      const body = sec.querySelector('.section-body');
+      head.classList.add('open');
+      body.classList.add('open');
+    } else {
+      sec.classList.add('search-hidden');
+      sec.classList.remove('highlight');
+    }
+  });
+});
+
+// ── Mobile sidebar ──────────────────────────────────────────────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+document.getElementById('overlay').addEventListener('click', closeSidebar);
+
+// ── Intersection observer → update active nav link ─────────────────────────
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id.replace('sec-', '');
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      const link = document.querySelector('.nav-link[href="#' + id + '"]');
+      if (link) link.classList.add('active');
+    }
+  });
+}, { threshold: 0.2 });
+document.querySelectorAll('.section').forEach(sec => observer.observe(sec));
+</script>
+</body>
+</html>
