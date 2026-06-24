@@ -50,6 +50,12 @@ vi.mock("@/features/studios/components/QrCodeSection", () => ({
 vi.mock("@/features/studios/components/ReferralCodeCard", () => ({
   ReferralCodeCard: () => <div data-testid="referral-code-card" />,
 }));
+vi.mock("@/features/studios/components/EmbedCodeCard", () => ({
+  EmbedCodeCard: () => <div data-testid="embed-code-card" />,
+}));
+vi.mock("@/features/notifications/components/NotificationPreferencesCard", () => ({
+  NotificationPreferencesCard: () => <div data-testid="notification-preferences-card" />,
+}));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -108,9 +114,9 @@ async function waitForForm() {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("StudioProfilePage — loading state", () => {
-  it("shows a loading spinner while studio data is being fetched", () => {
+  it("shows a skeleton loading state while studio data is being fetched", () => {
     renderPage();
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Loading studio settings")).toBeInTheDocument();
   });
 });
 
@@ -139,6 +145,26 @@ describe("StudioProfilePage — after data loads", () => {
     expect(screen.getByTestId("branding-settings-card")).toBeInTheDocument();
     expect(screen.getByTestId("qr-code-section")).toBeInTheDocument();
     expect(screen.getByTestId("referral-code-card")).toBeInTheDocument();
+  });
+
+  it("shows 'Studio Settings' as the page header title", async () => {
+    renderPage();
+    await waitForForm();
+    expect(screen.getByText("Studio Settings")).toBeInTheDocument();
+  });
+
+  it("shows 'Studio URL:' label in the slug info card", async () => {
+    renderPage();
+    await waitForForm();
+    expect(screen.getByText("Studio URL:")).toBeInTheDocument();
+  });
+
+  it("shows the map helper text below the Location label", async () => {
+    renderPage();
+    await waitForForm();
+    expect(
+      screen.getByText(/click the map or drag the pin/i),
+    ).toBeInTheDocument();
   });
 });
 

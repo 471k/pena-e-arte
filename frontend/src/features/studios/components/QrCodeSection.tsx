@@ -45,7 +45,7 @@ export function QrCodeSection() {
           penaearte.com/s/{studio.slug}
         </a>
 
-        <div className="flex flex-col items-start gap-4">
+        <div className="flex flex-col items-center gap-4">
           {isLoading && (
             <div data-testid="qr-loading" className="flex h-48 w-48 items-center justify-center rounded-md border bg-muted">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

@@ -10,8 +10,19 @@ export function EmbedCodeCard() {
 
   if (!studio) return null;
 
-  const embedUrl  = `${window.location.origin}/embed/${studio.slug}`;
-  const iframeCode = `<iframe\n  src="${embedUrl}"\n  width="380"\n  height="600"\n  frameborder="0"\n  title="Book at ${studio.name}"\n  allow="payment"\n></iframe>`;
+  const EMBED_BASE = import.meta.env.VITE_PUBLIC_URL ?? window.location.origin;
+  const embedUrl   = `${EMBED_BASE}/embed/${studio.slug}`;
+  const iframeCode = [
+    `<!-- Adjust width/height to fit your layout -->`,
+    `<iframe`,
+    `  src="${embedUrl}"`,
+    `  width="380"`,
+    `  height="600"`,
+    `  frameborder="0"`,
+    `  title="Book at ${studio.name}"`,
+    `  allow="payment"`,
+    `></iframe>`,
+  ].join("\n");
 
   async function handleCopy() {
     await navigator.clipboard.writeText(iframeCode);
@@ -45,17 +56,21 @@ export function EmbedCodeCard() {
             {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Preview:{" "}
-          <a
-            href={embedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-foreground"
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-muted-foreground">
+            Preview your booking widget in a new tab.
+          </p>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-xs"
+            asChild
           >
-            {embedUrl}
-          </a>
-        </p>
+            <a href={embedUrl} target="_blank" rel="noopener noreferrer">
+              Open preview →
+            </a>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

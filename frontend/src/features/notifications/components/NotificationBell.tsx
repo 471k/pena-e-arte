@@ -57,7 +57,7 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 rounded-md border bg-background shadow-lg z-30">
+        <div className="absolute right-0 top-full mt-2 w-80 rounded-md border bg-background shadow-lg z-[1100]">
           <div className="px-3 py-2 border-b">
             <span className="text-sm font-medium">Notifications</span>
           </div>
@@ -84,7 +84,10 @@ export function NotificationBell() {
                 key={log.id}
                 type="button"
                 className="w-full text-left px-3 py-2 border-b last:border-b-0 space-y-1 hover:bg-muted/50 transition-colors"
-                onClick={() => setSelectedLog(log)}
+                onClick={() => {
+                  dispatch(toggleInbox());
+                  setSelectedLog(log);
+                }}
                 aria-label={`View notification: ${log.subject ?? log.channel}`}
               >
                 <div className="flex items-center gap-2 flex-wrap">

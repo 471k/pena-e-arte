@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Building2, Loader2, Save } from "lucide-react";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
@@ -23,6 +24,34 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+function StudioProfileSkeleton() {
+  return (
+    <div className="min-h-screen bg-background" aria-label="Loading studio settings">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-10">
+        <Building2 className="h-5 w-5 text-muted-foreground" />
+        <Skeleton className="h-5 w-32" />
+      </header>
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        <div className="rounded-xl border bg-card p-3">
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="rounded-xl border bg-card p-5 space-y-4">
+          <Skeleton className="h-5 w-28" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-48 w-full rounded-md" />
+          </div>
+          <Skeleton className="h-9 w-full rounded-md" />
+        </div>
+      </main>
+    </div>
+  );
+}
 
 export function StudioProfilePage() {
   const { data: studio, isLoading } = useGetMyStudioQuery();
@@ -63,28 +92,26 @@ export function StudioProfilePage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Loading…</span>
-      </div>
-    );
+    return <StudioProfileSkeleton />;
   }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-10">
         <Building2 className="h-5 w-5" />
-        <span className="font-semibold tracking-tight">Studio Profile</span>
+        <span className="font-semibold tracking-tight">Studio Settings</span>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {studio && (
           <Card>
-            <CardContent className="py-3 px-4 text-sm text-muted-foreground">
-              <span className="font-mono text-xs">{studio.slug}</span>
-              {" · "}
-              Registered {new Date(studio.createdAt).toLocaleDateString("en-GB")}
+            <CardContent className="py-3 px-4 flex items-center gap-2 text-sm flex-wrap">
+              <span className="text-xs font-semibold text-foreground">Studio URL:</span>
+              <span className="font-mono text-xs text-foreground/80">{studio.slug}</span>
+              <span className="text-foreground/40">·</span>
+              <span className="text-xs text-foreground/70">
+                Registered {new Date(studio.createdAt).toLocaleDateString("en-GB")}
+              </span>
             </CardContent>
           </Card>
         )}
@@ -109,6 +136,9 @@ export function StudioProfilePage() {
 
               <div className="space-y-1.5">
                 <Label>Location</Label>
+                <p className="text-xs text-muted-foreground">
+                  Click the map or drag the pin to update your studio location.
+                </p>
                 {/* key forces remount once studio data arrives so the pin initialises correctly */}
                 <LocationPicker
                   key={studio ? `${studio.latitude},${studio.longitude}` : "unset"}

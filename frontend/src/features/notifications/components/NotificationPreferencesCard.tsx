@@ -3,6 +3,7 @@ import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
 import {
   useGetNotificationPreferencesQuery,
   useUpdateNotificationPreferencesMutation,
@@ -22,6 +23,11 @@ const NOTIFICATION_TYPES: { value: NotificationType; label: string }[] = [
 
 const CHANNELS: NotificationChannel[] = ["Email", "Sms"];
 
+const CHANNEL_LABELS: Record<NotificationChannel, string> = {
+  Email: "Email",
+  Sms:   "SMS",
+};
+
 type PreferenceMap = Record<string, boolean>;
 
 function prefKey(type: NotificationType, channel: NotificationChannel) {
@@ -34,30 +40,6 @@ function buildMap(items: NotificationPreferenceItem[]): PreferenceMap {
     map[prefKey(item.type, item.channel)] = item.isEnabled;
   }
   return map;
-}
-
-function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      className={[
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full",
-        "border-2 border-transparent transition-colors focus-visible:outline-none",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        checked ? "bg-primary" : "bg-input",
-      ].join(" ")}
-    >
-      <span
-        className={[
-          "pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg",
-          "ring-0 transition-transform",
-          checked ? "translate-x-4" : "translate-x-0",
-        ].join(" ")}
-      />
-    </button>
-  );
 }
 
 export function NotificationPreferencesCard() {
@@ -122,7 +104,7 @@ export function NotificationPreferencesCard() {
                   </th>
                   {CHANNELS.map((ch) => (
                     <th key={ch} className="px-3 py-2 font-medium text-muted-foreground text-center whitespace-nowrap">
-                      {ch}
+                      {CHANNEL_LABELS[ch]}
                     </th>
                   ))}
                 </tr>
@@ -139,6 +121,7 @@ export function NotificationPreferencesCard() {
                         <ToggleSwitch
                           checked={local[prefKey(type, channel)] ?? true}
                           onChange={() => toggle(type, channel)}
+                          aria-label={`${label} via ${CHANNEL_LABELS[channel]}`}
                         />
                       </td>
                     ))}
@@ -149,15 +132,17 @@ export function NotificationPreferencesCard() {
           </div>
         )}
 
-        <Button
-          size="sm"
-          className="gap-2"
-          onClick={handleSave}
-          disabled={saving || !dirty || isLoading}
-        >
-          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          Save preferences
-        </Button>
+        <div className="sticky bottom-0 pt-2 pb-1 bg-card border-t -mx-6 px-6 mt-2">
+          <Button
+            size="sm"
+            className="w-full gap-2"
+            onClick={handleSave}
+            disabled={saving || !dirty || isLoading}
+          >
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Save notification settings
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

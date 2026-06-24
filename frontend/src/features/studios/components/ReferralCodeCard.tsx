@@ -100,7 +100,9 @@ export function ReferralCodeCard() {
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="rounded-md border px-3 py-2 text-center">
               <p className="text-xl font-semibold">{stats.redemptionCount}</p>
-              <p className="text-xs text-muted-foreground">Studios referred</p>
+              <p className="text-xs text-muted-foreground">
+                Studio{stats.redemptionCount !== 1 ? "s" : ""} referred
+              </p>
             </div>
             <div className="rounded-md border px-3 py-2 text-center">
               <p className="text-xl font-semibold">{stats.discountsApplied}</p>

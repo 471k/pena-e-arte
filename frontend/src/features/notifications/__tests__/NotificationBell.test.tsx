@@ -253,6 +253,24 @@ describe("NotificationBell", () => {
     expect(screen.queryByText(/<p>/)).not.toBeInTheDocument();
   });
 
+  it("notification dropdown has z-[1100] class to render above Leaflet controls", async () => {
+    const user = userEvent.setup();
+    renderBell();
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+    await screen.findByText("View all");
+    const dropdown = document.querySelector("[class*='z-\\[1100\\]']");
+    expect(dropdown).not.toBeNull();
+  });
+
+  it("dropdown closes when a notification item is clicked", async () => {
+    const user = userEvent.setup();
+    renderBell();
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+    const itemBtn = await screen.findByRole("button", { name: /view notification.*subject 0/i });
+    await user.click(itemBtn);
+    expect(screen.queryByText("View all")).not.toBeInTheDocument();
+  });
+
   it("closing the detail modal removes the dialog from the DOM", async () => {
     const user = userEvent.setup();
     renderBell();

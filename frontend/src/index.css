@@ -47,6 +47,25 @@
   border-color: var(--color-border);
 }
 
+/* ── Leaflet dark mode ───────────────────────────────────────────────────── */
+/* Invert map tiles in dark theme to avoid the jarring light-mode island.    */
+/* The pin icon is re-inverted so it stays visible against dark tiles.       */
+@media (prefers-color-scheme: dark) {
+  .leaflet-tile-pane {
+    filter: invert(92%) hue-rotate(180deg) brightness(0.95) saturate(0.85);
+  }
+
+  .leaflet-control-zoom a {
+    color: var(--color-foreground);
+    background-color: var(--color-card);
+    border-color: var(--color-border);
+  }
+
+  .leaflet-marker-icon {
+    filter: none;
+  }
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);

@@ -1,12 +1,11 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, Users, Palette, FileText, ScrollText,
-  DollarSign, Bell, PenLine, LogOut,
+  DollarSign, Bell, PenLine,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
-import { UserChip } from "@/shared/components/UserChip";
-import { Button } from "@/shared/components/ui/button";
+import { UserMenu } from "@/shared/components/UserMenu";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { NotificationBell } from "@/features/notifications";
@@ -62,17 +61,7 @@ export function ArtistLayout() {
 
         <div className="ml-auto flex items-center gap-3">
           <NotificationBell />
-          <UserChip />
-          <div className="w-px h-5 bg-border" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4 mr-1.5" />
-            Log out
-          </Button>
+          <UserMenu onLogout={handleLogout} />
         </div>
       </header>
 

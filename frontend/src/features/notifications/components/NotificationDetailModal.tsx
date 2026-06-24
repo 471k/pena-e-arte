@@ -40,7 +40,12 @@ export function NotificationDetailModal({ log, onClose }: Props) {
             )}
           </div>
           <DialogTitle className="text-left mt-1 leading-snug">
-            {log.subject ?? "(no subject)"}
+            {log.subject
+              ?? (log.channel === "Sms"
+                  ? "SMS notification"
+                  : log.channel === "Email"
+                  ? "Email notification"
+                  : "Notification")}
           </DialogTitle>
           <DialogDescription className="text-left">
             {recipient} · {date}

@@ -1,8 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
 import { useGetMyStudioQuery, useUpdateStudioBrandingMutation } from "../studiosApi";
 
 export function BrandingSettingsCard() {
@@ -11,17 +10,24 @@ export function BrandingSettingsCard() {
 
   if (!studio) return null;
 
+  const canToggleOff = studio.allowBrandingRemoval;
+  const isDisabled   = isLoading || (!canToggleOff && studio.showPlatformBranding);
+  const upgradeHint  =
+    !canToggleOff && studio.showPlatformBranding
+      ? "Upgrade your plan to remove platform branding."
+      : undefined;
+
   async function handleToggle() {
-    if (!studio) return;
     try {
       await updateBranding({
-        id: studio.id,
-        showPlatformBranding: !studio.showPlatformBranding,
+        id:                   studio!.id,
+        showPlatformBranding: !studio!.showPlatformBranding,
       }).unwrap();
       toast.success("Branding preference saved.");
     } catch (err: unknown) {
       const message =
-        err && typeof err === "object" && "data" in err && err.data && typeof err.data === "object" && "message" in err.data
+        err && typeof err === "object" && "data" in err && err.data &&
+        typeof err.data === "object" && "message" in err.data
           ? String((err.data as { message: string }).message)
           : "Upgrade to remove branding.";
       toast.error(message);
@@ -33,8 +39,11 @@ export function BrandingSettingsCard() {
       <CardHeader>
         <CardTitle className="text-base">Platform branding</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
+      <CardContent>
+        <div
+          className="flex items-center justify-between gap-4"
+          title={upgradeHint}
+        >
           <div className="space-y-0.5">
             <p className="text-sm font-medium">
               Show "Powered by Pena e Artë" on booking widget
@@ -42,30 +51,24 @@ export function BrandingSettingsCard() {
             <p className="text-xs text-muted-foreground">
               Displayed in the booking widget footer for your clients.
             </p>
+            {upgradeHint && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                {upgradeHint}
+              </p>
+            )}
           </div>
-          <Badge variant={studio.showPlatformBranding ? "default" : "secondary"}>
-            {studio.showPlatformBranding ? "On" : "Off"}
-          </Badge>
-        </div>
 
-        <div
-          title={
-            !studio.allowBrandingRemoval && studio.showPlatformBranding
-              ? "Upgrade your plan to remove platform branding."
-              : undefined
+          {isLoading
+            ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+            : (
+              <ToggleSwitch
+                checked={studio.showPlatformBranding}
+                onChange={handleToggle}
+                disabled={isDisabled}
+                aria-label="Show platform branding on booking widget"
+              />
+            )
           }
-          className="w-fit"
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleToggle}
-            disabled={isLoading || (!studio.allowBrandingRemoval && studio.showPlatformBranding)}
-            className="gap-2"
-          >
-            {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {studio.showPlatformBranding ? "Disable branding" : "Enable branding"}
-          </Button>
         </div>
       </CardContent>
     </Card>
