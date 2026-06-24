@@ -128,9 +128,9 @@ describe("AppointmentDetailPage", () => {
 
   // ── Loading / error states ──────────────────────────────────────────────────
 
-  it("shows a loading spinner while the appointment is fetching", () => {
+  it("shows a skeleton while the appointment is fetching", () => {
     renderPage("appt-001");
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    expect(screen.getByRole("main", { name: /loading appointment/i })).toBeInTheDocument();
   });
 
   it("shows an error message when the appointment is not found", async () => {

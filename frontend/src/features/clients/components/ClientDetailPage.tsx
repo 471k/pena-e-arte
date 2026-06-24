@@ -128,9 +128,25 @@ export function ClientDetailPage() {
 
   if (clientLoading || clientUninitialized || profileLoading || profileUninitialized) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Loading…</span>
+      <div className="min-h-screen bg-background" aria-label="Loading client">
+        <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+          <Skeleton className="h-8 w-24" />
+        </header>
+        <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+          <div className="flex items-center gap-4 p-6">
+            <Skeleton className="h-14 w-14 rounded-full" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
+          <Skeleton className="h-9 w-full" />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-lg" />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

@@ -23,6 +23,7 @@ export interface StudioResponse {
   trialExpiresAt:       string;
   createdAt:            string;
   isActive:             boolean;
+  slugLockedAt:         string | null;
 }
 
 export interface StudioMapItem {
@@ -140,6 +141,14 @@ export const studiosApi = createApi({
       query: (id) => `studios/${id}/referral-stats`,
       providesTags: ["Referral"],
     }),
+    updateStudioSlug: builder.mutation<void, { id: string; newSlug: string }>({
+      query: ({ id, newSlug }) => ({
+        url:    `studios/${id}/slug`,
+        method: "PATCH",
+        body:   { newSlug },
+      }),
+      invalidatesTags: ["Studio"],
+    }),
   }),
 });
 
@@ -157,4 +166,5 @@ export const {
   useGenerateReferralCodeMutation,
   useGetReferralCodeQuery,
   useGetReferralStatsQuery,
+  useUpdateStudioSlugMutation,
 } = studiosApi;

@@ -88,10 +88,10 @@ describe("StudioPortfolioPage", () => {
     expect(screen.getByText("João Costa")).toBeInTheDocument();
   });
 
-  it("shows loading spinner while fetching", () => {
+  it("shows loading skeleton while fetching", () => {
     mockUseGetPublicStudioQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     renderPage();
-    expect(document.querySelector(".animate-spin")).toBeInTheDocument();
+    expect(screen.getByLabelText(/loading studio page/i)).toBeInTheDocument();
   });
 
   it("shows 'Studio not found' when isError is true", () => {

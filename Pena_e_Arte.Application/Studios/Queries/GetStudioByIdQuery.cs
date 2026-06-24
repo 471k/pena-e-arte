@@ -23,7 +23,8 @@ public class GetStudioByIdHandler(IAppDbContext db)
                 s.Latitude, s.Longitude,
                 s.ShowPlatformBranding,
                 AllowBrandingRemoval: false,
-                s.TrialExpiresAt, s.CreatedAt, s.IsActive))
+                s.TrialExpiresAt, s.CreatedAt, s.IsActive,
+                s.SlugLockedAt))
             .FirstOrDefaultAsync(ct);
 
         if (studio is null)

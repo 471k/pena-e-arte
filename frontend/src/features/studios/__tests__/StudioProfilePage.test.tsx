@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -71,6 +71,7 @@ const STUDIO = {
   trialExpiresAt:       "2099-01-01T00:00:00Z",
   createdAt:            "2025-01-01T00:00:00Z",
   isActive:             true,
+  slugLockedAt:         null,
 };
 
 // ── MSW server ────────────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ const STUDIO = {
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json(STUDIO)),
   http.put("http://localhost/api/v1/studios/me", () => HttpResponse.json(STUDIO)),
+  http.patch("http://localhost/api/v1/studios/studio-001/slug", () => new HttpResponse(null, { status: 204 })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -263,5 +265,62 @@ describe("StudioProfilePage — location picker", () => {
     await user.click(screen.getByTestId("mock-location-picker"));
 
     expect(screen.getByRole("button", { name: /save changes/i })).not.toBeDisabled();
+  });
+});
+
+describe("StudioProfilePage — slug editing", () => {
+  it("shows an Edit button when slug is not locked", async () => {
+    renderPage();
+    await waitForForm();
+    expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+  });
+
+  it("shows locked indicator when slug is locked", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ ...STUDIO, slugLockedAt: "2025-06-01T00:00:00Z" }),
+      ),
+    );
+    renderPage();
+    await waitForForm();
+    expect(screen.getByText(/locked/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
+  });
+
+  it("shows slug input when Edit is clicked", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    expect(screen.getByLabelText(/new studio url slug/i)).toBeInTheDocument();
+  });
+
+  it("shows validation error for invalid slug characters", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.clear(screen.getByLabelText(/new studio url slug/i));
+    await user.type(screen.getByLabelText(/new studio url slug/i), "UPPERCASE INVALID!");
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(screen.getByText(/lowercase letters, numbers, and hyphens/i)).toBeInTheDocument();
+  });
+
+  it("calls updateStudioSlug and shows success on valid slug", async () => {
+    const patchSpy = vi.fn();
+    server.use(
+      http.patch("http://localhost/api/v1/studios/studio-001/slug", async ({ request }) => {
+        patchSpy(await request.json());
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.clear(screen.getByLabelText(/new studio url slug/i));
+    await user.type(screen.getByLabelText(/new studio url slug/i), "new-slug");
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => expect(patchSpy).toHaveBeenCalledWith({ newSlug: "new-slug" }));
   });
 });

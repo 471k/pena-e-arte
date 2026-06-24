@@ -188,6 +188,56 @@ public class SignConsentFormHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
+    [Fact]
+    public async Task TryGeneratePdfAsync_PassesShowPlatformBranding_True_WhenStudioFlagIsTrue()
+    {
+        await SeedStudio(showPlatformBranding: true);
+        ConsentFormPdfData? captured = null;
+        _pdf.When(p => p.Generate(Arg.Any<ConsentFormPdfData>()))
+            .Do(call => captured = call.Arg<ConsentFormPdfData>());
+        _pdf.Generate(Arg.Any<ConsentFormPdfData>()).Returns([0x25, 0x50, 0x44, 0x46]);
+
+        Guid clientId      = await SeedClient();
+        Guid appointmentId = await SeedAppointment(clientId);
+        await CreateSut().Handle(new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
+
+        captured.Should().NotBeNull();
+        captured!.ShowPlatformBranding.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TryGeneratePdfAsync_PassesShowPlatformBranding_False_WhenStudioFlagIsFalse()
+    {
+        await SeedStudio(showPlatformBranding: false);
+        ConsentFormPdfData? captured = null;
+        _pdf.When(p => p.Generate(Arg.Any<ConsentFormPdfData>()))
+            .Do(call => captured = call.Arg<ConsentFormPdfData>());
+        _pdf.Generate(Arg.Any<ConsentFormPdfData>()).Returns([0x25, 0x50, 0x44, 0x46]);
+
+        Guid clientId      = await SeedClient();
+        Guid appointmentId = await SeedAppointment(clientId);
+        await CreateSut().Handle(new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
+
+        captured.Should().NotBeNull();
+        captured!.ShowPlatformBranding.Should().BeFalse();
+    }
+
+    private async Task SeedStudio(bool showPlatformBranding = true)
+    {
+        Studio studio = new()
+        {
+            Id             = _studioId,
+            Name           = "Test Studio",
+            Slug           = "test-studio",
+            City           = "Lisbon",
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
+        };
+        if (!showPlatformBranding) studio.UpdateBranding(false);
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+    }
+
     private async Task<Guid> SeedClient(Guid? userId = null)
     {
         Client client = new()

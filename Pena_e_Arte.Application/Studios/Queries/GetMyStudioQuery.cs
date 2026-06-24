@@ -27,6 +27,7 @@ public class GetMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
             allowBrandingRemoval,
-            studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive);
+            studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
+            studio.SlugLockedAt);
     }
 }

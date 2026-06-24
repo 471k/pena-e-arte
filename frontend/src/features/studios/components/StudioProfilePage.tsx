@@ -3,13 +3,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Building2, Loader2, Save } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
-import { useGetMyStudioQuery, useUpdateMyStudioMutation } from "../studiosApi";
+import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMutation } from "../studiosApi";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
@@ -53,10 +55,41 @@ function StudioProfileSkeleton() {
   );
 }
 
+function validateSlug(value: string): string | null {
+  if (!value)                        return "Slug is required.";
+  if (value.length > 60)             return "Slug must be 60 characters or fewer.";
+  if (!/^[a-z0-9-]+$/.test(value))   return "Slug may only contain lowercase letters, numbers, and hyphens.";
+  return null;
+}
+
 export function StudioProfilePage() {
   const { data: studio, isLoading } = useGetMyStudioQuery();
   const [updateStudio, { isLoading: saving, isSuccess }] = useUpdateMyStudioMutation();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  const [slugEditing, setSlugEditing] = useState(false);
+  const [slugInput,   setSlugInput]   = useState("");
+  const [slugError,   setSlugError]   = useState<string | null>(null);
+  const [updateStudioSlug, { isLoading: slugSaving }] = useUpdateStudioSlugMutation();
+
+  async function handleSlugSave() {
+    const err = validateSlug(slugInput);
+    if (err) { setSlugError(err); return; }
+    setSlugError(null);
+    try {
+      await updateStudioSlug({ id: studio!.id, newSlug: slugInput }).unwrap();
+      toast.success("Studio URL updated.");
+      setSlugEditing(false);
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === "object" && "data" in e &&
+        (e as { data?: unknown }).data && typeof (e as { data?: unknown }).data === "object" &&
+        "message" in ((e as { data?: unknown }).data as object)
+          ? String(((e as { data: { message: string } }).data).message)
+          : "Failed to update slug.";
+      setSlugError(msg);
+    }
+  }
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({ resolver: zodResolver(schema) });
@@ -105,13 +138,74 @@ export function StudioProfilePage() {
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {studio && (
           <Card>
-            <CardContent className="py-3 px-4 flex items-center gap-2 text-sm flex-wrap">
-              <span className="text-xs font-semibold text-foreground">Studio URL:</span>
-              <span className="font-mono text-xs text-foreground/80">{studio.slug}</span>
-              <span className="text-foreground/40">·</span>
-              <span className="text-xs text-foreground/70">
-                Registered {new Date(studio.createdAt).toLocaleDateString("en-GB")}
-              </span>
+            <CardContent className="py-3 px-4 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-foreground">Studio URL:</span>
+                {!slugEditing ? (
+                  <>
+                    <span className="font-mono text-xs text-foreground/80">{studio.slug}</span>
+                    {studio.slugLockedAt ? (
+                      <span className="text-xs text-muted-foreground italic ml-1">
+                        · locked
+                      </span>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => { setSlugInput(studio.slug); setSlugEditing(true); setSlugError(null); }}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Input
+                      value={slugInput}
+                      onChange={(e) => { setSlugInput(e.target.value.toLowerCase()); setSlugError(null); }}
+                      className="h-7 text-xs font-mono w-48"
+                      placeholder="my-studio-slug"
+                      maxLength={60}
+                      aria-label="New studio URL slug"
+                      aria-invalid={!!slugError}
+                      aria-describedby={slugError ? "slug-error" : undefined}
+                    />
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={handleSlugSave}
+                      disabled={slugSaving || !slugInput}
+                    >
+                      {slugSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setSlugEditing(false)}
+                      disabled={slugSaving}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+                <span className="text-foreground/40">·</span>
+                <span className="text-xs text-foreground/70">
+                  Registered {new Date(studio.createdAt).toLocaleDateString("en-GB")}
+                </span>
+              </div>
+
+              {slugError && (
+                <p id="slug-error" className="text-xs text-destructive">{slugError}</p>
+              )}
+
+              {studio.slugLockedAt && (
+                <p className="text-xs text-muted-foreground">
+                  Studio URL was changed on {new Date(studio.slugLockedAt).toLocaleDateString("en-GB")}.
+                  URLs can only be changed once.
+                </p>
+              )}
             </CardContent>
           </Card>
         )}

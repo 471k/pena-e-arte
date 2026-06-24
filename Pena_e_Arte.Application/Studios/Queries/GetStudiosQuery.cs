@@ -19,7 +19,8 @@ public class GetStudiosHandler(IAppDbContext db)
                 s.Latitude, s.Longitude,
                 s.ShowPlatformBranding,
                 AllowBrandingRemoval: false,
-                s.TrialExpiresAt, s.CreatedAt, s.IsActive))
+                s.TrialExpiresAt, s.CreatedAt, s.IsActive,
+                s.SlugLockedAt))
             .ToListAsync(ct);
     }
 }

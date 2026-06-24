@@ -1,7 +1,8 @@
 import { useParams, Link } from "react-router-dom";
-import { MapPin, Loader2, Users } from "lucide-react";
+import { MapPin, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetPublicStudioQuery, type PublicArtistSummary } from "../publicApi";
 import { useAppSelector } from "@/app/hooks";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
@@ -43,8 +44,17 @@ export function StudioPortfolioPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="min-h-screen bg-background" aria-label="Loading studio page">
+        <Skeleton className="h-48 w-full" />
+        <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-full rounded-md" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Skeleton className="h-20 w-full rounded-lg" />
+            <Skeleton className="h-20 w-full rounded-lg" />
+          </div>
+        </div>
       </div>
     );
   }

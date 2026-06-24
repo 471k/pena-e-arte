@@ -100,6 +100,13 @@ public class ConsentFormPdfService : IConsentFormPdfService
                         "This document was generated automatically by Pena e Artë Studio Platform " +
                         "and is a legally binding digital consent record.")
                         .FontSize(8).FontColor("#aaaaaa").Italic();
+
+                    // SP-03: show "Generated via" line only when studio has branding enabled.
+                    if (d.ShowPlatformBranding)
+                    {
+                        col.Item().AlignRight().Text("Generated via Pena e Artë · penaearte.com")
+                            .FontSize(8).FontColor("#bbbbbb").Italic();
+                    }
                 });
             });
         }).GeneratePdf();

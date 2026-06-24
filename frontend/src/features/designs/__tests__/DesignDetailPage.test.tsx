@@ -136,9 +136,9 @@ describe("DesignDetailPage", () => {
 
   // ── Loading / error / empty ──────────────────────────────────────────────────
 
-  it("shows a loading spinner while revisions are fetching", () => {
+  it("shows a loading skeleton while revisions are fetching", () => {
     renderPage();
-    expect(screen.getByText(/loading revisions/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/loading revisions/i)).toBeInTheDocument();
   });
 
   it("shows an error message when the revisions fetch fails", async () => {

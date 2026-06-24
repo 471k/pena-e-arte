@@ -146,9 +146,9 @@ describe("SchedulePage", () => {
     expect(screen.getByText(currentWeekLabel())).toBeInTheDocument();
   });
 
-  it("shows a loading spinner while fetching", () => {
+  it("shows a skeleton while fetching", () => {
     renderPage();
-    expect(screen.getByText(/loading schedule/i)).toBeInTheDocument();
+    expect(screen.getByRole("main", { name: /loading schedule/i })).toBeInTheDocument();
   });
 
   it("shows an error message when the fetch fails", async () => {
@@ -161,10 +161,9 @@ describe("SchedulePage", () => {
     expect(await screen.findByText(/failed to load appointments/i)).toBeInTheDocument();
   });
 
-  it("shows 'No appointments' for each empty day", async () => {
+  it("shows week-level empty state when no appointments exist", async () => {
     renderPage();
-    const items = await screen.findAllByText("No appointments");
-    expect(items.length).toBe(7);
+    expect(await screen.findByText("No appointments this week")).toBeInTheDocument();
   });
 
   it("renders an AppointmentCard for today's appointment", async () => {
@@ -191,22 +190,27 @@ describe("SchedulePage", () => {
   });
 
   it("today day heading badge is shown", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([APPT_TODAY]),
+      ),
+    );
     renderPage();
-    await screen.findAllByText("No appointments");
+    await screen.findByText(/1 appointment/i);
     // "Today" appears in both the header button and the day column badge
     expect(screen.getAllByText("Today").length).toBeGreaterThanOrEqual(2);
   });
 
   it("the 'Today' button is disabled on the current week", async () => {
     renderPage();
-    await screen.findAllByText("No appointments");
+    await screen.findByText("No appointments this week");
     expect(screen.getByRole("button", { name: /today/i })).toBeDisabled();
   });
 
   it("clicking 'Next week' then 'Today' re-enables the button and returns to current week", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findAllByText("No appointments");
+    await screen.findByText("No appointments this week");
 
     await user.click(screen.getByRole("button", { name: /next week/i }));
     const todayBtn = screen.getByRole("button", { name: /today/i });
@@ -219,7 +223,7 @@ describe("SchedulePage", () => {
   it("clicking 'Previous week' shows an earlier week label", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findAllByText("No appointments");
+    await screen.findByText("No appointments this week");
 
     const labelBefore = screen.getByText(currentWeekLabel()).textContent;
     await user.click(screen.getByRole("button", { name: /previous week/i }));

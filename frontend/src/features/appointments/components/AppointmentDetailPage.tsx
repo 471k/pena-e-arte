@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
@@ -54,6 +55,22 @@ const TERMINAL_STATUSES = new Set<AppointmentStatus>([
   AppointmentStatus.NoShow,
 ]);
 
+function AppointmentDetailSkeleton() {
+  return (
+    <main className="max-w-lg mx-auto px-4 py-6 space-y-4" aria-label="Loading appointment">
+      <div className="rounded-xl border bg-card p-4 space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex justify-between py-1.5">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="h-9 w-full rounded-md" />
+    </main>
+  );
+}
+
 export function AppointmentDetailPage() {
   const { id }       = useParams<{ id: string }>();
   const navigate     = useNavigate();
@@ -99,21 +116,17 @@ export function AppointmentDetailPage() {
         {appt && <AppointmentStatusBadge status={appt.status} />}
       </header>
 
+      {isLoading ? (
+        <AppointmentDetailSkeleton />
+      ) : (
       <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
-        {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading…</span>
-          </div>
-        )}
-
-        {!isLoading && (isError || !appt) && (
+        {(isError || !appt) && (
           <div className="flex flex-col items-center py-16 gap-3">
             <p className="text-sm text-destructive">Appointment not found.</p>
           </div>
         )}
 
-        {!isLoading && appt && (
+        {appt && (
           <>
             <Card>
               <CardContent className="px-4 py-1">
@@ -206,6 +219,7 @@ export function AppointmentDetailPage() {
           </>
         )}
       </main>
+      )}
 
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent>

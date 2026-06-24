@@ -86,10 +86,10 @@ describe("ArtistPortfolioPage", () => {
     expect(screen.getByText("Artist not found.")).toBeInTheDocument();
   });
 
-  it("shows loading spinner while fetching", () => {
+  it("shows loading skeleton while fetching", () => {
     mockUseGetPublicArtistQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     renderPage();
-    expect(document.querySelector(".animate-spin")).toBeInTheDocument();
+    expect(screen.getByLabelText(/loading artist page/i)).toBeInTheDocument();
   });
 
   it("sets og:title meta tag with artist name", () => {

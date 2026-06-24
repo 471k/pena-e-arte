@@ -98,10 +98,22 @@ export function ConsentFormListPage() {
           </p>
         )}
 
-        {!isLoading && !isError && forms?.length === 0 && (
+        {!isLoading && !isError && forms?.length === 0 && (clientId || appointmentId) && (
           <p className="text-center text-sm text-muted-foreground py-16">
             No consent forms found.
           </p>
+        )}
+
+        {!isLoading && !isError && forms?.length === 0 && !clientId && !appointmentId && (
+          <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <FileSignature className="h-10 w-10 text-muted-foreground/50" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">No signed consent forms yet</p>
+              <p className="text-xs text-muted-foreground">
+                Consent forms appear here after clients sign them during booking.
+              </p>
+            </div>
+          </div>
         )}
 
         {!isLoading && !isError && forms && forms.length > 0 && (

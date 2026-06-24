@@ -101,12 +101,12 @@ describe("DepositRuleListPage", () => {
     expect(await screen.findByText("Failed to load deposit rules. Please try again.")).toBeInTheDocument();
   });
 
-  it("shows empty-state text when no rules exist", async () => {
+  it("shows rich empty state when no rules exist", async () => {
     server.use(
       http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json([])),
     );
     renderPage();
-    expect(await screen.findByText("No deposit rules configured yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No deposit rules yet")).toBeInTheDocument();
   });
 
   it("renders a card for each rule returned by the API", async () => {

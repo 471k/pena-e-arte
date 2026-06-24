@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
-import { Loader2, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useAppSelector } from "@/app/hooks";
 import { useGetPublicArtistQuery } from "../publicApi";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
@@ -27,8 +28,18 @@ export function ArtistPortfolioPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="min-h-screen bg-background" aria-label="Loading artist page">
+        <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-10 w-full rounded-md" />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-square w-full rounded-md" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

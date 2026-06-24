@@ -6,7 +6,8 @@ public record ConsentFormPdfData(
     string   ArtistFullName,
     DateTime AppointmentDate,
     string   SignatureText,
-    DateTime SignedAt);
+    DateTime SignedAt,
+    bool     ShowPlatformBranding = true);
 
 public interface IConsentFormPdfService
 {

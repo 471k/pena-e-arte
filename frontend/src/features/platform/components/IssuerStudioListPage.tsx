@@ -478,9 +478,21 @@ export function IssuerStudioListPage() {
           </p>
         )}
 
-        {!isLoading && !studiosError && filtered.length === 0 && (
+        {!isLoading && !studiosError && studios?.length === 0 && (
+          <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <Building2 className="h-10 w-10 text-muted-foreground/50" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">No studios registered yet</p>
+              <p className="text-xs text-muted-foreground">
+                Studios will appear here once they register on the platform.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && !studiosError && (studios?.length ?? 0) > 0 && filtered.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-16">
-            {studios?.length === 0 ? "No studios yet." : "No studios match your filters."}
+            No studios match your filters.
           </p>
         )}
 

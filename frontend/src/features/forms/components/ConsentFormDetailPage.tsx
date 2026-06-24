@@ -1,7 +1,8 @@
-import { ArrowLeft, FileSignature, Loader2, Paperclip } from "lucide-react";
+import { ArrowLeft, FileSignature, Paperclip } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetConsentFormByIdQuery } from "../consentFormsApi";
 
 function formatDateTime(dateStr: string): string {
@@ -47,9 +48,13 @@ export function ConsentFormDetailPage() {
 
       <main className="max-w-lg mx-auto px-4 py-6">
         {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading…</span>
+          <div className="space-y-4" aria-label="Loading consent form">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-5 w-full" />
+              </div>
+            ))}
           </div>
         )}
 

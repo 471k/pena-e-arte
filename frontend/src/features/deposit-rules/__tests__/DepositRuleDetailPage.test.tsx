@@ -87,9 +87,9 @@ describe("DepositRuleDetailPage", () => {
 
   // ── Loading / error ────────────────────────────────────────────────────────
 
-  it("shows a loading indicator while the rule is fetching", () => {
+  it("shows a loading skeleton while the rule is fetching", () => {
     renderPage();
-    expect(screen.getByText(/loading…/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/loading deposit rule/i)).toBeInTheDocument();
   });
 
   it("shows a not-found message when the rule fetch fails", async () => {

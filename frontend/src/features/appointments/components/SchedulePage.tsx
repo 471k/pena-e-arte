@@ -1,8 +1,23 @@
 import { useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, PenLine } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, PenLine } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetAppointmentsQuery } from "../appointmentsApi";
 import { AppointmentCard } from "./AppointmentCard";
+
+function SchedulePageSkeleton() {
+  return (
+    <main className="max-w-3xl mx-auto px-4 py-6 space-y-8" aria-label="Loading schedule">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-14 w-full rounded-lg" />
+          {i === 0 && <Skeleton className="h-14 w-full rounded-lg" />}
+        </div>
+      ))}
+    </main>
+  );
+}
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
@@ -48,6 +63,10 @@ export function SchedulePage() {
   const isCurrentWeek = weekStart.getTime() === getWeekStart(today).getTime();
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
+  const weekHasAppointments = days.some((day) =>
+    (appointments ?? []).some((a) => isSameDay(new Date(a.date), day))
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
@@ -92,60 +111,67 @@ export function SchedulePage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
-        {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading schedule…</span>
-          </div>
-        )}
+      {isLoading ? (
+        <SchedulePageSkeleton />
+      ) : (
+        <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
+          {isError && (
+            <p className="text-center text-sm text-destructive py-16">
+              Failed to load appointments. Please try again.
+            </p>
+          )}
 
-        {isError && (
-          <p className="text-center text-sm text-destructive py-16">
-            Failed to load appointments. Please try again.
-          </p>
-        )}
+          {!isError && !weekHasAppointments && appointments !== undefined && (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <CalendarDays className="h-9 w-9 text-muted-foreground/40" />
+              <p className="text-sm font-medium">No appointments this week</p>
+              <p className="text-xs text-muted-foreground">
+                Use the arrows to navigate to a different week.
+              </p>
+            </div>
+          )}
 
-        {!isLoading && !isError && days.map((day, i) => {
-          const isToday = isSameDay(day, today);
-          const dayAppointments = (appointments ?? [])
-            .filter((a) => isSameDay(new Date(a.date), day))
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          {!isError && weekHasAppointments && days.map((day, i) => {
+            const isToday = isSameDay(day, today);
+            const dayAppointments = (appointments ?? [])
+              .filter((a) => isSameDay(new Date(a.date), day))
+              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-          return (
-            <section key={day.toISOString()}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`text-sm font-semibold ${isToday ? "text-primary" : "text-foreground"}`}>
-                  {DAY_NAMES[i]}
-                </span>
-                <span className={`text-sm ${isToday ? "text-primary" : "text-muted-foreground"}`}>
-                  {day.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </span>
-                {isToday && (
-                  <span className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5 font-medium">
-                    Today
+            return (
+              <section key={day.toISOString()}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`text-sm font-semibold ${isToday ? "text-primary" : "text-foreground"}`}>
+                    {DAY_NAMES[i]}
                   </span>
-                )}
-                {dayAppointments.length > 0 && (
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {dayAppointments.length} appointment{dayAppointments.length !== 1 ? "s" : ""}
+                  <span className={`text-sm ${isToday ? "text-primary" : "text-muted-foreground"}`}>
+                    {day.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                   </span>
-                )}
-              </div>
-
-              {dayAppointments.length === 0 ? (
-                <p className="text-xs text-muted-foreground pl-1">No appointments</p>
-              ) : (
-                <div className="space-y-2">
-                  {dayAppointments.map((appt) => (
-                    <AppointmentCard key={appt.id} appointment={appt} />
-                  ))}
+                  {isToday && (
+                    <span className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5 font-medium">
+                      Today
+                    </span>
+                  )}
+                  {dayAppointments.length > 0 && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {dayAppointments.length} appointment{dayAppointments.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
                 </div>
-              )}
-            </section>
-          );
-        })}
-      </main>
+
+                {dayAppointments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground pl-1">No appointments</p>
+                ) : (
+                  <div className="space-y-2">
+                    {dayAppointments.map((appt) => (
+                      <AppointmentCard key={appt.id} appointment={appt} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </main>
+      )}
     </div>
   );
 }

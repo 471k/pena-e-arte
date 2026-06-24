@@ -201,12 +201,12 @@ describe("ConsentFormListPage", () => {
     expect(await screen.findByText(/failed to load consent forms/i)).toBeInTheDocument();
   });
 
-  it("shows an empty state when there are no forms", async () => {
+  it("shows rich empty state when there are no forms and no filters", async () => {
     server.use(
       http.get("http://localhost/api/v1/consent-forms", () => HttpResponse.json([])),
     );
     renderWithRoute(<ConsentFormListPage />, "/forms/consent");
-    expect(await screen.findByText(/no consent forms found/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no signed consent forms yet/i)).toBeInTheDocument();
   });
 
   it("shows the 'Signed' badge for a signed form and 'Pending' otherwise", async () => {
@@ -229,9 +229,9 @@ describe("ConsentFormListPage", () => {
 // ── ConsentFormDetailPage ──────────────────────────────────────────────────────
 
 describe("ConsentFormDetailPage", () => {
-  it("shows a loading state then renders the signed form", async () => {
+  it("shows a loading skeleton then renders the signed form", async () => {
     renderDetailPage(SIGNED_FORM.id);
-    expect(screen.getByText(/loading…/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/loading consent form/i)).toBeInTheDocument();
     expect(await screen.findByText("Marco Cliente")).toBeInTheDocument();
     expect(screen.getAllByText("Signed").length).toBeGreaterThanOrEqual(1);
   });

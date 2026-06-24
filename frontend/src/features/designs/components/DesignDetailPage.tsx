@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Check, ImageOff, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -298,9 +299,13 @@ export function DesignDetailPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {isLoading && (
-          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading revisions…</span>
+          <div className="space-y-4" aria-label="Loading revisions">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-48 w-full rounded-lg" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            ))}
           </div>
         )}
 

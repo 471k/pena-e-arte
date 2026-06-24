@@ -86,12 +86,13 @@ public class SignConsentFormHandler(
                 .FirstOrDefaultAsync(s => s.Id == form.StudioId, ct);
 
             ConsentFormPdfData data = new(
-                StudioName:      studio?.Name ?? "Studio",
-                ClientFullName:  client is null ? "Client" : $"{client.FirstName} {client.LastName}",
-                ArtistFullName:  artist is null ? "Artist" : $"{artist.FirstName} {artist.LastName}",
-                AppointmentDate: appointment.Date,
-                SignatureText:   form.SignatureData ?? string.Empty,
-                SignedAt:        form.SignedAt ?? DateTime.UtcNow);
+                StudioName:           studio?.Name ?? "Studio",
+                ClientFullName:       client is null ? "Client" : $"{client.FirstName} {client.LastName}",
+                ArtistFullName:       artist is null ? "Artist" : $"{artist.FirstName} {artist.LastName}",
+                AppointmentDate:      appointment.Date,
+                SignatureText:        form.SignatureData ?? string.Empty,
+                SignedAt:             form.SignedAt ?? DateTime.UtcNow,
+                ShowPlatformBranding: studio?.ShowPlatformBranding ?? true);
 
             byte[]  pdfBytes  = pdfService.Generate(data);
             string  objectKey = $"consent/{form.StudioId}/{form.Id}.pdf";

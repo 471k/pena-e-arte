@@ -17,6 +17,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
@@ -116,9 +117,18 @@ export function DepositRuleDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Loading…</span>
+      <div className="min-h-screen bg-background" aria-label="Loading deposit rule">
+        <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+          <Skeleton className="h-8 w-32" />
+        </header>
+        <main className="max-w-lg mx-auto px-4 py-8 space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+          ))}
+        </main>
       </div>
     );
   }

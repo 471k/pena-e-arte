@@ -208,12 +208,12 @@ describe("IntakeFormListPage", () => {
     expect(await screen.findByText(/failed to load intake forms/i)).toBeInTheDocument();
   });
 
-  it("shows an empty state when there are no forms", async () => {
+  it("shows rich empty state when there are no forms and no filters", async () => {
     server.use(
       http.get("http://localhost/api/v1/intake-forms", () => HttpResponse.json([])),
     );
     renderWithRoute(<IntakeFormListPage />, "/forms/intake");
-    expect(await screen.findByText(/no intake forms found/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no intake forms yet/i)).toBeInTheDocument();
   });
 
   it("renders the parsed full name as the row headline", async () => {
@@ -247,9 +247,9 @@ describe("IntakeFormListPage", () => {
 // ── IntakeFormDetailPage ───────────────────────────────────────────────────────
 
 describe("IntakeFormDetailPage", () => {
-  it("shows a loading state then renders structured medical history", async () => {
+  it("shows a loading skeleton then renders structured medical history", async () => {
     renderDetailPage(SUBMITTED_FORM.id);
-    expect(screen.getByText(/loading…/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/loading intake form/i)).toBeInTheDocument();
     expect(await screen.findByText("Marco Cliente")).toBeInTheDocument();
   });
 
