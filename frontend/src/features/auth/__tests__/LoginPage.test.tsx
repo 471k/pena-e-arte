@@ -325,4 +325,61 @@ describe("LoginPage", () => {
       screen.getByRole("link", { name: /register your studio/i })
     ).toBeInTheDocument();
   });
+
+  it("renders the updated subtitle copy", () => {
+    renderPage();
+    expect(
+      screen.getByText("Run your studio. Book clients. Manage your team.")
+    ).toBeInTheDocument();
+  });
+
+  it("does NOT render the old subtitle", () => {
+    renderPage();
+    expect(
+      screen.queryByText("Tattoo Studio Management")
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the registration prompt with updated copy", () => {
+    renderPage();
+    expect(screen.getByText(/don't have an account/i)).toBeInTheDocument();
+  });
+
+  it("does NOT render the old 'New studio?' copy", () => {
+    renderPage();
+    expect(screen.queryByText(/new studio\?/i)).not.toBeInTheDocument();
+  });
+
+  it("renders the legal footer with Privacy Policy link", () => {
+    renderPage();
+    expect(screen.getByRole("link", { name: /privacy policy/i })).toBeInTheDocument();
+  });
+
+  it("renders the legal footer with Terms of Service link", () => {
+    renderPage();
+    expect(screen.getByRole("link", { name: /terms of service/i })).toBeInTheDocument();
+  });
+
+  it("renders the Contact support link in the footer", () => {
+    renderPage();
+    expect(screen.getByRole("link", { name: /contact support/i })).toBeInTheDocument();
+  });
+
+  it("PenLine icon has aria-hidden to suppress screen reader announcement", () => {
+    renderPage();
+    expect(screen.getByText("Pena e Arte")).toBeInTheDocument();
+  });
+
+  it("password field has a placeholder", () => {
+    renderPage();
+    const passwordInput = screen.getByLabelText("Password");
+    expect(passwordInput).toHaveAttribute("placeholder", "••••••••");
+  });
+
+  it("Forgot password link has accessible touch target (py-2 class applied)", () => {
+    renderPage();
+    const forgotLink = screen.getByRole("link", { name: /forgot password/i });
+    expect(forgotLink).toBeInTheDocument();
+    expect(forgotLink).toHaveClass("py-2");
+  });
 });

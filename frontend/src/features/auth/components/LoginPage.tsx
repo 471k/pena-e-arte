@@ -17,7 +17,7 @@ import { useLoginMutation } from "../authApi";
 import { setCredentials } from "../authSlice";
 
 const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Enter a valid email"),
+  email:    z.string().min(1, "Email is required").email("Enter a valid email"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -50,7 +50,7 @@ export function LoginPage() {
       dispatch(setCredentials(payload));
       navigate(getRoleRedirectPath(payload.role), { replace: true });
     } catch {
-      // error is surfaced via RTK Query's `error` state below
+      // error surfaced via RTK Query's `error` state below
     }
   }
 
@@ -75,13 +75,17 @@ export function LoginPage() {
         }}
         aria-hidden="true"
       />
+
       <div className="w-full max-w-md space-y-6 relative">
+        {/* Brand mark */}
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-2">
-            <PenLine className="h-8 w-8" />
+            <PenLine className="h-8 w-8" aria-hidden="true" />
             <span className="text-2xl font-semibold tracking-tight">Pena e Arte</span>
           </div>
-          <p className="text-sm text-muted-foreground">Tattoo Studio Management</p>
+          <p className="text-sm text-foreground/65">
+            Run your studio. Book clients. Manage your team.
+          </p>
         </div>
 
         {sessionExpired && (
@@ -90,12 +94,13 @@ export function LoginPage() {
           </div>
         )}
 
-        <Card>
+        <Card className="dark:bg-zinc-900/80 dark:border-zinc-800 shadow-lg dark:shadow-black/60">
           <CardHeader>
             <CardTitle>Sign in</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+              {/* Email */}
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -114,11 +119,13 @@ export function LoginPage() {
                 )}
               </div>
 
+              {/* Password */}
               <div className="space-y-1.5">
                 <Label htmlFor="password">Password</Label>
                 <PasswordInput
                   id="password"
                   autoComplete="current-password"
+                  placeholder="••••••••"
                   {...register("password")}
                   aria-invalid={!!errors.password}
                   aria-describedby={errors.password ? "password-error" : undefined}
@@ -131,7 +138,7 @@ export function LoginPage() {
                 <div className="flex justify-end">
                   <Link
                     to="/forgot-password"
-                    className="text-xs text-muted-foreground underline underline-offset-4 hover:text-primary"
+                    className="text-xs text-foreground/65 underline underline-offset-4 hover:text-foreground py-2 inline-block"
                   >
                     Forgot password?
                   </Link>
@@ -145,17 +152,21 @@ export function LoginPage() {
                 </Alert>
               )}
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 focus-visible:ring-violet-500"
+                disabled={isLoading}
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign in
               </Button>
             </form>
 
-            <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-muted-foreground">
-              New studio?{" "}
+            <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-foreground/65">
+              Don't have an account?{" "}
               <Link
                 to="/register"
-                className="underline underline-offset-4 hover:text-primary"
+                className="underline underline-offset-4 text-foreground/65 hover:text-foreground py-2 inline-block"
               >
                 Register your studio
               </Link>
@@ -163,6 +174,30 @@ export function LoginPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Legal footer — pinned to viewport bottom */}
+      <footer className="absolute bottom-6 left-0 right-0 text-center text-xs text-foreground/40 space-x-4">
+        <a
+          href="/privacy"
+          className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline"
+        >
+          Privacy Policy
+        </a>
+        <span aria-hidden="true">·</span>
+        <a
+          href="/terms"
+          className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline"
+        >
+          Terms of Service
+        </a>
+        <span aria-hidden="true">·</span>
+        <a
+          href="mailto:support@penaearte.com"
+          className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline"
+        >
+          Contact support
+        </a>
+      </footer>
     </div>
   );
 }
