@@ -15,13 +15,17 @@ vi.mock("react-router-dom", async (importOriginal) => {
   return { ...actual, useParams: () => ({ slug: "maria-silva" }) };
 });
 
-const mockUseGetPublicArtistQuery = vi.fn();
+const mockUseGetPublicArtistQuery  = vi.fn();
+const mockUseGetArtistReviewsQuery = vi.fn();
 
 vi.mock("@/features/public/publicApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/public/publicApi")>();
   return {
     ...actual,
-    useGetPublicArtistQuery: (...args: unknown[]) => mockUseGetPublicArtistQuery(...args),
+    useGetPublicArtistQuery:       (...args: unknown[]) => mockUseGetPublicArtistQuery(...args),
+    useGetArtistReviewsQuery:      (...args: unknown[]) => mockUseGetArtistReviewsQuery(...args),
+    useCreateStudioReviewMutation: () => [vi.fn(), { isLoading: false }],
+    useCreateArtistReviewMutation: () => [vi.fn(), { isLoading: false }],
   };
 });
 
@@ -66,6 +70,7 @@ function renderPage() {
 describe("ArtistPortfolioPage", () => {
   beforeEach(() => {
     mockUseGetPublicArtistQuery.mockReturnValue({ data: ARTIST, isLoading: false, isError: false });
+    mockUseGetArtistReviewsQuery.mockReturnValue({ data: [], isLoading: false });
   });
 
   it("renders artist name and bio when data loads", () => {

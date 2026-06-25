@@ -29,7 +29,7 @@ import {
   PlatformReferralPage,
   IndustryReportsPage,
 } from "@/features/platform";
-import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage } from "@/features/public";
+import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage } from "@/features/public";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
@@ -59,7 +59,13 @@ export function getRoleRedirectPath(role: Role): string {
 
 function IndexRedirect() {
   const role = useAppSelector((s) => s.auth.role);
-  if (!role) return <Navigate to="/login" replace />;
+  if (!role) return <Navigate to="/discover" replace />;
+  return <Navigate to={getRoleRedirectPath(role)} replace />;
+}
+
+function CatchAllRedirect() {
+  const role = useAppSelector((s) => s.auth.role);
+  if (!role) return <Navigate to="/discover" replace />;
   return <Navigate to={getRoleRedirectPath(role)} replace />;
 }
 
@@ -96,6 +102,7 @@ export const router = createBrowserRouter([
   { path: "/reset-password",  element: <ResetPasswordPage /> },
   { path: "/register",        element: <RegisterStudioPage /> },
   { path: "/map",             element: <StudioMapPage /> },
+  { path: "/discover",        element: <DiscoverPage /> },
   { path: "/s/:slug",                 element: <StudioPortfolioPage /> },
   { path: "/artist/:slug",            element: <ArtistPortfolioPage /> },
   { path: "/share/:token",            element: <SharedDesignPage /> },
@@ -104,10 +111,10 @@ export const router = createBrowserRouter([
     path: "/",
     element: <AppRoot />,
     children: [
+      { index: true, element: <IndexRedirect /> },
       {
         element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
         children: [
-          { index: true, element: <IndexRedirect /> },
           {
             element: <AppLayout />,
             children: [
@@ -307,5 +314,5 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: "*", element: <Navigate to="/login" replace /> },
+  { path: "*", element: <CatchAllRedirect /> },
 ]);

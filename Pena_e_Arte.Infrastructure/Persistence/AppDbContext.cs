@@ -36,6 +36,9 @@ public class AppDbContext(
     public DbSet<ReferralCode>       ReferralCodes       => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
 
+    // --- Cross-tenant public data (no tenant filter) ---
+    public DbSet<Review> Reviews => Set<Review>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
@@ -66,5 +69,20 @@ public class AppDbContext(
         builder.Entity<ConsentForm>()    .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>()              .HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
         builder.Entity<StudioNotificationPreference>() .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+
+        builder.Entity<Review>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+
+            entity.Property(r => r.AuthorName).HasMaxLength(200).IsRequired();
+            entity.Property(r => r.Body).HasMaxLength(2000).IsRequired();
+            entity.Property(r => r.Rating).IsRequired();
+
+            // No HasQueryFilter — reviews are public cross-tenant data.
+            entity.HasIndex(r => r.StudioId);
+            entity.HasIndex(r => r.ArtistId);
+            entity.HasIndex(r => new { r.AuthorUserId, r.StudioId }).IsUnique();
+            entity.HasIndex(r => new { r.AuthorUserId, r.ArtistId }).IsUnique();
+        });
     }
 }

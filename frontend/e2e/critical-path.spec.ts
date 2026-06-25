@@ -62,6 +62,7 @@ async function mockStudioRegistration(page: Page) {
           trialExpiresAt:       new Date(Date.now() + 14 * 86_400_000).toISOString(),
           createdAt:            new Date().toISOString(),
           isActive:             true,
+          slugLockedAt:         null,
         }),
       });
     } else {
@@ -102,6 +103,7 @@ async function mockStudioMe(page: Page) {
         trialExpiresAt:       new Date(Date.now() + 14 * 86_400_000).toISOString(),
         createdAt:            new Date().toISOString(),
         isActive:             true,
+        slugLockedAt:         null,
       }),
     });
   });
@@ -240,11 +242,18 @@ test.describe("Critical path — register, login, create appointment", () => {
     // ── Fill the booking form ──────────────────────────────────────────────
     // Artist picker: Radix Select with id="artistId", Label "Artist"
     await page.getByLabel("Artist").click();
+    await page.getByRole("option", { name: "Rafaela Costa" })
+      .waitFor({ state: "visible", timeout: 5_000 });
     await page.getByRole("option", { name: "Rafaela Costa" }).click();
 
     // Date & Time: datetime-local input, Label "Date & Time" (htmlFor="scheduledAt")
+    // Build a local datetime string — toISOString() is UTC, which causes past-date
+    // validation failures in timezones behind UTC.
     const future = new Date(Date.now() + 7 * 86_400_000);
-    const dateStr = future.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:MM"
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateStr =
+      `${future.getFullYear()}-${pad(future.getMonth() + 1)}-${pad(future.getDate())}` +
+      `T${pad(future.getHours())}:${pad(future.getMinutes())}`;
     await page.getByLabel("Date & Time").fill(dateStr);
 
     // Duration: number input, Label "Duration (min)" (htmlFor="durationMinutes")

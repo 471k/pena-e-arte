@@ -31,6 +31,12 @@ export function StudioMapPage() {
         </div>
         <nav className="flex items-center gap-3">
           <Link
+            to="/discover"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            List view
+          </Link>
+          <Link
             to="/login"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -63,12 +69,18 @@ export function StudioMapPage() {
               icon={studioPin}
             >
               <Popup>
-                <div className="min-w-[160px] space-y-1 py-0.5">
+                <div className="min-w-[160px] space-y-2 py-0.5">
                   <p className="font-semibold text-sm leading-tight">{studio.name}</p>
                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
                     <MapPin className="h-3 w-3 shrink-0" />
                     {studio.city}
                   </p>
+                  <a
+                    href={`/s/${studio.slug}`}
+                    className="block text-xs font-medium text-primary hover:underline"
+                  >
+                    View studio →
+                  </a>
                 </div>
               </Popup>
             </Marker>

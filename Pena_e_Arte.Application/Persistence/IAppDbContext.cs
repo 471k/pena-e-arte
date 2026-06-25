@@ -30,5 +30,8 @@ public interface IAppDbContext
     DbSet<ReferralCode>        ReferralCodes       { get; }
     DbSet<ReferralRedemption>  ReferralRedemptions { get; }
 
+    // Cross-tenant public data
+    DbSet<Review> Reviews { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

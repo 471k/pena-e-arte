@@ -28,6 +28,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Subscription>       Subscriptions       => Set<Subscription>();
     public DbSet<ReferralCode>       ReferralCodes       => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
+    public DbSet<Review>             Reviews             => Set<Review>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

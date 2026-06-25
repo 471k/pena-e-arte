@@ -297,6 +297,21 @@ Frontend: features/map/ — read-only, no Redux slice needed, plain RTK Query
 
 ---
 
+## EmbedPage
+
+```
+/embed/:studioSlug  EmbedPage     Booking widget for embedding via <iframe> on studio
+                                  websites. Served from VITE_PUBLIC_URL domain. Uses
+                                  AllowAnonymous. No auth, no Redux — reads public studio
+                                  data only. Generated snippet lives in EmbedCodeCard.tsx.
+```
+
+When `EmbedPage` runs inside an iframe on a third-party site, `window.location.origin`
+is the admin app's origin, not the public marketing site. The studio page URL is therefore
+built using `VITE_PUBLIC_URL` (env var) with `window.location.origin` as a fallback.
+
+---
+
 ## IgnoreQueryFilters() Approved Usages
 
 This table is the canonical record of every approved `IgnoreQueryFilters()` call.

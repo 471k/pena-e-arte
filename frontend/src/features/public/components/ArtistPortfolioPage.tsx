@@ -5,6 +5,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useAppSelector } from "@/app/hooks";
 import { useGetPublicArtistQuery } from "../publicApi";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { ReviewSection } from "./ReviewSection";
 
 function ArtistMeta({ name, slug, bio, coverImage }: {
   name: string;
@@ -107,6 +108,8 @@ export function ArtistPortfolioPage() {
             </div>
           </div>
         )}
+
+        <ReviewSection slug={artist.slug} target="artist" token={token} />
       </div>
 
       <footer className="py-3 text-center text-xs text-muted-foreground border-t mt-8">

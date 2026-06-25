@@ -6,6 +6,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetPublicStudioQuery, type PublicArtistSummary } from "../publicApi";
 import { useAppSelector } from "@/app/hooks";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { ReviewSection } from "./ReviewSection";
 
 function ArtistCard({ artist }: { artist: PublicArtistSummary }) {
   return (
@@ -123,6 +124,8 @@ export function StudioPortfolioPage() {
             </div>
           </div>
         )}
+
+        <ReviewSection slug={studio.slug} target="studio" token={token} />
       </div>
 
       <footer className="py-3 text-center text-xs text-muted-foreground border-t mt-8">

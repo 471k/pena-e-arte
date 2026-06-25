@@ -15,13 +15,17 @@ vi.mock("react-router-dom", async (importOriginal) => {
   return { ...actual, useParams: () => ({ slug: "test-studio" }) };
 });
 
-const mockUseGetPublicStudioQuery = vi.fn();
+const mockUseGetPublicStudioQuery  = vi.fn();
+const mockUseGetStudioReviewsQuery = vi.fn();
 
 vi.mock("@/features/public/publicApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/public/publicApi")>();
   return {
     ...actual,
-    useGetPublicStudioQuery: (...args: unknown[]) => mockUseGetPublicStudioQuery(...args),
+    useGetPublicStudioQuery:      (...args: unknown[]) => mockUseGetPublicStudioQuery(...args),
+    useGetStudioReviewsQuery:     (...args: unknown[]) => mockUseGetStudioReviewsQuery(...args),
+    useCreateStudioReviewMutation: () => [vi.fn(), { isLoading: false }],
+    useCreateArtistReviewMutation: () => [vi.fn(), { isLoading: false }],
   };
 });
 
@@ -68,6 +72,7 @@ function renderPage(token: string | null = null) {
 describe("StudioPortfolioPage", () => {
   beforeEach(() => {
     mockUseGetPublicStudioQuery.mockReturnValue({ data: STUDIO, isLoading: false, isError: false });
+    mockUseGetStudioReviewsQuery.mockReturnValue({ data: [], isLoading: false });
   });
 
   it("renders studio name and city when data loads", () => {

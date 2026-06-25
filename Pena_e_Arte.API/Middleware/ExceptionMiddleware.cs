@@ -30,6 +30,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             ValidationException ve          => (StatusCodes.Status422UnprocessableEntity,
                                                 string.Join("; ", ve.Errors.Select(e => e.ErrorMessage))),
             NotFoundException               => (StatusCodes.Status404NotFound,              ex.Message),
+            ConflictException               => (StatusCodes.Status409Conflict,              ex.Message),
             SlotAlreadyBookedException      => (StatusCodes.Status409Conflict,              ex.Message),
             // Unique-index race (e.g. two payment attempts for one appointment) — 1062 = duplicate key
             DbUpdateException { InnerException: MySqlException { Number: 1062 } }

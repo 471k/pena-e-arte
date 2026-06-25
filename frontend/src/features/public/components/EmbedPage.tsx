@@ -1,7 +1,31 @@
 import { useParams } from "react-router-dom";
-import { CalendarDays, Loader2, MapPin } from "lucide-react";
+import { CalendarDays, MapPin } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetPublicStudioQuery, type PublicArtistSummary } from "../publicApi";
+
+const EMBED_BASE = import.meta.env.VITE_PUBLIC_URL ?? window.location.origin;
+
+function EmbedSkeleton() {
+  return (
+    <div className="min-h-screen bg-background flex flex-col" aria-label="Loading booking widget">
+      <Skeleton className="h-32 w-full rounded-none" />
+      <div className="flex-1 px-4 py-5 space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-full" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-md" />
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-12 w-full rounded-md" />
+          <Skeleton className="h-12 w-full rounded-md" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function isEmbedded(): boolean {
   try {
@@ -32,23 +56,21 @@ export function EmbedPage() {
   const embedded = isEmbedded();
   const { data: studio, isLoading, isError } = useGetPublicStudioQuery(studioSlug, { skip: !studioSlug });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  if (isLoading) return <EmbedSkeleton />;
 
   if (isError || !studio) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div
+        className="flex items-center justify-center min-h-screen bg-background"
+        role="alert"
+        aria-live="polite"
+      >
         <p className="text-sm text-muted-foreground">Studio not found.</p>
       </div>
     );
   }
 
-  const studioPageUrl = `${window.location.origin}/s/${studio.slug}`;
+  const studioPageUrl = `${EMBED_BASE}/s/${studio.slug}`;
 
   function handleBook() {
     if (embedded) {
