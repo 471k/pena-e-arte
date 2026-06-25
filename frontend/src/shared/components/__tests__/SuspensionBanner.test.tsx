@@ -17,6 +17,7 @@ const SUSPENDED_STUDIO: StudioResponse = {
   trialExpiresAt:       "2099-01-01T00:00:00Z",
   createdAt:            "2024-01-01T00:00:00Z",
   isActive:             false,
+  slugLockedAt:         null,
 };
 
 const ACTIVE_STUDIO: StudioResponse = { ...SUSPENDED_STUDIO, isActive: true };

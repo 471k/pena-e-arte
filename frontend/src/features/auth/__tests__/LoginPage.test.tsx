@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -15,15 +15,19 @@ import { LoginPage } from "@/features/auth/components/LoginPage";
 
 const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
 
+function toBase64Url(s: string) {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 function makeFakeJwt(role: string, email = "owner@test.com") {
-  const header  = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({
+  const header  = toBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = toBase64Url(JSON.stringify({
     sub:         "u-login-test",
     email,
     [ROLE_CLAIM]: role,
     tenant_id:   "t-test",
     exp:          9_999_999_999,
-  })).toString("base64url");
+  }));
   return `${header}.${payload}.fake-sig`;
 }
 

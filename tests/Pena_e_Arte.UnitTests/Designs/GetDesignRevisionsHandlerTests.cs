@@ -1,8 +1,10 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Designs.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Designs;
@@ -10,9 +12,10 @@ namespace Pena_e_Arte.UnitTests.Designs;
 public class GetDesignRevisionsHandlerTests
 {
     private readonly FakeDbContext _db       = FakeDbContext.Create();
+    private readonly IR2Service    _r2       = Substitute.For<IR2Service>();
     private readonly Guid          _studioId = Guid.NewGuid();
 
-    private GetDesignRevisionsHandler CreateSut() => new(_db);
+    private GetDesignRevisionsHandler CreateSut() => new(_db, _r2);
 
     [Fact]
     public async Task Handle_RevisionsExist_ReturnsInVersionOrder()

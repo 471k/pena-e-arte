@@ -24,6 +24,7 @@ const PLANS: PlanResponse[] = [
     priceYearly:           290,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
+    subscriberCount:       0,
   },
   {
     id:                    "plan-yearly",
@@ -33,6 +34,7 @@ const PLANS: PlanResponse[] = [
     priceYearly:           490,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  true,
+    subscriberCount:       0,
   },
 ];
 

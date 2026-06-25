@@ -38,6 +38,19 @@ public class GetNearbyStudiosHandler(IAppDbContext db)
             .Select(g => new { StudioId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.StudioId, x => x.Count, ct);
 
+        // Aggregate reviews per studio (Reviews has no global query filter — intentional).
+        // Approved: public discovery query.
+        Dictionary<Guid, (double Avg, int Count)> reviewStats = await db.Reviews
+            .Where(r => r.StudioId != null && studioIds.Contains(r.StudioId!.Value))
+            .GroupBy(r => r.StudioId!.Value)
+            .Select(g => new
+            {
+                StudioId = g.Key,
+                Avg      = g.Average(r => (double)r.Rating),
+                Count    = g.Count(),
+            })
+            .ToDictionaryAsync(x => x.StudioId, x => (x.Avg, x.Count), ct);
+
         return candidates
             .Select(s => new
             {
@@ -47,14 +60,20 @@ public class GetNearbyStudiosHandler(IAppDbContext db)
             .Where(x => x.Distance <= query.RadiusKm)
             .OrderBy(x => x.Distance)
             .Take(40)
-            .Select(x => new NearbyStudioResponse(
-                x.Studio.Id,
-                x.Studio.Name,
-                x.Studio.Slug,
-                x.Studio.City,
-                x.Studio.CoverImageUrl,
-                Math.Round(x.Distance, 1),
-                artistCounts.GetValueOrDefault(x.Studio.Id, 0)))
+            .Select(x =>
+            {
+                (double avg, int count) = reviewStats.GetValueOrDefault(x.Studio.Id, (0, 0));
+                return new NearbyStudioResponse(
+                    x.Studio.Id,
+                    x.Studio.Name,
+                    x.Studio.Slug,
+                    x.Studio.City,
+                    x.Studio.CoverImageUrl,
+                    Math.Round(x.Distance, 1),
+                    artistCounts.GetValueOrDefault(x.Studio.Id, 0),
+                    count > 0 ? Math.Round(avg, 1) : null,
+                    count);
+            })
             .ToList();
     }
 

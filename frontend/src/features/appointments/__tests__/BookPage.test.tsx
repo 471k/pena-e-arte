@@ -35,6 +35,7 @@ const STUDIO: StudioResponse = {
   showPlatformBranding: false, allowBrandingRemoval: false,
   trialExpiresAt: "2030-01-01T00:00:00Z",
   createdAt: "2024-01-01T00:00:00Z", isActive: true,
+  slugLockedAt: null,
 };
 
 const ARTIST: ArtistResponse = {

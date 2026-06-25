@@ -30,6 +30,7 @@ const STUDIO_ACTIVE: StudioResponse = {
   trialExpiresAt:       new Date(Date.now() + 14 * 86_400_000).toISOString(),
   createdAt:            "2024-01-01T00:00:00Z",
   isActive:             true,
+  slugLockedAt:         null,
 };
 
 const STUDIO_SUSPENDED: StudioResponse = {
@@ -78,6 +79,7 @@ const PLANS: PlanResponse[] = [
     priceYearly:           290,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
+    subscriberCount:       0,
   },
 ];
 

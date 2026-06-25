@@ -297,6 +297,20 @@ Frontend: features/map/ — read-only, no Redux slice needed, plain RTK Query
 
 ---
 
+## DiscoverPage
+
+```
+/discover           DiscoverPage  public/components/DiscoverPage.tsx
+                                  No auth required. Uses navigator.geolocation (browser API — useEffect ok).
+                                  Nominatim reverse-geocode on geo success to show "Near [City, Country]".
+                                  Nominatim forward-geocode in event handler for manual city search.
+                                  API: GET /api/v1/public/studios/nearby?lat&lng&radiusKm
+                                  NearbyStudioResponse includes AverageRating + ReviewCount (from Reviews table,
+                                  no query filter — computed in GetNearbyStudiosQuery handler).
+```
+
+---
+
 ## EmbedPage
 
 ```

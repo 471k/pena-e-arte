@@ -42,15 +42,19 @@ vi.mock("@/shared/components/ui/location-picker", () => ({
 
 const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
 
+function toBase64Url(s: string) {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 function makeFakeJwt(role: string, email = "owner@test.com") {
-  const header  = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({
+  const header  = toBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = toBase64Url(JSON.stringify({
     sub:          "u-reg-test",
     email,
     [ROLE_CLAIM]:  role,
     tenant_id:    "t-reg",
     exp:           9_999_999_999,
-  })).toString("base64url");
+  }));
   return `${header}.${payload}.fake-sig`;
 }
 
@@ -260,7 +264,7 @@ describe("RegisterStudioPage — step 2", () => {
   });
 
   it("successful registration navigates to /dashboard", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderPage();
 
     await advanceToStep2(user);
@@ -273,7 +277,7 @@ describe("RegisterStudioPage — step 2", () => {
   });
 
   it("dispatches credentials after successful registration", async () => {
-    const user  = userEvent.setup();
+    const user  = userEvent.setup({ delay: null });
     const store = renderPage();
 
     await advanceToStep2(user);
@@ -289,7 +293,7 @@ describe("RegisterStudioPage — step 2", () => {
   });
 
   it("clears the pending referral code after successful registration", async () => {
-    const user  = userEvent.setup();
+    const user  = userEvent.setup({ delay: null });
     const store = renderPage("/register?ref=PROMO50");
 
     await advanceToStep2(user);

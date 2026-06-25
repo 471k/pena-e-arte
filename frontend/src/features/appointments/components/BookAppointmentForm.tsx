@@ -97,7 +97,7 @@ export function BookAppointmentForm() {
     });
     if ("data" in result) {
       toast.success("Appointment requested.");
-      setBooked(result.data);
+      setBooked(result.data ?? null);
     } else {
       toast.error("Failed to book appointment.");
     }

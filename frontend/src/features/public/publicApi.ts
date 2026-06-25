@@ -45,6 +45,8 @@ export interface NearbyStudioResponse {
   coverImageUrl: string | null;
   distanceKm:    number;
   artistCount:   number;
+  averageRating: number | null;  // null = no reviews
+  reviewCount:   number;
 }
 
 export interface ReviewResponse {

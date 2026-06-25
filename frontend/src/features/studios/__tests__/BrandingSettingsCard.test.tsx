@@ -25,6 +25,7 @@ const STUDIO_BRANDING_ON: StudioResponse = {
   trialExpiresAt:       "2099-01-01T00:00:00Z",
   createdAt:            "2025-01-01T00:00:00Z",
   isActive:             true,
+  slugLockedAt:         null,
 };
 
 const STUDIO_BRANDING_REMOVABLE: StudioResponse = {

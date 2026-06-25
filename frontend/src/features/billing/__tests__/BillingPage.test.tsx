@@ -26,6 +26,7 @@ const PLANS: PlanResponse[] = [
     priceYearly:           290,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
+    subscriberCount:       0,
   },
   {
     id:                    "plan-2",
@@ -35,6 +36,7 @@ const PLANS: PlanResponse[] = [
     priceYearly:           490,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  true,
+    subscriberCount:       0,
   },
 ];
 
@@ -50,6 +52,7 @@ const ACTIVE_STUDIO: StudioResponse = {
   trialExpiresAt:       "2099-01-01T00:00:00Z",
   createdAt:            "2024-01-01T00:00:00Z",
   isActive:             true,
+  slugLockedAt:         null,
 };
 
 const SUSPENDED_STUDIO: StudioResponse = { ...ACTIVE_STUDIO, isActive: false };

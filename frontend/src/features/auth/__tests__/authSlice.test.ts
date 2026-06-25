@@ -5,9 +5,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
 
+function toBase64Url(s: string) {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 function makeToken(claims: Record<string, unknown>): string {
-  const header  = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  const header  = toBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = toBase64Url(JSON.stringify(claims));
   return `${header}.${payload}.fakesig`;
 }
 

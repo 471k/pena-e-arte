@@ -5,6 +5,7 @@ import { configureStore, type EnhancedStore } from "@reduxjs/toolkit";
 import React from "react";
 
 import authReducer from "@/features/auth/authSlice";
+import { Role } from "@/shared/types/roles";
 import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { designsApi } from "@/features/designs/designsApi";
@@ -61,17 +62,18 @@ function makeStore(): EnhancedStore<any> {
       [notificationsApi.reducerPath]:    notificationsApi.reducer,
     },
     middleware: (gd) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       gd().concat(
         appointmentsApi.middleware,
         designsApi.middleware,
         notificationsApi.middleware,
-      ),
+      ) as any,
     preloadedState: {
       auth: {
         user:                { id: "u1", email: "owner@test.com" },
         token:               "fake-jwt-token",
         tenantId:            "studio-0001",
-        role:                "Owner",
+        role:                Role.Owner,
         pendingReferralCode: null,
       },
     },
@@ -153,7 +155,7 @@ describe("useSignalR", () => {
 
     act(() => { eventHandlers["DesignUploaded"](); });
 
-    const types = dispatchSpy.mock.calls.map(([a]) =>
+    const types = dispatchSpy.mock.calls.map(([a]: [unknown]) =>
       (a as { type: string }).type,
     );
     expect(types).toContain(designsApi.util.invalidateTags.type);
@@ -166,7 +168,7 @@ describe("useSignalR", () => {
 
     act(() => { eventHandlers["DesignUploaded"](); });
 
-    const types = dispatchSpy.mock.calls.map(([a]) =>
+    const types = dispatchSpy.mock.calls.map(([a]: [unknown]) =>
       (a as { type: string }).type,
     );
     expect(types).not.toContain(appointmentsApi.util.invalidateTags.type);
@@ -179,7 +181,7 @@ describe("useSignalR", () => {
 
     act(() => { eventHandlers["DesignUploaded"](); });
 
-    const types = dispatchSpy.mock.calls.map(([a]) =>
+    const types = dispatchSpy.mock.calls.map(([a]: [unknown]) =>
       (a as { type: string }).type,
     );
     expect(types).not.toContain(notificationsApi.util.invalidateTags.type);
@@ -200,7 +202,7 @@ describe("useSignalR", () => {
 
     act(() => { eventHandlers[event](); });
 
-    const types = dispatchSpy.mock.calls.map(([a]) =>
+    const types = dispatchSpy.mock.calls.map(([a]: [unknown]) =>
       (a as { type: string }).type,
     );
     expect(types).toContain(appointmentsApi.util.invalidateTags.type);
@@ -219,7 +221,7 @@ describe("useSignalR", () => {
 
     act(() => { eventHandlers[event](); });
 
-    const types = dispatchSpy.mock.calls.map(([a]) =>
+    const types = dispatchSpy.mock.calls.map(([a]: [unknown]) =>
       (a as { type: string }).type,
     );
     expect(types).not.toContain(designsApi.util.invalidateTags.type);
@@ -234,7 +236,7 @@ describe("useSignalR", () => {
 
     act(() => { eventHandlers["NotificationReceived"](); });
 
-    const types = dispatchSpy.mock.calls.map(([a]) =>
+    const types = dispatchSpy.mock.calls.map(([a]: [unknown]) =>
       (a as { type: string }).type,
     );
     expect(types).toContain(notificationsApi.util.invalidateTags.type);
@@ -247,7 +249,7 @@ describe("useSignalR", () => {
 
     act(() => { eventHandlers["NotificationReceived"](); });
 
-    const types = dispatchSpy.mock.calls.map(([a]) =>
+    const types = dispatchSpy.mock.calls.map(([a]: [unknown]) =>
       (a as { type: string }).type,
     );
     expect(types).not.toContain(designsApi.util.invalidateTags.type);
@@ -296,8 +298,8 @@ describe("useSignalR", () => {
     act(() => { eventHandlers["DesignUploaded"](); });
 
     const designInvalidations = dispatchSpy.mock.calls
-      .map(([a]) => a as ReturnType<typeof designsApi.util.invalidateTags>)
-      .filter((a) => a.type === designsApi.util.invalidateTags.type);
+      .map(([a]: [unknown]) => a as ReturnType<typeof designsApi.util.invalidateTags>)
+      .filter((a: ReturnType<typeof designsApi.util.invalidateTags>) => a.type === designsApi.util.invalidateTags.type);
 
     expect(designInvalidations).toHaveLength(1);
     expect(designInvalidations[0].payload).toEqual(["Design"]);
@@ -311,8 +313,8 @@ describe("useSignalR", () => {
     act(() => { eventHandlers["AppointmentCreated"](); });
 
     const apptInvalidations = dispatchSpy.mock.calls
-      .map(([a]) => a as ReturnType<typeof appointmentsApi.util.invalidateTags>)
-      .filter((a) => a.type === appointmentsApi.util.invalidateTags.type);
+      .map(([a]: [unknown]) => a as ReturnType<typeof appointmentsApi.util.invalidateTags>)
+      .filter((a: ReturnType<typeof appointmentsApi.util.invalidateTags>) => a.type === appointmentsApi.util.invalidateTags.type);
 
     expect(apptInvalidations).toHaveLength(1);
     expect(apptInvalidations[0].payload).toEqual(["Appointment"]);

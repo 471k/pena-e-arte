@@ -64,7 +64,7 @@ function makeStore(role: string | null) {
 function makeWrapper(role: string | null) {
   const store = makeStore(role);
   return function Wrapper({ children }: { children: ReactNode }) {
-    return React.createElement(Provider, { store }, children);
+    return React.createElement(Provider, { store, children });
   };
 }
 
