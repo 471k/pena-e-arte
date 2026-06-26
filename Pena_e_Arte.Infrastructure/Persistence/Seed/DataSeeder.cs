@@ -277,21 +277,17 @@ public static class DataSeeder
             [S2Artist1Id] = "luis-rodrigues",
         };
 
-        bool changed = false;
+        // Approved: public portfolio query — see architecture.md AllowAnonymous Exceptions.
+        // Uses ExecuteUpdateAsync (bulk UPDATE) instead of load-track-save so that:
+        //   1. No EF Core change-tracker involvement — avoids snapshot/converter edge-cases.
+        //   2. Matches both NULL and '' slugs — the migration default left some rows as ''.
         foreach ((Guid id, string slug) in assignments)
         {
-            // Approved: public portfolio query — see architecture.md AllowAnonymous Exceptions
-            Artist? artist = await db.Artists
+            await db.Artists
                 .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(a => a.Id == id && a.Slug == null);
-            if (artist is not null)
-            {
-                artist.SetSlug(slug);
-                changed = true;
-            }
+                .Where(a => a.Id == id && (a.Slug == null || a.Slug == string.Empty))
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.Slug, slug));
         }
-
-        if (changed) await db.SaveChangesAsync();
     }
 
     private static async Task SeedStudio1EntitiesAsync(AppDbContext db)
