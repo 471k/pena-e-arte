@@ -58,7 +58,7 @@ describe("ReviewSection — success auto-dismiss", () => {
     fireEvent.click(ratingButtons[4]);
 
     // Fill in review body
-    const textarea = screen.getByRole("textbox", { name: /review text/i });
+    const textarea = screen.getByRole("textbox", { name: /write a review/i });
     fireEvent.change(textarea, { target: { value: "Excellent work, highly recommend!" } });
 
     // Submit
@@ -92,5 +92,24 @@ describe("ReviewSection — success auto-dismiss", () => {
     // Should use the muted container classes, not a bare <p> with text-green-600
     expect(status.tagName).toBe("DIV");
     expect(status.className).toContain("green-950");
+  });
+});
+
+describe("ReviewSection — unauthenticated gate", () => {
+  it("shows sign-in gate instead of form when unauthenticated", () => {
+    renderSection(null);
+    expect(
+      screen.getByText(/sign in to share your experience/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /sign in to leave a review/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /write a review/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the form when authenticated", () => {
+    renderSection("test-token");
+    expect(screen.getByRole("textbox", { name: /write a review/i })).toBeInTheDocument();
+    expect(screen.queryByText(/sign in to share your experience/i)).not.toBeInTheDocument();
   });
 });

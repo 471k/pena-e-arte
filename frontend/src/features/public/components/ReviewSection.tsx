@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { MessageSquare, CheckCircle } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -54,7 +54,6 @@ interface ReviewFormProps {
 }
 
 function ReviewForm({ slug, token, target }: ReviewFormProps) {
-  const navigate = useNavigate();
   const [rating,  setRating]  = useState(0);
   const [body,    setBody]    = useState("");
   const [error,   setError]   = useState<string | null>(null);
@@ -72,12 +71,6 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
   }, [success]);
 
   function handleSubmit() {
-    if (!token) {
-      const returnUrl = target === "studio" ? `/s/${slug}` : `/artist/${slug}`;
-      navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`);
-      return;
-    }
-
     if (rating === 0) { setError("Please select a star rating."); return; }
     if (body.trim().length < 10) { setError("Review must be at least 10 characters."); return; }
 
@@ -115,11 +108,30 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
     );
   }
 
+  if (!token) {
+    const returnUrl = target === "studio" ? `/s/${slug}` : `/artist/${slug}`;
+    return (
+      <div
+        className="rounded-lg border bg-muted/20 px-5 py-6
+                   flex flex-col items-center gap-3 text-center"
+      >
+        <p className="text-sm text-muted-foreground">
+          Sign in to share your experience with this {target}.
+        </p>
+        <Button size="sm" asChild>
+          <Link to={`/login?redirect=${encodeURIComponent(returnUrl)}`}>
+            Sign in to leave a review
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
-      <p className="text-xs text-muted-foreground font-medium tracking-wide uppercase">
+      <label htmlFor="review-body" className="text-sm font-medium">
         Write a review
-      </p>
+      </label>
 
       <StarRating
         value={rating}
@@ -128,6 +140,8 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
       />
 
       <textarea
+        id="review-body"
+        aria-label="Write a review"
         className="w-full min-h-[80px] resize-none rounded-md border bg-background px-3 py-2 text-sm
                    focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
         placeholder="Share your experience…"
@@ -140,18 +154,10 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
             handleSubmit();
           }
         }}
-        aria-label="Review text"
       />
 
       {error && (
         <p className="text-xs text-destructive" role="alert">{error}</p>
-      )}
-
-      {!token && (
-        <p className="text-xs text-muted-foreground">
-          <Link to="/login" className="underline underline-offset-2">Sign in</Link>
-          {" "}to post your review.
-        </p>
       )}
 
       <Button
@@ -160,7 +166,7 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
         disabled={isSubmitting}
         aria-label="Submit review"
       >
-        {isSubmitting ? "Submitting…" : token ? "Submit review" : "Sign in to review"}
+        {isSubmitting ? "Submitting…" : "Submit review"}
       </Button>
     </div>
   );

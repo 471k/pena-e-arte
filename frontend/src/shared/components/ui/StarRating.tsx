@@ -59,6 +59,11 @@ export function StarRating(props: Props) {
           />
         );
       })}
+      {props.interactive && (
+        <span className="sr-only" aria-live="polite">
+          {value === 0 ? "No rating selected" : `${value} star${value !== 1 ? "s" : ""} selected`}
+        </span>
+      )}
     </div>
   );
 }

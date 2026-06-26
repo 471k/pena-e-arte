@@ -22,8 +22,8 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/public/publicApi")>();
   return {
     ...actual,
-    useGetPublicStudioQuery:      (...args: unknown[]) => mockUseGetPublicStudioQuery(...args),
-    useGetStudioReviewsQuery:     (...args: unknown[]) => mockUseGetStudioReviewsQuery(...args),
+    useGetPublicStudioQuery:       (...args: unknown[]) => mockUseGetPublicStudioQuery(...args),
+    useGetStudioReviewsQuery:      (...args: unknown[]) => mockUseGetStudioReviewsQuery(...args),
     useCreateStudioReviewMutation: () => [vi.fn(), { isLoading: false }],
     useCreateArtistReviewMutation: () => [vi.fn(), { isLoading: false }],
   };
@@ -32,15 +32,42 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const STUDIO: PublicStudioResponse = {
-  studioId:      "studio-001",
-  name:          "Ink Soul",
-  slug:          "test-studio",
-  city:          "Porto",
-  description:   "Premier tattoo studio in Porto.",
-  coverImageUrl: "https://cdn.example.com/cover.jpg",
-  artists:       [
-    { artistId: "artist-001", name: "Maria Silva", slug: "maria-silva", bio: "Specialises in neo-trad." },
-    { artistId: "artist-002", name: "João Costa",  slug: "joao-costa",  bio: null },
+  studioId:        "studio-001",
+  name:            "Ink Soul",
+  slug:            "test-studio",
+  city:            "Porto",
+  description:     "Premier tattoo studio in Porto.",
+  coverImageUrl:   "https://cdn.example.com/cover.jpg",
+  phoneNumber:     "+351 912 345 678",
+  instagramHandle: "inksoultattoo",
+  averageRating:   4.7,
+  reviewCount:     12,
+  galleryImages:   [
+    "https://cdn.example.com/art1.jpg",
+    "https://cdn.example.com/art2.jpg",
+    "https://cdn.example.com/art3.jpg",
+  ],
+  artists: [
+    {
+      artistId:        "artist-001",
+      name:            "Maria Silva",
+      slug:            "maria-silva",
+      bio:             "Specialises in neo-trad.",
+      profileImageUrl: null,
+      specializations: "Neo-Traditional, Illustrative",
+      averageRating:   4.9,
+      reviewCount:     8,
+    },
+    {
+      artistId:        "artist-002",
+      name:            "João Costa",
+      slug:            "joao-costa",
+      bio:             null,
+      profileImageUrl: null,
+      specializations: null,
+      averageRating:   null,
+      reviewCount:     0,
+    },
   ],
   showBookingCta: true,
 };
@@ -78,12 +105,13 @@ describe("StudioPortfolioPage", () => {
   it("renders studio name and city when data loads", () => {
     renderPage();
     expect(screen.getByText("Ink Soul")).toBeInTheDocument();
-    expect(screen.getByText("Porto")).toBeInTheDocument();
+    // City appears in main content and sidebar
+    expect(screen.getAllByText("Porto").length).toBeGreaterThan(0);
   });
 
   it("renders cover image when coverImageUrl is present", () => {
     renderPage();
-    const img = screen.getByRole("img", { name: "Ink Soul" });
+    const img = screen.getByRole("img", { name: /Ink Soul cover/i });
     expect(img).toHaveAttribute("src", STUDIO.coverImageUrl);
   });
 
@@ -105,20 +133,20 @@ describe("StudioPortfolioPage", () => {
     expect(screen.getByText("Studio not found.")).toBeInTheDocument();
   });
 
-  it("renders 'Book here' CTA when showBookingCta is true", () => {
+  it("renders 'Book an Appointment' CTA when showBookingCta is true", () => {
     renderPage();
-    expect(screen.getByRole("link", { name: "Book here" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Book an Appointment" })).toBeInTheDocument();
   });
 
-  it("Book here links to /login redirect when unauthenticated", () => {
+  it("Book an Appointment links to /login redirect when unauthenticated", () => {
     renderPage(null);
-    const link = screen.getByRole("link", { name: "Book here" });
+    const link = screen.getByRole("link", { name: "Book an Appointment" });
     expect(link.getAttribute("href")).toMatch(/\/login/);
   });
 
-  it("Book here links directly to /book when authenticated", () => {
+  it("Book an Appointment links directly to /book when authenticated", () => {
     renderPage("fake-token");
-    const link = screen.getByRole("link", { name: "Book here" });
+    const link = screen.getByRole("link", { name: "Book an Appointment" });
     expect(link.getAttribute("href")).toMatch(/\/book/);
     expect(link.getAttribute("href")).not.toMatch(/\/login/);
   });
@@ -133,5 +161,63 @@ describe("StudioPortfolioPage", () => {
     renderPage();
     const canonical = document.head.querySelector('link[rel="canonical"]');
     expect(canonical?.getAttribute("href")).toContain("test-studio");
+  });
+
+  // ── New tests ────────────────────────────────────────────────────────────────
+
+  it("renders studio rating when reviewCount > 0", () => {
+    renderPage();
+    expect(screen.getByText(/4\.7/)).toBeInTheDocument();
+    expect(screen.getByText(/12 reviews/)).toBeInTheDocument();
+  });
+
+  it("renders phone number link when phoneNumber is set", () => {
+    renderPage();
+    const phoneLink = screen.getByRole("link", { name: /call ink soul/i });
+    expect(phoneLink).toHaveAttribute("href", "tel:+351 912 345 678");
+  });
+
+  it("renders Instagram link when instagramHandle is set", () => {
+    renderPage();
+    const igLink = screen.getByRole("link", { name: /instagram/i });
+    expect(igLink).toHaveAttribute("href", "https://instagram.com/inksoultattoo");
+  });
+
+  it("renders gallery images when galleryImages is not empty", () => {
+    renderPage();
+    const galleryButtons = screen.getAllByRole("button", { name: /view portfolio image/i });
+    expect(galleryButtons).toHaveLength(3);
+  });
+
+  it("gallery section is hidden when galleryImages is empty", () => {
+    mockUseGetPublicStudioQuery.mockReturnValue({
+      data: { ...STUDIO, galleryImages: [] },
+      isLoading: false,
+      isError: false,
+    });
+    renderPage();
+    expect(screen.queryByRole("button", { name: /view portfolio image/i })).not.toBeInTheDocument();
+  });
+
+  it("artist cards include ChevronRight affordance via aria-label on the Link", () => {
+    renderPage();
+    expect(screen.getByRole("link", { name: "View Maria Silva's portfolio" })).toBeInTheDocument();
+  });
+
+  it("renders artist specialization under artist name", () => {
+    renderPage();
+    expect(screen.getByText("Neo-Traditional")).toBeInTheDocument();
+  });
+
+  it("'Browse studios' back link points to /discover", () => {
+    renderPage();
+    const backLink = screen.getByRole("link", { name: /back to studio discovery/i });
+    expect(backLink).toHaveAttribute("href", "/discover");
+  });
+
+  it("cover image renders with alt text including studio name", () => {
+    renderPage();
+    const img = screen.getByRole("img", { name: /Ink Soul cover/i });
+    expect(img).toHaveAttribute("src", STUDIO.coverImageUrl);
   });
 });

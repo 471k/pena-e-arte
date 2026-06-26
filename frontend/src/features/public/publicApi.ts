@@ -2,21 +2,30 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "@/app/store";
 
 export interface PublicArtistSummary {
-  artistId: string;
-  name:     string;
-  slug:     string;
-  bio:      string | null;
+  artistId:        string;
+  name:            string;
+  slug:            string;
+  bio:             string | null;
+  profileImageUrl: string | null;
+  specializations: string | null;
+  averageRating:   number | null;
+  reviewCount:     number;
 }
 
 export interface PublicStudioResponse {
-  studioId:      string;
-  name:          string;
-  slug:          string;
-  city:          string;
-  description:   string | null;
-  coverImageUrl: string | null;
-  artists:       PublicArtistSummary[];
-  showBookingCta: boolean;
+  studioId:        string;
+  name:            string;
+  slug:            string;
+  city:            string;
+  description:     string | null;
+  coverImageUrl:   string | null;
+  phoneNumber:     string | null;
+  instagramHandle: string | null;
+  averageRating:   number | null;
+  reviewCount:     number;
+  galleryImages:   string[];
+  artists:         PublicArtistSummary[];
+  showBookingCta:  boolean;
 }
 
 export interface PublicArtistResponse {

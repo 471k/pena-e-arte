@@ -184,6 +184,26 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
 | 10 | Public Portfolio Pages | Reads `Studio`, `Artist` (read-only, no tenant filter) | None — public SEO endpoints | Platform-wide |
 
+#### StudioPortfolioPage (`/s/{slug}`)
+
+```
+Component:   public/components/StudioPortfolioPage.tsx
+Auth:        AllowAnonymous. No auth required.
+Layout:      Two-column desktop: lg:grid-cols-[1fr_300px] — left column (hero, info, artists,
+             gallery, reviews) + sticky right sidebar (CTA, phone, Instagram, city).
+Hero:        CoverImageUrl or initials monogram, h-72. Gradient overlay shows studio name in h1.
+Gallery:     Aggregated from artists' PortfolioImages (max 3 per artist, max 9 total,
+             round-robin). Lightbox via shadcn Dialog (no extra package).
+Artist cards: Enriched with avatar (ProfileImageUrl or initials monogram), primary specialty,
+             per-artist rating from PublicArtistSummary. ChevronRight affordance + aria-label.
+Dedup:       DistinctBy(a => a.Id) in GetPublicStudioHandler — guards against bad data.
+Contact:     PhoneNumber, InstagramHandle added by AddStudioContactInfo migration.
+Reviews:     Studio-level aggregate (AverageRating, ReviewCount) displayed under name.
+             Per-artist aggregate shown on each artist card.
+Back nav:    "Browse studios" → /discover, min-h-[44px] touch target.
+CTA:         bg-violet-600 filled button. Unauthenticated → /login?redirect=/book?studio={slug}.
+```
+
 #### ArtistPortfolioPage (`/a/{slug}`)
 
 ```
