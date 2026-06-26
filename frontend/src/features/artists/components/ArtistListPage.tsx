@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useNavigate } from "react-router-dom";
 import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -43,6 +44,7 @@ export function ArtistListPage() {
   }, [inputValue]);
 
   const { data: artists, isLoading, isError } = useGetArtistsQuery(search);
+  const errorMessage = useSuspensionAwareError(isError, "Failed to load artists. Please try again.");
   const [deleteArtist, { isLoading: isDeletingArtist }] = useDeleteArtistMutation();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [selectedSpec, setSelectedSpec]       = useState<string | null>(null);
@@ -229,9 +231,9 @@ export function ArtistListPage() {
           </div>
         )}
 
-        {isError && (
-          <p className="text-center text-sm text-destructive py-16">
-            Failed to load artists. Please try again.
+        {errorMessage && (
+          <p className="text-center text-sm text-destructive py-16" role="alert">
+            {errorMessage}
           </p>
         )}
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { CalendarDays, ChevronLeft, ChevronRight, PenLine } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -53,6 +54,8 @@ export function SchedulePage() {
     from: weekStart.toISOString(),
     to:   weekEnd.toISOString(),
   });
+
+  const errorMessage = useSuspensionAwareError(isError, "Failed to load appointments. Please try again.");
 
   const weekLabel =
     weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) +
@@ -115,9 +118,9 @@ export function SchedulePage() {
         <SchedulePageSkeleton />
       ) : (
         <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
-          {isError && (
-            <p className="text-center text-sm text-destructive py-16">
-              Failed to load appointments. Please try again.
+          {errorMessage && (
+            <p className="text-center text-sm text-destructive py-16" role="alert">
+              {errorMessage}
             </p>
           )}
 

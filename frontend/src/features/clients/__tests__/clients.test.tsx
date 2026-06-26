@@ -8,6 +8,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
+import uiReducer from "@/features/ui/uiSlice";
 import { clientsApi } from "@/features/clients/clientsApi";
 import type { ClientResponse } from "@/features/clients/clientsApi";
 import { ClientListPage } from "@/features/clients/components/ClientListPage";
@@ -75,12 +76,14 @@ function makeStore(role: Role = Role.Owner) {
   return configureStore({
     reducer: {
       auth: authReducer,
+      ui:   uiReducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
     },
     middleware: (gd) => gd().concat(clientsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@ink-soul.test" }, token: "fake", tenantId: "t1", role } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false },
     },
   });
 }

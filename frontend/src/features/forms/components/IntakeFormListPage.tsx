@@ -1,4 +1,5 @@
 import { ClipboardList, User } from "lucide-react";
+import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -89,6 +90,7 @@ export function IntakeFormListPage() {
   const appointmentId = searchParams.get("appointmentId") ?? undefined;
 
   const { data: forms, isLoading, isError } = useGetIntakeFormsQuery({ clientId, appointmentId });
+  const errorMessage = useSuspensionAwareError(isError, "Failed to load intake forms. Please try again.");
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,9 +125,9 @@ export function IntakeFormListPage() {
           </div>
         )}
 
-        {isError && (
-          <p className="text-center text-sm text-destructive py-16">
-            Failed to load intake forms. Please try again.
+        {errorMessage && (
+          <p className="text-center text-sm text-destructive py-16" role="alert">
+            {errorMessage}
           </p>
         )}
 

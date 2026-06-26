@@ -49,7 +49,8 @@ afterAll(() => server.close());
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 type StoreOverrides = {
-  readOnlyError?: string | null;
+  readOnlyError?:   string | null;
+  studioSuspended?: boolean;
 };
 
 function makeStore(overrides: StoreOverrides = {}) {
@@ -65,7 +66,7 @@ function makeStore(overrides: StoreOverrides = {}) {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u2", email: "artist@ink.test" }, token: "fake", tenantId: "t1", role: "artist", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false },
+      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: overrides.studioSuspended ?? false },
     },
   });
 }
@@ -187,5 +188,22 @@ describe("ArtistLayout", () => {
     expect(scheduleLink.className).toMatch(/bg-primary/);
     const clientsLink = screen.getByRole("link", { name: /^clients$/i });
     expect(clientsLink.className).not.toMatch(/bg-primary/);
+  });
+
+  it("SuspensionBanner is hidden when studio is not suspended", () => {
+    renderLayout({ studioSuspended: false });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("SuspensionBanner is visible when studioSuspended is true in ui state", () => {
+    renderLayout({ studioSuspended: true });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText(/studio's account has been suspended/i)).toBeInTheDocument();
+  });
+
+  it("SuspensionBanner shows artist-role copy (not owner reactivation link)", () => {
+    renderLayout({ studioSuspended: true });
+    expect(screen.queryByRole("link", { name: /reactivate your subscription/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/contact your studio owner/i)).toBeInTheDocument();
   });
 });

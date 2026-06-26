@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { Palette, Plus, Search } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
@@ -34,6 +35,7 @@ export function DesignListPage() {
   const artistId = searchParams.get("artistId") ?? undefined;
 
   const { data: designs, isLoading, isError } = useGetDesignsQuery({ clientId, artistId });
+  const errorMessage = useSuspensionAwareError(isError, "Failed to load designs. Please try again.");
 
   const [search, setSearch] = useState("");
 
@@ -91,9 +93,9 @@ export function DesignListPage() {
           </div>
         )}
 
-        {isError && (
-          <p className="text-center text-sm text-destructive py-16">
-            Failed to load designs. Please try again.
+        {errorMessage && (
+          <p className="text-center text-sm text-destructive py-16" role="alert">
+            {errorMessage}
           </p>
         )}
 

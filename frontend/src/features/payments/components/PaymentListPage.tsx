@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, CreditCard, Loader2, Plus, Search } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -75,6 +76,7 @@ export function PaymentListPage() {
     lastSeenId: cursor,
     pageSize:   PAGE_SIZE,
   });
+  const errorMessage = useSuspensionAwareError(isError, "Failed to load payments. Please try again.");
 
   const allPayments = cursor === undefined
     ? data ?? []
@@ -181,9 +183,9 @@ export function PaymentListPage() {
           </div>
         )}
 
-        {isError && (
-          <p className="text-center text-sm text-destructive py-16">
-            Failed to load payments. Please try again.
+        {errorMessage && (
+          <p className="text-center text-sm text-destructive py-16" role="alert">
+            {errorMessage}
           </p>
         )}
 

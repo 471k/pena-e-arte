@@ -23,30 +23,30 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
 
     private async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
-        (int statusCode, string message) = ex switch
+        (int statusCode, string message, string? code) = ex switch
         {
-            BadHttpRequestException          => (StatusCodes.Status400BadRequest,         "Invalid or missing request body."),
-            JsonException                   => (StatusCodes.Status400BadRequest,         "Invalid JSON in request body."),
+            BadHttpRequestException          => (StatusCodes.Status400BadRequest,         "Invalid or missing request body.",  (string?)null),
+            JsonException                   => (StatusCodes.Status400BadRequest,         "Invalid JSON in request body.",     null),
             ValidationException ve          => (StatusCodes.Status422UnprocessableEntity,
-                                                string.Join("; ", ve.Errors.Select(e => e.ErrorMessage))),
-            NotFoundException               => (StatusCodes.Status404NotFound,              ex.Message),
-            ConflictException               => (StatusCodes.Status409Conflict,              ex.Message),
-            SlotAlreadyBookedException      => (StatusCodes.Status409Conflict,              ex.Message),
+                                                string.Join("; ", ve.Errors.Select(e => e.ErrorMessage)), null),
+            NotFoundException               => (StatusCodes.Status404NotFound,              ex.Message, null),
+            ConflictException               => (StatusCodes.Status409Conflict,              ex.Message, null),
+            SlotAlreadyBookedException      => (StatusCodes.Status409Conflict,              ex.Message, null),
             // Unique-index race (e.g. two payment attempts for one appointment) — 1062 = duplicate key
             DbUpdateException { InnerException: MySqlException { Number: 1062 } }
                                             => (StatusCodes.Status409Conflict,
-                                                "This action was already completed by another request. Refresh and try again."),
-            DesignAlreadyApprovedException      => (StatusCodes.Status409Conflict,              ex.Message),
-            ConsentFormAlreadySignedException   => (StatusCodes.Status409Conflict,              ex.Message),
-            ForbiddenException                  => (StatusCodes.Status403Forbidden,           ex.Message),
-            TenantSuspendedException            => (StatusCodes.Status403Forbidden,           ex.Message),
-            SubscriptionRequiredException       => (StatusCodes.Status402PaymentRequired,     ex.Message),
-            BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message),
-            ServiceUnavailableException         => (StatusCodes.Status503ServiceUnavailable,  ex.Message),
-            UnauthorizedAccessException     => (StatusCodes.Status401Unauthorized,          ex.Message),
+                                                "This action was already completed by another request. Refresh and try again.", null),
+            DesignAlreadyApprovedException      => (StatusCodes.Status409Conflict,              ex.Message, null),
+            ConsentFormAlreadySignedException   => (StatusCodes.Status409Conflict,              ex.Message, null),
+            ForbiddenException                  => (StatusCodes.Status403Forbidden,           ex.Message, null),
+            TenantSuspendedException            => (StatusCodes.Status403Forbidden,           ex.Message, "STUDIO_SUSPENDED"),
+            SubscriptionRequiredException       => (StatusCodes.Status402PaymentRequired,     ex.Message, null),
+            BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message, null),
+            ServiceUnavailableException         => (StatusCodes.Status503ServiceUnavailable,  ex.Message, null),
+            UnauthorizedAccessException     => (StatusCodes.Status401Unauthorized,          ex.Message, null),
             StripeException stripeEx        => (StatusCodes.Status502BadGateway,
-                                                stripeEx.StripeError?.Message ?? stripeEx.Message),
-            _                               => (StatusCodes.Status500InternalServerError,   "An unexpected error occurred.")
+                                                stripeEx.StripeError?.Message ?? stripeEx.Message, null),
+            _                               => (StatusCodes.Status500InternalServerError,   "An unexpected error occurred.", null)
         };
 
         if (statusCode == StatusCodes.Status500InternalServerError)
@@ -55,6 +55,10 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
         context.Response.StatusCode  = statusCode;
         context.Response.ContentType = "application/json";
 
-        await context.Response.WriteAsync(JsonSerializer.Serialize(new { status = statusCode, message }));
+        object body = code is not null
+            ? new { status = statusCode, message, code }
+            : new { status = statusCode, message };
+
+        await context.Response.WriteAsync(JsonSerializer.Serialize(body));
     }
 }

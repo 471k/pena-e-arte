@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Plus, Search, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -39,6 +40,7 @@ export function ClientListPage() {
   }, [inputValue]);
 
   const { data: clients, isLoading, isError } = useGetClientsQuery(search);
+  const errorMessage = useSuspensionAwareError(isError, "Failed to load clients. Please try again.");
 
   const hasClients = (clients?.length ?? 0) > 0;
 
@@ -84,9 +86,9 @@ export function ClientListPage() {
           </div>
         )}
 
-        {isError && (
-          <p className="text-center text-sm text-destructive py-16">
-            Failed to load clients. Please try again.
+        {errorMessage && (
+          <p className="text-center text-sm text-destructive py-16" role="alert">
+            {errorMessage}
           </p>
         )}
 

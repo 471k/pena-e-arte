@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from "react";
+import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle, Banknote, CalendarDays, ChevronRight,
@@ -171,6 +172,7 @@ function TodaySection({
   isError:      boolean;
 }) {
   const navigate = useNavigate();
+  const errorMessage = useSuspensionAwareError(isError, "Failed to load appointments.");
 
   return (
     <Card>
@@ -205,8 +207,8 @@ function TodaySection({
             </div>
           )}
 
-          {isError && (
-            <p className="text-sm text-destructive py-4">Failed to load appointments.</p>
+          {errorMessage && (
+            <p className="text-sm text-destructive py-4" role="alert">{errorMessage}</p>
           )}
 
           {!isLoading && !isError && appointments?.length === 0 && (

@@ -90,6 +90,22 @@ public class ExceptionMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_TenantSuspendedException_BodyContainsSuspendedCode()
+    {
+        (_, string body) = await InvokeWithException(new TenantSuspendedException());
+        using JsonDocument doc = JsonDocument.Parse(body);
+        doc.RootElement.GetProperty("code").GetString().Should().Be("STUDIO_SUSPENDED");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ForbiddenException_BodyDoesNotContainCode()
+    {
+        (_, string body) = await InvokeWithException(new ForbiddenException("Access denied."));
+        using JsonDocument doc = JsonDocument.Parse(body);
+        doc.RootElement.TryGetProperty("code", out _).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task InvokeAsync_SubscriptionRequiredException_Returns402()
     {
         (int code, _) = await InvokeWithException(new SubscriptionRequiredException());
