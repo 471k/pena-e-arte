@@ -91,7 +91,7 @@ public class PublicPortfolioIntegrationTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         GetPublicArtistHandler handler = new(db);
-        PublicArtistResponse? result = await handler.Handle(new GetPublicArtistQuery("jane-doe"), default);
+        PublicArtistResponse? result = await handler.Handle(new GetPublicArtistQuery("jane-doe", null), default);
 
         result.Should().NotBeNull();
         result!.ArtistId.Should().Be(artist.Id);
@@ -104,7 +104,7 @@ public class PublicPortfolioIntegrationTests(DatabaseFixture fixture)
     {
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         GetPublicArtistHandler handler = new(db);
-        PublicArtistResponse? result = await handler.Handle(new GetPublicArtistQuery("no-such-artist"), default);
+        PublicArtistResponse? result = await handler.Handle(new GetPublicArtistQuery("no-such-artist", null), default);
 
         result.Should().BeNull();
     }
@@ -117,7 +117,7 @@ public class PublicPortfolioIntegrationTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         GetPublicArtistHandler handler = new(db);
-        PublicArtistResponse? result = await handler.Handle(new GetPublicArtistQuery("orphan-artist"), default);
+        PublicArtistResponse? result = await handler.Handle(new GetPublicArtistQuery("orphan-artist", null), default);
 
         result.Should().BeNull();
     }
@@ -130,7 +130,7 @@ public class PublicPortfolioIntegrationTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         GetPublicArtistHandler handler = new(db);
-        PublicArtistResponse? result = await handler.Handle(new GetPublicArtistQuery("gallery-artist"), default);
+        PublicArtistResponse? result = await handler.Handle(new GetPublicArtistQuery("gallery-artist", null), default);
 
         result!.PortfolioImages.Should().HaveCount(2);
     }

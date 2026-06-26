@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, CheckCircle } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { StarRating } from "@/shared/components/ui/StarRating";
@@ -65,6 +65,12 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
 
   const isSubmitting = target === "studio" ? isStudioSubmitting : isArtistSubmitting;
 
+  useEffect(() => {
+    if (!success) return;
+    const id = window.setTimeout(() => setSuccess(false), 4000);
+    return () => window.clearTimeout(id);
+  }, [success]);
+
   function handleSubmit() {
     if (!token) {
       const returnUrl = target === "studio" ? `/s/${slug}` : `/artist/${slug}`;
@@ -95,9 +101,17 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
 
   if (success) {
     return (
-      <p className="text-sm text-green-600 dark:text-green-400 py-2">
-        Thanks for your review!
-      </p>
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-2.5 rounded-lg border border-green-800/60
+                   bg-green-950/30 px-4 py-3"
+      >
+        <CheckCircle className="h-4 w-4 shrink-0 text-green-400" aria-hidden="true" />
+        <p className="text-sm text-green-400">
+          Review submitted — thank you!
+        </p>
+      </div>
     );
   }
 
@@ -211,8 +225,8 @@ export function ReviewSection({ slug, target, token }: Props) {
   return (
     <section className="space-y-5" aria-labelledby="reviews-heading">
       <div className="flex items-center gap-2">
-        <MessageSquare className="h-4 w-4 text-muted-foreground" />
-        <h2 id="reviews-heading" className="text-sm font-medium">Reviews</h2>
+        <MessageSquare className="h-5 w-5 text-muted-foreground/70" aria-hidden="true" />
+        <h2 id="reviews-heading" className="text-lg font-semibold">Reviews</h2>
       </div>
 
       <ReviewForm slug={slug} token={token} target={target} />

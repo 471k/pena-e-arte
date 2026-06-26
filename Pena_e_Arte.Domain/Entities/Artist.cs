@@ -12,6 +12,7 @@ public class Artist : TenantEntity
     public decimal?     HourlyRate      { get; set; }
     public string?      Slug            { get; private set; }
     public string?      Bio             { get; set; }
+    public string?      ProfileImageUrl { get; set; }
     public List<string> PortfolioImages { get; set; } = [];
 
     public void SetSlug(string slug) => Slug = slug;

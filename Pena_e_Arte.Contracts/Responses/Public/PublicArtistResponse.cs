@@ -5,7 +5,13 @@ public record PublicArtistResponse(
     string                Name,
     string                Slug,
     string?               Bio,
+    string?               ProfileImageUrl,
     IReadOnlyList<string> PortfolioImages,
+    string?               Specializations,
+    decimal?              HourlyRate,
+    double?               AverageRating,
+    int                   ReviewCount,
     string                StudioName,
     string                StudioSlug,
-    bool                  ShowBookingCta);
+    bool                  ShowBookingCta,
+    bool                  IsOwnProfile);

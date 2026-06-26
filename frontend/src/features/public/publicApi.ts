@@ -20,14 +20,20 @@ export interface PublicStudioResponse {
 }
 
 export interface PublicArtistResponse {
-  artistId:       string;
-  name:           string;
-  slug:           string;
-  bio:            string | null;
+  artistId:        string;
+  name:            string;
+  slug:            string;
+  bio:             string | null;
+  profileImageUrl: string | null;
   portfolioImages: string[];
-  studioName:     string;
-  studioSlug:     string;
-  showBookingCta: boolean;
+  specializations: string | null;
+  hourlyRate:      number | null;
+  averageRating:   number | null;
+  reviewCount:     number;
+  studioName:      string;
+  studioSlug:      string;
+  showBookingCta:  boolean;
+  isOwnProfile:    boolean;
 }
 
 export interface SharedDesignResponse {

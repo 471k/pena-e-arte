@@ -183,6 +183,23 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
 | 10 | Public Portfolio Pages | Reads `Studio`, `Artist` (read-only, no tenant filter) | None — public SEO endpoints | Platform-wide |
+
+#### ArtistPortfolioPage (`/a/{slug}`)
+
+```
+Component:   public/components/ArtistPortfolioPage.tsx
+Auth:        AllowAnonymous. ClaimsPrincipal injected by ASP.NET Core for IsOwnProfile.
+Layout:      Two-column desktop: lg:grid-cols-[340px_1fr] — sticky left panel (avatar, bio,
+             specializations, rate, booking CTA) + right column (portfolio masonry, reviews).
+Masonry:     CSS columns (no package). Lightbox via shadcn Dialog.
+Avatar:      Artist.ProfileImageUrl (DB column added by AddArtistProfileImageUrl migration);
+             falls back to initials monogram when null.
+New fields:  ProfileImageUrl, Specializations, HourlyRate, AverageRating, ReviewCount,
+             IsOwnProfile — all projected in GetPublicArtistQuery.
+View tracking: POST /api/v1/public/artists/{slug}/view (fire-and-forget Redis counter).
+Instagram:   InstagramHandle added by overnight-prompt-instagram-sync (not yet in contract —
+             add to PublicArtistResponse after that migration runs).
+```
 | 11 | Referral Code System | `ReferralCode`, `ReferralRedemption` | Stripe Billing discount coupon | Issuer-level |
 | 12 | Client Portable Profiles | `ClientProfile` cross-tenant read (opt-in) | `IgnoreQueryFilters` — issuer-scoped only | Cross-tenant (issuer) |
 | 13 | Design Share Token | `DesignShareToken` | Cloudflare R2, public time-limited endpoint | Per-tenant |
@@ -304,9 +321,27 @@ Frontend: features/map/ — read-only, no Redux slice needed, plain RTK Query
                                   No auth required. Uses navigator.geolocation (browser API — useEffect ok).
                                   Nominatim reverse-geocode on geo success to show "Near [City, Country]".
                                   Nominatim forward-geocode in event handler for manual city search.
-                                  API: GET /api/v1/public/studios/nearby?lat&lng&radiusKm
+                                  Two tabs: Portfolio (default) and Studios.
+
+Portfolio tab:      PortfolioFeed  public/components/PortfolioFeed.tsx
+                                  API: GET /api/v1/public/portfolio/feed?radiusKm&page[&lat&lng]
+                                  Handler: GetPortfolioFeedQuery (Application/Public/Queries/)
+                                  No auth. Approved AllowAnonymous exception — public discovery.
+                                  Scoring: Bayesian avg rating + log10(views+1)*0.5
+                                  View counts: Redis, key = portfolio:views:{artistId}
+                                  Max 3 images per artist; interleaved by artist rank.
+                                  Pagination: page/pageSize; RTK Query merge for infinite scroll.
+                                  "Near me" toggle filters feed to the user's radius.
+
+Artist View Counter  POST /api/v1/public/artists/{slug}/view
+                                  No auth. Fires from ArtistPortfolioPage on mount.
+                                  Redis INCR only — no DB write, no MediatR.
+                                  Approved: non-domain, non-PII write.
+
+Studios tab:        API: GET /api/v1/public/studios/nearby?lat&lng&radiusKm
                                   NearbyStudioResponse includes AverageRating + ReviewCount (from Reviews table,
                                   no query filter — computed in GetNearbyStudiosQuery handler).
+                                  Query is skipped unless Studios tab is active.
 ```
 
 ---
@@ -344,6 +379,9 @@ Never add a new one without updating this table and the Decisions Log.
 | 9  | `IssuerGenerateReferralCodeHandler`     | Cross-tenant studio lookup + referral code generation for issuer | IssuerOnly |
 | 10 | `ReactivateReferralCodeHandler`         | Cross-tenant referral code reactivation                          | IssuerOnly |
 | 11 | `DeleteReferralCodeHandler`             | Cross-tenant referral code deletion (unredeemed only)            | IssuerOnly |
+| 12 | `GetPortfolioFeedHandler` (Artists)     | Cross-tenant artist portfolio discovery; public feed             | Anonymous  |
+| 12 | `GetPortfolioFeedHandler` (Studios)     | Cross-tenant studio name/slug lookup for portfolio response      | Anonymous  |
+| 13 | `RecordArtistView` endpoint             | Cross-tenant artist slug lookup for Redis view counter           | Anonymous  |
 
 ---
 
@@ -361,6 +399,8 @@ The following are the only documented exceptions:
 | `GET /api/v1/studios/{id}/qr` | QR code image download | None — points to public portfolio URL only |
 | `POST /api/webhooks/stripe/billing` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
 | `POST /api/webhooks/stripe/connect` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
+| `GET /api/v1/public/portfolio/feed` | Public discovery portfolio feed | None — read-only public images, no PII |
+| `POST /api/v1/public/artists/{slug}/view` | Anonymous view counter for feed ranking | None — write-only to Redis, non-domain data |
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
 Never add new AllowAnonymous endpoints without adding a row to this table.

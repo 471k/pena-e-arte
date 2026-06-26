@@ -39,9 +39,15 @@ public static class PublicEndpoints
     private static async Task<IResult> GetPublicArtist(
         string            slug,
         ISender           mediator,
+        ClaimsPrincipal   user,
         CancellationToken ct)
     {
-        PublicArtistResponse? result = await mediator.Send(new GetPublicArtistQuery(slug), ct);
+        Guid? currentUserId = user.Identity?.IsAuthenticated == true
+            ? Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out Guid id) ? id : null
+            : null;
+
+        PublicArtistResponse? result =
+            await mediator.Send(new GetPublicArtistQuery(slug, currentUserId), ct);
         return result is null ? Results.NotFound() : Results.Ok(result);
     }
 
