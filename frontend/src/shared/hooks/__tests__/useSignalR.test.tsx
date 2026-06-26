@@ -62,11 +62,11 @@ function makeStore(): EnhancedStore<any> {
       [notificationsApi.reducerPath]:    notificationsApi.reducer,
     },
     middleware: (gd) =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       gd().concat(
         appointmentsApi.middleware,
         designsApi.middleware,
         notificationsApi.middleware,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ) as any,
     preloadedState: {
       auth: {

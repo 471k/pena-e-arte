@@ -119,7 +119,7 @@ describe("PortfolioFeed", () => {
   it("each tile links to the artist profile page", async () => {
     renderFeed();
     const tile = await screen.findByLabelText(/Tattoo by Ana Lima/i);
-    expect(tile).toHaveAttribute("href", "/a/ana-lima");
+    expect(tile).toHaveAttribute("href", "/artist/ana-lima");
   });
 
   it("'Load more' button is hidden when fewer than 24 images returned", async () => {

@@ -58,6 +58,9 @@ public static class PublicEndpoints
         ISender           mediator,
         CancellationToken ct)
     {
+        if (lat is < -90 or > 90 || lng is < -180 or > 180 || radiusKm is <= 0 or > 500)
+            return Results.BadRequest("Invalid lat/lng/radiusKm.");
+
         List<NearbyStudioResponse> result =
             await mediator.Send(new GetNearbyStudiosQuery(lat, lng, radiusKm), ct);
         return Results.Ok(result);
@@ -141,12 +144,14 @@ public static class PublicEndpoints
     private static async Task<IResult> GetPortfolioFeed(
         double?           lat,
         double?           lng,
-        double            radiusKm,
-        int               page,
         ISender           mediator,
         CancellationToken ct,
+        double            radiusKm = 50,
+        int               page     = 1,
         int               pageSize = 24)
     {
+        if (pageSize is < 1 or > 100) pageSize = 24;
+
         List<PortfolioImageResponse> result = await mediator.Send(
             new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize), ct);
         return Results.Ok(result);

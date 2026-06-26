@@ -90,6 +90,7 @@ describe("authSlice — loadInitialState (token bootstrap)", () => {
   // ── No-exp token ──────────────────────────────────────────────────────────────
 
   it("token without exp claim → treated as non-expiring, state hydrated", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { exp, ...withoutExp } = VALID_CLAIMS;
     const store = await makeStore(makeToken(withoutExp));
     expect(store.getState().auth.role).toBe("owner");
@@ -117,6 +118,7 @@ describe("authSlice — loadInitialState (token bootstrap)", () => {
   });
 
   it("missing role claim → falls back to 'client'", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [ROLE_CLAIM]: _, ...withoutRole } = VALID_CLAIMS;
     const store = await makeStore(makeToken(withoutRole));
     expect(store.getState().auth.role).toBe("client");

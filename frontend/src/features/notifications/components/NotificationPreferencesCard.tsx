@@ -51,6 +51,7 @@ export function NotificationPreferencesCard() {
 
   useEffect(() => {
     if (data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocal(buildMap(data.preferences));
       setDirty(false);
     }

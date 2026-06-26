@@ -99,7 +99,8 @@ public class StripeBillingService(
         string stripeSubscriptionId, string newPriceId, CancellationToken ct)
     {
         Stripe.Subscription sub = await subscriptionService.GetAsync(stripeSubscriptionId, null, null, ct);
-        string itemId = sub.Items.Data.First().Id;
+        string itemId = sub.Items?.Data?.FirstOrDefault()?.Id
+            ?? throw new InvalidOperationException($"Stripe subscription {stripeSubscriptionId} has no items.");
 
         SubscriptionUpdateOptions options = new()
         {
@@ -123,7 +124,8 @@ public class StripeBillingService(
         SubscriptionSchedule schedule = await scheduleService.CreateAsync(
             new SubscriptionScheduleCreateOptions { FromSubscription = stripeSubscriptionId }, null, ct);
 
-        SubscriptionSchedulePhase currentPhase = schedule.Phases.First();
+        SubscriptionSchedulePhase currentPhase = schedule.Phases?.FirstOrDefault()
+            ?? throw new InvalidOperationException($"Stripe schedule for subscription {stripeSubscriptionId} has no phases.");
 
         SubscriptionScheduleUpdateOptions options = new()
         {

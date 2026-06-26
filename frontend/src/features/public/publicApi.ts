@@ -102,7 +102,7 @@ export interface CreateReviewArgs {
 const publicBaseQuery = fetchBaseQuery({
   baseUrl: "/api/v1/public/",
   prepareHeaders: (headers, { getState }) => {
-    const token = (getState() as RootState).auth.token;
+    const token = (getState() as RootState).auth?.token;
     if (token) headers.set("Authorization", `Bearer ${token}`);
     return headers;
   },

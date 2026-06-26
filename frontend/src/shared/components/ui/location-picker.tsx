@@ -107,6 +107,7 @@ export function LocationPicker({ value, onChange, error, className }: LocationPi
   // this effect catches the update without needing a key-driven remount.
   useEffect(() => {
     if (value == null || isNaN(value.lat) || value.lat === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPin([value.lat, value.lng]);
     if (value.city) setLabel({ city: value.city, country: "" });
     setFlyTarget({ lat: value.lat, lng: value.lng, zoom: 13 });

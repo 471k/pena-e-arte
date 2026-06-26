@@ -74,6 +74,7 @@ export function ArtistListPage() {
   }, [artists, selectedSpec]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedSpec(null);
   }, [search]);
 

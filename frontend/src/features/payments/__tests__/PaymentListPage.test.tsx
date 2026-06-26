@@ -238,11 +238,9 @@ describe("PaymentListPage", () => {
       { ...PAYMENT_CASH, id: "pay-page-extra", appointmentId: "appt-extra", clientName: "Extra Client" },
     ];
 
-    let callCount = 0;
     server.use(
       http.get("http://localhost/api/v1/payments", ({ request }) => {
         const url = new URL(request.url);
-        callCount++;
         if (url.searchParams.get("lastSeenId")) {
           return HttpResponse.json(SECOND_PAGE);
         }

@@ -98,7 +98,7 @@ export function BillingPage() {
   // Must be before early returns to satisfy Rules of Hooks.
   const currentPlan = useMemo<PlanResponse | null>(
     () => (sub?.planId && plans ? (plans.find((p) => p.id === sub.planId) ?? null) : null),
-    [sub?.planId, plans],
+    [sub, plans],
   );
 
   // Returning from Stripe Checkout: reconcile the session (covers a missed webhook),

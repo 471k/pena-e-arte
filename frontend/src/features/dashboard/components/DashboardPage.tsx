@@ -58,6 +58,7 @@ interface BannerConfig {
 }
 
 // Must match SubscriptionStatus JSON output from backend
+// eslint-disable-next-line react-refresh/only-export-components
 export function bannerConfig(sub: SubscriptionResponse): BannerConfig | null {
   switch (sub.status) {
     case "Trialing":
