@@ -5,4 +5,5 @@ public record UpdateArtistRequest(
     string   LastName,
     string   Email,
     string?  Specializations,
-    decimal? HourlyRate = null);
+    decimal? HourlyRate = null,
+    string?  Slug       = null);

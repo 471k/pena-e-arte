@@ -16,7 +16,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
         // Approved: public portfolio query — see architecture.md AllowAnonymous Exceptions
         Artist? artist = await db.Artists
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(a => a.Slug == query.Slug && a.DeletedAt == null, ct);
+            .FirstOrDefaultAsync(a => a.Slug == query.Slug && !string.IsNullOrEmpty(a.Slug) && a.DeletedAt == null, ct);
 
         if (artist is null) return null;
 

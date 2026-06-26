@@ -9,11 +9,13 @@ import {
   Banknote,
   Calendar,
   ChevronRight,
+  ImagePlus,
   Loader2,
   Mail,
   Pencil,
   Tag,
   Trash2,
+  X,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
@@ -39,11 +41,14 @@ import {
 import { cn } from "@/shared/utils/cn";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
+import { useAppSelector } from "@/app/hooks";
 import {
   useGetArtistByIdQuery,
   useUpdateArtistMutation,
+  useUpdateArtistPortfolioMutation,
   useDeleteArtistMutation,
 } from "../artistsApi";
+import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { useGetDesignsQuery } from "@/features/designs/designsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
@@ -54,6 +59,7 @@ const editSchema = z.object({
   email:           z.string().email("Invalid email"),
   specializations: z.string().optional(),
   hourlyRate:      z.number({ message: "Must be a number" }).positive("Must be positive").max(10_000).optional(),
+  slug:            z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase letters, numbers, hyphens only").optional().or(z.literal("")),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -74,13 +80,18 @@ export function ArtistDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const canManage = usePermission(Role.Owner);
+  const isArtistRole = usePermission(Role.Artist);
+  const currentUserId = useAppSelector((s) => s.auth.user?.id);
 
   const { data: artist, isLoading, isError } = useGetArtistByIdQuery(id!);
-  const [updateArtist, { isLoading: isSaving }] = useUpdateArtistMutation();
-  const [deleteArtist, { isLoading: isDeleting }] = useDeleteArtistMutation();
+  const [updateArtist,    { isLoading: isSaving }]   = useUpdateArtistMutation();
+  const [updatePortfolio, { isLoading: isSavingPf }] = useUpdateArtistPortfolioMutation();
+  const [deleteArtist,    { isLoading: isDeleting }] = useDeleteArtistMutation();
 
-  const [isEditing,    setIsEditing]    = useState(false);
-  const [deleteOpen,   setDeleteOpen]   = useState(false);
+  const { upload, isUploading } = usePresignedUpload();
+
+  const [isEditing,  setIsEditing]  = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: designs = [], isLoading: designsLoading } =
     useGetDesignsQuery({ artistId: id! }, { skip: !id });
@@ -89,6 +100,9 @@ export function ArtistDetailPage() {
     useGetAppointmentsQuery({}, { skip: !id });
 
   const artistAppointments = allAppointments.filter((a) => a.artistId === id);
+
+  const isOwnProfile = isArtistRole && artist?.userId != null && artist.userId === currentUserId;
+  const canManagePortfolio = canManage || isOwnProfile;
 
   const {
     register,
@@ -107,6 +121,7 @@ export function ArtistDetailPage() {
       email:           artist.email,
       specializations: artist.specializations ?? "",
       hourlyRate:      artist.hourlyRate ?? undefined,
+      slug:            artist.slug ?? "",
     });
     setIsEditing(true);
   }
@@ -121,6 +136,7 @@ export function ArtistDetailPage() {
         email:           values.email,
         specializations: values.specializations?.trim() || null,
         hourlyRate:      values.hourlyRate ?? null,
+        slug:            values.slug?.trim() || undefined,
       },
     });
     if ("data" in result) {
@@ -139,6 +155,43 @@ export function ArtistDetailPage() {
       return;
     }
     navigate("/artists");
+  }
+
+  function openImagePicker() {
+    if (!id || !artist) return;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      input.remove();
+      if (!file) return;
+      const objectKey = `portfolio/${id}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+      const publicUrl = await upload(file, objectKey);
+      if (!publicUrl) {
+        toast.error("Image upload failed.");
+        return;
+      }
+      const result = await updatePortfolio({ id, imageUrls: [...artist.portfolioImages, publicUrl] });
+      if ("error" in result) {
+        toast.error("Failed to save portfolio image.");
+      } else {
+        toast.success("Image added to portfolio.");
+      }
+    };
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  async function removePortfolioImage(url: string) {
+    if (!id || !artist) return;
+    const result = await updatePortfolio({
+      id,
+      imageUrls: artist.portfolioImages.filter((u) => u !== url),
+    });
+    if ("error" in result) {
+      toast.error("Failed to remove image.");
+    }
   }
 
   if (isLoading) {
@@ -293,6 +346,21 @@ export function ArtistDetailPage() {
               )}
             </div>
 
+            <div className="space-y-1.5">
+              <Label htmlFor="slug">Public profile slug (optional)</Label>
+              <Input
+                id="slug"
+                placeholder="e.g. elena-martins"
+                {...register("slug")}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used in the public portfolio URL: /artist/your-slug
+              </p>
+              {errors.slug && (
+                <p className="text-xs text-destructive">{errors.slug.message}</p>
+              )}
+            </div>
+
             <SubscriptionGatedButton type="submit" className="w-full" disabled={isSaving}>
               {isSaving ? (
                 <>
@@ -307,9 +375,10 @@ export function ArtistDetailPage() {
         ) : (
           <Tabs defaultValue="profile">
             <TabsList className="w-full">
-              <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
-              <TabsTrigger value="schedule" className="flex-1">Schedule</TabsTrigger>
-              <TabsTrigger value="designs" className="flex-1">Designs</TabsTrigger>
+              <TabsTrigger value="profile"    className="flex-1">Profile</TabsTrigger>
+              <TabsTrigger value="portfolio"  className="flex-1">Portfolio</TabsTrigger>
+              <TabsTrigger value="schedule"   className="flex-1">Schedule</TabsTrigger>
+              <TabsTrigger value="designs"    className="flex-1">Designs</TabsTrigger>
             </TabsList>
 
             {/* Profile tab */}
@@ -346,6 +415,61 @@ export function ArtistDetailPage() {
                 <p className="text-xs text-muted-foreground text-center">
                   Last updated {formatDate(artist.updatedAt)}
                 </p>
+              )}
+            </TabsContent>
+
+            {/* Portfolio tab */}
+            <TabsContent value="portfolio" className="mt-4">
+              {canManagePortfolio && (
+                <div className="flex justify-end mb-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={isUploading || isSavingPf}
+                    onClick={openImagePicker}
+                  >
+                    {isUploading || isSavingPf ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-3.5 w-3.5" />
+                    )}
+                    Add image
+                  </Button>
+                </div>
+              )}
+
+              {artist.portfolioImages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+                  <p className="text-sm font-medium">No portfolio images yet</p>
+                  {canManagePortfolio && (
+                    <p className="text-xs text-muted-foreground">
+                      Upload images to appear on the public discover feed.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="columns-2 md:columns-3 gap-3 space-y-3">
+                  {artist.portfolioImages.map((url) => (
+                    <div key={url} className="relative break-inside-avoid group">
+                      <img
+                        src={url}
+                        alt="Portfolio"
+                        className="w-full rounded-lg object-cover"
+                      />
+                      {canManagePortfolio && (
+                        <button
+                          type="button"
+                          aria-label="Remove image"
+                          onClick={() => void removePortfolioImage(url)}
+                          className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <X className="h-3.5 w-3.5 text-white" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </TabsContent>
 

@@ -1,9 +1,10 @@
+import { useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useAppSelector } from "@/app/hooks";
-import { useGetPublicArtistQuery } from "../publicApi";
+import { useGetPublicArtistQuery, useRecordArtistViewMutation } from "../publicApi";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { ReviewSection } from "./ReviewSection";
 
@@ -26,6 +27,16 @@ export function ArtistPortfolioPage() {
   const { slug = "" } = useParams<{ slug: string }>();
   const token = useAppSelector((s) => s.auth.token);
   const { data: artist, isLoading, isError } = useGetPublicArtistQuery(slug, { skip: !slug });
+
+  const [recordView] = useRecordArtistViewMutation();
+
+  // Track portfolio view for discovery feed ranking.
+  // Acceptable useEffect: browser-side-effect (fire-and-forget), not data fetching.
+  useEffect(() => {
+    if (!slug) return;
+    // Best-effort — ignore failures silently; view count is non-critical
+    void recordView(slug);
+  }, [slug, recordView]);
 
   if (isLoading) {
     return (

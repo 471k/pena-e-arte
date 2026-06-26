@@ -1,9 +1,12 @@
 using System.Security.Claims;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Application.Reviews.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses.Public;
+using StackExchange.Redis;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -20,6 +23,8 @@ public static class PublicEndpoints
         group.MapGet("/artists/{slug}/reviews",  GetArtistReviews).AllowAnonymous();
         group.MapPost("/studios/{slug}/reviews", CreateStudioReview).RequireAuthorization("ClientAndAbove");
         group.MapPost("/artists/{slug}/reviews", CreateArtistReview).RequireAuthorization("ClientAndAbove");
+        group.MapPost("/artists/{slug}/view",    RecordArtistView).AllowAnonymous();
+        group.MapGet ("/portfolio/feed",         GetPortfolioFeed).AllowAnonymous();
     }
 
     private static async Task<IResult> GetPublicStudio(
@@ -104,6 +109,41 @@ public static class PublicEndpoints
         await mediator.Send(
             new CreateArtistReviewCommand(slug, authorId, authorName, body.Rating, body.Body), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> RecordArtistView(
+        string                 slug,
+        IAppDbContext          db,
+        IConnectionMultiplexer redis,
+        CancellationToken      ct)
+    {
+        // Fire-and-forget view counter. No MediatR needed — no domain invariants.
+        // Approved: public, anonymous, write-only to Redis — not business data.
+        Guid? artistId = await db.Artists
+            .IgnoreQueryFilters()
+            .Where(a => a.Slug == slug && a.DeletedAt == null)
+            .Select(a => (Guid?)a.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (artistId is null) return Results.NotFound();
+
+        IDatabase redisDb = redis.GetDatabase();
+        await redisDb.StringIncrementAsync($"portfolio:views:{artistId}");
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetPortfolioFeed(
+        double?           lat,
+        double?           lng,
+        double            radiusKm,
+        int               page,
+        ISender           mediator,
+        CancellationToken ct,
+        int               pageSize = 24)
+    {
+        List<PortfolioImageResponse> result = await mediator.Send(
+            new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize), ct);
+        return Results.Ok(result);
     }
 }
 

@@ -14,5 +14,10 @@ public class UpdateArtistValidator : AbstractValidator<UpdateArtistCommand>
             .When(x => x.Request.HourlyRate is not null);
         RuleFor(x => x.Request.Specializations).MaximumLength(1000)
             .When(x => x.Request.Specializations is not null);
+        RuleFor(x => x.Request.Slug)
+            .MaximumLength(100)
+            .Matches(@"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+            .WithMessage("Slug must contain only lowercase letters, numbers, and hyphens.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Request.Slug));
     }
 }

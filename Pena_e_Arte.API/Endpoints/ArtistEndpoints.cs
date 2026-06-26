@@ -13,11 +13,13 @@ public static class ArtistEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/artists")
             .RequireAuthorization();
 
-        group.MapGet("/",          GetArtists).RequireAuthorization("ClientAndAbove");
-        group.MapPost("/",         CreateArtist).RequireAuthorization("OwnerOnly");
-        group.MapGet("{id:guid}",  GetArtist).RequireAuthorization("ClientAndAbove");
-        group.MapPut("{id:guid}",  UpdateArtist).RequireAuthorization("OwnerOnly");
-        group.MapDelete("{id:guid}", DeleteArtist).RequireAuthorization("OwnerOnly");
+        group.MapGet("/",                              GetArtists).RequireAuthorization("ClientAndAbove");
+        group.MapGet("me",                             GetMyArtist).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("/",                             CreateArtist).RequireAuthorization("OwnerOnly");
+        group.MapGet("{id:guid}",                      GetArtist).RequireAuthorization("ClientAndAbove");
+        group.MapPut("{id:guid}",                      UpdateArtist).RequireAuthorization("OwnerOnly");
+        group.MapPut("{id:guid}/portfolio-images",     UpdatePortfolio).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("{id:guid}",                   DeleteArtist).RequireAuthorization("OwnerOnly");
     }
 
     private static async Task<IResult> GetArtists(
@@ -26,6 +28,14 @@ public static class ArtistEndpoints
         CancellationToken ct)
     {
         List<ArtistResponse> result = await mediator.Send(new GetArtistsQuery(search), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetMyArtist(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        ArtistResponse result = await mediator.Send(new GetMyArtistQuery(), ct);
         return Results.Ok(result);
     }
 
@@ -54,6 +64,16 @@ public static class ArtistEndpoints
         CancellationToken   ct)
     {
         ArtistResponse result = await mediator.Send(new UpdateArtistCommand(id, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdatePortfolio(
+        Guid                          id,
+        UpdateArtistPortfolioRequest  request,
+        ISender                       mediator,
+        CancellationToken             ct)
+    {
+        ArtistResponse result = await mediator.Send(new UpdateArtistPortfolioCommand(id, request), ct);
         return Results.Ok(result);
     }
 

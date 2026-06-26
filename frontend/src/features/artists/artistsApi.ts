@@ -4,11 +4,14 @@ import { baseQuery } from "@/shared/api/baseQuery";
 export interface ArtistResponse {
   id:              string;
   studioId:        string;
+  userId:          string | null;
   firstName:       string;
   lastName:        string;
   email:           string;
   specializations: string | null;
   hourlyRate:      number | null;
+  portfolioImages: string[];
+  slug:            string | null;
   createdAt:       string;
   updatedAt:       string;
 }
@@ -27,6 +30,7 @@ export interface UpdateArtistRequest {
   email:           string;
   specializations: string | null;
   hourlyRate:      number | null;
+  slug?:           string;
 }
 
 export const artistsApi = createApi({
@@ -34,6 +38,10 @@ export const artistsApi = createApi({
   baseQuery,
   tagTypes: ["Artist"],
   endpoints: (builder) => ({
+    getMyArtist: builder.query<ArtistResponse, void>({
+      query: () => "artists/me",
+      providesTags: ["Artist"],
+    }),
     createArtist: builder.mutation<ArtistResponse, CreateArtistRequest>({
       query: (body) => ({ url: "artists", method: "POST", body }),
       invalidatesTags: ["Artist"],
@@ -53,6 +61,14 @@ export const artistsApi = createApi({
       query: ({ id, body }) => ({ url: `artists/${id}`, method: "PUT", body }),
       invalidatesTags: (_result, _error, { id }) => [{ type: "Artist", id }, "Artist"],
     }),
+    updateArtistPortfolio: builder.mutation<ArtistResponse, { id: string; imageUrls: string[] }>({
+      query: ({ id, imageUrls }) => ({
+        url:    `artists/${id}/portfolio-images`,
+        method: "PUT",
+        body:   { imageUrls },
+      }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: "Artist", id }, "Artist"],
+    }),
     deleteArtist: builder.mutation<void, string>({
       query: (id) => ({ url: `artists/${id}`, method: "DELETE" }),
       invalidatesTags: ["Artist"],
@@ -61,9 +77,11 @@ export const artistsApi = createApi({
 });
 
 export const {
+  useGetMyArtistQuery,
   useCreateArtistMutation,
   useGetArtistsQuery,
   useGetArtistByIdQuery,
   useUpdateArtistMutation,
+  useUpdateArtistPortfolioMutation,
   useDeleteArtistMutation,
 } = artistsApi;

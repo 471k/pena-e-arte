@@ -42,7 +42,10 @@ const ARTIST: ArtistResponse = {
   id: "a-001", studioId: "s-001",
   firstName: "Luna", lastName: "Artista",
   email: "luna@studio.test", specializations: "Neo-trad",
-  hourlyRate: 80, createdAt: "2024-01-01T00:00:00Z",
+  hourlyRate: 80, portfolioImages: [],
+  slug: null,
+  userId:          null,
+  createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
 };
 

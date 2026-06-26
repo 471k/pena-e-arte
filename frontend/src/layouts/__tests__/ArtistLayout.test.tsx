@@ -11,13 +11,35 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
+import { artistsApi } from "@/features/artists/artistsApi";
+import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
+
+// ── Seed data ──────────────────────────────────────────────────────────────────
+
+const MY_ARTIST: ArtistResponse = {
+  id:              "artist-u2",
+  studioId:        "t1",
+  userId:          "u2",
+  firstName:       "Test",
+  lastName:        "Artist",
+  email:           "artist@ink.test",
+  specializations: null,
+  hourlyRate:      null,
+  portfolioImages: [],
+  slug: null,
+  createdAt:       "2024-01-01T00:00:00Z",
+  updatedAt:       "2024-01-01T00:00:00Z",
+};
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
   http.get("http://localhost/api/v1/notifications", () =>
     HttpResponse.json([]),
+  ),
+  http.get("http://localhost/api/v1/artists/me", () =>
+    HttpResponse.json(MY_ARTIST),
   ),
 );
 
@@ -37,8 +59,9 @@ function makeStore(overrides: StoreOverrides = {}) {
       ui:                              uiReducer,
       notifications:                   notificationsReducer,
       [notificationsApi.reducerPath]:  notificationsApi.reducer,
+      [artistsApi.reducerPath]:        artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(notificationsApi.middleware),
+    middleware: (gd) => gd().concat(notificationsApi.middleware, artistsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u2", email: "artist@ink.test" }, token: "fake", tenantId: "t1", role: "artist", pendingReferralCode: null } as any,
@@ -54,13 +77,14 @@ function renderLayout(overrides: StoreOverrides = {}, initialPath = "/schedule")
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route element={<ArtistLayout />}>
-            <Route path="/schedule"       element={<div data-testid="outlet" />} />
-            <Route path="/clients"        element={<div data-testid="outlet" />} />
-            <Route path="/designs"        element={<div data-testid="outlet" />} />
-            <Route path="/forms/intake"   element={<div data-testid="outlet" />} />
-            <Route path="/forms/consent"  element={<div data-testid="outlet" />} />
-            <Route path="/deposit-rules"  element={<div data-testid="outlet" />} />
-            <Route path="/notifications"  element={<div data-testid="outlet" />} />
+            <Route path="/schedule"                element={<div data-testid="outlet" />} />
+            <Route path="/clients"                 element={<div data-testid="outlet" />} />
+            <Route path="/designs"                 element={<div data-testid="outlet" />} />
+            <Route path="/forms/intake"            element={<div data-testid="outlet" />} />
+            <Route path="/forms/consent"           element={<div data-testid="outlet" />} />
+            <Route path="/deposit-rules"           element={<div data-testid="outlet" />} />
+            <Route path="/notifications"           element={<div data-testid="outlet" />} />
+            <Route path="/artists/:id"             element={<div data-testid="portfolio-page" />} />
           </Route>
           <Route path="/login" element={<div data-testid="login-page" />} />
         </Routes>
@@ -80,7 +104,7 @@ describe("ArtistLayout", () => {
     expect(screen.getByText("Pena e Artë")).toBeInTheDocument();
   });
 
-  it("renders all seven artist nav links", () => {
+  it("renders the seven static artist nav links", () => {
     renderLayout();
     expect(screen.getByRole("link", { name: /^schedule$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^clients$/i })).toBeInTheDocument();
@@ -89,6 +113,17 @@ describe("ArtistLayout", () => {
     expect(screen.getByRole("link", { name: /consent forms/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /deposit rules/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /notifications/i })).toBeInTheDocument();
+  });
+
+  it("shows 'My Portfolio' nav link once the artist record loads", async () => {
+    renderLayout();
+    expect(await screen.findByRole("link", { name: /my portfolio/i })).toBeInTheDocument();
+  });
+
+  it("'My Portfolio' link points to the artist's own profile page", async () => {
+    renderLayout();
+    const link = await screen.findByRole("link", { name: /my portfolio/i });
+    expect(link).toHaveAttribute("href", `/artists/${MY_ARTIST.id}`);
   });
 
   it("renders the UserChip with the logged-in artist's identifier", () => {

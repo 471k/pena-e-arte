@@ -26,6 +26,7 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     useGetArtistReviewsQuery:      (...args: unknown[]) => mockUseGetArtistReviewsQuery(...args),
     useCreateStudioReviewMutation: () => [vi.fn(), { isLoading: false }],
     useCreateArtistReviewMutation: () => [vi.fn(), { isLoading: false }],
+    useRecordArtistViewMutation:   () => [vi.fn(), { isLoading: false }],
   };
 });
 

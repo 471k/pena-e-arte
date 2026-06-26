@@ -5,6 +5,7 @@ using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Utilities;
 
 namespace Pena_e_Arte.Application.Artists.Commands;
 
@@ -31,6 +32,18 @@ public class UpdateArtistHandler(IAppDbContext db)
         artist.Specializations = req.Specializations;
         artist.HourlyRate      = req.HourlyRate;
         artist.UpdatedAt       = DateTime.UtcNow;
+
+        if (!string.IsNullOrWhiteSpace(req.Slug))
+        {
+            string slug = SlugHelper.GenerateSlug(req.Slug);
+            // IgnoreQueryFilters: slug must be globally unique for public portfolio URLs
+            bool taken = await db.Artists
+                .IgnoreQueryFilters()
+                .AnyAsync(a => a.Slug == slug && a.Id != command.Id && a.DeletedAt == null, ct);
+            if (taken)
+                throw new BusinessRuleViolationException($"The slug '{slug}' is already in use.");
+            artist.SetSlug(slug);
+        }
 
         await db.SaveChangesAsync(ct);
 

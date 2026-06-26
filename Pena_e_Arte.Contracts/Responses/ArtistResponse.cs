@@ -1,12 +1,15 @@
 namespace Pena_e_Arte.Contracts.Responses;
 
 public record ArtistResponse(
-    Guid     Id,
-    Guid     StudioId,
-    string   FirstName,
-    string   LastName,
-    string   Email,
-    string?  Specializations,
-    decimal? HourlyRate,
-    DateTime CreatedAt,
-    DateTime UpdatedAt);
+    Guid          Id,
+    Guid          StudioId,
+    Guid?         UserId,
+    string        FirstName,
+    string        LastName,
+    string        Email,
+    string?       Specializations,
+    decimal?      HourlyRate,
+    List<string>  PortfolioImages,
+    string?       Slug,
+    DateTime      CreatedAt,
+    DateTime      UpdatedAt);

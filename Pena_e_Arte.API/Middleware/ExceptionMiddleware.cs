@@ -38,6 +38,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
                                                 "This action was already completed by another request. Refresh and try again."),
             DesignAlreadyApprovedException      => (StatusCodes.Status409Conflict,              ex.Message),
             ConsentFormAlreadySignedException   => (StatusCodes.Status409Conflict,              ex.Message),
+            ForbiddenException                  => (StatusCodes.Status403Forbidden,           ex.Message),
             TenantSuspendedException            => (StatusCodes.Status403Forbidden,           ex.Message),
             SubscriptionRequiredException       => (StatusCodes.Status402PaymentRequired,     ex.Message),
             BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message),

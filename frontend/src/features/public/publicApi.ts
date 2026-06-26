@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import type { RootState } from "@/app/store";
 
 export interface PublicArtistSummary {
   artistId: string;
@@ -57,6 +58,18 @@ export interface ReviewResponse {
   createdAt:  string;
 }
 
+export interface PortfolioImageResponse {
+  imageUrl:      string;
+  artistName:    string;
+  artistSlug:    string;
+  studioName:    string;
+  studioSlug:    string;
+  averageRating: number | null;
+  reviewCount:   number;
+  distanceKm:    number | null;
+  viewCount:     number;
+}
+
 export interface NearbyStudiosArgs {
   lat:      number;
   lng:      number;
@@ -69,9 +82,20 @@ export interface CreateReviewArgs {
   body:   string;
 }
 
+// Attaches the JWT when available so authenticated endpoints (e.g. POST reviews)
+// work without triggering the global session-expired redirect for anonymous calls.
+const publicBaseQuery = fetchBaseQuery({
+  baseUrl: "/api/v1/public/",
+  prepareHeaders: (headers, { getState }) => {
+    const token = (getState() as RootState).auth.token;
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return headers;
+  },
+});
+
 export const publicApi = createApi({
   reducerPath: "publicApi",
-  baseQuery: fetchBaseQuery({ baseUrl: "/api/v1/public/" }),
+  baseQuery: publicBaseQuery,
   tagTypes: ["PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios", "StudioReviews", "ArtistReviews"],
   endpoints: (builder) => ({
     getPublicStudio: builder.query<PublicStudioResponse, string>({
@@ -90,6 +114,28 @@ export const publicApi = createApi({
       query: ({ lat, lng, radiusKm }) =>
         `studios/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
       providesTags: ["NearbyStudios"],
+    }),
+    getPortfolioFeed: builder.query<
+      PortfolioImageResponse[],
+      { lat?: number; lng?: number; radiusKm?: number; page: number }
+    >({
+      query: ({ lat, lng, radiusKm = 50, page }) => {
+        const params = new URLSearchParams({ radiusKm: String(radiusKm), page: String(page) });
+        if (lat != null) params.set("lat", String(lat));
+        if (lng != null) params.set("lng", String(lng));
+        return `portfolio/feed?${params.toString()}`;
+      },
+      // Location/radius changes start a fresh cache entry; page changes append.
+      serializeQueryArgs: ({ queryArgs: { lat, lng, radiusKm } }) =>
+        `portfolio-feed:${lat ?? ""}:${lng ?? ""}:${radiusKm ?? 50}`,
+      merge: (currentCache, newItems) => {
+        currentCache.push(...newItems);
+      },
+      forceRefetch: ({ currentArg, previousArg }) =>
+        currentArg?.page !== previousArg?.page,
+    }),
+    recordArtistView: builder.mutation<void, string>({
+      query: (slug) => ({ url: `artists/${slug}/view`, method: "POST" }),
     }),
     getStudioReviews: builder.query<ReviewResponse[], string>({
       query: (slug) => `studios/${slug}/reviews`,
@@ -123,6 +169,8 @@ export const {
   useGetPublicArtistQuery,
   useGetSharedDesignQuery,
   useGetNearbyStudiosQuery,
+  useGetPortfolioFeedQuery,
+  useRecordArtistViewMutation,
   useGetStudioReviewsQuery,
   useGetArtistReviewsQuery,
   useCreateStudioReviewMutation,

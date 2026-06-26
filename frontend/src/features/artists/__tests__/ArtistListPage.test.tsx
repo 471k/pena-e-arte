@@ -23,6 +23,9 @@ const ARTIST_A: ArtistResponse = {
   email:           "ana@ink.test",
   specializations: "Realism, Blackwork",
   hourlyRate:      null,
+  portfolioImages: [],
+  slug: null,
+  userId:          null,
   createdAt:       "2024-01-01T00:00:00Z",
   updatedAt:       "2024-01-01T00:00:00Z",
 };
@@ -35,6 +38,9 @@ const ARTIST_B: ArtistResponse = {
   email:           "marco@ink.test",
   specializations: null,
   hourlyRate:      null,
+  portfolioImages: [],
+  slug: null,
+  userId:          null,
   createdAt:       "2024-01-02T00:00:00Z",
   updatedAt:       "2024-01-02T00:00:00Z",
 };
