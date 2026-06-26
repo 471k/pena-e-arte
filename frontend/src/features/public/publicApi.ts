@@ -148,6 +148,11 @@ export const publicApi = createApi({
       },
       forceRefetch: ({ currentArg, previousArg }) =>
         currentArg?.page !== previousArg?.page,
+      // Evict immediately on unmount so that navigating back to /discover always
+      // fetches fresh data — prevents newly uploaded portfolio images from being
+      // hidden behind a stale cache entry that updateArtistPortfolio cannot reach
+      // (tag invalidation is local to each RTK Query API slice).
+      keepUnusedDataFor: 0,
     }),
     recordArtistView: builder.mutation<void, string>({
       query: (slug) => ({ url: `artists/${slug}/view`, method: "POST" }),
