@@ -6,6 +6,7 @@ import { Provider }     from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import authReducer  from "@/features/auth/authSlice";
 import { publicApi }  from "@/features/public/publicApi";
 import { DiscoverPage } from "@/features/public/components/DiscoverPage";
 
@@ -13,7 +14,10 @@ import { DiscoverPage } from "@/features/public/components/DiscoverPage";
 
 function makeStore() {
   return configureStore({
-    reducer: { [publicApi.reducerPath]: publicApi.reducer },
+    reducer: {
+      auth: authReducer,
+      [publicApi.reducerPath]: publicApi.reducer,
+    },
     middleware: (gd) => gd().concat(publicApi.middleware),
   });
 }

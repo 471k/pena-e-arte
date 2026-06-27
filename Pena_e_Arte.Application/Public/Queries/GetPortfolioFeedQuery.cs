@@ -23,51 +23,6 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
         // Approved: public portfolio discovery — no tenant scope required.
         // All IgnoreQueryFilters calls below are intentional (cross-tenant public data).
 
-        // 1. Fetch all active artists with slugs. PortfolioImages uses a value converter
-        //    and cannot be filtered in SQL — apply the count filter in-memory below.
-        List<Artist> allArtists = await db.Artists
-            .IgnoreQueryFilters()
-            .Where(a => a.DeletedAt == null && !string.IsNullOrEmpty(a.Slug))
-            .ToListAsync(ct);
-
-        List<Artist> artists = allArtists.Where(a => a.PortfolioImages.Count > 0).ToList();
-
-        if (artists.Count == 0) return [];
-
-        List<Guid> artistIds = artists.Select(a => a.Id).ToList();
-        List<Guid> studioIds = artists.Select(a => a.StudioId).Distinct().ToList();
-
-        // 2. Load studios (active only).
-        Dictionary<Guid, Studio> studiosById = await db.Studios
-            .IgnoreQueryFilters()
-            .Where(s => studioIds.Contains(s.Id) && s.IsActive)
-            .ToDictionaryAsync(s => s.Id, ct);
-
-        // 3. Artist-level review aggregates.
-        Dictionary<Guid, (double Avg, int Count)> reviewStats = await db.Reviews
-            .Where(r => r.ArtistId != null && artistIds.Contains(r.ArtistId.Value))
-            .GroupBy(r => r.ArtistId!.Value)
-            .Select(g => new { ArtistId = g.Key, Avg = g.Average(r => (double)r.Rating), Count = g.Count() })
-            .ToDictionaryAsync(x => x.ArtistId, x => (x.Avg, x.Count), ct);
-
-        // 4. View counts — batch MGET from Redis.
-        IDatabase redisDb    = redis.GetDatabase();
-        RedisKey[] redisKeys  = artistIds.Select(id => (RedisKey)$"portfolio:views:{id}").ToArray();
-        RedisValue[] redisValues = await redisDb.StringGetAsync(redisKeys);
-        Dictionary<Guid, long> viewCounts = artistIds
-            .Zip(redisValues, (id, v) => (id, count: v.HasValue ? (long)v : 0L))
-            .ToDictionary(x => x.id, x => x.count);
-
-        // 5. Score artists.
-        // Bayesian average: pulls low-count artists toward the global mean (3.5)
-        // so one 5-star review does not outrank an artist with 50 genuine reviews.
-        const double m = 5.0;   // minimum review threshold
-        const double C = 3.5;   // prior mean (global average)
-
-        static double BayesianScore(double avg, int count) =>
-            (count * avg + m * C) / (count + m);
-
-        // 6. Haversine for distance filter (in-memory; candidate set is already small).
         static double Haversine(double lat1, double lon1, double lat2, double lon2)
         {
             const double R = 6371.0;
@@ -79,70 +34,115 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
             return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
         }
 
-        // 7. Score, filter by radius (if location provided), sort.
-        List<(Artist Artist, Studio Studio, double? DistanceKm, double Score)> scored =
-            artists
-                .Where(a => studiosById.ContainsKey(a.StudioId))
-                .Select(a =>
-                {
-                    Studio studio = studiosById[a.StudioId];
-
-                    double? dist = (query.Lat.HasValue && query.Lng.HasValue)
-                        ? Haversine(query.Lat.Value, query.Lng.Value, studio.Latitude, studio.Longitude)
-                        : (double?)null;
-
-                    bool inRange = !dist.HasValue || dist.Value <= query.RadiusKm;
-                    return (Artist: a, Studio: studio, DistanceKm: dist, IsIncluded: inRange);
-                })
-                .Where(x => x.IsIncluded)
-                .Select(x =>
-                {
-                    (double avg, int count) = reviewStats.GetValueOrDefault(x.Artist.Id, (0, 0));
-                    long views = viewCounts.GetValueOrDefault(x.Artist.Id, 0L);
-                    double score = BayesianScore(avg, count) + Math.Log10(views + 1) * 0.5;
-                    return (x.Artist, x.Studio, x.DistanceKm, Score: score);
-                })
-                .OrderByDescending(x => x.Score)
-                .ToList();
-
-        // 8. Explode: take up to 3 images per artist, interleaved by artist rank.
-        // Round-robin across artists so the feed doesn't cluster one artist's images together.
-        // e.g. artist1-img1, artist2-img1, artist3-img1, artist1-img2, artist2-img2 ...
-        const int maxImagesPerArtist = 3;
-        List<List<PortfolioImageResponse>> columns = scored
-            .Select(x =>
-            {
-                (double avg, int count) = reviewStats.GetValueOrDefault(x.Artist.Id, (0, 0));
-                long views = viewCounts.GetValueOrDefault(x.Artist.Id, 0L);
-
-                return x.Artist.PortfolioImages
-                    .Take(maxImagesPerArtist)
-                    .Select(url => new PortfolioImageResponse(
-                        url,
-                        $"{x.Artist.FirstName} {x.Artist.LastName}",
-                        x.Artist.Slug!,
-                        x.Studio.Name,
-                        x.Studio.Slug,
-                        count > 0 ? Math.Round(avg, 1) : null,
-                        count,
-                        x.DistanceKm.HasValue ? Math.Round(x.DistanceKm.Value, 1) : null,
-                        views))
-                    .ToList();
-            })
-            .ToList();
-
-        // Interleave: take one image from each artist column in order.
-        List<PortfolioImageResponse> interleaved = [];
-        int maxImages = columns.Max(c => c.Count);
-        for (int i = 0; i < maxImages; i++)
+        // 1. Optional: resolve studio IDs within radius.
+        HashSet<Guid>? filteredStudioIds = null;
+        if (query.Lat.HasValue && query.Lng.HasValue)
         {
-            foreach (List<PortfolioImageResponse> col in columns)
-            {
-                if (i < col.Count) interleaved.Add(col[i]);
-            }
+            List<(Guid Id, double Lat, double Lng)> allStudios = await db.Studios
+                .IgnoreQueryFilters()
+                .Where(s => s.IsActive)
+                .Select(s => new { s.Id, s.Latitude, s.Longitude })
+                .ToListAsync(ct)
+                .ContinueWith(t => t.Result.Select(s => (s.Id, s.Latitude, s.Longitude)).ToList(),
+                    TaskContinuationOptions.ExecuteSynchronously);
+
+            filteredStudioIds = allStudios
+                .Where(s => Haversine(query.Lat.Value, query.Lng.Value, s.Lat, s.Lng) <= query.RadiusKm)
+                .Select(s => s.Id)
+                .ToHashSet();
         }
 
-        int skip = (query.Page - 1) * query.PageSize;
-        return interleaved.Skip(skip).Take(query.PageSize).ToList();
+        // 2. Load portfolio images with artist.
+        IQueryable<PortfolioImage> imageQuery = db.PortfolioImages
+            .IgnoreQueryFilters()
+            .Include(p => p.Artist)
+            .Where(p => p.Artist.DeletedAt == null && !string.IsNullOrEmpty(p.Artist.Slug));
+
+        if (filteredStudioIds is not null)
+            imageQuery = imageQuery.Where(p => filteredStudioIds.Contains(p.StudioId));
+
+        List<PortfolioImage> images = await imageQuery
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(ct);
+
+        if (images.Count == 0) return [];
+
+        List<Guid> imageIds  = images.Select(p => p.Id).ToList();
+        List<Guid> artistIds = images.Select(p => p.ArtistId).Distinct().ToList();
+
+        // 3. Per-image review aggregates.
+        Dictionary<Guid, (double Sum, int Count)> imageReviews = await db.Reviews
+            .Where(r => r.PortfolioImageId.HasValue && imageIds.Contains(r.PortfolioImageId!.Value))
+            .GroupBy(r => r.PortfolioImageId!.Value)
+            .Select(g => new { Id = g.Key, Sum = g.Sum(r => (double)r.Rating), Count = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => (x.Sum, x.Count), ct);
+
+        // 4. Artist-level review aggregates.
+        Dictionary<Guid, (double Sum, int Count)> artistReviews = await db.Reviews
+            .Where(r => r.ArtistId.HasValue && artistIds.Contains(r.ArtistId!.Value))
+            .GroupBy(r => r.ArtistId!.Value)
+            .Select(g => new { Id = g.Key, Sum = g.Sum(r => (double)r.Rating), Count = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => (x.Sum, x.Count), ct);
+
+        // 5. Redis view counts — batch MGET.
+        IDatabase redisDb    = redis.GetDatabase();
+        RedisKey[] redisKeys  = artistIds.Select(id => (RedisKey)$"portfolio:views:{id}").ToArray();
+        RedisValue[] redisValues = await redisDb.StringGetAsync(redisKeys);
+        Dictionary<Guid, long> viewCounts = artistIds
+            .Zip(redisValues, (id, v) => (id, count: v.HasValue ? (long)v : 0L))
+            .ToDictionary(x => x.id, x => x.count);
+
+        // 6. Studios for the artists on this page.
+        List<Guid> studioIds = images.Select(p => p.Artist.StudioId).Distinct().ToList();
+        Dictionary<Guid, Studio> studiosById = await db.Studios
+            .IgnoreQueryFilters()
+            .Where(s => studioIds.Contains(s.Id) && s.IsActive)
+            .ToDictionaryAsync(s => s.Id, ct);
+
+        // 7. Score, sort, project.
+        // Bayesian blend: 60% image rating, 40% artist rating when both have reviews.
+        return images
+            .Where(img => studiosById.ContainsKey(img.Artist.StudioId))
+            .Select(img =>
+            {
+                imageReviews.TryGetValue(img.Id, out (double Sum, int Count) ir);
+                artistReviews.TryGetValue(img.ArtistId, out (double Sum, int Count) ar);
+                viewCounts.TryGetValue(img.ArtistId, out long views);
+
+                double imageAvg  = ir.Count > 0 ? ir.Sum / ir.Count : 3.5;
+                double artistAvg = ar.Count > 0 ? ar.Sum / ar.Count : 3.5;
+                double blended   = ir.Count > 0 ? imageAvg * 0.6 + artistAvg * 0.4 : artistAvg;
+                double bayesian  = (ir.Count * blended + 5 * 3.5) / (ir.Count + 5);
+                double score     = bayesian * 0.7 + Math.Log10(views + 1) * 0.3;
+
+                return (Image: img, Score: score, Ir: ir, Ar: ar, Views: views);
+            })
+            .OrderByDescending(x => x.Score)
+            .Select(x =>
+            {
+                Artist a      = x.Image.Artist;
+                Studio studio = studiosById[a.StudioId];
+
+                double? distKm = (query.Lat.HasValue && query.Lng.HasValue)
+                    ? Math.Round(Haversine(query.Lat.Value, query.Lng.Value, studio.Latitude, studio.Longitude), 1)
+                    : null;
+
+                return new PortfolioImageResponse(
+                    ImageId:            x.Image.Id,
+                    ImageUrl:           x.Image.ImageUrl,
+                    ArtistName:         $"{a.FirstName} {a.LastName}".Trim(),
+                    ArtistSlug:         a.Slug!,
+                    StudioName:         studio.Name,
+                    StudioSlug:         studio.Slug,
+                    AverageRating:      x.Ar.Count > 0 ? Math.Round(x.Ar.Sum / x.Ar.Count, 1) : null,
+                    ReviewCount:        x.Ar.Count,
+                    ImageAverageRating: x.Ir.Count > 0 ? Math.Round(x.Ir.Sum / x.Ir.Count, 1) : null,
+                    ImageReviewCount:   x.Ir.Count,
+                    DistanceKm:         distKm,
+                    ViewCount:          x.Views);
+            })
+            .ToList();
     }
 }

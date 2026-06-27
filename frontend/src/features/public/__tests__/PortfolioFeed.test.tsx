@@ -6,12 +6,17 @@ import { Provider }       from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer }    from "msw/node";
+import authReducer        from "@/features/auth/authSlice";
 import { publicApi }      from "@/features/public/publicApi";
 import { PortfolioFeed }  from "@/features/public/components/PortfolioFeed";
+import type { PortfolioImageResponse } from "@/features/public/publicApi";
 
 function makeStore() {
   return configureStore({
-    reducer: { [publicApi.reducerPath]: publicApi.reducer },
+    reducer: {
+      auth: authReducer,
+      [publicApi.reducerPath]: publicApi.reducer,
+    },
     middleware: (gd) => gd().concat(publicApi.middleware),
   });
 }
@@ -26,28 +31,34 @@ function renderFeed(props: Partial<React.ComponentProps<typeof PortfolioFeed>> =
   );
 }
 
-const IMAGES = [
+const IMAGES: PortfolioImageResponse[] = [
   {
-    imageUrl:      "https://example.com/tattoo1.jpg",
-    artistName:    "Ana Lima",
-    artistSlug:    "ana-lima",
-    studioName:    "Black Ink Lisbon",
-    studioSlug:    "black-ink-lisbon",
-    averageRating: 4.8,
-    reviewCount:   22,
-    distanceKm:    null,
-    viewCount:     150,
+    imageId:            "img-001",
+    imageUrl:           "https://example.com/tattoo1.jpg",
+    artistName:         "Ana Lima",
+    artistSlug:         "ana-lima",
+    studioName:         "Black Ink Lisbon",
+    studioSlug:         "black-ink-lisbon",
+    averageRating:      4.8,
+    reviewCount:        22,
+    imageAverageRating: 4.5,
+    imageReviewCount:   5,
+    distanceKm:         null,
+    viewCount:          150,
   },
   {
-    imageUrl:      "https://example.com/tattoo2.jpg",
-    artistName:    "João Costa",
-    artistSlug:    "joao-costa",
-    studioName:    "Dark Arts Porto",
-    studioSlug:    "dark-arts-porto",
-    averageRating: null,
-    reviewCount:   0,
-    distanceKm:    3.2,
-    viewCount:     40,
+    imageId:            "img-002",
+    imageUrl:           "https://example.com/tattoo2.jpg",
+    artistName:         "João Costa",
+    artistSlug:         "joao-costa",
+    studioName:         "Dark Arts Porto",
+    studioSlug:         "dark-arts-porto",
+    averageRating:      null,
+    reviewCount:        0,
+    imageAverageRating: null,
+    imageReviewCount:   0,
+    distanceKm:         3.2,
+    viewCount:          40,
   },
 ];
 
@@ -77,9 +88,8 @@ describe("PortfolioFeed", () => {
   it("does NOT show distance badge when distanceKm is null", async () => {
     renderFeed();
     await screen.findByLabelText(/Tattoo by Ana Lima/i);
-    // Ana Lima has distanceKm: null — no km badge in her tile
-    const anaLink = screen.getByLabelText(/Tattoo by Ana Lima/i);
-    expect(anaLink.querySelector("span")?.textContent).not.toMatch(/km/);
+    const anaTile = screen.getByLabelText(/Tattoo by Ana Lima/i);
+    expect(anaTile.querySelector("span")?.textContent).not.toMatch(/km/);
   });
 
   it("shows rating and review count when reviewCount > 0", async () => {
@@ -116,21 +126,22 @@ describe("PortfolioFeed", () => {
       .toBeInTheDocument();
   });
 
-  it("each tile links to the artist profile page", async () => {
+  it("each tile is a button (opens lightbox, not a direct link)", async () => {
     renderFeed();
     const tile = await screen.findByLabelText(/Tattoo by Ana Lima/i);
-    expect(tile).toHaveAttribute("href", "/artist/ana-lima");
+    expect(tile.tagName).toBe("BUTTON");
   });
 
   it("'Load more' button is hidden when fewer than 24 images returned", async () => {
-    renderFeed(); // only 2 images
+    renderFeed();
     await screen.findByLabelText(/Tattoo by Ana Lima/i);
     expect(screen.queryByRole("button", { name: /load more/i })).not.toBeInTheDocument();
   });
 
   it("'Load more' button appears when 24 or more images returned", async () => {
-    const manyImages = Array.from({ length: 24 }, (_, i) => ({
+    const manyImages: PortfolioImageResponse[] = Array.from({ length: 24 }, (_, i) => ({
       ...IMAGES[0],
+      imageId:   `img-${i}`,
       imageUrl:   `https://example.com/tattoo${i}.jpg`,
       artistSlug: `artist-${i}`,
     }));
@@ -145,15 +156,17 @@ describe("PortfolioFeed", () => {
 
   it("clicking 'Load more' loads page 2 content", async () => {
     const user = userEvent.setup();
-    const page1 = Array.from({ length: 24 }, (_, i) => ({
+    const page1: PortfolioImageResponse[] = Array.from({ length: 24 }, (_, i) => ({
       ...IMAGES[0],
+      imageId:    `p1-img-${i}`,
       imageUrl:   `https://example.com/p1-tattoo${i}.jpg`,
       artistSlug: `p1-artist-${i}`,
       studioName: "Page One Studio",
     }));
-    const page2 = [
+    const page2: PortfolioImageResponse[] = [
       {
         ...IMAGES[1],
+        imageId:   "p2-img-0",
         imageUrl:   "https://example.com/p2-unique.jpg",
         artistSlug: "p2-artist",
         studioName: "Page Two Studio",
@@ -168,7 +181,6 @@ describe("PortfolioFeed", () => {
     renderFeed();
     const loadMore = await screen.findByRole("button", { name: /load more/i });
     await user.click(loadMore);
-    // After page 2 merges into cache, page 2 content appears
     expect(await screen.findByLabelText(/Tattoo by João Costa at Page Two Studio/i))
       .toBeInTheDocument();
   });

@@ -182,7 +182,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth | Platform-wide |
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
-| 10 | Public Portfolio Pages | Reads `Studio`, `Artist` (read-only, no tenant filter) | None — public SEO endpoints | Platform-wide |
+| 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints | Platform-wide |
 
 #### StudioPortfolioPage (`/s/{slug}`)
 
@@ -216,6 +216,9 @@ Avatar:      Artist.ProfileImageUrl (DB column added by AddArtistProfileImageUrl
              falls back to initials monogram when null.
 New fields:  ProfileImageUrl, Specializations, HourlyRate, AverageRating, ReviewCount,
              IsOwnProfile — all projected in GetPublicArtistQuery.
+Portfolio:   portfolioImages → List<ArtistPortfolioImage> (imageId + imageUrl).
+             Formerly Artist.PortfolioImages JSON column — replaced by PortfolioImage entity.
+             Lightbox per image; right panel shows ReviewSection with target="tattoo".
 View tracking: POST /api/v1/public/artists/{slug}/view (fire-and-forget Redis counter).
 Instagram:   InstagramHandle added by overnight-prompt-instagram-sync (not yet in contract —
              add to PublicArtistResponse after that migration runs).
@@ -349,9 +352,11 @@ Portfolio tab:      PortfolioFeed  public/components/PortfolioFeed.tsx
                                   No auth. Approved AllowAnonymous exception — public discovery.
                                   Scoring: Bayesian avg rating + log10(views+1)*0.5
                                   View counts: Redis, key = portfolio:views:{artistId}
-                                  Max 3 images per artist; interleaved by artist rank.
+                                  All images per artist; ordered by artist Bayesian rank (no 3-per-artist cap).
                                   Pagination: page/pageSize; RTK Query merge for infinite scroll.
                                   "Near me" toggle filters feed to the user's radius.
+                                  Tiles are buttons (open lightbox); lightbox shows image + per-image ReviewSection.
+                                  PortfolioImageResponse includes imageId, imageAverageRating, imageReviewCount.
 
 Artist View Counter  POST /api/v1/public/artists/{slug}/view
                                   No auth. Fires from ArtistPortfolioPage on mount.
@@ -402,6 +407,8 @@ Never add a new one without updating this table and the Decisions Log.
 | 12 | `GetPortfolioFeedHandler` (Artists)     | Cross-tenant artist portfolio discovery; public feed             | Anonymous  |
 | 12 | `GetPortfolioFeedHandler` (Studios)     | Cross-tenant studio name/slug lookup for portfolio response      | Anonymous  |
 | 13 | `RecordArtistView` endpoint             | Cross-tenant artist slug lookup for Redis view counter           | Anonymous  |
+| 14 | `GetPortfolioImageReviewsHandler`       | Cross-tenant public portfolio image review lookup                | Anonymous  |
+| 15 | `CreatePortfolioImageReviewHandler`     | Cross-tenant portfolio image lookup for review creation          | Authenticated (any role) |
 
 ---
 
@@ -421,9 +428,65 @@ The following are the only documented exceptions:
 | `POST /api/webhooks/stripe/connect` | Called by Stripe servers, no JWT | `Stripe-Signature` HMAC header validated against webhook secret |
 | `GET /api/v1/public/portfolio/feed` | Public discovery portfolio feed | None — read-only public images, no PII |
 | `POST /api/v1/public/artists/{slug}/view` | Anonymous view counter for feed ranking | None — write-only to Redis, non-domain data |
+| `GET /api/v1/public/portfolio/{imageId}/reviews` | Public per-image review list | None — read-only, non-sensitive review content only |
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
 Never add new AllowAnonymous endpoints without adding a row to this table.
+
+---
+
+## PortfolioImage Entity — Decision Log
+
+### Why a dedicated table instead of a JSON column
+
+`Artist.PortfolioImages` was originally stored as `List<string>` (JSON column).
+This was replaced by a `PortfolioImage` entity for the following reasons:
+
+1. **Reviewable target** — `Review.PortfolioImageId` FK requires a real row to reference.
+   JSON column entries have no identity and cannot be FK-targeted.
+2. **Independent metadata** — `imageAverageRating` and `imageReviewCount` are aggregated
+   per image. These require a stable identity to group against.
+3. **Queryability** — `GetPortfolioFeedQuery` queries all images across all tenants.
+   A proper table allows indexed `ArtistId`, `StudioId` lookups. JSON column requires
+   full-scan JSON_TABLE in MySQL.
+
+### Entity shape
+
+```csharp
+PortfolioImage : TenantEntity  // StudioId, CreatedAt, UpdatedAt, DeletedAt
+  Id (Guid, PK)
+  ArtistId   (Guid, FK → Artist.Id)
+  ImageUrl   (string, max 2048)
+  // StudioId inherited from TenantEntity — enables global query filter
+```
+
+### Review target extension
+
+`Review` gained a nullable `PortfolioImageId (Guid?)` FK.
+- Studio review:  `StudioId != null, ArtistId == null, PortfolioImageId == null`
+- Artist review:  `ArtistId != null, StudioId == null, PortfolioImageId == null`
+- Tattoo review:  `PortfolioImageId != null, StudioId == null, ArtistId == null`
+
+Duplicate guard: one review per `(AuthorUserId, PortfolioImageId)` pair
+(same constraint as per `(AuthorUserId, ArtistId)` and per `(AuthorUserId, StudioId)`).
+
+### Frontend shape change
+
+`PublicArtistResponse.portfolioImages` changed from `string[]` to
+`ArtistPortfolioImage[]` (`{ imageId: string; imageUrl: string }`).
+Any component or test consuming this field must use `.imageUrl` not `[index]` directly.
+
+### Migration notes
+
+`AddPortfolioImageEntity` (20260627220204) migrates existing JSON data to rows:
+```sql
+INSERT INTO PortfolioImages (Id, StudioId, ArtistId, ImageUrl, CreatedAt, UpdatedAt)
+SELECT UUID(), a.StudioId, a.Id, img.value, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+FROM artists a
+CROSS JOIN JSON_TABLE(COALESCE(a.PortfolioImages, '[]'), '$[*]' COLUMNS (value VARCHAR(2048) PATH '$')) AS img
+WHERE a.PortfolioImages IS NOT NULL AND JSON_LENGTH(a.PortfolioImages) > 0;
+```
+Then drops `artists.PortfolioImages` column.
 
 ---
 

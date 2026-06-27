@@ -39,10 +39,13 @@ public class GetPublicArtistHandlerTests
             ProfileImageUrl = profileImageUrl,
             Specializations = specializations,
             HourlyRate      = hourlyRate,
-            PortfolioImages = ["img1.jpg", "img2.jpg"],
         };
         artist.SetSlug("maria-silva");
         _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img1.jpg" });
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img2.jpg" });
         await _db.SaveChangesAsync();
 
         return (artist, studio);

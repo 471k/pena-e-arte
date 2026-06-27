@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pena_e_Arte.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using Pena_e_Arte.Infrastructure.Persistence;
 namespace Pena_e_Arte.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260627220204_AddPortfolioImageEntity")]
+    partial class AddPortfolioImageEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -986,7 +989,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasColumnType("char(36)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("UTC_TIMESTAMP()");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
@@ -1488,6 +1493,17 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Navigation("Artist");
 
                     b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Artist", b =>
+                {
+                    b.HasOne("Pena_e_Arte.Domain.Entities.Studio", "Studio")
+                        .WithMany()
+                        .HasForeignKey("StudioId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Studio");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ClientProfile", b =>

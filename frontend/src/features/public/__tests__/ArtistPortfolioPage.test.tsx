@@ -6,7 +6,7 @@ import { configureStore } from "@reduxjs/toolkit";
 
 import authReducer from "@/features/auth/authSlice";
 import { ArtistPortfolioPage } from "@/features/public/components/ArtistPortfolioPage";
-import type { PublicArtistResponse } from "@/features/public/publicApi";
+import type { PublicArtistResponse, ArtistPortfolioImage } from "@/features/public/publicApi";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -24,9 +24,11 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     ...actual,
     useGetPublicArtistQuery:       (...args: unknown[]) => mockUseGetPublicArtistQuery(...args),
     useGetArtistReviewsQuery:      (...args: unknown[]) => mockUseGetArtistReviewsQuery(...args),
-    useCreateStudioReviewMutation: () => [vi.fn(), { isLoading: false }],
-    useCreateArtistReviewMutation: () => [vi.fn(), { isLoading: false }],
-    useRecordArtistViewMutation:   () => [vi.fn(), { isLoading: false }],
+    useCreateStudioReviewMutation:         () => [vi.fn(), { isLoading: false }],
+    useCreateArtistReviewMutation:         () => [vi.fn(), { isLoading: false }],
+    useCreatePortfolioImageReviewMutation: () => [vi.fn(), { isLoading: false }],
+    useGetPortfolioImageReviewsQuery:      () => ({ data: [], isLoading: false }),
+    useRecordArtistViewMutation:           () => [vi.fn(), { isLoading: false }],
   };
 });
 
@@ -39,9 +41,9 @@ const ARTIST: PublicArtistResponse = {
   bio:             "Specialises in neo-trad and blackwork.",
   profileImageUrl: null,
   portfolioImages: [
-    "https://cdn.example.com/port1.jpg",
-    "https://cdn.example.com/port2.jpg",
-  ],
+    { imageId: "img-001", imageUrl: "https://cdn.example.com/port1.jpg" },
+    { imageId: "img-002", imageUrl: "https://cdn.example.com/port2.jpg" },
+  ] satisfies ArtistPortfolioImage[],
   specializations: "Blackwork, Neo-Trad",
   hourlyRate:      120,
   averageRating:   4.5,
@@ -199,7 +201,7 @@ describe("ArtistPortfolioPage", () => {
       profileImageUrl: null,
       specializations: null,
       hourlyRate:      null,
-      portfolioImages: [] as string[],
+      portfolioImages: [] as ArtistPortfolioImage[],
     };
     mockUseGetPublicArtistQuery.mockReturnValue({ data: ownProfileArtist, isLoading: false, isError: false });
     renderPage();

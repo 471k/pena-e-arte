@@ -18,6 +18,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
         // Approved: public portfolio query — see architecture.md AllowAnonymous Exceptions.
         Artist? artist = await db.Artists
             .IgnoreQueryFilters()
+            .Include(a => a.Portfolio)
             .FirstOrDefaultAsync(a => a.Slug == query.Slug && a.DeletedAt == null, ct);
 
         if (artist is null) return null;
@@ -46,7 +47,10 @@ public class GetPublicArtistHandler(IAppDbContext db)
             artist.Slug!,
             artist.Bio,
             artist.ProfileImageUrl,
-            artist.PortfolioImages,
+            artist.Portfolio
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl))
+                .ToList(),
             artist.Specializations,
             artist.HourlyRate,
             reviewStats is { Count: > 0 } ? Math.Round(reviewStats.Avg, 1) : null,

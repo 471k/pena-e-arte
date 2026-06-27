@@ -16,7 +16,10 @@ public class GetMyArtistHandler(IAppDbContext db, ICurrentUser currentUser)
 {
     public async Task<ArtistResponse> Handle(GetMyArtistQuery query, CancellationToken ct)
     {
-        Artist? artist = await db.Artists.FirstOrDefaultAsync(a => a.UserId == currentUser.UserId, ct);
+        Artist? artist = await db.Artists
+            .Include(a => a.Portfolio)
+            .FirstOrDefaultAsync(a => a.UserId == currentUser.UserId, ct);
+
         if (artist is null)
             throw new NotFoundException(nameof(Artist), currentUser.UserId);
 

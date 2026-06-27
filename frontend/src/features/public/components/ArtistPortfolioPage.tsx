@@ -15,7 +15,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { StarRating }  from "@/shared/components/ui/StarRating";
 import { useAppSelector } from "@/app/hooks";
-import { useGetPublicArtistQuery, useRecordArtistViewMutation } from "../publicApi";
+import { useGetPublicArtistQuery, useRecordArtistViewMutation, type ArtistPortfolioImage } from "../publicApi";
 import { useDocumentMeta }         from "@/shared/utils/useDocumentMeta";
 import { ReviewSection }           from "./ReviewSection";
 import { useEffect } from "react";
@@ -201,9 +201,9 @@ function ProfileStrengthNudge({
 function PortfolioGrid({
   images, artistName, onImageClick,
 }: {
-  images:       string[];
+  images:       ArtistPortfolioImage[];
   artistName:   string;
-  onImageClick: (url: string) => void;
+  onImageClick: (item: ArtistPortfolioImage) => void;
 }) {
   if (images.length === 0) {
     return (
@@ -217,11 +217,11 @@ function PortfolioGrid({
 
   return (
     <div className="columns-2 sm:columns-3 gap-3">
-      {images.map((url, i) => (
+      {images.map((item, i) => (
         <button
-          key={url}
+          key={item.imageId}
           type="button"
-          onClick={() => onImageClick(url)}
+          onClick={() => onImageClick(item)}
           className="mb-3 break-inside-avoid block w-full group relative
                      overflow-hidden rounded-lg cursor-zoom-in
                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
@@ -229,7 +229,7 @@ function PortfolioGrid({
           aria-label={`View portfolio image ${i + 1} of ${images.length} by ${artistName}`}
         >
           <img
-            src={url}
+            src={item.imageUrl}
             alt={`Tattoo by ${artistName} — image ${i + 1}`}
             loading={i < 6 ? "eager" : "lazy"}
             decoding="async"
@@ -255,37 +255,57 @@ function PortfolioGrid({
 
 // ── Lightbox ───────────────────────────────────────────────────────────────────
 
+interface LightboxItem {
+  imageId:  string;
+  imageUrl: string;
+}
+
 function Lightbox({
-  imageUrl, artistName, onClose,
+  item, artistName, artistSlug, token, onClose,
 }: {
-  imageUrl:   string | null;
+  item:       LightboxItem | null;
   artistName: string;
+  artistSlug: string;
+  token:      string | null;
   onClose:    () => void;
 }) {
   return (
-    <Dialog open={!!imageUrl} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
-        className="max-w-5xl w-full p-0 bg-black border-0 overflow-hidden"
+        className="max-w-3xl w-full p-0 overflow-hidden"
         aria-label={`Portfolio image by ${artistName}`}
         aria-describedby={undefined}
       >
-        {imageUrl && (
-          <div className="relative">
+        {item && (
+          <div className="grid md:grid-cols-2">
             <DialogTitle className="sr-only">Portfolio image by {artistName}</DialogTitle>
-            <img
-              src={imageUrl}
-              alt={`Tattoo portfolio by ${artistName}`}
-              className="w-full h-auto max-h-[90vh] object-contain"
-            />
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close image"
-              className="absolute top-3 right-3 rounded-full bg-black/60 backdrop-blur-sm
-                         p-1.5 text-white hover:bg-black/80 transition-colors"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
+
+            <div className="bg-black flex items-center justify-center min-h-[240px]">
+              <img
+                src={item.imageUrl}
+                alt={`Tattoo portfolio by ${artistName}`}
+                className="w-full h-auto max-h-[70vh] object-contain"
+              />
+            </div>
+
+            <div className="p-5 overflow-y-auto max-h-[70vh] space-y-4">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close image"
+                className="absolute top-3 right-3 rounded-full bg-black/60 backdrop-blur-sm
+                           p-1.5 text-white hover:bg-black/80 transition-colors"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+
+              <ReviewSection
+                slug={artistSlug}
+                target="tattoo"
+                token={token}
+                imageId={item.imageId}
+              />
+            </div>
           </div>
         )}
       </DialogContent>
@@ -335,7 +355,7 @@ export function ArtistPortfolioPage() {
   const { slug = "" }  = useParams<{ slug: string }>();
   const token          = useAppSelector((s) => s.auth.token);
   const reviewsRef     = useRef<HTMLDivElement>(null);
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxItem, setLightboxItem] = useState<LightboxItem | null>(null);
 
   const { data: artist, isLoading, isError } =
     useGetPublicArtistQuery(slug, { skip: !slug });
@@ -374,13 +394,15 @@ export function ArtistPortfolioPage() {
         name={artist.name}
         slug={artist.slug}
         bio={artist.bio}
-        coverImage={artist.portfolioImages[0] ?? artist.profileImageUrl ?? undefined}
+        coverImage={artist.portfolioImages[0]?.imageUrl ?? artist.profileImageUrl ?? undefined}
       />
 
       <Lightbox
-        imageUrl={lightboxUrl}
+        item={lightboxItem}
         artistName={artist.name}
-        onClose={() => setLightboxUrl(null)}
+        artistSlug={artist.slug}
+        token={token}
+        onClose={() => setLightboxItem(null)}
       />
 
       <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6">
@@ -500,7 +522,7 @@ export function ArtistPortfolioPage() {
               <PortfolioGrid
                 images={artist.portfolioImages}
                 artistName={artist.name}
-                onImageClick={(url) => setLightboxUrl(url)}
+                onImageClick={(item) => setLightboxItem(item)}
               />
             </section>
 

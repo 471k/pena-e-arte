@@ -25,6 +25,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
         // DistinctBy guards against data-layer duplicates (e.g., two records with the same Id).
         List<Artist> artists = await db.Artists
             .IgnoreQueryFilters()
+            .Include(a => a.Portfolio)
             .Where(a => a.StudioId == studio.Id && a.DeletedAt == null && a.Slug != null)
             .ToListAsync(ct);
 
@@ -50,7 +51,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
 
         // Gallery: up to 3 images per artist, max 9 total, round-robin so no single artist dominates.
         List<List<string>> imagesByArtist = artists
-            .Select(a => a.PortfolioImages.Take(3).ToList())
+            .Select(a => a.Portfolio.Select(p => p.ImageUrl).Take(3).ToList())
             .Where(imgs => imgs.Count > 0)
             .ToList();
 

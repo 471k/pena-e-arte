@@ -18,7 +18,9 @@ public class UpdateArtistHandler(IAppDbContext db)
     {
         UpdateArtistRequest req = command.Request;
 
-        Artist? artist = await db.Artists.FirstOrDefaultAsync(a => a.Id == command.Id, ct);
+        Artist? artist = await db.Artists
+            .Include(a => a.Portfolio)
+            .FirstOrDefaultAsync(a => a.Id == command.Id, ct);
         if (artist is null)
             throw new NotFoundException(nameof(Artist), command.Id);
 

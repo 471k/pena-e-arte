@@ -1,7 +1,7 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Pena_e_Arte.Domain.Entities;
+
 
 namespace Pena_e_Arte.Infrastructure.Persistence.Configurations;
 
@@ -20,12 +20,6 @@ public class ArtistConfiguration : TenantEntityConfiguration<Artist>
         builder.Property(a => a.HourlyRate).HasColumnType("decimal(18,2)");
         builder.Property(a => a.Slug).HasMaxLength(60).IsRequired(false);
         builder.Property(a => a.Bio).HasMaxLength(2000);
-
-        builder.Property(a => a.PortfolioImages)
-               .HasConversion(
-                   v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                   v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
-               .HasColumnType("json");
 
         builder.HasIndex(a => new { a.StudioId, a.Email })
                .IsUnique()

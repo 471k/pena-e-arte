@@ -13,10 +13,10 @@ public class Artist : TenantEntity
     public string?      Slug            { get; private set; }
     public string?      Bio             { get; set; }
     public string?      ProfileImageUrl { get; set; }
-    public List<string> PortfolioImages { get; set; } = [];
 
     public void SetSlug(string slug) => Slug = slug;
 
-    public ICollection<Appointment>  Appointments  { get; set; } = [];
-    public ICollection<TattooRecord> TattooRecords { get; set; } = [];
+    public ICollection<Appointment>    Appointments  { get; set; } = [];
+    public ICollection<TattooRecord>   TattooRecords { get; set; } = [];
+    public ICollection<PortfolioImage> Portfolio     { get; set; } = [];
 }

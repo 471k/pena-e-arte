@@ -22,7 +22,7 @@ public class GetPublicStudioHandlerTests
         InstagramHandle = "teststudio",
     };
 
-    private static Artist MakeArtist(Guid studioId, string slug, List<string>? images = null)
+    private static Artist MakeArtist(Guid studioId, string slug)
     {
         Artist artist = new()
         {
@@ -31,10 +31,16 @@ public class GetPublicStudioHandlerTests
             LastName        = "Sousa",
             Email           = $"{slug}@test.com",
             Specializations = "Blackwork, Mandala",
-            PortfolioImages = images ?? [],
         };
         artist.SetSlug(slug);
         return artist;
+    }
+
+    private async Task AddPortfolioImages(Artist artist, List<string> urls)
+    {
+        foreach (string url in urls)
+            _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = artist.StudioId, ImageUrl = url });
+        await _db.SaveChangesAsync();
     }
 
     [Fact]
@@ -155,10 +161,14 @@ public class GetPublicStudioHandlerTests
         await _db.SaveChangesAsync();
 
         // Artist A: 3 images; Artist B: 3 images; Artist C: 3 images → 9 total
-        _db.Artists.Add(MakeArtist(studio.Id, "artist-a", ["a1", "a2", "a3"]));
-        _db.Artists.Add(MakeArtist(studio.Id, "artist-b", ["b1", "b2", "b3"]));
-        _db.Artists.Add(MakeArtist(studio.Id, "artist-c", ["c1", "c2", "c3"]));
+        Artist artistA = MakeArtist(studio.Id, "artist-a");
+        Artist artistB = MakeArtist(studio.Id, "artist-b");
+        Artist artistC = MakeArtist(studio.Id, "artist-c");
+        _db.Artists.AddRange(artistA, artistB, artistC);
         await _db.SaveChangesAsync();
+        await AddPortfolioImages(artistA, ["a1", "a2", "a3"]);
+        await AddPortfolioImages(artistB, ["b1", "b2", "b3"]);
+        await AddPortfolioImages(artistC, ["c1", "c2", "c3"]);
 
         PublicStudioResponse? result =
             await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
@@ -177,8 +187,12 @@ public class GetPublicStudioHandlerTests
 
         // 4 artists × 3 images = 12 available; gallery should cap at 9
         for (int i = 0; i < 4; i++)
-            _db.Artists.Add(MakeArtist(studio.Id, $"artist-{i}", [$"img-{i}-1", $"img-{i}-2", $"img-{i}-3"]));
-        await _db.SaveChangesAsync();
+        {
+            Artist a = MakeArtist(studio.Id, $"artist-{i}");
+            _db.Artists.Add(a);
+            await _db.SaveChangesAsync();
+            await AddPortfolioImages(a, [$"img-{i}-1", $"img-{i}-2", $"img-{i}-3"]);
+        }
 
         PublicStudioResponse? result =
             await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);

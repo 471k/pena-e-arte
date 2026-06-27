@@ -28,13 +28,18 @@ export interface PublicStudioResponse {
   showBookingCta:  boolean;
 }
 
+export interface ArtistPortfolioImage {
+  imageId:  string;
+  imageUrl: string;
+}
+
 export interface PublicArtistResponse {
   artistId:        string;
   name:            string;
   slug:            string;
   bio:             string | null;
   profileImageUrl: string | null;
-  portfolioImages: string[];
+  portfolioImages: ArtistPortfolioImage[];
   specializations: string | null;
   hourlyRate:      number | null;
   averageRating:   number | null;
@@ -74,15 +79,24 @@ export interface ReviewResponse {
 }
 
 export interface PortfolioImageResponse {
-  imageUrl:      string;
-  artistName:    string;
-  artistSlug:    string;
-  studioName:    string;
-  studioSlug:    string;
-  averageRating: number | null;
-  reviewCount:   number;
-  distanceKm:    number | null;
-  viewCount:     number;
+  imageId:             string;
+  imageUrl:            string;
+  artistName:          string;
+  artistSlug:          string;
+  studioName:          string;
+  studioSlug:          string;
+  averageRating:       number | null;
+  reviewCount:         number;
+  imageAverageRating:  number | null;
+  imageReviewCount:    number;
+  distanceKm:          number | null;
+  viewCount:           number;
+}
+
+export interface PortfolioImageReviewArgs {
+  imageId: string;
+  rating:  number;
+  body:    string;
 }
 
 export interface NearbyStudiosArgs {
@@ -111,7 +125,7 @@ const publicBaseQuery = fetchBaseQuery({
 export const publicApi = createApi({
   reducerPath: "publicApi",
   baseQuery: publicBaseQuery,
-  tagTypes: ["PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios", "StudioReviews", "ArtistReviews"],
+  tagTypes: ["PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios", "StudioReviews", "ArtistReviews", "PortfolioImageReviews"],
   endpoints: (builder) => ({
     getPublicStudio: builder.query<PublicStudioResponse, string>({
       query: (slug) => `studios/${slug}`,
@@ -181,6 +195,18 @@ export const publicApi = createApi({
       }),
       invalidatesTags: (_result, _err, { slug }) => [{ type: "ArtistReviews", id: slug }],
     }),
+    getPortfolioImageReviews: builder.query<ReviewResponse[], string>({
+      query: (imageId) => `portfolio/${imageId}/reviews`,
+      providesTags: (_result, _err, imageId) => [{ type: "PortfolioImageReviews", id: imageId }],
+    }),
+    createPortfolioImageReview: builder.mutation<void, PortfolioImageReviewArgs>({
+      query: ({ imageId, rating, body }) => ({
+        url:    `portfolio/${imageId}/reviews`,
+        method: "POST",
+        body:   { rating, body },
+      }),
+      invalidatesTags: (_result, _err, { imageId }) => [{ type: "PortfolioImageReviews", id: imageId }],
+    }),
   }),
 });
 
@@ -195,4 +221,6 @@ export const {
   useGetArtistReviewsQuery,
   useCreateStudioReviewMutation,
   useCreateArtistReviewMutation,
+  useGetPortfolioImageReviewsQuery,
+  useCreatePortfolioImageReviewMutation,
 } = publicApi;

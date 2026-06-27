@@ -8,6 +8,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
+import uiReducer from "@/features/ui/uiSlice";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
@@ -126,6 +127,7 @@ function makeStore(role: Role = Role.Owner) {
   return configureStore({
     reducer: {
       auth:              authReducer,
+      ui:                uiReducer,
       [artistsApi.reducerPath]:      artistsApi.reducer,
       [designsApi.reducerPath]:      designsApi.reducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,

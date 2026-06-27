@@ -1,0 +1,22 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Pena_e_Arte.Domain.Entities;
+
+namespace Pena_e_Arte.Infrastructure.Persistence.Configurations;
+
+public class PortfolioImageConfiguration : TenantEntityConfiguration<PortfolioImage>
+{
+    protected override string TableName => "PortfolioImages";
+
+    public override void Configure(EntityTypeBuilder<PortfolioImage> builder)
+    {
+        base.Configure(builder);
+
+        builder.Property(p => p.ImageUrl).HasMaxLength(2048).IsRequired();
+
+        builder.HasOne(p => p.Artist)
+               .WithMany(a => a.Portfolio)
+               .HasForeignKey(p => p.ArtistId)
+               .OnDelete(DeleteBehavior.Cascade);
+    }
+}

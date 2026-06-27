@@ -157,15 +157,29 @@ public class PublicPortfolioIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
         Artist artist = new()
         {
-            StudioId        = studioId,
-            FirstName       = "Jane",
-            LastName        = "Doe",
-            Email           = $"{slug}@test.com",
-            PortfolioImages = portfolioImages ?? [],
+            StudioId  = studioId,
+            FirstName = "Jane",
+            LastName  = "Doe",
+            Email     = $"{slug}@test.com",
         };
         artist.SetSlug(slug);
         seed.Artists.Add(artist);
         await seed.SaveChangesAsync();
+
+        if (portfolioImages is { Count: > 0 })
+        {
+            foreach (string url in portfolioImages)
+            {
+                seed.PortfolioImages.Add(new PortfolioImage
+                {
+                    ArtistId = artist.Id,
+                    StudioId = studioId,
+                    ImageUrl = url,
+                });
+            }
+            await seed.SaveChangesAsync();
+        }
+
         return artist;
     }
 }

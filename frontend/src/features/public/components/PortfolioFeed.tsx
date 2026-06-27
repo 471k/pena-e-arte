@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { StarRating } from "@/shared/components/ui/StarRating";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
+import { useAppSelector } from "@/app/hooks";
+import {
   useGetPortfolioFeedQuery,
   type PortfolioImageResponse,
 } from "../publicApi";
+import { ReviewSection } from "./ReviewSection";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -15,12 +22,11 @@ interface PortfolioFeedProps {
   lat:      number | null;
   lng:      number | null;
   radiusKm: number;
-  nearOnly: boolean; // when true, pass lat/lng to filter by distance
+  nearOnly: boolean;
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
-// Varying heights simulate the real masonry grid while content loads.
 const SKELETON_HEIGHTS = [
   "h-52", "h-72", "h-64",
   "h-80", "h-48", "h-56",
@@ -44,21 +50,98 @@ function PortfolioSkeleton() {
   );
 }
 
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+
+interface LightboxProps {
+  image:    PortfolioImageResponse;
+  token:    string | null;
+  onClose:  () => void;
+}
+
+function PortfolioLightbox({ image, token, onClose }: LightboxProps) {
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        className="max-w-3xl p-0 overflow-hidden"
+        aria-label={`Tattoo by ${image.artistName} at ${image.studioName}`}
+      >
+        <DialogTitle className="sr-only">
+          Tattoo by {image.artistName} at {image.studioName}
+        </DialogTitle>
+
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 z-10 rounded-full bg-black/60 p-1
+                     text-white hover:bg-black/80 transition-colors"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="grid md:grid-cols-2">
+          {/* Image panel */}
+          <div className="bg-black flex items-center justify-center min-h-[280px]">
+            <img
+              src={image.imageUrl}
+              alt={`Tattoo by ${image.artistName}`}
+              className="w-full h-full object-contain max-h-[70vh]"
+            />
+          </div>
+
+          {/* Info + reviews panel */}
+          <div className="p-5 overflow-y-auto max-h-[70vh] space-y-4">
+            <div className="space-y-1">
+              <Link
+                to={`/artist/${image.artistSlug}`}
+                className="font-semibold hover:underline"
+              >
+                {image.artistName}
+              </Link>
+              <p className="text-sm text-muted-foreground">{image.studioName}</p>
+
+              {image.imageReviewCount > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <StarRating value={Math.round(image.imageAverageRating ?? 0)} />
+                  <span className="text-xs text-muted-foreground">
+                    ({image.imageReviewCount})
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <ReviewSection
+              slug={image.artistSlug}
+              target="tattoo"
+              token={token}
+              imageId={image.imageId}
+            />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Individual image tile ─────────────────────────────────────────────────────
 
-function PortfolioTile({ image }: { image: PortfolioImageResponse }) {
+interface TileProps {
+  image:   PortfolioImageResponse;
+  onOpen:  (image: PortfolioImageResponse) => void;
+}
+
+function PortfolioTile({ image, onOpen }: TileProps) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
 
   return (
-    <Link
-      to={`/artist/${image.artistSlug}`}
-      className="mb-3 break-inside-avoid block relative group rounded-lg overflow-hidden
+    <button
+      type="button"
+      className="mb-3 break-inside-avoid block w-full relative group rounded-lg overflow-hidden
                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-                 focus-visible:ring-offset-2"
+                 focus-visible:ring-offset-2 text-left"
       aria-label={`Tattoo by ${image.artistName} at ${image.studioName}`}
+      onClick={() => onOpen(image)}
     >
-      {/* Image */}
       <img
         src={image.imageUrl}
         alt={`Tattoo by ${image.artistName}`}
@@ -69,7 +152,6 @@ function PortfolioTile({ image }: { image: PortfolioImageResponse }) {
         onError={() => setFailed(true)}
       />
 
-      {/* Distance badge — top right corner */}
       {image.distanceKm !== null && (
         <span
           className="absolute top-2 right-2
@@ -83,7 +165,6 @@ function PortfolioTile({ image }: { image: PortfolioImageResponse }) {
         </span>
       )}
 
-      {/* Hover overlay — gradient from bottom */}
       <div
         className="absolute inset-0
                    bg-gradient-to-t from-black/85 via-black/25 to-transparent
@@ -104,10 +185,10 @@ function PortfolioTile({ image }: { image: PortfolioImageResponse }) {
         )}
 
         <span className="text-violet-300 text-xs font-medium mt-0.5">
-          View artist →
+          View tattoo →
         </span>
       </div>
-    </Link>
+    </button>
   );
 }
 
@@ -115,6 +196,9 @@ function PortfolioTile({ image }: { image: PortfolioImageResponse }) {
 
 export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedProps) {
   const [page, setPage] = useState(1);
+  const [lightboxImage, setLightboxImage] = useState<PortfolioImageResponse | null>(null);
+
+  const token = useAppSelector((s) => s.auth.token);
 
   const feedArgs = {
     lat:      nearOnly && lat != null ? lat : undefined,
@@ -132,7 +216,6 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
     return (
       <div className="flex flex-col items-center gap-4 py-24 text-center">
         <div className="rounded-full bg-muted/40 p-6">
-          {/* Decorative SVG tattoo needle icon — inline, no import */}
           <svg
             aria-hidden="true"
             viewBox="0 0 24 24"
@@ -167,17 +250,16 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
 
   return (
     <div className="space-y-6">
-      {/* Masonry grid — CSS columns, no package */}
       <div className="columns-2 md:columns-3 gap-3">
         {images.map((img) => (
           <PortfolioTile
-            key={`${img.artistSlug}::${img.imageUrl}`}
+            key={img.imageId}
             image={img}
+            onOpen={setLightboxImage}
           />
         ))}
       </div>
 
-      {/* Load more */}
       {hasMore && (
         <div className="flex justify-center pt-2 pb-6">
           <Button
@@ -189,6 +271,14 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
             {isFetching ? "Loading…" : "Load more"}
           </Button>
         </div>
+      )}
+
+      {lightboxImage !== null && (
+        <PortfolioLightbox
+          image={lightboxImage}
+          token={token}
+          onClose={() => setLightboxImage(null)}
+        />
       )}
     </div>
   );

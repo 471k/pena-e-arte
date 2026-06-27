@@ -18,6 +18,7 @@ public class AppDbContext(
     public DbSet<ClientProfile>   ClientProfiles   => Set<ClientProfile>();
     public DbSet<TattooRecord>    TattooRecords    => Set<TattooRecord>();
     public DbSet<Artist>          Artists          => Set<Artist>();
+    public DbSet<PortfolioImage>  PortfolioImages  => Set<PortfolioImage>();
     public DbSet<Design>           Designs           => Set<Design>();
     public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
     public DbSet<DesignApproval>   DesignApprovals   => Set<DesignApproval>();
@@ -59,6 +60,7 @@ public class AppDbContext(
         builder.Entity<ClientProfile>()  .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<TattooRecord>()   .HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
         builder.Entity<Artist>()         .HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
+        builder.Entity<PortfolioImage>() .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Design>()         .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<DesignRevision>()   .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<DesignApproval>()   .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
@@ -81,8 +83,16 @@ public class AppDbContext(
             // No HasQueryFilter — reviews are public cross-tenant data.
             entity.HasIndex(r => r.StudioId);
             entity.HasIndex(r => r.ArtistId);
+            entity.HasIndex(r => r.PortfolioImageId);
             entity.HasIndex(r => new { r.AuthorUserId, r.StudioId }).IsUnique();
             entity.HasIndex(r => new { r.AuthorUserId, r.ArtistId }).IsUnique();
+            entity.HasIndex(r => new { r.AuthorUserId, r.PortfolioImageId }).IsUnique();
+
+            entity.HasOne<PortfolioImage>()
+                  .WithMany()
+                  .HasForeignKey(r => r.PortfolioImageId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .IsRequired(false);
         });
     }
 }

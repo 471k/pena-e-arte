@@ -24,8 +24,10 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     ...actual,
     useGetPublicStudioQuery:       (...args: unknown[]) => mockUseGetPublicStudioQuery(...args),
     useGetStudioReviewsQuery:      (...args: unknown[]) => mockUseGetStudioReviewsQuery(...args),
-    useCreateStudioReviewMutation: () => [vi.fn(), { isLoading: false }],
-    useCreateArtistReviewMutation: () => [vi.fn(), { isLoading: false }],
+    useCreateStudioReviewMutation:         () => [vi.fn(), { isLoading: false }],
+    useCreateArtistReviewMutation:         () => [vi.fn(), { isLoading: false }],
+    useCreatePortfolioImageReviewMutation: () => [vi.fn(), { isLoading: false }],
+    useGetPortfolioImageReviewsQuery:      () => ({ data: [], isLoading: false }),
   };
 });
 

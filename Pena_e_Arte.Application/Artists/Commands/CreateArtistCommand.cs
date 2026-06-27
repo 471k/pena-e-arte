@@ -51,5 +51,7 @@ public class CreateArtistHandler(IAppDbContext db, ICurrentTenant tenant)
     }
 
     internal static ArtistResponse Map(Artist a) =>
-        new(a.Id, a.StudioId, a.UserId, a.FirstName, a.LastName, a.Email, a.Specializations, a.HourlyRate, a.PortfolioImages, a.Slug, a.CreatedAt, a.UpdatedAt);
+        new(a.Id, a.StudioId, a.UserId, a.FirstName, a.LastName, a.Email, a.Specializations, a.HourlyRate,
+            a.Portfolio.OrderByDescending(p => p.CreatedAt).Select(p => p.ImageUrl).ToList(),
+            a.Slug, a.CreatedAt, a.UpdatedAt);
 }

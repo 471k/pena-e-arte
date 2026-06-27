@@ -20,15 +20,43 @@ public class UpdateArtistPortfolioHandler(IAppDbContext db, ICurrentUser current
         if (artist is null)
             throw new NotFoundException(nameof(Artist), command.Id);
 
-        // Artists can only update their own portfolio
         if (currentUser.Role == "artist" && artist.UserId != currentUser.UserId)
             throw new ForbiddenException();
 
-        artist.PortfolioImages = command.Request.ImageUrls;
-        artist.UpdatedAt       = DateTime.UtcNow;
+        // Sync PortfolioImage rows: preserve existing (to keep their reviews), add new, remove stale.
+        List<PortfolioImage> existing = await db.PortfolioImages
+            .Where(p => p.ArtistId == command.Id)
+            .ToListAsync(ct);
 
+        HashSet<string> existingUrls = existing.Select(p => p.ImageUrl).ToHashSet();
+        HashSet<string> newUrls      = command.Request.ImageUrls.ToHashSet();
+
+        // Delete removed images — cascade removes their reviews.
+        List<PortfolioImage> toRemove = existing.Where(p => !newUrls.Contains(p.ImageUrl)).ToList();
+        db.PortfolioImages.RemoveRange(toRemove);
+
+        // Add genuinely new images.
+        foreach (string url in command.Request.ImageUrls)
+        {
+            if (!existingUrls.Contains(url))
+            {
+                db.PortfolioImages.Add(new PortfolioImage
+                {
+                    ArtistId = artist.Id,
+                    StudioId = artist.StudioId,
+                    ImageUrl = url,
+                });
+            }
+        }
+
+        artist.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
-        return CreateArtistHandler.Map(artist);
+        // Reload with portfolio for mapping.
+        Artist updated = await db.Artists
+            .Include(a => a.Portfolio)
+            .FirstAsync(a => a.Id == command.Id, ct);
+
+        return CreateArtistHandler.Map(updated);
     }
 }

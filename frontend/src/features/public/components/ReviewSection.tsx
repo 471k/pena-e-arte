@@ -7,8 +7,10 @@ import { StarRating } from "@/shared/components/ui/StarRating";
 import {
   useGetStudioReviewsQuery,
   useGetArtistReviewsQuery,
+  useGetPortfolioImageReviewsQuery,
   useCreateStudioReviewMutation,
   useCreateArtistReviewMutation,
+  useCreatePortfolioImageReviewMutation,
   type ReviewResponse,
 } from "../publicApi";
 
@@ -48,21 +50,27 @@ function ReviewsSkeleton() {
 }
 
 interface ReviewFormProps {
-  slug:   string;
-  token:  string | null;
-  target: "studio" | "artist";
+  slug:    string;
+  token:   string | null;
+  target:  "studio" | "artist" | "tattoo";
+  imageId?: string;
 }
 
-function ReviewForm({ slug, token, target }: ReviewFormProps) {
+function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
   const [rating,  setRating]  = useState(0);
   const [body,    setBody]    = useState("");
   const [error,   setError]   = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [createStudioReview, { isLoading: isStudioSubmitting }] = useCreateStudioReviewMutation();
-  const [createArtistReview, { isLoading: isArtistSubmitting }] = useCreateArtistReviewMutation();
+  const [createStudioReview,         { isLoading: isStudioSubmitting }]  = useCreateStudioReviewMutation();
+  const [createArtistReview,         { isLoading: isArtistSubmitting }]  = useCreateArtistReviewMutation();
+  const [createPortfolioImageReview, { isLoading: isTattooSubmitting }]  = useCreatePortfolioImageReviewMutation();
 
-  const isSubmitting = target === "studio" ? isStudioSubmitting : isArtistSubmitting;
+  const isSubmitting = target === "studio"
+    ? isStudioSubmitting
+    : target === "artist"
+    ? isArtistSubmitting
+    : isTattooSubmitting;
 
   useEffect(() => {
     if (!success) return;
@@ -75,9 +83,14 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
     if (body.trim().length < 10) { setError("Review must be at least 10 characters."); return; }
 
     setError(null);
-    const mutation = target === "studio" ? createStudioReview : createArtistReview;
-    mutation({ slug, rating, body: body.trim() })
-      .unwrap()
+
+    const promise = target === "studio"
+      ? createStudioReview({ slug, rating, body: body.trim() }).unwrap()
+      : target === "artist"
+      ? createArtistReview({ slug, rating, body: body.trim() }).unwrap()
+      : createPortfolioImageReview({ imageId: imageId ?? "", rating, body: body.trim() }).unwrap();
+
+    promise
       .then(() => {
         setSuccess(true);
         setBody("");
@@ -109,14 +122,18 @@ function ReviewForm({ slug, token, target }: ReviewFormProps) {
   }
 
   if (!token) {
-    const returnUrl = target === "studio" ? `/s/${slug}` : `/artist/${slug}`;
+    const returnUrl = target === "studio"
+      ? `/s/${slug}`
+      : target === "artist"
+      ? `/artist/${slug}`
+      : `/discover`;
     return (
       <div
         className="rounded-lg border bg-muted/20 px-5 py-6
                    flex flex-col items-center gap-3 text-center"
       >
         <p className="text-sm text-muted-foreground">
-          Sign in to share your experience with this {target}.
+          Sign in to share your experience with this {target === "tattoo" ? "tattoo" : target}.
         </p>
         <Button size="sm" asChild>
           <Link to={`/login?redirect=${encodeURIComponent(returnUrl)}`}>
@@ -188,6 +205,14 @@ function ArtistReviewList({ slug }: { slug: string }) {
   return <ReviewList reviews={reviews} isLoading={isLoading} averageRating={averageRating} />;
 }
 
+function PortfolioImageReviewList({ imageId }: { imageId: string }) {
+  const { data: reviews, isLoading } = useGetPortfolioImageReviewsQuery(imageId);
+  const averageRating = reviews && reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : null;
+  return <ReviewList reviews={reviews} isLoading={isLoading} averageRating={averageRating} />;
+}
+
 function ReviewList({
   reviews,
   isLoading,
@@ -222,12 +247,13 @@ function ReviewList({
 }
 
 interface Props {
-  slug:   string;
-  target: "studio" | "artist";
-  token:  string | null;
+  slug:     string;
+  target:   "studio" | "artist" | "tattoo";
+  token:    string | null;
+  imageId?: string;
 }
 
-export function ReviewSection({ slug, target, token }: Props) {
+export function ReviewSection({ slug, target, token, imageId }: Props) {
   return (
     <section className="space-y-5" aria-labelledby="reviews-heading">
       <div className="flex items-center gap-2">
@@ -235,11 +261,13 @@ export function ReviewSection({ slug, target, token }: Props) {
         <h2 id="reviews-heading" className="text-lg font-semibold">Reviews</h2>
       </div>
 
-      <ReviewForm slug={slug} token={token} target={target} />
+      <ReviewForm slug={slug} token={token} target={target} imageId={imageId} />
 
       {target === "studio"
         ? <StudioReviewList slug={slug} />
-        : <ArtistReviewList slug={slug} />}
+        : target === "artist"
+        ? <ArtistReviewList slug={slug} />
+        : <PortfolioImageReviewList imageId={imageId ?? ""} />}
     </section>
   );
 }

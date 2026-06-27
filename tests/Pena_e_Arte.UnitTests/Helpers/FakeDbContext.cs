@@ -13,6 +13,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ClientProfile>   ClientProfiles   => Set<ClientProfile>();
     public DbSet<TattooRecord>    TattooRecords    => Set<TattooRecord>();
     public DbSet<Artist>          Artists          => Set<Artist>();
+    public DbSet<PortfolioImage>  PortfolioImages  => Set<PortfolioImage>();
     public DbSet<Design>           Designs           => Set<Design>();
     public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
     public DbSet<DesignApproval>   DesignApprovals   => Set<DesignApproval>();
@@ -64,6 +65,17 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasMany(r => r.Redemptions)
             .WithOne()
             .HasForeignKey(rr => rr.ReferralCodeId);
+
+        modelBuilder.Entity<PortfolioImage>()
+            .HasOne(p => p.Artist)
+            .WithMany(a => a.Portfolio)
+            .HasForeignKey(p => p.ArtistId);
+
+        modelBuilder.Entity<Review>()
+            .HasOne<PortfolioImage>()
+            .WithMany()
+            .HasForeignKey(r => r.PortfolioImageId)
+            .IsRequired(false);
     }
 
     public static FakeDbContext Create() =>

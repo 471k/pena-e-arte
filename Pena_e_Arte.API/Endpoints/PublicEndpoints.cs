@@ -23,8 +23,11 @@ public static class PublicEndpoints
         group.MapGet("/artists/{slug}/reviews",  GetArtistReviews).AllowAnonymous();
         group.MapPost("/studios/{slug}/reviews", CreateStudioReview).RequireAuthorization("ClientAndAbove");
         group.MapPost("/artists/{slug}/reviews", CreateArtistReview).RequireAuthorization("ClientAndAbove");
-        group.MapPost("/artists/{slug}/view",    RecordArtistView).AllowAnonymous();
-        group.MapGet ("/portfolio/feed",         GetPortfolioFeed).AllowAnonymous();
+        group.MapPost("/artists/{slug}/view",           RecordArtistView).AllowAnonymous();
+        group.MapGet ("/portfolio/feed",                GetPortfolioFeed).AllowAnonymous();
+        group.MapGet ("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous();
+        group.MapPost("/portfolio/{imageId:guid}/reviews", CreatePortfolioImageReview)
+             .RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> GetPublicStudio(
@@ -155,6 +158,34 @@ public static class PublicEndpoints
         List<PortfolioImageResponse> result = await mediator.Send(
             new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetPortfolioImageReviews(
+        Guid              imageId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<ReviewResponse> result =
+            await mediator.Send(new GetPortfolioImageReviewsQuery(imageId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CreatePortfolioImageReview(
+        Guid                imageId,
+        CreateReviewRequest body,
+        ClaimsPrincipal     user,
+        ISender             mediator,
+        CancellationToken   ct)
+    {
+        Guid   authorId   = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        string authorName = user.FindFirstValue(ClaimTypes.Name)
+                         ?? user.FindFirstValue(ClaimTypes.GivenName)
+                         ?? "Anonymous";
+
+        await mediator.Send(
+            new CreatePortfolioImageReviewCommand(imageId, authorId, authorName, body.Rating, body.Body),
+            ct);
+        return Results.NoContent();
     }
 }
 

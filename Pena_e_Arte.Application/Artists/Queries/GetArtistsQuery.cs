@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Artists.Commands;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Application.Artists.Queries;
 
@@ -13,7 +14,7 @@ public class GetArtistsHandler(IAppDbContext db)
 {
     public async Task<List<ArtistResponse>> Handle(GetArtistsQuery query, CancellationToken ct)
     {
-        IQueryable<Domain.Entities.Artist> q = db.Artists;
+        IQueryable<Artist> q = db.Artists.Include(a => a.Portfolio);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -24,9 +25,10 @@ public class GetArtistsHandler(IAppDbContext db)
                 a.Email.ToLower().Contains(search));
         }
 
-        return await q
+        List<Artist> artists = await q
             .OrderBy(a => a.LastName).ThenBy(a => a.FirstName)
-            .Select(a => CreateArtistHandler.Map(a))
             .ToListAsync(ct);
+
+        return artists.ConvertAll(CreateArtistHandler.Map);
     }
 }
