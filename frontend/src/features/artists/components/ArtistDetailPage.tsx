@@ -454,9 +454,23 @@ export function ArtistDetailPage() {
                     <div key={url} className="relative break-inside-avoid group">
                       <img
                         src={url}
-                        alt="Portfolio"
+                        alt="Portfolio image"
                         className="w-full rounded-lg object-cover"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          img.style.display = "none";
+                          const placeholder = img.nextElementSibling as HTMLElement | null;
+                          if (placeholder) placeholder.style.display = "flex";
+                        }}
                       />
+                      <div
+                        style={{ display: "none" }}
+                        className="w-full h-32 rounded-lg bg-muted/60 border border-border/40
+                                   flex-col items-center justify-center gap-1 text-center px-2"
+                      >
+                        <p className="text-xs text-muted-foreground">Image unavailable</p>
+                        <p className="text-[10px] text-muted-foreground/60 break-all line-clamp-2">{url}</p>
+                      </div>
                       {canManagePortfolio && (
                         <button
                           type="button"

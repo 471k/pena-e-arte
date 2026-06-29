@@ -131,7 +131,20 @@ interface TileProps {
 
 function PortfolioTile({ image, onOpen }: TileProps) {
   const [failed, setFailed] = useState(false);
-  if (failed) return null;
+
+  if (failed) {
+    return (
+      <div
+        className="mb-3 break-inside-avoid h-40 rounded-lg
+                   bg-muted/40 border border-border/30
+                   flex flex-col items-center justify-center gap-1 text-center px-3"
+        aria-label={`Image unavailable — ${image.artistName}`}
+      >
+        <p className="text-xs text-muted-foreground/70">Image unavailable</p>
+        <p className="text-[10px] text-muted-foreground/50">{image.artistName}</p>
+      </div>
+    );
+  }
 
   return (
     <button
