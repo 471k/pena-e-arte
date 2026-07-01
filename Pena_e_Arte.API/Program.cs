@@ -39,12 +39,12 @@ try
     builder.Services.AddApiAuthentication(builder.Configuration);
     builder.Services.AddApiAuthorization();
     builder.Services.AddApiOpenTelemetry(builder.Configuration);
+    builder.Services.AddApiCors(builder.Configuration);
+    builder.Services.AddApiRateLimiting();
 
-    builder.Services.AddCors(options =>
-        options.AddDefaultPolicy(policy =>
-            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
-
-    builder.Services.AddHealthChecks();
+    builder.Services.AddHealthChecks()
+        .AddCheck<RedisHealthCheck>("redis",    tags: ["ready"])
+        .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
     WebApplication app = builder.Build();
 
@@ -75,6 +75,7 @@ try
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionMiddleware>();
     app.UseCors();
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseMiddleware<TenantMiddleware>();
     app.UseAuthorization();
@@ -87,9 +88,18 @@ try
     app.MapHub<DesignHub>("/hubs/design");
     app.MapHub<NotificationHub>("/hubs/notification");
     app.MapHealthChecks("/health");
+    app.MapHealthChecks("/health/live",  new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+    {
+        Predicate = _ => false
+    });
+    app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")
+    });
     app.MapPrometheusScrapingEndpoint();
 
     app.MapPublicEndpoints();
+    app.MapSavedImagesEndpoints();
     app.MapPublicDesignEndpoints();
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();

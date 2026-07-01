@@ -21,6 +21,7 @@ import { PaymentStatus } from "@/features/payments/payment.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
+import { SetupChecklist } from "./SetupChecklist";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -360,6 +361,7 @@ export function DashboardPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {sub && <SubscriptionBanner sub={sub} />}
+        <SetupChecklist />
 
         {/* KPI stat cards */}
         <div className="grid grid-cols-3 gap-3">

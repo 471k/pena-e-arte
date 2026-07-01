@@ -10,6 +10,8 @@ export interface ArtistResponse {
   email:           string;
   specializations: string | null;
   hourlyRate:      number | null;
+  isActive:        boolean;
+  avatarUrl:       string | null;
   portfolioImages: string[];
   slug:            string | null;
   createdAt:       string;
@@ -67,6 +69,15 @@ export const artistsApi = createApi({
         method: "PUT",
         body:   { imageUrls },
       }),
+      async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
+        try {
+          const { data: updated } = await queryFulfilled;
+          dispatch(artistsApi.util.updateQueryData("getArtistById", id, () => updated));
+          dispatch(artistsApi.util.updateQueryData("getMyArtist", undefined, () => updated));
+        } catch {
+          // Mutation failed — invalidatesTags below will handle any cleanup.
+        }
+      },
       invalidatesTags: (_result, _error, { id }) => [{ type: "Artist", id }, "Artist"],
     }),
     deleteArtist: builder.mutation<void, string>({

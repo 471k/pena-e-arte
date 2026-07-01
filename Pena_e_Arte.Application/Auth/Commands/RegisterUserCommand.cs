@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Domain.Entities;
@@ -10,7 +11,13 @@ namespace Pena_e_Arte.Application.Auth.Commands;
 
 public record RegisterUserCommand(RegisterUserRequest Request) : IRequest;
 
-public class RegisterUserHandler(IIdentityService identity, IAppDbContext db)
+public class RegisterUserHandler(
+    IIdentityService             identity,
+    IAppDbContext                db,
+    IEmailRenderer               emailRenderer,
+    INotificationService         notifications,
+    IAppSettings                 appSettings,
+    ILogger<RegisterUserHandler> logger)
     : IRequestHandler<RegisterUserCommand>
 {
     public async Task Handle(RegisterUserCommand command, CancellationToken ct)
@@ -54,6 +61,23 @@ public class RegisterUserHandler(IIdentityService identity, IAppDbContext db)
             }
 
             await db.SaveChangesAsync(ct);
+        }
+
+        // Send email verification (non-blocking; failure must not abort registration)
+        try
+        {
+            string token           = await identity.GenerateEmailConfirmationTokenAsync(userId);
+            string confirmationUrl = $"{appSettings.BaseUrl}/verify-email?token={Uri.EscapeDataString(token)}&userId={userId}";
+            string body            = emailRenderer.RenderEmailVerification(confirmationUrl);
+
+            await notifications.SendEmailAsync(
+                req.Email,
+                "Confirm your Pena e Artë account",
+                body, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send email verification for user {@UserId}", userId);
         }
     }
 }

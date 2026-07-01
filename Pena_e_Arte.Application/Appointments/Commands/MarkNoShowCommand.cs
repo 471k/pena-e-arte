@@ -11,9 +11,10 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 public record MarkNoShowCommand(Guid AppointmentId) : IRequest<AppointmentResponse>;
 
 public class MarkNoShowHandler(
-    IAppDbContext     db,
-    ICurrentTenant    tenant,
-    IRealtimeNotifier realtime)
+    IAppDbContext        db,
+    ICurrentTenant       tenant,
+    IRealtimeNotifier    realtime,
+    IStripePaymentService stripe)
     : IRequestHandler<MarkNoShowCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(MarkNoShowCommand command, CancellationToken ct)
@@ -26,8 +27,32 @@ public class MarkNoShowHandler(
             throw new BusinessRuleViolationException(
                 $"Cannot mark no-show for an appointment with status {appointment.Status}.");
 
-        appointment.Status    = AppointmentStatus.NoShow;
-        appointment.UpdatedAt = DateTime.UtcNow;
+        appointment.Status        = AppointmentStatus.NoShow;
+        appointment.DepositStatus = DepositStatus.Forfeited;
+        appointment.UpdatedAt     = DateTime.UtcNow;
+
+        Domain.Entities.Payment? payment = await db.Payments
+            .FirstOrDefaultAsync(p =>
+                p.AppointmentId == appointment.Id &&
+                p.Status        != PaymentStatus.Refunded, ct);
+
+        if (payment is not null)
+        {
+            if (payment.Method == ClientPaymentMethod.Card
+                && !string.IsNullOrEmpty(payment.StripePaymentIntentId)
+                && payment.Status == PaymentStatus.Captured)
+            {
+                await stripe.CapturePaymentAsync(payment.StripePaymentIntentId, ct);
+                payment.Status    = PaymentStatus.Paid;
+                payment.UpdatedAt = DateTime.UtcNow;
+            }
+            else if (payment.Status == PaymentStatus.CashPending)
+            {
+                // Cash deposit declared but not yet confirmed — forfeit the record
+                payment.Status    = PaymentStatus.Paid;
+                payment.UpdatedAt = DateTime.UtcNow;
+            }
+        }
 
         await db.SaveChangesAsync(ct);
 

@@ -16,7 +16,8 @@ import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
-import { publicApi }   from "@/features/public";
+import { publicApi }          from "@/features/public";
+import { savedImagesApi }     from "@/features/public/savedImagesApi";
 import { platformApi } from "@/features/platform/platformApi";
 
 const appReducer = combineReducers({
@@ -37,6 +38,7 @@ const appReducer = combineReducers({
   [notificationsApi.reducerPath]:  notificationsApi.reducer,
   [paymentsApi.reducerPath]:       paymentsApi.reducer,
   [publicApi.reducerPath]:         publicApi.reducer,
+  [savedImagesApi.reducerPath]:    savedImagesApi.reducer,
   [platformApi.reducerPath]:       platformApi.reducer,
 });
 
@@ -66,6 +68,7 @@ export const store = configureStore({
       notificationsApi.middleware,
       paymentsApi.middleware,
       publicApi.middleware,
+      savedImagesApi.middleware,
       platformApi.middleware,
     ),
 });

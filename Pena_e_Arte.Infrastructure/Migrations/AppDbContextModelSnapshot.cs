@@ -224,8 +224,15 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<DateTime?>("AftercareSentAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<Guid>("ArtistId")
                         .HasColumnType("char(36)");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<Guid>("ClientId")
                         .HasColumnType("char(36)");
@@ -257,6 +264,14 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("varchar(2000)");
 
+                    b.Property<string>("ReminderJobId24h")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("ReminderJobId48h")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -271,8 +286,6 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_appointments");
 
-                    b.HasIndex("ArtistId");
-
                     b.HasIndex("ClientId");
 
                     b.HasIndex("StudioId")
@@ -280,6 +293,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasIndex("StudioId", "ArtistId", "Date")
                         .HasDatabaseName("ix_appointments_studio_artist_date");
+
+                    b.HasIndex("ArtistId", "Date", "EndDate", "Status")
+                        .HasDatabaseName("ix_appointments_artist_date_enddate_status");
 
                     b.ToTable("appointments", (string)null);
                 });
@@ -289,6 +305,10 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
+
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
 
                     b.Property<string>("Bio")
                         .HasMaxLength(2000)
@@ -312,6 +332,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.Property<decimal?>("HourlyRate")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -342,17 +367,100 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasName("pk_artists");
 
                     b.HasIndex("Slug")
-                        .IsUnique()
                         .HasDatabaseName("ix_artists_slug");
 
                     b.HasIndex("StudioId")
                         .HasDatabaseName("ix_artists_studio_id");
 
                     b.HasIndex("StudioId", "Email")
-                        .IsUnique()
                         .HasDatabaseName("ix_artists_studio_email");
 
                     b.ToTable("artists", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ArtistSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ArtistId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArtistId")
+                        .HasDatabaseName("ix_artist_schedule_artist_id");
+
+                    b.HasIndex("ArtistId", "DayOfWeek")
+                        .IsUnique()
+                        .HasDatabaseName("uix_artist_schedule_artist_day");
+
+                    b.ToTable("ArtistSchedules");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ArtistTimeOff", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ArtistId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArtistId", "StartDate", "EndDate")
+                        .HasDatabaseName("ix_artist_time_off_artist_dates");
+
+                    b.ToTable("ArtistTimeOffs");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Client", b =>
@@ -855,6 +963,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasIndex("StudioId")
                         .HasDatabaseName("ix_notification_logs_studio_id");
 
+                    b.HasIndex("StudioId", "CreatedAt")
+                        .HasDatabaseName("ix_notification_logs_studio_created_at");
+
                     b.HasIndex("StudioId", "RecipientId")
                         .HasDatabaseName("ix_notification_logs_studio_recipient");
 
@@ -999,13 +1110,18 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("StudioId")
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("Style")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("Id")
                         .HasName("pk_PortfolioImages");
 
-                    b.HasIndex("ArtistId");
+                    b.HasIndex("ArtistId")
+                        .HasDatabaseName("ix_portfolio_images_artist_id");
 
                     b.HasIndex("StudioId")
                         .HasDatabaseName("ix_PortfolioImages_studio_id");
@@ -1135,6 +1251,31 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Reviews");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.SavedPortfolioImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("PortfolioImageId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("SavedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PortfolioImageId");
+
+                    b.HasIndex("UserId", "PortfolioImageId")
+                        .IsUnique();
+
+                    b.ToTable("SavedPortfolioImages", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.SessionSplit", b =>
@@ -1490,6 +1631,28 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Navigation("Client");
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ArtistSchedule", b =>
+                {
+                    b.HasOne("Pena_e_Arte.Domain.Entities.Artist", "Artist")
+                        .WithMany("Schedule")
+                        .HasForeignKey("ArtistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Artist");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ArtistTimeOff", b =>
+                {
+                    b.HasOne("Pena_e_Arte.Domain.Entities.Artist", "Artist")
+                        .WithMany("TimeOff")
+                        .HasForeignKey("ArtistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Artist");
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ClientProfile", b =>
                 {
                     b.HasOne("Pena_e_Arte.Domain.Entities.Client", "Client")
@@ -1651,6 +1814,17 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.SavedPortfolioImage", b =>
+                {
+                    b.HasOne("Pena_e_Arte.Domain.Entities.PortfolioImage", "PortfolioImage")
+                        .WithMany()
+                        .HasForeignKey("PortfolioImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PortfolioImage");
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.SessionSplit", b =>
                 {
                     b.HasOne("Pena_e_Arte.Domain.Entities.Payment", "Payment")
@@ -1716,7 +1890,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.Navigation("Portfolio");
 
+                    b.Navigation("Schedule");
+
                     b.Navigation("TattooRecords");
+
+                    b.Navigation("TimeOff");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Client", b =>

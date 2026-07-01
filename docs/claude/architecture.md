@@ -233,6 +233,7 @@ Instagram:   InstagramHandle added by overnight-prompt-instagram-sync (not yet i
 | 18 | Subscription Oversight + Trial Extension | `Studio.TrialExpiresAt`, `Subscription.Status` | `IgnoreQueryFilters()` — 5th approved usage | Issuer-level |
 | 19 | Platform Referral Code Management | `ReferralCode`, `ReferralRedemption` | `IgnoreQueryFilters()` — 6th approved usage | Issuer-level |
 | 20 | Issuer Dashboard Page | No entity (reads features 17–19) | `platformApi` RTK Query slice | Issuer-level |
+| 21 | Bookmark / Saved Images | `SavedPortfolioImage` (cross-tenant, user-scoped, no TenantEntity) | `savedImagesApi` RTK Query slice (separate base URL `/api/v1/`) | Per-user, cross-tenant |
 
 ---
 
@@ -347,16 +348,20 @@ Frontend: features/map/ — read-only, no Redux slice needed, plain RTK Query
                                   Two tabs: Portfolio (default) and Studios.
 
 Portfolio tab:      PortfolioFeed  public/components/PortfolioFeed.tsx
-                                  API: GET /api/v1/public/portfolio/feed?radiusKm&page[&lat&lng]
+                                  API: GET /api/v1/public/portfolio/feed?radiusKm&page[&lat&lng][&style]
                                   Handler: GetPortfolioFeedQuery (Application/Public/Queries/)
                                   No auth. Approved AllowAnonymous exception — public discovery.
                                   Scoring: Bayesian avg rating + log10(views+1)*0.5
                                   View counts: Redis, key = portfolio:views:{artistId}
                                   All images per artist; ordered by artist Bayesian rank (no 3-per-artist cap).
-                                  Pagination: page/pageSize; RTK Query merge for infinite scroll.
+                                  Pagination: page/pageSize; component-level allImages state accumulation (NOT RTK merge).
+                                  Style filter: StyleChips component (9 chips incl. "All"); resets page on change.
+                                  Masonry: JS round-robin distributeToColumns<T> + useColumnCount (1/2/3 cols responsive).
+                                  Attribution strip: always-visible translucent overlay (artist, studio, rating).
+                                  Bookmark button: hover/focus visible when authenticated; savedImagesApi for toggle.
                                   "Near me" toggle filters feed to the user's radius.
-                                  Tiles are buttons (open lightbox); lightbox shows image + per-image ReviewSection.
-                                  PortfolioImageResponse includes imageId, imageAverageRating, imageReviewCount.
+                                  Tiles are buttons (open lightbox); lightbox shows image + style badge + per-image ReviewSection.
+                                  PortfolioImageResponse includes imageId, style, imageAverageRating, imageReviewCount.
 
 Artist View Counter  POST /api/v1/public/artists/{slug}/view
                                   No auth. Fires from ArtistPortfolioPage on mount.
@@ -409,6 +414,9 @@ Never add a new one without updating this table and the Decisions Log.
 | 13 | `RecordArtistView` endpoint             | Cross-tenant artist slug lookup for Redis view counter           | Anonymous  |
 | 14 | `GetPortfolioImageReviewsHandler`       | Cross-tenant public portfolio image review lookup                | Anonymous  |
 | 15 | `CreatePortfolioImageReviewHandler`     | Cross-tenant portfolio image lookup for review creation          | Authenticated (any role) |
+| 16 | `SavePortfolioImageHandler`             | Cross-tenant portfolio image existence check before saving       | ClientAndAbove |
+| 17 | `GetSavedPortfolioImagesHandler` (images) | Cross-tenant portfolio images + artist join for saved-images list | ClientAndAbove |
+| 18 | `GetSavedPortfolioImagesHandler` (studios) | Cross-tenant studio name lookup for saved-images response projection | ClientAndAbove |
 
 ---
 
@@ -694,3 +702,9 @@ does not re-litigate them.
 | `ClientPaymentMethod` enum | `Card` \| `Cash` (removed `Stripe`, removed `PayPal`) | Matches the two accepted payment methods; `Card` is technology-agnostic (Stripe is the impl) |
 | `PaymentStatus.CashPending` | Added to `PaymentStatus` enum | Represents the window between client's cash declaration and owner's confirmation |
 | `IsPublished` vs `IsActive` on `Studio` | Use `IsActive` only | `IsPublished` was in the SP-02 spec but never implemented. `IsActive` covers the same use case. Adding a second flag would create redundant state. |
+| Portfolio feed masonry layout | JS round-robin column distribution via `distributeToColumns<T>` + `useColumnCount` hook | CSS `columns` property causes visual reflow on append; round-robin JS pre-assigns items to columns deterministically, avoiding shifting and enabling proper `role="list"` semantics |
+| Portfolio feed infinite scroll | Component-level `allImages` state + `useEffect` page accumulation (NOT RTK Query `merge`/`serializeQueryArgs`) | RTK Query `merge` is tricky with style filter resets; component-level state gives full control over resets on style/location change |
+| Portfolio style filter | `PortfolioImage.Style` string? + `TattooStyle` constants class; filter chip sends `style=` query param | Constants class shared between backend validation and frontend chips; string type avoids DB enum migration on every new style |
+| Saved images entity | `SavedPortfolioImage` is NOT a `TenantEntity` — intentional | Saved images are user-scoped and cross-tenant by design; a user can save images from any studio. Adding a tenant FK would break cross-tenant discovery. |
+| Saved images API slice | `savedImagesApi` — separate RTK Query slice with `baseUrl: "/api/v1/"` | `publicApi` uses `baseUrl: "/api/v1/public/"` — saved-images endpoints live at `/api/v1/saved-images/`. Dual-base within one slice requires URL manipulation hacks; a dedicated slice is cleaner |
+| Portfolio tile attribution strip | Always-visible translucent overlay below each image (artist name + studio + rating) | Hover-only overlays fail WCAG 2.1 criterion 1.4.13 (content on hover/focus); always-visible strip ensures attribution is always accessible |

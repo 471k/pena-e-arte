@@ -7,18 +7,22 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
-public record CancelAppointmentCommand(Guid AppointmentId) : IRequest;
+public record CancelAppointmentCommand(
+    Guid               AppointmentId,
+    CancellationReason Reason = CancellationReason.StudioCancelled) : IRequest;
 
 public class CancelAppointmentHandler(
-    IAppDbContext     db,
-    ICurrentTenant    tenant,
-    IRealtimeNotifier realtime,
-    ISender           sender)
+    IAppDbContext        db,
+    ICurrentTenant       tenant,
+    IRealtimeNotifier    realtime,
+    ISender              sender,
+    IJobScheduler        jobs,
+    IStripePaymentService stripe)
     : IRequestHandler<CancelAppointmentCommand>
 {
     public async Task Handle(CancelAppointmentCommand command, CancellationToken ct)
     {
-        var appointment = await db.Appointments
+        Domain.Entities.Appointment appointment = await db.Appointments
             .FirstOrDefaultAsync(a => a.Id == command.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
 
@@ -28,8 +32,35 @@ public class CancelAppointmentHandler(
         if (appointment.Status == AppointmentStatus.Completed)
             throw new BusinessRuleViolationException("Completed appointments cannot be cancelled.");
 
-        appointment.Status    = AppointmentStatus.Cancelled;
-        appointment.UpdatedAt = DateTime.UtcNow;
+        // Cancel scheduled reminder jobs before they fire
+        jobs.CancelAppointmentJobs(appointment.ReminderJobId48h, appointment.ReminderJobId24h);
+
+        appointment.Status             = AppointmentStatus.Cancelled;
+        appointment.CancellationReason = command.Reason;
+        appointment.UpdatedAt          = DateTime.UtcNow;
+
+        // Refund deposit on studio-initiated cancellation
+        Domain.Entities.Payment? payment = await db.Payments
+            .FirstOrDefaultAsync(p => p.AppointmentId == appointment.Id, ct);
+
+        if (payment is not null)
+        {
+            if (payment.Method == ClientPaymentMethod.Card
+                && !string.IsNullOrEmpty(payment.StripePaymentIntentId)
+                && payment.Status == PaymentStatus.Captured)
+            {
+                await stripe.RefundPaymentIntentAsync(payment.StripePaymentIntentId, null, ct);
+                payment.Status    = PaymentStatus.Refunded;
+                payment.UpdatedAt = DateTime.UtcNow;
+            }
+            else if (payment.Status == PaymentStatus.CashPending)
+            {
+                payment.Status    = PaymentStatus.Refunded;
+                payment.UpdatedAt = DateTime.UtcNow;
+            }
+
+            appointment.DepositStatus = DepositStatus.Refunded;
+        }
 
         await db.SaveChangesAsync(ct);
         await realtime.NotifyStudioAsync(

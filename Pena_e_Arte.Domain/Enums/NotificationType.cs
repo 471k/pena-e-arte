@@ -10,4 +10,5 @@ public enum NotificationType
     IntakeFormSubmitted,
     ConsentFormSigned,
     DesignReviewed,
+    Aftercare,
 }

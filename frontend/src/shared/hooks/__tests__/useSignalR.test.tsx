@@ -75,6 +75,7 @@ function makeStore(): EnhancedStore<any> {
         tenantId:            "studio-0001",
         role:                Role.Owner,
         pendingReferralCode: null,
+        refreshToken:        null,
       },
     },
   });
@@ -125,7 +126,7 @@ describe("useSignalR", () => {
         [notificationsApi.reducerPath]: notificationsApi.reducer,
       },
       preloadedState: {
-        auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null },
+        auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null, refreshToken: null },
       },
     });
 

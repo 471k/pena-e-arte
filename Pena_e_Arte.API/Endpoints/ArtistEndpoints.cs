@@ -13,13 +13,18 @@ public static class ArtistEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/artists")
             .RequireAuthorization();
 
-        group.MapGet("/",                              GetArtists).RequireAuthorization("ClientAndAbove");
-        group.MapGet("me",                             GetMyArtist).RequireAuthorization("ArtistAndAbove");
-        group.MapPost("/",                             CreateArtist).RequireAuthorization("OwnerOnly");
-        group.MapGet("{id:guid}",                      GetArtist).RequireAuthorization("ClientAndAbove");
-        group.MapPut("{id:guid}",                      UpdateArtist).RequireAuthorization("OwnerOnly");
-        group.MapPut("{id:guid}/portfolio-images",     UpdatePortfolio).RequireAuthorization("ArtistAndAbove");
-        group.MapDelete("{id:guid}",                   DeleteArtist).RequireAuthorization("OwnerOnly");
+        group.MapGet("/",                                   GetArtists).RequireAuthorization("ClientAndAbove");
+        group.MapGet("me",                                  GetMyArtist).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("/",                                  CreateArtist).RequireAuthorization("OwnerOnly");
+        group.MapGet("{id:guid}",                           GetArtist).RequireAuthorization("ClientAndAbove");
+        group.MapPut("{id:guid}",                           UpdateArtist).RequireAuthorization("OwnerOnly");
+        group.MapPut("{id:guid}/portfolio-images",          UpdatePortfolio).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("{id:guid}",                        DeleteArtist).RequireAuthorization("OwnerOnly");
+        // P-05: Artist Working Hours
+        group.MapGet("{id:guid}/schedule",                  GetSchedule).RequireAuthorization("ClientAndAbove");
+        group.MapPut("{id:guid}/schedule",                  UpsertSchedule).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("{id:guid}/time-off",                 AddTimeOff).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("{id:guid}/time-off/{timeOffId:guid}", DeleteTimeOff).RequireAuthorization("ArtistAndAbove");
     }
 
     private static async Task<IResult> GetArtists(
@@ -83,6 +88,49 @@ public static class ArtistEndpoints
         CancellationToken ct)
     {
         await mediator.Send(new DeleteArtistCommand(id), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetSchedule(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        ArtistAvailabilityResponse result = await mediator.Send(new GetArtistScheduleQuery(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpsertSchedule(
+        Guid                        id,
+        UpsertArtistScheduleRequest body,
+        ISender                     mediator,
+        CancellationToken           ct)
+    {
+        IReadOnlyList<ScheduleEntryDto> entries = body.Entries
+            .Select(e => new ScheduleEntryDto(e.DayOfWeek, e.StartTime, e.EndTime, e.IsAvailable))
+            .ToList();
+        await mediator.Send(new UpsertArtistScheduleCommand(id, entries), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> AddTimeOff(
+        Guid                    id,
+        AddArtistTimeOffRequest body,
+        ISender                 mediator,
+        CancellationToken       ct)
+    {
+        Guid timeOffId = await mediator.Send(
+            new AddArtistTimeOffCommand(id, body.StartDate, body.EndDate, body.Reason), ct);
+        return Results.Created($"/api/v1/artists/{id}/time-off/{timeOffId}", new { id = timeOffId });
+    }
+
+    private static async Task<IResult> DeleteTimeOff(
+        Guid              id,
+        Guid              timeOffId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new DeleteArtistTimeOffCommand(id, timeOffId), ct);
         return Results.NoContent();
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
@@ -8,7 +9,10 @@ using System.Text.Json.Serialization;
 
 namespace Pena_e_Arte.Infrastructure.Services;
 
-public class SubscriptionAccessService(AppDbContext db, IDistributedCache cache) : ISubscriptionAccessService
+public class SubscriptionAccessService(
+    AppDbContext      db,
+    IDistributedCache cache,
+    ILogger<SubscriptionAccessService> logger) : ISubscriptionAccessService
 {
     public const string CacheKeyPrefix = "sub:snapshot:";
 
@@ -34,9 +38,16 @@ public class SubscriptionAccessService(AppDbContext db, IDistributedCache cache)
     {
         string key = CacheKeyPrefix + studioId;
 
-        byte[]? cached = await cache.GetAsync(key, ct);
-        if (cached is not null)
-            return JsonSerializer.Deserialize<SubscriptionSnapshot>(cached, JsonOptions);
+        try
+        {
+            byte[]? cached = await cache.GetAsync(key, ct);
+            if (cached is not null)
+                return JsonSerializer.Deserialize<SubscriptionSnapshot>(cached, JsonOptions);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Redis unavailable — subscription cache read skipped for studio {StudioId}", studioId);
+        }
 
         SubscriptionSnapshot? snapshot = await db.Subscriptions
             .AsNoTracking()
@@ -54,15 +65,31 @@ public class SubscriptionAccessService(AppDbContext db, IDistributedCache cache)
         // SubscriptionCacheInvalidationInterceptor (Active/Trialing → PastDue etc.).
         if (snapshot is not null && IsPassThrough(snapshot.Status))
         {
-            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonOptions);
-            await cache.SetAsync(key, bytes, CacheOptions, ct);
+            try
+            {
+                byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonOptions);
+                await cache.SetAsync(key, bytes, CacheOptions, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Redis unavailable — subscription cache write skipped for studio {StudioId}", studioId);
+            }
         }
 
         return snapshot;
     }
 
-    public Task InvalidateCacheAsync(Guid studioId, CancellationToken ct = default) =>
-        cache.RemoveAsync(CacheKeyPrefix + studioId, ct);
+    public async Task InvalidateCacheAsync(Guid studioId, CancellationToken ct = default)
+    {
+        try
+        {
+            await cache.RemoveAsync(CacheKeyPrefix + studioId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Redis unavailable — subscription cache invalidation skipped for studio {StudioId}", studioId);
+        }
+    }
 
     private static bool IsPassThrough(SubscriptionStatus status) =>
         status is SubscriptionStatus.Active

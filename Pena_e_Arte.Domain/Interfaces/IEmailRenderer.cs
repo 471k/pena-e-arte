@@ -56,4 +56,14 @@ public interface IEmailRenderer
         string clientFirstName,
         string amountFormatted,
         bool   showBranding);
+
+    string RenderAftercare(
+        string clientFirstName,
+        string studioName,
+        string artistName,
+        bool   showBranding);
+
+    string RenderEmailVerification(string confirmationUrl);
+
+    string RenderArtistInvite(string artistFirstName, string studioName, string setPasswordUrl);
 }

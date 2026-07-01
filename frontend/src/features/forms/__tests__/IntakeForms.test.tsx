@@ -96,7 +96,7 @@ function makeStore(role: Role = Role.Client) {
         pendingReferralCode: null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
-      ui: { readOnlyError: null, sessionExpired: false },
+      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false },
     },
   });
 }

@@ -113,6 +113,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
         services.AddSingleton<IEmailRenderer,          EmailRenderer>();
+        services.AddSingleton<IAppSettings,            AppSettings>();
 
         return services;
     }

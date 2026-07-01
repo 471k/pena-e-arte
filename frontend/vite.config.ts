@@ -26,5 +26,6 @@ export default defineConfig({
       jsdom: { url: "http://localhost" },
     },
     setupFiles: ["./src/test/setup.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
   },
 });

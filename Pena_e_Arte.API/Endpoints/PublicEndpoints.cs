@@ -21,13 +21,16 @@ public static class PublicEndpoints
         group.MapGet("/studios/nearby",          GetNearbyStudios).AllowAnonymous();
         group.MapGet("/studios/{slug}/reviews",  GetStudioReviews).AllowAnonymous();
         group.MapGet("/artists/{slug}/reviews",  GetArtistReviews).AllowAnonymous();
-        group.MapPost("/studios/{slug}/reviews", CreateStudioReview).RequireAuthorization("ClientAndAbove");
-        group.MapPost("/artists/{slug}/reviews", CreateArtistReview).RequireAuthorization("ClientAndAbove");
-        group.MapPost("/artists/{slug}/view",           RecordArtistView).AllowAnonymous();
+        group.MapPost("/studios/{slug}/reviews", CreateStudioReview)
+             .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
+        group.MapPost("/artists/{slug}/reviews", CreateArtistReview)
+             .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
+        group.MapPost("/artists/{slug}/view",    RecordArtistView)
+             .AllowAnonymous().RequireRateLimiting("public-write");
         group.MapGet ("/portfolio/feed",                GetPortfolioFeed).AllowAnonymous();
         group.MapGet ("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous();
         group.MapPost("/portfolio/{imageId:guid}/reviews", CreatePortfolioImageReview)
-             .RequireAuthorization("ClientAndAbove");
+             .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
     }
 
     private static async Task<IResult> GetPublicStudio(
@@ -139,8 +142,15 @@ public static class PublicEndpoints
 
         if (artistId is null) return Results.NotFound();
 
-        IDatabase redisDb = redis.GetDatabase();
-        await redisDb.StringIncrementAsync($"portfolio:views:{artistId}");
+        try
+        {
+            IDatabase redisDb = redis.GetDatabase();
+            await redisDb.StringIncrementAsync($"portfolio:views:{artistId}");
+        }
+        catch
+        {
+            // Redis unavailable — view count not recorded; non-critical.
+        }
         return Results.NoContent();
     }
 
@@ -151,12 +161,13 @@ public static class PublicEndpoints
         CancellationToken ct,
         double            radiusKm = 50,
         int               page     = 1,
-        int               pageSize = 24)
+        int               pageSize = 24,
+        string?           style    = null)
     {
         if (pageSize is < 1 or > 100) pageSize = 24;
 
         List<PortfolioImageResponse> result = await mediator.Send(
-            new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize), ct);
+            new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize, style), ct);
         return Results.Ok(result);
     }
 

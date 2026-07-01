@@ -18,12 +18,13 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class AppointmentHandlerIntegrationTests
 {
-    private readonly DatabaseFixture   _fixture;
-    private readonly ICurrentUser      _user;
-    private readonly ISlotLocker       _locker;
-    private readonly IJobScheduler     _jobs;
-    private readonly IRealtimeNotifier _realtime;
-    private readonly ISender           _sender = Substitute.For<ISender>();
+    private readonly DatabaseFixture     _fixture;
+    private readonly ICurrentUser        _user;
+    private readonly ISlotLocker         _locker;
+    private readonly IJobScheduler       _jobs;
+    private readonly IRealtimeNotifier   _realtime;
+    private readonly ISender             _sender = Substitute.For<ISender>();
+    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
 
     public AppointmentHandlerIntegrationTests(DatabaseFixture fixture)
     {
@@ -138,7 +139,7 @@ public class AppointmentHandlerIntegrationTests
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender, _jobs, _stripe);
         await handler.Handle(new CancelAppointmentCommand(apptId), default);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -152,7 +153,7 @@ public class AppointmentHandlerIntegrationTests
     {
         Guid tenantId = Guid.NewGuid();
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender, _jobs, _stripe);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(Guid.NewGuid()), default);
 
@@ -170,7 +171,7 @@ public class AppointmentHandlerIntegrationTests
                                             AppointmentStatus.Completed);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender, _jobs, _stripe);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(apptId), default);
 
@@ -188,6 +189,22 @@ public class AppointmentHandlerIntegrationTests
         ctx.Artists.Add(artist);
         ctx.Clients.Add(client);
         await ctx.SaveChangesAsync();
+
+        // Seed open schedule for every day so CreateAppointmentHandler availability check passes
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+        {
+            ctx.ArtistSchedules.Add(new ArtistSchedule
+            {
+                ArtistId    = artist.Id,
+                StudioId    = tenantId,
+                DayOfWeek   = day,
+                StartTime   = TimeSpan.Zero,
+                EndTime     = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsAvailable = true,
+            });
+        }
+        await ctx.SaveChangesAsync();
+
         return (artist.Id, client.Id);
     }
 

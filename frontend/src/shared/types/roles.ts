@@ -14,8 +14,9 @@ export interface User {
 }
 
 export interface AuthPayload {
-  user: User;
-  token: string;
-  tenantId: string | null;
-  role: Role;
+  user:         User;
+  token:        string;
+  refreshToken?: string | null;
+  tenantId:     string | null;
+  role:         Role;
 }

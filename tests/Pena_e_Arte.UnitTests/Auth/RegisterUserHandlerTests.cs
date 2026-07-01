@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Auth.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -11,11 +12,22 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class RegisterUserHandlerTests
 {
-    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
-    private readonly FakeDbContext    _db       = FakeDbContext.Create();
-    private readonly Guid             _userId   = Guid.NewGuid();
+    private readonly IIdentityService    _identity      = Substitute.For<IIdentityService>();
+    private readonly FakeDbContext       _db            = FakeDbContext.Create();
+    private readonly IEmailRenderer      _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly IAppSettings        _appSettings   = Substitute.For<IAppSettings>();
+    private readonly Guid                _userId        = Guid.NewGuid();
 
-    private RegisterUserHandler CreateSut() => new(_identity, _db);
+    public RegisterUserHandlerTests()
+    {
+        _appSettings.BaseUrl.Returns(string.Empty);
+        _identity.GenerateEmailConfirmationTokenAsync(Arg.Any<Guid>()).Returns("token");
+    }
+
+    private RegisterUserHandler CreateSut() => new(
+        _identity, _db, _emailRenderer, _notifications, _appSettings,
+        NullLogger<RegisterUserHandler>.Instance);
 
     private void IdentitySucceeds() =>
         _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>())

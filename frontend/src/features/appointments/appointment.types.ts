@@ -16,18 +16,20 @@ export const DepositStatus = {
 export type DepositStatus = (typeof DepositStatus)[keyof typeof DepositStatus];
 
 export interface AppointmentResponse {
-  id:              string;
-  studioId:        string;
-  artistId:        string;
-  clientId:        string;
-  date:            string;
-  endDate:         string;
-  durationMinutes: number;
-  status:          AppointmentStatus;
-  depositStatus:   DepositStatus;
-  depositAmount:   number;
-  notes:           string | null;
-  createdAt:       string;
+  id:                 string;
+  studioId:           string;
+  artistId:           string;
+  clientId:           string;
+  date:               string;
+  endDate:            string;
+  durationMinutes:    number;
+  status:             AppointmentStatus;
+  depositStatus:      DepositStatus;
+  depositAmount:      number;
+  notes:              string | null;
+  createdAt:          string;
+  cancellationReason?: string | null;
+  aftercareSentAt?:    string | null;
 }
 
 export interface CreateAppointmentRequest {
@@ -42,4 +44,15 @@ export interface CreateAppointmentRequest {
 export interface GetAppointmentsParams {
   from?: string;
   to?:   string;
+}
+
+export interface SlotAvailabilityResponse {
+  available: boolean;
+  reason:    string | null;
+}
+
+export interface CheckSlotAvailabilityParams {
+  artistId:        string;
+  date:            string;
+  durationMinutes: number;
 }

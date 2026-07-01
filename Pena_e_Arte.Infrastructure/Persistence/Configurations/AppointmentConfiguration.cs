@@ -21,6 +21,18 @@ public class AppointmentConfiguration : TenantEntityConfiguration<Appointment>
         builder.Property(a => a.DepositAmount).HasColumnType("decimal(18,2)");
         builder.Property(a => a.Notes).HasMaxLength(2000);
 
+        builder.Property(a => a.CancellationReason)
+               .HasConversion<string>().HasMaxLength(32).IsRequired(false);
+
+        builder.Property(a => a.ReminderJobId48h).HasMaxLength(128).IsRequired(false);
+        builder.Property(a => a.ReminderJobId24h).HasMaxLength(128).IsRequired(false);
+
+        builder.Property(a => a.AftercareSentAt).IsRequired(false);
+
+        // Composite index for the booking overlap check query
+        builder.HasIndex(a => new { a.ArtistId, a.Date, a.EndDate, a.Status })
+               .HasDatabaseName("ix_appointments_artist_date_enddate_status");
+
         builder.HasIndex(a => new { a.StudioId, a.ArtistId, a.Date })
                .HasDatabaseName("ix_appointments_studio_artist_date");
 

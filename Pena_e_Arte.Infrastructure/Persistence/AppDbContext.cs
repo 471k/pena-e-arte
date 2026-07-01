@@ -18,6 +18,8 @@ public class AppDbContext(
     public DbSet<ClientProfile>   ClientProfiles   => Set<ClientProfile>();
     public DbSet<TattooRecord>    TattooRecords    => Set<TattooRecord>();
     public DbSet<Artist>          Artists          => Set<Artist>();
+    public DbSet<ArtistSchedule>  ArtistSchedules  => Set<ArtistSchedule>();
+    public DbSet<ArtistTimeOff>   ArtistTimeOffs   => Set<ArtistTimeOff>();
     public DbSet<PortfolioImage>  PortfolioImages  => Set<PortfolioImage>();
     public DbSet<Design>           Designs           => Set<Design>();
     public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
@@ -40,6 +42,9 @@ public class AppDbContext(
     // --- Cross-tenant public data (no tenant filter) ---
     public DbSet<Review> Reviews => Set<Review>();
 
+    // --- User-saved images (no tenant filter — user may save from any studio) ---
+    public DbSet<SavedPortfolioImage> SavedPortfolioImages => Set<SavedPortfolioImage>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
@@ -60,6 +65,8 @@ public class AppDbContext(
         builder.Entity<ClientProfile>()  .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<TattooRecord>()   .HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
         builder.Entity<Artist>()         .HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
+        builder.Entity<ArtistSchedule>() .HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
+        builder.Entity<ArtistTimeOff>()  .HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
         builder.Entity<PortfolioImage>() .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Design>()         .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<DesignRevision>()   .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
@@ -71,6 +78,19 @@ public class AppDbContext(
         builder.Entity<ConsentForm>()    .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>()              .HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
         builder.Entity<StudioNotificationPreference>() .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+
+        builder.Entity<SavedPortfolioImage>(b =>
+        {
+            b.ToTable("SavedPortfolioImages");
+            b.HasKey(s => s.Id);
+            b.Property(s => s.SavedAt).IsRequired();
+            // One save per user per image — enforced by unique index
+            b.HasIndex(s => new { s.UserId, s.PortfolioImageId }).IsUnique();
+            b.HasOne(s => s.PortfolioImage)
+             .WithMany()
+             .HasForeignKey(s => s.PortfolioImageId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<Review>(entity =>
         {

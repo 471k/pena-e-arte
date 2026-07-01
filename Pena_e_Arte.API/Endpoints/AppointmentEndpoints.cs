@@ -15,6 +15,7 @@ public static class AppointmentEndpoints
 
         group.MapGet("/",                       GetAppointments).RequireAuthorization("ArtistAndAbove");
         group.MapGet("/mine",                   GetMyAppointments).RequireAuthorization("ClientAndAbove");
+        group.MapGet("/check-slot",             CheckSlotAvailability).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}",               GetAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/",                      CreateAppointment).RequireAuthorization("ClientAndAbove");
         group.MapDelete("{id:guid}",            CancelAppointment).RequireAuthorization("ArtistAndAbove");
@@ -22,6 +23,7 @@ public static class AppointmentEndpoints
         group.MapPatch("{id:guid}/complete",    CompleteAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/no-show",     MarkNoShow).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/reschedule",  RescheduleAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("{id:guid}/calendar.ics",  GetIcs).RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> GetAppointments(
@@ -104,5 +106,26 @@ public static class AppointmentEndpoints
     {
         AppointmentResponse result = await mediator.Send(new RescheduleAppointmentCommand(id, request), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetIcs(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        string icsContent = await mediator.Send(new GetAppointmentIcsQuery(id), ct);
+        return Results.Content(icsContent, "text/calendar; charset=utf-8");
+    }
+
+    private static async Task<IResult> CheckSlotAvailability(
+        Guid              artistId,
+        DateTime          date,
+        int               durationMinutes,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        SlotAvailabilityResult result = await mediator.Send(
+            new CheckSlotAvailabilityQuery(artistId, date, durationMinutes), ct);
+        return Results.Ok(new SlotAvailabilityResponse(result.Available, result.Reason));
     }
 }

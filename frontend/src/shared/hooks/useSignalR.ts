@@ -14,9 +14,13 @@ export function useSignalR(studioId: string | null | undefined) {
   useEffect(() => {
     if (!studioId || !token) return;
 
-    function buildConnection(url: string) {
+    // In dev the Vite proxy doesn't reliably forward WebSocket upgrades for SignalR,
+    // so connect directly to the backend. In production the hubs are on the same origin.
+    const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
+
+    function buildConnection(path: string) {
       return new HubConnectionBuilder()
-        .withUrl(url, { accessTokenFactory: () => token! })
+        .withUrl(`${hubBase}${path}`, { accessTokenFactory: () => token! })
         .withAutomaticReconnect()
         .configureLogging(LogLevel.Warning)
         .build();

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Navigate, Outlet, createBrowserRouter, useNavigate } from "react-router-dom";
-import { LoginPage, ForgotPasswordPage, ResetPasswordPage } from "@/features/auth";
+import { LoginPage, ForgotPasswordPage, ResetPasswordPage, ChangePasswordPage, VerifyEmailPage, ClientRegisterPage } from "@/features/auth";
 import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
 import { DashboardPage } from "@/features/dashboard";
@@ -100,7 +100,9 @@ export const router = createBrowserRouter([
   { path: "/login",           element: <LoginPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/reset-password",  element: <ResetPasswordPage /> },
-  { path: "/register",        element: <RegisterStudioPage /> },
+  { path: "/verify-email",    element: <VerifyEmailPage /> },
+  { path: "/register",         element: <RegisterStudioPage /> },
+  { path: "/client-register", element: <ClientRegisterPage /> },
   { path: "/map",             element: <StudioMapPage /> },
   { path: "/discover",        element: <DiscoverPage /> },
   { path: "/s/:slug",                 element: <StudioPortfolioPage /> },
@@ -307,6 +309,13 @@ export const router = createBrowserRouter([
                 path: "pay/:paymentId",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Owner, Role.Artist, Role.Issuer]} />,
                 children: [{ index: true, element: <DepositCheckoutPage /> }],
+              },
+
+              // ── Auth: account settings ───────────────────────────────────────
+              {
+                path: "account/change-password",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [{ index: true, element: <ChangePasswordPage /> }],
               },
             ],
           },

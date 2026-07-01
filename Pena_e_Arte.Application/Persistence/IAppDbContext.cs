@@ -12,6 +12,8 @@ public interface IAppDbContext
     DbSet<ClientProfile>   ClientProfiles   { get; }
     DbSet<TattooRecord>    TattooRecords    { get; }
     DbSet<Artist>          Artists          { get; }
+    DbSet<ArtistSchedule>  ArtistSchedules  { get; }
+    DbSet<ArtistTimeOff>   ArtistTimeOffs   { get; }
     DbSet<PortfolioImage>  PortfolioImages  { get; }
     DbSet<Design>            Designs            { get; }
     DbSet<DesignRevision>    DesignRevisions    { get; }
@@ -33,6 +35,9 @@ public interface IAppDbContext
 
     // Cross-tenant public data
     DbSet<Review> Reviews { get; }
+
+    // User-saved portfolio images — cross-tenant (user may belong to any studio)
+    DbSet<SavedPortfolioImage> SavedPortfolioImages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

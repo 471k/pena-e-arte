@@ -12,4 +12,6 @@ public record AppointmentResponse(
     string   DepositStatus,
     decimal  DepositAmount,
     string?  Notes,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string?  CancellationReason  = null,
+    DateTime? AftercareSentAt    = null);

@@ -11,6 +11,7 @@ import {
   type NearbyStudioResponse,
 } from "../publicApi";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { useAppSelector }  from "@/app/hooks";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -160,6 +161,7 @@ function DiscoverMeta() {
 
 export function DiscoverPage() {
   const hasGeo = "geolocation" in navigator;
+  const token  = useAppSelector((s) => s.auth.token);
 
   const [lat,           setLat]           = useState<number | null>(hasGeo ? null : DEFAULT_LAT);
   const [lng,           setLng]           = useState<number | null>(hasGeo ? null : DEFAULT_LNG);
@@ -170,7 +172,6 @@ export function DiscoverPage() {
   const [searchError,   setSearchError]   = useState<string | null>(null);
   const [isGeocoding,   setIsGeocoding]   = useState(false);
   const [activeTab,     setActiveTab]     = useState<ActiveTab>("portfolio");
-  // nearOnly: when true, portfolio feed is filtered to the user's radius
   const [nearOnly,      setNearOnly]      = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -283,22 +284,31 @@ export function DiscoverPage() {
       <header className="sticky top-0 z-[100] border-b bg-background/95 backdrop-blur-sm">
         {/* Top row: brand + nav */}
         <div className="flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <svg aria-hidden="true" viewBox="0 0 24 24"
-                 className="h-5 w-5 fill-none stroke-current stroke-2">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2 2 0 112.828 2.828
-                   L11.828 13.828A2 2 0 0110 14.414l-2.828.414.414-2.828A2 2 0
-                   019 10.172V11z" />
+          <Link to="/discover" aria-label="Pena e Artë — Home" className="flex items-center gap-2">
+            {/* Stylised needle icon */}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="12" y1="2" x2="12" y2="18" />
+              <path d="M10 16 L12 22 L14 16" />
+              <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
+              <line x1="8" y1="9" x2="16" y2="9" />
             </svg>
             <span className="font-semibold tracking-tight text-sm">Pena e Artë</span>
-          </div>
+          </Link>
 
           <nav className="flex items-center gap-1" aria-label="Site navigation">
             <Link to="/map"
               className="text-xs text-muted-foreground hover:text-foreground
                          transition-colors px-3 py-2 rounded-md hover:bg-muted/40">
-              View on map
+              View studios on map
             </Link>
             <Link to="/login"
               className="text-xs text-muted-foreground hover:text-foreground
@@ -306,16 +316,29 @@ export function DiscoverPage() {
               Sign in
             </Link>
             <Link to="/register"
-              className="text-xs font-medium px-3 py-2 rounded-md border
-                         border-violet-500/60 text-violet-400
-                         hover:bg-violet-500/10 hover:border-violet-400 transition-colors">
+              className="text-xs font-medium px-3 py-2 rounded-md
+                         border-2 border-violet-500 text-violet-400
+                         bg-violet-500/5
+                         hover:bg-violet-500/15 hover:text-violet-300
+                         transition-colors
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
               Register studio
             </Link>
           </nav>
         </div>
 
+        {/* Value-prop strip for logged-out visitors */}
+        {!token && (
+          <div className="px-4 pt-1 pb-2.5 border-b border-border/40">
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Discover tattoo artists and studios near you. Browse portfolios, read
+              reviews, and book your next session.
+            </p>
+          </div>
+        )}
+
         {/* Bottom row: search + tabs + location toggle */}
-        <div className="flex items-center gap-2 px-4 pb-2.5">
+        <div className="flex items-center gap-2 px-4 pb-2.5 pt-2.5">
           {/* Search input */}
           <div className="flex flex-1 items-center gap-2 max-w-sm">
             <div className="relative flex-1">
@@ -324,11 +347,11 @@ export function DiscoverPage() {
               <input
                 ref={inputRef}
                 type="search"
-                placeholder="Search city…"
+                placeholder="Find artists in a city…"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") void handleLocationSearch(); }}
-                aria-label="Search for a city"
+                aria-label="Search for a city to discover artists"
                 className="w-full h-9 pl-8 pr-3 rounded-md border bg-background text-xs
                            focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
                            placeholder:text-muted-foreground"
@@ -345,35 +368,30 @@ export function DiscoverPage() {
             </Button>
           </div>
 
-          {/* Tab toggle */}
+          {/* Tab toggle — underline style with pronounce active state */}
           <div
             role="tablist"
-            className="flex items-center rounded-md border bg-muted/30 p-0.5 gap-0.5"
+            aria-label="Content type"
+            className="flex items-center gap-0 border-b border-border/40"
           >
-            <button
-              role="tab"
-              aria-selected={activeTab === "portfolio"}
-              onClick={() => setActiveTab("portfolio")}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                activeTab === "portfolio"
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Portfolio
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeTab === "studios"}
-              onClick={() => setActiveTab("studios")}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                activeTab === "studios"
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Studios
-            </button>
+            {(["portfolio", "studios"] as const).map((tab) => (
+              <button
+                key={tab}
+                role="tab"
+                id={`tab-${tab}`}
+                aria-selected={activeTab === tab}
+                aria-controls={`panel-${tab}`}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-xs font-medium transition-colors capitalize
+                            border-b-2 -mb-px
+                            ${activeTab === tab
+                              ? "border-violet-500 text-foreground font-semibold"
+                              : "border-transparent text-muted-foreground hover:text-foreground"
+                            }`}
+              >
+                {tab === "portfolio" ? "Portfolio" : "Studios"}
+              </button>
+            ))}
           </div>
 
           {/* Location state */}
@@ -389,6 +407,10 @@ export function DiscoverPage() {
                 {activeTab === "portfolio" && lat !== null && (
                   <button
                     type="button"
+                    aria-pressed={nearOnly}
+                    aria-label={nearOnly
+                      ? "Location filter active — click to show all"
+                      : "Filter to near me"}
                     onClick={() => setNearOnly((v) => !v)}
                     className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border
                                 transition-colors ${
@@ -401,7 +423,9 @@ export function DiscoverPage() {
                     Near me
                   </button>
                 )}
-                <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[140px]">
+                <span aria-hidden="true" className="text-border select-none hidden sm:block">·</span>
+                <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[140px]"
+                      aria-label={`Current location: ${locationName}`}>
                   {locationName}
                 </span>
               </>
@@ -427,77 +451,131 @@ export function DiscoverPage() {
       {/* ── Content area ─────────────────────────────────────────────────── */}
       <main className="flex-1 px-4 py-5 max-w-6xl mx-auto w-full">
 
-        {/* Portfolio tab */}
-        {activeTab === "portfolio" && (
-          <PortfolioFeed
-            lat={lat}
-            lng={lng}
-            radiusKm={radiusKm}
-            nearOnly={nearOnly}
-          />
+        {/* Value-prop hero for first-time logged-out visitors (before location is known) */}
+        {!token && !locationName && (
+          <section aria-labelledby="hero-heading" className="py-10 text-center space-y-3">
+            <h1 id="hero-heading" className="text-2xl font-bold tracking-tight">
+              Discover tattoo artists near you
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              Browse portfolios from studios worldwide, filter by style, and find the
+              artist who matches your vision.
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-1">
+              <Link to="/login"
+                className="text-sm text-violet-400 hover:text-violet-300 underline
+                           underline-offset-4 transition-colors">
+                Sign in
+              </Link>
+              <span aria-hidden="true" className="text-border">·</span>
+              <Link to="/register"
+                className="text-sm font-medium px-4 py-1.5 rounded-md
+                           bg-violet-600 hover:bg-violet-700 text-white transition-colors">
+                Register your studio
+              </Link>
+            </div>
+          </section>
         )}
 
-        {/* Studios tab */}
-        {activeTab === "studios" && (
-          <div className="space-y-4">
-            {/* Radius selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Within</span>
-              <select
-                value={radiusKm}
-                onChange={(e) => setRadiusKm(parseInt(e.target.value, 10) as Radius)}
-                aria-label="Search radius"
-                className="h-9 rounded-md border bg-background px-3 text-sm text-foreground
-                           focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {RADII.map((r) => (
-                  <option key={r} value={r}>{r} km</option>
-                ))}
-              </select>
-            </div>
-
-            {isLoadingStudios ? (
-              <StudioSkeleton />
-            ) : !studios || studios.length === 0 ? (
-              <div className="flex flex-col items-center gap-4 py-20 text-center">
-                <MapPin className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
-                <div className="space-y-1">
-                  <p className="text-base font-semibold">No studios found nearby</p>
-                  <p className="text-sm text-muted-foreground">Try a larger radius.</p>
-                </div>
-                <Link to="/register"
-                  className="text-sm text-violet-400 hover:text-violet-300 underline underline-offset-4">
-                  Register your studio →
-                </Link>
-              </div>
-            ) : (
-              <>
-                <p
-                  className="text-sm font-medium"
-                  aria-live="polite"
-                  aria-atomic="true"
-                >
-                  {studios.length} studio{studios.length !== 1 ? "s" : ""} near{" "}
-                  <span className="text-foreground/70">{locationName}</span>{" "}
-                  within {radiusKm} km
-                </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {studios.map((s) => (
-                    <StudioCard key={s.studioId} studio={s} />
-                  ))}
-                </div>
-              </>
+        {/* Tab panel with fade transition on switch */}
+        <div key={activeTab} className="animate-in fade-in">
+          {/* Portfolio tab */}
+          <div
+            id="panel-portfolio"
+            role="tabpanel"
+            aria-labelledby="tab-portfolio"
+            hidden={activeTab !== "portfolio"}
+          >
+            {activeTab === "portfolio" && (
+              <PortfolioFeed
+                lat={lat}
+                lng={lng}
+                radiusKm={radiusKm}
+                nearOnly={nearOnly}
+              />
             )}
           </div>
-        )}
+
+          {/* Studios tab */}
+          <div
+            id="panel-studios"
+            role="tabpanel"
+            aria-labelledby="tab-studios"
+            hidden={activeTab !== "studios"}
+          >
+            {activeTab === "studios" && (
+              <div className="space-y-4">
+                {/* Radius selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Within</span>
+                  <select
+                    value={radiusKm}
+                    onChange={(e) => setRadiusKm(parseInt(e.target.value, 10) as Radius)}
+                    aria-label="Search radius"
+                    className="h-9 rounded-md border bg-background px-3 text-sm text-foreground
+                               focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {RADII.map((r) => (
+                      <option key={r} value={r}>{r} km</option>
+                    ))}
+                  </select>
+                </div>
+
+                {isLoadingStudios ? (
+                  <StudioSkeleton />
+                ) : !studios || studios.length === 0 ? (
+                  <div className="flex flex-col items-center gap-4 py-20 text-center">
+                    <MapPin className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold">No studios found nearby</p>
+                      <p className="text-sm text-muted-foreground">Try a larger radius.</p>
+                    </div>
+                    <Link to="/register"
+                      className="text-sm text-violet-400 hover:text-violet-300 underline underline-offset-4">
+                      Register your studio →
+                    </Link>
+                  </div>
+                ) : (
+                  <>
+                    <p
+                      className="text-sm font-medium"
+                      aria-live="polite"
+                      aria-atomic="true"
+                    >
+                      {studios.length} studio{studios.length !== 1 ? "s" : ""} near{" "}
+                      <span className="text-foreground/70">{locationName}</span>{" "}
+                      within {radiusKm} km
+                    </p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {studios.map((s) => (
+                        <StudioCard key={s.studioId} studio={s} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer className="py-4 text-center text-xs text-foreground/50 border-t">
-        <a href="https://penaearte.com" target="_blank" rel="noopener noreferrer"
-           className="hover:text-foreground/80 hover:underline transition-colors">
-          Powered by Pena e Artë
-        </a>
+      <footer className="py-5 border-t border-border/40">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center
+                        justify-between gap-3 text-xs text-foreground/50">
+          <span>© {new Date().getFullYear()} Pena e Artë. All rights reserved.</span>
+          <nav aria-label="Footer links" className="flex items-center gap-4">
+            <Link to="/discover" className="hover:text-foreground/80 transition-colors">
+              Discover
+            </Link>
+            <Link to="/map" className="hover:text-foreground/80 transition-colors">
+              Map
+            </Link>
+            <Link to="/register" className="hover:text-foreground/80 transition-colors">
+              Register studio
+            </Link>
+          </nav>
+        </div>
       </footer>
     </div>
   );

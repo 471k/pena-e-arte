@@ -2,26 +2,37 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "@/app/store";
 
 interface LoginRequest {
-  email: string;
+  email:    string;
   password: string;
 }
 
-interface AuthResponse {
-  accessToken: string;
-  tokenType: string;
+export interface AuthResponse {
+  accessToken:  string;
+  refreshToken: string;
+  tokenType:    string;
 }
 
 interface RegisterUserRequest {
-  email: string;
-  password: string;
-  role: string;
-  studioId: string;
+  email:      string;
+  password:   string;
+  role:       string;
+  studioId:   string;
+  firstName?: string;
 }
 
 interface ResetPasswordRequest {
-  email: string;
-  token: string;
+  email:       string;
+  token:       string;
   newPassword: string;
+}
+
+interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword:     string;
 }
 
 export const authApi = createApi({
@@ -30,7 +41,7 @@ export const authApi = createApi({
     baseUrl: "/api/v1/",
     prepareHeaders: (headers, { getState }) => {
       const { token, tenantId } = (getState() as RootState).auth;
-      if (token) headers.set("Authorization", `Bearer ${token}`);
+      if (token)    headers.set("Authorization", `Bearer ${token}`);
       if (tenantId) headers.set("X-Tenant-Id", tenantId);
       return headers;
     },
@@ -48,6 +59,15 @@ export const authApi = createApi({
     resetPassword: builder.mutation<void, ResetPasswordRequest>({
       query: (body) => ({ url: "auth/reset-password", method: "POST", body }),
     }),
+    refreshToken: builder.mutation<AuthResponse, RefreshTokenRequest>({
+      query: (body) => ({ url: "auth/refresh", method: "POST", body }),
+    }),
+    changePassword: builder.mutation<void, ChangePasswordRequest>({
+      query: (body) => ({ url: "auth/change-password", method: "PATCH", body }),
+    }),
+    resendVerificationEmail: builder.mutation<void, void>({
+      query: () => ({ url: "auth/resend-verification", method: "POST" }),
+    }),
   }),
 });
 
@@ -56,4 +76,7 @@ export const {
   useRegisterUserMutation,
   useRequestPasswordResetMutation,
   useResetPasswordMutation,
+  useRefreshTokenMutation,
+  useChangePasswordMutation,
+  useResendVerificationEmailMutation,
 } = authApi;

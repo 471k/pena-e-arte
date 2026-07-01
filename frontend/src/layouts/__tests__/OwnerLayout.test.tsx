@@ -85,7 +85,7 @@ function makeStore(overrides: StoreOverrides = {}) {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false },
+      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: false },
     },
   });
 }

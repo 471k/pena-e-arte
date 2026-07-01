@@ -12,16 +12,18 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class CancelAppointmentHandlerTests
 {
-    private readonly FakeDbContext     _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant    _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender           _sender   = Substitute.For<ISender>();
-    private readonly Guid              _studioId = Guid.NewGuid();
+    private readonly FakeDbContext       _db       = FakeDbContext.Create();
+    private readonly ICurrentTenant      _tenant   = Substitute.For<ICurrentTenant>();
+    private readonly IRealtimeNotifier   _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender             _sender   = Substitute.For<ISender>();
+    private readonly IJobScheduler       _jobs     = Substitute.For<IJobScheduler>();
+    private readonly IStripePaymentService _stripe  = Substitute.For<IStripePaymentService>();
+    private readonly Guid                _studioId = Guid.NewGuid();
 
     public CancelAppointmentHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
 
-    private CancelAppointmentHandler CreateSut() => new(_db, _tenant, _realtime, _sender);
+    private CancelAppointmentHandler CreateSut() => new(_db, _tenant, _realtime, _sender, _jobs, _stripe);
 
     [Fact]
     public async Task Handle_PendingAppointment_SetsStatusToCancelled()

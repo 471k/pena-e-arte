@@ -14,7 +14,9 @@ public class GetArtistsHandler(IAppDbContext db)
 {
     public async Task<List<ArtistResponse>> Handle(GetArtistsQuery query, CancellationToken ct)
     {
-        IQueryable<Artist> q = db.Artists.Include(a => a.Portfolio);
+        IQueryable<Artist> q = db.Artists
+            .Include(a => a.Portfolio)
+            .Where(a => a.IsActive);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -26,9 +28,12 @@ public class GetArtistsHandler(IAppDbContext db)
         }
 
         List<Artist> artists = await q
-            .OrderBy(a => a.LastName).ThenBy(a => a.FirstName)
+            .OrderBy(a => a.FirstName).ThenBy(a => a.LastName)
             .ToListAsync(ct);
 
-        return artists.ConvertAll(CreateArtistHandler.Map);
+        return artists
+            .DistinctBy(a => a.Id)
+            .Select(CreateArtistHandler.Map)
+            .ToList();
     }
 }

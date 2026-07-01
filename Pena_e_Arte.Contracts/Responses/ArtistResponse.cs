@@ -9,6 +9,8 @@ public record ArtistResponse(
     string        Email,
     string?       Specializations,
     decimal?      HourlyRate,
+    bool          IsActive,
+    string?       AvatarUrl,
     List<string>  PortfolioImages,
     string?       Slug,
     DateTime      CreatedAt,

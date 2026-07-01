@@ -81,6 +81,7 @@ export interface ReviewResponse {
 export interface PortfolioImageResponse {
   imageId:             string;
   imageUrl:            string;
+  style:               string | null;   // nullable — untagged images are valid
   artistName:          string;
   artistSlug:          string;
   studioName:          string;
@@ -111,6 +112,15 @@ export interface CreateReviewArgs {
   body:   string;
 }
 
+export interface PortfolioFeedArgs {
+  lat?:      number;
+  lng?:      number;
+  radiusKm:  number;
+  page:      number;
+  pageSize?: number;
+  style?:    string;
+}
+
 // Attaches the JWT when available so authenticated endpoints (e.g. POST reviews)
 // work without triggering the global session-expired redirect for anonymous calls.
 const publicBaseQuery = fetchBaseQuery({
@@ -125,7 +135,10 @@ const publicBaseQuery = fetchBaseQuery({
 export const publicApi = createApi({
   reducerPath: "publicApi",
   baseQuery: publicBaseQuery,
-  tagTypes: ["PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios", "StudioReviews", "ArtistReviews", "PortfolioImageReviews"],
+  tagTypes: [
+    "PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios",
+    "StudioReviews", "ArtistReviews", "PortfolioImageReviews", "PortfolioFeed",
+  ],
   endpoints: (builder) => ({
     getPublicStudio: builder.query<PublicStudioResponse, string>({
       query: (slug) => `studios/${slug}`,
@@ -144,28 +157,20 @@ export const publicApi = createApi({
         `studios/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
       providesTags: ["NearbyStudios"],
     }),
-    getPortfolioFeed: builder.query<
-      PortfolioImageResponse[],
-      { lat?: number; lng?: number; radiusKm?: number; page: number }
-    >({
-      query: ({ lat, lng, radiusKm = 50, page }) => {
-        const params = new URLSearchParams({ radiusKm: String(radiusKm), page: String(page) });
+    getPortfolioFeed: builder.query<PortfolioImageResponse[], PortfolioFeedArgs>({
+      query: ({ lat, lng, radiusKm, page, pageSize = 24, style }) => {
+        const params = new URLSearchParams();
+        params.set("radiusKm", String(radiusKm));
+        params.set("page",     String(page));
+        params.set("pageSize", String(pageSize));
         if (lat != null) params.set("lat", String(lat));
         if (lng != null) params.set("lng", String(lng));
+        if (style)       params.set("style", style);
         return `portfolio/feed?${params.toString()}`;
       },
-      // Location/radius changes start a fresh cache entry; page changes append.
-      serializeQueryArgs: ({ queryArgs: { lat, lng, radiusKm } }) =>
-        `portfolio-feed:${lat ?? ""}:${lng ?? ""}:${radiusKm ?? 50}`,
-      merge: (currentCache, newItems) => {
-        currentCache.push(...newItems);
-      },
-      forceRefetch: ({ currentArg, previousArg }) =>
-        currentArg?.page !== previousArg?.page,
-      // Evict immediately on unmount so that navigating back to /discover always
-      // fetches fresh data — prevents newly uploaded portfolio images from being
-      // hidden behind a stale cache entry that updateArtistPortfolio cannot reach
-      // (tag invalidation is local to each RTK Query API slice).
+      providesTags: ["PortfolioFeed"],
+      // Evict immediately on unmount — navigating back to /discover always
+      // fetches fresh data; newly uploaded images won't hide behind stale cache.
       keepUnusedDataFor: 0,
     }),
     recordArtistView: builder.mutation<void, string>({

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Infrastructure.Services;
@@ -10,7 +11,9 @@ namespace Pena_e_Arte.Infrastructure.Services;
 // every application-layer mutation: webhooks, Hangfire jobs, and handler commands.
 // Direct SQL mutations (e.g. emergency console ops) bypass this interceptor; in that
 // case the 60 s TTL on SubscriptionAccessService is the safety net.
-public class SubscriptionCacheInvalidationInterceptor(IDistributedCache cache) : SaveChangesInterceptor
+public class SubscriptionCacheInvalidationInterceptor(
+    IDistributedCache                              cache,
+    ILogger<SubscriptionCacheInvalidationInterceptor> logger) : SaveChangesInterceptor
 {
     private List<Guid> _pendingInvalidations = [];
 
@@ -35,7 +38,17 @@ public class SubscriptionCacheInvalidationInterceptor(IDistributedCache cache) :
         CancellationToken             cancellationToken = default)
     {
         foreach (Guid studioId in _pendingInvalidations)
-            await cache.RemoveAsync(SubscriptionAccessService.CacheKeyPrefix + studioId, cancellationToken);
+        {
+            try
+            {
+                await cache.RemoveAsync(SubscriptionAccessService.CacheKeyPrefix + studioId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Redis unavailable — DB commit already succeeded; TTL will expire the stale entry.
+                logger.LogWarning(ex, "Failed to evict subscription cache for studio {StudioId}", studioId);
+            }
+        }
 
         return await base.SavedChangesAsync(eventData, result, cancellationToken);
     }

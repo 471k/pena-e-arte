@@ -29,6 +29,7 @@ export function decodeToken(token: string): AuthPayload & { exp?: number } {
   return {
     user,
     token,
+    refreshToken: null,
     tenantId: claims.tenant_id ?? null,
     role,
     exp: claims.exp,

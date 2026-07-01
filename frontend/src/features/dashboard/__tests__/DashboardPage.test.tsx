@@ -13,6 +13,7 @@ import { billingApi } from "@/features/billing/billingApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
 import { DashboardPage } from "@/features/dashboard/components/DashboardPage";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -123,6 +124,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/payments", () =>
     HttpResponse.json([]),
   ),
+  http.get("http://localhost/api/v1/deposit-rules", () =>
+    HttpResponse.json([]),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -134,12 +138,13 @@ afterAll(() => server.close());
 function makeStore() {
   return configureStore({
     reducer: {
-      auth:                          authReducer,
-      ui:                            uiReducer,
-      [billingApi.reducerPath]:      billingApi.reducer,
-      [appointmentsApi.reducerPath]: appointmentsApi.reducer,
-      [artistsApi.reducerPath]:      artistsApi.reducer,
-      [paymentsApi.reducerPath]:     paymentsApi.reducer,
+      auth:                              authReducer,
+      ui:                                uiReducer,
+      [billingApi.reducerPath]:          billingApi.reducer,
+      [appointmentsApi.reducerPath]:     appointmentsApi.reducer,
+      [artistsApi.reducerPath]:          artistsApi.reducer,
+      [paymentsApi.reducerPath]:         paymentsApi.reducer,
+      [depositRulesApi.reducerPath]:     depositRulesApi.reducer,
     },
     middleware: (gd) =>
       gd().concat(
@@ -147,11 +152,12 @@ function makeStore() {
         appointmentsApi.middleware,
         artistsApi.middleware,
         paymentsApi.middleware,
+        depositRulesApi.middleware,
       ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@ink.test" }, token: "fake-token", tenantId: "stud-0001", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false },
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false },
     },
   });
 }

@@ -6,9 +6,15 @@ namespace Pena_e_Arte.Infrastructure.Services;
 
 public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
 {
-    public void ScheduleAppointmentReminder(Guid appointmentId, string type, DateTimeOffset enqueueAt) =>
+    public string ScheduleAppointmentReminder(Guid appointmentId, string type, DateTimeOffset enqueueAt) =>
         backgroundJobs.Schedule<AppointmentReminderJob>(
             j => j.SendReminderAsync(appointmentId, type, default), enqueueAt);
+
+    public void CancelAppointmentJobs(string? jobId48h, string? jobId24h)
+    {
+        if (!string.IsNullOrEmpty(jobId48h)) backgroundJobs.Delete(jobId48h);
+        if (!string.IsNullOrEmpty(jobId24h)) backgroundJobs.Delete(jobId24h);
+    }
 
     public void ScheduleTrialExpiryWarning(Guid studioId, DateTimeOffset enqueueAt) =>
         backgroundJobs.Schedule<TrialExpiryWarningJob>(
@@ -28,4 +34,7 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
 
     public void TriggerIndustryReportNow() =>
         backgroundJobs.Enqueue<IndustryReportJob>(j => j.RunAsync(CancellationToken.None));
+
+    public void EnqueueArtistInvite(string email, string firstName, Guid studioId) =>
+        backgroundJobs.Enqueue<SendArtistInviteJob>(j => j.SendAsync(email, firstName, studioId, CancellationToken.None));
 }

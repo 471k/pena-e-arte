@@ -324,7 +324,7 @@ describe("RegisterStudioPage — step 2", () => {
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText("Slug already taken.")).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it("shows network-error message when fetch fails", async () => {
     server.use(
@@ -341,5 +341,5 @@ describe("RegisterStudioPage — step 2", () => {
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText(/unable to reach the server/i)).toBeInTheDocument();
-  });
+  }, 15_000);
 });

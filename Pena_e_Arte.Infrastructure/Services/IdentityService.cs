@@ -102,6 +102,56 @@ public class IdentityService(
         return (true, newAccessToken, newRefreshToken, null);
     }
 
+    public async Task<(bool Success, string[] Errors)> ChangePasswordAsync(
+        Guid userId, string currentPassword, string newPassword, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return (false, ["User not found."]);
+
+        IdentityResult result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        return result.Succeeded
+            ? (true, [])
+            : (false, result.Errors.Select(e => e.Description).ToArray());
+    }
+
+    public async Task<string> GenerateEmailConfirmationTokenAsync(Guid userId)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException($"User {userId} not found.");
+        return await userManager.GenerateEmailConfirmationTokenAsync(user);
+    }
+
+    public async Task<(bool Success, string[] Errors)> ConfirmEmailAsync(
+        Guid userId, string token, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return (false, ["Invalid confirmation request."]);
+
+        IdentityResult result = await userManager.ConfirmEmailAsync(user, token);
+        return result.Succeeded
+            ? (true, [])
+            : (false, result.Errors.Select(e => e.Description).ToArray());
+    }
+
+    public async Task<bool> IsEmailConfirmedAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        return user?.EmailConfirmed ?? false;
+    }
+
+    public async Task<string?> GetUserEmailAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        return user?.Email;
+    }
+
+    public async Task<Guid?> GetUserIdByEmailAsync(string email, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByEmailAsync(email);
+        if (user is null) return null;
+        return Guid.TryParse(user.Id, out Guid id) ? id : null;
+    }
+
     private string GenerateJwt(IdentityUser user, IList<string> roles, IList<Claim> userClaims)
     {
         string secretKey  = configuration["Jwt:SecretKey"]!;

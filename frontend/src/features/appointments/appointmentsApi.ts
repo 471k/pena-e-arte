@@ -2,8 +2,10 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 import type {
   AppointmentResponse,
+  CheckSlotAvailabilityParams,
   CreateAppointmentRequest,
   GetAppointmentsParams,
+  SlotAvailabilityResponse,
 } from "./appointment.types";
 
 export const appointmentsApi = createApi({
@@ -47,6 +49,13 @@ export const appointmentsApi = createApi({
       query: (id) => ({ url: `appointments/${id}/no-show`, method: "PATCH" }),
       invalidatesTags: ["Appointment"],
     }),
+    checkSlotAvailability: builder.query<SlotAvailabilityResponse, CheckSlotAvailabilityParams>({
+      query: ({ artistId, date, durationMinutes }) => ({
+        url:    "appointments/check-slot",
+        params: { artistId, date, durationMinutes },
+      }),
+      keepUnusedDataFor: 0,
+    }),
   }),
 });
 
@@ -59,4 +68,5 @@ export const {
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
+  useCheckSlotAvailabilityQuery,
 } = appointmentsApi;

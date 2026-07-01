@@ -310,6 +310,22 @@ public class CreateAppointmentHandlerTests
         };
         _db.Artists.Add(artist);
         _db.SaveChanges();
+
+        // Seed open schedule for all days so availability checks pass
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+        {
+            _db.ArtistSchedules.Add(new ArtistSchedule
+            {
+                ArtistId    = artist.Id,
+                StudioId    = _studioId,
+                DayOfWeek   = day,
+                StartTime   = TimeSpan.Zero,
+                EndTime     = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsAvailable = true,
+            });
+        }
+        _db.SaveChanges();
+
         return artist.Id;
     }
 

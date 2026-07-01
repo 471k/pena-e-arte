@@ -8,6 +8,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer }    from "msw/node";
 import authReducer        from "@/features/auth/authSlice";
 import { publicApi }      from "@/features/public/publicApi";
+import { savedImagesApi } from "@/features/public/savedImagesApi";
 import { PortfolioFeed }  from "@/features/public/components/PortfolioFeed";
 import type { PortfolioImageResponse } from "@/features/public/publicApi";
 
@@ -15,9 +16,10 @@ function makeStore() {
   return configureStore({
     reducer: {
       auth: authReducer,
-      [publicApi.reducerPath]: publicApi.reducer,
+      [publicApi.reducerPath]:      publicApi.reducer,
+      [savedImagesApi.reducerPath]: savedImagesApi.reducer,
     },
-    middleware: (gd) => gd().concat(publicApi.middleware),
+    middleware: (gd) => gd().concat(publicApi.middleware, savedImagesApi.middleware),
   });
 }
 
@@ -35,6 +37,7 @@ const IMAGES: PortfolioImageResponse[] = [
   {
     imageId:            "img-001",
     imageUrl:           "https://example.com/tattoo1.jpg",
+    style:              "blackwork",
     artistName:         "Ana Lima",
     artistSlug:         "ana-lima",
     studioName:         "Black Ink Lisbon",
@@ -49,6 +52,7 @@ const IMAGES: PortfolioImageResponse[] = [
   {
     imageId:            "img-002",
     imageUrl:           "https://example.com/tattoo2.jpg",
+    style:              null,
     artistName:         "João Costa",
     artistSlug:         "joao-costa",
     studioName:         "Dark Arts Porto",
@@ -66,6 +70,10 @@ const server = setupServer(
   http.get("http://localhost/api/v1/public/portfolio/feed", () =>
     HttpResponse.json(IMAGES),
   ),
+  // savedImagesApi — skip=true when not logged in, but handler prevents unhandled-request warnings
+  http.get("http://localhost/api/v1/saved-images/ids", () =>
+    HttpResponse.json([]),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
@@ -79,6 +87,34 @@ describe("PortfolioFeed", () => {
     expect(await screen.findByLabelText(/Tattoo by João Costa/i)).toBeInTheDocument();
   });
 
+  it("each tile has role=listitem", async () => {
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    const items = screen.getAllByRole("listitem");
+    expect(items.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("masonry grid has role=list", async () => {
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    expect(screen.getByRole("list", { name: /portfolio images/i })).toBeInTheDocument();
+  });
+
+  it("attribution strip always shows artist name without hover (visible text)", async () => {
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    // The always-visible attribution strip contains the artist name as plain text
+    expect(screen.getByText("Ana Lima")).toBeInTheDocument();
+    expect(screen.getByText("Black Ink Lisbon")).toBeInTheDocument();
+  });
+
+  it("shows studio-level rating in attribution strip", async () => {
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    // Attribution strip shows averageRating (4.8) for the studio, not imageReviewCount
+    expect(screen.getByText("4.8")).toBeInTheDocument();
+  });
+
   it("shows distance badge when distanceKm is not null", async () => {
     renderFeed();
     await screen.findByLabelText(/Tattoo by João Costa/i);
@@ -90,12 +126,6 @@ describe("PortfolioFeed", () => {
     await screen.findByLabelText(/Tattoo by Ana Lima/i);
     const anaTile = screen.getByLabelText(/Tattoo by Ana Lima/i);
     expect(anaTile.querySelector("span")?.textContent).not.toMatch(/km/);
-  });
-
-  it("shows rating and review count when reviewCount > 0", async () => {
-    renderFeed();
-    await screen.findByLabelText(/Tattoo by Ana Lima/i);
-    expect(screen.getByText("(22)")).toBeInTheDocument();
   });
 
   it("does NOT show rating row when reviewCount is 0", async () => {
@@ -183,5 +213,44 @@ describe("PortfolioFeed", () => {
     await user.click(loadMore);
     expect(await screen.findByLabelText(/Tattoo by João Costa at Page Two Studio/i))
       .toBeInTheDocument();
+  });
+
+  // ── Style chips ────────────────────────────────────────────────────────────
+
+  it("style chip group has accessible label", () => {
+    renderFeed();
+    expect(screen.getByRole("group", { name: /filter by tattoo style/i })).toBeInTheDocument();
+  });
+
+  it("'All' chip is selected by default", () => {
+    renderFeed();
+    const allChip = screen.getByRole("radio", { name: /^all$/i });
+    expect(allChip).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("clicking a style chip deselects 'All'", async () => {
+    const user = userEvent.setup();
+    renderFeed();
+    const blackworkChip = screen.getByRole("radio", { name: /blackwork/i });
+    await user.click(blackworkChip);
+    expect(blackworkChip).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /^all$/i })).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("clicking a style chip sends the style param in the feed request", async () => {
+    const user       = userEvent.setup();
+    let capturedUrl  = "";
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderFeed();
+    await screen.findByRole("group", { name: /filter by tattoo style/i });
+    await user.click(screen.getByRole("radio", { name: /realism/i }));
+    // Wait for the network call to fire
+    await screen.findByText(/no portfolio work yet/i);
+    expect(capturedUrl).toContain("style=realism");
   });
 });

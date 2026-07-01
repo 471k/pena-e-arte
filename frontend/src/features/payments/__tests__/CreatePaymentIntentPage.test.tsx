@@ -126,7 +126,7 @@ function makeStore() {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false },
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false },
     },
   });
 }

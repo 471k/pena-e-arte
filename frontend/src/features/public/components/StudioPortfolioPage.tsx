@@ -210,7 +210,9 @@ export function StudioPortfolioPage() {
   }
 
   const bookUrl = `/book?studio=${studio.slug}`;
-  const ctaUrl  = token ? bookUrl : `/login?redirect=${encodeURIComponent(bookUrl)}`;
+  const ctaUrl  = token
+    ? bookUrl
+    : `/login?redirect=${encodeURIComponent(bookUrl)}&studioId=${studio.studioId}`;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

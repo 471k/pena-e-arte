@@ -12,7 +12,8 @@ public record GetPortfolioFeedQuery(
     double? Lng,
     double  RadiusKm,
     int     Page,
-    int     PageSize = 24) : IRequest<List<PortfolioImageResponse>>;
+    int     PageSize = 24,
+    string? Style    = null) : IRequest<List<PortfolioImageResponse>>;
 
 public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer redis)
     : IRequestHandler<GetPortfolioFeedQuery, List<PortfolioImageResponse>>
@@ -61,6 +62,9 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
         if (filteredStudioIds is not null)
             imageQuery = imageQuery.Where(p => filteredStudioIds.Contains(p.StudioId));
 
+        if (!string.IsNullOrWhiteSpace(query.Style))
+            imageQuery = imageQuery.Where(p => p.Style == query.Style);
+
         List<PortfolioImage> images = await imageQuery
             .OrderByDescending(p => p.CreatedAt)
             .Skip((query.Page - 1) * query.PageSize)
@@ -86,13 +90,21 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
             .Select(g => new { Id = g.Key, Sum = g.Sum(r => (double)r.Rating), Count = g.Count() })
             .ToDictionaryAsync(x => x.Id, x => (x.Sum, x.Count), ct);
 
-        // 5. Redis view counts — batch MGET.
-        IDatabase redisDb    = redis.GetDatabase();
-        RedisKey[] redisKeys  = artistIds.Select(id => (RedisKey)$"portfolio:views:{id}").ToArray();
-        RedisValue[] redisValues = await redisDb.StringGetAsync(redisKeys);
-        Dictionary<Guid, long> viewCounts = artistIds
-            .Zip(redisValues, (id, v) => (id, count: v.HasValue ? (long)v : 0L))
-            .ToDictionary(x => x.id, x => x.count);
+        // 5. Redis view counts — batch MGET (falls back to 0 if Redis is unavailable).
+        Dictionary<Guid, long> viewCounts;
+        try
+        {
+            IDatabase    redisDb      = redis.GetDatabase();
+            RedisKey[]   redisKeys    = artistIds.Select(id => (RedisKey)$"portfolio:views:{id}").ToArray();
+            RedisValue[] redisValues  = await redisDb.StringGetAsync(redisKeys);
+            viewCounts = artistIds
+                .Zip(redisValues, (id, v) => (id, count: v.HasValue ? (long)v : 0L))
+                .ToDictionary(x => x.id, x => x.count);
+        }
+        catch
+        {
+            viewCounts = artistIds.ToDictionary(id => id, _ => 0L);
+        }
 
         // 6. Studios for the artists on this page.
         List<Guid> studioIds = images.Select(p => p.Artist.StudioId).Distinct().ToList();
@@ -132,6 +144,7 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
                 return new PortfolioImageResponse(
                     ImageId:            x.Image.Id,
                     ImageUrl:           x.Image.ImageUrl,
+                    Style:              x.Image.Style,
                     ArtistName:         $"{a.FirstName} {a.LastName}".Trim(),
                     ArtistSlug:         a.Slug!,
                     StudioName:         studio.Name,

@@ -28,7 +28,7 @@ function makeUiStore(sessionExpired: boolean, role: string | null = null) {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: role ? { id: "u1", email: "user@test.com" } : null, token: role ? "fake" : null, tenantId: role ? "t1" : null, role, pendingReferralCode: null } as any,
-      ui: { readOnlyError: null, sessionExpired },
+      ui: { readOnlyError: null, sessionExpired, studioSuspended: false },
     },
   });
 }

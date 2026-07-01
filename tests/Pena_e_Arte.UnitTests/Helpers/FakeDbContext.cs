@@ -13,6 +13,8 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ClientProfile>   ClientProfiles   => Set<ClientProfile>();
     public DbSet<TattooRecord>    TattooRecords    => Set<TattooRecord>();
     public DbSet<Artist>          Artists          => Set<Artist>();
+    public DbSet<ArtistSchedule>  ArtistSchedules  => Set<ArtistSchedule>();
+    public DbSet<ArtistTimeOff>   ArtistTimeOffs   => Set<ArtistTimeOff>();
     public DbSet<PortfolioImage>  PortfolioImages  => Set<PortfolioImage>();
     public DbSet<Design>           Designs           => Set<Design>();
     public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
@@ -29,7 +31,8 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Subscription>       Subscriptions       => Set<Subscription>();
     public DbSet<ReferralCode>       ReferralCodes       => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
-    public DbSet<Review>             Reviews             => Set<Review>();
+    public DbSet<Review>                Reviews              => Set<Review>();
+    public DbSet<SavedPortfolioImage>   SavedPortfolioImages => Set<SavedPortfolioImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,6 +79,11 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .WithMany()
             .HasForeignKey(r => r.PortfolioImageId)
             .IsRequired(false);
+
+        modelBuilder.Entity<SavedPortfolioImage>()
+            .HasOne(s => s.PortfolioImage)
+            .WithMany()
+            .HasForeignKey(s => s.PortfolioImageId);
     }
 
     public static FakeDbContext Create() =>

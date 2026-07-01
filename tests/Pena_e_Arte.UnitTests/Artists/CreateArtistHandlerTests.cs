@@ -12,14 +12,20 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class CreateArtistHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext    _db        = FakeDbContext.Create();
+    private readonly ICurrentTenant   _tenant    = Substitute.For<ICurrentTenant>();
+    private readonly IIdentityService _identity  = Substitute.For<IIdentityService>();
+    private readonly IJobScheduler    _scheduler = Substitute.For<IJobScheduler>();
+    private readonly Guid             _studioId  = Guid.NewGuid();
 
-    public CreateArtistHandlerTests() =>
+    public CreateArtistHandlerTests()
+    {
         _tenant.StudioId.Returns(_studioId);
+        _identity.CreateUserAsync(default!, default!, default!, default, default)
+            .ReturnsForAnyArgs((true, Guid.NewGuid(), Array.Empty<string>()));
+    }
 
-    private CreateArtistHandler CreateSut() => new(_db, _tenant);
+    private CreateArtistHandler CreateSut() => new(_db, _tenant, _identity, _scheduler);
 
     [Fact]
     public async Task Handle_NewEmail_ReturnsArtistResponse()

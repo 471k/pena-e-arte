@@ -43,8 +43,10 @@ const ARTIST: ArtistResponse = {
   firstName: "Luna", lastName: "Artista",
   email: "luna@studio.test", specializations: "Neo-trad",
   hourlyRate: 80, portfolioImages: [],
+  isActive: true,
+  avatarUrl: null,
   slug: null,
-  userId:          null,
+  userId:    null,
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
 };
@@ -110,13 +112,14 @@ const CREATED_APPT: AppointmentResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
-  http.get("http://localhost/api/v1/studios/me",       () => HttpResponse.json(STUDIO)),
-  http.get("http://localhost/api/v1/artists",          () => HttpResponse.json([ARTIST])),
-  http.get("http://localhost/api/v1/clients/me",       () => HttpResponse.json(MY_CLIENT)),
-  http.get("http://localhost/api/v1/clients",          () => HttpResponse.json([MY_CLIENT, STAFF_CLIENT])),
-  http.get("http://localhost/api/v1/deposit-rules",    () => HttpResponse.json([ACTIVE_RULE, INACTIVE_RULE])),
-  http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([])),
-  http.post("http://localhost/api/v1/appointments",    () => HttpResponse.json(CREATED_APPT, { status: 201 })),
+  http.get("http://localhost/api/v1/studios/me",              () => HttpResponse.json(STUDIO)),
+  http.get("http://localhost/api/v1/artists",                 () => HttpResponse.json([ARTIST])),
+  http.get("http://localhost/api/v1/clients/me",              () => HttpResponse.json(MY_CLIENT)),
+  http.get("http://localhost/api/v1/clients",                 () => HttpResponse.json([MY_CLIENT, STAFF_CLIENT])),
+  http.get("http://localhost/api/v1/deposit-rules",           () => HttpResponse.json([ACTIVE_RULE, INACTIVE_RULE])),
+  http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
+  http.post("http://localhost/api/v1/appointments",           () => HttpResponse.json(CREATED_APPT, { status: 201 })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -149,7 +152,7 @@ function makeStore(role: Role = Role.Client) {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false },
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false },
     },
   });
 }
@@ -187,14 +190,19 @@ function renderMyBookings(role: Role = Role.Client) {
 // ── BookPage layout ────────────────────────────────────────────────────────────
 
 describe("BookPage", () => {
-  it("renders the 'Book an Appointment' heading", () => {
+  it("renders the 'Book an appointment' page heading", () => {
     renderBookPage();
-    expect(screen.getByText("Book an Appointment")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /book an appointment/i })).toBeInTheDocument();
   });
 
-  it("renders the 'New appointment' card title", () => {
+  it("renders descriptive subtitle about the request flow", () => {
     renderBookPage();
-    expect(screen.getByText("New appointment")).toBeInTheDocument();
+    expect(screen.getByText(/the studio will confirm within 24 hours/i)).toBeInTheDocument();
+  });
+
+  it("renders a back navigation link", () => {
+    renderBookPage();
+    expect(screen.getByRole("link", { name: /back/i })).toBeInTheDocument();
   });
 
   it("renders the 'My bookings' section", () => {
@@ -208,7 +216,7 @@ describe("BookPage", () => {
 describe("BookAppointmentForm", () => {
   it("renders the Artist label and selector", async () => {
     renderForm();
-    expect(screen.getByLabelText("Artist")).toBeInTheDocument();
+    expect(screen.getByLabelText("Select artist")).toBeInTheDocument();
     expect(await screen.findByText("Luna Artista")).toBeInTheDocument();
   });
 
@@ -217,11 +225,26 @@ describe("BookAppointmentForm", () => {
     expect(screen.getByLabelText(/date.*time/i)).toBeInTheDocument();
   });
 
-  it("renders the Duration field with default 60", () => {
+  it("Duration field is a select not a number input", async () => {
     renderForm();
-    const input = screen.getByLabelText(/duration/i) as HTMLInputElement;
-    expect(input).toBeInTheDocument();
-    expect(input.value).toBe("60");
+    await screen.findByText("Luna Artista");
+    expect(screen.getByRole("combobox", { name: /session length/i })).toBeInTheDocument();
+  });
+
+  it("Duration select default shows '1 hour'", async () => {
+    renderForm();
+    await screen.findByText("Luna Artista");
+    const durationSelect = screen.getByRole("combobox", { name: /session length/i });
+    expect(durationSelect).toHaveTextContent(/1 hour/i);
+  });
+
+  it("Duration select shows preset durations including '1 hour'", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByRole("combobox", { name: /session length/i }));
+    expect(await screen.findByRole("option", { name: /1 hour/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /30 min/i })).toBeInTheDocument();
   });
 
   it("renders the Notes field", () => {
@@ -229,9 +252,27 @@ describe("BookAppointmentForm", () => {
     expect(screen.getByLabelText(/notes/i)).toBeInTheDocument();
   });
 
+  it("Notes placeholder provides helpful guidance", async () => {
+    renderForm();
+    expect(screen.getByPlaceholderText(/style.*size.*placement/i)).toBeInTheDocument();
+  });
+
   it("renders the 'Request Appointment' submit button", () => {
     renderForm();
     expect(screen.getByRole("button", { name: /request appointment/i })).toBeInTheDocument();
+  });
+
+  it("helper text below button explains 24-hour confirmation", async () => {
+    renderForm();
+    await screen.findByText("Luna Artista");
+    expect(screen.getByText(/artist will confirm.*24 hours/i)).toBeInTheDocument();
+  });
+
+  it("required fields have required asterisk in their label", async () => {
+    renderForm();
+    await screen.findByText("Luna Artista");
+    const artistLabel = screen.getByText("Artist", { selector: "label" });
+    expect(artistLabel.textContent).toContain("*");
   });
 
   it("does NOT render the Client selector for client role", async () => {
@@ -242,7 +283,8 @@ describe("BookAppointmentForm", () => {
 
   it("renders the Client selector for issuer (staff) role", async () => {
     renderForm(Role.Issuer);
-    expect(await screen.findByLabelText("Client")).toBeInTheDocument();
+    // Client selector is a combobox labelled "Client" (accessible name from the associated label)
+    expect(await screen.findByRole("combobox", { name: /client/i })).toBeInTheDocument();
   });
 
   it("renders the Deposit rule selector when active rules exist", async () => {
@@ -276,24 +318,114 @@ describe("BookAppointmentForm", () => {
     expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
   });
 
+  it("artist dropdown includes a search input", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByLabelText("Select artist"));
+    expect(screen.getByPlaceholderText(/search artists/i)).toBeInTheDocument();
+  });
+
+  it("artist dropdown items include artist specializations", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByLabelText("Select artist"));
+    expect(await screen.findByText("Neo-trad")).toBeInTheDocument();
+  });
+
+  it("artist search filters by name", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists", () =>
+        HttpResponse.json([
+          ARTIST,
+          { ...ARTIST, id: "a-002", firstName: "Marco", lastName: "Rivera",
+            specializations: "Blackwork" },
+        ]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByLabelText("Select artist"));
+    await user.type(screen.getByPlaceholderText(/search artists/i), "marco");
+    // Use role query to avoid matching the hidden native <option> that Radix renders alongside visible items
+    expect(screen.getByRole("option", { name: "Marco Rivera" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Luna Artista" })).not.toBeInTheDocument();
+  });
+
   it("shows validation error when submitted without an artist", async () => {
     const user = userEvent.setup();
     renderForm();
     await screen.findByText("Luna Artista");
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
-    expect(await screen.findByText("Select an artist")).toBeInTheDocument();
+    const errorP = await screen.findByText("Select an artist", { selector: "p" });
+    expect(errorP).toBeInTheDocument();
+  });
+
+  it("shows 'This slot is available' indicator after artist + date + duration are set", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByLabelText("Select artist"));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+
+    const futureDate = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16);
+    await user.type(screen.getByLabelText(/date.*time/i), futureDate);
+
+    expect(await screen.findByText(/this slot is available/i)).toBeInTheDocument();
+  });
+
+  it("shows unavailable reason when slot check returns false", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/check-slot", () =>
+        HttpResponse.json({ available: false, reason: "That slot is already booked." }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderForm();
+
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByLabelText("Select artist"));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+
+    const futureDate = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16);
+    await user.type(screen.getByLabelText(/date.*time/i), futureDate);
+
+    expect(await screen.findByText(/that slot is already booked/i)).toBeInTheDocument();
+  });
+
+  it("submit button is disabled when slot is unavailable", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/check-slot", () =>
+        HttpResponse.json({ available: false, reason: "Slot already booked." }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderForm();
+
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByLabelText("Select artist"));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+    await user.type(
+      screen.getByLabelText(/date.*time/i),
+      new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
+    );
+
+    await screen.findByText(/slot already booked/i);
+    expect(screen.getByRole("button", { name: /request appointment/i }))
+      .toBeDisabled();
   });
 
   it("shows confirmation after successful submit with no deposit", async () => {
     const user = userEvent.setup();
     renderForm();
 
-    // Select an artist
     await screen.findByText("Luna Artista");
-    await user.click(screen.getByLabelText("Artist"));
+    await user.click(screen.getByLabelText("Select artist"));
     await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
 
-    // Set a future date (simulate picking a future datetime)
     const futureDate = new Date(Date.now() + 7 * 86_400_000);
     const formatted = futureDate.toISOString().slice(0, 16);
     await user.type(screen.getByLabelText(/date.*time/i), formatted);
@@ -313,7 +445,7 @@ describe("BookAppointmentForm", () => {
     renderForm(Role.Client);
 
     await screen.findByText("Luna Artista");
-    await user.click(screen.getByLabelText("Artist"));
+    await user.click(screen.getByLabelText("Select artist"));
     await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
 
     const futureDate = new Date(Date.now() + 7 * 86_400_000);
@@ -334,7 +466,7 @@ describe("BookAppointmentForm", () => {
     renderForm(Role.Client);
 
     await screen.findByText("Luna Artista");
-    await user.click(screen.getByLabelText("Artist"));
+    await user.click(screen.getByLabelText("Select artist"));
     await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
     await user.type(screen.getByLabelText(/date.*time/i), new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16));
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
@@ -348,7 +480,7 @@ describe("BookAppointmentForm", () => {
     renderForm();
 
     await screen.findByText("Luna Artista");
-    await user.click(screen.getByLabelText("Artist"));
+    await user.click(screen.getByLabelText("Select artist"));
     await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
     await user.type(screen.getByLabelText(/date.*time/i), new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16));
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
@@ -413,7 +545,6 @@ describe("MyBookingsSection", () => {
     );
     renderMyBookings();
     expect(await screen.findByText("Past")).toBeInTheDocument();
-    // Two rows with artist name
     expect(screen.getAllByText("Luna Artista · 60 min")).toHaveLength(2);
   });
 

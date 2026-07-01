@@ -3,6 +3,7 @@ namespace Pena_e_Arte.Contracts.Responses.Public;
 public record PortfolioImageResponse(
     Guid    ImageId,
     string  ImageUrl,
+    string? Style,              // nullable — untagged images are valid
     string  ArtistName,
     string  ArtistSlug,
     string  StudioName,

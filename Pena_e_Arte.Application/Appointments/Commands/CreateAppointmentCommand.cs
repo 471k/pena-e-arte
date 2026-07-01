@@ -50,6 +50,30 @@ public class CreateAppointmentHandler(
             .FirstOrDefaultAsync(a => a.Id == req.ArtistId, ct)
             ?? throw new NotFoundException(nameof(Artist), req.ArtistId);
 
+        // Check artist schedule: the day must be a working day and the time within working hours
+        DayOfWeek requestDay = req.Date.DayOfWeek;
+        TimeSpan  requestStart = req.Date.TimeOfDay;
+        TimeSpan  requestEndTime = requestEnd.TimeOfDay;
+
+        var scheduleEntry = await db.ArtistSchedules
+            .Where(s => s.ArtistId == req.ArtistId && s.DayOfWeek == requestDay && s.IsAvailable)
+            .FirstOrDefaultAsync(ct);
+
+        if (scheduleEntry is null)
+            throw new BusinessRuleViolationException($"The artist is not available on {requestDay}.");
+
+        if (requestStart < scheduleEntry.StartTime || requestEndTime > scheduleEntry.EndTime)
+            throw new BusinessRuleViolationException(
+                $"Appointment time is outside the artist's working hours ({scheduleEntry.StartTime:hh\\:mm}–{scheduleEntry.EndTime:hh\\:mm}).");
+
+        bool onTimeOff = await db.ArtistTimeOffs.AnyAsync(
+            t => t.ArtistId == req.ArtistId &&
+                 t.StartDate <= req.Date.Date &&
+                 t.EndDate   >= req.Date.Date, ct);
+
+        if (onTimeOff)
+            throw new BusinessRuleViolationException("The artist is on leave on the requested date.");
+
         bool locked = await slotLocker.TryAcquireLockAsync(tenant.StudioId, req.ArtistId, req.Date, ct);
         if (!locked) throw new SlotAlreadyBookedException();
 
@@ -89,8 +113,11 @@ public class CreateAppointmentHandler(
             db.Appointments.Add(appointment);
             await db.SaveChangesAsync(ct);
 
-            jobs.ScheduleAppointmentReminder(appointment.Id, "48h", appointment.Date.AddHours(-48));
-            jobs.ScheduleAppointmentReminder(appointment.Id, "24h", appointment.Date.AddHours(-24));
+            appointment.ReminderJobId48h = jobs.ScheduleAppointmentReminder(
+                appointment.Id, "48h", appointment.Date.AddHours(-48));
+            appointment.ReminderJobId24h = jobs.ScheduleAppointmentReminder(
+                appointment.Id, "24h", appointment.Date.AddHours(-24));
+            await db.SaveChangesAsync(ct);
 
             AppointmentResponse response = Map(appointment);
             await realtime.NotifyStudioAsync(tenant.StudioId, "AppointmentCreated", response, ct);
@@ -109,5 +136,7 @@ public class CreateAppointmentHandler(
         a.Id, a.StudioId, a.ArtistId, a.ClientId,
         a.Date, a.EndDate, a.DurationMinutes,
         a.Status.ToString(), a.DepositStatus.ToString(),
-        a.DepositAmount, a.Notes, a.CreatedAt);
+        a.DepositAmount, a.Notes, a.CreatedAt,
+        a.CancellationReason?.ToString(),
+        a.AftercareSentAt);
 }

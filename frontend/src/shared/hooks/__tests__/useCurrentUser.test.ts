@@ -12,10 +12,11 @@ import type { User, AuthPayload } from "@/shared/types/roles";
 const USER: User = { id: "u1", email: "alice@ink.test", name: "Alice" };
 
 const PAYLOAD: AuthPayload = {
-  user:     USER,
-  token:    "fake-token",
-  tenantId: "t1",
-  role:     "client",
+  user:         USER,
+  token:        "fake-token",
+  tenantId:     "t1",
+  role:         "client",
+  refreshToken: null,
 };
 
 function makeStore(user: User | null = null) {

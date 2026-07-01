@@ -200,4 +200,78 @@ public class EmailRenderer : IEmailRenderer
 
         return TemplateRenderer.Render(_paymentRefundedTemplate, vars);
     }
+
+    public string RenderAftercare(
+        string clientFirstName,
+        string studioName,
+        string artistName,
+        bool   showBranding)
+    {
+        string branding = showBranding
+            ? "<p style=\"text-align:center;font-size:12px;color:#9ca3af\">Powered by Pena e Artë</p>"
+            : "";
+
+        return $"""
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="utf-8"><title>Tattoo Aftercare</title></head>
+            <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+              <h1 style="color:#7c3aed">Aftercare Instructions</h1>
+              <p>Hi {System.Net.WebUtility.HtmlEncode(clientFirstName)},</p>
+              <p>Thank you for your session with {System.Net.WebUtility.HtmlEncode(artistName)} at {System.Net.WebUtility.HtmlEncode(studioName)}!
+              Here are your aftercare instructions to keep your new tattoo looking great:</p>
+              <ul>
+                <li>Keep the tattoo covered for 2–4 hours after the session.</li>
+                <li>Gently wash with lukewarm water and fragrance-free soap.</li>
+                <li>Pat dry — never rub.</li>
+                <li>Apply a thin layer of unscented moisturizer 2–3 times daily for 2 weeks.</li>
+                <li>Avoid sun exposure, pools, and soaking for 2 weeks.</li>
+                <li>Contact the studio if you notice redness, swelling, or discharge after 3 days.</li>
+              </ul>
+              <p>We hope to see you again soon!</p>
+              {branding}
+            </body>
+            </html>
+            """;
+    }
+
+    public string RenderEmailVerification(string confirmationUrl) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Confirm your email</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Confirm your Pena e Artë account</h1>
+          <p>Click the button below to verify your email address:</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(confirmationUrl)}"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none">
+            Confirm Email
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            If you did not create an account, you can ignore this email.
+          </p>
+        </body>
+        </html>
+        """;
+
+    public string RenderArtistInvite(string artistFirstName, string studioName, string setPasswordUrl) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>You've been invited to {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Welcome to Pena e Artë</h1>
+          <p>Hi {System.Net.WebUtility.HtmlEncode(artistFirstName)},</p>
+          <p>You've been added as an artist at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>.
+          Click the button below to set your password and activate your account.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+            Set your password
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            This link expires in 24 hours. If you were not expecting this invitation, you can ignore this email.
+          </p>
+        </body>
+        </html>
+        """;
 }

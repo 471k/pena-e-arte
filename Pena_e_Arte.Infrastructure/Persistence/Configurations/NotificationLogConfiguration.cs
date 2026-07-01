@@ -26,5 +26,8 @@ public class NotificationLogConfiguration : TenantEntityConfiguration<Notificati
 
         builder.HasIndex(n => n.SentAt)
                .HasDatabaseName("ix_notification_logs_sent_at");
+
+        builder.HasIndex(n => new { n.StudioId, n.CreatedAt })
+               .HasDatabaseName("ix_notification_logs_studio_created_at");
     }
 }

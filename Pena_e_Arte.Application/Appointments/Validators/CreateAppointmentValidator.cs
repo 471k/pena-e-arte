@@ -10,8 +10,8 @@ public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentCom
         RuleFor(x => x.Request.ArtistId).NotEmpty();
         RuleFor(x => x.Request.ClientId).NotEmpty();
         RuleFor(x => x.Request.Date)
-            .GreaterThan(DateTime.UtcNow)
-            .WithMessage("Appointment date must be in the future.");
+            .GreaterThan(DateTime.UtcNow.AddMinutes(30))
+            .WithMessage("Appointment must be at least 30 minutes in the future.");
         RuleFor(x => x.Request.DurationMinutes).InclusiveBetween(30, 480);
         RuleFor(x => x.Request.Notes).MaximumLength(2000).When(x => x.Request.Notes is not null);
     }

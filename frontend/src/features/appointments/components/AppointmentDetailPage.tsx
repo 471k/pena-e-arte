@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, CalendarDays, Check, CreditCard, Loader2, Trash2, UserX,
+  ArrowLeft, CalendarDays, Check, CreditCard, Download, Loader2, Trash2, UserX,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +38,10 @@ function formatDateTime(dateStr: string): string {
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
+}
+
+function buildIcsUrl(apptId: string): string {
+  return `/api/v1/appointments/${apptId}/calendar.ics`;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -151,8 +155,38 @@ export function AppointmentDetailPage() {
                     <Row label="Notes" value={appt.notes} />
                   </>
                 )}
+                {appt.cancellationReason && (
+                  <>
+                    <Separator />
+                    <Row label="Cancellation reason" value={appt.cancellationReason} />
+                  </>
+                )}
+                {appt.status === AppointmentStatus.Completed && (
+                  <>
+                    <Separator />
+                    <Row
+                      label="Aftercare"
+                      value={
+                        appt.aftercareSentAt
+                          ? <span className="text-emerald-600 text-xs font-medium">Sent ✓</span>
+                          : <span className="text-muted-foreground text-xs">Pending</span>
+                      }
+                    />
+                  </>
+                )}
               </CardContent>
             </Card>
+
+            {/* P-09: Add to Calendar */}
+            <a
+              href={buildIcsUrl(appt.id)}
+              download
+              className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+              aria-label="Add to calendar"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              Add to Calendar (.ics)
+            </a>
 
             {isArtistPlus && !isTerminal && (
               <div className="flex flex-col gap-2">
