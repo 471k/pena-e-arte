@@ -34,6 +34,37 @@ function renderPage() {
   );
 }
 
+function makeAuthStore() {
+  return configureStore({
+    reducer: {
+      auth: authReducer,
+      [publicApi.reducerPath]:      publicApi.reducer,
+      [savedImagesApi.reducerPath]: savedImagesApi.reducer,
+    },
+    middleware: (gd) => gd().concat(publicApi.middleware, savedImagesApi.middleware),
+    preloadedState: {
+      auth: {
+        user:                { id: "u-1", email: "phi@test.com", name: "Phi" },
+        token:               "fake-jwt-token",
+        refreshToken:        null,
+        tenantId:            "t-1",
+        role:                "owner" as const,
+        pendingReferralCode: null,
+      },
+    },
+  });
+}
+
+function renderLoggedInPage() {
+  render(
+    <Provider store={makeAuthStore()}>
+      <MemoryRouter>
+        <DiscoverPage />
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
 // Stub navigator.geolocation — simulate denied permission by default
 Object.defineProperty(navigator, "geolocation", {
   value: {
@@ -97,10 +128,16 @@ describe("DiscoverPage", () => {
     expect(screen.getByRole("tab", { name: /studios/i })).toBeInTheDocument();
   });
 
-  it("renders 'View studios on map' and 'Sign in' nav links", () => {
+  it("renders 'Map' nav link when unauthenticated", () => {
     renderPage();
-    expect(screen.getByRole("link", { name: /view studios on map/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /sign in/i })).toBeInTheDocument();
+    const header = document.querySelector("header")!;
+    const navLinks = Array.from(header.querySelectorAll("a"));
+    expect(navLinks.some((a) => /^map$/i.test(a.textContent?.trim() ?? ""))).toBe(true);
+  });
+
+  it("renders 'Sign in' nav link when unauthenticated", () => {
+    renderPage();
+    expect(screen.getByRole("link", { name: /^sign in$/i })).toBeInTheDocument();
   });
 
   it("'Register studio' nav link uses violet border style", () => {
@@ -161,15 +198,19 @@ describe("DiscoverPage", () => {
     expect(screen.getByText(/© \d{4} Pena e Artë/i)).toBeInTheDocument();
   });
 
-  it("footer renders Discover, Map, and Register links", () => {
+  it("footer renders Map link for unauthenticated users", () => {
     renderPage();
-    const footer = document.querySelector("footer");
-    expect(footer).not.toBeNull();
-    const links = footer!.querySelectorAll("a");
-    const texts  = Array.from(links).map((a) => a.textContent?.trim());
-    expect(texts).toContain("Discover");
-    expect(texts).toContain("Map");
-    expect(texts).toContain("Register studio");
+    const footer = document.querySelector("footer")!;
+    const links  = Array.from(footer.querySelectorAll("a")).map((a) => a.textContent?.trim());
+    expect(links).toContain("Map");
+    expect(links).not.toContain("Discover");
+  });
+
+  it("footer renders 'Register studio' for unauthenticated users only", () => {
+    renderPage();
+    const footer = document.querySelector("footer")!;
+    const links  = Array.from(footer.querySelectorAll("a")).map((a) => a.textContent?.trim());
+    expect(links).toContain("Register studio");
   });
 
   it("renders the studio name in the card after switching to Studios tab", async () => {
@@ -267,5 +308,69 @@ describe("DiscoverPage", () => {
     const studiosTab = screen.getByRole("tab", { name: /studios/i });
     await user.click(studiosTab);
     expect(studiosTab).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("DiscoverPage — authenticated nav", () => {
+  it("shows avatar button and hides 'Sign in' when authenticated", () => {
+    renderLoggedInPage();
+    expect(screen.getByRole("button", { name: /account menu/i })).toBeInTheDocument();
+    const header = document.querySelector("header")!;
+    const navSignIn = Array.from(header.querySelectorAll("a")).find((a) =>
+      /^sign in$/i.test(a.textContent?.trim() ?? "")
+    );
+    expect(navSignIn).toBeUndefined();
+  });
+
+  it("shows avatar initials derived from user name", () => {
+    renderLoggedInPage();
+    const avatarBtn = screen.getByRole("button", { name: /account menu/i });
+    expect(avatarBtn.textContent).toBe("P");
+  });
+
+  it("hides 'Register studio' nav button when authenticated", () => {
+    renderLoggedInPage();
+    const header = document.querySelector("header")!;
+    const registerLinks = Array.from(header.querySelectorAll("a")).filter((a) =>
+      /register studio/i.test(a.textContent ?? "")
+    );
+    expect(registerLinks).toHaveLength(0);
+  });
+
+  it("opens account dropdown when avatar button is clicked", async () => {
+    const user = userEvent.setup();
+    renderLoggedInPage();
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+    expect(screen.getByRole("menu", { name: /account options/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
+  });
+
+  it("footer hides 'Register studio' when authenticated", () => {
+    renderLoggedInPage();
+    const footer = document.querySelector("footer")!;
+    const links  = Array.from(footer.querySelectorAll("a")).map((a) => a.textContent?.trim());
+    expect(links).not.toContain("Register studio");
+  });
+
+  it("footer does not contain a circular 'Discover' link (unauthenticated)", () => {
+    renderPage();
+    const footer = document.querySelector("footer")!;
+    const links  = Array.from(footer.querySelectorAll("a")).map((a) => a.textContent?.trim());
+    expect(links).not.toContain("Discover");
+  });
+
+  it("avatar button has aria-expanded=false when dropdown is closed", () => {
+    renderLoggedInPage();
+    const btn = screen.getByRole("button", { name: /account menu/i });
+    expect(btn).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("avatar button has aria-expanded=true when dropdown is open", async () => {
+    const user = userEvent.setup();
+    renderLoggedInPage();
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+    expect(screen.getByRole("button", { name: /account menu/i }))
+      .toHaveAttribute("aria-expanded", "true");
   });
 });

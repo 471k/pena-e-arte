@@ -21,14 +21,16 @@ const EMPTY: AuthState = {
 
 function loadInitialState(): AuthState {
   try {
-    const token        = localStorage.getItem(TOKEN_KEY);
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    const token        = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY) ?? sessionStorage.getItem(REFRESH_TOKEN_KEY);
     if (!token) return EMPTY;
 
     const payload = decodeToken(token);
     if (payload.exp && Date.now() / 1000 > payload.exp) {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(REFRESH_TOKEN_KEY);
       return EMPTY;
     }
 
@@ -46,15 +48,17 @@ const authSlice = createSlice({
   name: "auth",
   initialState: loadInitialState,
   reducers: {
-    setCredentials: (state, { payload }: PayloadAction<AuthPayload>) => {
+    setCredentials: (state, { payload }: PayloadAction<AuthPayload & { remember?: boolean }>) => {
       state.user         = payload.user;
       state.token        = payload.token;
       state.refreshToken = payload.refreshToken ?? null;
       state.tenantId     = payload.tenantId;
       state.role         = payload.role;
-      localStorage.setItem(TOKEN_KEY, payload.token);
+
+      const storage = payload.remember !== false ? localStorage : sessionStorage;
+      storage.setItem(TOKEN_KEY, payload.token);
       if (payload.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
+        storage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
       }
     },
     setPendingReferralCode: (state, { payload }: PayloadAction<string | null>) => {
@@ -63,6 +67,8 @@ const authSlice = createSlice({
     logout: () => {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(REFRESH_TOKEN_KEY);
       return EMPTY;
     },
   },

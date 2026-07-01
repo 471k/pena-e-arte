@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -414,5 +414,54 @@ describe("LoginPage", () => {
     const forgotLink = screen.getByRole("link", { name: /forgot password/i });
     expect(forgotLink).toBeInTheDocument();
     expect(forgotLink).toHaveClass("py-2");
+  });
+});
+
+describe("LoginPage — Remember me", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it("renders a 'Remember me' checkbox checked by default", () => {
+    renderPage();
+    const checkbox = screen.getByRole("checkbox", { name: /remember me/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toBeChecked();
+  });
+
+  it("stores token in localStorage when 'Remember me' is checked (default)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "owner@test.com");
+    await user.type(screen.getByLabelText("Password"), "secret123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByTestId("owner-home");
+
+    expect(localStorage.getItem("auth_token")).not.toBeNull();
+    expect(sessionStorage.getItem("auth_token")).toBeNull();
+  });
+
+  it("stores token in sessionStorage when 'Remember me' is unchecked", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("checkbox", { name: /remember me/i }));
+
+    await user.type(screen.getByLabelText(/email/i), "owner@test.com");
+    await user.type(screen.getByLabelText("Password"), "secret123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByTestId("owner-home");
+
+    expect(sessionStorage.getItem("auth_token")).not.toBeNull();
+    expect(localStorage.getItem("auth_token")).toBeNull();
+  });
+
+  it("'Forgot password?' and 'Remember me' are on the same row", () => {
+    renderPage();
+    const forgotLink = screen.getByRole("link", { name: /forgot password/i });
+    const checkbox   = screen.getByRole("checkbox", { name: /remember me/i });
+    expect(forgotLink.closest("div")).toBe(checkbox.closest("label")?.closest("div"));
   });
 });

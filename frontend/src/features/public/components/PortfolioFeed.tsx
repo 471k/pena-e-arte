@@ -68,8 +68,8 @@ function StyleChips({ activeStyle, onChange }: StyleChipsProps) {
             role="radio"
             aria-checked={isActive}
             onClick={() => onChange(value)}
-            className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium
-                        border transition-colors whitespace-nowrap
+            className={`shrink-0 px-3 py-2 min-h-[44px] rounded-full text-xs font-medium
+                        border transition-colors whitespace-nowrap flex items-center
                         ${isActive
                           ? "bg-violet-600 border-violet-500 text-white"
                           : "border-border text-muted-foreground hover:text-foreground hover:border-border/80"
@@ -423,9 +423,12 @@ function PortfolioTile({ image, isSaved, onOpen, onToggleSave, showBookmark }: T
           </p>
         </div>
         {image.reviewCount > 0 && (
-          <div className="flex items-center gap-0.5 shrink-0">
-            <span className="text-yellow-400 text-[10px]">★</span>
-            <span className="text-white/60 text-[10px]">
+          <div
+            className="flex items-center gap-0.5 shrink-0"
+            aria-label={`Rating: ${image.averageRating?.toFixed(1) ?? "0"} out of 5`}
+          >
+            <span aria-hidden="true" className="text-yellow-400 text-[10px]">★</span>
+            <span aria-hidden="true" className="text-white/60 text-[10px]">
               {image.averageRating?.toFixed(1)}
             </span>
           </div>

@@ -189,6 +189,16 @@ describe("ReviewSection — Post Review button state", () => {
     await user.click(screen.getByRole("radio", { name: /rate 3 of 5/i }));
     expect(btn).not.toBeDisabled();
   });
+
+  it("pressing Enter in textarea without a rating shows an error and does not submit", async () => {
+    const user = userEvent.setup();
+    renderSection();
+    const textarea = screen.getByRole("textbox", { name: /write a review/i });
+    await user.type(textarea, "This is a long enough review body");
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/please select a star rating/i);
+    expect(mockCreateArtistReview).not.toHaveBeenCalled();
+  });
 });
 
 describe("ReviewSection — Verified client badge", () => {

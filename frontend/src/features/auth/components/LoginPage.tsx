@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Loader2, PenLine } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
@@ -35,6 +35,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const existingRole = useAppSelector((s) => s.auth.role);
+  const [remember, setRemember] = useState(true);
   const [login, { isLoading, error }] = useLoginMutation();
 
   const sessionExpired  = searchParams.get("reason") === "session_expired";
@@ -64,7 +65,7 @@ export function LoginPage() {
     try {
       const { accessToken } = await login(values).unwrap();
       const payload = decodeToken(accessToken);
-      dispatch(setCredentials(payload));
+      dispatch(setCredentials({ ...payload, remember }));
       // Navigation handled by the useEffect above once Redux re-renders with the new role
     } catch {
       // error surfaced via RTK Query's `error` state below
@@ -88,7 +89,7 @@ export function LoginPage() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 90% 55% at 50% -5%, rgba(113,113,122,0.18) 0%, transparent 100%)",
+            "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(124,58,237,0.10) 0%, transparent 70%)",
         }}
         aria-hidden="true"
       />
@@ -100,7 +101,7 @@ export function LoginPage() {
             <PenLine className="h-8 w-8" aria-hidden="true" />
             <span className="text-2xl font-semibold tracking-tight">Pena e Arte</span>
           </div>
-          <p className="text-sm text-foreground/65">
+          <p className="text-sm text-foreground/80">
             Run your studio. Book clients. Manage your team.
           </p>
         </div>
@@ -111,7 +112,8 @@ export function LoginPage() {
           </div>
         )}
 
-        <Card className="dark:bg-zinc-900/80 dark:border-zinc-800 shadow-lg dark:shadow-black/60">
+        <Card className="dark:bg-zinc-900/80 dark:border-zinc-700/60 shadow-lg
+                 dark:shadow-[0_8px_32px_rgba(255,255,255,0.05)]">
           <CardHeader>
             <CardTitle>Sign in</CardTitle>
           </CardHeader>
@@ -124,6 +126,7 @@ export function LoginPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
+                  autoFocus
                   placeholder="you@example.com"
                   {...register("email")}
                   aria-invalid={!!errors.email}
@@ -152,10 +155,21 @@ export function LoginPage() {
                     {errors.password.message}
                   </p>
                 )}
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between gap-4 pt-0.5">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      className="h-4 w-4 rounded border-input accent-violet-600 cursor-pointer"
+                      aria-label="Remember me on this device"
+                    />
+                    <span className="text-xs text-foreground/70">Remember me</span>
+                  </label>
                   <Link
                     to="/forgot-password"
-                    className="text-xs text-foreground/65 underline underline-offset-4 hover:text-foreground py-2 inline-block"
+                    className="text-xs text-foreground/65 underline underline-offset-4
+                               hover:text-foreground py-2 inline-block"
                   >
                     Forgot password?
                   </Link>
@@ -179,13 +193,13 @@ export function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-foreground/65">
+            <div className="mt-4 text-center text-sm text-foreground/65">
               {clientRegisterUrl ? (
                 <>
                   Don't have an account?{" "}
                   <Link
                     to={clientRegisterUrl}
-                    className="underline underline-offset-4 text-foreground/65 hover:text-foreground py-2 inline-block"
+                    className="underline underline-offset-4 text-violet-400 hover:text-violet-300 py-2 inline-block"
                   >
                     Create a client account
                   </Link>
@@ -195,7 +209,7 @@ export function LoginPage() {
                   Don't have an account?{" "}
                   <Link
                     to="/register"
-                    className="underline underline-offset-4 text-foreground/65 hover:text-foreground py-2 inline-block"
+                    className="underline underline-offset-4 text-violet-400 hover:text-violet-300 py-2 inline-block"
                   >
                     Register your studio
                   </Link>
@@ -207,27 +221,20 @@ export function LoginPage() {
       </div>
 
       {/* Legal footer — pinned to viewport bottom */}
-      <footer className="absolute bottom-6 left-0 right-0 text-center text-xs text-foreground/40 space-x-4">
-        <a
-          href="/privacy"
-          className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline"
-        >
-          Privacy Policy
-        </a>
-        <span aria-hidden="true">·</span>
-        <a
-          href="/terms"
-          className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline"
-        >
-          Terms of Service
-        </a>
-        <span aria-hidden="true">·</span>
-        <a
-          href="mailto:support@penaearte.com"
-          className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline"
-        >
-          Contact support
-        </a>
+      <footer className="absolute bottom-6 left-0 right-0 text-center text-xs text-foreground/55">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
+          <a href="/privacy" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+            Privacy Policy
+          </a>
+          <span aria-hidden="true" className="text-border select-none">·</span>
+          <a href="/terms" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+            Terms of Service
+          </a>
+          <span aria-hidden="true" className="text-border select-none">·</span>
+          <a href="mailto:support@penaearte.com" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+            Contact support
+          </a>
+        </div>
       </footer>
     </div>
   );

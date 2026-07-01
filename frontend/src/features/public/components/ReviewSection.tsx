@@ -95,6 +95,7 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
   }, [success]);
 
   function handleSubmit() {
+    if (rating === 0) { setError("Please select a star rating."); return; }
     if (body.trim().length < 10) { setError("Review must be at least 10 characters."); return; }
 
     setError(null);

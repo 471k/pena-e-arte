@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter }   from "react-router-dom";
 import { Provider }       from "react-redux";
@@ -336,5 +336,19 @@ describe("PortfolioFeed", () => {
     await screen.findByLabelText(/Tattoo by Ana Lima/i);
     await user.click(screen.getByLabelText(/Tattoo by Ana Lima/i));
     expect(await screen.findByRole("link", { name: /view artist profile/i })).toBeInTheDocument();
+  });
+});
+
+describe("PortfolioFeed — style chips accessibility", () => {
+  it("all style filter chips have min-h-[44px] for WCAG 2.5.5 touch target compliance", async () => {
+    renderFeed();
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Loading portfolio")).not.toBeInTheDocument()
+    );
+
+    const chips = screen.getAllByRole("radio");
+    chips.forEach((chip) => {
+      expect(chip.className).toContain("min-h-[44px]");
+    });
   });
 });
