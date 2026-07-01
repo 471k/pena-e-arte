@@ -15,6 +15,7 @@ import { PasswordInput } from "@/shared/components/ui/password-input";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useLoginMutation } from "../authApi";
 import { setCredentials } from "../authSlice";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 
 const loginSchema = z.object({
   email:    z.string().min(1, "Email is required").email("Enter a valid email"),
@@ -24,15 +25,31 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
+  useDocumentMeta({
+    title:       "Sign in — Pena e Artë",
+    description: "Sign in to manage your tattoo studio appointments, clients, and more.",
+    canonical:   `${window.location.origin}/login`,
+  });
+
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const existingRole = useAppSelector((s) => s.auth.role);
   const [login, { isLoading, error }] = useLoginMutation();
 
-  const sessionExpired = searchParams.get("reason") === "session_expired";
-  const redirectPath   = existingRole ? getRoleRedirectPath(existingRole) : null;
+  const sessionExpired  = searchParams.get("reason") === "session_expired";
+  const studioId        = searchParams.get("studioId") ?? "";
+  const redirectParam   = searchParams.get("redirect") ?? "";
+  const redirectPath    = existingRole
+    ? (redirectParam || getRoleRedirectPath(existingRole))
+    : null;
 
+  const clientRegisterUrl = studioId
+    ? `/client-register?studioId=${studioId}${redirectParam ? `&redirect=${encodeURIComponent(redirectParam)}` : ""}`
+    : null;
+
+  // Handles both "already logged in" and "just logged in" cases — fires once
+  // existingRole is set. Respects ?redirect= so post-auth deep-links work.
   useEffect(() => {
     if (redirectPath) navigate(redirectPath, { replace: true });
   }, [redirectPath, navigate]);
@@ -48,7 +65,7 @@ export function LoginPage() {
       const { accessToken } = await login(values).unwrap();
       const payload = decodeToken(accessToken);
       dispatch(setCredentials(payload));
-      navigate(getRoleRedirectPath(payload.role), { replace: true });
+      // Navigation handled by the useEffect above once Redux re-renders with the new role
     } catch {
       // error surfaced via RTK Query's `error` state below
     }
@@ -163,13 +180,27 @@ export function LoginPage() {
             </form>
 
             <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-foreground/65">
-              Don't have an account?{" "}
-              <Link
-                to="/register"
-                className="underline underline-offset-4 text-foreground/65 hover:text-foreground py-2 inline-block"
-              >
-                Register your studio
-              </Link>
+              {clientRegisterUrl ? (
+                <>
+                  Don't have an account?{" "}
+                  <Link
+                    to={clientRegisterUrl}
+                    className="underline underline-offset-4 text-foreground/65 hover:text-foreground py-2 inline-block"
+                  >
+                    Create a client account
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Don't have an account?{" "}
+                  <Link
+                    to="/register"
+                    className="underline underline-offset-4 text-foreground/65 hover:text-foreground py-2 inline-block"
+                  >
+                    Register your studio
+                  </Link>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

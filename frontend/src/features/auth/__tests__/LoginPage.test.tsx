@@ -374,6 +374,35 @@ describe("LoginPage", () => {
     expect(screen.getByText("Pena e Arte")).toBeInTheDocument();
   });
 
+  it("honours ?redirect= after successful login instead of going to role home", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/auth/login", () =>
+        HttpResponse.json({ accessToken: makeFakeJwt("client", "client@test.com"), tokenType: "Bearer" }),
+      ),
+    );
+
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={["/login?redirect=%2Fs%2Fmy-studio"]}>
+          <Routes>
+            <Route path="/login"    element={<LoginPage />} />
+            <Route path="/s/:slug"  element={<div data-testid="studio-profile" />} />
+            <Route path="/book"     element={<div data-testid="client-home" />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/email/i), "client@test.com");
+    await user.type(screen.getByLabelText("Password"), "secret123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await screen.findByTestId("studio-profile");
+    expect(screen.queryByTestId("client-home")).not.toBeInTheDocument();
+  });
+
   it("password field has a placeholder", () => {
     renderPage();
     const passwordInput = screen.getByLabelText("Password");
