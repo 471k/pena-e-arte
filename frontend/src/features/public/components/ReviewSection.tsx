@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { MessageSquare, CheckCircle } from "lucide-react";
+import { MessageSquare, CheckCircle, BadgeCheck, Star } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { StarRating } from "@/shared/components/ui/StarRating";
+import { StarRating, InteractiveStarRating } from "@/shared/components/ui/StarRating";
 import {
   useGetStudioReviewsQuery,
   useGetArtistReviewsQuery,
@@ -16,19 +16,35 @@ import {
 
 function ReviewCard({ review }: { review: ReviewResponse }) {
   return (
-    <div className="py-4 border-b last:border-b-0 space-y-1.5">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="text-sm font-medium">{review.authorName}</span>
-        <div className="flex items-center gap-2">
-          <StarRating value={review.rating} />
-          <span className="text-xs text-muted-foreground">
-            {new Date(review.createdAt).toLocaleDateString("en-GB", {
-              day: "numeric", month: "short", year: "numeric",
-            })}
-          </span>
+    <div className="py-4 border-b last:border-b-0 space-y-2">
+      <div className="flex items-start justify-between gap-2 flex-wrap">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium">{review.authorName}</span>
+            {review.isVerifiedBooking && (
+              <span
+                className="inline-flex items-center gap-0.5
+                           text-[10px] font-medium text-violet-400
+                           px-1.5 py-0.5 rounded-full
+                           bg-violet-500/10 border border-violet-500/20"
+                title="This reviewer booked at this studio"
+              >
+                <BadgeCheck className="h-2.5 w-2.5" aria-hidden="true" />
+                Verified client
+              </span>
+            )}
+          </div>
+          <StarRating value={review.rating} size="sm" />
         </div>
+        <span className="text-xs text-muted-foreground shrink-0">
+          {new Date(review.createdAt).toLocaleDateString("en-US", {
+            month: "short", day: "numeric", year: "numeric",
+          })}
+        </span>
       </div>
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{review.body}</p>
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+        {review.body}
+      </p>
     </div>
   );
 }
@@ -79,7 +95,6 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
   }, [success]);
 
   function handleSubmit() {
-    if (rating === 0) { setError("Please select a star rating."); return; }
     if (body.trim().length < 10) { setError("Review must be at least 10 characters."); return; }
 
     setError(null);
@@ -150,9 +165,8 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
         Write a review
       </label>
 
-      <StarRating
+      <InteractiveStarRating
         value={rating}
-        interactive
         onChange={(r) => { setRating(r); setError(null); }}
       />
 
@@ -161,7 +175,7 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
         aria-label="Write a review"
         className="w-full min-h-[80px] resize-none rounded-md border bg-background px-3 py-2 text-sm
                    focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
-        placeholder="Share your experience…"
+        placeholder="How was the experience? Quality of the work, cleanliness, communication…"
         maxLength={2000}
         value={body}
         onChange={(e) => setBody(e.target.value)}
@@ -180,10 +194,12 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
       <Button
         size="sm"
         onClick={handleSubmit}
-        disabled={isSubmitting}
-        aria-label="Submit review"
+        disabled={isSubmitting || rating === 0}
+        aria-label="Post review"
+        className="bg-violet-600 hover:bg-violet-700 text-white
+                   disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? "Submitting…" : "Submit review"}
+        {isSubmitting ? "Posting…" : "Post Review"}
       </Button>
     </div>
   );
@@ -224,17 +240,28 @@ function ReviewList({
 }) {
   return (
     <>
-      {averageRating !== null && reviews && (
-        <p className="text-xs text-muted-foreground">
-          {averageRating.toFixed(1)} / 5 · {reviews.length} review{reviews.length !== 1 ? "s" : ""}
-        </p>
+      {averageRating !== null && reviews && reviews.length > 0 && (
+        <div className="flex items-center gap-2 pb-3">
+          <StarRating value={Math.round(averageRating)} size="sm" />
+          <span className="text-sm font-semibold tabular-nums">
+            {averageRating.toFixed(1)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            · {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+          </span>
+        </div>
       )}
       {isLoading ? (
         <ReviewsSkeleton />
       ) : !reviews || reviews.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4">
-          No reviews yet. Be the first to leave one.
-        </p>
+        <div className="py-4 flex flex-col items-center gap-2 text-center">
+          <div className="flex gap-0.5 opacity-30">
+            {[1,2,3,4,5].map((i) => (
+              <Star key={i} className="h-4 w-4 text-amber-400" aria-hidden="true" />
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">No reviews yet.</p>
+        </div>
       ) : (
         <div>
           {reviews.map((r) => (
@@ -255,19 +282,21 @@ interface Props {
 
 export function ReviewSection({ slug, target, token, imageId }: Props) {
   return (
-    <section className="space-y-5" aria-labelledby="reviews-heading">
+    <section className="space-y-4" aria-labelledby="reviews-heading">
       <div className="flex items-center gap-2">
-        <MessageSquare className="h-5 w-5 text-muted-foreground/70" aria-hidden="true" />
-        <h2 id="reviews-heading" className="text-lg font-semibold">Reviews</h2>
+        <MessageSquare className="h-4 w-4 text-muted-foreground/70" aria-hidden="true" />
+        <h2 id="reviews-heading" className="text-base font-semibold">Reviews</h2>
       </div>
 
-      <ReviewForm slug={slug} token={token} target={target} imageId={imageId} />
-
       {target === "studio"
-        ? <StudioReviewList slug={slug} />
+        ? <StudioReviewList   slug={slug} />
         : target === "artist"
-        ? <ArtistReviewList slug={slug} />
+        ? <ArtistReviewList   slug={slug} />
         : <PortfolioImageReviewList imageId={imageId ?? ""} />}
+
+      <div className="pt-2 border-t border-border/40">
+        <ReviewForm slug={slug} token={token} target={target} imageId={imageId} />
+      </div>
     </section>
   );
 }

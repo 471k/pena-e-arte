@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bookmark, MapPin, X } from "lucide-react";
+import { Bookmark, MapPin, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { StarRating } from "@/shared/components/ui/StarRating";
@@ -141,12 +141,31 @@ function distributeToColumns<T>(items: T[], columnCount: number): T[][] {
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 
 interface LightboxProps {
-  image:   PortfolioImageResponse;
-  token:   string | null;
-  onClose: () => void;
+  images:       PortfolioImageResponse[];
+  currentIndex: number;
+  token:        string | null;
+  onClose:      () => void;
+  onNavigate:   (index: number) => void;
 }
 
-function PortfolioLightbox({ image, token, onClose }: LightboxProps) {
+function PortfolioLightbox({ images, currentIndex, token, onClose, onNavigate }: LightboxProps) {
+  const image   = images[currentIndex];
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex < images.length - 1;
+
+  // Keyboard navigation — browser API side-effect, not data fetching.
+  // Must be before the early return to satisfy rules-of-hooks.
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft"  && hasPrev) onNavigate(currentIndex - 1);
+      if (e.key === "ArrowRight" && hasNext) onNavigate(currentIndex + 1);
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [currentIndex, hasPrev, hasNext, onNavigate]);
+
+  if (!image) return null;
+
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
@@ -158,6 +177,7 @@ function PortfolioLightbox({ image, token, onClose }: LightboxProps) {
         </DialogTitle>
 
         <button
+          type="button"
           onClick={onClose}
           className="absolute right-3 top-3 z-10 rounded-full bg-black/60 p-1
                      text-white hover:bg-black/80 transition-colors"
@@ -168,47 +188,116 @@ function PortfolioLightbox({ image, token, onClose }: LightboxProps) {
 
         <div className="grid md:grid-cols-2">
           {/* Image panel */}
-          <div className="bg-black flex items-center justify-center min-h-[280px]">
+          <div className="bg-black flex items-center justify-center min-h-[280px] relative">
             <img
               src={image.imageUrl}
               alt={`Tattoo by ${image.artistName}`}
               className="w-full h-full object-contain max-h-[70vh]"
             />
+
+            {hasPrev && (
+              <button
+                type="button"
+                onClick={() => onNavigate(currentIndex - 1)}
+                aria-label="Previous image"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10
+                           rounded-full bg-black/60 p-2 text-white
+                           hover:bg-black/80 transition-colors
+                           focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+            )}
+
+            {hasNext && (
+              <button
+                type="button"
+                onClick={() => onNavigate(currentIndex + 1)}
+                aria-label="Next image"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10
+                           rounded-full bg-black/60 p-2 text-white
+                           hover:bg-black/80 transition-colors
+                           focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              </button>
+            )}
+
+            <div
+              aria-label={`Image ${currentIndex + 1} of ${images.length}`}
+              className="absolute bottom-2 left-1/2 -translate-x-1/2
+                         text-[10px] text-white/60 tabular-nums"
+            >
+              {currentIndex + 1} / {images.length}
+            </div>
           </div>
 
-          {/* Info + reviews panel */}
-          <div className="p-5 overflow-y-auto max-h-[70vh] space-y-4">
-            <div className="space-y-1">
-              <Link
-                to={`/artist/${image.artistSlug}`}
-                className="font-semibold hover:underline"
-              >
-                {image.artistName}
-              </Link>
-              <p className="text-sm text-muted-foreground">{image.studioName}</p>
+          {/* Info + reviews panel — scrollable with fade hint */}
+          <div className="relative flex flex-col max-h-[70vh]">
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              <div className="space-y-1">
+                <Link
+                  to={`/artist/${image.artistSlug}`}
+                  className="font-semibold hover:underline"
+                >
+                  {image.artistName}
+                </Link>
+                <p className="text-sm text-muted-foreground">{image.studioName}</p>
 
-              {image.style && (
-                <span className="inline-block text-[10px] font-medium uppercase tracking-wider
-                                 px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-                  {image.style}
-                </span>
-              )}
-
-              {image.imageReviewCount > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <StarRating value={Math.round(image.imageAverageRating ?? 0)} />
-                  <span className="text-xs text-muted-foreground">
-                    ({image.imageReviewCount})
+                {image.style && (
+                  <span className="inline-block text-[10px] font-medium uppercase tracking-wider
+                                   px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
+                    {image.style}
                   </span>
-                </div>
-              )}
+                )}
+
+                {image.imageReviewCount > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <StarRating value={Math.round(image.imageAverageRating ?? 0)} />
+                    <span className="text-xs text-muted-foreground">
+                      ({image.imageReviewCount})
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <ReviewSection
+                slug={image.artistSlug}
+                target="tattoo"
+                token={token}
+                imageId={image.imageId}
+              />
+
+              {/* CTA section — always visible at bottom of info panel */}
+              <div className="pt-4 border-t border-border/40 space-y-2">
+                <Link
+                  to={`/artist/${image.artistSlug}`}
+                  onClick={onClose}
+                  className="flex items-center justify-center gap-2 w-full
+                             rounded-md bg-violet-600 hover:bg-violet-700
+                             text-white text-sm font-medium py-2 px-4
+                             transition-colors"
+                >
+                  Book with {image.artistName}
+                </Link>
+                <Link
+                  to={`/artist/${image.artistSlug}`}
+                  onClick={onClose}
+                  className="flex items-center justify-center w-full
+                             text-xs text-muted-foreground hover:text-foreground
+                             underline underline-offset-4 transition-colors"
+                >
+                  View artist profile
+                </Link>
+              </div>
             </div>
 
-            <ReviewSection
-              slug={image.artistSlug}
-              target="tattoo"
-              token={token}
-              imageId={image.imageId}
+            {/* Fade overlay hints at scrollable content */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-0 left-0 right-0 h-8
+                         bg-gradient-to-t from-background/90 to-transparent
+                         rounded-br-lg"
             />
           </div>
         </div>
@@ -383,13 +472,15 @@ function MasonryGrid({ images, onOpen, savedIds, onToggleSave, token }: MasonryG
 // ── Main feed component ───────────────────────────────────────────────────────
 
 export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedProps) {
-  const [page,          setPage]        = useState(1);
-  const [activeStyle,   setActiveStyle] = useState("");
-  const [lightboxImage, setLightboxImage] = useState<PortfolioImageResponse | null>(null);
-  const [allImages,     setAllImages]   = useState<PortfolioImageResponse[]>([]);
+  const [page,          setPage]         = useState(1);
+  const [activeStyle,   setActiveStyle]  = useState("");
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [allImages,     setAllImages]    = useState<PortfolioImageResponse[]>([]);
 
   const token  = useAppSelector((s) => s.auth.token);
   const userId = useAppSelector((s) => s.auth.user?.id);
+
+  const lightboxImage = lightboxIndex !== null ? (allImages[lightboxIndex] ?? null) : null;
 
   const feedArgs: PortfolioFeedArgs = {
     lat:      nearOnly && lat != null ? lat : undefined,
@@ -526,7 +617,10 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
 
       <MasonryGrid
         images={allImages}
-        onOpen={setLightboxImage}
+        onOpen={(img) => {
+          const idx = allImages.findIndex((i) => i.imageId === img.imageId);
+          setLightboxIndex(idx >= 0 ? idx : null);
+        }}
         savedIds={savedSet}
         onToggleSave={handleToggleSave}
         token={token}
@@ -546,11 +640,13 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
         </div>
       )}
 
-      {lightboxImage !== null && (
+      {lightboxIndex !== null && lightboxImage !== null && (
         <PortfolioLightbox
-          image={lightboxImage}
+          images={allImages}
+          currentIndex={lightboxIndex}
           token={token}
-          onClose={() => setLightboxImage(null)}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={(idx) => setLightboxIndex(idx)}
         />
       )}
     </div>

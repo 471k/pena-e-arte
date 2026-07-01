@@ -71,11 +71,12 @@ export interface NearbyStudioResponse {
 }
 
 export interface ReviewResponse {
-  id:         string;
-  authorName: string;
-  rating:     number;
-  body:       string;
-  createdAt:  string;
+  id:                string;
+  authorName:        string;
+  rating:            number;
+  body:              string;
+  createdAt:         string;
+  isVerifiedBooking: boolean;
 }
 
 export interface PortfolioImageResponse {

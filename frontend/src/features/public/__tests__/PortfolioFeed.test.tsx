@@ -66,12 +66,23 @@ const IMAGES: PortfolioImageResponse[] = [
   },
 ];
 
+// Three images for prev/next navigation tests
+const IMAGES_NAV: PortfolioImageResponse[] = [
+  { ...IMAGES[0], imageId: "img-nav-1" },
+  { ...IMAGES[1], imageId: "img-nav-2" },
+  { ...IMAGES[0], imageId: "img-nav-3" },
+];
+
 const server = setupServer(
   http.get("http://localhost/api/v1/public/portfolio/feed", () =>
     HttpResponse.json(IMAGES),
   ),
   // savedImagesApi — skip=true when not logged in, but handler prevents unhandled-request warnings
   http.get("http://localhost/api/v1/saved-images/ids", () =>
+    HttpResponse.json([]),
+  ),
+  // ReviewSection queries triggered when lightbox opens
+  http.get("http://localhost/api/v1/public/portfolio/:imageId/reviews", () =>
     HttpResponse.json([]),
   ),
 );
@@ -252,5 +263,78 @@ describe("PortfolioFeed", () => {
     // Wait for the network call to fire
     await screen.findByText(/no portfolio work yet/i);
     expect(capturedUrl).toContain("style=realism");
+  });
+
+  // ── Lightbox navigation ────────────────────────────────────────────────────
+
+  it("lightbox shows prev/next buttons when multiple images exist", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", () =>
+        HttpResponse.json(IMAGES_NAV),
+      ),
+    );
+    const user = userEvent.setup();
+    renderFeed();
+    const tiles = await screen.findAllByRole("button", { name: /view tattoo by/i });
+    // Click the middle tile so both prev and next are present
+    await user.click(tiles[1]);
+    expect(await screen.findByRole("button", { name: /previous image/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /next image/i })).toBeInTheDocument();
+  });
+
+  it("lightbox shows position indicator", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", () =>
+        HttpResponse.json(IMAGES_NAV),
+      ),
+    );
+    const user = userEvent.setup();
+    renderFeed();
+    const tiles = await screen.findAllByRole("button", { name: /view tattoo by/i });
+    await user.click(tiles[0]);
+    expect(await screen.findByLabelText(/image 1 of 3/i)).toBeInTheDocument();
+  });
+
+  it("next button navigates to the following image", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", () =>
+        HttpResponse.json(IMAGES_NAV),
+      ),
+    );
+    const user = userEvent.setup();
+    renderFeed();
+    const tiles = await screen.findAllByRole("button", { name: /view tattoo by/i });
+    await user.click(tiles[0]);
+    await screen.findByRole("dialog");
+    const nextBtn = screen.getByRole("button", { name: /next image/i });
+    await user.click(nextBtn);
+    expect(screen.getByLabelText(/image 2 of 3/i)).toBeInTheDocument();
+  });
+
+  it("lightbox has at least one close button named 'Close'", async () => {
+    const user = userEvent.setup();
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    await user.click(screen.getByLabelText(/Tattoo by Ana Lima/i));
+    await screen.findByRole("dialog");
+    // shadcn DialogContent renders its own close button in addition to ours,
+    // so getAllByRole (not getByRole) is required to handle multiple matches.
+    expect(screen.getAllByRole("button", { name: /^close$/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("lightbox shows 'Book with artist' link", async () => {
+    const user = userEvent.setup();
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    await user.click(screen.getByLabelText(/Tattoo by Ana Lima/i));
+    expect(await screen.findByRole("link", { name: /book with ana lima/i })).toBeInTheDocument();
+  });
+
+  it("lightbox shows 'View artist profile' link", async () => {
+    const user = userEvent.setup();
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    await user.click(screen.getByLabelText(/Tattoo by Ana Lima/i));
+    expect(await screen.findByRole("link", { name: /view artist profile/i })).toBeInTheDocument();
   });
 });

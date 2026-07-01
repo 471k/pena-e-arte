@@ -417,6 +417,9 @@ Never add a new one without updating this table and the Decisions Log.
 | 16 | `SavePortfolioImageHandler`             | Cross-tenant portfolio image existence check before saving       | ClientAndAbove |
 | 17 | `GetSavedPortfolioImagesHandler` (images) | Cross-tenant portfolio images + artist join for saved-images list | ClientAndAbove |
 | 18 | `GetSavedPortfolioImagesHandler` (studios) | Cross-tenant studio name lookup for saved-images response projection | ClientAndAbove |
+| 19 | `GetArtistReviewsQuery` (Appointments + Clients) | `IsVerifiedBooking` check — completed appointments with this artist cross-tenant | Anonymous |
+| 20 | `GetStudioReviewsQuery` (Appointments + Clients) | `IsVerifiedBooking` check — completed appointments at this studio cross-tenant | Anonymous |
+| 21 | `GetPortfolioImageReviewsQuery` (Appointments + Clients) | `IsVerifiedBooking` check — completed appointments at the image's studio cross-tenant | Anonymous |
 
 ---
 
@@ -708,3 +711,8 @@ does not re-litigate them.
 | Saved images entity | `SavedPortfolioImage` is NOT a `TenantEntity` — intentional | Saved images are user-scoped and cross-tenant by design; a user can save images from any studio. Adding a tenant FK would break cross-tenant discovery. |
 | Saved images API slice | `savedImagesApi` — separate RTK Query slice with `baseUrl: "/api/v1/"` | `publicApi` uses `baseUrl: "/api/v1/public/"` — saved-images endpoints live at `/api/v1/saved-images/`. Dual-base within one slice requires URL manipulation hacks; a dedicated slice is cleaner |
 | Portfolio tile attribution strip | Always-visible translucent overlay below each image (artist name + studio + rating) | Hover-only overlays fail WCAG 2.1 criterion 1.4.13 (content on hover/focus); always-visible strip ensures attribution is always accessible |
+| StarRating split into display + interactive | Separate `StarRating` (display) and `InteractiveStarRating` (write form) exports | Touch targets, hover preview, and live readout only needed on interactive variant; display-only component stays lightweight |
+| ReviewSection order: list before form | Aggregate → reviews list → write form (form always last) | Industry trust pattern: users need to read existing reviews before writing one; form at bottom reduces form-before-content anti-pattern |
+| IsVerifiedBooking on ReviewResponse | Computed at query time via Appointments join, not stored | No migration needed; verified status can change if booking is cancelled or added; `IgnoreQueryFilters` approved (entries 19-21) |
+| Lightbox prev/next navigation | Index-based navigation through allImages array; keyboard arrows (←/→) also supported | Enables discovery across portfolio without closing/reopening lightbox; position indicator shows context |
+| "Book with artist" CTA in lightbox | Primary violet Link to `/artist/:slug`; secondary "View artist profile" link | Closes lightbox on navigate; converts engaged viewers without requiring an extra click to find the booking CTA |

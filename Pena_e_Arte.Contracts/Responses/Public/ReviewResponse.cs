@@ -5,4 +5,5 @@ public record ReviewResponse(
     string   AuthorName,
     int      Rating,
     string   Body,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool     IsVerifiedBooking);
