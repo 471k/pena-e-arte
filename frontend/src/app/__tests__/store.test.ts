@@ -36,6 +36,8 @@ const MARCO: ArtistResponse = {
   email:           "marco.santos@ink-soul.test",
   specializations: null,
   hourlyRate:      null,
+  isActive:        true,
+  avatarUrl:       null,
   portfolioImages: ["https://r2.example.com/tattoo1.jpg"],
   slug:            "marco-santos",
   createdAt:       "2026-01-01T00:00:00Z",

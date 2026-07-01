@@ -32,7 +32,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
         // All subsequent counts operate only on active studios (IsActive = true).
         List<Studio> active = studios.Where(s => s.IsActive).ToList();
 
-        int totalStudios        = active.Count;
+        int totalStudios        = studios.Count;
         int activeSubscriptions = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Active);
         int trialStudios        = active.Count(s =>
             s.Subscription?.Status == SubscriptionStatus.Trialing
@@ -67,7 +67,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
             ? Math.Round((double)activeSubscriptions / conversionDenominator, 4)
             : 0;
 
-        int newStudiosThisMonth = active.Count(s => s.CreatedAt >= monthStart);
+        int newStudiosThisMonth = studios.Count(s => s.CreatedAt >= monthStart);
 
         return new PlatformStatsResponse(
             totalStudios,

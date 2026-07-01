@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CreditCard, Edit2, Loader2, Plus, Trash2, Users, X } from "lucide-react";
@@ -47,10 +49,17 @@ interface PlanFormProps {
 }
 
 function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { billingInterval: "Monthly", yearlyDiscountPercent: 17, allowBrandingRemoval: false, ...defaultValues },
   });
+
+  const watchedMonthly  = watch("priceMonthly");
+  const watchedDiscount = watch("yearlyDiscountPercent");
+  const suggestedYearly =
+    watchedMonthly > 0 && watchedDiscount >= 0 && watchedDiscount < 100
+      ? watchedMonthly * 12 * (1 - watchedDiscount / 100)
+      : null;
 
   const selectClass = cn(
     "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
@@ -85,6 +94,11 @@ function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
           <Label htmlFor="priceYearly">Yearly price (€)</Label>
           <Input id="priceYearly" type="number" step="0.01" min="0"
             {...register("priceYearly", { valueAsNumber: true })} />
+          {suggestedYearly !== null && (
+            <p className="text-[10px] text-muted-foreground">
+              Suggested: {formatCurrency(suggestedYearly)} (monthly × 12 × {100 - watchedDiscount}%)
+            </p>
+          )}
           {errors.priceYearly && <p className="text-xs text-destructive">{errors.priceYearly.message}</p>}
         </div>
       </div>
@@ -179,12 +193,22 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
   const [deletePlan, { isLoading: removing }] = useDeletePlanMutation();
 
   async function handleUpdate(values: FormValues) {
-    await updatePlan({ id: plan.id, ...values }).unwrap();
-    setEditing(false);
+    try {
+      await updatePlan({ id: plan.id, ...values }).unwrap();
+      toast.success("Plan updated");
+      setEditing(false);
+    } catch {
+      toast.error("Failed to update plan");
+    }
   }
 
   async function handleDelete() {
-    await deletePlan(plan.id).unwrap();
+    try {
+      await deletePlan(plan.id).unwrap();
+      toast.success("Plan deleted");
+    } catch {
+      toast.error("Failed to delete plan");
+    }
   }
 
   return (
@@ -320,13 +344,20 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
 }
 
 export function PlanManagementPage() {
+  useDocumentMeta({ title: "Plans — Platform Admin", canonical: "/platform/plans" });
+
   const [creating, setCreating] = useState(false);
   const { data: plans, isLoading, isError } = useGetIssuerPlansQuery();
   const [createPlan, { isLoading: saving }] = useCreatePlanMutation();
 
   async function handleCreate(values: FormValues) {
-    await createPlan(values).unwrap();
-    setCreating(false);
+    try {
+      await createPlan(values).unwrap();
+      toast.success("Plan created");
+      setCreating(false);
+    } catch {
+      toast.error("Failed to create plan");
+    }
   }
 
   return (

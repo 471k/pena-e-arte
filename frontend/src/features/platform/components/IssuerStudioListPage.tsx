@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   Banknote,
   Building2,
@@ -56,6 +58,16 @@ const STATUS_LABELS: Record<string, string> = {
 
 const CASH_ACTIVATABLE = new Set(["NoSubscription", "PastDue", "GracePeriod", "Cancelled"]);
 const CANCELLABLE      = new Set(["Active", "PastDue", "Trialing", "GracePeriod"]);
+
+const STATUS_SORT_ORDER: Record<string, number> = {
+  Suspended:      0,
+  PastDue:        1,
+  GracePeriod:    2,
+  Trialing:       3,
+  Active:         4,
+  NoSubscription: 5,
+  Cancelled:      6,
+};
 
 const ALL_FILTER_STATUSES = [
   "Active", "Trialing", "GracePeriod", "PastDue",
@@ -135,8 +147,9 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
     try {
       if (confirmPlatform === "suspend")   await suspend(studio.id).unwrap();
       if (confirmPlatform === "unsuspend") await unsuspend(studio.id).unwrap();
+      toast.success(confirmPlatform === "suspend" ? "Studio suspended" : "Studio reinstated");
     } catch {
-      // mutation failed — optimistic update already rolled back by onQueryStarted
+      toast.error(confirmPlatform === "suspend" ? "Failed to suspend studio" : "Failed to reinstate studio");
     } finally {
       setConfirmPlatform(null);
     }
@@ -145,21 +158,36 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
   async function handleExtend() {
     const d = parseInt(days, 10);
     if (isNaN(d) || d < 1) return;
-    await extendTrial({ studioId: studio.id, additionalDays: d }).unwrap();
-    setExtending(false);
+    try {
+      await extendTrial({ studioId: studio.id, additionalDays: d }).unwrap();
+      toast.success(`Trial extended by ${d} day${d !== 1 ? "s" : ""}`);
+      setExtending(false);
+    } catch {
+      toast.error("Failed to extend trial");
+    }
   }
 
   async function handleActivate() {
     if (!cashPlanId) return;
-    await activateManually({ studioId: studio.id, planId: cashPlanId, note: cashNote || undefined }).unwrap();
+    try {
+      await activateManually({ studioId: studio.id, planId: cashPlanId, note: cashNote || undefined }).unwrap();
+      toast.success("Subscription activated");
+    } catch {
+      toast.error("Failed to activate subscription");
+    }
     setActivating(false);
     setCashPlanId("");
     setCashNote("");
   }
 
   async function handleCancel() {
-    await cancelSub(studio.id).unwrap();
-    setConfirming(false);
+    try {
+      await cancelSub(studio.id).unwrap();
+      toast.success("Subscription cancelled");
+      setConfirming(false);
+    } catch {
+      toast.error("Failed to cancel subscription");
+    }
   }
 
   const planDisplay = (() => {
@@ -376,6 +404,13 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function IssuerStudioListPage() {
+  useDocumentMeta({ title: "Studios — Platform Admin", canonical: "/platform/studios" });
+
+  const location      = useLocation();
+  const highlightId   = (location.state as { highlight?: string } | null)?.highlight ?? null;
+  const [dimHighlight, setDimHighlight] = useState(false);
+  const listRef       = useRef<HTMLDivElement>(null);
+
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [planFilter,   setPlanFilter]   = useState("all");
@@ -395,25 +430,45 @@ export function IssuerStudioListPage() {
   const filtered = useMemo(() => {
     if (!studios) return [];
     const q = search.trim().toLowerCase();
-    return studios.filter((s) => {
-      const sub             = subMap.get(s.id);
-      const subStatus       = sub?.status ?? "NoSubscription";
-      const effectiveStatus = !s.isActive ? "Suspended" : subStatus;
+    return studios
+      .filter((s) => {
+        const sub             = subMap.get(s.id);
+        const subStatus       = sub?.status ?? "NoSubscription";
+        const effectiveStatus = !s.isActive ? "Suspended" : subStatus;
 
-      const matchesSearch = !q ||
-        s.name.toLowerCase().includes(q) ||
-        s.slug.toLowerCase().includes(q);
-      const matchesStatus =
-        statusFilter === "all" || effectiveStatus === statusFilter;
-      const matchesPlan = (() => {
-        if (planFilter === "all") return true;
-        if (planFilter === "none") return sub?.planName == null;
-        return sub?.planName === planFilter;
-      })();
+        const matchesSearch = !q ||
+          s.name.toLowerCase().includes(q) ||
+          s.slug.toLowerCase().includes(q);
+        const matchesStatus =
+          statusFilter === "all" || effectiveStatus === statusFilter;
+        const matchesPlan = (() => {
+          if (planFilter === "all") return true;
+          if (planFilter === "none") return sub?.planName == null;
+          return sub?.planName === planFilter;
+        })();
 
-      return matchesSearch && matchesStatus && matchesPlan;
-    });
+        return matchesSearch && matchesStatus && matchesPlan;
+      })
+      .sort((a, b) => {
+        const subA     = subMap.get(a.id);
+        const subB     = subMap.get(b.id);
+        const statusA  = !a.isActive ? "Suspended" : (subA?.status ?? "NoSubscription");
+        const statusB  = !b.isActive ? "Suspended" : (subB?.status ?? "NoSubscription");
+        const orderDiff = (STATUS_SORT_ORDER[statusA] ?? 9) - (STATUS_SORT_ORDER[statusB] ?? 9);
+        return orderDiff !== 0 ? orderDiff : a.name.localeCompare(b.name);
+      });
   }, [studios, subMap, search, statusFilter, planFilter]);
+
+  // Scroll to and highlight the studio arriving from the dashboard at-risk link.
+  useEffect(() => {
+    if (!highlightId || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(`[data-studio-id="${highlightId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setDimHighlight(false);
+    const timer = setTimeout(() => setDimHighlight(true), 1800);
+    return () => clearTimeout(timer);
+  }, [highlightId, filtered.length]);
 
   const isLoading = studiosLoading || subsLoading;
 
@@ -465,7 +520,7 @@ export function IssuerStudioListPage() {
         </select>
       </div>
 
-      <main className="max-w-3xl mx-auto px-4 py-4 space-y-3">
+      <main className="max-w-3xl mx-auto px-4 py-4">
         {isLoading && (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => <StudioRowSkeleton key={i} />)}
@@ -496,9 +551,21 @@ export function IssuerStudioListPage() {
           </p>
         )}
 
-        {!isLoading && !studiosError && filtered.map((s) => (
-          <StudioRow key={s.id} studio={s} sub={subMap.get(s.id)} plans={plans} />
-        ))}
+        <div ref={listRef} className="space-y-3">
+          {!isLoading && !studiosError && filtered.map((s) => (
+            <div
+              key={s.id}
+              data-studio-id={s.id}
+              className={`rounded-lg transition-shadow duration-700 ${
+                highlightId === s.id && !dimHighlight
+                  ? "ring-2 ring-primary shadow-md"
+                  : ""
+              }`}
+            >
+              <StudioRow studio={s} sub={subMap.get(s.id)} plans={plans} />
+            </div>
+          ))}
+        </div>
       </main>
     </div>
   );

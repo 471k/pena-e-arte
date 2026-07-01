@@ -243,8 +243,9 @@ describe("IssuerStudioListPage", () => {
 
   it("confirming Suspend calls PATCH studios/:id/suspend", async () => {
     const suspendSpy = vi.fn();
+    // After sort (Suspended→Trialing→Active), s3 (Trialing) is the first row with a Suspend button.
     server.use(
-      http.patch("http://localhost/api/v1/studios/s1/suspend", () => {
+      http.patch("http://localhost/api/v1/studios/s3/suspend", () => {
         suspendSpy();
         return new HttpResponse(null, { status: 204 });
       }),
@@ -254,7 +255,7 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     await screen.findByText("Ink Soul");
 
-    // The first Suspend button in the DOM belongs to s1 (rendered first)
+    // After sort: s2 (Suspended → Reactivate), s3 (Trialing → Suspend), s1 (Active → Suspend)
     const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
     await user.click(suspendBtns[0]);
     await user.click(screen.getByRole("button", { name: /yes/i }));
@@ -351,8 +352,9 @@ describe("IssuerStudioListPage", () => {
   it("View button links to studio detail page", async () => {
     renderPage();
     await screen.findByText("Ink Soul");
+    // After sort: s2 (Suspended) is first row; its View link points to /platform/studios/s2
     const viewLinks = screen.getAllByRole("link", { name: /view/i });
-    expect(viewLinks[0]).toHaveAttribute("href", `/platform/studios/s1`);
+    expect(viewLinks[0]).toHaveAttribute("href", `/platform/studios/s2`);
   });
 
   it("Cancel Subscription button appears last in the button group for Active studios", async () => {

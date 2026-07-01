@@ -26,6 +26,8 @@ const MY_ARTIST: ArtistResponse = {
   email:           "artist@ink.test",
   specializations: null,
   hourlyRate:      null,
+  isActive:        true,
+  avatarUrl:       null,
   portfolioImages: [],
   slug: null,
   createdAt:       "2024-01-01T00:00:00Z",

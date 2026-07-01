@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Banknote, Clock, Loader2, Receipt, Search, XCircle } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Banknote, Clock, ExternalLink, Loader2, Receipt, Search, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -86,17 +88,27 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   async function handleExtend() {
     const additionalDays = parseInt(days, 10);
     if (isNaN(additionalDays) || additionalDays < 1) return;
-    await extendTrial({ studioId: sub.studioId, additionalDays }).unwrap();
-    setExtending(false);
+    try {
+      await extendTrial({ studioId: sub.studioId, additionalDays }).unwrap();
+      toast.success(`Trial extended by ${additionalDays} day${additionalDays !== 1 ? "s" : ""}`);
+      setExtending(false);
+    } catch {
+      toast.error("Failed to extend trial");
+    }
   }
 
   async function handleActivate() {
     if (!cashPlanId) return;
-    await activateManually({
-      studioId: sub.studioId,
-      planId:   cashPlanId,
-      note:     cashNote || undefined,
-    }).unwrap();
+    try {
+      await activateManually({
+        studioId: sub.studioId,
+        planId:   cashPlanId,
+        note:     cashNote || undefined,
+      }).unwrap();
+      toast.success("Subscription activated");
+    } catch {
+      toast.error("Failed to activate subscription");
+    }
     setActivating(false);
     setCashNote("");
     setCashPlanId("");
@@ -117,8 +129,13 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   })();
 
   async function handleCancel() {
-    await cancelSub(sub.studioId).unwrap();
-    setConfirming(false);
+    try {
+      await cancelSub(sub.studioId).unwrap();
+      toast.success("Subscription cancelled");
+      setConfirming(false);
+    } catch {
+      toast.error("Failed to cancel subscription");
+    }
   }
 
   return (
@@ -149,6 +166,17 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <Link to={`/platform/studios/${sub.studioId}`}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs gap-1"
+                aria-label={`View ${sub.studioName} studio details`}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                View
+              </Button>
+            </Link>
             {sub.status !== "Active" && !extending && !activating && !confirming && (
               <Button
                 size="sm"
@@ -296,6 +324,8 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
 const ALL_STATUSES = ["Active", "Trialing", "GracePeriod", "PastDue", "Cancelled", "NoSubscription"];
 
 export function SubscriptionOversightPage() {
+  useDocumentMeta({ title: "Subscriptions — Platform Admin", canonical: "/platform/subscriptions" });
+
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get("status") ?? "";
   const [search, setSearch] = useState("");

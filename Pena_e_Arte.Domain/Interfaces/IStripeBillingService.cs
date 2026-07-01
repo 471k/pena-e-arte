@@ -60,4 +60,11 @@ public interface IStripeBillingService
     /// payment method, download invoices, and cancel. Returns the redirect URL.
     /// </summary>
     Task<string> CreatePortalSessionAsync(string stripeCustomerId, string returnUrl, CancellationToken ct);
+
+    /// <summary>
+    /// Cancels an active Stripe subscription immediately. Idempotent — safe to call if the
+    /// subscription is already cancelled or does not exist. Callers should catch exceptions
+    /// and log rather than rethrow — Stripe failure must not abort a local cancellation.
+    /// </summary>
+    Task CancelSubscriptionAsync(string stripeSubscriptionId, CancellationToken ct);
 }

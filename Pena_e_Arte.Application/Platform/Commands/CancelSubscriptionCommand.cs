@@ -6,6 +6,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
@@ -13,6 +14,7 @@ public record CancelSubscriptionCommand(Guid StudioId) : IRequest;
 
 public class CancelSubscriptionHandler(
     IAppDbContext                      db,
+    IStripeBillingService              stripe,
     ILogger<CancelSubscriptionHandler> logger)
     : IRequestHandler<CancelSubscriptionCommand>
 {
@@ -40,6 +42,7 @@ public class CancelSubscriptionHandler(
             throw new BusinessRuleViolationException(
                 $"A subscription with status '{subscription.Status}' cannot be cancelled.");
 
+        string? stripeId           = subscription.StripeSubscriptionId;
         subscription.Status        = SubscriptionStatus.Cancelled;
         subscription.PendingPlanId = null;
 
@@ -48,6 +51,24 @@ public class CancelSubscriptionHandler(
             studio.Id);
 
         await db.SaveChangesAsync(ct);
+
+        // Best-effort Stripe cancellation: if the subscription was created via Checkout,
+        // cancel it in Stripe so the studio is not billed further.
+        // DB record is already cancelled — a Stripe error must not surface to the caller.
+        if (stripeId is not null)
+        {
+            try
+            {
+                await stripe.CancelSubscriptionAsync(stripeId, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to cancel Stripe subscription {StripeSubscriptionId} for studio {StudioId} — " +
+                    "local record already cancelled, manual Stripe cleanup may be required",
+                    stripeId, studio.Id);
+            }
+        }
     }
 }
 

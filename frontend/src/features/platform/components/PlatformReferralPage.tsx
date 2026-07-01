@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { toast } from "sonner";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   Check,
   ClipboardCopy,
@@ -72,17 +74,32 @@ function ReferralCodeRow({ code }: ReferralCodeRowProps) {
   }
 
   async function handleDeactivate() {
-    await deactivate(code.id).unwrap();
-    setDeactivating(false);
+    try {
+      await deactivate(code.id).unwrap();
+      toast.success("Code deactivated");
+      setDeactivating(false);
+    } catch {
+      toast.error("Failed to deactivate code");
+    }
   }
 
   async function handleReactivate() {
-    await reactivate(code.id).unwrap();
-    setReactivating(false);
+    try {
+      await reactivate(code.id).unwrap();
+      toast.success("Code reactivated");
+      setReactivating(false);
+    } catch {
+      toast.error("Failed to reactivate code");
+    }
   }
 
   async function handleDelete() {
-    await deleteFn(code.id).unwrap();
+    try {
+      await deleteFn(code.id).unwrap();
+      toast.success("Code deleted");
+    } catch {
+      toast.error("Failed to delete code");
+    }
   }
 
   const anyExpanded = deactivating || reactivating || deleting;
@@ -274,15 +291,25 @@ interface GenerateFormProps {
 }
 
 function GenerateCodeForm({ onClose }: GenerateFormProps) {
-  const [studioId, setStudioId] = useState("");
+  const [studioId,  setStudioId]  = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
   const { data: studios = [] } = useGetStudiosQuery();
   const [generate, { isLoading }] = useGenerateReferralCodeForStudioMutation();
 
   async function handleGenerate() {
     if (!studioId) return;
-    await generate(studioId).unwrap();
-    onClose();
+    try {
+      await generate({ studioId, expiresAt: expiresAt || undefined }).unwrap();
+      toast.success("Referral code generated");
+      onClose();
+    } catch {
+      toast.error("Failed to generate code");
+    }
   }
+
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() + 1);
+  const minDateStr = minDate.toISOString().split("T")[0];
 
   return (
     <Card className="mb-4">
@@ -301,6 +328,19 @@ function GenerateCodeForm({ onClose }: GenerateFormProps) {
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="gen-expires" className="text-xs">
+            Expiry date <span className="text-muted-foreground font-normal">(optional)</span>
+          </Label>
+          <input
+            id="gen-expires"
+            type="date"
+            min={minDateStr}
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+            className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+          />
         </div>
         <p className="text-xs text-muted-foreground">
           Generates an 8-character single-use code. Any existing active code
@@ -330,6 +370,8 @@ function GenerateCodeForm({ onClose }: GenerateFormProps) {
 }
 
 export function PlatformReferralPage() {
+  useDocumentMeta({ title: "Referral Codes — Platform Admin", canonical: "/platform/referrals" });
+
   const [generating,   setGenerating]   = useState(false);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");

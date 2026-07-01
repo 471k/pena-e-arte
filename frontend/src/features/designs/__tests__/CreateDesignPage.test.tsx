@@ -27,6 +27,8 @@ const ARTIST: ArtistResponse = {
   email:           "ana@ink.test",
   specializations: null,
   hourlyRate:      null,
+  isActive:        true,
+  avatarUrl:       null,
   portfolioImages: [],
   slug: null,
   userId:          null,

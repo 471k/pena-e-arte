@@ -30,6 +30,7 @@ import {
   IndustryReportsPage,
 } from "@/features/platform";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage } from "@/features/public";
+import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
@@ -146,13 +147,13 @@ export const router = createBrowserRouter([
                 path: "platform",
                 element: <RoleGuard allowedRoles={[Role.Issuer]} />,
                 children: [
-                  { index: true,                element: <IssuerDashboardPage /> },
-                  { path: "studios",            element: <IssuerStudioListPage /> },
-                  { path: "studios/:studioId",  element: <IssuerStudioDetailPage /> },
-                  { path: "plans",              element: <PlanManagementPage /> },
-                  { path: "subscriptions",   element: <SubscriptionOversightPage /> },
-                  { path: "referrals",       element: <PlatformReferralPage /> },
-                  { path: "reports",         element: <IndustryReportsPage /> },
+                  { index: true,               element: <ErrorBoundary><IssuerDashboardPage /></ErrorBoundary> },
+                  { path: "studios",           element: <ErrorBoundary><IssuerStudioListPage /></ErrorBoundary> },
+                  { path: "studios/:studioId", element: <ErrorBoundary><IssuerStudioDetailPage /></ErrorBoundary> },
+                  { path: "plans",             element: <ErrorBoundary><PlanManagementPage /></ErrorBoundary> },
+                  { path: "subscriptions",     element: <ErrorBoundary><SubscriptionOversightPage /></ErrorBoundary> },
+                  { path: "referrals",         element: <ErrorBoundary><PlatformReferralPage /></ErrorBoundary> },
+                  { path: "reports",           element: <ErrorBoundary><IndustryReportsPage /></ErrorBoundary> },
                 ],
               },
 

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { BarChart3, Check, Download, ExternalLink, Loader2, PlayCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -108,18 +110,29 @@ function ReportRow({ report }: ReportRowProps) {
 }
 
 function GenerateTriggerButton() {
-  const [queued, setQueued] = useState(false);
-  const [error, setError] = useState(false);
+  const [queued,     setQueued]     = useState(false);
+  const [cooldown,   setCooldown]   = useState(0);
+  const [error,      setError]      = useState(false);
   const [trigger, { isLoading }] = useTriggerIndustryReportMutation();
+
+  // Count down cooldown seconds — approved useEffect: timer-based browser side-effect.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
 
   async function handleTrigger() {
     setError(false);
     try {
       await trigger().unwrap();
       setQueued(true);
+      setCooldown(60);
+      toast.success("Report generation queued");
       setTimeout(() => setQueued(false), 4000);
     } catch {
       setError(true);
+      toast.error("Failed to queue report generation");
       setTimeout(() => setError(false), 4000);
     }
   }
@@ -141,24 +154,28 @@ function GenerateTriggerButton() {
     );
   }
 
+  const onCooldown = cooldown > 0;
+
   return (
     <Button
       size="sm"
       variant="outline"
       className="h-7 text-xs gap-1.5"
-      disabled={isLoading}
+      disabled={isLoading || onCooldown}
       onClick={handleTrigger}
       aria-label="Trigger industry report generation now"
     >
       {isLoading
         ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
         : <PlayCircle className="h-3.5 w-3.5" />}
-      Generate Report
+      {onCooldown ? `Wait ${cooldown}s` : "Generate Report"}
     </Button>
   );
 }
 
 export function IndustryReportsPage() {
+  useDocumentMeta({ title: "Industry Reports — Platform Admin", canonical: "/platform/reports" });
+
   const { data: reports, isLoading, isError } = useGetIndustryReportsQuery();
 
   return (

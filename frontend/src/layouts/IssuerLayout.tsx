@@ -30,7 +30,7 @@ export function IssuerLayout() {
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Platform Admin</span>
 
-        <nav className="ml-6 flex items-center gap-1">
+        <nav className="ml-6 flex items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
           {NAV_ITEMS.map(({ label, href, icon }) => (
             <NavLink
               key={href}

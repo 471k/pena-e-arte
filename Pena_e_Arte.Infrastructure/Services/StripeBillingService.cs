@@ -176,4 +176,9 @@ public class StripeBillingService(
         Stripe.BillingPortal.Session session = await portalSessions.CreateAsync(options, null, ct);
         return session.Url;
     }
+
+    public async Task CancelSubscriptionAsync(string stripeSubscriptionId, CancellationToken ct)
+    {
+        await subscriptionService.CancelAsync(stripeSubscriptionId, null, null, ct);
+    }
 }

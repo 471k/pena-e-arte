@@ -57,10 +57,14 @@ export const platformApi = createApi({
       }),
       invalidatesTags: ["PlatformReferral"],
     }),
-    generateReferralCodeForStudio: builder.mutation<PlatformReferralCodeResponse, string>({
-      query: (studioId) => ({
+    generateReferralCodeForStudio: builder.mutation<
+      PlatformReferralCodeResponse,
+      { studioId: string; expiresAt?: string }
+    >({
+      query: ({ studioId, expiresAt }) => ({
         url:    `platform/studios/${studioId}/referral-codes`,
         method: "POST",
+        body:   expiresAt ? { expiresAt } : undefined,
       }),
       invalidatesTags: ["PlatformReferral", "PlatformStats"],
     }),

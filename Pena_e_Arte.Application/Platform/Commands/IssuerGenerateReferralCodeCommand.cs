@@ -9,7 +9,7 @@ using Pena_e_Arte.Domain.Exceptions;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
-public record IssuerGenerateReferralCodeCommand(Guid StudioId) : IRequest<PlatformReferralCodeResponse>;
+public record IssuerGenerateReferralCodeCommand(Guid StudioId, DateTime? ExpiresAt = null) : IRequest<PlatformReferralCodeResponse>;
 
 public class IssuerGenerateReferralCodeHandler(
     IAppDbContext                                  db,
@@ -43,6 +43,7 @@ public class IssuerGenerateReferralCodeHandler(
             Code        = code,
             IsActive    = true,
             IsSingleUse = true,
+            ExpiresAt   = command.ExpiresAt,
         };
 
         db.ReferralCodes.Add(referralCode);

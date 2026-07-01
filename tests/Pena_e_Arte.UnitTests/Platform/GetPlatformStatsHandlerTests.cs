@@ -28,7 +28,7 @@ public class GetPlatformStatsHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithStudios_CountsOnlyNonSuspendedInTotal()
+    public async Task Handle_WithStudios_CountsAllStudiosInTotal_IncludingSuspended()
     {
         SeedStudio(isActive: true);
         SeedStudio(isActive: false, trialExpiresAt: DateTime.UtcNow.AddDays(-30));
@@ -36,8 +36,8 @@ public class GetPlatformStatsHandlerTests
 
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
 
-        result.TotalStudios.Should().Be(1);
-        result.TrialStudios.Should().Be(1); // active studio, no sub, trial still running
+        result.TotalStudios.Should().Be(2); // both active and suspended count toward total
+        result.TrialStudios.Should().Be(1); // only the active studio (no sub, trial running)
     }
 
     [Fact]
@@ -165,7 +165,7 @@ public class GetPlatformStatsHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithSuspendedStudio_CountsSuspendedSeparately()
+    public async Task Handle_WithSuspendedStudio_CountsSuspendedSeparatelyAndIncludesInTotal()
     {
         SeedStudio(isActive: false); // suspended
         SeedStudio(isActive: true);  // active trial
@@ -174,7 +174,7 @@ public class GetPlatformStatsHandlerTests
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
 
         result.SuspendedStudios.Should().Be(1);
-        result.TotalStudios.Should().Be(1); // suspended is excluded from total
+        result.TotalStudios.Should().Be(2); // total includes all tenants (active + suspended)
     }
 
     [Fact]

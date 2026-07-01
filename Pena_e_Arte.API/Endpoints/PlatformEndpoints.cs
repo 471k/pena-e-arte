@@ -105,12 +105,13 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GenerateReferralCodeForStudio(
-        Guid              studioId,
-        ISender           mediator,
-        CancellationToken ct)
+        Guid                                 studioId,
+        GenerateReferralCodeForStudioRequest? request,
+        ISender                              mediator,
+        CancellationToken                    ct)
     {
         PlatformReferralCodeResponse result =
-            await mediator.Send(new IssuerGenerateReferralCodeCommand(studioId), ct);
+            await mediator.Send(new IssuerGenerateReferralCodeCommand(studioId, request?.ExpiresAt), ct);
         return Results.Ok(result);
     }
 

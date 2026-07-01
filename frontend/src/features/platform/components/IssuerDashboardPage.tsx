@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   AlertCircle,
   AlertTriangle,
@@ -138,8 +140,13 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
   async function handleExtend() {
     const additionalDays = parseInt(days, 10);
     if (isNaN(additionalDays) || additionalDays < 1 || additionalDays > 90) return;
-    await extendTrial({ studioId: sub.studioId, additionalDays });
-    setExtending(false);
+    try {
+      await extendTrial({ studioId: sub.studioId, additionalDays }).unwrap();
+      toast.success(`Trial extended by ${additionalDays} day${additionalDays !== 1 ? "s" : ""}`);
+      setExtending(false);
+    } catch {
+      toast.error("Failed to extend trial");
+    }
   }
 
   return (
@@ -168,7 +175,10 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
             >
               {sub.status === "PastDue" ? "Past due" : "Grace period"}
             </span>
-            <ExpiryLabel dateStr={sub.trialExpiresAt} status={sub.status} />
+            <ExpiryLabel
+              dateStr={sub.status === "GracePeriod" ? sub.currentPeriodEnd : sub.trialExpiresAt}
+              status={sub.status}
+            />
           </div>
         </div>
 
@@ -236,6 +246,8 @@ function formatPercent(rate: number): string {
 }
 
 export function IssuerDashboardPage() {
+  useDocumentMeta({ title: "Platform Overview — Platform Admin", canonical: "/platform" });
+
   const { data: stats, isLoading: statsLoading } =
     useGetPlatformStatsQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: subscriptions } =
@@ -245,7 +257,7 @@ export function IssuerDashboardPage() {
   const atRiskNames = atRisk.map((s) => s.studioName);
 
   const newThisMonthCaveat =
-    stats && stats.totalStudios > 0 && stats.newStudiosThisMonth / stats.totalStudios > 0.5
+    stats && stats.totalStudios > 0 && stats.newStudiosThisMonth === stats.totalStudios
       ? "incl. test data"
       : "this calendar month";
 

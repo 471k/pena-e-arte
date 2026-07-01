@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
+import { toast } from "sonner";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   ArrowLeft,
   Banknote,
@@ -62,6 +64,8 @@ function fmt(date: string | Date) {
 export function IssuerStudioDetailPage() {
   const { studioId } = useParams<{ studioId: string }>();
 
+  useDocumentMeta({ title: "Studio Details — Platform Admin", canonical: `/platform/studios/${studioId ?? ""}` });
+
   const { data: studio, isLoading: studioLoading, isError } =
     useGetStudioByIdQuery(studioId!, { skip: !studioId });
   const { data: subscriptions } =
@@ -107,7 +111,10 @@ export function IssuerStudioDetailPage() {
     try {
       if (confirmPlatform === "suspend")   await suspend(studioId).unwrap();
       if (confirmPlatform === "unsuspend") await unsuspend(studioId).unwrap();
-    } catch { /* optimistic update rolled back */ }
+      toast.success(confirmPlatform === "suspend" ? "Studio suspended" : "Studio reinstated");
+    } catch {
+      toast.error(confirmPlatform === "suspend" ? "Failed to suspend studio" : "Failed to reinstate studio");
+    }
     finally { setConfirmPlatform(null); }
   }
 
@@ -115,13 +122,23 @@ export function IssuerStudioDetailPage() {
     if (!studioId) return;
     const d = parseInt(days, 10);
     if (isNaN(d) || d < 1) return;
-    await extendTrial({ studioId, additionalDays: d }).unwrap();
-    setExtending(false);
+    try {
+      await extendTrial({ studioId, additionalDays: d }).unwrap();
+      toast.success(`Trial extended by ${d} day${d !== 1 ? "s" : ""}`);
+      setExtending(false);
+    } catch {
+      toast.error("Failed to extend trial");
+    }
   }
 
   async function handleActivate() {
     if (!studioId || !cashPlanId) return;
-    await activateManually({ studioId, planId: cashPlanId, note: cashNote || undefined }).unwrap();
+    try {
+      await activateManually({ studioId, planId: cashPlanId, note: cashNote || undefined }).unwrap();
+      toast.success("Subscription activated");
+    } catch {
+      toast.error("Failed to activate subscription");
+    }
     setActivating(false);
     setCashPlanId("");
     setCashNote("");
@@ -129,8 +146,13 @@ export function IssuerStudioDetailPage() {
 
   async function handleCancel() {
     if (!studioId) return;
-    await cancelSub(studioId).unwrap();
-    setConfirming(false);
+    try {
+      await cancelSub(studioId).unwrap();
+      toast.success("Subscription cancelled");
+      setConfirming(false);
+    } catch {
+      toast.error("Failed to cancel subscription");
+    }
   }
 
   if (studioLoading) {
