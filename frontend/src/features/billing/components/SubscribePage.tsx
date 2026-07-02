@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   useGetPlansQuery,
   useGetSubscriptionQuery,
@@ -81,6 +82,8 @@ function PlanCard({
 }
 
 export function SubscribePage() {
+  useDocumentMeta({ title: "Subscribe — Pena e Artë", canonical: "/billing/subscribe" });
+
   const navigate = useNavigate();
   const { data: plans = [], isLoading: loadingPlans, isError: plansError } =
     useGetPlansQuery(undefined, { refetchOnMountOrArgChange: true });

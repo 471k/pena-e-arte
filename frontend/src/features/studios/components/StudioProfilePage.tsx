@@ -11,6 +11,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMutation } from "../studiosApi";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { QrCodeSection } from "./QrCodeSection";
@@ -19,10 +20,12 @@ import { NotificationPreferencesCard } from "@/features/notifications/components
 import { EmbedCodeCard } from "./EmbedCodeCard";
 
 const schema = z.object({
-  name:      z.string().min(1, "Name is required").max(200),
-  city:      z.string().min(1, "City is required").max(200),
-  latitude:  z.number({ message: "Must be a number" }).min(-90).max(90),
-  longitude: z.number({ message: "Must be a number" }).min(-180).max(180),
+  name:            z.string().min(1, "Name is required").max(200),
+  city:            z.string().min(1, "City is required").max(200),
+  latitude:        z.number({ message: "Must be a number" }).min(-90).max(90),
+  longitude:       z.number({ message: "Must be a number" }).min(-180).max(180),
+  phoneNumber:     z.string().max(30, "Max 30 characters").optional(),
+  instagramHandle: z.string().max(60, "Max 60 characters").optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -63,6 +66,8 @@ function validateSlug(value: string): string | null {
 }
 
 export function StudioProfilePage() {
+  useDocumentMeta({ title: "Studio Settings — Pena e Artë", canonical: "/studios/me" });
+
   const { data: studio, isLoading } = useGetMyStudioQuery();
   const [updateStudio, { isLoading: saving, isSuccess }] = useUpdateMyStudioMutation();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -101,10 +106,12 @@ export function StudioProfilePage() {
   useEffect(() => {
     if (studio) {
       reset({
-        name:      studio.name,
-        city:      studio.city,
-        latitude:  studio.latitude,
-        longitude: studio.longitude,
+        name:            studio.name,
+        city:            studio.city,
+        latitude:        studio.latitude,
+        longitude:       studio.longitude,
+        phoneNumber:     studio.phoneNumber ?? "",
+        instagramHandle: studio.instagramHandle ?? "",
       });
     }
   }, [studio, reset]);
@@ -226,6 +233,35 @@ export function StudioProfilePage() {
                 <Label htmlFor="name">Studio name</Label>
                 <Input id="name" {...register("name")} aria-invalid={!!errors.name} />
                 {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="phoneNumber">Phone number (optional)</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  placeholder="+351 912 345 678"
+                  {...register("phoneNumber")}
+                  aria-invalid={!!errors.phoneNumber}
+                  aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
+                />
+                {errors.phoneNumber && (
+                  <p id="phoneNumber-error" className="text-xs text-destructive">{errors.phoneNumber.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="instagramHandle">Instagram handle (optional)</Label>
+                <Input
+                  id="instagramHandle"
+                  placeholder="your_studio"
+                  {...register("instagramHandle")}
+                  aria-invalid={!!errors.instagramHandle}
+                  aria-describedby={errors.instagramHandle ? "instagramHandle-error" : undefined}
+                />
+                {errors.instagramHandle && (
+                  <p id="instagramHandle-error" className="text-xs text-destructive">{errors.instagramHandle.message}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">

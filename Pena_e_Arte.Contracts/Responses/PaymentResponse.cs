@@ -11,4 +11,5 @@ public record PaymentResponse(
     string?   CashNote,
     DateTime? PaidAt,
     string    ClientName,
-    DateTime? AppointmentDate = null);
+    DateTime? AppointmentDate = null,
+    IReadOnlyList<SessionSplitResponse>? Splits = null);

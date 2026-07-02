@@ -17,6 +17,7 @@ public class GetPaymentByAppointmentHandler(IAppDbContext db, ICurrentUser curre
     {
         Payment? payment = await db.Payments
             .Include(p => p.Client)
+            .Include(p => p.SessionSplits)
             .FirstOrDefaultAsync(p => p.AppointmentId == query.AppointmentId, ct);
 
         // Clients may only see the payment on their own appointment —

@@ -76,11 +76,12 @@ function makeStore() {
 function renderEditor(
   currentSplits: SessionSplitResponse[] = [],
   paymentId = "pay-001",
+  paymentAmount = 100,
 ) {
   render(
     <Provider store={makeStore()}>
       <Toaster />
-      <SessionSplitsEditor paymentId={paymentId} currentSplits={currentSplits} />
+      <SessionSplitsEditor paymentId={paymentId} paymentAmount={paymentAmount} currentSplits={currentSplits} />
     </Provider>,
   );
 }
@@ -168,18 +169,29 @@ describe("SessionSplitsEditor", () => {
 
   it("Save button is disabled when no split has a label and amount", async () => {
     const user = userEvent.setup();
-    renderEditor([]);
+    renderEditor([], "pay-001", 80);
     await user.click(screen.getByRole("button", { name: /add splits/i }));
     expect(screen.getByRole("button", { name: /save splits/i })).toBeDisabled();
   });
 
-  it("Save button enables after filling a label and amount", async () => {
+  it("Save button stays disabled when the total doesn't match the payment amount", async () => {
     const user = userEvent.setup();
-    renderEditor([]);
+    renderEditor([], "pay-001", 100);
+    await user.click(screen.getByRole("button", { name: /add splits/i }));
+    await user.type(screen.getByLabelText(/label/i), "Outline");
+    await user.type(screen.getByRole("spinbutton"), "80");
+    expect(screen.getByRole("button", { name: /save splits/i })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/must add up to/i);
+  });
+
+  it("Save button enables after filling a label and amount that match the total", async () => {
+    const user = userEvent.setup();
+    renderEditor([], "pay-001", 80);
     await user.click(screen.getByRole("button", { name: /add splits/i }));
     await user.type(screen.getByLabelText(/label/i), "Outline");
     await user.type(screen.getByRole("spinbutton"), "80");
     expect(screen.getByRole("button", { name: /save splits/i })).not.toBeDisabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("saving calls updateSessionSplits with the correct payload", async () => {
@@ -197,7 +209,7 @@ describe("SessionSplitsEditor", () => {
     );
 
     const user = userEvent.setup();
-    renderEditor([]);
+    renderEditor([], "pay-001", 80);
     await user.click(screen.getByRole("button", { name: /add splits/i }));
     await user.type(screen.getByLabelText(/label/i), "Outline");
     await user.type(screen.getByRole("spinbutton"), "80");
@@ -210,7 +222,7 @@ describe("SessionSplitsEditor", () => {
 
   it("successful save closes the editor and returns to view mode", async () => {
     const user = userEvent.setup();
-    renderEditor([]);
+    renderEditor([], "pay-001", 80);
     await user.click(screen.getByRole("button", { name: /add splits/i }));
     await user.type(screen.getByLabelText(/label/i), "Outline");
     await user.type(screen.getByRole("spinbutton"), "80");
@@ -226,7 +238,7 @@ describe("SessionSplitsEditor", () => {
     );
 
     const user = userEvent.setup();
-    renderEditor([]);
+    renderEditor([], "pay-001", 80);
     await user.click(screen.getByRole("button", { name: /add splits/i }));
     await user.type(screen.getByLabelText(/label/i), "Outline");
     await user.type(screen.getByRole("spinbutton"), "80");

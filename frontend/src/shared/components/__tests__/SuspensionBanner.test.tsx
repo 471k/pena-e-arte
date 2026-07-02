@@ -24,6 +24,8 @@ const SUSPENDED_STUDIO: StudioResponse = {
   createdAt:            "2024-01-01T00:00:00Z",
   isActive:             false,
   slugLockedAt:         null,
+  phoneNumber:          null,
+  instagramHandle:      null,
 };
 
 const ACTIVE_STUDIO: StudioResponse = { ...SUSPENDED_STUDIO, isActive: true };

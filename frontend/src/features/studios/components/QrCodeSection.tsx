@@ -2,13 +2,15 @@ import { useEffect } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { useGetMyStudioQuery, useGetStudioQrCodeQuery } from "../studiosApi";
+import { useGetMyStudioQuery, useGetStudioQrCodeQuery, useLazyGetStudioQrCodeQuery } from "../studiosApi";
 
 export function QrCodeSection() {
   const { data: studio } = useGetMyStudioQuery();
-  const { data: blobUrl, isLoading, isError } = useGetStudioQrCodeQuery(studio?.id ?? "", {
-    skip: !studio?.id,
-  });
+  const { data: blobUrl, isLoading, isError } = useGetStudioQrCodeQuery(
+    { id: studio?.id ?? "", format: "png" },
+    { skip: !studio?.id },
+  );
+  const [fetchSvg, { isFetching: isFetchingSvg }] = useLazyGetStudioQrCodeQuery();
 
   useEffect(() => {
     return () => {
@@ -24,6 +26,16 @@ export function QrCodeSection() {
     anchor.href  = blobUrl;
     anchor.download = `${studio!.slug}-qr.png`;
     anchor.click();
+  }
+
+  async function handleDownloadSvg() {
+    const result = await fetchSvg({ id: studio!.id, format: "svg" });
+    if (!result.data) return;
+    const anchor = document.createElement("a");
+    anchor.href = result.data;
+    anchor.download = `${studio!.slug}-qr.svg`;
+    anchor.click();
+    URL.revokeObjectURL(result.data);
   }
 
   return (
@@ -65,16 +77,32 @@ export function QrCodeSection() {
             />
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownload}
-            disabled={!blobUrl || isLoading}
-            className="gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Download PNG
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              disabled={!blobUrl || isLoading}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download PNG
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadSvg}
+              disabled={isFetchingSvg}
+              className="gap-2"
+            >
+              {isFetchingSvg ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Download SVG
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

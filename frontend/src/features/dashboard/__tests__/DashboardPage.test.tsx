@@ -174,7 +174,6 @@ function renderPage() {
           <Route path="/billing"            element={<div data-testid="billing-page" />} />
           <Route path="/billing/subscribe"  element={<div data-testid="subscribe-page" />} />
           <Route path="/schedule"           element={<div data-testid="schedule-page" />} />
-          <Route path="/appointments/new"  element={<div data-testid="new-appointment-page" />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -523,14 +522,14 @@ describe("DashboardPage", () => {
     expect(await screen.findByRole("button", { name: /^Book Appointment$/i })).toBeInTheDocument();
   });
 
-  it("'Book Appointment' button navigates to /appointments/new", async () => {
+  it("'Book Appointment' button navigates to /schedule", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("No appointments today.");
 
     await user.click(screen.getByRole("button", { name: /^Book Appointment$/i }));
 
-    expect(screen.getByTestId("new-appointment-page")).toBeInTheDocument();
+    expect(screen.getByTestId("schedule-page")).toBeInTheDocument();
   });
 
   it("empty state shows 'View this week' button", async () => {
@@ -562,7 +561,7 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("button", { name: /\+ book appointment/i })).toBeInTheDocument();
   });
 
-  it("header '+ Book Appointment' button navigates to /appointments/new", async () => {
+  it("header '+ Book Appointment' button navigates to /schedule", async () => {
     const user = userEvent.setup();
     renderPage();
     // Wait for page to settle (no appointments)
@@ -570,7 +569,7 @@ describe("DashboardPage", () => {
 
     await user.click(screen.getByRole("button", { name: /\+ book appointment/i }));
 
-    expect(screen.getByTestId("new-appointment-page")).toBeInTheDocument();
+    expect(screen.getByTestId("schedule-page")).toBeInTheDocument();
   });
 
   // ── KPI stat cards ──────────────────────────────────────────────────────────

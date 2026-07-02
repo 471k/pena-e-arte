@@ -169,4 +169,32 @@ describe("QrCodeSection — download", () => {
 
     anchorClickSpy.mockRestore();
   });
+
+  it("renders a 'Download SVG' button", async () => {
+    renderSection();
+    await screen.findByTestId("qr-image");
+    expect(screen.getByRole("button", { name: /download svg/i })).toBeInTheDocument();
+  });
+
+  it("clicking Download SVG fetches the svg format and triggers an anchor click", async () => {
+    let requestedFormat: string | null = null;
+    server.use(
+      http.get("http://localhost/api/v1/studios/:id/qr", ({ request }) => {
+        requestedFormat = new URL(request.url).searchParams.get("format");
+        return new HttpResponse(FAKE_PNG, { headers: { "Content-Type": "image/svg+xml" } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    renderSection();
+    await screen.findByTestId("qr-image");
+    await user.click(screen.getByRole("button", { name: /download svg/i }));
+
+    await vi.waitFor(() => expect(anchorClickSpy).toHaveBeenCalledTimes(1));
+    expect(requestedFormat).toBe("svg");
+
+    anchorClickSpy.mockRestore();
+  });
 });

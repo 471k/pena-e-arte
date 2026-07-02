@@ -27,14 +27,8 @@ export function SetupChecklist() {
     {
       label: "Set a deposit rule",
       done:  depositRules.length > 0,
-      href:  "/settings/deposits",
+      href:  "/deposit-rules/new",
       cta:   "Set rule",
-    },
-    {
-      label: "Set artist working hours",
-      done:  artists.some((a) => (a as { hasSchedule?: boolean }).hasSchedule),
-      href:  "/artists",
-      cta:   "Set hours",
     },
   ];
 

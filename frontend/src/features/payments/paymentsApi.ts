@@ -1,5 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
+import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import type {
   PaymentResponse,
   PaymentIntentResponse,
@@ -42,6 +43,17 @@ export const paymentsApi = createApi({
     }),
     confirmCashDeposit: builder.mutation<PaymentResponse, string>({
       query: (id) => ({ url: `payments/${id}/cash/confirm`, method: "POST" }),
+      // Confirming cash also flips Appointment.DepositStatus server-side, but
+      // Appointment lives in a separate RTK Query slice — invalidatesTags here
+      // can't reach it, so we invalidate appointmentsApi's cache explicitly.
+      async onQueryStarted(_id, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(appointmentsApi.util.invalidateTags(["Appointment"]));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
       invalidatesTags: ["Payment"],
     }),
     captureDeposit: builder.mutation<PaymentResponse, string>({

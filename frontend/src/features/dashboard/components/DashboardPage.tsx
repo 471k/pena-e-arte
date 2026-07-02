@@ -38,7 +38,7 @@ function addDays(d: Date, n: number): Date {
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
 function formatDate(d: Date): string {
@@ -216,7 +216,7 @@ function TodaySection({
             <div className="py-6 flex flex-col items-center gap-3 text-center">
               <p className="text-sm text-muted-foreground">No appointments today.</p>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => navigate("/appointments/new")}>
+                <Button size="sm" onClick={() => navigate("/schedule")}>
                   Book Appointment
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => navigate("/schedule")}>
@@ -346,18 +346,18 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+      <div className="flex items-center justify-between px-6 py-3 border-b bg-background">
         <div className="flex items-center gap-2">
           <LayoutDashboard className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Dashboard</span>
         </div>
         <div className="flex items-center gap-3">
-          <Button size="sm" onClick={() => navigate("/appointments/new")}>
+          <Button size="sm" onClick={() => navigate("/schedule")}>
             + Book Appointment
           </Button>
           <span className="text-xs text-muted-foreground">{formatDate(today)}</span>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {sub && <SubscriptionBanner sub={sub} />}

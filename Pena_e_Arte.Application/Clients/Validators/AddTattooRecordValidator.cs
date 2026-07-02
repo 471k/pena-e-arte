@@ -12,7 +12,10 @@ public class AddTattooRecordValidator : AbstractValidator<AddTattooRecordCommand
         RuleFor(x => x.Request.ArtistId).NotEmpty();
         RuleFor(x => x.Request.Description).NotEmpty().MaximumLength(2000);
         RuleFor(x => x.Request.BodyLocation).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Request.PhotoUrls).NotNull();
+        RuleFor(x => x.Request.PhotoUrls)
+            .NotNull()
+            .Must(urls => urls.Count <= 10)
+            .WithMessage("A tattoo record can have at most 10 photos.");
         RuleForEach(x => x.Request.PhotoUrls)
             .NotEmpty()
             .MaximumLength(2048)

@@ -39,7 +39,9 @@ public class CancelAppointmentHandler(
         appointment.CancellationReason = command.Reason;
         appointment.UpdatedAt          = DateTime.UtcNow;
 
-        // Refund deposit on studio-initiated cancellation
+        // Refund deposit on studio-initiated cancellation. DepositStatus is only ever
+        // set to Refunded when a refund actually happened — a Pending/Failed card
+        // intent never took the client's money, so there's nothing to refund.
         Domain.Entities.Payment? payment = await db.Payments
             .FirstOrDefaultAsync(p => p.AppointmentId == appointment.Id, ct);
 
@@ -47,19 +49,19 @@ public class CancelAppointmentHandler(
         {
             if (payment.Method == ClientPaymentMethod.Card
                 && !string.IsNullOrEmpty(payment.StripePaymentIntentId)
-                && payment.Status == PaymentStatus.Captured)
+                && (payment.Status == PaymentStatus.Captured || payment.Status == PaymentStatus.Paid))
             {
                 await stripe.RefundPaymentIntentAsync(payment.StripePaymentIntentId, null, ct);
                 payment.Status    = PaymentStatus.Refunded;
                 payment.UpdatedAt = DateTime.UtcNow;
+                appointment.DepositStatus = DepositStatus.Refunded;
             }
             else if (payment.Status == PaymentStatus.CashPending)
             {
                 payment.Status    = PaymentStatus.Refunded;
                 payment.UpdatedAt = DateTime.UtcNow;
+                appointment.DepositStatus = DepositStatus.Refunded;
             }
-
-            appointment.DepositStatus = DepositStatus.Refunded;
         }
 
         await db.SaveChangesAsync(ct);

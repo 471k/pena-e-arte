@@ -111,6 +111,58 @@ public class CancelAppointmentHandlerTests
             .Send(Arg.Any<SendAppointmentCancellationCommand>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Handle_PaidCardPayment_RefundsViaStripe()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Confirmed);
+        await SeedPayment(id, PaymentStatus.Paid, ClientPaymentMethod.Card, "pi_123");
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _stripe.Received(1).RefundPaymentIntentAsync("pi_123", null, Arg.Any<CancellationToken>());
+        _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Refunded);
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
+    [Fact]
+    public async Task Handle_CapturedCardPayment_RefundsViaStripe()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Confirmed);
+        await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_456");
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _stripe.Received(1).RefundPaymentIntentAsync("pi_456", null, Arg.Any<CancellationToken>());
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
+    [Fact]
+    public async Task Handle_PendingCardIntent_DoesNotCallStripeOrMarkRefunded()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Pending);
+        await SeedPayment(id, PaymentStatus.Pending, ClientPaymentMethod.Card, "pi_789");
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _stripe.DidNotReceive().RefundPaymentIntentAsync(
+            Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>());
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Pending);
+    }
+
+    [Fact]
+    public async Task Handle_CashPendingPayment_MarksRefundedWithoutStripeCall()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Pending);
+        await SeedPayment(id, PaymentStatus.CashPending, ClientPaymentMethod.Cash, null);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _stripe.DidNotReceive().RefundPaymentIntentAsync(
+            Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>());
+        _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Refunded);
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
     private async Task<Guid> SeedAppointment(AppointmentStatus status)
     {
         Appointment appointment = new()
@@ -128,5 +180,22 @@ public class CancelAppointmentHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
         return appointment.Id;
+    }
+
+    private async Task SeedPayment(
+        Guid appointmentId, PaymentStatus status, ClientPaymentMethod method, string? stripeIntentId)
+    {
+        _db.Payments.Add(new Payment
+        {
+            StudioId              = _studioId,
+            AppointmentId         = appointmentId,
+            ClientId              = Guid.NewGuid(),
+            Amount                = 50m,
+            Status                = status,
+            Method                = method,
+            StripePaymentIntentId = stripeIntentId,
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
     }
 }

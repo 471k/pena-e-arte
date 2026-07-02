@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NSubstitute;
 using Pena_e_Arte.Application.Artists.Commands;
+using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
@@ -115,5 +116,51 @@ public class AddArtistTimeOffHandlerTests
         Func<Task> act = () => sut.Handle(new AddArtistTimeOffCommand(artistId, start, end, "Holiday"), default);
 
         await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task Handle_OverlappingExistingTimeOff_ThrowsBusinessRuleViolationException()
+    {
+        Guid artistId = SeedArtist();
+        _db.ArtistTimeOffs.Add(new ArtistTimeOff
+        {
+            ArtistId  = artistId,
+            StudioId  = _studioId,
+            StartDate = DateTime.UtcNow.Date.AddDays(5),
+            EndDate   = DateTime.UtcNow.Date.AddDays(10),
+            Reason    = "Existing",
+        });
+        await _db.SaveChangesAsync();
+
+        DateTime overlapStart = DateTime.UtcNow.Date.AddDays(8);
+        DateTime overlapEnd   = DateTime.UtcNow.Date.AddDays(12);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new AddArtistTimeOffCommand(artistId, overlapStart, overlapEnd, "New request"), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_NonOverlappingTimeOff_Succeeds()
+    {
+        Guid artistId = SeedArtist();
+        _db.ArtistTimeOffs.Add(new ArtistTimeOff
+        {
+            ArtistId  = artistId,
+            StudioId  = _studioId,
+            StartDate = DateTime.UtcNow.Date.AddDays(5),
+            EndDate   = DateTime.UtcNow.Date.AddDays(10),
+            Reason    = "Existing",
+        });
+        await _db.SaveChangesAsync();
+
+        DateTime start = DateTime.UtcNow.Date.AddDays(20);
+        DateTime end   = DateTime.UtcNow.Date.AddDays(22);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new AddArtistTimeOffCommand(artistId, start, end, "New request"), default);
+
+        await act.Should().NotThrowAsync();
     }
 }

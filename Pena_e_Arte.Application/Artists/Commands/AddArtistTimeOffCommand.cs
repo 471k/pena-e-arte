@@ -39,12 +39,24 @@ public class AddArtistTimeOffHandler(IAppDbContext db, ICurrentTenant tenant, IC
         if (currentUser.Role == "artist" && artist.UserId != currentUser.UserId)
             throw new ForbiddenException();
 
+        DateTime startDate = command.StartDate.Date;
+        DateTime endDate   = command.EndDate.Date;
+
+        bool overlaps = await db.ArtistTimeOffs.AnyAsync(t =>
+            t.ArtistId == command.ArtistId
+            && t.StartDate <= endDate
+            && t.EndDate >= startDate, ct);
+
+        if (overlaps)
+            throw new BusinessRuleViolationException(
+                "This time-off period overlaps with an existing one for this artist.");
+
         ArtistTimeOff timeOff = new()
         {
             ArtistId  = command.ArtistId,
             StudioId  = tenant.StudioId,
-            StartDate = command.StartDate.Date,
-            EndDate   = command.EndDate.Date,
+            StartDate = startDate,
+            EndDate   = endDate,
             Reason    = command.Reason,
         };
 

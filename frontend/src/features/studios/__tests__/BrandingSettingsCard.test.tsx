@@ -26,6 +26,8 @@ const STUDIO_BRANDING_ON: StudioResponse = {
   createdAt:            "2025-01-01T00:00:00Z",
   isActive:             true,
   slugLockedAt:         null,
+  phoneNumber:          null,
+  instagramHandle:      null,
 };
 
 const STUDIO_BRANDING_REMOVABLE: StudioResponse = {

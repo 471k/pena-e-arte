@@ -166,34 +166,44 @@ public static class BillingEndpoints
 
         logger.LogInformation("Stripe billing webhook received {@EventType}", stripeEvent.Type);
 
-        switch (stripeEvent.Type)
+        try
         {
-            // Owner completed the hosted Checkout — activate their subscription.
-            case "checkout.session.completed" when stripeEvent.Data.Object is Session session:
-                await mediator.Send(new ActivateCheckoutSubscriptionCommand(session.Id, null), ct);
-                break;
-
-            case "invoice.paid" when stripeEvent.Data.Object is Invoice invoice:
+            switch (stripeEvent.Type)
             {
-                string? stripeSubId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
-                if (stripeSubId is not null)
-                    await mediator.Send(new HandleInvoicePaidCommand(stripeSubId, invoice.PeriodEnd), ct);
-                break;
-            }
+                // Owner completed the hosted Checkout — activate their subscription.
+                case "checkout.session.completed" when stripeEvent.Data.Object is Session session:
+                    await mediator.Send(new ActivateCheckoutSubscriptionCommand(session.Id, null), ct);
+                    break;
 
-            case "customer.subscription.updated" when stripeEvent.Data.Object is Stripe.Subscription sub:
-            {
-                string?  priceId   = sub.Items?.Data?.FirstOrDefault()?.Price?.Id;
-                DateTime periodEnd = sub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
-                                     ?? DateTime.UtcNow.AddMonths(1);
-                await mediator.Send(
-                    new HandleSubscriptionUpdatedCommand(sub.Id, sub.Status, periodEnd, priceId), ct);
-                break;
-            }
+                case "invoice.paid" when stripeEvent.Data.Object is Invoice invoice:
+                {
+                    string? stripeSubId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
+                    if (stripeSubId is not null)
+                        await mediator.Send(new HandleInvoicePaidCommand(stripeSubId, invoice.PeriodEnd), ct);
+                    break;
+                }
 
-            case "customer.subscription.deleted" when stripeEvent.Data.Object is Stripe.Subscription sub:
-                await mediator.Send(new HandleSubscriptionDeletedCommand(sub.Id), ct);
-                break;
+                case "customer.subscription.updated" when stripeEvent.Data.Object is Stripe.Subscription sub:
+                {
+                    string?  priceId   = sub.Items?.Data?.FirstOrDefault()?.Price?.Id;
+                    DateTime periodEnd = sub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
+                                         ?? DateTime.UtcNow.AddMonths(1);
+                    await mediator.Send(
+                        new HandleSubscriptionUpdatedCommand(sub.Id, sub.Status, periodEnd, priceId), ct);
+                    break;
+                }
+
+                case "customer.subscription.deleted" when stripeEvent.Data.Object is Stripe.Subscription sub:
+                    await mediator.Send(new HandleSubscriptionDeletedCommand(sub.Id), ct);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Signature is already verified at this point — a processing failure here
+            // is our bug, not Stripe's. Returning non-200 would just make Stripe retry
+            // the same event for up to 3 days without fixing anything; log and move on.
+            logger.LogError(ex, "Failed to process Stripe billing webhook {@EventType}", stripeEvent.Type);
         }
 
         return Results.Ok();
@@ -224,20 +234,28 @@ public static class BillingEndpoints
 
         logger.LogInformation("Stripe connect webhook received {@EventType}", stripeEvent.Type);
 
-        switch (stripeEvent.Type)
+        try
         {
-            // Manual-capture flow: client authorized the card — deposit is now held
-            case "payment_intent.amount_capturable_updated" when stripeEvent.Data.Object is PaymentIntent intent:
-                await mediator.Send(new MarkPaymentAuthorizedCommand(intent.Id), ct);
-                break;
+            switch (stripeEvent.Type)
+            {
+                // Manual-capture flow: client authorized the card — deposit is now held
+                case "payment_intent.amount_capturable_updated" when stripeEvent.Data.Object is PaymentIntent intent:
+                    await mediator.Send(new MarkPaymentAuthorizedCommand(intent.Id), ct);
+                    break;
 
-            case "payment_intent.succeeded" when stripeEvent.Data.Object is PaymentIntent intent:
-                await mediator.Send(new ConfirmPaymentCommand(intent.Id), ct);
-                break;
+                case "payment_intent.succeeded" when stripeEvent.Data.Object is PaymentIntent intent:
+                    await mediator.Send(new ConfirmPaymentCommand(intent.Id), ct);
+                    break;
 
-            case "payment_intent.payment_failed" when stripeEvent.Data.Object is PaymentIntent intent:
-                await mediator.Send(new MarkPaymentFailedCommand(intent.Id), ct);
-                break;
+                case "payment_intent.payment_failed" when stripeEvent.Data.Object is PaymentIntent intent:
+                    await mediator.Send(new MarkPaymentFailedCommand(intent.Id), ct);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            // See HandleBillingWebhook — same reasoning: log, don't make Stripe retry.
+            logger.LogError(ex, "Failed to process Stripe connect webhook {@EventType}", stripeEvent.Type);
         }
 
         return Results.Ok();

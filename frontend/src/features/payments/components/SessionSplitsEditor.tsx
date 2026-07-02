@@ -10,6 +10,7 @@ import type { SessionSplitItem, SessionSplitResponse } from "../payment.types";
 
 interface SessionSplitsEditorProps {
   paymentId:     string;
+  paymentAmount: number;
   currentSplits: SessionSplitResponse[];
 }
 
@@ -17,7 +18,7 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
 }
 
-export function SessionSplitsEditor({ paymentId, currentSplits }: SessionSplitsEditorProps) {
+export function SessionSplitsEditor({ paymentId, paymentAmount, currentSplits }: SessionSplitsEditorProps) {
   const [editing, setEditing] = useState(false);
   const [splits, setSplits]   = useState<SessionSplitItem[]>([]);
   const [updateSplits, { isLoading }] = useUpdateSessionSplitsMutation();
@@ -60,7 +61,9 @@ export function SessionSplitsEditor({ paymentId, currentSplits }: SessionSplitsE
     }
   }
 
-  const canSave = splits.some((s) => s.label.trim() && s.amount > 0);
+  const runningTotal = splits.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const totalMatches = Math.round(runningTotal * 100) === Math.round(paymentAmount * 100);
+  const canSave = totalMatches && splits.every((s) => s.label.trim() && s.amount > 0);
 
   if (!editing) {
     return (
@@ -161,6 +164,18 @@ export function SessionSplitsEditor({ paymentId, currentSplits }: SessionSplitsE
         <Plus className="h-3.5 w-3.5" />
         Add Split
       </Button>
+
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">Total</span>
+        <span className={totalMatches ? "font-medium" : "font-medium text-destructive"}>
+          {formatCurrency(runningTotal)} / {formatCurrency(paymentAmount)}
+        </span>
+      </div>
+      {!totalMatches && (
+        <p role="alert" className="text-xs text-destructive">
+          Splits must add up to {formatCurrency(paymentAmount)}.
+        </p>
+      )}
 
       <Button
         onClick={handleSave}

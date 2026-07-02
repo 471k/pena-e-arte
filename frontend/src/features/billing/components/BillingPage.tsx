@@ -10,6 +10,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   useGetSubscriptionQuery,
   useGetPlansQuery,
@@ -82,6 +83,8 @@ function BillingPageSkeleton() {
 }
 
 export function BillingPage() {
+  useDocumentMeta({ title: "Billing — Pena e Artë", canonical: "/billing" });
+
   const navigate = useNavigate();
   // Always refetch on mount — subscription/plan can change out of band (webhooks,
   // issuer actions, a switch in another tab), and stale cache must not mislead the owner.

@@ -20,7 +20,9 @@ public class UpsertArtistScheduleValidator : AbstractValidator<UpsertArtistSched
         RuleFor(x => x.Entries)
             .NotNull()
             .Must(e => e.Count <= 7)
-            .WithMessage("A week has at most 7 days.");
+            .WithMessage("A week has at most 7 days.")
+            .Must(e => e.Select(entry => entry.DayOfWeek).Distinct().Count() == e.Count)
+            .WithMessage("Each day of the week can only appear once.");
         RuleForEach(x => x.Entries).ChildRules(entry =>
         {
             entry.RuleFor(e => e.StartTime).LessThan(e => e.EndTime)

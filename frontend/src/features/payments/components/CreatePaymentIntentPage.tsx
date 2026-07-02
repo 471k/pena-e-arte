@@ -104,7 +104,7 @@ function CheckoutLinkPanel({
         </p>
       </div>
 
-      <SessionSplitsEditor paymentId={result.paymentId} currentSplits={[]} />
+      <SessionSplitsEditor paymentId={result.paymentId} paymentAmount={amount} currentSplits={[]} />
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1 gap-2" onClick={() => window.open(checkoutUrl, "_blank")}>
@@ -152,7 +152,7 @@ function CashResultPanel({
         </p>
       </div>
 
-      <SessionSplitsEditor paymentId={result.id} currentSplits={[]} />
+      <SessionSplitsEditor paymentId={result.id} paymentAmount={result.amount} currentSplits={[]} />
 
       <Button className="w-full" onClick={() => navigate(`/payments/${result.appointmentId}`, { replace: true })}>
         View payment

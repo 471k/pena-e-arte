@@ -12,4 +12,6 @@ public record StudioResponse(
     DateTime  TrialExpiresAt,
     DateTime  CreatedAt,
     bool      IsActive,
-    DateTime? SlugLockedAt);
+    DateTime? SlugLockedAt,
+    string?   PhoneNumber     = null,
+    string?   InstagramHandle = null);

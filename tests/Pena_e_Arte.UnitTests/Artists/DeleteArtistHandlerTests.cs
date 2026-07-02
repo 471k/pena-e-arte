@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Artists.Commands;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.UnitTests.Helpers;
 
@@ -50,5 +51,60 @@ public class DeleteArtistHandlerTests
         Func<Task> act = () => CreateSut().Handle(new DeleteArtistCommand(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistWithUpcomingConfirmedAppointment_ThrowsBusinessRuleViolationException()
+    {
+        Artist artist = await SeedArtist("rui@studio.com");
+        _db.Appointments.Add(new Appointment
+        {
+            StudioId        = _studioId,
+            ArtistId        = artist.Id,
+            ClientId        = Guid.NewGuid(),
+            Date            = DateTime.UtcNow.AddDays(3),
+            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(1),
+            DurationMinutes = 60,
+            Status          = AppointmentStatus.Confirmed,
+            DepositStatus   = DepositStatus.Pending,
+        });
+        await _db.SaveChangesAsync();
+
+        Func<Task> act = () => CreateSut().Handle(new DeleteArtistCommand(artist.Id), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistWithOnlyPastOrTerminalAppointments_Succeeds()
+    {
+        Artist artist = await SeedArtist("rui@studio.com");
+        _db.Appointments.Add(new Appointment
+        {
+            StudioId        = _studioId,
+            ArtistId        = artist.Id,
+            ClientId        = Guid.NewGuid(),
+            Date            = DateTime.UtcNow.AddDays(-3),
+            EndDate         = DateTime.UtcNow.AddDays(-3).AddHours(1),
+            DurationMinutes = 60,
+            Status          = AppointmentStatus.Completed,
+            DepositStatus   = DepositStatus.Paid,
+        });
+        _db.Appointments.Add(new Appointment
+        {
+            StudioId        = _studioId,
+            ArtistId        = artist.Id,
+            ClientId        = Guid.NewGuid(),
+            Date            = DateTime.UtcNow.AddDays(3),
+            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(1),
+            DurationMinutes = 60,
+            Status          = AppointmentStatus.Cancelled,
+            DepositStatus   = DepositStatus.Refunded,
+        });
+        await _db.SaveChangesAsync();
+
+        Func<Task> act = () => CreateSut().Handle(new DeleteArtistCommand(artist.Id), default);
+
+        await act.Should().NotThrowAsync();
     }
 }

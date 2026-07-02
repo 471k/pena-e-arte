@@ -125,21 +125,21 @@ export const router = createBrowserRouter([
               {
                 path: "book",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Issuer]} />,
-                children: [{ index: true, element: <BookPage /> }],
+                children: [{ index: true, element: <ErrorBoundary><BookPage /></ErrorBoundary> }],
               },
 
               // ── Artist + Owner ───────────────────────────────────────────────
               {
                 path: "schedule",
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
-                children: [{ index: true, element: <SchedulePage /> }],
+                children: [{ index: true, element: <ErrorBoundary><SchedulePage /></ErrorBoundary> }],
               },
 
               // ── Owner ───────────────────────────────────────────────────────
               {
                 path: "dashboard",
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-                children: [{ index: true, element: <DashboardPage /> }],
+                children: [{ index: true, element: <ErrorBoundary><DashboardPage /></ErrorBoundary> }],
               },
 
               // ── Issuer platform ─────────────────────────────────────────────
@@ -162,7 +162,7 @@ export const router = createBrowserRouter([
                 path: "appointments",
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [
-                  { path: ":id", element: <AppointmentDetailPage /> },
+                  { path: ":id", element: <ErrorBoundary><AppointmentDetailPage /></ErrorBoundary> },
                 ],
               },
 
@@ -171,13 +171,13 @@ export const router = createBrowserRouter([
                 path: "artists",
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [
-                  { index: true, element: <ArtistListPage /> },
+                  { index: true, element: <ErrorBoundary><ArtistListPage /></ErrorBoundary> },
                   {
                     path: "new",
                     element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-                    children: [{ index: true, element: <CreateArtistPage /> }],
+                    children: [{ index: true, element: <ErrorBoundary><CreateArtistPage /></ErrorBoundary> }],
                   },
-                  { path: ":id", element: <ArtistDetailPage /> },
+                  { path: ":id", element: <ErrorBoundary><ArtistDetailPage /></ErrorBoundary> },
                 ],
               },
 
@@ -185,7 +185,7 @@ export const router = createBrowserRouter([
               {
                 path: "clients/me",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
-                children: [{ index: true, element: <MyProfilePage /> }],
+                children: [{ index: true, element: <ErrorBoundary><MyProfilePage /></ErrorBoundary> }],
               },
 
               // ── Shared: clients ─────────────────────────────────────────────
@@ -193,10 +193,10 @@ export const router = createBrowserRouter([
                 path: "clients",
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [
-                  { index: true,                   element: <ClientListPage /> },
-                  { path: "new",                   element: <CreateClientPage /> },
-                  { path: ":id",                   element: <ClientDetailPage /> },
-                  { path: ":id/tattoos/:tattooId", element: <TattooRecordDetailPage /> },
+                  { index: true,                   element: <ErrorBoundary><ClientListPage /></ErrorBoundary> },
+                  { path: "new",                   element: <ErrorBoundary><CreateClientPage /></ErrorBoundary> },
+                  { path: ":id",                   element: <ErrorBoundary><ClientDetailPage /></ErrorBoundary> },
+                  { path: ":id/tattoos/:tattooId", element: <ErrorBoundary><TattooRecordDetailPage /></ErrorBoundary> },
                 ],
               },
 
@@ -205,15 +205,15 @@ export const router = createBrowserRouter([
                 path: "designs",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [
-                  { index: true, element: <DesignListPage /> },
+                  { index: true, element: <ErrorBoundary><DesignListPage /></ErrorBoundary> },
                   {
                     element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
                     children: [
-                      { path: "new",        element: <CreateDesignPage /> },
-                      { path: ":id/upload", element: <UploadRevisionPage /> },
+                      { path: "new",        element: <ErrorBoundary><CreateDesignPage /></ErrorBoundary> },
+                      { path: ":id/upload", element: <ErrorBoundary><UploadRevisionPage /></ErrorBoundary> },
                     ],
                   },
-                  { path: ":id", element: <DesignDetailPage /> },
+                  { path: ":id", element: <ErrorBoundary><DesignDetailPage /></ErrorBoundary> },
                 ],
               },
 
@@ -222,13 +222,13 @@ export const router = createBrowserRouter([
                 path: "deposit-rules",
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [
-                  { index: true, element: <DepositRuleListPage /> },
+                  { index: true, element: <ErrorBoundary><DepositRuleListPage /></ErrorBoundary> },
                   {
                     path: "new",
                     element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
-                    children: [{ index: true, element: <CreateDepositRulePage /> }],
+                    children: [{ index: true, element: <ErrorBoundary><CreateDepositRulePage /></ErrorBoundary> }],
                   },
-                  { path: ":id", element: <DepositRuleDetailPage /> },
+                  { path: ":id", element: <ErrorBoundary><DepositRuleDetailPage /></ErrorBoundary> },
                 ],
               },
 
@@ -240,27 +240,27 @@ export const router = createBrowserRouter([
                   {
                     path: "intake/new",
                     element: <RoleGuard allowedRoles={[Role.Client]} />,
-                    children: [{ index: true, element: <SubmitIntakeFormPage /> }],
+                    children: [{ index: true, element: <ErrorBoundary><SubmitIntakeFormPage /></ErrorBoundary> }],
                   },
                   {
                     path: "intake",
                     element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
                     children: [
-                      { index: true, element: <IntakeFormListPage /> },
-                      { path: ":id", element: <IntakeFormDetailPage /> },
+                      { index: true, element: <ErrorBoundary><IntakeFormListPage /></ErrorBoundary> },
+                      { path: ":id", element: <ErrorBoundary><IntakeFormDetailPage /></ErrorBoundary> },
                     ],
                   },
                   {
                     path: "consent/new",
                     element: <RoleGuard allowedRoles={[Role.Client]} />,
-                    children: [{ index: true, element: <SignConsentFormPage /> }],
+                    children: [{ index: true, element: <ErrorBoundary><SignConsentFormPage /></ErrorBoundary> }],
                   },
                   {
                     path: "consent",
                     element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
                     children: [
-                      { index: true, element: <ConsentFormListPage /> },
-                      { path: ":id", element: <ConsentFormDetailPage /> },
+                      { index: true, element: <ErrorBoundary><ConsentFormListPage /></ErrorBoundary> },
+                      { path: ":id", element: <ErrorBoundary><ConsentFormDetailPage /></ErrorBoundary> },
                     ],
                   },
                 ],
@@ -271,7 +271,7 @@ export const router = createBrowserRouter([
                 path: "notifications",
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [
-                  { index: true, element: <NotificationLogListPage /> },
+                  { index: true, element: <ErrorBoundary><NotificationLogListPage /></ErrorBoundary> },
                 ],
               },
 
@@ -280,8 +280,8 @@ export const router = createBrowserRouter([
                 path: "billing",
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
                 children: [
-                  { index: true,       element: <BillingPage /> },
-                  { path: "subscribe", element: <SubscribePage /> },
+                  { index: true,       element: <ErrorBoundary><BillingPage /></ErrorBoundary> },
+                  { path: "subscribe", element: <ErrorBoundary><SubscribePage /></ErrorBoundary> },
                 ],
               },
 
@@ -290,7 +290,7 @@ export const router = createBrowserRouter([
                 path: "studios",
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
                 children: [
-                  { path: "me", element: <StudioProfilePage /> },
+                  { path: "me", element: <ErrorBoundary><StudioProfilePage /></ErrorBoundary> },
                 ],
               },
 
@@ -299,9 +299,9 @@ export const router = createBrowserRouter([
                 path: "payments",
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
                 children: [
-                  { index: true,            element: <PaymentListPage /> },
-                  { path: "new",            element: <CreatePaymentIntentPage /> },
-                  { path: ":appointmentId", element: <PaymentDetailPage /> },
+                  { index: true,            element: <ErrorBoundary><PaymentListPage /></ErrorBoundary> },
+                  { path: "new",            element: <ErrorBoundary><CreatePaymentIntentPage /></ErrorBoundary> },
+                  { path: ":appointmentId", element: <ErrorBoundary><PaymentDetailPage /></ErrorBoundary> },
                 ],
               },
 
@@ -309,14 +309,14 @@ export const router = createBrowserRouter([
               {
                 path: "pay/:paymentId",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Owner, Role.Artist, Role.Issuer]} />,
-                children: [{ index: true, element: <DepositCheckoutPage /> }],
+                children: [{ index: true, element: <ErrorBoundary><DepositCheckoutPage /></ErrorBoundary> }],
               },
 
               // ── Auth: account settings ───────────────────────────────────────
               {
                 path: "account/change-password",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
-                children: [{ index: true, element: <ChangePasswordPage /> }],
+                children: [{ index: true, element: <ErrorBoundary><ChangePasswordPage /></ErrorBoundary> }],
               },
             ],
           },

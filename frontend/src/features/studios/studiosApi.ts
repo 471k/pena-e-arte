@@ -24,6 +24,8 @@ export interface StudioResponse {
   createdAt:            string;
   isActive:             boolean;
   slugLockedAt:         string | null;
+  phoneNumber:          string | null;
+  instagramHandle:      string | null;
 }
 
 export interface StudioMapItem {
@@ -52,10 +54,12 @@ export interface ReferralStatsResponse {
 }
 
 export interface UpdateStudioRequest {
-  name:      string;
-  city:      string;
-  latitude:  number;
-  longitude: number;
+  name:            string;
+  city:            string;
+  latitude:        number;
+  longitude:       number;
+  phoneNumber?:    string | null;
+  instagramHandle?: string | null;
 }
 
 export const studiosApi = createApi({
@@ -121,10 +125,10 @@ export const studiosApi = createApi({
         try { await queryFulfilled; } catch { patch.undo(); }
       },
     }),
-    getStudioQrCode: builder.query<string, string>({
-      query: (id) => ({
+    getStudioQrCode: builder.query<string, { id: string; format?: "png" | "svg" }>({
+      query: ({ id, format = "png" }) => ({
         url:             `studios/${id}/qr`,
-        params:          { format: "png" },
+        params:          { format },
         responseHandler: async (response) => URL.createObjectURL(await response.blob()),
       }),
       keepUnusedDataFor: 0,
@@ -163,6 +167,7 @@ export const {
   useSuspendStudioMutation,
   useUnsuspendStudioMutation,
   useGetStudioQrCodeQuery,
+  useLazyGetStudioQrCodeQuery,
   useGenerateReferralCodeMutation,
   useGetReferralCodeQuery,
   useGetReferralStatsQuery,

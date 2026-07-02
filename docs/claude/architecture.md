@@ -767,6 +767,121 @@ another artist's data by guessing a GUID, since only tenant scope was enforced):
 
 ---
 
+## Owner QA Pass — 2026-07-02
+
+Bug-hunt + polish pass over the owner role, per `docs/claude/overnight-prompt-owner-qa-polish-2026-07-01.md`.
+Backend: 1220/1220 tests green. Frontend: 1239/1239 green (build clean, no flaky
+failures observed this run).
+
+### Bugs found and fixed
+
+**Backend:**
+
+- `CancelAppointmentCommand.cs` → the card-refund branch only checked
+  `PaymentStatus.Captured`, never `Paid`. A very reachable path (Stripe auto-capture,
+  `CreateDepositPaymentCommand`'s webhook-healing branch) leaves a payment `Paid`
+  directly. Cancelling that appointment skipped the actual Stripe refund call but
+  still force-set `Appointment.DepositStatus = Refunded` — the UI would claim a
+  refund happened when the client's card was never credited. Fixed to refund on
+  both `Captured` and `Paid`, and to only flip `DepositStatus` inside the branch
+  where a refund action actually occurred (a `Pending`/never-charged card intent no
+  longer gets mislabelled "Refunded")
+- `DeleteArtistCommand.cs` → soft-deleted unconditionally, no check for upcoming
+  non-terminal appointments → added a 409-equivalent `BusinessRuleViolationException`
+- `UpsertArtistScheduleCommand.cs` → validator didn't reject duplicate `DayOfWeek`
+  entries in one request; two entries for the same day silently produced two DB rows
+  instead of the second overwriting the first
+- `AddArtistTimeOffCommand.cs` → no overlap check against the artist's existing
+  time-off periods before inserting
+- Session splits had no read path at all: `PaymentResponse` never returned `Splits`,
+  so `SessionSplitsEditor` always showed "No session splits defined" even
+  immediately after a successful save. Added `PaymentResponse.Splits`, included
+  `Payment.SessionSplits` in `GetPaymentByAppointmentQuery`, and had
+  `UpdateSessionSplitsCommand` return the freshly-saved splits directly
+- Both Stripe webhook handlers (`BillingEndpoints.cs`) let any exception thrown
+  *after* signature verification propagate to `ExceptionMiddleware`, returning a
+  non-200 status and causing Stripe to retry an event whose failure was our bug, not
+  a transient one. Wrapped event processing in try/catch — log and still return 200
+- `Studio.PhoneNumber` / `Studio.InstagramHandle` already existed as DB columns and
+  were already exposed on the *public* studio response, but were missing from
+  `GetMyStudioQuery`/`UpdateMyStudioCommand` entirely — the owner had no way to set
+  either field. Added to both contracts; Instagram handle strips a leading `@`
+
+**Frontend:**
+
+- `DashboardPage.tsx` → both "Book Appointment" buttons (header and empty-state)
+  navigated to `/appointments/new`, which doesn't exist and never did — fixed to
+  `/schedule` (the actual gap — an owner-facing appointment-creation form — is a
+  larger feature, tracked below, same as the artist pass's P2.1)
+- `DashboardPage.tsx` → had its own sticky `<header>` stacked on top of
+  `OwnerLayout`'s, producing a double header — converted to a plain non-sticky `<div>`
+- `DashboardPage.tsx` → `formatTime` used the browser's default locale while
+  `formatDate` used `en-GB`, giving inconsistent time formatting — standardized to `en-GB`
+- `SetupChecklist.tsx` → the "Set artist working hours" step checked
+  `(artist as { hasSchedule?: boolean }).hasSchedule`, a field that doesn't exist
+  anywhere on `ArtistResponse` — always `undefined`, so this step could never
+  complete and the checklist could never fully clear. No cheap way to check real
+  per-artist schedule data client-side, so the step was removed rather than left
+  permanently broken. The "Set a deposit rule" step also linked to a nonexistent
+  `/settings/deposits` route — fixed to `/deposit-rules/new`
+- `OwnerLayout.tsx` → same mobile-nav-overflow gap already fixed in `ArtistLayout`
+  during the artist pass — added `overflow-x-auto scrollbar-none shrink min-w-0`
+- `paymentsApi.ts` `confirmCashDeposit` → invalidated only its own `Payment` tag.
+  `Appointment` lives in a separate RTK Query slice (`appointmentsApi`), which
+  `invalidatesTags` cannot reach across — so appointment deposit-status badges never
+  refreshed after confirming cash without a manual reload. Added an
+  `onQueryStarted` that dispatches `appointmentsApi.util.invalidateTags(["Appointment"])`
+  on success (no prior cross-slice-invalidation pattern existed in this codebase;
+  this is the first one)
+- `SessionSplitsEditor.tsx` → never received the payment's total amount at all, so
+  it showed no running total, no over/under warning, and let Save fire with splits
+  that didn't sum to the payment amount. Added a `paymentAmount` prop, a running
+  total display, an inline warning, and gated `Save` on the total matching
+- `PaymentListPage.tsx` → error state had no retry action, just static text
+
+### Polish implemented
+
+- **P1.1** Document titles added to `PaymentListPage`, `PaymentDetailPage`,
+  `BillingPage`, `SubscribePage`, `StudioProfilePage`
+- **P1.3** Every authenticated app route in `router.tsx` now wraps its element in
+  `<ErrorBoundary>` (previously only the issuer `/platform` routes did)
+- **P9.1 / P9.2** Instagram handle and phone number fields added to
+  `StudioProfilePage`'s main form (backend fields already existed, just weren't wired)
+- QR code section: added a "Download SVG" button — the backend already supported
+  `?format=svg`, the frontend simply never called it (`useGetStudioQrCodeQuery` was
+  hardcoded to `format: "png"`)
+
+### Decisions made
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Cash/card refund eligibility | Refund on `PaymentStatus.Captured` **or** `Paid` | Both are reachable "money has left the client's card" states depending on capture timing; only `Pending`/`Failed`/already-`Refunded` have nothing to refund |
+| Cross-slice RTK Query invalidation | `dispatch(otherApi.util.invalidateTags([...]))` inside `onQueryStarted` | `paymentsApi` and `appointmentsApi` are separate `createApi` instances; `invalidatesTags` only reaches tags within the same slice |
+| `DeleteDepositRuleCommand` "in use" check | Not implemented — reviewed, not a bug | No `DepositRuleId` FK exists anywhere on `Appointment`; the deposit amount is snapshotted onto the appointment at booking time, so a rule has nothing referencing it after use and is always safely deletable |
+| `GetSubscriptionQuery` 404-on-missing-subscription | Left as-is — reviewed, unreachable in practice | `RegisterStudioCommand` unconditionally creates a `Trialing` `Subscription` row at signup; every studio has one |
+| Business-rule-violation status code (422 vs 409/403) | Left as `BusinessRuleViolationException` → 422 everywhere | Consistent codebase-wide convention (`ExceptionMiddleware`); several checklist items assumed 409/403 for specific cases, but changing only those would be an inconsistent one-off deviation |
+| `SetupChecklist` "working hours" step | Removed rather than fixed | No backend field exists to cheaply check "does this artist have a schedule" from the studio-wide artist list; building one was out of scope for this pass |
+
+### Skipped / deferred (with reason)
+
+- Owner-facing appointment-creation UI (`SchedulePage` "+ New" / a real
+  `/appointments/new`) — same large gap already deferred as P2.1 in the artist pass;
+  fixed only the immediate 404 by redirecting to `/schedule`
+- `PaymentDetailPage`'s inline cash-confirm UI duplicates `CashDepositConfirmButton`
+  instead of reusing it (they now behave slightly differently — the shared component
+  has a confirm step, the inline one doesn't) — cosmetic/DRY issue, not a functional
+  bug, not fixed
+- `PaymentListPage`'s status filter is derived only from statuses present in the
+  currently-loaded (cursor-paginated) page rather than a fixed, server-known set —
+  a studio whose first page is all one status gets no filter UI. Deferred; fixing
+  properly needs either a server-side distinct-statuses endpoint or a hardcoded
+  filter set regardless of what's loaded
+- Full P7-equivalent global toast/confirmation/spinner/accessibility audit across
+  every owner-accessible button — not exhaustively performed; spot-checks during
+  Layer B/C found most flows already compliant
+
+---
+
 ## Decisions Log
 
 Record significant architectural decisions here so Claude Code

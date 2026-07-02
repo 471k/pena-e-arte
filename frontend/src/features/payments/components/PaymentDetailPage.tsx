@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import {
@@ -135,6 +136,8 @@ function RefundSection({ paymentId }: { paymentId: string }) {
 }
 
 export function PaymentDetailPage() {
+  useDocumentMeta({ title: "Payment — Pena e Artë", canonical: "/payments" });
+
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate          = useNavigate();
   const canOwner          = usePermission(Role.Owner);
@@ -190,6 +193,9 @@ export function PaymentDetailPage() {
   }
 
   if (isError || !payment) {
+    // The backend returns a plain 404 for "no payment created yet on this
+    // appointment" — that's an expected state here, not a fetch failure, so
+    // the recovery action is "create one" rather than "retry".
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <p className="text-sm text-muted-foreground">No payment found for this appointment.</p>
@@ -350,6 +356,7 @@ export function PaymentDetailPage() {
         {canOwner && (
           <SessionSplitsEditor
             paymentId={payment.id}
+            paymentAmount={payment.amount}
             currentSplits={payment.splits ?? []}
           />
         )}

@@ -36,6 +36,8 @@ const STUDIO: StudioResponse = {
   trialExpiresAt: "2030-01-01T00:00:00Z",
   createdAt: "2024-01-01T00:00:00Z", isActive: true,
   slugLockedAt: null,
+  phoneNumber: null,
+  instagramHandle: null,
 };
 
 const ARTIST: ArtistResponse = {

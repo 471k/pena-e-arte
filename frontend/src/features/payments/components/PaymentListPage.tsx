@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, CreditCard, Loader2, Plus, Search } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -68,11 +69,13 @@ function PaymentRowSkeleton() {
 }
 
 export function PaymentListPage() {
+  useDocumentMeta({ title: "Payments — Pena e Artë", canonical: "/payments" });
+
   const navigate = useNavigate();
   const [cursor, setCursor]               = useState<string | undefined>(undefined);
   const [previousPages, setPreviousPages] = useState<PaymentResponse[]>([]);
 
-  const { data, isLoading, isFetching, isError } = useGetPaymentsQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useGetPaymentsQuery({
     lastSeenId: cursor,
     pageSize:   PAGE_SIZE,
   });
@@ -185,7 +188,10 @@ export function PaymentListPage() {
 
         {errorMessage && (
           <p className="text-center text-sm text-destructive py-16" role="alert">
-            {errorMessage}
+            {errorMessage}{" "}
+            <button type="button" className="underline" onClick={() => refetch()}>
+              Try again
+            </button>
           </p>
         )}
 

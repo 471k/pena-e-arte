@@ -43,7 +43,7 @@ public class GetPaymentByAppointmentHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PaymentWithSplits_ReturnsCoreFields()
+    public async Task Handle_PaymentWithSplits_ReturnsSplitsInResponse()
     {
         Guid appointmentId = Guid.NewGuid();
         Guid paymentId     = await SeedPayment(300m, appointmentId);
@@ -62,6 +62,19 @@ public class GetPaymentByAppointmentHandlerTests
 
         result!.AppointmentId.Should().Be(appointmentId);
         result.Amount.Should().Be(300m);
+        result.Splits.Should().ContainSingle(s => s.Label == "Deposit" && s.Amount == 300m);
+    }
+
+    [Fact]
+    public async Task Handle_PaymentWithNoSplits_ReturnsEmptySplitsList()
+    {
+        Guid appointmentId = Guid.NewGuid();
+        await SeedPayment(300m, appointmentId);
+
+        PaymentResponse? result = await CreateSut()
+            .Handle(new GetPaymentByAppointmentQuery(appointmentId), default);
+
+        result!.Splits.Should().BeEmpty();
     }
 
     private async Task<Guid> SeedPayment(decimal amount, Guid? appointmentId = null)

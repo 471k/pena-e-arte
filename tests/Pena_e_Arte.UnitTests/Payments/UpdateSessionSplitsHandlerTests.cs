@@ -74,6 +74,23 @@ public class UpdateSessionSplitsHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ValidSplits_ReturnsSplitsInResponse()
+    {
+        Guid paymentId = await SeedPayment(200m);
+
+        PaymentResponse result = await CreateSut().Handle(
+            new UpdateSessionSplitsCommand(paymentId, new UpdateSessionSplitsRequest(
+            [
+                new SessionSplitItem("Deposit", 100m),
+                new SessionSplitItem("Final",   100m)
+            ])), default);
+
+        result.Splits.Should().HaveCount(2);
+        result.Splits.Should().Contain(s => s.Label == "Deposit" && s.Amount == 100m);
+        result.Splits.Should().Contain(s => s.Label == "Final" && s.Amount == 100m);
+    }
+
+    [Fact]
     public async Task Handle_PaymentNotFound_ThrowsNotFoundException()
     {
         Func<Task> act = () => CreateSut().Handle(

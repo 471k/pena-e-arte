@@ -49,6 +49,6 @@ public class UpdateSessionSplitsHandler(IAppDbContext db)
 
         await db.SaveChangesAsync(ct);
 
-        return payment.ToResponse();
+        return payment.ToResponse(newSplits);
     }
 }

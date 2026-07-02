@@ -20,10 +20,14 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             .FirstOrDefaultAsync(s => s.Id == tenant.StudioId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Studio), tenant.StudioId);
 
-        studio.Name      = command.Request.Name;
-        studio.City      = command.Request.City;
-        studio.Latitude  = command.Request.Latitude;
-        studio.Longitude = command.Request.Longitude;
+        studio.Name            = command.Request.Name;
+        studio.City            = command.Request.City;
+        studio.Latitude        = command.Request.Latitude;
+        studio.Longitude       = command.Request.Longitude;
+        studio.PhoneNumber     = string.IsNullOrWhiteSpace(command.Request.PhoneNumber)
+                                  ? null : command.Request.PhoneNumber.Trim();
+        studio.InstagramHandle = string.IsNullOrWhiteSpace(command.Request.InstagramHandle)
+                                  ? null : command.Request.InstagramHandle.Trim().TrimStart('@');
 
         await db.SaveChangesAsync(ct);
 
@@ -33,7 +37,7 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             studio.ShowPlatformBranding,
             AllowBrandingRemoval: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
-            studio.SlugLockedAt);
+            studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle);
     }
 }
 
