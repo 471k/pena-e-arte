@@ -97,4 +97,12 @@ describe("EmbedPage", () => {
     expect(screen.getByText("Rafaela Costa")).toBeInTheDocument();
     expect(screen.getByText("João Dias")).toBeInTheDocument();
   });
+
+  it("shows an empty-state message when the studio has no artists", () => {
+    mockUseGetPublicStudioQuery.mockReturnValue({
+      data: { ...STUDIO, artists: [] }, isLoading: false, isError: false,
+    });
+    renderPage();
+    expect(screen.getByText(/artists being added soon/i)).toBeInTheDocument();
+  });
 });

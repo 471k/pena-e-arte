@@ -1,11 +1,19 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Loader2, ExternalLink } from "lucide-react";
+import { ImageOff, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetSharedDesignQuery } from "../publicApi";
 
 export function SharedDesignPage() {
   const { token = "" }  = useParams<{ token: string }>();
   const { data: design, isLoading, isError } = useGetSharedDesignQuery(token, { skip: !token });
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useDocumentMeta({
+    title:     design ? `${design.title} — Shared Design by ${design.studioName}` : "Design Preview",
+    canonical: `${window.location.origin}/share/${token}`,
+  });
 
   if (isLoading) {
     return (
@@ -32,11 +40,19 @@ export function SharedDesignPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col">
       <div className="flex-1 flex items-center justify-center p-4">
-        <img
-          src={design.imageUrl}
-          alt={design.title}
-          className="max-h-[80vh] max-w-full object-contain rounded"
-        />
+        {imageFailed ? (
+          <div className="flex flex-col items-center gap-2 text-white/40">
+            <ImageOff className="h-10 w-10" aria-hidden="true" />
+            <p className="text-sm">Image unavailable</p>
+          </div>
+        ) : (
+          <img
+            src={design.imageUrl}
+            alt={design.title}
+            onError={() => setImageFailed(true)}
+            className="max-h-[80vh] max-w-full object-contain rounded"
+          />
+        )}
       </div>
 
       <div className="bg-background border-t p-4">

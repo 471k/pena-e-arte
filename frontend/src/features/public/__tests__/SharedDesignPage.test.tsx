@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { SharedDesignPage } from "@/features/public/components/SharedDesignPage";
@@ -77,5 +77,18 @@ describe("SharedDesignPage", () => {
     mockUseGetSharedDesignQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     renderPage();
     expect(document.querySelector(".animate-spin")).toBeInTheDocument();
+  });
+
+  it("sets document title to the design title and studio name", () => {
+    renderPage();
+    expect(document.title).toBe("Dragon Sleeve — Shared Design by Ink Soul");
+  });
+
+  it("shows a broken-image fallback when the image fails to load", () => {
+    renderPage();
+    const img = screen.getByRole("img", { name: "Dragon Sleeve" });
+    fireEvent.error(img);
+    expect(screen.getByText(/image unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Dragon Sleeve" })).not.toBeInTheDocument();
   });
 });

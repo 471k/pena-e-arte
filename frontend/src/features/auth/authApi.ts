@@ -53,7 +53,7 @@ export const authApi = createApi({
     registerUser: builder.mutation<void, RegisterUserRequest>({
       query: (body) => ({ url: "auth/register", method: "POST", body }),
     }),
-    requestPasswordReset: builder.mutation<{ resetToken: string | null }, string>({
+    requestPasswordReset: builder.mutation<{ message: string }, string>({
       query: (email) => ({ url: "auth/forgot-password", method: "POST", body: { email } }),
     }),
     resetPassword: builder.mutation<void, ResetPasswordRequest>({

@@ -22,18 +22,32 @@ import { useAppSelector }          from "@/app/hooks";
 import { useGetPublicStudioQuery } from "../publicApi";
 import type { PublicArtistSummary } from "../publicApi";
 import { useDocumentMeta }          from "@/shared/utils/useDocumentMeta";
+import { useStructuredData }        from "@/shared/utils/useStructuredData";
 import { ReviewSection }            from "./ReviewSection";
 
 function StudioMeta({
-  name, slug, description, coverImageUrl,
+  name, slug, description, coverImageUrl, city, averageRating, reviewCount,
 }: {
   name: string; slug: string; description: string | null; coverImageUrl: string | null;
+  city: string; averageRating: number | null; reviewCount: number;
 }) {
   useDocumentMeta({
     title:       `${name} — Book a Tattoo on Pena e Artë`,
     description: description ?? `Book your next tattoo at ${name}.`,
     ogImage:     coverImageUrl ?? undefined,
     canonical:   `https://penaearte.com/s/${slug}`,
+  });
+  useStructuredData({
+    "@context":    "https://schema.org",
+    "@type":       "TattooParlor",
+    name,
+    description:   description ?? undefined,
+    url:           `https://penaearte.com/s/${slug}`,
+    image:         coverImageUrl ?? undefined,
+    address:       { "@type": "PostalAddress", addressLocality: city },
+    ...(reviewCount > 0
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: averageRating, reviewCount } }
+      : {}),
   });
   return null;
 }
@@ -221,6 +235,9 @@ export function StudioPortfolioPage() {
         slug={studio.slug}
         description={studio.description}
         coverImageUrl={studio.coverImageUrl}
+        city={studio.city}
+        averageRating={studio.averageRating}
+        reviewCount={studio.reviewCount}
       />
 
       <GalleryLightbox

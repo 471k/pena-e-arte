@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Locate, MapPin, Search, Users } from "lucide-react";
 import { Button }         from "@/shared/components/ui/button";
 import { Skeleton }       from "@/shared/components/ui/skeleton";
@@ -297,8 +297,20 @@ export function DiscoverPage() {
   const [searchInput,   setSearchInput]   = useState<string>("");
   const [searchError,   setSearchError]   = useState<string | null>(null);
   const [isGeocoding,   setIsGeocoding]   = useState(false);
-  const [activeTab,     setActiveTab]     = useState<ActiveTab>("portfolio");
   const [nearOnly,      setNearOnly]      = useState(false);
+
+  // Tab state lives in the URL so a shared /discover?tab=studios link opens on the
+  // right tab instead of always defaulting to portfolio.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: ActiveTab = searchParams.get("tab") === "studios" ? "studios" : "portfolio";
+  function setActiveTab(tab: ActiveTab) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "portfolio") next.delete("tab");
+      else next.set("tab", tab);
+      return next;
+    }, { replace: true });
+  }
 
   const inputRef = useRef<HTMLInputElement>(null);
 

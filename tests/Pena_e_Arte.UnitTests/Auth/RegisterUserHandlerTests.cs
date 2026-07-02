@@ -134,6 +134,52 @@ public class RegisterUserHandlerTests
         _db.Clients.Any(c => c.Email == "artist@example.com").Should().BeFalse();
     }
 
+    [Fact]
+    public async Task Handle_OwnerRoleWithMatchingStudioOwnerEmail_Succeeds()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, OwnerEmail = "owner@studio.com" });
+        await _db.SaveChangesAsync();
+        IdentitySucceeds();
+
+        Func<Task> act = () => CreateSut().Handle(
+            new RegisterUserCommand(new RegisterUserRequest("owner@studio.com", "Password1!", "owner", studioId)),
+            default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_OwnerRoleWithMismatchedEmail_ThrowsUnauthorized()
+    {
+        // Prevents a caller from claiming a "owner" account on a studio (discoverable
+        // via /public/studios/nearby) that someone else already registered.
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, OwnerEmail = "realowner@studio.com" });
+        await _db.SaveChangesAsync();
+        IdentitySucceeds();
+
+        Func<Task> act = () => CreateSut().Handle(
+            new RegisterUserCommand(new RegisterUserRequest("attacker@evil.com", "Password1!", "owner", studioId)),
+            default);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        await _identity.DidNotReceive().CreateUserAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task Handle_OwnerRoleWithNonExistentStudio_ThrowsUnauthorized()
+    {
+        Func<Task> act = () => CreateSut().Handle(
+            new RegisterUserCommand(new RegisterUserRequest("test@example.com", "Password1!", "owner", Guid.NewGuid())),
+            default);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    // "client" avoids tripping the owner/studio-ownership authorization check added
+    // above — these generic tests exercise identity-service passthrough, not that rule.
     private static RegisterUserRequest ValidRequest() =>
-        new("test@example.com", "Password1!", "owner", Guid.NewGuid());
+        new("test@example.com", "Password1!", "client", Guid.NewGuid());
 }

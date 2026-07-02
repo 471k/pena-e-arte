@@ -17,6 +17,7 @@ import { StarRating }  from "@/shared/components/ui/StarRating";
 import { useAppSelector } from "@/app/hooks";
 import { useGetPublicArtistQuery, useRecordArtistViewMutation, type ArtistPortfolioImage } from "../publicApi";
 import { useDocumentMeta }         from "@/shared/utils/useDocumentMeta";
+import { useStructuredData }       from "@/shared/utils/useStructuredData";
 import { ReviewSection }           from "./ReviewSection";
 import { useEffect } from "react";
 
@@ -31,7 +32,16 @@ function ArtistMeta({
     title:       `${name} — Tattoo Artist on Pena e Artë`,
     description: bio ?? `View the tattoo portfolio of ${name}.`,
     ogImage:     coverImage,
-    canonical:   `https://penaearte.com/a/${slug}`,
+    canonical:   `https://penaearte.com/artist/${slug}`,
+  });
+  useStructuredData({
+    "@context":  "https://schema.org",
+    "@type":     "Person",
+    jobTitle:    "Tattoo Artist",
+    name,
+    description: bio ?? undefined,
+    image:       coverImage,
+    url:         `https://penaearte.com/artist/${slug}`,
   });
   return null;
 }

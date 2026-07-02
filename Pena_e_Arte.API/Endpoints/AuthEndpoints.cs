@@ -45,8 +45,10 @@ public static class AuthEndpoints
         ISender               mediator,
         CancellationToken     ct)
     {
-        string? token = await mediator.Send(new ForgotPasswordCommand(request), ct);
-        return Results.Ok(new { resetToken = token });
+        await mediator.Send(new ForgotPasswordCommand(request), ct);
+        // Identical response regardless of whether the account exists — prevents
+        // user enumeration. The reset token itself is only ever emailed, never returned.
+        return Results.Ok(new { message = "If an account with that email exists, a password reset link has been sent." });
     }
 
     private static async Task<IResult> ResetPassword(

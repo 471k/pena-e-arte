@@ -93,6 +93,22 @@ describe("ArtistPortfolioPage", () => {
     expect(ogTitle?.getAttribute("content")).toContain("Maria Silva");
   });
 
+  it("sets canonical link to /artist/{slug}, matching the router path", () => {
+    renderPage();
+    const canonical = document.head.querySelector('link[rel="canonical"]');
+    expect(canonical?.getAttribute("href")).toBe("https://penaearte.com/artist/maria-silva");
+  });
+
+  it("injects JSON-LD structured data with Person schema for the artist", () => {
+    renderPage();
+    const script = document.head.querySelector('script[type="application/ld+json"]');
+    expect(script).not.toBeNull();
+    const json = JSON.parse(script!.textContent ?? "{}");
+    expect(json["@type"]).toBe("Person");
+    expect(json.name).toBe("Maria Silva");
+    expect(json.url).toBe("https://penaearte.com/artist/maria-silva");
+  });
+
   it("renders monogram avatar when profileImageUrl is null", () => {
     renderPage();
     // No <img> with profile photo alt text — only portfolio images

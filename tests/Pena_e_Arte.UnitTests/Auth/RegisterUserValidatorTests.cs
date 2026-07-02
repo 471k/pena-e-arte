@@ -13,13 +13,22 @@ public class RegisterUserValidatorTests
 
     [Theory]
     [InlineData("client")]
-    [InlineData("artist")]
     [InlineData("owner")]
-    [InlineData("issuer")]
     public void Validate_ValidRole_IsValid(string role)
     {
         ValidationResult result = _sut.Validate(Command("user@example.com", "Password1!", role, Guid.NewGuid()));
         result.Errors.Should().NotContain(e => e.PropertyName == "Request.Role");
+    }
+
+    // Regression guard: this is a public [AllowAnonymous] endpoint. "artist" and "issuer"
+    // must never be self-registerable here, or any caller could mint a platform-admin
+    // (issuer) or attach a rogue artist account to an arbitrary studio.
+    [Theory]
+    [InlineData("artist")]
+    [InlineData("issuer")]
+    public void Validate_PrivilegedRole_FailsOnRole(string role)
+    {
+        _sut.ShouldFailOn(Command("u@example.com", "Password1!", role, Guid.NewGuid()), "Request.Role");
     }
 
     [Fact]
@@ -72,7 +81,6 @@ public class RegisterUserValidatorTests
 
     [Theory]
     [InlineData("CLIENT")]
-    [InlineData("Artist")]
     [InlineData("OWNER")]
     public void Validate_RoleCaseInsensitive_IsValid(string role)
     {

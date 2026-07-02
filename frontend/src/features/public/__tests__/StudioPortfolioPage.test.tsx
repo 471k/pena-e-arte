@@ -165,6 +165,16 @@ describe("StudioPortfolioPage", () => {
     expect(canonical?.getAttribute("href")).toContain("test-studio");
   });
 
+  it("injects JSON-LD structured data with TattooParlor schema and aggregateRating", () => {
+    renderPage();
+    const script = document.head.querySelector('script[type="application/ld+json"]');
+    expect(script).not.toBeNull();
+    const json = JSON.parse(script!.textContent ?? "{}");
+    expect(json["@type"]).toBe("TattooParlor");
+    expect(json.name).toBe("Ink Soul");
+    expect(json.aggregateRating).toEqual({ "@type": "AggregateRating", ratingValue: 4.7, reviewCount: 12 });
+  });
+
   // ── New tests ────────────────────────────────────────────────────────────────
 
   it("renders studio rating when reviewCount > 0", () => {

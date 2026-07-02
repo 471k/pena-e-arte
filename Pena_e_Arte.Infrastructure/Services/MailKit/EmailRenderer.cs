@@ -274,4 +274,23 @@ public class EmailRenderer : IEmailRenderer
         </body>
         </html>
         """;
+
+    public string RenderPasswordReset(string resetUrl) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Reset your password</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Reset your password</h1>
+          <p>We received a request to reset your Pena e Artë password. Click the button below to choose a new one.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+            Reset password
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.
+          </p>
+        </body>
+        </html>
+        """;
 }

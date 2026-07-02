@@ -10,7 +10,7 @@ public static class PublicDesignEndpoints
     {
         RouteGroupBuilder group = app.MapGroup("/api/v1/public/designs");
 
-        group.MapGet("/share/{token}", GetSharedDesign).AllowAnonymous();
+        group.MapGet("/share/{token}", GetSharedDesign).AllowAnonymous().RequireRateLimiting("public-read");
     }
 
     private static async Task<IResult> GetSharedDesign(

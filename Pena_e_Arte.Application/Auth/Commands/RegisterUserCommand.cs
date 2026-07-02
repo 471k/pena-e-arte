@@ -24,6 +24,22 @@ public class RegisterUserHandler(
     {
         RegisterUserRequest req = command.Request;
 
+        // Owner self-registration must be bound to the studio's declared OwnerEmail
+        // (set at studio-creation time — see RegisterStudioCommand) so a caller cannot
+        // attach an "owner" account to a studio they didn't create by guessing/reusing
+        // a publicly-visible studioId (e.g. from /public/studios/nearby).
+        if (string.Equals(req.Role, "owner", StringComparison.OrdinalIgnoreCase))
+        {
+            Studio? studio = await db.Studios
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.Id == req.StudioId, ct);
+
+            if (studio is null ||
+                !string.Equals(studio.OwnerEmail, req.Email, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to register as the owner of this studio.");
+        }
+
         (bool success, Guid userId, string[] errors) = await identity.CreateUserAsync(
             req.Email, req.Password, req.Role, req.StudioId, req.FirstName);
 

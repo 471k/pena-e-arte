@@ -13,9 +13,9 @@ public static class StudioEndpoints
     {
         RouteGroupBuilder group = app.MapGroup("/api/v1/studios");
 
-        group.MapGet("/map",     GetStudioMap).AllowAnonymous();
-        group.MapGet("{id:guid}/qr", GetQrCode).AllowAnonymous();
-        group.MapPost("/",       RegisterStudio).AllowAnonymous();
+        group.MapGet("/map",     GetStudioMap).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("{id:guid}/qr", GetQrCode).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapPost("/",       RegisterStudio).AllowAnonymous().RequireRateLimiting("auth");
 
         // All authenticated users can read their own studio (clients need it for booking context)
         group.MapGet("/me",  GetMyStudio).RequireAuthorization("ClientAndAbove");

@@ -111,16 +111,18 @@ export function EmbedPage() {
           </Button>
         )}
 
-        {studio.artists.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Our artists</p>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Our artists</p>
+          {studio.artists.length > 0 ? (
             <div className="space-y-2">
               {studio.artists.map((a) => (
                 <ArtistPill key={a.artistId} artist={a} />
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-xs text-muted-foreground">Artists being added soon.</p>
+          )}
+        </div>
       </div>
 
       <footer className="px-4 py-3 border-t text-center">

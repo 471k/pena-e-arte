@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { Provider }     from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
@@ -53,6 +53,27 @@ function makeAuthStore() {
       },
     },
   });
+}
+
+function CurrentSearch({ onRender }: { onRender: (s: string) => void }) {
+  const [params] = useSearchParams();
+  onRender(params.toString());
+  return null;
+}
+
+function renderPageAt(initialPath: string, onSearchChange: (s: string) => void) {
+  render(
+    <Provider store={makeStore()}>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route
+            path="/discover"
+            element={<><DiscoverPage /><CurrentSearch onRender={onSearchChange} /></>}
+          />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
 }
 
 function renderLoggedInPage() {
@@ -181,6 +202,27 @@ describe("DiscoverPage", () => {
     await user.click(screen.getByRole("tab", { name: /studios/i }));
     expect(screen.getByRole("tab", { name: /studios/i })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: /portfolio/i })).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("opens on the Studios tab when the URL has ?tab=studios", () => {
+    renderPageAt("/discover?tab=studios", () => {});
+    expect(screen.getByRole("tab", { name: /studios/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("switching to Studios tab updates the URL to ?tab=studios", async () => {
+    const user = userEvent.setup();
+    let search = "";
+    renderPageAt("/discover", (s) => { search = s; });
+    await user.click(screen.getByRole("tab", { name: /studios/i }));
+    expect(search).toBe("tab=studios");
+  });
+
+  it("switching back to Portfolio tab removes the tab param from the URL", async () => {
+    const user = userEvent.setup();
+    let search = "";
+    renderPageAt("/discover?tab=studios", (s) => { search = s; });
+    await user.click(screen.getByRole("tab", { name: /portfolio/i }));
+    expect(search).toBe("");
   });
 
   it("renders hero heading for logged-out users when location is Lisbon (default fallback)", async () => {

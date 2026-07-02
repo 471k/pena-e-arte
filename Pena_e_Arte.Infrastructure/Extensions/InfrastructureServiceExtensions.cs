@@ -44,6 +44,11 @@ public static class InfrastructureServiceExtensions
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders();
 
+        // Default token lifespan is 1 day; tighten to 1 hour for password-reset and
+        // email-confirmation links (both use the "Default" provider). A user whose
+        // verification link expires can request a new one via /auth/resend-verification.
+        services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(1));
+
         var redisConnectionString = configuration["Redis:ConnectionString"]!;
         services.AddStackExchangeRedisCache(options =>
             options.Configuration = redisConnectionString + ",abortConnect=false");

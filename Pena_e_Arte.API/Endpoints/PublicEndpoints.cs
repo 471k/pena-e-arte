@@ -16,19 +16,19 @@ public static class PublicEndpoints
     {
         RouteGroupBuilder group = app.MapGroup("/api/v1/public");
 
-        group.MapGet("/studios/{slug}",          GetPublicStudio).AllowAnonymous();
-        group.MapGet("/artists/{slug}",          GetPublicArtist).AllowAnonymous();
-        group.MapGet("/studios/nearby",          GetNearbyStudios).AllowAnonymous();
-        group.MapGet("/studios/{slug}/reviews",  GetStudioReviews).AllowAnonymous();
-        group.MapGet("/artists/{slug}/reviews",  GetArtistReviews).AllowAnonymous();
+        group.MapGet("/studios/{slug}",          GetPublicStudio).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/artists/{slug}",          GetPublicArtist).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/nearby",          GetNearbyStudios).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/reviews",  GetStudioReviews).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/artists/{slug}/reviews",  GetArtistReviews).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/studios/{slug}/reviews", CreateStudioReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
         group.MapPost("/artists/{slug}/reviews", CreateArtistReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
         group.MapPost("/artists/{slug}/view",    RecordArtistView)
              .AllowAnonymous().RequireRateLimiting("public-write");
-        group.MapGet ("/portfolio/feed",                GetPortfolioFeed).AllowAnonymous();
-        group.MapGet ("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous();
+        group.MapGet ("/portfolio/feed",                GetPortfolioFeed).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet ("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/portfolio/{imageId:guid}/reviews", CreatePortfolioImageReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
     }

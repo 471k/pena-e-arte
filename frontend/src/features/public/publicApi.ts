@@ -152,6 +152,9 @@ export const publicApi = createApi({
     getSharedDesign: builder.query<SharedDesignResponse, string>({
       query: (token) => `designs/share/${token}`,
       providesTags: ["SharedDesign"],
+      // Evict immediately on unmount — a token that expires between visits must never
+      // be served from cache showing an image that the backend would now 404 on.
+      keepUnusedDataFor: 0,
     }),
     getNearbyStudios: builder.query<NearbyStudioResponse[], NearbyStudiosArgs>({
       query: ({ lat, lng, radiusKm }) =>

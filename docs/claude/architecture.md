@@ -1080,3 +1080,118 @@ no flaky failures observed).
 - P2.6 (post-booking "what happens next" info section), P4.1 (real file upload for
   intake forms), P5.3 (revision image lightbox) — scoped out as larger UI additions
   rather than bug fixes or small polish; left for a future pass
+
+## Guest/Visitor QA Pass — 2026-07-02
+
+Bug-hunt + polish pass over the unauthenticated guest/visitor surface, per
+`docs/claude/overnight-prompt-guest-qa-polish-2026-07-01.md`. Backend: 958 unit + 273
+integration tests green. Frontend: 1260/1260 green (tsc clean, `pnpm build` clean).
+
+### Bugs found and fixed
+
+**Backend — critical:**
+
+- `RegisterUserCommand.cs` / `RegisterUserValidator.cs` → **critical, real security
+  bug.** The public, `[AllowAnonymous]` `POST /api/v1/auth/register` endpoint accepted
+  `role: "issuer"` (cross-tenant platform admin) or `role: "owner"` for **any**
+  `studioId` — including studio IDs publicly discoverable via
+  `/api/v1/public/studios/nearby` — with zero authorization check binding the caller
+  to that studio. Any anonymous caller could self-mint a platform-admin account, or
+  attach a rogue "owner" account to an existing studio it didn't create, gaining
+  owner-level tenant access (clients, payments, appointments). Fixed by (1)
+  restricting the public validator's `ValidRoles` to `client`/`owner` only — `artist`
+  and `issuer` accounts are never created through this endpoint — and (2) requiring
+  `req.Email` to match the studio's `OwnerEmail` (set at studio-creation time by
+  `RegisterStudioCommand`) before an `owner` registration is allowed to proceed.
+  6 new/updated tests
+- `ForgotPasswordCommand.cs` / `AuthEndpoints.cs` → **critical, real security bug.**
+  `POST /api/v1/auth/forgot-password` returned the raw password-reset token directly
+  in the JSON response body (`{ resetToken: token }`) instead of emailing it — meaning
+  anyone who knew a victim's email address could read the reset token straight off the
+  API response and take over that account immediately, with no access to the victim's
+  inbox required. The frontend never even read this field, so the feature was also
+  functionally broken for real users (no email was ever sent). Fixed by rendering and
+  sending a `RenderPasswordReset` email (new `IEmailRenderer` method, following the
+  existing `RenderEmailVerification`/`RenderArtistInvite` pattern) and changing the
+  endpoint to always return an identical, token-free response regardless of whether
+  the account exists. 3 new tests
+- `InfrastructureServiceExtensions.cs` → password-reset and email-confirmation tokens
+  used ASP.NET Identity's default 24-hour `TokenLifespan`. Tightened to 1 hour via
+  `DataProtectionTokenProviderOptions`
+- `RateLimitingExtensions.cs` → the `"auth"` and `"public-write"` rate-limit policies
+  used the `AddFixedWindowLimiter(name, options)` shorthand, which creates **one
+  global bucket shared by every caller** rather than partitioning per client — a
+  single client sending 10 rapid requests could exhaust the login/register limiter
+  for every other visitor on the platform (a trivial DoS against auth itself).
+  Rewrote both as `AddPolicy` partitioned by `RemoteIpAddress`, and added a new
+  per-IP `"public-read"` policy (120 req/min) applied to every previously-unthrottled
+  public `GET` endpoint (`/public/studios/*`, `/public/artists/*`,
+  `/public/portfolio/*`, `/public/designs/share/*`, `/studios/map`, `/studios/{id}/qr`)
+  and `"auth"` to `POST /studios` (studio self-registration)
+
+**Frontend:**
+
+- `ArtistPortfolioPage.tsx` → canonical URL was `https://penaearte.com/a/${slug}`, but
+  the router serves this page at `/artist/:slug` — the canonical tag pointed at a
+  route that doesn't exist. Fixed to `/artist/${slug}`; regression test added
+- `SharedDesignPage.tsx` → missing `useDocumentMeta` (document title never set to the
+  design title), no `onError` fallback on the design image (a broken/expired R2 URL
+  rendered a blank alt-text box), and the `getSharedDesign` RTK Query endpoint had no
+  `keepUnusedDataFor: 0` — an expired design could be served from cache showing an
+  image the backend would now 404 on. All three fixed; 2 new tests
+- `LoginPage.tsx` → the `?redirect=` query param was passed straight to
+  `navigate()` with no validation — hardened to only accept same-origin relative
+  paths (`startsWith("/")`, rejecting `//`) as defense-in-depth against open-redirect
+- `ClientRegisterPage.tsx` → `onSubmit` awaited `registerUser(...).unwrap()` then
+  `login(...).unwrap()` with no `try/catch` around either call. If registration
+  succeeded but the immediate auto-login failed (network blip, race condition), the
+  thrown error was unhandled — the user was left on a stuck form with no feedback,
+  account created but not signed in. Wrapped both calls in their own `try/catch`;
+  the login-failure path now toasts "Account created. Please sign in manually." and
+  redirects to `/login`. This page had **zero test coverage** before this pass — added
+  a full test file (12 tests) covering the interstitial, validation, success path,
+  409/429 errors, and the new login-failure fallback
+- `EmbedPage.tsx` → a studio with zero artists rendered nothing in the "Our artists"
+  section instead of an empty-state message. Added "Artists being added soon."
+
+### Polish implemented
+
+- **P1.2 JSON-LD structured data** — new `useStructuredData` hook (mirrors
+  `useDocumentMeta`'s inject/cleanup pattern); `StudioPortfolioPage` emits a
+  `TattooParlor` schema with `aggregateRating` when reviews exist, `ArtistPortfolioPage`
+  emits a `Person` schema
+- **P2.1 DiscoverPage tab URL persistence** — `activeTab` now reads from and writes to
+  `?tab=` via `useSearchParams` instead of local component state, so a shared
+  `/discover?tab=studios` link opens on the right tab
+- **P7.2 EmbedPage empty-artists state** (listed above under bug fixes since it matches
+  a "Missing:" item in the source prompt)
+
+### Decisions made
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Public register endpoint role set | Restricted to `client`/`owner` only, not `artist`/`issuer` | No frontend flow uses this endpoint for `artist` or `issuer` — those are dead-but-reachable inputs that only enabled the privilege-escalation bug. Artist accounts belong behind an authenticated owner-invitation flow (not present in this codebase yet); issuer is platform-admin-only and must never be self-registered |
+| Owner registration binding | `req.Email` must equal `studio.OwnerEmail` (no schema migration) | Avoids adding an `OwnerUserId` column / migration for this pass; `OwnerEmail` is already set at studio-creation time by the same flow that immediately calls register, so this fully closes the takeover vector with a one-line check |
+| Rate limiter storage | Kept in-process (`AddPolicy` + `RemoteIpAddress` partitioning), not Redis-backed | Fixed the more urgent bug (global-not-per-IP bucket) within scope; a fully distributed Redis-backed limiter (required for correctness across multiple API replicas, and to match CLAUDE.md's "state that should be in Redis" rule) is a larger infra change deferred below |
+| Token lifespan | Global `DataProtectionTokenProviderOptions.TokenLifespan = 1h` (affects both password-reset and email-confirmation) | Both tokens share ASP.NET Identity's default "Default" provider; a per-purpose split would need a second named token provider registration, which wasn't warranted for closing out a TTL hardening item this pass |
+
+### Skipped / deferred (with reason)
+
+- **Redis-backed distributed rate limiting** — current fix is correct per-instance
+  (per-IP, not global) but each API replica still keeps its own in-memory bucket,
+  meaning a multi-pod deployment's effective limit multiplies by replica count. This
+  violates CLAUDE.md's "state that should be in Redis (sessions, slots, rate limits)"
+  rule, which predates this pass. Implementing a Redis-backed `PartitionedRateLimiter`
+  is a contained but non-trivial infra change deserving its own pass with dedicated
+  Redis-backed test coverage
+- **`/embed/:slug` CSP / `X-Frame-Options` scoping (P8.1)** — no security-headers
+  middleware exists anywhere in this API today (verified), so `/embed` currently works
+  by default (nothing blocks framing) but every other route also has zero clickjacking
+  protection. This is a deploy-layer concern (nginx/Cloudflare, per the Infra stack in
+  CLAUDE.md) with no config files present in this repo to edit — flagged for the ops
+  side rather than guessed at here
+- P4.1 (artist portfolio style filter chips), P4.2 (sticky "Book with {artist}" CTA),
+  P3.5 (review pagination past 10), P3.4 (owner review-response display — no
+  `ownerResponse` field exists on `Review` yet, so this is a new feature, not a bug),
+  P5.2 (password strength indicator), P5.3 (email-verification banner on `/book`) —
+  scoped out as UI additions beyond bug-fix/small-polish scope; left for a future pass

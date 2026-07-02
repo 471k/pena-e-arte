@@ -40,7 +40,10 @@ export function LoginPage() {
 
   const sessionExpired  = searchParams.get("reason") === "session_expired";
   const studioId        = searchParams.get("studioId") ?? "";
-  const redirectParam   = searchParams.get("redirect") ?? "";
+  const redirectRaw     = searchParams.get("redirect") ?? "";
+  // Only accept same-origin relative paths — a redirect param must never be handed
+  // straight to navigate() as an absolute/external URL (open-redirect).
+  const redirectParam   = redirectRaw.startsWith("/") && !redirectRaw.startsWith("//") ? redirectRaw : "";
   const redirectPath    = existingRole
     ? (redirectParam || getRoleRedirectPath(existingRole))
     : null;

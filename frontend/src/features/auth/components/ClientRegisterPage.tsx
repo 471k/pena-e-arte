@@ -3,6 +3,7 @@ import { AlertCircle, Loader2, PenLine } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { z } from "zod";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath } from "@/app/router";
@@ -61,21 +62,33 @@ export function ClientRegisterPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   async function onSubmit(values: FormValues) {
-    await registerUser({
-      email:     values.email,
-      password:  values.password,
-      role:      "client",
-      studioId,
-      firstName: values.firstName,
-    }).unwrap();
+    try {
+      await registerUser({
+        email:     values.email,
+        password:  values.password,
+        role:      "client",
+        studioId,
+        firstName: values.firstName,
+      }).unwrap();
+    } catch {
+      // Surfaced via registerError / serverError state below.
+      return;
+    }
 
-    const { accessToken } = await login({
-      email:    values.email,
-      password: values.password,
-    }).unwrap();
+    try {
+      const { accessToken } = await login({
+        email:    values.email,
+        password: values.password,
+      }).unwrap();
 
-    dispatch(setCredentials(decodeToken(accessToken)));
-    navigate(redirectTo, { replace: true });
+      dispatch(setCredentials(decodeToken(accessToken)));
+      navigate(redirectTo, { replace: true });
+    } catch {
+      // Account was created successfully, but auto-login failed — send the user
+      // to sign in manually instead of leaving them on a stuck/broken form.
+      toast.error("Account created. Please sign in manually.");
+      navigate(`/login?redirect=${encodeURIComponent(redirectTo)}`);
+    }
   }
 
   const serverError = registerError
