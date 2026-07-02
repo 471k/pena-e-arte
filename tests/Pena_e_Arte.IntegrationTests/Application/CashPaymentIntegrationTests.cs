@@ -114,6 +114,65 @@ public class CashPaymentIntegrationTests
     }
 
     [Fact]
+    public async Task ConfirmCashDeposit_ArtistOwningAppointment_Succeeds()
+    {
+        Guid tenantId = Guid.NewGuid();
+        await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
+        Guid artistUserId = Guid.NewGuid();
+        Artist artist = new() { StudioId = tenantId, UserId = artistUserId, FirstName = "A", LastName = "B", Email = $"{Guid.NewGuid()}@a.com" };
+        Client client = new() { StudioId = tenantId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid()}@c.com" };
+        ctx.Artists.Add(artist);
+        ctx.Clients.Add(client);
+        await ctx.SaveChangesAsync();
+
+        Appointment appt = new()
+        {
+            StudioId        = tenantId,
+            ArtistId        = artist.Id,
+            ClientId        = client.Id,
+            Date            = DateTime.UtcNow.AddDays(5),
+            EndDate         = DateTime.UtcNow.AddDays(5).AddMinutes(90),
+            DurationMinutes = 90,
+            DepositAmount   = 50m,
+            Status          = AppointmentStatus.Pending,
+            DepositStatus   = DepositStatus.Pending,
+        };
+        ctx.Appointments.Add(appt);
+        await ctx.SaveChangesAsync();
+
+        Guid paymentId = await SeedCashPendingPayment(tenantId, appt.Id, client.Id);
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        ICurrentUser currentUser = Substitute.For<ICurrentUser>();
+        currentUser.UserId.Returns(artistUserId);
+        currentUser.Role.Returns("artist");
+        ConfirmCashDepositHandler handler = new(db, currentUser, _sender);
+
+        PaymentResponse result = await handler.Handle(new ConfirmCashDepositCommand(paymentId), default);
+
+        result.Status.Should().Be(PaymentStatus.Paid.ToString());
+    }
+
+    [Fact]
+    public async Task ConfirmCashDeposit_ArtistNotOwningAppointment_ThrowsForbidden()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (_, Guid clientId) = await SeedArtistAndClient(tenantId);
+        Guid appointmentId = await SeedAppointment(tenantId, clientId);
+        Guid paymentId     = await SeedCashPendingPayment(tenantId, appointmentId, clientId);
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        ICurrentUser currentUser = Substitute.For<ICurrentUser>();
+        currentUser.UserId.Returns(Guid.NewGuid());
+        currentUser.Role.Returns("artist");
+        ConfirmCashDepositHandler handler = new(db, currentUser, _sender);
+
+        Func<Task> act = () => handler.Handle(new ConfirmCashDepositCommand(paymentId), default);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
     public async Task DeclareCashDeposit_ExistingFailedPayment_ConvertsToCash()
     {
         Guid tenantId = Guid.NewGuid();

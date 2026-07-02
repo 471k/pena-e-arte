@@ -7,4 +7,5 @@ public record DesignResponse(
     Guid     ArtistId,
     string   Title,
     string?  Description,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string   Status = "Draft");

@@ -33,7 +33,7 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        CreateDesignHandler handler = new(db, TenantFor(tenantId));
+        CreateDesignHandler handler = new(db, TenantFor(tenantId), OwnerUser());
 
         DesignResponse result = await handler.Handle(
             new CreateDesignCommand(new CreateDesignRequest(clientId, artistId, "Rose tattoo", "Small wrist rose")),
@@ -251,7 +251,7 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<DesignRevisionResponse> RunUploadHandler(Guid tenantId, UploadDesignRevisionRequest req)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        UploadDesignRevisionHandler handler = new(db, TenantFor(tenantId), _realtime, _jobScheduler);
+        UploadDesignRevisionHandler handler = new(db, TenantFor(tenantId), _realtime, _jobScheduler, OwnerUser());
         return await handler.Handle(new UploadDesignRevisionCommand(req), default);
     }
 
@@ -277,5 +277,13 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
         CurrentTenantService t = new();
         t.SetTenant(tenantId);
         return t;
+    }
+
+    private static ICurrentUser OwnerUser()
+    {
+        ICurrentUser currentUser = Substitute.For<ICurrentUser>();
+        currentUser.UserId.Returns(Guid.NewGuid());
+        currentUser.Role.Returns("owner");
+        return currentUser;
     }
 }

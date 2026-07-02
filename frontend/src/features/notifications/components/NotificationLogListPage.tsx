@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Bell, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useAppDispatch } from "@/app/hooks";
 import { clearUnread } from "../notificationsSlice";
 import { useGetNotificationsQuery } from "../notificationsApi";
@@ -70,6 +71,8 @@ function NotificationRow({
 }
 
 export function NotificationLogListPage() {
+  useDocumentMeta({ title: "Notifications — Pena e Artë", canonical: "/notifications" });
+
   const dispatch = useAppDispatch();
   const [channel, setChannel]       = useState<"Email" | "Sms" | "">("");
   const [from, setFrom]             = useState("");

@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, CalendarDays, Check, CreditCard, Download, Loader2, Trash2, UserX,
 } from "lucide-react";
@@ -12,6 +12,7 @@ import {
   DialogHeader, DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Separator } from "@/shared/components/ui/separator";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
@@ -76,6 +77,8 @@ function AppointmentDetailSkeleton() {
 }
 
 export function AppointmentDetailPage() {
+  useDocumentMeta({ title: "Appointment — Pena e Artë", canonical: "/appointments" });
+
   const { id }       = useParams<{ id: string }>();
   const navigate     = useNavigate();
   const isArtistPlus = usePermission(Role.Artist);
@@ -134,6 +137,22 @@ export function AppointmentDetailPage() {
           <>
             <Card>
               <CardContent className="px-4 py-1">
+                {appt.clientName && (
+                  <>
+                    <Row
+                      label="Client"
+                      value={
+                        <Link
+                          to={`/clients/${appt.clientId}`}
+                          className="text-violet-500 hover:underline"
+                        >
+                          {appt.clientName}
+                        </Link>
+                      }
+                    />
+                    <Separator />
+                  </>
+                )}
                 <Row label="Date &amp; time" value={formatDateTime(appt.date)} />
                 <Separator />
                 <Row label="Duration"  value={`${appt.durationMinutes} min`} />

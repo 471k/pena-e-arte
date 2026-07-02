@@ -1,5 +1,6 @@
 import { ClipboardList, User } from "lucide-react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -85,6 +86,8 @@ function IntakeFormRow({ form }: { form: IntakeFormResponse }) {
 }
 
 export function IntakeFormListPage() {
+  useDocumentMeta({ title: "Intake Forms — Pena e Artë", canonical: "/forms/intake" });
+
   const [searchParams] = useSearchParams();
   const clientId      = searchParams.get("clientId")      ?? undefined;
   const appointmentId = searchParams.get("appointmentId") ?? undefined;

@@ -55,6 +55,7 @@ const CREATED_DESIGN: DesignResponse = {
   title:       "Japanese Sleeve",
   description: null,
   createdAt:   "2024-06-01T10:00:00Z",
+  status:      "Draft",
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

@@ -10,16 +10,18 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class UpdateArtistHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
+    private readonly Guid            _studioId    = Guid.NewGuid();
 
-    private UpdateArtistHandler CreateSut() => new(_db);
+    private UpdateArtistHandler CreateSut() => new(_db, _currentUser);
 
-    private async Task<Artist> SeedArtist(string firstName, string lastName, string email, string? specializations = null)
+    private async Task<Artist> SeedArtist(string firstName, string lastName, string email, string? specializations = null, Guid? userId = null)
     {
         Artist artist = new()
         {
             StudioId        = _studioId,
+            UserId          = userId,
             FirstName       = firstName,
             LastName        = lastName,
             Email           = email,
@@ -103,5 +105,31 @@ public class UpdateArtistHandlerTests
         await CreateSut().Handle(new UpdateArtistCommand(artist.Id, req), default);
 
         _db.Artists.Single(a => a.Id == artist.Id).UpdatedAt.Should().BeAfter(before);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistEditingOwnProfile_Succeeds()
+    {
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        Artist artist = await SeedArtist("Rui", "Tavares", "rui@studio.com", userId: artistUser.UserId);
+        UpdateArtistHandler sut = new(_db, artistUser);
+        UpdateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", "Realism");
+
+        Func<Task> act = () => sut.Handle(new UpdateArtistCommand(artist.Id, req), default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistEditingAnotherArtistsProfile_ThrowsForbidden()
+    {
+        Artist artist = await SeedArtist("Rui", "Tavares", "rui@studio.com", userId: Guid.NewGuid());
+        FakeCurrentUser otherArtistUser = FakeCurrentUser.Artist();
+        UpdateArtistHandler sut = new(_db, otherArtistUser);
+        UpdateArtistRequest req = new("Hacked", "Tavares", "rui@studio.com", null);
+
+        Func<Task> act = () => sut.Handle(new UpdateArtistCommand(artist.Id, req), default);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
     }
 }

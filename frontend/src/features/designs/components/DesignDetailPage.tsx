@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Check, ImageOff, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ImageOff, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,11 +15,19 @@ import {
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/utils/cn";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useAppSelector } from "@/app/hooks";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
-import { useDeleteRevisionMutation, useGetRevisionsQuery, useReviewRevisionMutation } from "../designsApi";
+import { useGetClientByIdQuery } from "@/features/clients/clientsApi";
+import {
+  useDeleteRevisionMutation,
+  useGetDesignQuery,
+  useGetRevisionsQuery,
+  useReviewRevisionMutation,
+} from "../designsApi";
 import type { DesignRevisionResponse } from "../design.types";
+import { DesignStatusBadge } from "./DesignStatusBadge";
 import { ShareDesignButton } from "./ShareDesignButton";
 
 const notesSchema = z.object({
@@ -268,6 +276,14 @@ export function DesignDetailPage() {
   const canReview = role === Role.Client;
   const canUpload = usePermission(Role.Artist);
 
+  const { data: design } = useGetDesignQuery(designId ?? "", { skip: !designId });
+  const { data: client } = useGetClientByIdQuery(design?.clientId ?? "", { skip: !design?.clientId });
+
+  useDocumentMeta({
+    title:     design ? `${design.title} — Designs — Pena e Artë` : "Designs — Pena e Artë",
+    canonical: `/designs/${designId ?? ""}`,
+  });
+
   const { data: revisions, isLoading, isError } =
     useGetRevisionsQuery(designId ?? "", { skip: !designId });
 
@@ -298,6 +314,26 @@ export function DesignDetailPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        {design && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg font-semibold leading-tight">{design.title}</h1>
+              <DesignStatusBadge status={design.status} />
+            </div>
+            {client && (
+              <p className="text-sm text-muted-foreground">
+                For {client.firstName} {client.lastName}
+              </p>
+            )}
+            {design.status === "ChangesRequested" && (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>The client has requested changes. Upload a new revision to continue.</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {isLoading && (
           <div className="space-y-4" aria-label="Loading revisions">
             {Array.from({ length: 3 }).map((_, i) => (

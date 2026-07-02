@@ -18,26 +18,43 @@ public class CreateDesignShareTokenHandler(
 {
     public async Task<DesignShareTokenResponse> Handle(CreateDesignShareTokenCommand command, CancellationToken ct)
     {
-        bool revisionExists = await db.DesignRevisions
-            .AnyAsync(r => r.Id == command.DesignRevisionId, ct);
+        DesignRevision? revision = await db.DesignRevisions
+            .FirstOrDefaultAsync(r => r.Id == command.DesignRevisionId, ct);
 
-        if (!revisionExists)
+        if (revision is null)
             throw new NotFoundException(nameof(DesignRevision), command.DesignRevisionId);
 
-        DesignShareToken shareToken = new()
+        if (currentUser.Role == "artist")
         {
-            StudioId         = tenant.StudioId,
-            Token            = Guid.NewGuid().ToString("N"),
-            DesignRevisionId = command.DesignRevisionId,
-            CreatedByUserId  = currentUser.UserId,
-            ExpiresAt        = DateTime.UtcNow.AddDays(30)
-        };
+            bool ownsDesign = await db.Designs
+                .Join(db.Artists, d => d.ArtistId, a => a.Id, (d, a) => new { d.Id, a.UserId })
+                .AnyAsync(x => x.Id == revision.DesignId && x.UserId == currentUser.UserId, ct);
+            if (!ownsDesign) throw new ForbiddenException();
+        }
 
-        db.DesignShareTokens.Add(shareToken);
-        await db.SaveChangesAsync(ct);
+        DesignShareToken? active = await db.DesignShareTokens
+            .Where(t => t.DesignRevisionId == command.DesignRevisionId
+                     && !t.IsRevoked
+                     && t.ExpiresAt > DateTime.UtcNow)
+            .FirstOrDefaultAsync(ct);
 
-        string shareUrl = $"https://penaearte.com/share/{shareToken.Token}";
+        if (active is null)
+        {
+            active = new DesignShareToken
+            {
+                StudioId         = tenant.StudioId,
+                Token            = Guid.NewGuid().ToString("N"),
+                DesignRevisionId = command.DesignRevisionId,
+                CreatedByUserId  = currentUser.UserId,
+                ExpiresAt        = DateTime.UtcNow.AddDays(30)
+            };
 
-        return new DesignShareTokenResponse(shareToken.Id, shareToken.Token, shareUrl, shareToken.ExpiresAt);
+            db.DesignShareTokens.Add(active);
+            await db.SaveChangesAsync(ct);
+        }
+
+        string shareUrl = $"https://penaearte.com/share/{active.Token}";
+
+        return new DesignShareTokenResponse(active.Id, active.Token, shareUrl, active.ExpiresAt);
     }
 }

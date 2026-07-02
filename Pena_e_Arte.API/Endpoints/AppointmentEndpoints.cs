@@ -29,10 +29,11 @@ public static class AppointmentEndpoints
     private static async Task<IResult> GetAppointments(
         DateTime?         from,
         DateTime?         to,
+        Guid?             artistId,
         ISender           mediator,
         CancellationToken ct)
     {
-        List<AppointmentResponse> result = await mediator.Send(new GetAppointmentsQuery(from, to), ct);
+        List<AppointmentResponse> result = await mediator.Send(new GetAppointmentsQuery(from, to, artistId), ct);
         return Results.Ok(result);
     }
 

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
+import { cn } from "@/shared/utils/cn";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
@@ -25,6 +26,14 @@ const TERMINAL_STATUSES = new Set<AppointmentStatus>([
   AppointmentStatus.Completed,
   AppointmentStatus.NoShow,
 ]);
+
+const STATUS_BORDER: Record<AppointmentStatus, string> = {
+  Confirmed: "border-l-4 border-l-green-500/60",
+  Pending:   "border-l-4 border-l-amber-500/60",
+  Completed: "border-l-4 border-l-muted-foreground/30 opacity-60",
+  Cancelled: "border-l-4 border-l-destructive/30 opacity-50",
+  NoShow:    "border-l-4 border-l-destructive/30 opacity-50",
+};
 
 function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -63,7 +72,10 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
   return (
     <Card
-      className="cursor-pointer hover:border-ring/50 transition-colors"
+      className={cn(
+        "cursor-pointer hover:border-ring/50 transition-colors",
+        STATUS_BORDER[appointment.status],
+      )}
       onClick={() => navigate(`/appointments/${appointment.id}`)}
     >
       <CardContent className="p-4 flex items-start justify-between gap-4">
@@ -72,6 +84,9 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             <span className="font-medium text-sm">
               {formatTime(appointment.date)} – {formatTime(appointment.endDate)}
             </span>
+            {appointment.clientName && (
+              <span className="text-sm truncate">{appointment.clientName}</span>
+            )}
             <span className="text-xs text-muted-foreground">{appointment.durationMinutes} min</span>
             <AppointmentStatusBadge status={appointment.status} />
           </div>

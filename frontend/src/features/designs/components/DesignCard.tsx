@@ -5,6 +5,7 @@ import { Button } from "@/shared/components/ui/button";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import type { DesignResponse } from "../design.types";
+import { DesignStatusBadge } from "./DesignStatusBadge";
 
 interface DesignCardProps {
   design: DesignResponse;
@@ -34,7 +35,10 @@ export function DesignCard({ design }: DesignCardProps) {
           </div>
 
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-sm font-medium leading-none">{design.title}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium leading-none truncate">{design.title}</p>
+              <DesignStatusBadge status={design.status} />
+            </div>
             {design.description && (
               <p className="text-xs text-muted-foreground truncate">{design.description}</p>
             )}

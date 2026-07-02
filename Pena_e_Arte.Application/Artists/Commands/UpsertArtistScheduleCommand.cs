@@ -29,13 +29,16 @@ public class UpsertArtistScheduleValidator : AbstractValidator<UpsertArtistSched
     }
 }
 
-public class UpsertArtistScheduleHandler(IAppDbContext db, ICurrentTenant tenant)
+public class UpsertArtistScheduleHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser)
     : IRequestHandler<UpsertArtistScheduleCommand>
 {
     public async Task Handle(UpsertArtistScheduleCommand command, CancellationToken ct)
     {
-        bool artistExists = await db.Artists.AnyAsync(a => a.Id == command.ArtistId, ct);
-        if (!artistExists) throw new NotFoundException("Artist", command.ArtistId);
+        Artist? artist = await db.Artists.FirstOrDefaultAsync(a => a.Id == command.ArtistId, ct);
+        if (artist is null) throw new NotFoundException("Artist", command.ArtistId);
+
+        if (currentUser.Role == "artist" && artist.UserId != currentUser.UserId)
+            throw new ForbiddenException();
 
         List<ArtistSchedule> existing =
             await db.ArtistSchedules

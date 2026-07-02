@@ -9,22 +9,24 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class UpsertArtistScheduleHandlerTests
 {
-    private readonly FakeDbContext  _db     = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext   _db         = FakeDbContext.Create();
+    private readonly ICurrentTenant  _tenant     = Substitute.For<ICurrentTenant>();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
+    private readonly Guid            _studioId   = Guid.NewGuid();
 
     public UpsertArtistScheduleHandlerTests()
     {
         _tenant.StudioId.Returns(_studioId);
     }
 
-    private UpsertArtistScheduleHandler CreateSut() => new(_db, _tenant);
+    private UpsertArtistScheduleHandler CreateSut() => new(_db, _tenant, _currentUser);
 
-    private Guid SeedArtist()
+    private Guid SeedArtist(Guid? userId = null)
     {
         var artist = new Domain.Entities.Artist
         {
             StudioId  = _studioId,
+            UserId    = userId,
             FirstName = "Test",
             LastName  = "Artist",
             Email     = $"{Guid.NewGuid()}@test.com",
@@ -115,5 +117,31 @@ public class UpsertArtistScheduleHandlerTests
         _db.ArtistSchedules.Should().HaveCount(2);
         _db.ArtistSchedules.First(s => s.DayOfWeek == DayOfWeek.Wednesday).StartTime
            .Should().Be(TimeSpan.FromHours(11));
+    }
+
+    [Fact]
+    public async Task Handle_ArtistEditingOwnSchedule_Succeeds()
+    {
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        Guid artistId = SeedArtist(artistUser.UserId);
+        UpsertArtistScheduleHandler sut = new(_db, _tenant, artistUser);
+
+        List<ScheduleEntryDto> entries = [new(DayOfWeek.Monday, TimeSpan.FromHours(9), TimeSpan.FromHours(17), true)];
+
+        Func<Task> act = () => sut.Handle(new UpsertArtistScheduleCommand(artistId, entries), default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistEditingAnotherArtistsSchedule_ThrowsForbidden()
+    {
+        Guid artistId = SeedArtist(Guid.NewGuid());
+        FakeCurrentUser otherArtistUser = FakeCurrentUser.Artist();
+        UpsertArtistScheduleHandler sut = new(_db, _tenant, otherArtistUser);
+
+        Func<Task> act = () => sut.Handle(new UpsertArtistScheduleCommand(artistId, []), default);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
     }
 }

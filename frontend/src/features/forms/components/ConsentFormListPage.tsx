@@ -1,4 +1,5 @@
 import { FileSignature } from "lucide-react";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -53,6 +54,8 @@ function ConsentFormRow({ form }: { form: ConsentFormResponse }) {
 }
 
 export function ConsentFormListPage() {
+  useDocumentMeta({ title: "Consent Forms — Pena e Artë", canonical: "/forms/consent" });
+
   const [searchParams] = useSearchParams();
   const clientId      = searchParams.get("clientId")      ?? undefined;
   const appointmentId = searchParams.get("appointmentId") ?? undefined;

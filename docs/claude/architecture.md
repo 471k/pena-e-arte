@@ -658,6 +658,115 @@ PII rules:
 
 ---
 
+## Artist QA Pass — 2026-07-01
+
+Bug-hunt + polish pass over the artist role, per `docs/claude/overnight-prompt-artist-qa-polish-2026-07-01.md`.
+Backend: 1203/1203 tests green. Frontend: 1232/1232 green (two pre-existing flaky
+tests under full-parallel load — `StudioProfilePage.test.tsx`, `BookPage.test.tsx`
+— both pass in isolation and are unrelated to this pass).
+
+### Bugs found and fixed
+
+**Backend — artist-scope / authorization gaps (all allowed one artist to act on
+another artist's data by guessing a GUID, since only tenant scope was enforced):**
+
+- `DeleteArtistTimeOffCommand.cs` → no ownership check at all → added artist-owns-artist check
+- `GetAppointmentsQuery.cs` → returned every studio appointment to every caller,
+  including artists (colleague's schedule leak) → artist role now auto-scoped to
+  their own `ArtistId`; added owner-only `artistId` filter param
+- `GetDesignsQuery.cs` → artist calling with no filter (the normal case — `DesignListPage`
+  never sent one) saw every studio design → artist role now auto-scoped
+- `CreateDesignCommand.cs` → trusted the client-supplied `artistId`, letting an artist
+  assign a new design to a colleague → now always overridden with the caller's own artist id
+- `UploadDesignRevisionCommand.cs` → no check that the design belongs to the calling artist
+- `DeleteDesignRevisionCommand.cs` → no check at all
+- `CreateDesignShareTokenCommand.cs` → no artist-scope check; also created a new token
+  on every call even when a valid one already existed (duplicate live share links) →
+  added scope check + de-dup (reuses existing non-expired, non-revoked token)
+- `RevokeDesignShareTokenCommand.cs` → no artist-scope check
+- `ConfirmCashDepositCommand.cs` → no artist-scope check — any artist could confirm
+  cash for any appointment in the tenant, not just their own
+- `GetNotificationsQuery.cs` → artist calling with no filter (both `NotificationBell`
+  and `NotificationLogListPage` always call this way) saw every tenant notification →
+  artist role now auto-scoped to `RecipientType.Artist` + own artist id
+- Finished pre-existing, uncommitted partial work on `UpdateArtistCommand.cs` /
+  `UpsertArtistScheduleCommand.cs` / `AddArtistTimeOffCommand.cs` ownership checks
+  (found mid-flight at session start) — fixed 3 unit tests broken by the incomplete
+  change and added missing artist-scope regression tests for all of the above
+
+**Frontend:**
+
+- `ArtistDetailPage.tsx` → Edit button was gated on `canManage` (owner-only), so an
+  artist could never edit their own profile → now `(canManage || isOwnProfile)`;
+  Delete stays owner-only
+- `ArtistDetailPage.tsx` Schedule tab → fetched *all* studio appointments client-side
+  and filtered by `artistId === id` (performance + minor exposure issue) → now passes
+  `artistId` server-side only for owners; artists rely on the backend auto-scope
+- `DesignDetailPage.tsx` → never fetched the design itself at all — no title, no client
+  name, no status anywhere on the page, only the revision list. There was no
+  `GET /api/v1/designs/{id}` endpoint in the backend to fetch it from. Added
+  `GetDesignQuery` + endpoint, wired the page to show title/client/status header
+  and a "changes requested" callout banner
+
+### Polish implemented (Phase 2, scoped to the highest-value items — see Skipped below)
+
+- **P1.1** Document titles (`useDocumentMeta`) added to Schedule, Clients, Designs,
+  Design detail (dynamic), Intake Forms, Consent Forms, Deposit Rules, Notifications,
+  Artist detail (dynamic), Appointment detail
+- **P1.2** Mobile nav overflow on `ArtistLayout` (`overflow-x-auto scrollbar-none shrink min-w-0`)
+- **P2.2** Client name now shown on `AppointmentCard` (new `AppointmentResponse.ClientName`,
+  joined server-side in `GetAppointmentsQuery`/`GetAppointmentQuery` only — not on
+  mutation-returning handlers)
+- **P2.3** Status colour-coding (left border) on `AppointmentCard`
+- **P4.1** `DesignListPage` sorts `ChangesRequested` designs first; new `DesignStatusBadge`
+  shown on `DesignCard` and `DesignDetailPage`; amber callout banner on
+  `DesignDetailPage` when status is `ChangesRequested`
+- **P3.5** "View public profile" link on an artist's own profile (when a slug exists)
+- **P5.1** "View {client}'s profile" link on `AppointmentDetailPage`
+
+### Decisions made
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Design status | Computed at query time from the latest `DesignRevision.Approval.Status`, not a stored column | No migration needed; `Expired` approvals are treated the same as `ChangesRequested` (artist needs to re-upload either way) |
+| `GetDesignQuery` (`GET /api/v1/designs/{id}`) | New query, tenant-scoped only (no artist restriction) | Matches the existing read-permissive convention already used by `GetDesignRevisionsQuery` — reads are open to all `ClientAndAbove` roles within the tenant, only mutations are scope-restricted |
+| `AppointmentResponse.ClientName` | Optional trailing field, populated only by `GetAppointmentsQuery`/`GetAppointmentQuery` | Adding it to every command handler that returns an `AppointmentResponse` (Confirm/Cancel/Complete/etc.) would require an `Include(a => a.Client)` on each; scoped to the two read paths that actually need it for now |
+| Design review (`ReviewDesignCommand`) artist/owner access | Left unchanged — no additional ownership check added | Consistent with the existing `FindClientForUserAsync` convention elsewhere in the app: the check only applies when `currentUser.Role == "client"`; staff (artist/owner) are trusted to act within their own tenant on `ClientAndAbove` endpoints. Restricting this would be an inconsistent, one-off deviation from that pattern |
+
+### Skipped / deferred (with reason)
+
+- **P2.1** "Book appointment from schedule" — a genuinely new feature (extracting
+  `BookAppointmentForm` into a shared component + wiring an artist-facing creation
+  flow), too large for this pass
+- **P2.4** "Next up" indicator on today's schedule — lower value than the security
+  fixes; time was reallocated
+- **P3.1** Working-hours / time-off editing UI on the artist's own profile — the
+  backend already fully supports this and is now correctly artist-scoped
+  (`GetArtistScheduleQuery` / `UpsertArtistScheduleCommand` / `AddArtistTimeOffCommand`),
+  but the editing UI itself is a sizeable new component that wasn't built this pass
+- **P3.2 / P3.3 / P3.4** Bio field, avatar upload, Instagram handle on the artist's
+  own profile — none of these exist in `UpdateArtistRequest` or the `Artist` entity
+  today; would need contract + entity + migration changes, deferred
+- **P4.2** Share-link QR code — needs a new endpoint plus `QRCoder` usage, deferred
+- **P5.2 / P5.3** `PortableProfileToggle` help text, tattoo-history gallery/lightbox
+  on `ClientDetailPage` — not touched this pass
+- **P6.1** Notification deep-linking to the source entity — `NotificationLog` has no
+  `Type`/entity-reference field at all; adding one touches every Hangfire
+  notification-sending command in the app, too large for this pass
+- **P6.2** Per-user notification preferences — the real data model
+  (`StudioNotificationPreference`) is studio-wide by design, not per-user as the
+  prompt assumed. This is intentional architecture, not a bug — no change made
+- **P7.1–P7.5** Global toast/confirmation/spinner/error-retry/accessibility audit —
+  spot-checked during the Layer B/C review and found already compliant in most
+  flows (the existing test suite already asserts these); a full line-by-line audit
+  of every artist-accessible button was not performed
+- Reschedule feature — the backend endpoint (`RescheduleAppointmentCommand`) exists
+  but there is no frontend UI for it at all, for either role. Pre-existing gap, not
+  built this pass
+- `ArtistListPage` "this is you" indicator on the artist's own row — not implemented
+
+---
+
 ## Decisions Log
 
 Record significant architectural decisions here so Claude Code

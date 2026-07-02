@@ -14,9 +14,13 @@ export const appointmentsApi = createApi({
   tagTypes: ["Appointment"],
   endpoints: (builder) => ({
     getAppointments: builder.query<AppointmentResponse[], GetAppointmentsParams>({
-      query: ({ from, to } = {}) => ({
+      query: ({ from, to, artistId } = {}) => ({
         url:    "appointments",
-        params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+        params: {
+          ...(from ? { from } : {}),
+          ...(to ? { to } : {}),
+          ...(artistId ? { artistId } : {}),
+        },
       }),
       providesTags: ["Appointment"],
     }),

@@ -4,10 +4,13 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetDepositRulesQuery } from "../depositRulesApi";
 import { DepositRuleCard } from "./DepositRuleCard";
 
 export function DepositRuleListPage() {
+  useDocumentMeta({ title: "Deposit Rules — Pena e Artë", canonical: "/deposit-rules" });
+
   const navigate = useNavigate();
   const canManage = usePermission(Role.Owner);
   const { data: rules, isLoading, isError } = useGetDepositRulesQuery();

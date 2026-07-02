@@ -15,9 +15,10 @@ public class GetAppointmentHandler(IAppDbContext db)
     public async Task<AppointmentResponse> Handle(GetAppointmentQuery query, CancellationToken ct)
     {
         Domain.Entities.Appointment appointment = await db.Appointments
+            .Include(a => a.Client)
             .FirstOrDefaultAsync(a => a.Id == query.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), query.AppointmentId);
 
-        return CreateAppointmentHandler.Map(appointment);
+        return CreateAppointmentHandler.Map(appointment, $"{appointment.Client.FirstName} {appointment.Client.LastName}");
     }
 }

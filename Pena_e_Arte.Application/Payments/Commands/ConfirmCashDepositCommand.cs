@@ -27,13 +27,21 @@ public class ConfirmCashDepositHandler(IAppDbContext db, ICurrentUser currentUse
         if (payment.Status != PaymentStatus.CashPending)
             throw new BusinessRuleViolationException("This cash payment has already been confirmed.");
 
+        Appointment? appt = await db.Appointments
+            .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
+
+        if (currentUser.Role == "artist")
+        {
+            bool ownsAppointment = appt is not null && await db.Artists
+                .AnyAsync(a => a.Id == appt.ArtistId && a.UserId == currentUser.UserId, ct);
+            if (!ownsAppointment) throw new ForbiddenException();
+        }
+
         payment.Status                = PaymentStatus.Paid;
         payment.PaidAt                = DateTime.UtcNow;
         payment.CashConfirmedByUserId = currentUser.UserId;
         payment.UpdatedAt             = DateTime.UtcNow;
 
-        Appointment? appt = await db.Appointments
-            .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
         if (appt is not null)
         {
             appt.DepositStatus = DepositStatus.Paid;

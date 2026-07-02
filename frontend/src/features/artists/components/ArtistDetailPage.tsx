@@ -9,6 +9,7 @@ import {
   Banknote,
   Calendar,
   ChevronRight,
+  ExternalLink,
   ImagePlus,
   Loader2,
   Mail,
@@ -39,6 +40,7 @@ import {
   TabsTrigger,
 } from "@/shared/components/ui/tabs";
 import { cn } from "@/shared/utils/cn";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "@/app/hooks";
@@ -84,6 +86,14 @@ export function ArtistDetailPage() {
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
 
   const { data: artist, isLoading, isError } = useGetArtistByIdQuery(id!);
+
+  useDocumentMeta({
+    title: artist
+      ? `${artist.firstName} ${artist.lastName} — Artists — Pena e Artë`
+      : "Artists — Pena e Artë",
+    canonical: `/artists/${id ?? ""}`,
+  });
+
   const [updateArtist,    { isLoading: isSaving }]   = useUpdateArtistMutation();
   const [updatePortfolio, { isLoading: isSavingPf }] = useUpdateArtistPortfolioMutation();
   const [deleteArtist,    { isLoading: isDeleting }] = useDeleteArtistMutation();
@@ -96,10 +106,8 @@ export function ArtistDetailPage() {
   const { data: designs = [], isLoading: designsLoading } =
     useGetDesignsQuery({ artistId: id! }, { skip: !id });
 
-  const { data: allAppointments = [], isLoading: appsLoading } =
-    useGetAppointmentsQuery({}, { skip: !id });
-
-  const artistAppointments = allAppointments.filter((a) => a.artistId === id);
+  const { data: appointments = [], isLoading: appsLoading } =
+    useGetAppointmentsQuery(canManage && id ? { artistId: id } : {}, { skip: !id });
 
   const isOwnProfile = isArtistRole && artist?.userId != null && artist.userId === currentUserId;
   const canManagePortfolio = canManage || isOwnProfile;
@@ -234,21 +242,23 @@ export function ArtistDetailPage() {
           Artists
         </Button>
 
-        {canManage && !isEditing && (
+        {(canManage || isOwnProfile) && !isEditing && (
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
               <Pencil className="h-3.5 w-3.5" />
               Edit
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeleteOpen(true)}
-              className="gap-1.5 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </Button>
+            {canManage && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteOpen(true)}
+                className="gap-1.5 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </Button>
+            )}
           </div>
         )}
 
@@ -408,6 +418,18 @@ export function ArtistDetailPage() {
                     <Calendar className="h-3.5 w-3.5 shrink-0" />
                     <span>Joined {formatDate(artist.createdAt)}</span>
                   </div>
+
+                  {isOwnProfile && artist.slug && (
+                    <a
+                      href={`${import.meta.env.VITE_PUBLIC_URL ?? window.location.origin}/artist/${artist.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      View public profile
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                 </CardContent>
               </Card>
 
@@ -494,14 +516,14 @@ export function ArtistDetailPage() {
                   {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
                 </div>
               )}
-              {!appsLoading && artistAppointments.length === 0 && (
+              {!appsLoading && appointments.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   No appointments found.
                 </p>
               )}
-              {!appsLoading && artistAppointments.length > 0 && (
+              {!appsLoading && appointments.length > 0 && (
                 <div className="space-y-2">
-                  {artistAppointments.map((appt) => (
+                  {appointments.map((appt) => (
                     <Link
                       key={appt.id}
                       to={`/appointments/${appt.id}`}

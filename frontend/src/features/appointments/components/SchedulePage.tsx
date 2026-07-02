@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { CalendarDays, ChevronLeft, ChevronRight, PenLine } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -46,6 +47,8 @@ function isSameDay(a: Date, b: Date): boolean {
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function SchedulePage() {
+  useDocumentMeta({ title: "Schedule — Pena e Artë", canonical: "/schedule" });
+
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
 
   const weekEnd = addDays(weekStart, 7);

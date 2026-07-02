@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Plus, Search, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -29,6 +30,8 @@ function ClientRowSkeleton() {
 }
 
 export function ClientListPage() {
+  useDocumentMeta({ title: "Clients — Pena e Artë", canonical: "/clients" });
+
   const navigate  = useNavigate();
   const canCreate = usePermission(Role.Artist);
   const [inputValue, setInputValue] = useState("");

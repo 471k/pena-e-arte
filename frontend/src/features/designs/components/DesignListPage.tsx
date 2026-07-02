@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Palette, Plus, Search } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
@@ -28,6 +29,8 @@ function DesignCardSkeleton() {
 }
 
 export function DesignListPage() {
+  useDocumentMeta({ title: "Designs — Pena e Artë", canonical: "/designs" });
+
   const navigate = useNavigate();
   const canCreate = usePermission(Role.Artist);
   const [searchParams] = useSearchParams();
@@ -41,10 +44,18 @@ export function DesignListPage() {
 
   const filteredDesigns = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return designs ?? [];
-    return (designs ?? []).filter((d) =>
-      d.title.toLowerCase().includes(term),
-    );
+    const matching = term
+      ? (designs ?? []).filter((d) => d.title.toLowerCase().includes(term))
+      : (designs ?? []);
+
+    // Designs awaiting a new revision from the artist are the most time-sensitive —
+    // surface them first regardless of creation date.
+    return [...matching].sort((a, b) => {
+      const aUrgent = a.status === "ChangesRequested";
+      const bUrgent = b.status === "ChangesRequested";
+      if (aUrgent === bUrgent) return 0;
+      return aUrgent ? -1 : 1;
+    });
   }, [designs, search]);
 
   const hasDesigns = (designs?.length ?? 0) > 0;

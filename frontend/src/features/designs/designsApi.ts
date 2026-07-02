@@ -25,6 +25,10 @@ export const designsApi = createApi({
       }),
       providesTags: ["Design"],
     }),
+    getDesign: builder.query<DesignResponse, string>({
+      query: (id) => `designs/${id}`,
+      providesTags: (_result, _error, id) => [{ type: "Design", id }],
+    }),
     createDesign: builder.mutation<DesignResponse, CreateDesignRequest>({
       query: (body) => ({ url: "designs", method: "POST", body }),
       invalidatesTags: ["Design"],
@@ -73,6 +77,7 @@ export const designsApi = createApi({
 
 export const {
   useGetDesignsQuery,
+  useGetDesignQuery,
   useCreateDesignMutation,
   useUploadRevisionMutation,
   useGetRevisionsQuery,

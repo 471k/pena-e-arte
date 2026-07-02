@@ -294,12 +294,30 @@ describe("Artists feature", () => {
   });
 
   // 6. Artist role — permission gate
-  it("logged in as Artist role: Edit and Delete buttons are hidden", async () => {
+  it("logged in as Artist role: Edit and Delete buttons are hidden for another artist's profile", async () => {
     renderDetail(ELENA.id, Role.Artist);
 
     await screen.findByText("EM");
 
     expect(screen.queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+  });
+
+  // 7. Artist role — own profile
+  it("logged in as Artist role viewing own profile: Edit shows, Delete stays hidden", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists/:id", ({ params }) => {
+        const artist = ARTISTS.find((a) => a.id === params.id);
+        if (!artist) return new HttpResponse(null, { status: 404 });
+        return HttpResponse.json({ ...artist, userId: "u1" });
+      }),
+    );
+
+    renderDetail(ELENA.id, Role.Artist);
+
+    await screen.findByText("EM");
+
+    expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
   });
 });

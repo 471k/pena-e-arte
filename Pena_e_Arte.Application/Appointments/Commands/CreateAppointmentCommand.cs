@@ -132,11 +132,12 @@ public class CreateAppointmentHandler(
         }
     }
 
-    internal static AppointmentResponse Map(Appointment a) => new(
+    internal static AppointmentResponse Map(Appointment a, string? clientName = null) => new(
         a.Id, a.StudioId, a.ArtistId, a.ClientId,
         a.Date, a.EndDate, a.DurationMinutes,
         a.Status.ToString(), a.DepositStatus.ToString(),
         a.DepositAmount, a.Notes, a.CreatedAt,
         a.CancellationReason?.ToString(),
-        a.AftercareSentAt);
+        a.AftercareSentAt,
+        clientName);
 }

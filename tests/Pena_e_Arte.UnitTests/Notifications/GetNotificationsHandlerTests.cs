@@ -9,9 +9,10 @@ namespace Pena_e_Arte.UnitTests.Notifications;
 
 public class GetNotificationsHandlerTests
 {
-    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
 
-    private GetNotificationsHandler CreateSut() => new(_db);
+    private GetNotificationsHandler CreateSut() => new(_db, _currentUser);
 
     [Fact]
     public async Task Handle_NoFilters_ReturnsAllLogsForTenant()
@@ -200,6 +201,59 @@ public class GetNotificationsHandlerTests
             .Handle(new GetNotificationsQuery(null, null, null, null), default);
 
         result.Single().RecipientName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistCaller_ReturnsOnlyOwnArtistNotifications()
+    {
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        Guid studioId = Guid.NewGuid();
+        var artist = new Artist
+        {
+            StudioId  = studioId,
+            UserId    = artistUser.UserId,
+            FirstName = "Art",
+            LastName  = "Ist",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Artists.Add(artist);
+
+        _db.NotificationLogs.Add(BuildLog(studioId, artist.Id, NotificationChannel.Email, recipientType: NotificationRecipientType.Artist));
+        _db.NotificationLogs.Add(BuildLog(studioId, Guid.NewGuid(), NotificationChannel.Email, recipientType: NotificationRecipientType.Artist));
+        _db.NotificationLogs.Add(BuildLog(studioId, Guid.NewGuid(), NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
+        await _db.SaveChangesAsync();
+
+        GetNotificationsHandler sut = new(_db, artistUser);
+        List<NotificationLogResponse> result = await sut.Handle(new GetNotificationsQuery(null, null, null, null), default);
+
+        result.Should().ContainSingle(n => n.RecipientId == artist.Id);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistCaller_IgnoresRequestedRecipientIdFilter()
+    {
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        Guid studioId = Guid.NewGuid();
+        var artist = new Artist
+        {
+            StudioId  = studioId,
+            UserId    = artistUser.UserId,
+            FirstName = "Art",
+            LastName  = "Ist",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Artists.Add(artist);
+
+        Guid otherRecipientId = Guid.NewGuid();
+        _db.NotificationLogs.Add(BuildLog(studioId, artist.Id, NotificationChannel.Email, recipientType: NotificationRecipientType.Artist));
+        _db.NotificationLogs.Add(BuildLog(studioId, otherRecipientId, NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
+        await _db.SaveChangesAsync();
+
+        GetNotificationsHandler sut = new(_db, artistUser);
+        List<NotificationLogResponse> result = await sut.Handle(
+            new GetNotificationsQuery(otherRecipientId, null, null, null), default);
+
+        result.Should().ContainSingle(n => n.RecipientId == artist.Id);
     }
 
     private void SeedLogs(Guid studioId, int count)

@@ -10,8 +10,9 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { designsApi } from "@/features/designs/designsApi";
+import { clientsApi } from "@/features/clients/clientsApi";
 import { DesignDetailPage } from "@/features/designs/components/DesignDetailPage";
-import type { DesignRevisionResponse } from "@/features/designs/design.types";
+import type { DesignRevisionResponse, DesignResponse } from "@/features/designs/design.types";
 import { Role } from "@/shared/types/roles";
 
 // ── SignalR mock (ShareDesignButton dialog uses no SignalR, but guard against
@@ -69,9 +70,29 @@ const REV_CHANGES: DesignRevisionResponse = {
   approvalNotes:  "Please change the colour scheme.",
 };
 
+const DESIGN: DesignResponse = {
+  id:          DESIGN_ID,
+  studioId:    "s-001",
+  clientId:    "c-001",
+  artistId:    "a-001",
+  title:       "Dragon Sleeve",
+  description: null,
+  createdAt:   "2024-01-01T00:00:00Z",
+  status:      "InReview",
+};
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/designs/:designId", () =>
+    HttpResponse.json(DESIGN),
+  ),
+  http.get("http://localhost/api/v1/clients/:clientId", () =>
+    HttpResponse.json({
+      id: "c-001", studioId: "s-001", firstName: "Ana", lastName: "Costa",
+      email: "ana@test.com", phone: null, createdAt: "2024-01-01T00:00:00Z", userId: null,
+    }),
+  ),
   http.get("http://localhost/api/v1/designs/:designId/revisions", () =>
     HttpResponse.json([REV_PENDING]),
   ),
@@ -106,8 +127,9 @@ function makeStore(role: Role = Role.Client) {
       auth:                     authReducer,
       ui:                       uiReducer,
       [designsApi.reducerPath]: designsApi.reducer,
+      [clientsApi.reducerPath]: clientsApi.reducer,
     },
-    middleware: (gd) => gd().concat(designsApi.middleware),
+    middleware: (gd) => gd().concat(designsApi.middleware, clientsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
@@ -353,5 +375,27 @@ describe("DesignDetailPage", () => {
     await screen.findByText("Pending");
     await user.click(screen.getByRole("button", { name: /designs/i }));
     expect(screen.getByTestId("designs-list")).toBeInTheDocument();
+  });
+
+  // ── Header: title, client, status ────────────────────────────────────────────
+
+  it("renders the design title, client name, and status badge", async () => {
+    renderPage(Role.Client);
+
+    expect(await screen.findByRole("heading", { name: "Dragon Sleeve" })).toBeInTheDocument();
+    expect(await screen.findByText(/for ana costa/i)).toBeInTheDocument();
+    expect(await screen.findByText("In Review")).toBeInTheDocument();
+  });
+
+  it("shows a 'changes requested' banner when the design status is ChangesRequested", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/designs/:designId", () =>
+        HttpResponse.json({ ...DESIGN, status: "ChangesRequested" }),
+      ),
+    );
+
+    renderPage(Role.Artist);
+
+    expect(await screen.findByText(/the client has requested changes/i)).toBeInTheDocument();
   });
 });

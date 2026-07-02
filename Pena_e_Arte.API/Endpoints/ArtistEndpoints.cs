@@ -17,7 +17,7 @@ public static class ArtistEndpoints
         group.MapGet("me",                                  GetMyArtist).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/",                                  CreateArtist).RequireAuthorization("OwnerOnly");
         group.MapGet("{id:guid}",                           GetArtist).RequireAuthorization("ClientAndAbove");
-        group.MapPut("{id:guid}",                           UpdateArtist).RequireAuthorization("OwnerOnly");
+        group.MapPut("{id:guid}",                           UpdateArtist).RequireAuthorization("ArtistAndAbove");
         group.MapPut("{id:guid}/portfolio-images",          UpdatePortfolio).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{id:guid}",                        DeleteArtist).RequireAuthorization("OwnerOnly");
         // P-05: Artist Working Hours

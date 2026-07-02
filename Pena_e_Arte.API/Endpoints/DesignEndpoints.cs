@@ -15,6 +15,7 @@ public static class DesignEndpoints
             .RequireAuthorization();
 
         group.MapGet("/",                                          GetDesigns).RequireAuthorization("ClientAndAbove");
+        group.MapGet("{id:guid}",                                  GetDesign).RequireAuthorization("ClientAndAbove");
         group.MapPost("/",                                         CreateDesign).RequireAuthorization("ArtistAndAbove");
         group.MapGet("{id:guid}/revisions",                        GetRevisions).RequireAuthorization("ClientAndAbove");
         group.MapPost("{id:guid}/revisions",                       UploadRevision).RequireAuthorization("ArtistAndAbove");
@@ -31,6 +32,15 @@ public static class DesignEndpoints
         CancellationToken ct)
     {
         List<DesignResponse> result = await mediator.Send(new GetDesignsQuery(clientId, artistId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetDesign(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        DesignResponse result = await mediator.Send(new GetDesignQuery(id), ct);
         return Results.Ok(result);
     }
 

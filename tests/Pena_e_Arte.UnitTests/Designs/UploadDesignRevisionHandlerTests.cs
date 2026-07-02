@@ -16,12 +16,13 @@ public class UploadDesignRevisionHandlerTests
     private readonly ICurrentTenant    _tenant       = Substitute.For<ICurrentTenant>();
     private readonly IRealtimeNotifier _realtime     = Substitute.For<IRealtimeNotifier>();
     private readonly IJobScheduler     _jobScheduler = Substitute.For<IJobScheduler>();
+    private readonly FakeCurrentUser   _currentUser  = FakeCurrentUser.Owner();
     private readonly Guid              _studioId     = Guid.NewGuid();
 
     public UploadDesignRevisionHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
 
-    private UploadDesignRevisionHandler CreateSut() => new(_db, _tenant, _realtime, _jobScheduler);
+    private UploadDesignRevisionHandler CreateSut() => new(_db, _tenant, _realtime, _jobScheduler, _currentUser);
 
     [Fact]
     public async Task Handle_FirstRevision_SetsVersionNumberToOne()
@@ -105,10 +106,51 @@ public class UploadDesignRevisionHandlerTests
         result.FileUrl.Should().Be(url);
     }
 
-    private async Task<Guid> SeedDesign()
+    [Fact]
+    public async Task Handle_ArtistOwningDesign_Succeeds()
     {
-        Design design = new() { StudioId = _studioId, ClientId = Guid.NewGuid(), ArtistId = Guid.NewGuid(), Title = "Rose" };
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        Guid designId = await SeedDesign(artistUser.UserId);
+        UploadDesignRevisionHandler sut = new(_db, _tenant, _realtime, _jobScheduler, artistUser);
+
+        Func<Task> act = () => sut.Handle(
+            new UploadDesignRevisionCommand(new(designId, "https://r2.example.com/v1.png", null)), default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistNotOwningDesign_ThrowsForbidden()
+    {
+        Guid designId = await SeedDesign(Guid.NewGuid());
+        FakeCurrentUser otherArtistUser = FakeCurrentUser.Artist();
+        UploadDesignRevisionHandler sut = new(_db, _tenant, _realtime, _jobScheduler, otherArtistUser);
+
+        Func<Task> act = () => sut.Handle(
+            new UploadDesignRevisionCommand(new(designId, "https://r2.example.com/v1.png", null)), default);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    private async Task<Guid> SeedDesign(Guid? artistUserId = null)
+    {
+        Guid artistId = Guid.NewGuid();
+        Design design = new() { StudioId = _studioId, ClientId = Guid.NewGuid(), ArtistId = artistId, Title = "Rose" };
         _db.Designs.Add(design);
+
+        if (artistUserId.HasValue)
+        {
+            _db.Artists.Add(new Artist
+            {
+                Id        = artistId,
+                StudioId  = _studioId,
+                UserId    = artistUserId.Value,
+                FirstName = "Art",
+                LastName  = "Ist",
+                Email     = $"{Guid.NewGuid()}@test.com",
+            });
+        }
+
         await _db.SaveChangesAsync();
         return design.Id;
     }

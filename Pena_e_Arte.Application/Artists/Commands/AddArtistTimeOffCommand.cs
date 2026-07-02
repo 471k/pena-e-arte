@@ -28,13 +28,16 @@ public class AddArtistTimeOffValidator : AbstractValidator<AddArtistTimeOffComma
     }
 }
 
-public class AddArtistTimeOffHandler(IAppDbContext db, ICurrentTenant tenant)
+public class AddArtistTimeOffHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser)
     : IRequestHandler<AddArtistTimeOffCommand, Guid>
 {
     public async Task<Guid> Handle(AddArtistTimeOffCommand command, CancellationToken ct)
     {
-        bool artistExists = await db.Artists.AnyAsync(a => a.Id == command.ArtistId, ct);
-        if (!artistExists) throw new NotFoundException("Artist", command.ArtistId);
+        Artist? artist = await db.Artists.FirstOrDefaultAsync(a => a.Id == command.ArtistId, ct);
+        if (artist is null) throw new NotFoundException("Artist", command.ArtistId);
+
+        if (currentUser.Role == "artist" && artist.UserId != currentUser.UserId)
+            throw new ForbiddenException();
 
         ArtistTimeOff timeOff = new()
         {

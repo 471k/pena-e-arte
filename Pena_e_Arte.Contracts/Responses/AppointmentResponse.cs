@@ -14,4 +14,5 @@ public record AppointmentResponse(
     string?  Notes,
     DateTime CreatedAt,
     string?  CancellationReason  = null,
-    DateTime? AftercareSentAt    = null);
+    DateTime? AftercareSentAt    = null,
+    string?  ClientName          = null);

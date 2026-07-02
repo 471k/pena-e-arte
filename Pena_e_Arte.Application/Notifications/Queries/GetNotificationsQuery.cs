@@ -5,6 +5,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Notifications.Queries;
 
@@ -14,7 +15,7 @@ public record GetNotificationsQuery(
     DateTime? From,
     DateTime? To) : IRequest<List<NotificationLogResponse>>;
 
-public class GetNotificationsHandler(IAppDbContext db)
+public class GetNotificationsHandler(IAppDbContext db, ICurrentUser currentUser)
     : IRequestHandler<GetNotificationsQuery, List<NotificationLogResponse>>
 {
     public async Task<List<NotificationLogResponse>> Handle(
@@ -22,8 +23,22 @@ public class GetNotificationsHandler(IAppDbContext db)
     {
         IQueryable<NotificationLog> q = db.NotificationLogs.AsNoTracking();
 
-        if (query.RecipientId.HasValue)
+        if (currentUser.Role == "artist")
+        {
+            // An artist only ever sees notifications addressed to them — never the
+            // full studio log (which may include other artists' or clients' details).
+            Guid? myArtistId = await db.Artists
+                .Where(a => a.UserId == currentUser.UserId)
+                .Select(a => (Guid?)a.Id)
+                .FirstOrDefaultAsync(ct);
+
+            q = q.Where(n => n.RecipientType == NotificationRecipientType.Artist
+                           && n.RecipientId == myArtistId);
+        }
+        else if (query.RecipientId.HasValue)
+        {
             q = q.Where(n => n.RecipientId == query.RecipientId.Value);
+        }
 
         if (query.Channel is not null)
             q = q.Where(n => n.Channel.ToString() == query.Channel);

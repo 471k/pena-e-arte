@@ -24,6 +24,7 @@ const DESIGN_A: DesignResponse = {
   title:       "Dragon Sleeve",
   description: "Full sleeve concept",
   createdAt:   "2024-01-15T10:00:00Z",
+  status:      "Draft",
 };
 
 const DESIGN_B: DesignResponse = {
@@ -34,6 +35,7 @@ const DESIGN_B: DesignResponse = {
   title:       "Rose Chest",
   description: null,
   createdAt:   "2024-02-01T10:00:00Z",
+  status:      "InReview",
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

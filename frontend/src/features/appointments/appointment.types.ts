@@ -30,6 +30,7 @@ export interface AppointmentResponse {
   createdAt:          string;
   cancellationReason?: string | null;
   aftercareSentAt?:    string | null;
+  clientName?:         string | null;
 }
 
 export interface CreateAppointmentRequest {
@@ -42,8 +43,9 @@ export interface CreateAppointmentRequest {
 }
 
 export interface GetAppointmentsParams {
-  from?: string;
-  to?:   string;
+  from?:     string;
+  to?:       string;
+  artistId?: string;
 }
 
 export interface SlotAvailabilityResponse {

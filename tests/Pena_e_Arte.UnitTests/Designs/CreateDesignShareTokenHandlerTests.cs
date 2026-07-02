@@ -64,7 +64,50 @@ public class CreateDesignShareTokenHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
-    private async Task<Guid> SeedRevision()
+    [Fact]
+    public async Task Handle_ActiveTokenAlreadyExists_ReturnsExistingTokenInstead()
+    {
+        Guid revisionId = await SeedRevision();
+
+        DesignShareTokenResponse first = await CreateSut()
+            .Handle(new CreateDesignShareTokenCommand(revisionId), default);
+        DesignShareTokenResponse second = await CreateSut()
+            .Handle(new CreateDesignShareTokenCommand(revisionId), default);
+
+        second.Id.Should().Be(first.Id);
+        second.Token.Should().Be(first.Token);
+        _db.DesignShareTokens.Count(t => t.DesignRevisionId == revisionId).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_PreviousTokenRevoked_CreatesNewToken()
+    {
+        Guid revisionId = await SeedRevision();
+
+        DesignShareTokenResponse first = await CreateSut()
+            .Handle(new CreateDesignShareTokenCommand(revisionId), default);
+        _db.DesignShareTokens.First(t => t.Id == first.Id).IsRevoked = true;
+        await _db.SaveChangesAsync();
+
+        DesignShareTokenResponse second = await CreateSut()
+            .Handle(new CreateDesignShareTokenCommand(revisionId), default);
+
+        second.Id.Should().NotBe(first.Id);
+        _db.DesignShareTokens.Count(t => t.DesignRevisionId == revisionId).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistNotOwningDesign_ThrowsForbidden()
+    {
+        Guid revisionId = await SeedRevision();
+        _currentUser.Role.Returns("artist");
+
+        Func<Task> act = () => CreateSut().Handle(new CreateDesignShareTokenCommand(revisionId), default);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    private async Task<Guid> SeedRevision(Guid? artistUserId = null)
     {
         Design design = new()
         {
@@ -74,6 +117,19 @@ public class CreateDesignShareTokenHandlerTests
             Title    = "Rose"
         };
         _db.Designs.Add(design);
+
+        if (artistUserId.HasValue)
+        {
+            _db.Artists.Add(new Artist
+            {
+                Id        = design.ArtistId,
+                StudioId  = _studioId,
+                UserId    = artistUserId.Value,
+                FirstName = "Art",
+                LastName  = "Ist",
+                Email     = $"{Guid.NewGuid()}@test.com",
+            });
+        }
 
         DesignRevision revision = new()
         {

@@ -10,14 +10,15 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class CreateDesignHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly ICurrentTenant  _tenant      = Substitute.For<ICurrentTenant>();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
+    private readonly Guid            _studioId    = Guid.NewGuid();
 
     public CreateDesignHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
 
-    private CreateDesignHandler CreateSut() => new(_db, _tenant);
+    private CreateDesignHandler CreateSut() => new(_db, _tenant, _currentUser);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsDesignResponse()
@@ -52,5 +53,41 @@ public class CreateDesignHandlerTests
         await CreateSut().Handle(new CreateDesignCommand(req), default);
 
         _db.Designs.Single().Description.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistCaller_OverridesRequestedArtistIdWithOwnArtistId()
+    {
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        var artist = new Domain.Entities.Artist
+        {
+            StudioId  = _studioId,
+            UserId    = artistUser.UserId,
+            FirstName = "Art",
+            LastName  = "Ist",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+
+        CreateDesignRequest req = new(Guid.NewGuid(), Guid.NewGuid(), "Rose tattoo", null);
+        CreateDesignHandler sut = new(_db, _tenant, artistUser);
+
+        DesignResponse result = await sut.Handle(new CreateDesignCommand(req), default);
+
+        result.ArtistId.Should().Be(artist.Id);
+        result.ArtistId.Should().NotBe(req.ArtistId);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistCallerWithNoArtistRecord_ThrowsForbidden()
+    {
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        CreateDesignRequest req = new(Guid.NewGuid(), Guid.NewGuid(), "Rose tattoo", null);
+        CreateDesignHandler sut = new(_db, _tenant, artistUser);
+
+        Func<Task> act = () => sut.Handle(new CreateDesignCommand(req), default);
+
+        await act.Should().ThrowAsync<Pena_e_Arte.Domain.Exceptions.ForbiddenException>();
     }
 }

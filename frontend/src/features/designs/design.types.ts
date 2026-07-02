@@ -1,3 +1,5 @@
+export type DesignStatus = "Draft" | "InReview" | "Approved" | "ChangesRequested";
+
 export interface DesignResponse {
   id:          string;
   studioId:    string;
@@ -6,6 +8,7 @@ export interface DesignResponse {
   title:       string;
   description: string | null;
   createdAt:   string;
+  status:      DesignStatus;
 }
 
 export interface GetDesignsParams {

@@ -9,10 +9,11 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class GetAppointmentsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
+    private readonly Guid            _studioId    = Guid.NewGuid();
 
-    private GetAppointmentsHandler CreateSut() => new(_db);
+    private GetAppointmentsHandler CreateSut() => new(_db, _currentUser);
 
     [Fact]
     public async Task Handle_NoFilter_ReturnsAllAppointmentsOrderedByDate()
@@ -91,13 +92,77 @@ public class GetAppointmentsHandlerTests
         result.Should().BeEmpty();
     }
 
-    private async Task SeedAppointment(DateTime date)
+    [Fact]
+    public async Task Handle_ArtistCaller_ReturnsOnlyOwnAppointments()
     {
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        Guid myArtistId = await SeedArtistForUser(artistUser.UserId);
+        Guid otherArtistId = Guid.NewGuid();
+        await SeedAppointment(DateTime.UtcNow.AddDays(1), myArtistId);
+        await SeedAppointment(DateTime.UtcNow.AddDays(2), otherArtistId);
+
+        GetAppointmentsHandler sut = new(_db, artistUser);
+        List<AppointmentResponse> result = await sut.Handle(new GetAppointmentsQuery(null, null), default);
+
+        result.Should().ContainSingle(a => a.ArtistId == myArtistId);
+        result.Should().NotContain(a => a.ArtistId == otherArtistId);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistCaller_IgnoresRequestedArtistIdFilter()
+    {
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        Guid myArtistId = await SeedArtistForUser(artistUser.UserId);
+        Guid otherArtistId = Guid.NewGuid();
+        await SeedAppointment(DateTime.UtcNow.AddDays(1), myArtistId);
+        await SeedAppointment(DateTime.UtcNow.AddDays(2), otherArtistId);
+
+        GetAppointmentsHandler sut = new(_db, artistUser);
+        List<AppointmentResponse> result = await sut.Handle(
+            new GetAppointmentsQuery(null, null, otherArtistId), default);
+
+        result.Should().ContainSingle(a => a.ArtistId == myArtistId);
+    }
+
+    [Fact]
+    public async Task Handle_OwnerCaller_ArtistIdFilter_ReturnsOnlyThatArtist()
+    {
+        Guid targetArtistId = Guid.NewGuid();
+        Guid otherArtistId  = Guid.NewGuid();
+        await SeedAppointment(DateTime.UtcNow.AddDays(1), targetArtistId);
+        await SeedAppointment(DateTime.UtcNow.AddDays(2), otherArtistId);
+
+        List<AppointmentResponse> result = await CreateSut()
+            .Handle(new GetAppointmentsQuery(null, null, targetArtistId), default);
+
+        result.Should().ContainSingle(a => a.ArtistId == targetArtistId);
+    }
+
+    private async Task<Guid> SeedArtistForUser(Guid userId)
+    {
+        var artist = new Artist
+        {
+            StudioId  = _studioId,
+            UserId    = userId,
+            FirstName = "Art",
+            LastName  = "Ist",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+        return artist.Id;
+    }
+
+    private async Task SeedAppointment(DateTime date, Guid? artistId = null)
+    {
+        Client client = new() { StudioId = _studioId, FirstName = "Test", LastName = "Client", Email = $"{Guid.NewGuid()}@test.com" };
+        _db.Clients.Add(client);
+
         _db.Appointments.Add(new Appointment
         {
             StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = Guid.NewGuid(),
+            ArtistId        = artistId ?? Guid.NewGuid(),
+            ClientId        = client.Id,
             Date            = date,
             EndDate         = date.AddHours(1),
             DurationMinutes = 60,

@@ -15,7 +15,8 @@ public class UploadDesignRevisionHandler(
     IAppDbContext     db,
     ICurrentTenant    tenant,
     IRealtimeNotifier realtime,
-    IJobScheduler     jobScheduler)
+    IJobScheduler     jobScheduler,
+    ICurrentUser      currentUser)
     : IRequestHandler<UploadDesignRevisionCommand, DesignRevisionResponse>
 {
     private const int RevisionTimeoutDays = 14;
@@ -24,8 +25,15 @@ public class UploadDesignRevisionHandler(
     {
         UploadDesignRevisionRequest req = command.Request;
 
-        bool designExists = await db.Designs.AnyAsync(d => d.Id == req.DesignId, ct);
-        if (!designExists) throw new NotFoundException(nameof(Design), req.DesignId);
+        Design? design = await db.Designs.FirstOrDefaultAsync(d => d.Id == req.DesignId, ct);
+        if (design is null) throw new NotFoundException(nameof(Design), req.DesignId);
+
+        if (currentUser.Role == "artist")
+        {
+            bool ownsDesign = await db.Artists
+                .AnyAsync(a => a.Id == design.ArtistId && a.UserId == currentUser.UserId, ct);
+            if (!ownsDesign) throw new ForbiddenException();
+        }
 
         int nextVersion = await db.DesignRevisions.CountAsync(r => r.DesignId == req.DesignId, ct) + 1;
 
