@@ -91,7 +91,7 @@ public class UpdatePortableProfileOptInHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ProfileNotFound_ThrowsNotFoundException()
+    public async Task Handle_ProfileNotFound_CreatesOneInsteadOfThrowing()
     {
         Client client = new()
         {
@@ -104,10 +104,10 @@ public class UpdatePortableProfileOptInHandlerTests
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
-        Func<Task> act = () => CreateSut().Handle(
+        await CreateSut().Handle(
             new UpdatePortableProfileOptInCommand(new UpdatePortableProfileOptInRequest(OptIn: true)),
             default);
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        _db.ClientProfiles.Should().ContainSingle(p => p.ClientId == client.Id && p.AllowCrossTenantRead);
     }
 }

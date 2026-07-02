@@ -950,3 +950,133 @@ does not re-litigate them.
 | Issuer page document titles | All 7 issuer routes call `useDocumentMeta` with page-specific titles | Browser tabs and screen readers benefit from descriptive titles; all issuer pages now have unique titles |
 | Per-page error boundaries in issuer routes | `ErrorBoundary` wraps each issuer route element in `router.tsx` | Root `ErrorBoundary` catches everything but shows a blank app; per-page wrapping preserves the layout and nav while showing error UI for a single page |
 | Industry report trigger cooldown | 60-second `useEffect` countdown on trigger button (approved browser timer side-effect) | Prevents accidental double-triggering of an expensive Hangfire job |
+
+---
+
+## Client QA Pass — 2026-07-02
+
+Bug-hunt + polish pass over the client role, per `docs/claude/overnight-prompt-client-qa-polish-2026-07-01.md`.
+Backend: 953 unit + 273 integration tests green. Frontend: 1239/1239 green (tsc clean,
+no flaky failures observed).
+
+### Bugs found and fixed
+
+**Backend:**
+
+- `ReviewDesignCommand.cs` → **critical, real security bug.** The handler had no
+  `ICurrentUser` at all and performed no ownership check whatsoever — it loaded a
+  `DesignRevision` purely by `DesignRevisionId` and let anyone approve or reject it.
+  Any authenticated client could approve/reject a revision on a design that wasn't
+  theirs by guessing/enumerating GUIDs. This directly contradicts a decision recorded
+  during the artist pass, which assumed (without verifying) that the established
+  `FindClientForUserAsync` ownership pattern already applied here — it did not. Fixed
+  by injecting `ICurrentUser`, including `DesignRevision.Design`, and 404ing when
+  `currentUser.Role == "client"` and the resolved client doesn't own the design
+- `GetNotificationsQuery.cs` → same missing-scope bug pattern as the artist branch
+  fixed in an earlier pass, but for `client`. There was no `else if (Role == "client")`
+  branch, so execution fell into the permissive `query.RecipientId.HasValue` case —
+  a client could pass an arbitrary `RecipientId` (another client's, or the studio's)
+  and read those notification logs, or omit it and get the full unfiltered studio log.
+  **Compounding bug:** the endpoint's route policy was `ArtistAndAbove`, which
+  blocked the `client` role entirely — and `ClientLayout` renders `NotificationBell`,
+  which calls this exact endpoint, meaning every client's notification bell was
+  silently broken (403) in production. Fixed both: added the client-scoping branch,
+  and changed the route to `ClientAndAbove`
+- `CreateAppointmentValidator.cs` → `DurationMinutes` was validated with
+  `InclusiveBetween(30, 480)` — any integer in that range, not the discrete set of
+  session lengths the booking form actually offers (`[30, 45, 60, 90, 120, 180, 240,
+  300, 360, 480]`). Tightened to `Must(d => ValidDurations.Contains(d))`, mirroring
+  `BookAppointmentForm.tsx`'s `VALID_DURATIONS`
+- `GetMyClientProfileQuery.cs`, `UpdateMyBodyMapCommand.cs`,
+  `UpdatePortableProfileOptInCommand.cs` → **real functional gap.** A brand-new
+  client with no owner/artist-created `ClientProfile` row yet could never set their
+  own body map or sharing preference: the get-query 404'd (frontend showed
+  "unavailable"), and both update commands *also* 404'd instead of creating the row,
+  so there was no path to ever create one from the client side. Fixed to match the
+  owner-side `UpsertClientProfileCommand`'s existing create-or-update behaviour: the
+  get-query now returns empty defaults instead of 404ing, and both commands
+  auto-create the profile row on first save
+- `SignConsentFormValidator.cs` → `SignatureData` had `MaximumLength(5000)` but no
+  minimum, even though the frontend's Zod schema requires `min(2)` for the typed
+  full-name signature. A 1-character (or whitespace) signature could bypass the
+  frontend and be recorded as a legally-binding consent signature. Added
+  `MinimumLength(2)`
+- Verified and left unchanged (matches established patterns, not bugs): `clientId`
+  trust in `CreateAppointmentCommand`/`SubmitIntakeFormCommand` (always overridden
+  from `ICurrentUser`, request value ignored for the `client` role); duplicate-consent
+  409 in `SignConsentFormCommand`; `CheckSlotAvailabilityQuery`'s working-hours/
+  time-off/conflict checks; `GetDesignsQuery`/`GetIntakeFormsQuery`/
+  `GetConsentFormsQuery` client-scoping; the portable-profile response
+  (`PortableClientProfile`) genuinely contains no PII (only `DisplayName`,
+  `BodyMapLocations`, `TattooHistory`) — the sharing toggle's "your contact
+  information is never shared" copy is accurate
+
+**Frontend:**
+
+- `DepositCheckoutPage.tsx` → Stripe `return_url` used `window.location.origin`
+  instead of `VITE_PUBLIC_URL`, matching the same class of bug already fixed
+  elsewhere in the codebase. Also added a missing "Back to booking" link on both
+  success states and switched the Stripe Elements `appearance.theme` to `"night"`
+  when the app is in dark mode (was hardcoded to `"stripe"`, i.e. always light)
+- `MyBookingsSection.tsx` → `appt.notes` (client-submitted notes on the appointment)
+  was never rendered anywhere in `BookingRow`, even though the field exists on
+  `AppointmentResponse` — added
+- `SubmitIntakeFormPage.tsx` / `SignConsentFormPage.tsx` → the appointment-picker
+  dropdown queried all appointments with no status filter, so Cancelled/Completed/
+  NoShow appointments were selectable alongside real upcoming ones. Filtered to
+  `Pending`/`Confirmed` only, added an empty-state hint when none are eligible, and
+  disabled the consent-form submit button in that case
+- `SignConsentFormPage.tsx` → the mutation's error state showed one generic message
+  regardless of cause; a 409 (already signed for this appointment) looked identical
+  to a network failure. Added 409-specific copy to both the inline error and the
+  toast
+- `IntakeFormListPage.tsx` / `ConsentFormListPage.tsx` → neither page had a way for a
+  client to actually get to the submit/sign form — no CTA button anywhere, and the
+  empty-state copy ("...appear here after clients submit them during booking") was
+  written for staff, not the client reading it about themselves. Added a role-gated
+  "Submit intake form" / "Sign consent form" button in the header and empty state,
+  client-specific empty-state copy, hid the form-count badge when zero, and added a
+  retry action to the error state
+- `MyProfilePage.tsx` → `saveBodyMap()` called the mutation, ignored the result, and
+  unconditionally exited edit mode — a failed save was invisible (draft silently
+  discarded) and a successful one gave no confirmation. Added success/error toasts
+  and only exit edit mode on success
+- `PortableProfileToggle.tsx` → same missing-toast gap on both the success and
+  rollback-on-failure paths; added toasts and a brief explanation of what the toggle
+  does before the switch (previously just a one-line label with no context)
+- `ClientLayout.tsx` → 5 nav items plus logo/bell/user-menu in one non-wrapping flex
+  row overflowed on narrow viewports. Added `overflow-x-auto scrollbar-none shrink
+  min-w-0` (same fix already applied to `ArtistLayout`/`OwnerLayout`/`IssuerLayout`
+  in earlier passes) and a responsive short label ("Book" vs "Book Appointment")
+- `DesignDetailPage.tsx` → there was a `ChangesRequested` banner for the artist but
+  no equivalent banner telling the *client* their feedback is needed while a design
+  is `InReview` — added, gated on `canReview`
+- Missing `useDocumentMeta` document titles added to `BookPage`, `SubmitIntakeFormPage`,
+  `SignConsentFormPage`, `MyProfilePage`, `DepositCheckoutPage`
+- `MyBookingsSection.tsx` → added an upcoming-count badge to the "My bookings" card
+  header, and a "This appointment was cancelled — Book a new appointment" hint under
+  cancelled rows (previously just showed the status badge with no next step)
+
+### Decisions made
+
+| Decision | Choice | Reason |
+|---|---|---|
+| `ClientProfile` auto-create | `UpdateMyBodyMapCommand`/`UpdatePortableProfileOptInCommand` create the row on first save instead of 404ing | Matches the owner-side `UpsertClientProfileCommand` convention; a client must be able to set their own data even if no staff member has touched their profile yet |
+| `GetMyClientProfileQuery` on missing profile | Return empty defaults, not 404 | A missing profile row is a normal state for a new client, not an error; both frontend consumers already handled the 404 gracefully, but real defaults are strictly better UX than an "unavailable" message |
+| `GetNotifications` route policy | `ClientAndAbove` (was `ArtistAndAbove`) | The client-facing `NotificationBell` calls this endpoint from every client screen; blocking the role entirely was an unreachable-feature bug, not an intentional restriction |
+| Design-review ownership check | Added `ICurrentUser` + `FindClientForUserAsync` scoping to `ReviewDesignHandler` | The handler had zero ownership enforcement; this was assumed-but-never-verified during the artist pass — corrected here rather than left for a future pass |
+
+### Skipped / deferred (with reason)
+
+- `DepositArea` in `MyBookingsSection.tsx` doesn't distinguish a genuine payment-fetch
+  error from the normal "no payment created yet" 404 (same convention documented in
+  the owner pass's `PaymentDetailPage` fix) — not changed, since introducing an
+  error branch here risks showing confusing error text for the completely normal
+  no-deposit-yet case without deeper `error.status` inspection
+- Full P7-equivalent global toast/confirmation/spinner/accessibility audit across
+  every client-accessible button — not exhaustively performed; targeted fixes applied
+  where Layer B/C review found concrete gaps (`MyProfilePage`, `PortableProfileToggle`,
+  list-page CTAs)
+- P2.6 (post-booking "what happens next" info section), P4.1 (real file upload for
+  intake forms), P5.3 (revision image lightbox) — scoped out as larger UI additions
+  rather than bug fixes or small polish; left for a future pass

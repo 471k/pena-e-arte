@@ -14,16 +14,17 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class ReviewDesignHandlerTests
 {
-    private readonly FakeDbContext     _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant    _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender           _sender   = Substitute.For<ISender>();
-    private readonly Guid              _studioId = Guid.NewGuid();
+    private readonly FakeDbContext     _db          = FakeDbContext.Create();
+    private readonly ICurrentTenant    _tenant      = Substitute.For<ICurrentTenant>();
+    private readonly IRealtimeNotifier _realtime    = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender           _sender      = Substitute.For<ISender>();
+    private readonly FakeCurrentUser   _currentUser = FakeCurrentUser.Owner();
+    private readonly Guid              _studioId    = Guid.NewGuid();
 
     public ReviewDesignHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
 
-    private ReviewDesignHandler CreateSut() => new(_db, _tenant, _realtime, _sender);
+    private ReviewDesignHandler CreateSut() => new(_db, _tenant, _currentUser, _realtime, _sender);
 
     [Fact]
     public async Task Handle_ApproveRevisionWithNoExistingApproval_CreatesApprovalWithApprovedStatus()
@@ -124,12 +125,61 @@ public class ReviewDesignHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
-    private async Task<Guid> SeedRevision(DesignApprovalStatus? approval)
+    [Fact]
+    public async Task Handle_ClientReviewingOwnDesign_Succeeds()
     {
+        FakeCurrentUser clientUser = FakeCurrentUser.Client();
+        Guid revisionId = await SeedRevision(approval: null, clientUserId: clientUser.UserId);
+        ReviewDesignHandler sut = new(_db, _tenant, clientUser, _realtime, _sender);
+
+        Func<Task> act = () => sut.Handle(
+            new ReviewDesignCommand(new ReviewDesignRequest(revisionId, Approved: true, Notes: null)), default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_ClientReviewingAnotherClientsDesign_ThrowsNotFoundException()
+    {
+        Guid revisionId = await SeedRevision(approval: null, clientUserId: Guid.NewGuid());
+        FakeCurrentUser otherClientUser = FakeCurrentUser.Client();
+        ReviewDesignHandler sut = new(_db, _tenant, otherClientUser, _realtime, _sender);
+
+        Func<Task> act = () => sut.Handle(
+            new ReviewDesignCommand(new ReviewDesignRequest(revisionId, Approved: true, Notes: null)), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    private async Task<Guid> SeedRevision(DesignApprovalStatus? approval, Guid? clientUserId = null)
+    {
+        Guid clientId = Guid.NewGuid();
+        if (clientUserId.HasValue)
+        {
+            _db.Clients.Add(new Client
+            {
+                Id        = clientId,
+                StudioId  = _studioId,
+                UserId    = clientUserId.Value,
+                FirstName = "Cli",
+                LastName  = "Ent",
+                Email     = $"{Guid.NewGuid()}@test.com",
+            });
+        }
+
+        Design design = new()
+        {
+            StudioId = _studioId,
+            ClientId = clientId,
+            ArtistId = Guid.NewGuid(),
+            Title    = "Rose",
+        };
+        _db.Designs.Add(design);
+
         DesignRevision revision = new()
         {
             StudioId      = _studioId,
-            DesignId      = Guid.NewGuid(),
+            DesignId      = design.Id,
             VersionNumber = 1,
             FileUrl       = "https://r2.example.com/v1.png",
             UploadedAt    = DateTime.UtcNow

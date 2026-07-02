@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Designs.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -16,6 +17,7 @@ public record ReviewDesignCommand(ReviewDesignRequest Request) : IRequest<Design
 public class ReviewDesignHandler(
     IAppDbContext     db,
     ICurrentTenant    tenant,
+    ICurrentUser      currentUser,
     IRealtimeNotifier realtime,
     ISender           sender)
     : IRequestHandler<ReviewDesignCommand, DesignRevisionResponse>
@@ -26,8 +28,19 @@ public class ReviewDesignHandler(
 
         DesignRevision revision = await db.DesignRevisions
             .Include(r => r.Approval)
+            .Include(r => r.Design)
             .FirstOrDefaultAsync(r => r.Id == req.DesignRevisionId, ct)
             ?? throw new NotFoundException(nameof(DesignRevision), req.DesignRevisionId);
+
+        // Only the design's own client may approve/reject a revision — this is the
+        // client-approval workflow, not a staff action. A client must not be able to
+        // review a revision on a design that isn't theirs by guessing the revision id.
+        if (currentUser.Role == "client")
+        {
+            Client? me = await db.FindClientForUserAsync(currentUser, ct);
+            if (me is null || me.Id != revision.Design.ClientId)
+                throw new NotFoundException(nameof(DesignRevision), req.DesignRevisionId);
+        }
 
         if (revision.Approval?.Status == DesignApprovalStatus.Approved)
             throw new DesignAlreadyApprovedException();

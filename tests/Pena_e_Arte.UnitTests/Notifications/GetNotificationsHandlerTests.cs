@@ -256,6 +256,59 @@ public class GetNotificationsHandlerTests
         result.Should().ContainSingle(n => n.RecipientId == artist.Id);
     }
 
+    [Fact]
+    public async Task Handle_ClientCaller_ReturnsOnlyOwnClientNotifications()
+    {
+        FakeCurrentUser clientUser = FakeCurrentUser.Client();
+        Guid studioId = Guid.NewGuid();
+        var client = new Client
+        {
+            StudioId  = studioId,
+            UserId    = clientUser.UserId,
+            FirstName = "Cli",
+            LastName  = "Ent",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+
+        _db.NotificationLogs.Add(BuildLog(studioId, client.Id, NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
+        _db.NotificationLogs.Add(BuildLog(studioId, Guid.NewGuid(), NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
+        _db.NotificationLogs.Add(BuildLog(studioId, Guid.NewGuid(), NotificationChannel.Email, recipientType: NotificationRecipientType.Artist));
+        await _db.SaveChangesAsync();
+
+        GetNotificationsHandler sut = new(_db, clientUser);
+        List<NotificationLogResponse> result = await sut.Handle(new GetNotificationsQuery(null, null, null, null), default);
+
+        result.Should().ContainSingle(n => n.RecipientId == client.Id);
+    }
+
+    [Fact]
+    public async Task Handle_ClientCaller_IgnoresRequestedRecipientIdFilter()
+    {
+        FakeCurrentUser clientUser = FakeCurrentUser.Client();
+        Guid studioId = Guid.NewGuid();
+        var client = new Client
+        {
+            StudioId  = studioId,
+            UserId    = clientUser.UserId,
+            FirstName = "Cli",
+            LastName  = "Ent",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+
+        Guid otherRecipientId = Guid.NewGuid();
+        _db.NotificationLogs.Add(BuildLog(studioId, client.Id, NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
+        _db.NotificationLogs.Add(BuildLog(studioId, otherRecipientId, NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
+        await _db.SaveChangesAsync();
+
+        GetNotificationsHandler sut = new(_db, clientUser);
+        List<NotificationLogResponse> result = await sut.Handle(
+            new GetNotificationsQuery(otherRecipientId, null, null, null), default);
+
+        result.Should().ContainSingle(n => n.RecipientId == client.Id);
+    }
+
     private void SeedLogs(Guid studioId, int count)
     {
         for (int i = 0; i < count; i++)

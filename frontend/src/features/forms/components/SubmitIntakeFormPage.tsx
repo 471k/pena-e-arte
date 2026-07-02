@@ -16,6 +16,7 @@ import {
 } from "@/shared/components/ui/select";
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { cn } from "@/shared/utils/cn";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSubmitIntakeFormMutation } from "../intakeFormsApi";
 
@@ -28,10 +29,15 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function SubmitIntakeFormPage() {
+  useDocumentMeta({ title: "Submit Intake Form — Pena e Artë", canonical: "/forms/intake/new" });
+
   const navigate = useNavigate();
   const user = useCurrentUser();
 
   const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
+  const relevantAppointments = appointments?.filter(
+    (a) => a.status === "Pending" || a.status === "Confirmed",
+  );
   const [submitIntakeForm, { isLoading, isSuccess, isError, reset: resetMutation }] =
     useSubmitIntakeFormMutation();
 
@@ -127,7 +133,7 @@ export function SubmitIntakeFormPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Not linked to an appointment</SelectItem>
-                    {appointments?.map((a) => (
+                    {relevantAppointments?.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {new Date(a.date).toLocaleDateString("en-GB", {
                           day: "numeric", month: "short", year: "numeric",
@@ -138,6 +144,11 @@ export function SubmitIntakeFormPage() {
                 </Select>
               )}
             />
+            {!loadingAppts && relevantAppointments?.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                You don't have any upcoming appointments to link this form to.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">

@@ -9,6 +9,6 @@ public class SignConsentFormValidator : AbstractValidator<SignConsentFormCommand
     {
         RuleFor(x => x.Request.ClientId).NotEmpty();
         RuleFor(x => x.Request.AppointmentId).NotEmpty();
-        RuleFor(x => x.Request.SignatureData).NotEmpty().MaximumLength(5000);
+        RuleFor(x => x.Request.SignatureData).NotEmpty().MinimumLength(2).MaximumLength(5000);
     }
 }

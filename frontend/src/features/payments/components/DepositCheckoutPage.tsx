@@ -1,10 +1,11 @@
 import { type FormEvent, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { CreditCard, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetPaymentClientSecretQuery } from "../paymentsApi";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "");
@@ -12,6 +13,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? 
 function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: string | null }) {
   const stripe   = useStripe();
   const elements = useElements();
+  const navigate = useNavigate();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [succeeded,    setSucceeded]    = useState(false);
@@ -27,7 +29,7 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/pay/${paymentId}?status=complete`,
+        return_url: `${import.meta.env.VITE_PUBLIC_URL ?? window.location.origin}/pay/${paymentId}?status=complete`,
       },
       redirect: "if_required",
     });
@@ -49,6 +51,9 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
         <p className="text-sm text-muted-foreground max-w-xs">
           Your card has been authorised. The studio will capture the deposit before your appointment.
         </p>
+        <Button variant="outline" size="sm" onClick={() => navigate("/book")}>
+          Back to booking
+        </Button>
       </div>
     );
   }
@@ -90,10 +95,14 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
 }
 
 export function DepositCheckoutPage() {
+  useDocumentMeta({ title: "Deposit Payment — Pena e Artë", canonical: "/pay" });
+
   const { paymentId }  = useParams<{ paymentId: string }>();
+  const navigate        = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectStatus = searchParams.get("status");
   const amount         = searchParams.get("amount");
+  const isDark          = document.documentElement.classList.contains("dark");
 
   const { data, isLoading, isError } = useGetPaymentClientSecretQuery(paymentId!, {
     skip: !paymentId || redirectStatus === "complete",
@@ -110,6 +119,9 @@ export function DepositCheckoutPage() {
               <p className="text-sm text-muted-foreground max-w-xs">
                 Your card has been authorised. The studio will capture the deposit before your appointment.
               </p>
+              <Button variant="outline" size="sm" onClick={() => navigate("/book")}>
+                Back to booking
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -151,7 +163,7 @@ export function DepositCheckoutPage() {
                 stripe={stripePromise}
                 options={{
                   clientSecret: data.clientSecret,
-                  appearance:   { theme: "stripe" },
+                  appearance:   { theme: isDark ? "night" : "stripe" },
                 }}
               >
                 <CheckoutForm paymentId={paymentId!} amount={amount} />

@@ -85,12 +85,16 @@ public class GetMyClientProfileHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ProfileNotFound_ThrowsNotFoundException()
+    public async Task Handle_ProfileNotFound_ReturnsEmptyDefaultsInsteadOfThrowing()
     {
-        await SeedClientAsync();
+        Client client = await SeedClientAsync();
 
-        Func<Task> act = () => CreateSut().Handle(new GetMyClientProfileQuery(), default);
+        ClientProfileResponse result = await CreateSut().Handle(new GetMyClientProfileQuery(), default);
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        result.ClientId.Should().Be(client.Id);
+        result.BodyMapLocations.Should().BeEmpty();
+        result.AllowCrossTenantRead.Should().BeFalse();
+        result.MedicalNotes.Should().BeNull();
+        result.Allergies.Should().BeNull();
     }
 }

@@ -258,7 +258,7 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task RunReviewHandler(Guid tenantId, ReviewDesignRequest req)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        ReviewDesignHandler handler = new(db, TenantFor(tenantId), _realtime, _sender);
+        ReviewDesignHandler handler = new(db, TenantFor(tenantId), OwnerUser(), _realtime, _sender);
         await handler.Handle(new ReviewDesignCommand(req), default);
     }
 

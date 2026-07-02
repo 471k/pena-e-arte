@@ -46,4 +46,11 @@ public class SignConsentFormValidatorTests
         SignConsentFormCommand cmd = new(new SignConsentFormRequest(Guid.NewGuid(), Guid.NewGuid(), tooLong));
         _validator.TestValidate(cmd).ShouldHaveValidationErrorFor(x => x.Request.SignatureData);
     }
+
+    [Fact]
+    public void Validate_SignatureDataBelowMinimumLength_HasError()
+    {
+        SignConsentFormCommand cmd = new(new SignConsentFormRequest(Guid.NewGuid(), Guid.NewGuid(), "x"));
+        _validator.TestValidate(cmd).ShouldHaveValidationErrorFor(x => x.Request.SignatureData);
+    }
 }

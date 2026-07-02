@@ -1,9 +1,12 @@
-import { ClipboardList, User } from "lucide-react";
+import { ClipboardList, Plus, User } from "lucide-react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useAppSelector } from "@/app/hooks";
+import { Role } from "@/shared/types/roles";
 import { useGetIntakeFormsQuery } from "../intakeFormsApi";
 import type { IntakeFormResponse } from "../form.types";
 
@@ -88,12 +91,15 @@ function IntakeFormRow({ form }: { form: IntakeFormResponse }) {
 export function IntakeFormListPage() {
   useDocumentMeta({ title: "Intake Forms — Pena e Artë", canonical: "/forms/intake" });
 
+  const navigate = useNavigate();
+  const role = useAppSelector((s) => s.auth.role);
+  const isClient = role === Role.Client;
   const [searchParams] = useSearchParams();
   const clientId      = searchParams.get("clientId")      ?? undefined;
   const appointmentId = searchParams.get("appointmentId") ?? undefined;
 
-  const { data: forms, isLoading, isError } = useGetIntakeFormsQuery({ clientId, appointmentId });
-  const errorMessage = useSuspensionAwareError(isError, "Failed to load intake forms. Please try again.");
+  const { data: forms, isLoading, isError, refetch } = useGetIntakeFormsQuery({ clientId, appointmentId });
+  const errorMessage = useSuspensionAwareError(isError, "Failed to load intake forms.");
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,14 +108,22 @@ export function IntakeFormListPage() {
           <ClipboardList className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Intake Forms</span>
         </div>
-        {forms && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ClipboardList className="h-3.5 w-3.5" />
-            <span>
-              {forms.length} form{forms.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {forms && forms.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <ClipboardList className="h-3.5 w-3.5" />
+              <span>
+                {forms.length} form{forms.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
+          {isClient && (
+            <Button size="sm" onClick={() => navigate("/forms/intake/new")} className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              Submit intake form
+            </Button>
+          )}
+        </div>
       </header>
 
       {(clientId || appointmentId) && (
@@ -130,7 +144,10 @@ export function IntakeFormListPage() {
 
         {errorMessage && (
           <p className="text-center text-sm text-destructive py-16" role="alert">
-            {errorMessage}
+            {errorMessage}{" "}
+            <button type="button" className="underline" onClick={() => refetch()}>
+              Try again
+            </button>
           </p>
         )}
 
@@ -146,9 +163,17 @@ export function IntakeFormListPage() {
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">No intake forms yet</p>
               <p className="text-xs text-muted-foreground">
-                Intake forms appear here after clients submit them during booking.
+                {isClient
+                  ? "You haven't submitted any intake forms yet."
+                  : "Intake forms appear here after clients submit them during booking."}
               </p>
             </div>
+            {isClient && (
+              <Button size="sm" onClick={() => navigate("/forms/intake/new")} className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                Submit intake form
+              </Button>
+            )}
           </div>
         )}
 

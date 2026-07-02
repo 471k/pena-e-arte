@@ -24,8 +24,15 @@ public class GetMyClientProfileHandler(IAppDbContext db, ICurrentUser currentUse
         ClientProfile? profile = await db.ClientProfiles
             .FirstOrDefaultAsync(cp => cp.ClientId == client.Id, ct);
 
+        // No profile row yet is a normal state for a new client, not an error — the
+        // client hasn't been asked to fill anything in, or no staff member has
+        // recorded medical notes yet. Return sensible empty defaults so the client's
+        // own profile screen (body map, sharing toggle) works from day one.
         if (profile is null)
-            throw new NotFoundException(nameof(ClientProfile), client.Id);
+            return new ClientProfileResponse(
+                Guid.Empty, client.Id, client.StudioId,
+                DateOfBirth: null, MedicalNotes: null, Allergies: null,
+                BodyMapLocations: [], UpdatedAt: client.CreatedAt, AllowCrossTenantRead: false);
 
         return GetClientProfileHandler.Map(profile);
     }

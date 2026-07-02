@@ -16,6 +16,7 @@ import {
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSignConsentFormMutation } from "../consentFormsApi";
 
@@ -27,12 +28,20 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function SignConsentFormPage() {
+  useDocumentMeta({ title: "Sign Consent Form — Pena e Artë", canonical: "/forms/consent/new" });
+
   const navigate = useNavigate();
   const user = useCurrentUser();
 
   const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
-  const [signConsentForm, { isLoading, isSuccess, isError, reset: resetMutation }] =
+  const relevantAppointments = appointments?.filter(
+    (a) => a.status === "Pending" || a.status === "Confirmed",
+  );
+  const [signConsentForm, { isLoading, isSuccess, isError, error, reset: resetMutation }] =
     useSignConsentFormMutation();
+
+  const isDuplicateSignature =
+    isError && !!error && "status" in error && error.status === 409;
 
   const {
     register,
@@ -56,7 +65,12 @@ export function SignConsentFormPage() {
       toast.success("Consent form signed.");
       resetForm();
     } else {
-      toast.error("Failed to sign consent form.");
+      const status = "error" in result && "status" in result.error ? result.error.status : undefined;
+      toast.error(
+        status === 409
+          ? "You've already signed a consent form for this appointment."
+          : "Failed to sign consent form.",
+      );
     }
   }
 
@@ -122,7 +136,7 @@ export function SignConsentFormPage() {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {appointments?.map((a) => (
+                    {relevantAppointments?.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {new Date(a.date).toLocaleDateString("en-GB", {
                           day: "numeric", month: "short", year: "numeric",
@@ -136,6 +150,11 @@ export function SignConsentFormPage() {
             {errors.appointmentId && (
               <p className="text-xs text-destructive">{errors.appointmentId.message}</p>
             )}
+            {!loadingAppts && relevantAppointments?.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No pending appointments found. Book an appointment before signing a consent form.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -143,7 +162,7 @@ export function SignConsentFormPage() {
             <Textarea
               id="signatureData"
               rows={2}
-              placeholder="Type your full legal name…"
+              placeholder="e.g. Jane Marie Smith"
               disabled={isLoading}
               {...register("signatureData")}
               className={cn("resize-none", errors.signatureData && "border-destructive")}
@@ -155,11 +174,17 @@ export function SignConsentFormPage() {
 
           {isError && (
             <p className="text-sm text-destructive text-center">
-              Failed to sign. Please try again.
+              {isDuplicateSignature
+                ? "You've already signed a consent form for this appointment."
+                : "Failed to sign. Please try again."}
             </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading || (!loadingAppts && relevantAppointments?.length === 0)}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

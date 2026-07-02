@@ -67,6 +67,14 @@ public class CreateAppointmentValidatorTests
     }
 
     [Fact]
+    public void Validate_DurationInRangeButNotAnAllowedValue_FailsOnDuration()
+    {
+        _sut.ShouldFailOn(
+            ValidCommand() with { Request = ValidRequest() with { DurationMinutes = 100 } },
+            "Request.DurationMinutes");
+    }
+
+    [Fact]
     public void Validate_NotesExceedsMaxLength_FailsOnNotes()
     {
         _sut.ShouldFailOn(

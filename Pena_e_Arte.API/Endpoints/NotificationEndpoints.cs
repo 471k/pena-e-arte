@@ -13,7 +13,7 @@ public static class NotificationEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/notifications")
             .RequireAuthorization();
 
-        group.MapGet("/",            GetNotifications).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/",            GetNotifications).RequireAuthorization("ClientAndAbove");
         group.MapGet("/preferences", GetPreferences).RequireAuthorization("OwnerOnly");
         group.MapPut("/preferences", UpdatePreferences).RequireAuthorization("OwnerOnly");
     }

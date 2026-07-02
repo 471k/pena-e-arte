@@ -140,6 +140,21 @@ function BookingRow({ appt, artists }: { appt: AppointmentResponse; artists: Art
         </div>
         <AppointmentStatusBadge status={appt.status} />
       </div>
+      {appt.notes && (
+        <p className="text-xs text-muted-foreground">{appt.notes}</p>
+      )}
+      {appt.status === "Cancelled" && (
+        <p className="text-xs text-muted-foreground">
+          This appointment was cancelled.{" "}
+          <button
+            type="button"
+            className="underline hover:text-foreground"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            Book a new appointment
+          </button>
+        </p>
+      )}
       <DepositArea appt={appt} />
     </div>
   );
@@ -175,6 +190,11 @@ export function MyBookingsSection() {
         <CardTitle className="text-base flex items-center gap-2">
           <CalendarDays className="h-4 w-4" />
           My bookings
+          {upcoming.length > 0 && (
+            <span className="ml-auto text-xs font-normal text-muted-foreground">
+              {upcoming.length} upcoming
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>

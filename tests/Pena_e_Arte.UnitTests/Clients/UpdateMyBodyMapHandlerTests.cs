@@ -76,24 +76,27 @@ public class UpdateMyBodyMapHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NoProfile_ThrowsNotFoundException()
+    public async Task Handle_NoProfile_CreatesOneInsteadOfThrowing()
     {
         _db.Studios.Add(new Studio { Id = _studioId, Name = "S", Slug = "s" });
-        _db.Clients.Add(new Client
+        Client client = new()
         {
             StudioId  = _studioId,
             UserId    = _userId,
             FirstName = "A",
             LastName  = "B",
             Email     = $"{_userId}@test.com",
-        });
+        };
+        _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
-        Func<Task> act = () => CreateSut().Handle(
+        ClientProfileResponse result = await CreateSut().Handle(
             new UpdateMyBodyMapCommand(new UpdateBodyMapRequest(["chest"])),
             default);
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        result.ClientId.Should().Be(client.Id);
+        result.BodyMapLocations.Should().ContainSingle("chest");
+        _db.ClientProfiles.Should().ContainSingle(p => p.ClientId == client.Id);
     }
 
     private async Task<(Guid clientId, Guid profileId)> Seed(

@@ -331,6 +331,12 @@ export function DesignDetailPage() {
                 <span>The client has requested changes. Upload a new revision to continue.</span>
               </div>
             )}
+            {canReview && design.status === "InReview" && (
+              <div className="rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-2.5 flex items-center gap-2 text-sm text-violet-700 dark:text-violet-400">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Your artist is waiting for your feedback on the latest revision.</span>
+              </div>
+            )}
           </div>
         )}
 

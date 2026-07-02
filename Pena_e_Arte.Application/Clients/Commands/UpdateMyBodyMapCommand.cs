@@ -28,7 +28,12 @@ public class UpdateMyBodyMapHandler(IAppDbContext db, ICurrentUser currentUser)
             .FirstOrDefaultAsync(cp => cp.ClientId == client.Id, ct);
 
         if (profile is null)
-            throw new NotFoundException(nameof(ClientProfile), client.Id);
+        {
+            // A brand-new client has no profile row yet — create one on first save
+            // rather than blocking them, matching the owner-side upsert behaviour.
+            profile = new ClientProfile { StudioId = client.StudioId, ClientId = client.Id };
+            db.ClientProfiles.Add(profile);
+        }
 
         profile.BodyMap   = new BodyMap { Locations = command.Request.Locations };
         profile.UpdatedAt = DateTime.UtcNow;

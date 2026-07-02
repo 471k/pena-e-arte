@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Loader2, MapPin, Pencil, User } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   useGetMyClientQuery,
   useGetMyClientProfileQuery,
@@ -33,6 +35,8 @@ function ProfileField({ label, value }: { label: string; value: string | null | 
 }
 
 export function MyProfilePage() {
+  useDocumentMeta({ title: "My Profile — Pena e Artë", canonical: "/clients/me" });
+
   const { data: client, isLoading, isError } = useGetMyClientQuery();
   const { data: profile, isLoading: profileLoading, isError: profileError } = useGetMyClientProfileQuery();
   const { data: tattoos = [], isLoading: tattoosLoading } = useGetMyTattooRecordsQuery();
@@ -47,7 +51,12 @@ export function MyProfilePage() {
   }
 
   async function saveBodyMap() {
-    await updateMyBodyMap(bodyMapDraft);
+    const result = await updateMyBodyMap(bodyMapDraft);
+    if ("error" in result) {
+      toast.error("Failed to save body map.");
+      return;
+    }
+    toast.success("Body map saved.");
     setBodyMapMode("view");
   }
 

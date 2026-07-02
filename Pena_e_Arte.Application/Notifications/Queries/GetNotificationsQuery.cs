@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -34,6 +35,16 @@ public class GetNotificationsHandler(IAppDbContext db, ICurrentUser currentUser)
 
             q = q.Where(n => n.RecipientType == NotificationRecipientType.Artist
                            && n.RecipientId == myArtistId);
+        }
+        else if (currentUser.Role == "client")
+        {
+            // A client only ever sees notifications addressed to them — any
+            // requested RecipientId is ignored rather than trusted, since another
+            // client's or the studio's own id could otherwise be guessed.
+            Client? me = await db.FindClientForUserAsync(currentUser, ct);
+
+            q = q.Where(n => n.RecipientType == NotificationRecipientType.Client
+                           && n.RecipientId == (me == null ? Guid.Empty : me.Id));
         }
         else if (query.RecipientId.HasValue)
         {

@@ -12,11 +12,11 @@ import { useSignalR } from "@/shared/hooks/useSignalR";
 import { NotificationBell } from "@/features/notifications";
 
 const NAV_ITEMS = [
-  { label: "Book Appointment", href: "/book",           icon: <CalendarDays className="h-4 w-4" /> },
-  { label: "My Designs",       href: "/designs",        icon: <Palette      className="h-4 w-4" /> },
-  { label: "Intake Forms",     href: "/forms/intake",   icon: <FileText     className="h-4 w-4" /> },
-  { label: "Consent Forms",    href: "/forms/consent",  icon: <ScrollText   className="h-4 w-4" /> },
-  { label: "My Profile",       href: "/clients/me",     icon: <User         className="h-4 w-4" /> },
+  { label: "Book Appointment", shortLabel: "Book",  href: "/book",           icon: <CalendarDays className="h-4 w-4" /> },
+  { label: "My Designs",       shortLabel: undefined, href: "/designs",        icon: <Palette      className="h-4 w-4" /> },
+  { label: "Intake Forms",     shortLabel: undefined, href: "/forms/intake",   icon: <FileText     className="h-4 w-4" /> },
+  { label: "Consent Forms",    shortLabel: undefined, href: "/forms/consent",  icon: <ScrollText   className="h-4 w-4" /> },
+  { label: "My Profile",       shortLabel: undefined, href: "/clients/me",     icon: <User         className="h-4 w-4" /> },
 ];
 
 export function ClientLayout() {
@@ -38,22 +38,24 @@ export function ClientLayout() {
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Pena e Artë</span>
 
-        <nav className="ml-6 flex items-center gap-1">
-          {NAV_ITEMS.map(({ label, href, icon }) => (
+        <nav className="ml-6 flex items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
+          {NAV_ITEMS.map(({ label, shortLabel, href, icon }) => (
             <NavLink
               key={href}
               to={href}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors shrink-0",
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )
               }
+              aria-label={label}
             >
               {icon}
-              {label}
+              <span className="hidden sm:inline">{label}</span>
+              <span className="sm:hidden">{shortLabel ?? label}</span>
             </NavLink>
           ))}
         </nav>

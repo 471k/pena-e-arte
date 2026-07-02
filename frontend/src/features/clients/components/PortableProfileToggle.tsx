@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Globe, Loader2, ShieldAlert } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { useUpdatePortableProfileOptInMutation } from "../clientsApi";
@@ -17,8 +18,10 @@ export function PortableProfileToggle({ currentOptIn }: Props) {
     setEnabled(next);
     try {
       await update(next).unwrap();
+      toast.success("Profile sharing updated.");
     } catch {
       setEnabled(!next);
+      toast.error("Failed to update profile sharing.");
     }
   }
 
@@ -29,6 +32,11 @@ export function PortableProfileToggle({ currentOptIn }: Props) {
           <Globe className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-medium">Portable Tattoo Profile</h3>
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          When enabled, any certified Pena e Artë artist can view your tattoo history
+          before booking a session — no need to explain your existing work every time.
+        </p>
 
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground leading-snug">
