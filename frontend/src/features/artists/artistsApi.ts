@@ -35,6 +35,28 @@ export interface UpdateArtistRequest {
   slug?:           string;
 }
 
+export interface InstagramConnectionStatus {
+  isConnected:  boolean;
+  username:     string | null;
+  lastSyncedAt: string | null;
+  postCount:    number;
+}
+
+export interface InstagramPostItem {
+  id:               string;
+  instagramMediaId: string;
+  mediaUrl:         string | null;
+  thumbnailUrl:     string | null;
+  caption:          string | null;
+  mediaType:        string;
+  postedAt:         string;
+  isVisible:        boolean;
+}
+
+export interface ConnectInstagramResponse {
+  authUrl: string;
+}
+
 export const artistsApi = createApi({
   reducerPath: "artistsApi",
   baseQuery,
@@ -84,6 +106,37 @@ export const artistsApi = createApi({
       query: (id) => ({ url: `artists/${id}`, method: "DELETE" }),
       invalidatesTags: ["Artist"],
     }),
+    getInstagramConnectUrl: builder.query<ConnectInstagramResponse, string>({
+      query: (artistId) => `artists/${artistId}/instagram/connect-url`,
+    }),
+    getInstagramStatus: builder.query<InstagramConnectionStatus, string>({
+      query: (artistId) => `artists/${artistId}/instagram/status`,
+      providesTags: (_result, _err, artistId) => [{ type: "Artist", id: `${artistId}-instagram` }],
+    }),
+    getInstagramPosts: builder.query<InstagramPostItem[], { artistId: string; page?: number }>({
+      query: ({ artistId, page = 1 }) => `artists/${artistId}/instagram/posts?page=${page}`,
+      providesTags: (_result, _err, { artistId }) => [{ type: "Artist", id: `${artistId}-instagram-posts` }],
+    }),
+    toggleInstagramPostVisibility: builder.mutation<
+      void,
+      { artistId: string; postId: string; isVisible: boolean }
+    >({
+      query: ({ artistId, postId, isVisible }) => ({
+        url:    `artists/${artistId}/instagram/posts/${postId}/visibility`,
+        method: "PUT",
+        body:   { isVisible },
+      }),
+      invalidatesTags: (_result, _err, { artistId }) => [
+        { type: "Artist", id: `${artistId}-instagram-posts` },
+      ],
+    }),
+    disconnectInstagram: builder.mutation<void, string>({
+      query: (artistId) => ({
+        url:    `artists/${artistId}/instagram/disconnect`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _err, artistId) => [{ type: "Artist", id: `${artistId}-instagram` }],
+    }),
   }),
 });
 
@@ -95,4 +148,9 @@ export const {
   useUpdateArtistMutation,
   useUpdateArtistPortfolioMutation,
   useDeleteArtistMutation,
+  useLazyGetInstagramConnectUrlQuery,
+  useGetInstagramStatusQuery,
+  useGetInstagramPostsQuery,
+  useToggleInstagramPostVisibilityMutation,
+  useDisconnectInstagramMutation,
 } = artistsApi;

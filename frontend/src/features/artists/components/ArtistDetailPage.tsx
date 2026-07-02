@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -54,6 +54,7 @@ import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { useGetDesignsQuery } from "@/features/designs/designsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
+import { InstagramTab } from "./InstagramTab";
 
 const editSchema = z.object({
   firstName:       z.string().min(1, "First name is required"),
@@ -81,6 +82,7 @@ function formatDate(iso: string): string {
 export function ArtistDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const canManage = usePermission(Role.Owner);
   const isArtistRole = usePermission(Role.Artist);
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
@@ -108,6 +110,13 @@ export function ArtistDetailPage() {
 
   const { data: appointments = [], isLoading: appsLoading } =
     useGetAppointmentsQuery(canManage && id ? { artistId: id } : {}, { skip: !id });
+
+  useEffect(() => {
+    const ig = searchParams.get("instagram");
+    if (ig === "connected") toast.success("Instagram connected successfully!");
+    if (ig === "error")     toast.error("Instagram connection failed. Please try again.");
+    if (ig === "denied")    toast.info("Instagram connection cancelled.");
+  }, [searchParams]);
 
   const isOwnProfile = isArtistRole && artist?.userId != null && artist.userId === currentUserId;
   const canManagePortfolio = canManage || isOwnProfile;
@@ -389,6 +398,7 @@ export function ArtistDetailPage() {
               <TabsTrigger value="portfolio"  className="flex-1">Portfolio</TabsTrigger>
               <TabsTrigger value="schedule"   className="flex-1">Schedule</TabsTrigger>
               <TabsTrigger value="designs"    className="flex-1">Designs</TabsTrigger>
+              <TabsTrigger value="instagram"  className="flex-1">Instagram</TabsTrigger>
             </TabsList>
 
             {/* Profile tab */}
@@ -588,6 +598,11 @@ export function ArtistDetailPage() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            {/* Instagram tab */}
+            <TabsContent value="instagram" className="mt-4 space-y-4">
+              <InstagramTab artistId={id!} canConnect={canManage} canManagePosts={canManagePortfolio} />
             </TabsContent>
           </Tabs>
         )}

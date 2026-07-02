@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.Infrastructure.Services.MailKit;
@@ -76,6 +77,7 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<Stripe.Checkout.SessionService>();
         services.AddSingleton<Stripe.BillingPortal.SessionService>();
         services.AddSingleton<Stripe.CouponService>();
+        services.AddSingleton<Stripe.BalanceService>();
 
         TwilioClient.Init(
             configuration["Twilio:AccountSid"]!,
@@ -119,6 +121,13 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
         services.AddSingleton<IEmailRenderer,          EmailRenderer>();
         services.AddSingleton<IAppSettings,            AppSettings>();
+
+        services.Configure<InstagramOptions>(configuration.GetSection(InstagramOptions.Section));
+        services.AddHttpClient("Instagram");
+        services.AddSingleton<ITokenEncryptor,       AesTokenEncryptor>();
+        services.AddSingleton<IInstagramStateSigner, InstagramStateSigner>();
+        services.AddScoped<IInstagramService,        InstagramService>();
+        services.AddTransient<InstagramSyncJob>();
 
         return services;
     }

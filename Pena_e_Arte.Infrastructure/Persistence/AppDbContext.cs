@@ -45,6 +45,11 @@ public class AppDbContext(
     // --- User-saved images (no tenant filter — user may save from any studio) ---
     public DbSet<SavedPortfolioImage> SavedPortfolioImages => Set<SavedPortfolioImage>();
 
+    // --- Instagram (artist-scoped, no tenant filter — nightly sync job iterates all
+    //     tenants; application handlers must verify ArtistId ownership via Artists) ---
+    public DbSet<InstagramConnection> InstagramConnections => Set<InstagramConnection>();
+    public DbSet<InstagramPost>       InstagramPosts       => Set<InstagramPost>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);

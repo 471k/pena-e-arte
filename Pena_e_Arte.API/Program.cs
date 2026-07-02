@@ -43,8 +43,9 @@ try
     builder.Services.AddApiRateLimiting();
 
     builder.Services.AddHealthChecks()
-        .AddCheck<RedisHealthCheck>("redis",    tags: ["ready"])
-        .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+        .AddCheck<RedisHealthCheck>("redis",       tags: ["ready"])
+        .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
+        .AddCheck<StripeHealthCheck>("stripe",     tags: ["ready"]);
 
     WebApplication app = builder.Build();
 
@@ -70,9 +71,16 @@ try
             "payment-reconciliation",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(2));
+
+        recurringJobs.AddOrUpdate<InstagramSyncJob>(
+            "instagram-nightly-sync",
+            j => j.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(hour: 3));
     }
 
-    app.UseSerilogRequestLogging();
+    app.UseMiddleware<RequestIdMiddleware>();
+    app.UseSerilogRequestLogging(options =>
+        options.EnrichDiagnosticContext = RequestLoggingEnrichment.Enrich);
     app.UseMiddleware<ExceptionMiddleware>();
     app.UseCors();
     app.UseRateLimiter();
@@ -94,7 +102,9 @@ try
     });
     app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
-        Predicate = check => check.Tags.Contains("ready")
+        Predicate = check => check.Tags.Contains("ready"),
+        // Add this if Stripe rate limits become a concern at high pod counts:
+        // MaximumAge = TimeSpan.FromSeconds(30),
     });
     app.MapPrometheusScrapingEndpoint();
 
@@ -105,6 +115,8 @@ try
     app.MapAppointmentEndpoints();
     app.MapDepositRuleEndpoints();
     app.MapArtistEndpoints();
+    app.MapInstagramEndpoints();
+    app.MapInstagramCallbackEndpoint();
     app.MapClientEndpoints();
     app.MapDesignEndpoints();
     app.MapStudioEndpoints();

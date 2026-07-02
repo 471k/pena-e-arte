@@ -39,5 +39,9 @@ public interface IAppDbContext
     // User-saved portfolio images — cross-tenant (user may belong to any studio)
     DbSet<SavedPortfolioImage> SavedPortfolioImages { get; }
 
+    // Instagram — artist-scoped, no tenant filter (see AppDbContext)
+    DbSet<InstagramConnection> InstagramConnections { get; }
+    DbSet<InstagramPost>       InstagramPosts       { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

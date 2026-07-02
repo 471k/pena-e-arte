@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
+  AtSign,
   ChevronLeft,
   Images,
   X,
@@ -15,7 +16,12 @@ import {
 } from "@/shared/components/ui/dialog";
 import { StarRating }  from "@/shared/components/ui/StarRating";
 import { useAppSelector } from "@/app/hooks";
-import { useGetPublicArtistQuery, useRecordArtistViewMutation, type ArtistPortfolioImage } from "../publicApi";
+import {
+  useGetPublicArtistQuery,
+  useRecordArtistViewMutation,
+  useGetArtistInstagramPostsQuery,
+  type ArtistPortfolioImage,
+} from "../publicApi";
 import { useDocumentMeta }         from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }       from "@/shared/utils/useStructuredData";
 import { ReviewSection }           from "./ReviewSection";
@@ -370,6 +376,8 @@ export function ArtistPortfolioPage() {
   const { data: artist, isLoading, isError } =
     useGetPublicArtistQuery(slug, { skip: !slug });
 
+  const { data: instagramPosts = [] } = useGetArtistInstagramPostsQuery(slug, { skip: !slug });
+
   const [recordView] = useRecordArtistViewMutation();
 
   // Track portfolio view for discovery feed ranking.
@@ -535,6 +543,29 @@ export function ArtistPortfolioPage() {
                 onImageClick={(item) => setLightboxItem(item)}
               />
             </section>
+
+            {instagramPosts.length > 0 && (
+              <section aria-labelledby="instagram-heading" className="space-y-3">
+                <h2
+                  id="instagram-heading"
+                  className="text-sm font-semibold flex items-center gap-2 text-muted-foreground"
+                >
+                  <AtSign className="h-4 w-4" aria-hidden="true" />
+                  Instagram
+                </h2>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {instagramPosts.map((post) => (
+                    <img
+                      key={post.id}
+                      src={post.mediaUrl ?? post.thumbnailUrl ?? ""}
+                      alt={post.caption?.slice(0, 80) ?? "Portfolio photo"}
+                      className="aspect-square w-full object-cover rounded-md"
+                      loading="lazy"
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
             <div ref={reviewsRef}>
               <ReviewSection slug={artist.slug} target="artist" token={token} />

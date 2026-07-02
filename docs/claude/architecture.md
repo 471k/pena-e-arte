@@ -420,6 +420,8 @@ Never add a new one without updating this table and the Decisions Log.
 | 19 | `GetArtistReviewsQuery` (Appointments + Clients) | `IsVerifiedBooking` check — completed appointments with this artist cross-tenant | Anonymous |
 | 20 | `GetStudioReviewsQuery` (Appointments + Clients) | `IsVerifiedBooking` check — completed appointments at this studio cross-tenant | Anonymous |
 | 21 | `GetPortfolioImageReviewsQuery` (Appointments + Clients) | `IsVerifiedBooking` check — completed appointments at the image's studio cross-tenant | Anonymous |
+| 22 | `ExchangeInstagramCodeHandler` (Artists) | Resolve artist's StudioId from an anonymous OAuth callback; artistId is pre-authenticated via `IInstagramStateSigner` HMAC before this handler runs | Anonymous (state-signed) |
+| 23 | `GetPublicArtistInstagramPostsQuery` (Artists) | Cross-tenant artist slug lookup for public Instagram post feed | Anonymous |
 
 ---
 
@@ -440,6 +442,8 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/portfolio/feed` | Public discovery portfolio feed | None — read-only public images, no PII |
 | `POST /api/v1/public/artists/{slug}/view` | Anonymous view counter for feed ranking | None — write-only to Redis, non-domain data |
 | `GET /api/v1/public/portfolio/{imageId}/reviews` | Public per-image review list | None — read-only, non-sensitive review content only |
+| `GET /api/v1/public/artists/{slug}/instagram-posts` | Public synced Instagram feed for artist portfolio | None — read-only, only `IsVisible` posts, no PII |
+| `GET /api/v1/instagram/callback` | Instagram OAuth redirect target, no JWT possible | Signed `state` param (HMAC-SHA256, `IInstagramStateSigner`) validated before trusting artistId |
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
 Never add new AllowAnonymous endpoints without adding a row to this table.
@@ -950,6 +954,7 @@ does not re-litigate them.
 | Issuer page document titles | All 7 issuer routes call `useDocumentMeta` with page-specific titles | Browser tabs and screen readers benefit from descriptive titles; all issuer pages now have unique titles |
 | Per-page error boundaries in issuer routes | `ErrorBoundary` wraps each issuer route element in `router.tsx` | Root `ErrorBoundary` catches everything but shows a blank app; per-page wrapping preserves the layout and nav while showing error UI for a single page |
 | Industry report trigger cooldown | 60-second `useEffect` countdown on trigger button (approved browser timer side-effect) | Prevents accidental double-triggering of an expensive Hangfire job |
+| Structured-log correlation fields | `RequestIdMiddleware` pushes `request_id` onto every log line via `LogContext`; `RequestLoggingEnrichment.Enrich` tags the per-request Serilog summary line with `request_id` always and `user_id`/`tenant_id` once authenticated | Closes the gap on CLAUDE.md's "logs must include tenant_id, user_id, request_id" rule — `request_id` needed to wrap the whole pipeline (registered before `UseSerilogRequestLogging`), while `user_id`/`tenant_id` need claims from `UseAuthentication()` and so use Serilog's `EnrichDiagnosticContext` hook instead of a `LogContext` scope. Still logs to console only — no Loki/Seq sink configured (would need a real endpoint; no deployment pipeline exists in this repo to point one at yet) |
 
 ---
 
@@ -1195,3 +1200,12 @@ integration tests green. Frontend: 1260/1260 green (tsc clean, `pnpm build` clea
   `ownerResponse` field exists on `Review` yet, so this is a new feature, not a bug),
   P5.2 (password strength indicator), P5.3 (email-verification banner on `/book`) —
   scoped out as UI additions beyond bug-fix/small-polish scope; left for a future pass
+
+## P-02 Stripe Health Check — 2026-07-02
+
+- Added `Stripe.BalanceService` to DI in `InfrastructureServiceExtensions.cs`
+- Created `Pena_e_Arte.API/Extensions/StripeHealthCheck.cs`
+- Registered as `"stripe"` with `tags: ["ready"]` in `Program.cs`
+- `/health/ready` now probes DB, Redis, and Stripe before reporting ready
+- Unit tests: `tests/Pena_e_Arte.UnitTests/HealthChecks/StripeHealthCheckTests.cs`
+- Rate limit note: left comment in `Program.cs` about `MaximumAge` for high pod counts

@@ -113,6 +113,17 @@ export interface CreateReviewArgs {
   body:   string;
 }
 
+export interface ArtistInstagramPostResponse {
+  id:               string;
+  instagramMediaId: string;
+  mediaUrl:         string | null;
+  thumbnailUrl:     string | null;
+  caption:          string | null;
+  mediaType:        string;
+  postedAt:         string;
+  isVisible:        boolean;
+}
+
 export interface PortfolioFeedArgs {
   lat?:      number;
   lng?:      number;
@@ -216,6 +227,9 @@ export const publicApi = createApi({
       }),
       invalidatesTags: (_result, _err, { imageId }) => [{ type: "PortfolioImageReviews", id: imageId }],
     }),
+    getArtistInstagramPosts: builder.query<ArtistInstagramPostResponse[], string>({
+      query: (slug) => `artists/${slug}/instagram-posts`,
+    }),
   }),
 });
 
@@ -232,4 +246,5 @@ export const {
   useCreateArtistReviewMutation,
   useGetPortfolioImageReviewsQuery,
   useCreatePortfolioImageReviewMutation,
+  useGetArtistInstagramPostsQuery,
 } = publicApi;

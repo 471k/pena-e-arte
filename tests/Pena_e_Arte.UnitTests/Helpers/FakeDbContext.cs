@@ -33,6 +33,8 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
     public DbSet<Review>                Reviews              => Set<Review>();
     public DbSet<SavedPortfolioImage>   SavedPortfolioImages => Set<SavedPortfolioImage>();
+    public DbSet<InstagramConnection>   InstagramConnections => Set<InstagramConnection>();
+    public DbSet<InstagramPost>         InstagramPosts       => Set<InstagramPost>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +86,16 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasOne(s => s.PortfolioImage)
             .WithMany()
             .HasForeignKey(s => s.PortfolioImageId);
+
+        modelBuilder.Entity<InstagramConnection>()
+            .HasOne(c => c.Artist)
+            .WithMany()
+            .HasForeignKey(c => c.ArtistId);
+
+        modelBuilder.Entity<InstagramPost>()
+            .HasOne(p => p.Artist)
+            .WithMany()
+            .HasForeignKey(p => p.ArtistId);
     }
 
     public static FakeDbContext Create() =>

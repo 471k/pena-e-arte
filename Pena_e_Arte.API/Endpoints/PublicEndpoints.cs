@@ -5,6 +5,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Application.Reviews.Commands;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Contracts.Responses.Public;
 using StackExchange.Redis;
 
@@ -31,6 +32,8 @@ public static class PublicEndpoints
         group.MapGet ("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/portfolio/{imageId:guid}/reviews", CreatePortfolioImageReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
+        group.MapGet ("/artists/{slug}/instagram-posts", GetArtistInstagramPosts)
+             .AllowAnonymous().RequireRateLimiting("public-read");
     }
 
     private static async Task<IResult> GetPublicStudio(
@@ -197,6 +200,16 @@ public static class PublicEndpoints
             new CreatePortfolioImageReviewCommand(imageId, authorId, authorName, body.Rating, body.Body),
             ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetArtistInstagramPosts(
+        string            slug,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<InstagramPostResponse> result =
+            await mediator.Send(new GetPublicArtistInstagramPostsQuery(slug), ct);
+        return Results.Ok(result);
     }
 }
 
