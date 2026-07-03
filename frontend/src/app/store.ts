@@ -19,6 +19,7 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi }          from "@/features/public";
 import { savedImagesApi }     from "@/features/public/savedImagesApi";
 import { platformApi } from "@/features/platform/platformApi";
+import { feedbackApi } from "@/features/feedback/feedbackApi";
 
 const appReducer = combineReducers({
   auth:          authReducer,
@@ -40,6 +41,7 @@ const appReducer = combineReducers({
   [publicApi.reducerPath]:         publicApi.reducer,
   [savedImagesApi.reducerPath]:    savedImagesApi.reducer,
   [platformApi.reducerPath]:       platformApi.reducer,
+  [feedbackApi.reducerPath]:       feedbackApi.reducer,
 });
 
 type AppState = ReturnType<typeof appReducer>;
@@ -70,6 +72,7 @@ export const store = configureStore({
       publicApi.middleware,
       savedImagesApi.middleware,
       platformApi.middleware,
+      feedbackApi.middleware,
     ),
 });
 

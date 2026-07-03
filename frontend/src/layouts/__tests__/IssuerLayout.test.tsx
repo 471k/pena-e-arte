@@ -10,12 +10,16 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
+import { feedbackApi } from "@/features/feedback/feedbackApi";
 import { IssuerLayout } from "@/layouts/IssuerLayout";
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
   http.get("http://localhost/api/v1/notifications", () =>
+    HttpResponse.json([]),
+  ),
+  http.get("http://localhost/api/v1/platform/feedback", () =>
     HttpResponse.json([]),
   ),
 );
@@ -32,8 +36,9 @@ function makeStore() {
       auth:                            authReducer,
       notifications:                   notificationsReducer,
       [notificationsApi.reducerPath]:  notificationsApi.reducer,
+      [feedbackApi.reducerPath]:       feedbackApi.reducer,
     },
-    middleware: (gd) => gd().concat(notificationsApi.middleware),
+    middleware: (gd) => gd().concat(notificationsApi.middleware, feedbackApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u4", email: "issuer@platform.test" }, token: "fake", tenantId: null, role: "issuer", pendingReferralCode: null } as any,
@@ -54,6 +59,7 @@ function renderLayout(initialPath = "/platform") {
             <Route path="/platform/subscriptions"  element={<div data-testid="outlet" />} />
             <Route path="/platform/referrals"      element={<div data-testid="outlet" />} />
             <Route path="/platform/reports"        element={<div data-testid="outlet" />} />
+            <Route path="/platform/feedback"       element={<div data-testid="outlet" />} />
             <Route path="/notifications"           element={<div data-testid="outlet" />} />
           </Route>
           <Route path="/login" element={<div data-testid="login-page" />} />
@@ -78,7 +84,7 @@ describe("IssuerLayout", () => {
     expect(screen.queryByText("Pena e Artë")).not.toBeInTheDocument();
   });
 
-  it("renders all six issuer nav links (Notifications moved to bell icon)", () => {
+  it("renders all seven issuer nav links (Notifications moved to bell icon)", () => {
     renderLayout();
     expect(screen.getByRole("link", { name: /^dashboard$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^studios$/i })).toBeInTheDocument();
@@ -86,6 +92,7 @@ describe("IssuerLayout", () => {
     expect(screen.getByRole("link", { name: /^subscriptions$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^referrals$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^reports$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^feedback$/i })).toBeInTheDocument();
   });
 
   it("does not render a 'Notifications' text link in the nav", () => {

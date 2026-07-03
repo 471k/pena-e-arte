@@ -29,6 +29,7 @@ import {
   PlatformReferralPage,
   IndustryReportsPage,
 } from "@/features/platform";
+import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage } from "@/features/public";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ClientLayout } from "@/layouts/ClientLayout";
@@ -154,6 +155,7 @@ export const router = createBrowserRouter([
                   { path: "subscriptions",     element: <ErrorBoundary><SubscriptionOversightPage /></ErrorBoundary> },
                   { path: "referrals",         element: <ErrorBoundary><PlatformReferralPage /></ErrorBoundary> },
                   { path: "reports",           element: <ErrorBoundary><IndustryReportsPage /></ErrorBoundary> },
+                  { path: "feedback",          element: <ErrorBoundary><FeedbackInboxPage /></ErrorBoundary> },
                 ],
               },
 

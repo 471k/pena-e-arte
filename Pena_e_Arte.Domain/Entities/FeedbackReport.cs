@@ -1,0 +1,51 @@
+using Pena_e_Arte.Domain.Enums;
+
+namespace Pena_e_Arte.Domain.Entities;
+
+public class FeedbackReport
+{
+    private FeedbackReport() { }
+
+    public Guid           Id              { get; private set; } = Guid.NewGuid();
+    public Guid           StudioId        { get; private set; }
+    public Guid           SubmitterUserId { get; private set; }
+    public string         SubmitterRole   { get; private set; } = string.Empty;
+    public string         StudioName      { get; private set; } = string.Empty;
+    public FeedbackType   Type            { get; private set; }
+    public string         Title           { get; private set; } = string.Empty;
+    public string         Body            { get; private set; } = string.Empty;
+    public FeedbackStatus Status          { get; private set; } = FeedbackStatus.Open;
+    public string?        IssuerNote      { get; private set; }
+    public DateTime       CreatedAt       { get; private set; } = DateTime.UtcNow;
+    public DateTime?      ResolvedAt      { get; private set; }
+
+    public static FeedbackReport Create(
+        Guid         studioId,
+        Guid         submitterUserId,
+        string       submitterRole,
+        string       studioName,
+        FeedbackType type,
+        string       title,
+        string       body)
+    {
+        return new FeedbackReport
+        {
+            StudioId        = studioId,
+            SubmitterUserId = submitterUserId,
+            SubmitterRole   = submitterRole,
+            StudioName      = studioName,
+            Type            = type,
+            Title           = title.Trim(),
+            Body            = body.Trim(),
+        };
+    }
+
+    public void UpdateStatus(FeedbackStatus status, string? issuerNote)
+    {
+        Status     = status;
+        IssuerNote = issuerNote?.Trim();
+        ResolvedAt = status is FeedbackStatus.Resolved or FeedbackStatus.Dismissed
+            ? DateTime.UtcNow
+            : null;
+    }
+}

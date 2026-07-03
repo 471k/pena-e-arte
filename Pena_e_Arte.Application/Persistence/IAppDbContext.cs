@@ -43,5 +43,8 @@ public interface IAppDbContext
     DbSet<InstagramConnection> InstagramConnections { get; }
     DbSet<InstagramPost>       InstagramPosts       { get; }
 
+    // Platform feedback — no tenant filter (issuer reads across all studios)
+    DbSet<FeedbackReport> FeedbackReports { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -1,18 +1,21 @@
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine,
+  Receipt, Settings, PenLine, MessageSquareMore,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
+import { Button } from "@/shared/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { NotificationBell } from "@/features/notifications";
+import { FeedbackDialog } from "@/features/feedback";
 
 const NAV_ITEMS = [
   { label: "Dashboard",       href: "/dashboard",  icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -30,6 +33,7 @@ export function OwnerLayout() {
   const navigate = useNavigate();
   const tenantId = useAppSelector((s) => s.auth.tenantId);
   useSignalR(tenantId);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
   useGetSubscriptionQuery();
   const { data: studio } = useGetMyStudioQuery();
@@ -68,6 +72,16 @@ export function OwnerLayout() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setFeedbackOpen(true)}
+            title="Send feedback"
+            aria-label="Send feedback"
+          >
+            <MessageSquareMore className="h-4 w-4" />
+          </Button>
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>
@@ -76,6 +90,7 @@ export function OwnerLayout() {
       <div className="flex-1">
         <Outlet />
       </div>
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
   );
 }

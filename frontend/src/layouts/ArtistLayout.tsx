@@ -1,15 +1,18 @@
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, Users, Palette, FileText, ScrollText,
-  DollarSign, Bell, PenLine, ImagePlus,
+  DollarSign, Bell, PenLine, ImagePlus, MessageSquareMore,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
+import { Button } from "@/shared/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { NotificationBell } from "@/features/notifications";
+import { FeedbackDialog } from "@/features/feedback";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 
@@ -28,6 +31,7 @@ export function ArtistLayout() {
   const navigate = useNavigate();
   const tenantId = useAppSelector((s) => s.auth.tenantId);
   useSignalR(tenantId);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const { data: myArtist } = useGetMyArtistQuery();
 
@@ -81,6 +85,16 @@ export function ArtistLayout() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setFeedbackOpen(true)}
+            title="Send feedback"
+            aria-label="Send feedback"
+          >
+            <MessageSquareMore className="h-4 w-4" />
+          </Button>
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>
@@ -89,6 +103,7 @@ export function ArtistLayout() {
       <div className="flex-1">
         <Outlet />
       </div>
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
   );
 }

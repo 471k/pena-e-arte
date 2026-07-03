@@ -127,6 +127,7 @@ try
     app.MapFileEndpoints();
     app.MapReferralEndpoints();
     app.MapPlatformEndpoints();
+    app.MapFeedbackEndpoints();
 
     app.Run();
 }

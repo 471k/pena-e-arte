@@ -50,6 +50,9 @@ public class AppDbContext(
     public DbSet<InstagramConnection> InstagramConnections => Set<InstagramConnection>();
     public DbSet<InstagramPost>       InstagramPosts       => Set<InstagramPost>();
 
+    // --- Platform feedback (no tenant filter — issuer reads across all studios) ---
+    public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
@@ -118,6 +121,24 @@ public class AppDbContext(
                   .HasForeignKey(r => r.PortfolioImageId)
                   .OnDelete(DeleteBehavior.Cascade)
                   .IsRequired(false);
+        });
+
+        builder.Entity<FeedbackReport>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+
+            entity.Property(r => r.SubmitterRole).HasMaxLength(20).IsRequired();
+            entity.Property(r => r.StudioName).HasMaxLength(200).IsRequired();
+            entity.Property(r => r.Type).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(r => r.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(r => r.Title).HasMaxLength(150).IsRequired();
+            entity.Property(r => r.Body).HasMaxLength(2000).IsRequired();
+            entity.Property(r => r.IssuerNote).HasMaxLength(1000);
+
+            // No HasQueryFilter — issuer reads across all studios.
+            entity.HasIndex(r => r.StudioId);
+            entity.HasIndex(r => r.Status);
+            entity.HasIndex(r => r.CreatedAt);
         });
     }
 }

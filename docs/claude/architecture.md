@@ -1209,3 +1209,38 @@ integration tests green. Frontend: 1260/1260 green (tsc clean, `pnpm build` clea
 - `/health/ready` now probes DB, Redis, and Stripe before reporting ready
 - Unit tests: `tests/Pena_e_Arte.UnitTests/HealthChecks/StripeHealthCheckTests.cs`
 - Rate limit note: left comment in `Program.cs` about `MaximumAge` for high pod counts
+
+## Feedback / Bug Report Feature — 2026-07-02
+
+### What was built
+- `FeedbackReport` domain entity (non-tenant, issuer reads cross-studio)
+- `FeedbackType` and `FeedbackStatus` domain constants
+- MediatR: `SubmitFeedbackCommand`, `UpdateFeedbackStatusCommand`, `GetFeedbackReportsQuery`
+- FluentValidation: `SubmitFeedbackValidator`, `UpdateFeedbackStatusValidator`
+- Migration: `AddFeedbackReports`
+- Endpoints:
+  - `POST /api/v1/feedback` (ArtistAndAbove)
+  - `GET /api/v1/platform/feedback?type=&status=` (IssuerOnly)
+  - `PATCH /api/v1/platform/feedback/{id}/status` (IssuerOnly)
+- `FeedbackDialog` component in `ArtistLayout` + `OwnerLayout` header
+- `FeedbackInboxPage` at `/platform/feedback` (IssuerOnly)
+- IssuerLayout: "Feedback" nav item with Open-count badge
+- `feedbackApi` RTK Query slice registered in store
+
+### Architecture decisions
+- `FeedbackType` and `FeedbackStatus` are real C# `enum` types (not string-constant
+  classes), stored via `HasConversion<string>()` — matching the codebase's existing
+  convention (`AppointmentStatus`, `DesignApprovalStatus`, `BillingInterval`, etc.), not
+  a one-off string-constants pattern. Request/response contracts still carry `string`
+  for these fields; handlers use `Enum.Parse`/`Enum.TryParse(ignoreCase: true)` and
+  `.ToString()` at the boundary, the same pattern used by `CreatePlanCommand`/`GetPlansQuery`.
+- `FeedbackReport` is NOT a `TenantEntity` — no EF Core global query filter, configured
+  inline in `AppDbContext.OnModelCreating` (same pattern as `Review` and
+  `SavedPortfolioImage`, not a separate `IEntityTypeConfiguration` file).
+  `SubmitFeedbackHandler` reads `StudioId` from `ICurrentTenant` and stores it.
+  `GetFeedbackReportsHandler` queries across all studios without `IgnoreQueryFilters()`
+  because no filter is registered for this entity.
+- `FeedbackDialog` is controlled (open/onOpenChange props) — callers own state.
+  This avoids prop-drilling the dialog into deeply nested components.
+- Issuer note is submitted alongside status update (not auto-saved) to keep API calls
+  intentional and predictable.
