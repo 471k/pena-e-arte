@@ -78,6 +78,16 @@ try
             Cron.Daily(hour: 3));
     }
 
+    // Without this, the API only sees the K8s/Nginx ingress IP in RemoteIpAddress,
+    // so every client shares one rate-limit bucket. KnownNetworks/KnownProxies are
+    // left empty (trust all proxies) — acceptable on a private cluster network;
+    // tighten to the ingress CIDR in production.
+    app.UseForwardedHeaders(new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto,
+    });
+
     app.UseMiddleware<RequestIdMiddleware>();
     app.UseSerilogRequestLogging(options =>
         options.EnrichDiagnosticContext = RequestLoggingEnrichment.Enrich);

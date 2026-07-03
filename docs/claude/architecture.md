@@ -1278,3 +1278,63 @@ integration tests green. Frontend: 1260/1260 green (tsc clean, `pnpm build` clea
   This avoids prop-drilling the dialog into deeply nested components.
 - Issuer note is submitted alongside status update (not auto-saved) to keep API calls
   intentional and predictable.
+
+## Redis-Backed Distributed Rate Limiting — 2026-07-02
+
+### Problem solved
+ASP.NET Core's built-in `FixedWindowLimiter` is in-process. With N replicas,
+each pod tracked its own counter — effective limit was N × permitLimit before
+any pod rejected a request. Useless at scale.
+
+### Solution
+`RedisFixedWindowRateLimiter` — a custom `System.Threading.RateLimiting.RateLimiter`
+subclass backed by a Redis atomic Lua script (INCR + EXPIRE + TTL in one round-trip).
+One instance per (policy, client IP) pair, cached by `PartitionedRateLimiter`.
+All state lives in Redis; the object is a stateless wrapper.
+
+### Key decisions
+- **No new NuGet packages** — `StackExchange.Redis` already in the project.
+- **Fail open** — Redis blip allows the request through + logs a warning.
+  A rate-limiter outage is not worth taking the API down.
+- **Fixed window via INCR + EXPIRE** — simple, atomic, correct.
+  The TTL returned from Redis is used as the `Retry-After` header value.
+- **IdleDuration = window** — tells `PartitionedRateLimiter` to evict idle
+  IP entries after the window expires, preventing memory leaks.
+- **PostConfigure<IConnectionMultiplexer, ILoggerFactory>** — resolves Redis
+  from DI without changing `AddApiRateLimiting()` signature or `Program.cs`.
+- **ForwardedHeaders middleware** — added (was absent), so `RemoteIpAddress`
+  reflects the real client IP behind the K8s/Nginx ingress.
+
+### .NET 10 API surface note
+The `RateLimiter` abstract base class in this SDK (net10.0) differs from older
+docs/examples: the public acquire method is `AcquireAsync`/`AcquireAsyncCore`
+(not `WaitAndAcquireAsync`/`WaitAndAcquireAsyncCore`), `GetStatistics()` is
+abstract (must be implemented, not optional), and `MetadataName.RetryAfter` is
+a strongly-typed `MetadataName<TimeSpan>` — comparing against the string-based
+`TryGetMetadata(string, out object?)` overload requires `.Name`. Also,
+`ForwardedHeadersOptions` now lives in `Microsoft.AspNetCore.Builder`, not
+`Microsoft.AspNetCore.HttpOverrides` (the enum `ForwardedHeaders` is still in
+`HttpOverrides`). Verify against the installed SDK before copying rate-limiter
+code from older blog posts/examples.
+
+### Policies (unchanged limits)
+| Policy       | Limit | Window | Endpoints                                    |
+|---|---|---|---|
+| auth         |  10   | 1 min  | login, register, oauth, forgot-password      |
+| public-write |  30   | 1 min  | review submit, artist view tracking          |
+| public-read  | 120   | 1 min  | portfolio feed, studio/artist pages, QR, map |
+
+### Files changed
+- `Pena_e_Arte.API/Extensions/RedisFixedWindowRateLimiter.cs` (NEW)
+- `Pena_e_Arte.API/Extensions/RateLimitingExtensions.cs` (REPLACED)
+- `Pena_e_Arte.API/Program.cs` (ForwardedHeaders added — was missing)
+- `Pena_e_Arte.API/Pena_e_Arte.API.csproj` (InternalsVisibleTo added for
+  `Pena_e_Arte.UnitTests`, matching the existing Infrastructure project pattern —
+  `RedisFixedWindowRateLimiter` is `internal`)
+- `tests/Pena_e_Arte.UnitTests/RateLimiting/RedisFixedWindowRateLimiterTests.cs` (NEW — 15 tests)
+
+### No changes to
+- Any endpoint file (`RequireRateLimiting` calls identical — already correct
+  on every public/auth route)
+- Any migration
+- Any NuGet dependency
