@@ -129,6 +129,11 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IInstagramService,        InstagramService>();
         services.AddTransient<InstagramSyncJob>();
 
+        services.Configure<GoogleOptions>(configuration.GetSection(GoogleOptions.Section));
+        services.Configure<AppleOptions>(configuration.GetSection(AppleOptions.Section));
+        services.AddHttpClient("OAuthJwks");
+        services.AddScoped<IOAuthTokenValidator, OAuthTokenValidator>();
+
         return services;
     }
 }

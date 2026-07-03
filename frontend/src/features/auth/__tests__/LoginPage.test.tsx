@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -31,10 +31,23 @@ function makeFakeJwt(role: string, email = "owner@test.com") {
   return `${header}.${payload}.fake-sig`;
 }
 
+// ── Mocked OAuth SDK hooks ─────────────────────────────────────────────────────
+
+vi.mock("@/shared/hooks/useGoogleSignIn", () => ({
+  useGoogleSignIn: () => () => Promise.resolve("fake-google-id-token"),
+}));
+
+vi.mock("@/shared/hooks/useAppleSignIn", () => ({
+  useAppleSignIn: () => () => Promise.resolve("fake-apple-id-token"),
+}));
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
   http.post("http://localhost/api/v1/auth/login", () =>
+    HttpResponse.json({ accessToken: makeFakeJwt("owner"), tokenType: "Bearer" }),
+  ),
+  http.post("http://localhost/api/v1/auth/oauth/login", () =>
     HttpResponse.json({ accessToken: makeFakeJwt("owner"), tokenType: "Bearer" }),
   ),
 );
@@ -463,5 +476,39 @@ describe("LoginPage — Remember me", () => {
     const forgotLink = screen.getByRole("link", { name: /forgot password/i });
     const checkbox   = screen.getByRole("checkbox", { name: /remember me/i });
     expect(forgotLink.closest("div")).toBe(checkbox.closest("label")?.closest("div"));
+  });
+});
+
+describe("LoginPage — OAuth", () => {
+  it("renders Continue with Google and Continue with Apple buttons", () => {
+    renderPage();
+    expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue with apple/i })).toBeInTheDocument();
+  });
+
+  it("Google OAuth success dispatches credentials and navigates to role home", async () => {
+    const user  = userEvent.setup();
+    const store = renderPage();
+
+    await user.click(screen.getByRole("button", { name: /continue with google/i }));
+
+    await screen.findByTestId("owner-home");
+    expect(store.getState().auth.role).toBe("owner");
+    expect(store.getState().auth.token).toBeTruthy();
+  });
+
+  it("shows an error when the OAuth login request fails", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/auth/oauth/login", () =>
+        HttpResponse.json({ message: "No account found. Please register first." }, { status: 400 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /continue with google/i }));
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 });

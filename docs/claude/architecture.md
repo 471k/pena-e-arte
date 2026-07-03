@@ -204,7 +204,7 @@ Back nav:    "Browse studios" → /discover, min-h-[44px] touch target.
 CTA:         bg-violet-600 filled button. Unauthenticated → /login?redirect=/book?studio={slug}.
 ```
 
-#### ArtistPortfolioPage (`/a/{slug}`)
+#### ArtistPortfolioPage (`/artist/{slug}`)
 
 ```
 Component:   public/components/ArtistPortfolioPage.tsx
@@ -220,8 +220,13 @@ Portfolio:   portfolioImages → List<ArtistPortfolioImage> (imageId + imageUrl)
              Formerly Artist.PortfolioImages JSON column — replaced by PortfolioImage entity.
              Lightbox per image; right panel shows ReviewSection with target="tattoo".
 View tracking: POST /api/v1/public/artists/{slug}/view (fire-and-forget Redis counter).
-Instagram:   InstagramHandle added by overnight-prompt-instagram-sync (not yet in contract —
-             add to PublicArtistResponse after that migration runs).
+Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
+             (GET /api/v1/artists/{id}/instagram/connect-url, owner-only) + anonymous
+             callback endpoint validates signed state; InstagramSyncJob (Infrastructure/Jobs)
+             runs nightly, tenant-wide, refreshes tokens, upserts InstagramPost rows;
+             per-post visibility toggle via PUT .../posts/{postId}/visibility; artist-side
+             UI in features/artists/components/InstagramTab.tsx; public posts surfaced via
+             GetPublicArtistInstagramPostsQuery on ArtistPortfolioPage.
 ```
 | 11 | Referral Code System | `ReferralCode`, `ReferralRedemption` | Stripe Billing discount coupon | Issuer-level |
 | 12 | Client Portable Profiles | `ClientProfile` cross-tenant read (opt-in) | `IgnoreQueryFilters` — issuer-scoped only | Cross-tenant (issuer) |
@@ -234,6 +239,31 @@ Instagram:   InstagramHandle added by overnight-prompt-instagram-sync (not yet i
 | 19 | Platform Referral Code Management | `ReferralCode`, `ReferralRedemption` | `IgnoreQueryFilters()` — 6th approved usage | Issuer-level |
 | 20 | Issuer Dashboard Page | No entity (reads features 17–19) | `platformApi` RTK Query slice | Issuer-level |
 | 21 | Bookmark / Saved Images | `SavedPortfolioImage` (cross-tenant, user-scoped, no TenantEntity) | `savedImagesApi` RTK Query slice (separate base URL `/api/v1/`) | Per-user, cross-tenant |
+| 22 | Google/Apple OAuth Sign-In | No new entity — Identity `IdentityUser` created passwordless via `CreateOAuthUserAsync` | `IOAuthTokenValidator` (JWKS via `IHttpClientFactory`, cached 1h in Redis); Google/Apple JS SDKs via CDN, no npm packages | Per-tenant (owner/client only) |
+
+```
+OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rate-limited)
+                           POST /api/v1/auth/oauth/register  (AllowAnonymous, rate-limited)
+                           OAuthLoginCommand, RegisterOAuthUserCommand
+                           IOAuthTokenValidator / OAuthTokenValidator
+                           IIdentityService.LoginWithVerifiedEmailAsync
+                           IIdentityService.CreateOAuthUserAsync
+                 Frontend: OAuthButtons (shared component)
+                           useGoogleSignIn, useAppleSignIn (shared hooks)
+                           LoginPage — "Continue with Google/Apple"
+                           RegisterStudioPage — OAuth path in step 2
+                 Notes:    JS SDKs loaded from CDN in index.html. No npm packages.
+                           JWKS fetched via IHttpClientFactory, cached in Redis 1h.
+                           Backend validates ID token signature — frontend sends raw token.
+                           Apple Sign In requires HTTPS even in development.
+                 Security: RegisterOAuthUserHandler enforces the same OwnerEmail-match
+                           check as RegisterUserHandler for role="owner" (guest-QA-pass
+                           fix, 2026-07-02) — the original spec predated that fix and
+                           would have reopened the owner-takeover vulnerability if
+                           implemented as originally written. RegisterOAuthUserValidator
+                           likewise restricts roles to client/owner only (no artist/issuer),
+                           matching RegisterUserValidator.
+```
 
 ---
 
@@ -955,6 +985,10 @@ does not re-litigate them.
 | Per-page error boundaries in issuer routes | `ErrorBoundary` wraps each issuer route element in `router.tsx` | Root `ErrorBoundary` catches everything but shows a blank app; per-page wrapping preserves the layout and nav while showing error UI for a single page |
 | Industry report trigger cooldown | 60-second `useEffect` countdown on trigger button (approved browser timer side-effect) | Prevents accidental double-triggering of an expensive Hangfire job |
 | Structured-log correlation fields | `RequestIdMiddleware` pushes `request_id` onto every log line via `LogContext`; `RequestLoggingEnrichment.Enrich` tags the per-request Serilog summary line with `request_id` always and `user_id`/`tenant_id` once authenticated | Closes the gap on CLAUDE.md's "logs must include tenant_id, user_id, request_id" rule — `request_id` needed to wrap the whole pipeline (registered before `UseSerilogRequestLogging`), while `user_id`/`tenant_id` need claims from `UseAuthentication()` and so use Serilog's `EnrichDiagnosticContext` hook instead of a `LogContext` scope. Still logs to console only — no Loki/Seq sink configured (would need a real endpoint; no deployment pipeline exists in this repo to point one at yet) |
+| OAuth flow shape | Frontend-first ID token flow (not backend redirect flow) | SPA with zero new npm packages; Google/Apple JS SDKs loaded from CDN `<script>` tags inject `window.google` / `window.AppleID`; backend validates the resulting ID token with the existing `JwtSecurityTokenHandler` + provider JWKS rather than running an OAuth redirect dance itself |
+| OAuth account creation | `CreateOAuthUserAsync` calls `userManager.CreateAsync(user)` with no password — passwordless account, `EmailConfirmed = true` since the provider already verified the email | Google/Apple already verify email ownership; re-requiring our own confirmation flow would be redundant friction |
+| OAuth owner registration authorization | `RegisterOAuthUserHandler` requires `info.Email == studio.OwnerEmail` for role="owner", mirroring `RegisterUserHandler` | The original `overnight-prompt-oauth-2026-06-25.md` spec predated the guest-QA-pass owner-takeover fix (2026-07-02) and did not include this check — implementing it as originally written would have reopened that exact vulnerability via a second (OAuth) registration path. `RegisterOAuthUserValidator` likewise restricts roles to client/owner only, matching `RegisterUserValidator`. |
+| Apple Sign In HTTPS requirement | No workaround added; documented as a dev-environment limitation | Apple Sign In requires HTTPS even in local development (proxy or tunnel needed) — out of scope to solve here |
 
 ---
 

@@ -6,8 +6,14 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath } from "@/app/router";
-import { useLoginMutation, useRegisterUserMutation } from "@/features/auth/authApi";
+import {
+  useLoginMutation,
+  useOauthLoginMutation,
+  useOauthRegisterMutation,
+  useRegisterUserMutation,
+} from "@/features/auth/authApi";
 import { setCredentials, setPendingReferralCode } from "@/features/auth/authSlice";
+import { OAuthButtons } from "@/shared/components/OAuthButtons";
 import { Button } from "@/shared/components/ui/button";
 import {
   Card,
@@ -47,10 +53,21 @@ const schema = z
       .min(1, "Email is required")
       .max(256)
       .email("Enter a valid email"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(1, "Confirm your password"),
+    password: z.string(),
+    confirmPassword: z.string(),
   })
   .superRefine((data, ctx) => {
+    // Both fields empty means the user is on the OAuth path — skip password validation.
+    if (data.password === "" && data.confirmPassword === "") return;
+
+    if (data.password.length < 8) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Password must be at least 8 characters",
+        path: ["password"],
+      });
+    }
+
     if (data.password !== data.confirmPassword) {
       ctx.addIssue({
         code: "custom",
@@ -74,10 +91,14 @@ export function RegisterStudioPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [serverError, setServerError] = useState<string | null>(null);
   const slugManuallyEdited = useRef(false);
+  const [oauthProvider, setOauthProvider] = useState<"google" | "apple" | null>(null);
+  const [oauthIdToken, setOauthIdToken] = useState<string | null>(null);
 
   const [registerStudio] = useRegisterStudioMutation();
   const [registerUser] = useRegisterUserMutation();
   const [login] = useLoginMutation();
+  const [oauthRegister] = useOauthRegisterMutation();
+  const [oauthLogin] = useOauthLoginMutation();
 
   const {
     register,
@@ -137,6 +158,33 @@ export function RegisterStudioPage() {
     }
   }
 
+  async function handleOAuthToken({
+    provider,
+    idToken,
+  }: {
+    provider: "google" | "apple";
+    idToken: string;
+  }) {
+    // Decode the provider ID token to pre-fill the email field for display purposes
+    // only — the backend re-validates the signature and extracts the trusted email itself.
+    try {
+      const parts = idToken.split(".");
+      if (parts.length !== 3) throw new Error("Malformed token");
+      const claims = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      const email = (claims.email as string | undefined) ?? "";
+
+      setValue("email", email);
+      setValue("password", "");
+      setValue("confirmPassword", "");
+    } catch {
+      // If we can't decode the token client-side, we still proceed — the backend
+      // extracts the email from the validated token.
+    }
+
+    setOauthProvider(provider);
+    setOauthIdToken(idToken);
+  }
+
   async function onSubmit(values: FormValues) {
     setServerError(null);
     try {
@@ -150,19 +198,36 @@ export function RegisterStudioPage() {
         ...(pendingReferralCode ? { referralCode: pendingReferralCode } : {}),
       }).unwrap();
 
-      await registerUser({
-        email: values.email,
-        password: values.password,
-        role: "owner",
-        studioId: studio.id,
-      }).unwrap();
+      if (oauthProvider && oauthIdToken) {
+        await oauthRegister({
+          provider: oauthProvider,
+          idToken:  oauthIdToken,
+          role:     "owner",
+          studioId: studio.id,
+        }).unwrap();
 
-      const { accessToken } = await login({
-        email: values.email,
-        password: values.password,
-      }).unwrap();
+        const { accessToken } = await oauthLogin({
+          provider: oauthProvider,
+          idToken:  oauthIdToken,
+        }).unwrap();
 
-      dispatch(setCredentials(decodeToken(accessToken)));
+        dispatch(setCredentials(decodeToken(accessToken)));
+      } else {
+        await registerUser({
+          email: values.email,
+          password: values.password,
+          role: "owner",
+          studioId: studio.id,
+        }).unwrap();
+
+        const { accessToken } = await login({
+          email: values.email,
+          password: values.password,
+        }).unwrap();
+
+        dispatch(setCredentials(decodeToken(accessToken)));
+      }
+
       dispatch(setPendingReferralCode(null));
       navigate("/dashboard", { replace: true });
     } catch (err) {
@@ -274,6 +339,8 @@ export function RegisterStudioPage() {
                       type="email"
                       autoComplete="email"
                       placeholder="owner@yourstudio.com"
+                      readOnly={oauthProvider !== null}
+                      className={oauthProvider !== null ? "bg-muted/40 cursor-default" : ""}
                       {...register("email")}
                       aria-invalid={!!errors.email}
                     />
@@ -282,35 +349,58 @@ export function RegisterStudioPage() {
                     )}
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      autoComplete="new-password"
-                      {...register("password")}
-                      aria-invalid={!!errors.password}
-                    />
-                    {errors.password && (
-                      <p className="text-xs text-destructive">{errors.password.message}</p>
-                    )}
-                  </div>
+                  {oauthProvider === null && (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="password">Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          autoComplete="new-password"
+                          {...register("password")}
+                          aria-invalid={!!errors.password}
+                        />
+                        {errors.password && (
+                          <p className="text-xs text-destructive">{errors.password.message}</p>
+                        )}
+                      </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirmPassword">Confirm password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      autoComplete="new-password"
-                      {...register("confirmPassword")}
-                      aria-invalid={!!errors.confirmPassword}
-                    />
-                    {errors.confirmPassword && (
-                      <p className="text-xs text-destructive">
-                        {errors.confirmPassword.message}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="confirmPassword">Confirm password</Label>
+                        <Input
+                          id="confirmPassword"
+                          type="password"
+                          autoComplete="new-password"
+                          {...register("confirmPassword")}
+                          aria-invalid={!!errors.confirmPassword}
+                        />
+                        {errors.confirmPassword && (
+                          <p className="text-xs text-destructive">
+                            {errors.confirmPassword.message}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {oauthProvider !== null && (
+                    <div className="flex items-center justify-between rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+                      <p className="text-xs text-muted-foreground capitalize">
+                        Signing in with {oauthProvider}
                       </p>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => { setOauthProvider(null); setOauthIdToken(null); }}
+                        className="text-xs underline underline-offset-2 hover:text-foreground text-muted-foreground"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  )}
+
+                  {oauthProvider === null && (
+                    <OAuthButtons onToken={handleOAuthToken} disabled={isSubmitting} />
+                  )}
 
                   {serverError && (
                     <p className="text-sm text-destructive" role="alert">

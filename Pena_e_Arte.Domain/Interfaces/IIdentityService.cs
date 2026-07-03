@@ -14,4 +14,18 @@ public interface IIdentityService
     Task<bool>    IsEmailConfirmedAsync(Guid userId, CancellationToken ct);
     Task<string?> GetUserEmailAsync(Guid userId, CancellationToken ct);
     Task<Guid?>   GetUserIdByEmailAsync(string email, CancellationToken ct);
+
+    /// <summary>
+    /// Issues a JWT for a user identified only by their verified email address.
+    /// The caller is responsible for having already validated the OAuth ID token.
+    /// Returns an error if no account exists with that email.
+    /// </summary>
+    Task<(bool Success, string? AccessToken, string? Error)> LoginWithVerifiedEmailAsync(string email);
+
+    /// <summary>
+    /// Creates an Identity user without a password (OAuth-only account).
+    /// The caller must have already verified the user's email via an OAuth ID token.
+    /// </summary>
+    Task<(bool Success, Guid UserId, string[] Errors)> CreateOAuthUserAsync(
+        string email, string role, Guid studioId, string? firstName);
 }

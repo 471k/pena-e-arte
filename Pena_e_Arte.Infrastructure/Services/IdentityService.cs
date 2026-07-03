@@ -152,6 +152,38 @@ public class IdentityService(
         return Guid.TryParse(user.Id, out Guid id) ? id : null;
     }
 
+    public async Task<(bool Success, string? AccessToken, string? Error)> LoginWithVerifiedEmailAsync(
+        string email)
+    {
+        IdentityUser? user = await userManager.FindByEmailAsync(email);
+
+        if (user is null)
+            return (false, null, "No account found with this email. Please register first.");
+
+        IList<string> roles      = await userManager.GetRolesAsync(user);
+        IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
+
+        return (true, GenerateJwt(user, roles, userClaims), null);
+    }
+
+    public async Task<(bool Success, Guid UserId, string[] Errors)> CreateOAuthUserAsync(
+        string email, string role, Guid studioId, string? firstName)
+    {
+        // Create the Identity user with no password — they will always sign in via OAuth.
+        IdentityUser user = new() { UserName = email, Email = email, EmailConfirmed = true };
+        IdentityResult result = await userManager.CreateAsync(user);
+
+        if (!result.Succeeded)
+            return (false, Guid.Empty, result.Errors.Select(e => e.Description).ToArray());
+
+        await userManager.AddToRoleAsync(user, role);
+        await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+        if (firstName is not null)
+            await userManager.AddClaimAsync(user, new Claim(JwtRegisteredClaimNames.GivenName, firstName));
+
+        return (true, Guid.Parse(user.Id), []);
+    }
+
     private string GenerateJwt(IdentityUser user, IList<string> roles, IList<Claim> userClaims)
     {
         string secretKey  = configuration["Jwt:SecretKey"]!;

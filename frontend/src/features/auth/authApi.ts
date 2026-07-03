@@ -20,6 +20,18 @@ interface RegisterUserRequest {
   firstName?: string;
 }
 
+interface OAuthLoginRequest {
+  provider: string;
+  idToken:  string;
+}
+
+interface OAuthRegisterRequest {
+  provider: string;
+  idToken:  string;
+  role:     string;
+  studioId: string;
+}
+
 interface ResetPasswordRequest {
   email:       string;
   token:       string;
@@ -53,6 +65,12 @@ export const authApi = createApi({
     registerUser: builder.mutation<void, RegisterUserRequest>({
       query: (body) => ({ url: "auth/register", method: "POST", body }),
     }),
+    oauthLogin: builder.mutation<AuthResponse, OAuthLoginRequest>({
+      query: (body) => ({ url: "auth/oauth/login", method: "POST", body }),
+    }),
+    oauthRegister: builder.mutation<void, OAuthRegisterRequest>({
+      query: (body) => ({ url: "auth/oauth/register", method: "POST", body }),
+    }),
     requestPasswordReset: builder.mutation<{ message: string }, string>({
       query: (email) => ({ url: "auth/forgot-password", method: "POST", body: { email } }),
     }),
@@ -74,6 +92,8 @@ export const authApi = createApi({
 export const {
   useLoginMutation,
   useRegisterUserMutation,
+  useOauthLoginMutation,
+  useOauthRegisterMutation,
   useRequestPasswordResetMutation,
   useResetPasswordMutation,
   useRefreshTokenMutation,

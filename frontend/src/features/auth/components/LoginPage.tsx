@@ -12,8 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { PasswordInput } from "@/shared/components/ui/password-input";
+import { OAuthButtons } from "@/shared/components/OAuthButtons";
 import { decodeToken } from "@/shared/utils/jwt";
-import { useLoginMutation } from "../authApi";
+import { useLoginMutation, useOauthLoginMutation } from "../authApi";
 import { setCredentials } from "../authSlice";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 
@@ -37,6 +38,7 @@ export function LoginPage() {
   const existingRole = useAppSelector((s) => s.auth.role);
   const [remember, setRemember] = useState(true);
   const [login, { isLoading, error }] = useLoginMutation();
+  const [oauthLogin] = useOauthLoginMutation();
 
   const sessionExpired  = searchParams.get("reason") === "session_expired";
   const studioId        = searchParams.get("studioId") ?? "";
@@ -73,6 +75,19 @@ export function LoginPage() {
     } catch {
       // error surfaced via RTK Query's `error` state below
     }
+  }
+
+  async function handleOAuthToken({
+    provider,
+    idToken,
+  }: {
+    provider: "google" | "apple";
+    idToken: string;
+  }) {
+    const { accessToken } = await oauthLogin({ provider, idToken }).unwrap();
+    const payload = decodeToken(accessToken);
+    dispatch(setCredentials({ ...payload, remember }));
+    // Navigation handled by the useEffect above once Redux re-renders with the new role
   }
 
   const serverError = error
@@ -195,6 +210,10 @@ export function LoginPage() {
                 Sign in
               </Button>
             </form>
+
+            <div className="mt-4">
+              <OAuthButtons onToken={handleOAuthToken} disabled={isLoading} />
+            </div>
 
             <div className="mt-4 text-center text-sm text-foreground/65">
               {clientRegisterUrl ? (
