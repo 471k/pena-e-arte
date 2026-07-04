@@ -15,6 +15,8 @@ import { clientsApi } from "@/features/clients/clientsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { publicApi } from "@/features/public/publicApi";
+import { authApi } from "@/features/auth/authApi";
 
 import { BookPage } from "@/features/appointments/components/BookPage";
 import { BookAppointmentForm } from "@/features/appointments/components/BookAppointmentForm";
@@ -142,6 +144,8 @@ function makeStore(role: Role = Role.Client) {
       [depositRulesApi.reducerPath]:     depositRulesApi.reducer,
       [studiosApi.reducerPath]:          studiosApi.reducer,
       [paymentsApi.reducerPath]:         paymentsApi.reducer,
+      [publicApi.reducerPath]:           publicApi.reducer,
+      [authApi.reducerPath]:             authApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -150,7 +154,9 @@ function makeStore(role: Role = Role.Client) {
         .concat(clientsApi.middleware)
         .concat(depositRulesApi.middleware)
         .concat(studiosApi.middleware)
-        .concat(paymentsApi.middleware),
+        .concat(paymentsApi.middleware)
+        .concat(publicApi.middleware)
+        .concat(authApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,

@@ -24,6 +24,7 @@ public class IdentityService(
 
         await userManager.AddToRoleAsync(user, role);
         await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+        await userManager.SetAuthenticationTokenAsync(user, "App", "ActiveTenantId", studioId.ToString());
         if (firstName is not null)
             await userManager.AddClaimAsync(user, new Claim(JwtRegisteredClaimNames.GivenName, firstName));
 
@@ -40,8 +41,9 @@ public class IdentityService(
 
         IList<string> roles      = await userManager.GetRolesAsync(user);
         IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
+        Guid?         activeTenantId = await ReadActiveTenantIdAsync(user);
 
-        return (true, GenerateJwt(user, roles, userClaims), null);
+        return (true, GenerateJwt(user, roles, userClaims, activeTenantId), null);
     }
 
     public async Task<(bool Success, string? Token, string? Error)> GeneratePasswordResetTokenAsync(string email)
@@ -97,7 +99,8 @@ public class IdentityService(
 
         IList<string> roles      = await userManager.GetRolesAsync(user);
         IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
-        string newAccessToken    = GenerateJwt(user, roles, userClaims);
+        Guid?         activeTenantId = await ReadActiveTenantIdAsync(user);
+        string newAccessToken    = GenerateJwt(user, roles, userClaims, activeTenantId);
 
         return (true, newAccessToken, newRefreshToken, null);
     }
@@ -162,8 +165,9 @@ public class IdentityService(
 
         IList<string> roles      = await userManager.GetRolesAsync(user);
         IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
+        Guid?         activeTenantId = await ReadActiveTenantIdAsync(user);
 
-        return (true, GenerateJwt(user, roles, userClaims), null);
+        return (true, GenerateJwt(user, roles, userClaims, activeTenantId), null);
     }
 
     public async Task<(bool Success, Guid UserId, string[] Errors)> CreateOAuthUserAsync(
@@ -178,13 +182,69 @@ public class IdentityService(
 
         await userManager.AddToRoleAsync(user, role);
         await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+        await userManager.SetAuthenticationTokenAsync(user, "App", "ActiveTenantId", studioId.ToString());
         if (firstName is not null)
             await userManager.AddClaimAsync(user, new Claim(JwtRegisteredClaimNames.GivenName, firstName));
 
         return (true, Guid.Parse(user.Id), []);
     }
 
-    private string GenerateJwt(IdentityUser user, IList<string> roles, IList<Claim> userClaims)
+    public async Task<IReadOnlyList<Guid>> GetTenantIdsAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return [];
+
+        IList<Claim> claims = await userManager.GetClaimsAsync(user);
+        return claims.Where(c => c.Type == "tenant_id")
+                     .Select(c => Guid.Parse(c.Value))
+                     .Distinct()
+                     .ToList();
+    }
+
+    public async Task<Guid?> GetActiveTenantIdAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        return user is null ? null : await ReadActiveTenantIdAsync(user);
+    }
+
+    public async Task EnsureTenantClaimAsync(Guid userId, Guid studioId, CancellationToken ct)
+    {
+        IdentityUser user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException($"User {userId} not found.");
+
+        IList<Claim> claims = await userManager.GetClaimsAsync(user);
+        bool alreadyMember = claims.Any(c => c.Type == "tenant_id" && c.Value == studioId.ToString());
+        if (!alreadyMember)
+            await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+    }
+
+    public async Task<(bool Success, string? AccessToken, string? RefreshToken, string? Error)> IssueTokensForTenantAsync(
+        Guid userId, Guid activeStudioId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return (false, null, null, "User not found.");
+
+        await userManager.SetAuthenticationTokenAsync(user, "App", "ActiveTenantId", activeStudioId.ToString());
+
+        string newRandom       = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string newRefreshToken = $"{user.Id}.{newRandom}";
+        await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", newRefreshToken);
+
+        IList<string> roles      = await userManager.GetRolesAsync(user);
+        IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
+        string accessToken       = GenerateJwt(user, roles, userClaims, activeStudioId);
+
+        return (true, accessToken, newRefreshToken, null);
+    }
+
+    private async Task<Guid?> ReadActiveTenantIdAsync(IdentityUser user)
+    {
+        string? stored = await userManager.GetAuthenticationTokenAsync(user, "App", "ActiveTenantId");
+        return Guid.TryParse(stored, out Guid id) ? id : null;
+    }
+
+    private string GenerateJwt(
+        IdentityUser user, IList<string> roles, IList<Claim> userClaims, Guid? activeStudioId = null)
     {
         string secretKey  = configuration["Jwt:SecretKey"]!;
         string issuer     = configuration["Jwt:Issuer"]!;
@@ -202,7 +262,17 @@ public class IdentityService(
         ];
 
         tokenClaims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
-        tokenClaims.AddRange(userClaims);
+        tokenClaims.AddRange(userClaims.Where(c => c.Type != "tenant_id"));
+
+        // A user may hold a "tenant_id" claim for every studio they belong to, but the
+        // token must carry exactly one — the caller-selected active studio if given,
+        // else whichever the user was first granted (preserves today's behavior for
+        // every single-studio account: artist/owner/issuer, and clients pre-dating
+        // multi-studio support).
+        string? activeTenantId = activeStudioId?.ToString()
+            ?? userClaims.FirstOrDefault(c => c.Type == "tenant_id")?.Value;
+        if (activeTenantId is not null)
+            tokenClaims.Add(new Claim("tenant_id", activeTenantId));
 
         JwtSecurityToken token = new(
             issuer:             issuer,

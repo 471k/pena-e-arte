@@ -1,5 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "@/app/store";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQuery } from "@/shared/api/baseQuery";
 
 interface LoginRequest {
   email:    string;
@@ -47,17 +47,20 @@ interface ChangePasswordRequest {
   newPassword:     string;
 }
 
+interface SwitchStudioRequest {
+  studioId: string;
+}
+
+export interface SwitchStudioResponse {
+  accessToken:    string;
+  refreshToken:   string;
+  isNewMembership: boolean;
+  tokenType:      string;
+}
+
 export const authApi = createApi({
   reducerPath: "authApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "/api/v1/",
-    prepareHeaders: (headers, { getState }) => {
-      const { token, tenantId } = (getState() as RootState).auth;
-      if (token)    headers.set("Authorization", `Bearer ${token}`);
-      if (tenantId) headers.set("X-Tenant-Id", tenantId);
-      return headers;
-    },
-  }),
+  baseQuery,
   endpoints: (builder) => ({
     login: builder.mutation<AuthResponse, LoginRequest>({
       query: (body) => ({ url: "auth/login", method: "POST", body }),
@@ -86,6 +89,9 @@ export const authApi = createApi({
     resendVerificationEmail: builder.mutation<void, void>({
       query: () => ({ url: "auth/resend-verification", method: "POST" }),
     }),
+    switchStudio: builder.mutation<SwitchStudioResponse, SwitchStudioRequest>({
+      query: (body) => ({ url: "auth/switch-studio", method: "POST", body }),
+    }),
   }),
 });
 
@@ -99,4 +105,5 @@ export const {
   useRefreshTokenMutation,
   useChangePasswordMutation,
   useResendVerificationEmailMutation,
+  useSwitchStudioMutation,
 } = authApi;

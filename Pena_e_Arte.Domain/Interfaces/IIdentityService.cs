@@ -28,4 +28,30 @@ public interface IIdentityService
     /// </summary>
     Task<(bool Success, Guid UserId, string[] Errors)> CreateOAuthUserAsync(
         string email, string role, Guid studioId, string? firstName);
+
+    /// <summary>
+    /// Returns every studio a client has a "tenant_id" claim for (i.e. every studio
+    /// they've joined). Non-client roles will only ever have one.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetTenantIdsAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
+    /// Returns the studio currently marked as active for this user (the one that will
+    /// be embedded as the single "tenant_id" claim on their next issued token).
+    /// </summary>
+    Task<Guid?> GetActiveTenantIdAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
+    /// Ensures the user holds a "tenant_id" claim for the given studio. Idempotent —
+    /// safe to call even if the user already belongs to that studio.
+    /// </summary>
+    Task EnsureTenantClaimAsync(Guid userId, Guid studioId, CancellationToken ct);
+
+    /// <summary>
+    /// Marks the given studio as active and reissues access + refresh tokens scoped to
+    /// it. The caller must have already ensured the user holds a "tenant_id" claim for
+    /// this studio (see <see cref="EnsureTenantClaimAsync"/>).
+    /// </summary>
+    Task<(bool Success, string? AccessToken, string? RefreshToken, string? Error)> IssueTokensForTenantAsync(
+        Guid userId, Guid activeStudioId, CancellationToken ct);
 }

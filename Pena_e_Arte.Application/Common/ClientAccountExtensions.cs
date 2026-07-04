@@ -35,4 +35,28 @@ public static class ClientAccountExtensions
 
         return client;
     }
+
+    /// <summary>
+    /// Approved exception #5 (see docs/claude/database.md "Tenant Isolation Rules"):
+    /// looks up a user's Client membership at a studio OTHER than the one currently
+    /// scoped by the request's JWT, for the multi-studio "switch active studio" flow.
+    /// Must never be used to read another tenant's data — only to check/create the
+    /// caller's OWN membership at a studio they explicitly asked to join.
+    /// </summary>
+    public static Task<Client?> FindClientForUserAtStudioAsync(
+        this IAppDbContext db, Guid userId, Guid studioId, CancellationToken ct) =>
+        db.Clients.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.UserId == userId && c.StudioId == studioId && c.DeletedAt == null, ct);
+
+    /// <summary>
+    /// Approved exception #5 — finds the user's oldest Client record across ALL
+    /// studios, used only to seed name/email/phone when auto-provisioning a new
+    /// membership at a studio they've never joined. Never used to copy medical data.
+    /// </summary>
+    public static Task<Client?> FindAnyClientRecordForUserAsync(
+        this IAppDbContext db, Guid userId, CancellationToken ct) =>
+        db.Clients.IgnoreQueryFilters()
+            .Where(c => c.UserId == userId && c.DeletedAt == null)
+            .OrderBy(c => c.CreatedAt)
+            .FirstOrDefaultAsync(ct);
 }

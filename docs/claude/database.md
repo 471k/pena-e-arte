@@ -150,7 +150,14 @@ var allAppointments = await _db.Appointments
     .ToListAsync(ct);
 ```
 
-Never call `IgnoreQueryFilters()` in a handler that is not behind `IssuerOnly` policy.
+Never call `IgnoreQueryFilters()` in a handler that is not behind `IssuerOnly` policy,
+except the following documented, narrowly-scoped exceptions:
+
+| # | Location | Purpose | Guardrail |
+|---|---|---|---|
+| 3 | `PortableProfileService` | Cross-tenant client profile read | Requires `ClientProfile.AllowCrossTenantRead == true` opt-in |
+| 4 | `IndustryReportJob` | Issuer-level industry aggregate | No PII, issuer-only consumer |
+| 5 | `ClientAccountExtensions.FindClientForUserAtStudioAsync` / `FindAnyClientRecordForUserAsync` | Multi-studio client "switch active studio" flow (`SwitchStudioCommand`) | Only ever queries by the *caller's own* `UserId`; never used to read another user's data, and never copies medical/`ClientProfile` data across studios |
 
 ---
 

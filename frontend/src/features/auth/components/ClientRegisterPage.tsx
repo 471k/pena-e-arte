@@ -123,7 +123,7 @@ export function ClientRegisterPage() {
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
-              to="/login"
+              to={`/login${redirectTo !== "/book" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
               className="underline underline-offset-4 hover:text-foreground"
             >
               Sign in

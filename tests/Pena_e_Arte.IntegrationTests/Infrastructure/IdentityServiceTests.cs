@@ -234,5 +234,124 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         jwt.ValidTo.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(15), TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task CreateUserAsync_ValidUser_SetsActiveTenantIdToken()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string email    = UniqueEmail();
+        Guid   studioId = Guid.NewGuid();
+
+        await sut.CreateUserAsync(email, "Password1!", "client", studioId);
+
+        IdentityUser user   = (await um.FindByEmailAsync(email))!;
+        string? stored = await um.GetAuthenticationTokenAsync(user, "App", "ActiveTenantId");
+        stored.Should().Be(studioId.ToString());
+    }
+
+    [Fact]
+    public async Task IssueTokensForTenantAsync_UserWithTwoStudioClaims_TokenContainsOnlyActiveOne()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string email  = UniqueEmail();
+        Guid   studioA = Guid.NewGuid();
+        Guid   studioB = Guid.NewGuid();
+
+        await sut.CreateUserAsync(email, "Password1!", "client", studioA);
+        IdentityUser user   = (await um.FindByEmailAsync(email))!;
+        Guid         userId = Guid.Parse(user.Id);
+        await sut.EnsureTenantClaimAsync(userId, studioB, default);
+
+        (bool success, string? accessToken, string? refreshToken, string? error) =
+            await sut.IssueTokensForTenantAsync(userId, studioB, default);
+
+        success.Should().BeTrue();
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+        jwt.Claims.Where(c => c.Type == "tenant_id").Should().ContainSingle()
+            .Which.Value.Should().Be(studioB.ToString());
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_AfterSwitchingStudio_PreservesActiveStudio()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string email  = UniqueEmail();
+        Guid   studioA = Guid.NewGuid();
+        Guid   studioB = Guid.NewGuid();
+
+        await sut.CreateUserAsync(email, "Password1!", "client", studioA);
+        IdentityUser user   = (await um.FindByEmailAsync(email))!;
+        Guid         userId = Guid.Parse(user.Id);
+        await sut.EnsureTenantClaimAsync(userId, studioB, default);
+        (_, _, string? refreshToken, _) = await sut.IssueTokensForTenantAsync(userId, studioB, default);
+
+        (bool success, string? newAccessToken, _, _) = await sut.RefreshTokenAsync(refreshToken!);
+
+        success.Should().BeTrue();
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(newAccessToken);
+        jwt.Claims.Should().Contain(c => c.Type == "tenant_id" && c.Value == studioB.ToString());
+    }
+
+    [Fact]
+    public async Task LoginAsync_LegacyUserWithNoActiveTenantToken_StillGetsSingleTenantClaim()
+    {
+        // Regression: accounts created before "ActiveTenantId" tracking existed must be
+        // completely unaffected — GenerateJwt falls back to the first stored claim.
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string email    = UniqueEmail();
+        Guid   studioId = Guid.NewGuid();
+        IdentityUser user = new() { UserName = email, Email = email };
+        await um.CreateAsync(user, "Password1!");
+        await um.AddToRoleAsync(user, "owner");
+        await um.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
+        // Deliberately no "ActiveTenantId" auth token — simulates a pre-migration account.
+
+        (bool success, string? token, _) = await sut.LoginAsync(email, "Password1!");
+
+        success.Should().BeTrue();
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        jwt.Claims.Should().ContainSingle(c => c.Type == "tenant_id")
+            .Which.Value.Should().Be(studioId.ToString());
+    }
+
+    [Fact]
+    public async Task EnsureTenantClaimAsync_CalledTwiceForSameStudio_DoesNotDuplicateClaim()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string email    = UniqueEmail();
+        Guid   studioId = Guid.NewGuid();
+        await sut.CreateUserAsync(email, "Password1!", "client", studioId);
+        IdentityUser user   = (await um.FindByEmailAsync(email))!;
+        Guid         userId = Guid.Parse(user.Id);
+
+        await sut.EnsureTenantClaimAsync(userId, studioId, default);
+        await sut.EnsureTenantClaimAsync(userId, studioId, default);
+
+        IList<Claim> claims = await um.GetClaimsAsync(user);
+        claims.Count(c => c.Type == "tenant_id" && c.Value == studioId.ToString()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetTenantIdsAsync_UserWithTwoStudios_ReturnsBoth()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string email  = UniqueEmail();
+        Guid   studioA = Guid.NewGuid();
+        Guid   studioB = Guid.NewGuid();
+        await sut.CreateUserAsync(email, "Password1!", "client", studioA);
+        IdentityUser user   = (await um.FindByEmailAsync(email))!;
+        Guid         userId = Guid.Parse(user.Id);
+        await sut.EnsureTenantClaimAsync(userId, studioB, default);
+
+        IReadOnlyList<Guid> tenantIds = await sut.GetTenantIdsAsync(userId, default);
+
+        tenantIds.Should().BeEquivalentTo([studioA, studioB]);
+    }
+
     private static string UniqueEmail() => $"user-{Guid.NewGuid():N}@test.com";
 }
