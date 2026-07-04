@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  CalendarDays, Palette, FileText, ScrollText, User, PenLine,
+  CalendarDays, Palette, FileText, ScrollText, User, PenLine, Building2,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -12,7 +12,8 @@ import { useSignalR } from "@/shared/hooks/useSignalR";
 import { NotificationBell } from "@/features/notifications";
 
 const NAV_ITEMS = [
-  { label: "Book Appointment", shortLabel: "Book",  href: "/book",           icon: <CalendarDays className="h-4 w-4" /> },
+  { label: "Book Appointment", shortLabel: "Book",    href: "/book",         icon: <CalendarDays className="h-4 w-4" /> },
+  { label: "My Studios",       shortLabel: "Studios", href: "/my-studios",   icon: <Building2    className="h-4 w-4" /> },
   { label: "My Designs",       shortLabel: undefined, href: "/designs",        icon: <Palette      className="h-4 w-4" /> },
   { label: "Intake Forms",     shortLabel: undefined, href: "/forms/intake",   icon: <FileText     className="h-4 w-4" /> },
   { label: "Consent Forms",    shortLabel: undefined, href: "/forms/consent",  icon: <ScrollText   className="h-4 w-4" /> },

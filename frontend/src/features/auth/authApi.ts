@@ -58,9 +58,19 @@ export interface SwitchStudioResponse {
   tokenType:      string;
 }
 
+export interface MyStudioResponse {
+  studioId:       string;
+  name:           string;
+  slug:           string;
+  city:           string;
+  coverImageUrl:  string | null;
+  isStudioActive: boolean;
+}
+
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery,
+  tagTypes: ["MyStudios"],
   endpoints: (builder) => ({
     login: builder.mutation<AuthResponse, LoginRequest>({
       query: (body) => ({ url: "auth/login", method: "POST", body }),
@@ -91,6 +101,11 @@ export const authApi = createApi({
     }),
     switchStudio: builder.mutation<SwitchStudioResponse, SwitchStudioRequest>({
       query: (body) => ({ url: "auth/switch-studio", method: "POST", body }),
+      invalidatesTags: ["MyStudios"],
+    }),
+    getMyStudios: builder.query<MyStudioResponse[], void>({
+      query: () => "auth/my-studios",
+      providesTags: ["MyStudios"],
     }),
   }),
 });
@@ -106,4 +121,5 @@ export const {
   useChangePasswordMutation,
   useResendVerificationEmailMutation,
   useSwitchStudioMutation,
+  useGetMyStudiosQuery,
 } = authApi;

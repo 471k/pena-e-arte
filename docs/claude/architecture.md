@@ -240,6 +240,7 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 20 | Issuer Dashboard Page | No entity (reads features 17–19) | `platformApi` RTK Query slice | Issuer-level |
 | 21 | Bookmark / Saved Images | `SavedPortfolioImage` (cross-tenant, user-scoped, no TenantEntity) | `savedImagesApi` RTK Query slice (separate base URL `/api/v1/`) | Per-user, cross-tenant |
 | 22 | Google/Apple OAuth Sign-In | No new entity — Identity `IdentityUser` created passwordless via `CreateOAuthUserAsync` | `IOAuthTokenValidator` (JWKS via `IHttpClientFactory`, cached 1h in Redis); Google/Apple JS SDKs via CDN, no npm packages | Per-tenant (owner/client only) |
+| 23 | Multi-Studio Client View | No new entity (`Studio` + Identity claims) | `IIdentityService.GetTenantIdsAsync` | Per-user, cross-tenant |
 
 ```
 OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rate-limited)
@@ -1338,3 +1339,41 @@ code from older blog posts/examples.
   on every public/auth route)
 - Any migration
 - Any NuGet dependency
+
+## Multi-Studio Plan — Phase 2: My Studios Page — 2026-07-04
+
+### What was added
+- `GET /api/v1/auth/my-studios` (`ClientOnly`, no rate limit) — returns all studios
+  the authenticated client holds a `tenant_id` Identity claim for, ordered by name.
+  Returns `MyStudioResponse[]` (StudioId, Name, Slug, City, CoverImageUrl, IsStudioActive).
+- `GetMyStudiosQuery` + `GetMyStudiosHandler` — reads tenant IDs from `IIdentityService.GetTenantIdsAsync`
+  then fetches `Studio` rows. Studios are not tenant-scoped (no IgnoreQueryFilters needed).
+- `MyStudiosPage` at `/my-studios` (client-only route) — lists studio cards with
+  cover image/initials monogram, city, active ring, switch button, and a link to the public portfolio.
+- `Building2` nav item added to `ClientLayout` between "Book Appointment" and "My Designs".
+
+### Key decisions
+- **IsCurrentlyActive computed on the frontend**, not the server. The Redux store already holds
+  `auth.tenantId`. Comparing `studio.studioId === tenantId` in the component is cheaper,
+  always fresh, and eliminates cache-invalidation overhead after switching.
+- **Navigate to /book after switch** — clears the user's mental model to "I'm now in a new studio"
+  and lands them on the most immediately useful page. No full-page reload needed; stale RTK Query
+  cache for the old tenant will be replaced by fresh fetches triggered by the new page.
+- **ClientOnly policy** — consistent with the existing SwitchStudio endpoint. Artists and owners
+  each belong to exactly one studio; this feature is meaningless for them.
+- **No validator needed** — `GetMyStudiosQuery` takes no user-supplied parameters.
+
+### Files added/changed
+Backend:
+- `Pena_e_Arte.Contracts/Responses/MyStudioResponse.cs` (NEW)
+- `Pena_e_Arte.Application/Auth/Queries/GetMyStudiosQuery.cs` (NEW)
+- `Pena_e_Arte.API/Endpoints/AuthEndpoints.cs` (GET /auth/my-studios added)
+- `tests/Pena_e_Arte.UnitTests/Auth/GetMyStudiosHandlerTests.cs` (NEW — 7 tests)
+
+Frontend:
+- `frontend/src/features/auth/authApi.ts` (MyStudioResponse interface + getMyStudios query)
+- `frontend/src/features/auth/components/MyStudiosPage.tsx` (NEW)
+- `frontend/src/features/auth/index.ts` (export added)
+- `frontend/src/app/router.tsx` (/my-studios route added)
+- `frontend/src/layouts/ClientLayout.tsx` (Building2 nav item added)
+- `frontend/src/features/auth/__tests__/MyStudiosPage.test.tsx` (NEW — 14 tests)

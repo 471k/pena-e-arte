@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MediatR;
 using Pena_e_Arte.Application.Auth.Commands;
+using Pena_e_Arte.Application.Auth.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 
@@ -23,6 +24,7 @@ public static class AuthEndpoints
         group.MapGet ("/verify-email",         VerifyEmail).AllowAnonymous();
         group.MapPost("/resend-verification",  ResendVerification).RequireAuthorization("ClientAndAbove");
         group.MapPost("/switch-studio",        SwitchStudio).RequireAuthorization("ClientOnly").RequireRateLimiting("auth");
+        group.MapGet ("/my-studios",            GetMyStudios).RequireAuthorization("ClientOnly");
     }
 
     private static async Task<IResult> Login(
@@ -128,5 +130,13 @@ public static class AuthEndpoints
     {
         SwitchStudioResponse response = await mediator.Send(new SwitchStudioCommand(request), ct);
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> GetMyStudios(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<MyStudioResponse> result = await mediator.Send(new GetMyStudiosQuery(), ct);
+        return Results.Ok(result);
     }
 }

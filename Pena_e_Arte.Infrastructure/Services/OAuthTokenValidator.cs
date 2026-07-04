@@ -86,10 +86,11 @@ public sealed class OAuthTokenValidator(
     /// <summary>
     /// Fetches the JWKS from the provider and caches it in Redis for 1 hour.
     /// Google/Apple rotate keys infrequently; 1h is safe and avoids hammering the endpoint.
+    /// Caching is best-effort — a Redis outage must not block sign-in.
     /// </summary>
     private async Task<JsonWebKeySet> GetJwksAsync(string cacheKey, string url, CancellationToken ct)
     {
-        byte[]? cached = await cache.GetAsync(cacheKey, ct);
+        byte[]? cached = await TryGetCacheAsync(cacheKey, ct);
 
         if (cached is not null)
             return new JsonWebKeySet(Encoding.UTF8.GetString(cached));
@@ -100,13 +101,38 @@ public sealed class OAuthTokenValidator(
 
         string jwksJson = await response.Content.ReadAsStringAsync(ct);
 
-        await cache.SetAsync(
-            cacheKey,
-            Encoding.UTF8.GetBytes(jwksJson),
-            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1) },
-            ct);
+        await TrySetCacheAsync(cacheKey, Encoding.UTF8.GetBytes(jwksJson), ct);
 
         logger.LogInformation("Fetched and cached JWKS from {Url}", url);
         return new JsonWebKeySet(jwksJson);
+    }
+
+    private async Task<byte[]?> TryGetCacheAsync(string cacheKey, CancellationToken ct)
+    {
+        try
+        {
+            return await cache.GetAsync(cacheKey, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "JWKS cache read failed for {CacheKey} — fetching from provider", cacheKey);
+            return null;
+        }
+    }
+
+    private async Task TrySetCacheAsync(string cacheKey, byte[] value, CancellationToken ct)
+    {
+        try
+        {
+            await cache.SetAsync(
+                cacheKey,
+                value,
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1) },
+                ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "JWKS cache write failed for {CacheKey}", cacheKey);
+        }
     }
 }

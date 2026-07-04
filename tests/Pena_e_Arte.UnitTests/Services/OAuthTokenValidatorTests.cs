@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Services;
 
@@ -89,6 +90,28 @@ public class OAuthTokenValidatorTests : IDisposable
         await sut.ValidateGoogleTokenAsync(idToken, default);
 
         _http.Received(1).CreateClient("OAuthJwks");
+    }
+
+    [Fact]
+    public async Task ValidateGoogleTokenAsync_CacheUnavailable_FallsBackToHttpInsteadOfThrowing()
+    {
+        MockHttpReturnsJwks();
+        string idToken = BuildSignedGoogleToken();
+
+        IDistributedCache brokenCache = Substitute.For<IDistributedCache>();
+        brokenCache.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TimeoutException("Redis unavailable"));
+
+        OAuthTokenValidator sut = new(
+            _http,
+            brokenCache,
+            Options.Create(new GoogleOptions { ClientId = GoogleAudience }),
+            Options.Create(new AppleOptions { ClientId = "test-apple-client-id" }),
+            NullLogger<OAuthTokenValidator>.Instance);
+
+        OAuthUserInfo result = await sut.ValidateGoogleTokenAsync(idToken, default);
+
+        result.Email.Should().Be("user@example.com");
     }
 
     [Fact]

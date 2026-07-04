@@ -93,7 +93,7 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
 
         ListObjectsV2Response response = await s3.ListObjectsV2Async(request, ct);
 
-        return response.S3Objects
+        return (response.S3Objects ?? [])
             .Select(o => new R2ObjectInfo(
                 o.Key,
                 o.LastModified ?? DateTime.UtcNow,

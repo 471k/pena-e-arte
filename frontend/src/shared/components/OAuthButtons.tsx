@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { useGoogleSignIn } from "@/shared/hooks/useGoogleSignIn";
-import { useAppleSignIn }  from "@/shared/hooks/useAppleSignIn";
+import { GoogleSignInButton } from "@/shared/components/GoogleSignInButton";
+import { useAppleSignIn }     from "@/shared/hooks/useAppleSignIn";
 
 interface OAuthButtonsProps {
   onToken: (result: { provider: "google" | "apple"; idToken: string }) => Promise<void>;
@@ -13,17 +13,27 @@ export function OAuthButtons({ onToken, disabled = false }: OAuthButtonsProps) {
   const [loadingProvider, setLoadingProvider] = useState<"google" | "apple" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const signInWithGoogle = useGoogleSignIn();
-  const signInWithApple  = useAppleSignIn();
+  const signInWithApple = useAppleSignIn();
 
-  async function handle(provider: "google" | "apple") {
+  async function handleGoogleCredential(idToken: string) {
     setError(null);
-    setLoadingProvider(provider);
+    setLoadingProvider("google");
     try {
-      const idToken = provider === "google"
-        ? await signInWithGoogle()
-        : await signInWithApple();
-      await onToken({ provider, idToken });
+      await onToken({ provider: "google", idToken });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
+      setError(msg);
+    } finally {
+      setLoadingProvider(null);
+    }
+  }
+
+  async function handleApple() {
+    setError(null);
+    setLoadingProvider("apple");
+    try {
+      const idToken = await signInWithApple();
+      await onToken({ provider: "apple", idToken });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
       // User-cancelled prompts produce an error we don't surface as an error to the user.
@@ -50,24 +60,14 @@ export function OAuthButtons({ onToken, disabled = false }: OAuthButtonsProps) {
       </div>
 
       {/* Google */}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full gap-2"
-        disabled={disabled || isLoading}
-        onClick={() => handle("google")}
-        aria-label="Continue with Google"
-      >
-        {loadingProvider === "google"
-          ? <Loader2 className="h-4 w-4 animate-spin" />
-          : (
-            <svg role="img" aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-              <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/>
-            </svg>
-          )
-        }
-        Continue with Google
-      </Button>
+      <div className="relative">
+        <GoogleSignInButton onCredential={handleGoogleCredential} disabled={disabled || isLoading} />
+        {loadingProvider === "google" && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-md bg-card/90">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        )}
+      </div>
 
       {/* Apple */}
       <Button
@@ -75,7 +75,7 @@ export function OAuthButtons({ onToken, disabled = false }: OAuthButtonsProps) {
         variant="outline"
         className="w-full gap-2"
         disabled={disabled || isLoading}
-        onClick={() => handle("apple")}
+        onClick={handleApple}
         aria-label="Continue with Apple"
       >
         {loadingProvider === "apple"

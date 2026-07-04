@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Navigate, Outlet, createBrowserRouter, useNavigate } from "react-router-dom";
-import { LoginPage, ForgotPasswordPage, ResetPasswordPage, ChangePasswordPage, VerifyEmailPage, ClientRegisterPage } from "@/features/auth";
+import { LoginPage, ForgotPasswordPage, ResetPasswordPage, ChangePasswordPage, VerifyEmailPage, ClientRegisterPage, MyStudiosPage } from "@/features/auth";
 import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
 import { DashboardPage } from "@/features/dashboard";
@@ -127,6 +127,11 @@ export const router = createBrowserRouter([
                 path: "book",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Issuer]} />,
                 children: [{ index: true, element: <ErrorBoundary><BookPage /></ErrorBoundary> }],
+              },
+              {
+                path: "my-studios",
+                element: <RoleGuard allowedRoles={[Role.Client]} />,
+                children: [{ index: true, element: <ErrorBoundary><MyStudiosPage /></ErrorBoundary> }],
               },
 
               // ── Artist + Owner ───────────────────────────────────────────────
