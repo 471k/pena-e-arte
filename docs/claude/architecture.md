@@ -1377,3 +1377,30 @@ Frontend:
 - `frontend/src/app/router.tsx` (/my-studios route added)
 - `frontend/src/layouts/ClientLayout.tsx` (Building2 nav item added)
 - `frontend/src/features/auth/__tests__/MyStudiosPage.test.tsx` (NEW — 14 tests)
+
+## Public Portfolio Pages — Nav Header — 2026-07-04
+
+### Problem
+`StudioPortfolioPage` (/s/:slug) and `ArtistPortfolioPage` (/artist/:slug) are public routes
+reachable via Google, shared links, and Instagram bios. Neither page had a nav header, so
+unauthenticated visitors landing directly on these pages had no sign-in or sign-up entry point.
+
+### Solution
+- Extracted `AuthenticatedNav` from `DiscoverPage.tsx` into a new shared file:
+  `frontend/src/features/public/components/PublicPageHeader.tsx`
+- Created `PublicPageHeader` component — sticky header with brand mark + sign-in/sign-up
+  links (logged-out) or account dropdown (logged-in). No props — reads Redux internally.
+- Added `<PublicPageHeader />` to the loaded, error, and (placeholder in) loading states of
+  both portfolio pages.
+- Adjusted sticky sidebar `top` offset from `top-6` to `top-[72px]` to account for header height.
+
+### Files changed
+- `frontend/src/features/public/components/PublicPageHeader.tsx` (NEW)
+- `frontend/src/features/public/components/DiscoverPage.tsx` — removed inline `AuthenticatedNav`,
+  imported it from `PublicPageHeader.tsx`; removed `BrandMark` duplication
+- `frontend/src/features/public/components/StudioPortfolioPage.tsx` — added header + error state header + skeleton placeholder + sidebar top adjustment
+- `frontend/src/features/public/components/ArtistPortfolioPage.tsx` — same as above
+- `frontend/src/features/public/index.ts` — added exports
+- `frontend/src/features/public/__tests__/PublicPageHeader.test.tsx` (NEW — 16 tests)
+- `frontend/src/features/public/__tests__/StudioPortfolioPage.test.tsx` — 6 new header tests
+- `frontend/src/features/public/__tests__/ArtistPortfolioPage.test.tsx` — 6 new header tests

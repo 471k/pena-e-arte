@@ -263,4 +263,40 @@ describe("ArtistPortfolioPage", () => {
     renderPage();
     expect(screen.getByText("Artist not found.")).toBeInTheDocument();
   });
+
+  describe("PublicPageHeader on ArtistPortfolioPage", () => {
+    it("renders 'Sign in' and 'Sign up' links when unauthenticated", () => {
+      renderPage(null);
+      expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Sign up" })).toBeInTheDocument();
+    });
+
+    it("renders 'Register studio' link when unauthenticated", () => {
+      renderPage(null);
+      expect(screen.getByRole("link", { name: /register studio/i })).toBeInTheDocument();
+    });
+
+    it("renders initials avatar when authenticated", () => {
+      renderPage("fake-token");
+      expect(screen.getByRole("button", { name: /account menu/i })).toBeInTheDocument();
+    });
+
+    it("renders brand mark link to /discover", () => {
+      renderPage();
+      expect(screen.getByRole("link", { name: /pena e artë.*discover/i })).toBeInTheDocument();
+    });
+
+    it("header is present in the loading skeleton", () => {
+      mockUseGetPublicArtistQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+      renderPage();
+      expect(screen.getByLabelText(/loading artist profile/i)).toBeInTheDocument();
+    });
+
+    it("header is present in the not-found error state", () => {
+      mockUseGetPublicArtistQuery.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+      renderPage(null);
+      expect(screen.getByText("Artist not found.")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+    });
+  });
 });

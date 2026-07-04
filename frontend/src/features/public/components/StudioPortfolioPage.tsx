@@ -24,6 +24,7 @@ import type { PublicArtistSummary } from "../publicApi";
 import { useDocumentMeta }          from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }        from "@/shared/utils/useStructuredData";
 import { ReviewSection }            from "./ReviewSection";
+import { PublicPageHeader }         from "./PublicPageHeader";
 
 function StudioMeta({
   name, slug, description, coverImageUrl, city, averageRating, reviewCount,
@@ -174,6 +175,9 @@ function GalleryLightbox({
 function StudioPageSkeleton() {
   return (
     <div className="min-h-screen bg-background" aria-label="Loading studio page" aria-busy="true">
+      {/* Header placeholder — matches real header height (~48px) */}
+      <div className="h-[49px] border-b bg-background/95" aria-hidden="true" />
+
       <Skeleton className="h-72 w-full rounded-none" />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -214,11 +218,14 @@ export function StudioPortfolioPage() {
 
   if (isError || !studio) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-muted-foreground">Studio not found.</p>
-        <Button variant="outline" asChild>
-          <Link to="/discover">Browse studios</Link>
-        </Button>
+      <div className="min-h-screen bg-background flex flex-col">
+        <PublicPageHeader />
+        <div className="flex flex-col items-center justify-center flex-1 gap-4">
+          <p className="text-muted-foreground">Studio not found.</p>
+          <Button variant="outline" asChild>
+            <Link to="/discover">Browse studios</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -245,6 +252,8 @@ export function StudioPortfolioPage() {
         studioName={studio.name}
         onClose={() => setLightboxUrl(null)}
       />
+
+      <PublicPageHeader />
 
       {/* Hero */}
       <div className="relative h-72 bg-zinc-900 overflow-hidden">
@@ -386,7 +395,7 @@ export function StudioPortfolioPage() {
           </div>
 
           {/* Right: sticky sidebar */}
-          <aside className="lg:sticky lg:top-6 space-y-4">
+          <aside className="lg:sticky lg:top-[72px] space-y-4">
 
             <div className="rounded-xl border bg-muted/10 p-5 space-y-4">
               {studio.showBookingCta && (

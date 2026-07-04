@@ -232,4 +232,40 @@ describe("StudioPortfolioPage", () => {
     const img = screen.getByRole("img", { name: /Ink Soul cover/i });
     expect(img).toHaveAttribute("src", STUDIO.coverImageUrl);
   });
+
+  describe("PublicPageHeader on StudioPortfolioPage", () => {
+    it("renders 'Sign in' and 'Sign up' links when unauthenticated", () => {
+      renderPage(null);
+      expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Sign up" })).toBeInTheDocument();
+    });
+
+    it("renders 'Register studio' link when unauthenticated", () => {
+      renderPage(null);
+      expect(screen.getByRole("link", { name: /register studio/i })).toBeInTheDocument();
+    });
+
+    it("renders initials avatar when authenticated", () => {
+      renderPage("fake-token");
+      expect(screen.getByRole("button", { name: /account menu/i })).toBeInTheDocument();
+    });
+
+    it("renders brand mark link to /discover", () => {
+      renderPage();
+      expect(screen.getByRole("link", { name: /pena e artë.*discover/i })).toBeInTheDocument();
+    });
+
+    it("header is present in the loading skeleton", () => {
+      mockUseGetPublicStudioQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+      renderPage();
+      expect(screen.getByLabelText(/loading studio page/i)).toBeInTheDocument();
+    });
+
+    it("header is present in the not-found error state", () => {
+      mockUseGetPublicStudioQuery.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+      renderPage(null);
+      expect(screen.getByText("Studio not found.")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+    });
+  });
 });

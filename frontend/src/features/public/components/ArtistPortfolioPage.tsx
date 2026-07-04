@@ -25,6 +25,7 @@ import {
 import { useDocumentMeta }         from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }       from "@/shared/utils/useStructuredData";
 import { ReviewSection }           from "./ReviewSection";
+import { PublicPageHeader }        from "./PublicPageHeader";
 import { useEffect } from "react";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
@@ -334,31 +335,36 @@ function Lightbox({
 function ArtistPageSkeleton() {
   return (
     <div
-      className="max-w-6xl mx-auto px-4 py-8"
+      className="min-h-screen bg-background"
       aria-label="Loading artist profile"
       aria-busy="true"
     >
-      <Skeleton className="h-4 w-32 mb-6" />
+      {/* Header placeholder */}
+      <div className="h-[49px] border-b bg-background/95" aria-hidden="true" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 lg:gap-12">
-        <div className="space-y-5">
-          <Skeleton className="h-24 w-24 rounded-full" />
-          <Skeleton className="h-7 w-48" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-16 w-full" />
-          <div className="flex gap-1.5">
-            <Skeleton className="h-6 w-20 rounded-full" />
-            <Skeleton className="h-6 w-24 rounded-full" />
-          </div>
-          <Skeleton className="h-11 w-full rounded-md" />
-        </div>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <Skeleton className="h-4 w-32 mb-6" />
 
-        <div className="columns-2 sm:columns-3 gap-3">
-          {["h-52", "h-40", "h-64", "h-48", "h-60", "h-44"].map((h, i) => (
-            <div key={i} className={`mb-3 break-inside-avoid ${h}`}>
-              <Skeleton className="w-full h-full rounded-lg" />
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 lg:gap-12">
+          <div className="space-y-5">
+            <Skeleton className="h-24 w-24 rounded-full" />
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-16 w-full" />
+            <div className="flex gap-1.5">
+              <Skeleton className="h-6 w-20 rounded-full" />
+              <Skeleton className="h-6 w-24 rounded-full" />
             </div>
-          ))}
+            <Skeleton className="h-11 w-full rounded-md" />
+          </div>
+
+          <div className="columns-2 sm:columns-3 gap-3">
+            {["h-52", "h-40", "h-64", "h-48", "h-60", "h-44"].map((h, i) => (
+              <div key={i} className={`mb-3 break-inside-avoid ${h}`}>
+                <Skeleton className="w-full h-full rounded-lg" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -394,11 +400,14 @@ export function ArtistPortfolioPage() {
 
   if (isError || !artist) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-muted-foreground">Artist not found.</p>
-        <Button variant="outline" asChild>
-          <Link to="/discover">Browse artists</Link>
-        </Button>
+      <div className="min-h-screen bg-background flex flex-col">
+        <PublicPageHeader />
+        <div className="flex flex-col items-center justify-center flex-1 gap-4">
+          <p className="text-muted-foreground">Artist not found.</p>
+          <Button variant="outline" asChild>
+            <Link to="/discover">Browse artists</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -423,6 +432,8 @@ export function ArtistPortfolioPage() {
         onClose={() => setLightboxItem(null)}
       />
 
+      <PublicPageHeader />
+
       <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6">
         {/* Back link */}
         <Link
@@ -440,7 +451,7 @@ export function ArtistPortfolioPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 lg:gap-12 items-start">
 
           {/* LEFT: sticky profile panel */}
-          <aside className="lg:sticky lg:top-6 space-y-5">
+          <aside className="lg:sticky lg:top-[72px] space-y-5">
 
             {artist.isOwnProfile && (
               <ProfileStrengthNudge

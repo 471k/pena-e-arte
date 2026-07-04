@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Locate, MapPin, Search, Users } from "lucide-react";
 import { Button }         from "@/shared/components/ui/button";
 import { Skeleton }       from "@/shared/components/ui/skeleton";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { StarRating }     from "@/shared/components/ui/StarRating";
 import { PortfolioFeed }  from "./PortfolioFeed";
+import { AuthenticatedNav, BrandMark } from "./PublicPageHeader";
 import {
   useGetNearbyStudiosQuery,
   type NearbyStudioResponse,
 } from "../publicApi";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { useAppDispatch, useAppSelector } from "@/app/hooks";
-import { getRoleRedirectPath }            from "@/app/router";
-import { logout }                         from "@/features/auth/authSlice";
-import type { Role }                      from "@/shared/types/roles";
+import { useAppSelector } from "@/app/hooks";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -160,127 +158,6 @@ function DiscoverMeta() {
   return null;
 }
 
-// ── Authenticated nav ─────────────────────────────────────────────────────────
-
-interface AuthenticatedNavProps {
-  user:  { id: string; email: string; name?: string } | null;
-  role:  Role | null;
-}
-
-function AuthenticatedNav({ user, role }: AuthenticatedNavProps) {
-  const dispatch  = useAppDispatch();
-  const navigate  = useNavigate();
-  const [open, setOpen] = useState(false);
-  const menuRef   = useRef<HTMLDivElement>(null);
-
-  // Outside-click → close. Approved useEffect: DOM event, not data fetching.
-  useEffect(() => {
-    function handleOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [open]);
-
-  // Escape key → close. Approved useEffect: keyboard event.
-  useEffect(() => {
-    function handleEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    if (open) document.addEventListener("keydown", handleEsc);
-    return () => document.removeEventListener("keydown", handleEsc);
-  }, [open]);
-
-  const initials = (user?.name ?? user?.email ?? "?")
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .slice(0, 2)
-    .join("") || "?";
-
-  const dashboardPath = role ? getRoleRedirectPath(role) : "/";
-
-  function handleSignOut() {
-    dispatch(logout());
-    setOpen(false);
-    navigate("/login");
-  }
-
-  return (
-    <div className="relative" ref={menuRef}>
-      <button
-        type="button"
-        aria-label="Account menu"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((v) => !v)}
-        className="h-8 w-8 rounded-full bg-violet-600/20 border border-violet-500/40
-                   text-violet-300 text-xs font-semibold flex items-center justify-center
-                   hover:bg-violet-600/30 transition-colors
-                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {initials}
-      </button>
-
-      {open && (
-        <div
-          role="menu"
-          aria-label="Account options"
-          className="absolute right-0 top-full mt-1.5 w-52 rounded-md border
-                     bg-popover shadow-lg z-[200] overflow-hidden py-1"
-        >
-          {user?.email && (
-            <div className="px-3 py-2 text-xs text-muted-foreground truncate
-                            border-b border-border/40 mb-1">
-              {user.email}
-            </div>
-          )}
-          <Link
-            role="menuitem"
-            to={dashboardPath}
-            onClick={() => setOpen(false)}
-            className="flex w-full items-center px-3 py-2 text-sm
-                       hover:bg-muted/40 transition-colors"
-          >
-            Dashboard
-          </Link>
-          <Link
-            role="menuitem"
-            to="/book"
-            onClick={() => setOpen(false)}
-            className="flex w-full items-center px-3 py-2 text-sm
-                       hover:bg-muted/40 transition-colors"
-          >
-            Book appointment
-          </Link>
-          <Link
-            role="menuitem"
-            to="/saved"
-            onClick={() => setOpen(false)}
-            className="flex w-full items-center px-3 py-2 text-sm
-                       hover:bg-muted/40 transition-colors"
-          >
-            Saved
-          </Link>
-          <div className="border-t border-border/40 mt-1 pt-1">
-            <button
-              role="menuitem"
-              type="button"
-              onClick={handleSignOut}
-              className="flex w-full items-center px-3 py-2 text-sm
-                         text-destructive hover:bg-muted/40 transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function DiscoverPage() {
@@ -422,25 +299,7 @@ export function DiscoverPage() {
       <header className="sticky top-0 z-[100] border-b bg-background/95 backdrop-blur-sm">
         {/* Top row: brand + nav */}
         <div className="flex items-center justify-between px-4 py-2.5">
-          <Link to="/discover" aria-label="Pena e Artë — Home" className="flex items-center gap-2">
-            {/* Stylised needle icon */}
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="12" y1="2" x2="12" y2="18" />
-              <path d="M10 16 L12 22 L14 16" />
-              <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
-              <line x1="8" y1="9" x2="16" y2="9" />
-            </svg>
-            <span className="font-semibold tracking-tight text-sm">Pena e Artë</span>
-          </Link>
+          <BrandMark />
 
           <nav className="flex items-center gap-1" aria-label="Site navigation">
             <Link to="/map"

@@ -7,3 +7,4 @@ export { SharedDesignPage } from "./components/SharedDesignPage";
 export { EmbedPage } from "./components/EmbedPage";
 export { DiscoverPage } from "./components/DiscoverPage";
 export { ReviewSection } from "./components/ReviewSection";
+export { PublicPageHeader, AuthenticatedNav } from "./components/PublicPageHeader";
