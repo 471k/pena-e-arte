@@ -458,6 +458,11 @@ export function DiscoverPage() {
                              transition-colors px-3 py-2 rounded-md hover:bg-muted/40">
                   Sign in
                 </Link>
+                <Link to="/client-register"
+                  className="text-xs text-muted-foreground hover:text-foreground
+                             transition-colors px-3 py-2 rounded-md hover:bg-muted/40">
+                  Sign up
+                </Link>
                 <Link to="/register"
                   className="text-xs font-medium px-3 py-2 rounded-md
                              border-2 border-violet-500 text-violet-400
@@ -613,6 +618,12 @@ export function DiscoverPage() {
                 Sign in
               </Link>
               <span aria-hidden="true" className="text-border">·</span>
+              <Link to="/client-register"
+                className="text-sm text-violet-400 hover:text-violet-300 underline
+                           underline-offset-4 transition-colors">
+                Sign up as a client
+              </Link>
+              <span aria-hidden="true" className="text-border">·</span>
               <Link to="/register"
                 className="text-sm font-medium px-4 py-1.5 rounded-md
                            bg-violet-600 hover:bg-violet-700 text-white transition-colors">
@@ -714,9 +725,14 @@ export function DiscoverPage() {
               Map
             </Link>
             {!token && (
-              <Link to="/register" className="hover:text-foreground/80 transition-colors">
-                Register studio
-              </Link>
+              <>
+                <Link to="/client-register" className="hover:text-foreground/80 transition-colors">
+                  Sign up
+                </Link>
+                <Link to="/register" className="hover:text-foreground/80 transition-colors">
+                  Register studio
+                </Link>
+              </>
             )}
           </nav>
         </div>

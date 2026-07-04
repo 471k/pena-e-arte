@@ -32,7 +32,7 @@ public class RegisterUserHandler(
         {
             Studio? studio = await db.Studios
                 .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(s => s.Id == req.StudioId, ct);
+                .FirstOrDefaultAsync(s => s.Id == req.StudioId!.Value, ct);
 
             if (studio is null ||
                 !string.Equals(studio.OwnerEmail, req.Email, StringComparison.OrdinalIgnoreCase))
@@ -52,12 +52,17 @@ public class RegisterUserHandler(
         // IgnoreQueryFilters is required here: registration is anonymous, so there is
         // no tenant JWT — the studio scope comes from the request and is applied
         // explicitly in the predicate below.
-        if (req.Role == "client")
+        // A client registering with no StudioId (studio-less signup) gets no Client
+        // row here at all — their first one is created on demand by SwitchStudioHandler
+        // the first time they book at a studio.
+        if (req.Role == "client" && req.StudioId is not null)
         {
+            Guid studioId = req.StudioId.Value;
+
             Client? existing = await db.Clients
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(
-                    c => c.StudioId == req.StudioId && c.Email == req.Email && c.UserId == null, ct);
+                    c => c.StudioId == studioId && c.Email == req.Email && c.UserId == null, ct);
 
             if (existing is not null)
             {
@@ -68,7 +73,7 @@ public class RegisterUserHandler(
             {
                 db.Clients.Add(new Client
                 {
-                    StudioId  = req.StudioId,
+                    StudioId  = studioId,
                     UserId    = userId,
                     FirstName = req.FirstName ?? req.Email.Split('@')[0],
                     LastName  = string.Empty,

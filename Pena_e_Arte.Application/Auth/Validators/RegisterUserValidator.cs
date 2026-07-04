@@ -20,6 +20,16 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
             .NotEmpty()
             .Must(r => ValidRoles.Contains(r, StringComparer.OrdinalIgnoreCase))
             .WithMessage("Role must be one of: client, owner.");
-        RuleFor(x => x.Request.StudioId).NotEmpty();
+        // StudioId is only required for owner self-registration (a studio must already
+        // exist to be claimed). Client registration is studio-less — a client's first
+        // Client row gets created on demand later, via the switch-studio flow, the first
+        // time they book at a studio.
+        // NotEmpty() on a nullable Guid only rejects null (its "empty" is default(Guid?),
+        // not default(Guid)) — a Guid.Empty wrapped in a non-null Nullable<Guid> would
+        // slip through, so check both explicitly.
+        RuleFor(x => x.Request.StudioId)
+            .Must(id => id is not null && id != Guid.Empty)
+            .When(x => string.Equals(x.Request.Role, "owner", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("StudioId is required when registering as an owner.");
     }
 }

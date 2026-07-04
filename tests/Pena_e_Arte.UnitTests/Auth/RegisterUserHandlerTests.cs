@@ -30,7 +30,7 @@ public class RegisterUserHandlerTests
         NullLogger<RegisterUserHandler>.Instance);
 
     private void IdentitySucceeds() =>
-        _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>())
+        _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>())
                  .Returns((true, _userId, Array.Empty<string>()));
 
     [Fact]
@@ -47,7 +47,7 @@ public class RegisterUserHandlerTests
     [Fact]
     public async Task Handle_IdentityFailure_ThrowsBusinessRuleViolationException()
     {
-        _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>())
+        _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>())
                  .Returns((false, Guid.Empty, new[] { "Email already taken.", "Weak password." }));
 
         Func<Task> act = () => CreateSut().Handle(
@@ -61,7 +61,7 @@ public class RegisterUserHandlerTests
     [Fact]
     public async Task Handle_SingleIdentityError_ThrowsWithThatMessage()
     {
-        _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>())
+        _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>())
                  .Returns((false, Guid.Empty, new[] { "Passwords must be at least 8 characters." }));
 
         Func<Task> act = () => CreateSut().Handle(
@@ -165,7 +165,20 @@ public class RegisterUserHandlerTests
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
         await _identity.DidNotReceive().CreateUserAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>());
+    }
+
+    [Fact]
+    public async Task Handle_ClientRoleWithNoStudioId_CreatesNoClientRecordAndPassesNullToIdentity()
+    {
+        IdentitySucceeds();
+
+        await CreateSut().Handle(
+            new RegisterUserCommand(new RegisterUserRequest("noStudio.client@example.com", "Password1!", "client", null)),
+            default);
+
+        _db.Clients.Any(c => c.Email == "noStudio.client@example.com").Should().BeFalse();
+        await _identity.Received(1).CreateUserAsync("noStudio.client@example.com", "Password1!", "client", null);
     }
 
     [Fact]

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -226,6 +226,7 @@ export function BookAppointmentForm() {
 
   const isClientRole = role === Role.Client;
   const isStaffRole  = role === Role.Artist || role === Role.Owner || role === Role.Issuer;
+  const tenantId     = useAppSelector((s) => s.auth.tenantId);
 
   // A logged-in client can arrive here from a DIFFERENT studio's public page
   // (?studio=<slug>) than the one their session is currently scoped to — resolve
@@ -423,6 +424,22 @@ export function BookAppointmentForm() {
                        text-sm text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
         Switching to this studio…
+      </div>
+    );
+  }
+
+  // A studio-less client (signed up with no studio, or hasn't booked anywhere yet)
+  // landing here directly has no active tenant and nothing bookable — send them to
+  // Discover instead of showing a broken, empty artist dropdown.
+  if (isClientRole && !studioSlug && !tenantId) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+        <p className="text-sm text-muted-foreground">
+          You haven&apos;t joined a studio yet. Browse studios to book your first appointment.
+        </p>
+        <Button asChild className="bg-violet-600 hover:bg-violet-700 text-white">
+          <Link to="/discover">Browse studios</Link>
+        </Button>
       </div>
     );
   }

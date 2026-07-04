@@ -50,9 +50,13 @@ export function LoginPage() {
     ? (redirectParam || getRoleRedirectPath(existingRole))
     : null;
 
-  const clientRegisterUrl = studioId
-    ? `/client-register?studioId=${studioId}${redirectParam ? `&redirect=${encodeURIComponent(redirectParam)}` : ""}`
-    : null;
+  // Client registration is studio-less — a "sign up" link must always be offered,
+  // with studioId/redirect appended only when present.
+  const clientRegisterUrl =
+    `/client-register${studioId ? `?studioId=${studioId}` : ""}` +
+    (redirectParam
+      ? `${studioId ? "&" : "?"}redirect=${encodeURIComponent(redirectParam)}`
+      : "");
 
   // Handles both "already logged in" and "just logged in" cases — fires once
   // existingRole is set. Respects ?redirect= so post-auth deep-links work.
@@ -216,27 +220,22 @@ export function LoginPage() {
             </div>
 
             <div className="mt-4 text-center text-sm text-foreground/65">
-              {clientRegisterUrl ? (
-                <>
-                  Don't have an account?{" "}
-                  <Link
-                    to={clientRegisterUrl}
-                    className="underline underline-offset-4 text-violet-400 hover:text-violet-300 py-2 inline-block"
-                  >
-                    Create a client account
-                  </Link>
-                </>
-              ) : (
-                <>
-                  Don't have an account?{" "}
-                  <Link
-                    to="/register"
-                    className="underline underline-offset-4 text-violet-400 hover:text-violet-300 py-2 inline-block"
-                  >
-                    Register your studio
-                  </Link>
-                </>
-              )}
+              Don't have an account?{" "}
+              <Link
+                to={clientRegisterUrl}
+                className="underline underline-offset-4 text-violet-400 hover:text-violet-300 py-2 inline-block"
+              >
+                Sign up
+              </Link>
+            </div>
+            <div className="mt-1 text-center text-xs text-foreground/50">
+              Registering a studio instead?{" "}
+              <Link
+                to="/register"
+                className="underline underline-offset-4 hover:text-foreground/70"
+              >
+                Register your studio
+              </Link>
             </div>
           </CardContent>
         </Card>

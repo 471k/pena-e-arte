@@ -144,6 +144,41 @@ public class SwitchStudioIntegrationTests(DatabaseFixture fixture)
         jwt.Claims.Should().Contain(c => c.Type == "tenant_id" && c.Value == studioA.ToString());
     }
 
+    [Fact]
+    public async Task RegisterStudioLess_ThenSwitchStudio_CreatesClientRowFromRegisteredEmail()
+    {
+        Guid   targetStudioId = Guid.NewGuid();
+        string email          = UniqueEmail();
+
+        (UserManager<IdentityUser> _, IdentityService identity) = await BuildIdentityAsync();
+
+        await using AppDbContext seedDb = fixture.CreateDbContext(Guid.Empty);
+        seedDb.Studios.Add(new Studio { Id = targetStudioId, Name = "Target", Slug = $"target-{Guid.NewGuid():N}" });
+        await seedDb.SaveChangesAsync();
+
+        // Studio-less registration: no tenant_id claim, no Client row anywhere yet.
+        (bool created, Guid userId, _) = await identity.CreateUserAsync(email, "Password1!", "client", null, "Ana");
+        created.Should().BeTrue();
+
+        await using AppDbContext handlerDb = fixture.CreateDbContext(Guid.Empty);
+        StubCurrentUser currentUser = new(userId, "client", email);
+        SwitchStudioHandler handler = new(
+            handlerDb, identity, currentUser, NullLogger<SwitchStudioHandler>.Instance);
+
+        SwitchStudioResponse response = await handler.Handle(
+            new SwitchStudioCommand(new SwitchStudioRequest(targetStudioId)), default);
+
+        response.IsNewMembership.Should().BeTrue();
+
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(response.AccessToken);
+        jwt.Claims.Where(c => c.Type == "tenant_id").Should().ContainSingle()
+            .Which.Value.Should().Be(targetStudioId.ToString());
+
+        await using AppDbContext verifyDb = fixture.CreateDbContext(targetStudioId);
+        Client createdClient = await verifyDb.Clients.SingleAsync(c => c.UserId == userId);
+        createdClient.Email.Should().Be(email);
+    }
+
     private static string UniqueEmail() => $"user-{Guid.NewGuid():N}@test.com";
 
     private sealed record StubCurrentUser(Guid UserId, string Role, string? Email = null) : ICurrentUser

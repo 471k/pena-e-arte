@@ -2,7 +2,12 @@ namespace Pena_e_Arte.Domain.Interfaces;
 
 public interface IIdentityService
 {
-    Task<(bool Success, Guid UserId, string[] Errors)> CreateUserAsync(string email, string password, string role, Guid studioId, string? firstName = null);
+    /// <summary>
+    /// Creates an Identity user. <paramref name="studioId"/> is null for a studio-less
+    /// client registration — no tenant_id claim or active-tenant token is set in that
+    /// case, and the caller must not create a linked Client row either.
+    /// </summary>
+    Task<(bool Success, Guid UserId, string[] Errors)> CreateUserAsync(string email, string password, string role, Guid? studioId, string? firstName = null);
     Task<(bool Success, string? Token, string? Error)> LoginAsync(string email, string password);
     Task<(bool Success, string? Token, string? Error)> GeneratePasswordResetTokenAsync(string email);
     Task<(bool Success, string[] Errors)> ResetPasswordAsync(string email, string token, string newPassword);

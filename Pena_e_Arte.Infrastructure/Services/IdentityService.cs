@@ -14,7 +14,7 @@ public class IdentityService(
     IConfiguration            configuration) : IIdentityService
 {
     public async Task<(bool Success, Guid UserId, string[] Errors)> CreateUserAsync(
-        string email, string password, string role, Guid studioId, string? firstName = null)
+        string email, string password, string role, Guid? studioId, string? firstName = null)
     {
         IdentityUser user = new() { UserName = email, Email = email };
         IdentityResult result = await userManager.CreateAsync(user, password);
@@ -23,8 +23,11 @@ public class IdentityService(
             return (false, Guid.Empty, result.Errors.Select(e => e.Description).ToArray());
 
         await userManager.AddToRoleAsync(user, role);
-        await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.ToString()));
-        await userManager.SetAuthenticationTokenAsync(user, "App", "ActiveTenantId", studioId.ToString());
+        if (studioId is not null)
+        {
+            await userManager.AddClaimAsync(user, new Claim("tenant_id", studioId.Value.ToString()));
+            await userManager.SetAuthenticationTokenAsync(user, "App", "ActiveTenantId", studioId.Value.ToString());
+        }
         if (firstName is not null)
             await userManager.AddClaimAsync(user, new Claim(JwtRegisteredClaimNames.GivenName, firstName));
 
