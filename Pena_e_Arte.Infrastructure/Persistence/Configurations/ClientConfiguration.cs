@@ -20,5 +20,10 @@ public class ClientConfiguration : TenantEntityConfiguration<Client>
         builder.HasIndex(c => new { c.StudioId, c.Email })
                .IsUnique()
                .HasDatabaseName("ix_clients_studio_email");
+
+        // Supports cross-studio membership lookups by UserId (multi-studio client
+        // support — see ClientAccountExtensions.FindClientForUserAtStudioAsync).
+        builder.HasIndex(c => c.UserId)
+               .HasDatabaseName("ix_clients_user_id");
     }
 }

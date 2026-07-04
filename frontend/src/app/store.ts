@@ -1,7 +1,7 @@
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { authApi } from "@/features/auth/authApi";
-import authReducer, { logout } from "@/features/auth/authSlice";
+import authReducer, { logout, setCredentials } from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { studiosApi } from "@/features/studios/studiosApi";
@@ -49,7 +49,37 @@ type AppState = ReturnType<typeof appReducer>;
 // Passing undefined to every slice on logout resets all RTK Query caches,
 // preventing stale data from one user's session leaking into the next.
 function rootReducer(state: AppState | undefined, action: UnknownAction): AppState {
-  return appReducer(action.type === logout.type ? undefined : state, action);
+  if (action.type === logout.type) {
+    return appReducer(undefined, action);
+  }
+
+  const prevTenantId = state?.auth.tenantId;
+  const nextState     = appReducer(state, action);
+
+  // A multi-studio client can switch their active studio (or log into a
+  // different account) without a full page reload. None of the tenant-scoped
+  // RTK Query cache keys include tenantId, so every cached response (artists,
+  // clients, deposit rules, etc.) is now stale for the new tenant — reset
+  // everything except auth/ui/notifications and publicApi (public data is
+  // cache-keyed by slug already, not tenant-scoped — resetting it mid-switch
+  // just forces a refetch loop against the in-flight studio lookup).
+  if (
+    action.type === setCredentials.type &&
+    prevTenantId &&
+    nextState.auth.tenantId &&
+    prevTenantId !== nextState.auth.tenantId
+  ) {
+    const freshState = appReducer(undefined, action);
+    return {
+      ...freshState,
+      auth:          nextState.auth,
+      ui:            nextState.ui,
+      notifications: nextState.notifications,
+      publicApi:     nextState.publicApi,
+    };
+  }
+
+  return nextState;
 }
 
 export const store = configureStore({

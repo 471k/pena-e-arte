@@ -22,6 +22,7 @@ public static class AuthEndpoints
         group.MapPatch("/change-password",     ChangePassword).RequireAuthorization("ClientAndAbove");
         group.MapGet ("/verify-email",         VerifyEmail).AllowAnonymous();
         group.MapPost("/resend-verification",  ResendVerification).RequireAuthorization("ClientAndAbove");
+        group.MapPost("/switch-studio",        SwitchStudio).RequireAuthorization("ClientOnly").RequireRateLimiting("auth");
     }
 
     private static async Task<IResult> Login(
@@ -118,5 +119,14 @@ public static class AuthEndpoints
         Guid userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         await mediator.Send(new ResendVerificationEmailCommand(userId), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> SwitchStudio(
+        SwitchStudioRequest request,
+        ISender             mediator,
+        CancellationToken   ct)
+    {
+        SwitchStudioResponse response = await mediator.Send(new SwitchStudioCommand(request), ct);
+        return Results.Ok(response);
     }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,6 +27,8 @@ import {
 import { useGetArtistsQuery }                     from "@/features/artists/artistsApi";
 import { useGetClientsQuery, useGetMyClientQuery } from "@/features/clients/clientsApi";
 import { useGetDepositRulesQuery }                from "@/features/deposit-rules/depositRulesApi";
+import { useGetPublicStudioQuery }                from "@/features/public/publicApi";
+import { useEnsureActiveStudio }                  from "@/features/auth/useEnsureActiveStudio";
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
 import type { AppointmentResponse, CheckSlotAvailabilityParams, SlotAvailabilityResponse }
   from "../appointment.types";
@@ -224,12 +227,46 @@ export function BookAppointmentForm() {
   const isClientRole = role === Role.Client;
   const isStaffRole  = role === Role.Artist || role === Role.Owner || role === Role.Issuer;
 
-  const { data: artists,      isLoading: loadingArtists } = useGetArtistsQuery(undefined);
-  const { data: clients,      isLoading: loadingClients } = useGetClientsQuery(undefined, {
-    skip: isClientRole,
+  // A logged-in client can arrive here from a DIFFERENT studio's public page
+  // (?studio=<slug>) than the one their session is currently scoped to — resolve
+  // the slug and switch the active studio before fetching anything tenant-scoped,
+  // otherwise the form silently books at the wrong studio (the bug this fixes).
+  const [searchParams] = useSearchParams();
+  const studioSlug = searchParams.get("studio");
+
+  const {
+    data:       targetStudio,
+    isFetching: resolvingStudioSlug,
+    isError:    studioLookupFailed,
+  } = useGetPublicStudioQuery(studioSlug ?? "", { skip: !studioSlug });
+
+  const { isSwitching, error: switchError, ensure } = useEnsureActiveStudio();
+  const [switchAttempted, setSwitchAttempted] = useState(false);
+  const [switchFailed,    setSwitchFailed]    = useState(false);
+
+  useEffect(() => {
+    if (!studioSlug || !targetStudio) return;
+    let cancelled = false;
+    ensure(targetStudio.studioId).then((success) => {
+      if (cancelled) return;
+      setSwitchFailed(!success);
+      setSwitchAttempted(true);
+    });
+    return () => { cancelled = true; };
+  }, [studioSlug, targetStudio, ensure]);
+
+  // Blocks all tenant-scoped queries below until we're certain the session is
+  // scoped to the right studio (or there was never a studio to switch to).
+  const studioReady = !studioSlug || (switchAttempted && !switchFailed);
+
+  const { data: artists,      isLoading: loadingArtists } = useGetArtistsQuery(undefined, {
+    skip: !studioReady,
   });
-  const { data: myClient }     = useGetMyClientQuery(undefined, { skip: !isClientRole });
-  const { data: depositRules } = useGetDepositRulesQuery();
+  const { data: clients,      isLoading: loadingClients } = useGetClientsQuery(undefined, {
+    skip: isClientRole || !studioReady,
+  });
+  const { data: myClient }     = useGetMyClientQuery(undefined, { skip: !isClientRole || !studioReady });
+  const { data: depositRules } = useGetDepositRulesQuery(undefined, { skip: !studioReady });
 
   const [createAppointment, { isLoading }] = useCreateAppointmentMutation();
 
@@ -351,6 +388,43 @@ export function BookAppointmentForm() {
   function startOver() {
     setBooked(null);
     setDepositDone(null);
+  }
+
+  // Step 0 — resolving/switching to the studio linked from ?studio=<slug>
+  if (studioSlug && studioLookupFailed) {
+    return (
+      <div
+        role="alert"
+        className="flex items-center gap-2 rounded-md border border-destructive/30
+                   bg-destructive/5 px-3 py-3 text-sm text-destructive"
+      >
+        <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+        This studio couldn&apos;t be found.
+      </div>
+    );
+  }
+
+  if (studioSlug && switchFailed) {
+    return (
+      <div
+        role="alert"
+        className="flex items-center gap-2 rounded-md border border-destructive/30
+                   bg-destructive/5 px-3 py-3 text-sm text-destructive"
+      >
+        <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {switchError ?? "Couldn't switch studios. Please try again."}
+      </div>
+    );
+  }
+
+  if (studioSlug && (resolvingStudioSlug || isSwitching || !switchAttempted)) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 py-10
+                       text-sm text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+        Switching to this studio…
+      </div>
+    );
   }
 
   // Step 2 — deposit (clients only, when the appointment requires one)
