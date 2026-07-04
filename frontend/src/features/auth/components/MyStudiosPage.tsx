@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
+import { Building2, CheckCircle2, ExternalLink, Loader2, Plus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
@@ -33,7 +33,11 @@ function StudioAvatar({ name, coverImageUrl }: { name: string; coverImageUrl: st
     .slice(0, 2);
 
   return (
-    <div className="h-12 w-12 rounded-md bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold shrink-0">
+    <div
+      className="h-12 w-12 rounded-md bg-muted text-muted-foreground/80
+                 flex items-center justify-center text-sm font-semibold
+                 shrink-0 border border-border/50"
+    >
       {initials}
     </div>
   );
@@ -52,7 +56,9 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch }: StudioCardProps
   return (
     <Card
       className={`transition-colors ${
-        isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+        isActive
+          ? "border-emerald-500/40 bg-emerald-950/10"
+          : "border-border/50"
       }`}
     >
       <CardContent className="p-4">
@@ -63,13 +69,19 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch }: StudioCardProps
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-semibold truncate">{studio.name}</p>
               {isActive && (
-                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-primary/15 text-primary">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5
+                             text-xs font-medium bg-emerald-500/15 text-emerald-500"
+                >
                   <CheckCircle2 className="h-3 w-3" aria-hidden />
                   Active
                 </span>
               )}
               {!studio.isStudioActive && (
-                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/10 text-destructive">
+                <span
+                  className="inline-flex items-center rounded-full px-2 py-0.5
+                             text-xs font-medium bg-destructive/10 text-destructive"
+                >
                   Suspended
                 </span>
               )}
@@ -77,21 +89,27 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch }: StudioCardProps
             <p className="text-xs text-muted-foreground">{studio.city}</p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <Link
               to={`/s/${studio.slug}`}
-              aria-label={`View ${studio.name} portfolio`}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              title="View portfolio"
+              aria-label={`View ${studio.name} public profile`}
+              title="View studio public profile"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md
+                         text-muted-foreground hover:text-foreground hover:bg-accent
+                         transition-colors"
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-4 w-4" aria-hidden />
             </Link>
 
             {isActive ? (
-              <Button size="sm" variant="outline" disabled className="gap-1.5 text-xs">
-                <CheckCircle2 className="h-3.5 w-3.5" />
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1
+                           text-xs font-medium bg-emerald-500/15 text-emerald-500 shrink-0"
+                aria-label={`${studio.name} is your current studio`}
+              >
+                <CheckCircle2 className="h-3 w-3" aria-hidden />
                 Current
-              </Button>
+              </span>
             ) : (
               <Button
                 size="sm"
@@ -156,6 +174,16 @@ export function MyStudiosPage() {
             ({studios.length})
           </span>
         )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+          onClick={() => navigate("/discover")}
+          aria-label="Discover more studios"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Discover
+        </Button>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-3">
@@ -197,11 +225,23 @@ export function MyStudiosPage() {
         {/* ── List ── */}
         {!isLoading && !isError && studios && studios.length > 0 && (
           <>
-            <p className="text-xs text-muted-foreground px-1">
-              {studios.length === 1
-                ? "You belong to one studio."
-                : `You belong to ${studios.length} studios. Tap "Switch" to change your active studio.`}
-            </p>
+            <div className="flex items-center justify-between px-1 gap-2">
+              <p className="text-xs text-muted-foreground">
+                {studios.length === 1
+                  ? "You belong to 1 studio."
+                  : `You belong to ${studios.length} studios. Tap "Switch" to change your active studio.`}
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0 h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate("/discover")}
+                aria-label="Discover more studios to join"
+              >
+                <Plus className="h-3 w-3" aria-hidden />
+                Join another
+              </Button>
+            </div>
 
             {studios.map((studio) => (
               <StudioCard

@@ -1482,3 +1482,25 @@ Frontend:
 - `frontend/src/features/studios/components/RegisterStudioPage.tsx` — PasswordInput + strength meter
 - `frontend/src/features/reviews/reviewsApi.ts` (NEW)
 - `frontend/src/app/store.ts` — registered reviewsApi reducer + middleware
+
+## My Studios Page — UX Polish — 2026-07-04
+
+### Issues resolved
+1. **False-affordance "Current" button** → replaced with a plain `<span>` badge. No button role,
+   no disabled state, no click handler. Tests updated to assert it is NOT a button.
+2. **Ring-style active border** → replaced with `border-emerald-500/40 bg-emerald-950/10`.
+   Communicates selection without looking like a focus ring or error state.
+3. **"Active" badge semantic color** → `bg-emerald-500/15 text-emerald-500` (was `primary`).
+   "Suspended" badge was already `destructive` — no change.
+4. **Monogram avatar contrast** → `bg-muted border-border/50` (was `bg-primary/10`). Consistently
+   separates from the card background across light/dark themes.
+5. **External link touch target** → 32×32 `inline-flex` wrapper with `hover:bg-accent` padding.
+   aria-label clarified to "View {name} public profile".
+6. **"Join another studio" CTA** → added as a ghost button in the list sub-header row.
+   Navigates to `/discover`. Absent from empty state (where "Discover studios" button already exists).
+7. **Header "Discover" shortcut** → always-visible ghost button on the right side of the
+   sticky header. Navigates to `/discover`.
+
+### Files changed
+- `frontend/src/features/auth/components/MyStudiosPage.tsx` (complete rewrite)
+- `frontend/src/features/auth/__tests__/MyStudiosPage.test.tsx` (1 test updated, 6 added)

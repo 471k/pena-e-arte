@@ -162,11 +162,13 @@ describe("MyStudiosPage", () => {
 
   // ── Active studio indicator (currentTenantId = "studio-aaa") ───────────────
 
-  it("shows 'Current' button (disabled) on the studio matching the active tenantId", async () => {
+  it("shows a non-interactive 'Current' badge (not a button) on the studio matching the active tenantId", async () => {
     renderPage();
     await screen.findByText("Alpha Ink");
-    const currentButton = screen.getByRole("button", { name: /current/i });
-    expect(currentButton).toBeDisabled();
+    // "Current" should be a plain span, not a button — no false affordance
+    expect(screen.queryByRole("button", { name: /current/i })).not.toBeInTheDocument();
+    // The span should still be accessible via aria-label
+    expect(screen.getByLabelText(/alpha ink is your current studio/i)).toBeInTheDocument();
   });
 
   it("shows 'Switch' button (enabled) on studios that don't match the active tenantId", async () => {
@@ -251,5 +253,63 @@ describe("MyStudiosPage", () => {
   it("shows the correct count in the header when multiple studios are returned", async () => {
     renderPage();
     expect(await screen.findByText("(2)")).toBeInTheDocument();
+  });
+
+  // ── Header and navigation ─────────────────────────────────────────────────────
+
+  it("renders a 'Discover' button in the header that links to /discover", async () => {
+    renderPageWithRoutes();
+    await screen.findByText("Alpha Ink");
+
+    // We need a /discover route in renderPageWithRoutes for this to navigate,
+    // but we can still assert the button exists and is clickable
+    const discoverBtn = screen.getByRole("button", { name: /^discover more studios$/i });
+    expect(discoverBtn).toBeInTheDocument();
+    expect(discoverBtn).not.toBeDisabled();
+  });
+
+  it("renders a 'Join another' button in the list area when studios exist", async () => {
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    const joinBtn = screen.getByRole("button", { name: /discover more studios to join/i });
+    expect(joinBtn).toBeInTheDocument();
+  });
+
+  it("does not render 'Join another' button in the empty state", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/auth/my-studios", () => HttpResponse.json([])),
+    );
+    renderPage();
+    await screen.findByText(/no studios yet/i);
+    expect(screen.queryByRole("button", { name: /discover more studios to join/i })).not.toBeInTheDocument();
+  });
+
+  // ── External link accessibility ───────────────────────────────────────────────
+
+  it("external portfolio link has an accessible aria-label including studio name", async () => {
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    expect(
+      screen.getByRole("link", { name: /view alpha ink public profile/i })
+    ).toBeInTheDocument();
+  });
+
+  // ── Active studio card visual treatment ──────────────────────────────────────
+
+  it("renders 'Active' badge only on the studio matching the active tenantId", async () => {
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    // Only Alpha Ink is active (tenantId = "studio-aaa")
+    expect(screen.getAllByText("Active")).toHaveLength(1);
+    // "Current" span is present alongside "Active" badge
+    expect(screen.getByLabelText(/alpha ink is your current studio/i)).toBeInTheDocument();
+  });
+
+  it("shows single-studio copy ('You belong to 1 studio.') when there is exactly one studio", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/auth/my-studios", () => HttpResponse.json([STUDIO_A])),
+    );
+    renderPage();
+    expect(await screen.findByText(/you belong to 1 studio/i)).toBeInTheDocument();
   });
 });
