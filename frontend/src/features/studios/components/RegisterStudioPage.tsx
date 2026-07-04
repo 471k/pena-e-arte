@@ -25,6 +25,8 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
+import { PasswordInput } from "@/shared/components/ui/password-input";
+import { PasswordStrengthMeter } from "@/shared/components/ui/PasswordStrengthMeter";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
 
@@ -353,9 +355,8 @@ export function RegisterStudioPage() {
                     <>
                       <div className="space-y-1.5">
                         <Label htmlFor="password">Password</Label>
-                        <Input
+                        <PasswordInput
                           id="password"
-                          type="password"
                           autoComplete="new-password"
                           {...register("password")}
                           aria-invalid={!!errors.password}
@@ -363,13 +364,15 @@ export function RegisterStudioPage() {
                         {errors.password && (
                           <p className="text-xs text-destructive">{errors.password.message}</p>
                         )}
+                        {(watch("password") !== "" || watch("confirmPassword") !== "") && (
+                          <PasswordStrengthMeter password={watch("password")} />
+                        )}
                       </div>
 
                       <div className="space-y-1.5">
                         <Label htmlFor="confirmPassword">Confirm password</Label>
-                        <Input
+                        <PasswordInput
                           id="confirmPassword"
-                          type="password"
                           autoComplete="new-password"
                           {...register("confirmPassword")}
                           aria-invalid={!!errors.confirmPassword}

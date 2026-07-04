@@ -49,7 +49,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
             artist.ProfileImageUrl,
             artist.Portfolio
                 .OrderByDescending(p => p.CreatedAt)
-                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl))
+                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl, p.Style))
                 .ToList(),
             artist.Specializations,
             artist.HourlyRate,

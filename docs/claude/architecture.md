@@ -1404,3 +1404,81 @@ unauthenticated visitors landing directly on these pages had no sign-in or sign-
 - `frontend/src/features/public/__tests__/PublicPageHeader.test.tsx` (NEW — 16 tests)
 - `frontend/src/features/public/__tests__/StudioPortfolioPage.test.tsx` — 6 new header tests
 - `frontend/src/features/public/__tests__/ArtistPortfolioPage.test.tsx` — 6 new header tests
+
+## Guest QA Deferred UI Items — 2026-07-04
+
+### Item 1: Artist portfolio style filter chips
+- `ArtistPortfolioImageResponse` now includes `Style?: string`
+- `GetPublicArtistQuery` projects `p.Style` into the response
+- `ArtistPortfolioPage` shows filter chips when ≥ 2 distinct styles exist in the artist's
+  images. Chips derived from the loaded data, not the global STYLES list — no dead chips.
+
+### Item 2: Sticky Book CTA on mobile
+- Fixed bottom bar (`lg:hidden`) added to `ArtistPortfolioPage`
+- Content area gets `pb-20 lg:pb-8` to prevent overlap
+- No JS visibility logic — pure CSS responsive hiding
+
+### Item 3: Review pagination
+- `ReviewList` shows first 10 reviews, "Show N more" button reveals the rest
+- No backend change — backend already returns up to 50; slicing is client-side
+
+### Item 4: Owner review-response
+- `Review.Respond(string)` method added to domain entity
+- Migration: `AddOwnerResponseToReview` adds `OwnerResponse` (nullable LONGTEXT) and
+  `OwnerResponseAt` (nullable DATETIME)
+- `ReviewResponse` contract updated with both fields
+- All three review query projections updated
+- `RespondToReviewCommand` + handler + validator added (Application layer)
+- `ReviewEndpoints.cs` — `POST /api/v1/reviews/{reviewId}/respond` (OwnerOnly)
+- `ReviewCard` shows owner response as indented border-left quote block
+- `StudioPortfolioPage` passes `canRespond` when `role === "owner" && tenantId === studioId`
+- Inline `OwnerReplyForm` rendered per unanswered review when `canRespond` is true
+- `reviewsApi` (new RTK Query slice, authenticated `baseQuery`) is a separate cache from
+  `publicApi` — its mutation dispatches `publicApi.util.invalidateTags(...)` in
+  `onQueryStarted` so the public review lists refresh after a reply is posted, since RTK
+  Query tag invalidation does not cross `createApi` slice boundaries.
+
+### Item 5: Password strength meter
+- `PasswordStrengthMeter` shared component — 4-level (weak/fair/good/strong), no external deps
+- Added to `ClientRegisterPage` and `RegisterStudioPage`
+- `RegisterStudioPage` password field upgraded from plain `<Input type="password">` to `<PasswordInput>`
+- The meter's "weak" hint text ("at least 8 characters") overlaps the Zod validator's error
+  message — existing tests asserting on that substring via `findByText` must scope to the
+  specific `#password-error` element instead of a page-wide text query.
+
+### Item 6: Email-verification banner on /book
+- `email_verified` JWT claim added in `GenerateJwt` (based on Identity `EmailConfirmed`)
+- `User.emailVerified?: boolean` added to `roles.ts`; decoded in `decodeToken`
+- `BookPage` shows an amber banner with "Resend verification email" action when
+  `user.emailVerified === false` (strict — undefined = old token = no banner)
+
+### Files added/changed
+Backend:
+- `Pena_e_Arte.Domain/Entities/Review.cs` — OwnerResponse, OwnerResponseAt, Respond()
+- `Pena_e_Arte.Contracts/Responses/Public/ReviewResponse.cs` — two new fields
+- `Pena_e_Arte.Contracts/Responses/Public/ArtistPortfolioImageResponse.cs` — Style
+- `Pena_e_Arte.Contracts/Requests/RespondToReviewRequest.cs` (NEW)
+- `Pena_e_Arte.Application/Public/Queries/GetPublicArtistQuery.cs` — Style in projection
+- `Pena_e_Arte.Application/Public/Queries/GetStudioReviewsQuery.cs` — owner response fields
+- `Pena_e_Arte.Application/Public/Queries/GetArtistReviewsQuery.cs` — owner response fields
+- `Pena_e_Arte.Application/Public/Queries/GetPortfolioImageReviewsQuery.cs` — owner response fields
+- `Pena_e_Arte.Application/Reviews/Commands/RespondToReviewCommand.cs` (NEW)
+- `Pena_e_Arte.API/Endpoints/ReviewEndpoints.cs` (NEW)
+- `Pena_e_Arte.Infrastructure/Services/IdentityService.cs` — email_verified JWT claim
+- Migration: `20260704212814_AddOwnerResponseToReview`
+- Tests: `GetPublicArtistHandlerTests` (Style), `GetStudioReviewsHandlerTests` (NEW),
+  `GetArtistReviewsHandlerTests` (NEW), `RespondToReviewHandlerTests` (NEW)
+
+Frontend:
+- `frontend/src/shared/types/roles.ts` — User.emailVerified
+- `frontend/src/shared/utils/jwt.ts` — decode email_verified
+- `frontend/src/shared/components/ui/PasswordStrengthMeter.tsx` (NEW)
+- `frontend/src/features/public/publicApi.ts` — ArtistPortfolioImage.style, ReviewResponse fields
+- `frontend/src/features/public/components/ArtistPortfolioPage.tsx` — style chips + mobile CTA
+- `frontend/src/features/public/components/ReviewSection.tsx` — pagination, owner response, canRespond
+- `frontend/src/features/public/components/StudioPortfolioPage.tsx` — canRespond wiring
+- `frontend/src/features/appointments/components/BookPage.tsx` — email verification banner
+- `frontend/src/features/auth/components/ClientRegisterPage.tsx` — strength meter
+- `frontend/src/features/studios/components/RegisterStudioPage.tsx` — PasswordInput + strength meter
+- `frontend/src/features/reviews/reviewsApi.ts` (NEW)
+- `frontend/src/app/store.ts` — registered reviewsApi reducer + middleware

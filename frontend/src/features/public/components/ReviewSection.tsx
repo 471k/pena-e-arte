@@ -4,6 +4,7 @@ import { MessageSquare, CheckCircle, BadgeCheck, Star } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { StarRating, InteractiveStarRating } from "@/shared/components/ui/StarRating";
+import { useRespondToReviewMutation } from "@/features/reviews/reviewsApi";
 import {
   useGetStudioReviewsQuery,
   useGetArtistReviewsQuery,
@@ -14,7 +15,67 @@ import {
   type ReviewResponse,
 } from "../publicApi";
 
-function ReviewCard({ review }: { review: ReviewResponse }) {
+const PAGE_SIZE = 10;
+
+function OwnerReplyForm({ reviewId }: { reviewId: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [text, setText]         = useState("");
+  const [respond, { isLoading }] = useRespondToReviewMutation();
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="text-xs text-violet-400 hover:text-violet-300 transition-colors
+                   underline underline-offset-2"
+      >
+        Reply
+      </button>
+    );
+  }
+
+  function handleSubmit() {
+    if (text.trim().length === 0) return;
+    void respond({ reviewId, response: text.trim() }).unwrap().then(() => {
+      setExpanded(false);
+      setText("");
+    });
+  }
+
+  return (
+    <div className="space-y-2 pt-1">
+      <textarea
+        aria-label="Write a reply"
+        className="w-full min-h-[60px] resize-none rounded-md border bg-background px-3 py-2 text-sm
+                   focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+        placeholder="Thank the client or address their feedback…"
+        maxLength={2000}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          onClick={handleSubmit}
+          disabled={isLoading || text.trim().length === 0}
+          className="bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
+        >
+          {isLoading ? "Posting…" : "Post reply"}
+        </Button>
+        <button
+          type="button"
+          onClick={() => { setExpanded(false); setText(""); }}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ReviewCard({ review, canRespond }: { review: ReviewResponse; canRespond?: boolean }) {
   return (
     <div className="py-4 border-b last:border-b-0 space-y-2">
       <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -45,6 +106,28 @@ function ReviewCard({ review }: { review: ReviewResponse }) {
       <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
         {review.body}
       </p>
+
+      {review.ownerResponse && (
+        <div className="ml-4 mt-2 pl-3 border-l-2 border-border/50 space-y-1">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            Studio response
+            {review.ownerResponseAt && (
+              <span className="font-normal ml-1">
+                · {new Date(review.ownerResponseAt).toLocaleDateString("en-US", {
+                    month: "short", day: "numeric", year: "numeric",
+                  })}
+              </span>
+            )}
+          </p>
+          <p className="text-sm text-muted-foreground/90 leading-relaxed whitespace-pre-wrap">
+            {review.ownerResponse}
+          </p>
+        </div>
+      )}
+
+      {canRespond && !review.ownerResponse && (
+        <OwnerReplyForm reviewId={review.id} />
+      )}
     </div>
   );
 }
@@ -206,39 +289,63 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
   );
 }
 
-function StudioReviewList({ slug }: { slug: string }) {
+function StudioReviewList({ slug, canRespond }: { slug: string; canRespond?: boolean }) {
   const { data: reviews, isLoading } = useGetStudioReviewsQuery(slug);
   const averageRating = reviews && reviews.length > 0
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : null;
-  return <ReviewList reviews={reviews} isLoading={isLoading} averageRating={averageRating} />;
+  return (
+    <ReviewList
+      reviews={reviews} isLoading={isLoading} averageRating={averageRating} canRespond={canRespond}
+    />
+  );
 }
 
-function ArtistReviewList({ slug }: { slug: string }) {
+function ArtistReviewList({ slug, canRespond }: { slug: string; canRespond?: boolean }) {
   const { data: reviews, isLoading } = useGetArtistReviewsQuery(slug);
   const averageRating = reviews && reviews.length > 0
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : null;
-  return <ReviewList reviews={reviews} isLoading={isLoading} averageRating={averageRating} />;
+  return (
+    <ReviewList
+      reviews={reviews} isLoading={isLoading} averageRating={averageRating} canRespond={canRespond}
+    />
+  );
 }
 
-function PortfolioImageReviewList({ imageId }: { imageId: string }) {
+function PortfolioImageReviewList({ imageId, canRespond }: { imageId: string; canRespond?: boolean }) {
   const { data: reviews, isLoading } = useGetPortfolioImageReviewsQuery(imageId);
   const averageRating = reviews && reviews.length > 0
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : null;
-  return <ReviewList reviews={reviews} isLoading={isLoading} averageRating={averageRating} />;
+  return (
+    <ReviewList
+      reviews={reviews} isLoading={isLoading} averageRating={averageRating} canRespond={canRespond}
+    />
+  );
 }
 
 function ReviewList({
   reviews,
   isLoading,
   averageRating,
+  canRespond,
 }: {
   reviews:       ReviewResponse[] | undefined;
   isLoading:     boolean;
   averageRating: number | null;
+  canRespond?:   boolean;
 }) {
+  const [showAll, setShowAll] = useState(false);
+
+  const visible = !reviews
+    ? []
+    : showAll
+    ? reviews
+    : reviews.slice(0, PAGE_SIZE);
+
+  const hiddenCount = (reviews?.length ?? 0) - visible.length;
+
   return (
     <>
       {averageRating !== null && reviews && reviews.length > 0 && (
@@ -265,9 +372,21 @@ function ReviewList({
         </div>
       ) : (
         <div>
-          {reviews.map((r) => (
-            <ReviewCard key={r.id} review={r} />
+          {visible.map((r) => (
+            <ReviewCard key={r.id} review={r} canRespond={canRespond} />
           ))}
+
+          {!showAll && hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="mt-3 w-full py-2.5 text-xs text-muted-foreground
+                         hover:text-foreground border border-border/40
+                         rounded-md transition-colors"
+            >
+              Show {hiddenCount} more review{hiddenCount !== 1 ? "s" : ""}
+            </button>
+          )}
         </div>
       )}
     </>
@@ -275,13 +394,14 @@ function ReviewList({
 }
 
 interface Props {
-  slug:     string;
-  target:   "studio" | "artist" | "tattoo";
-  token:    string | null;
-  imageId?: string;
+  slug:        string;
+  target:      "studio" | "artist" | "tattoo";
+  token:       string | null;
+  imageId?:    string;
+  canRespond?: boolean;
 }
 
-export function ReviewSection({ slug, target, token, imageId }: Props) {
+export function ReviewSection({ slug, target, token, imageId, canRespond }: Props) {
   return (
     <section className="space-y-4" aria-labelledby="reviews-heading">
       <div className="flex items-center gap-2">
@@ -290,10 +410,10 @@ export function ReviewSection({ slug, target, token, imageId }: Props) {
       </div>
 
       {target === "studio"
-        ? <StudioReviewList   slug={slug} />
+        ? <StudioReviewList   slug={slug} canRespond={canRespond} />
         : target === "artist"
-        ? <ArtistReviewList   slug={slug} />
-        : <PortfolioImageReviewList imageId={imageId ?? ""} />}
+        ? <ArtistReviewList   slug={slug} canRespond={canRespond} />
+        : <PortfolioImageReviewList imageId={imageId ?? ""} canRespond={canRespond} />}
 
       <div className="pt-2 border-t border-border/40">
         <ReviewForm slug={slug} token={token} target={target} imageId={imageId} />

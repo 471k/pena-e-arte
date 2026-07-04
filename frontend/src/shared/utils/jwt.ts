@@ -9,6 +9,7 @@ interface JwtClaims {
   given_name?: string;
   exp?: number;
   tenant_id?: string;
+  email_verified?: string | boolean;
   [ROLE_CLAIM]?: string;
 }
 
@@ -19,6 +20,7 @@ export function decodeToken(token: string): AuthPayload & { exp?: number } {
     id: claims.sub,
     email: claims.email,
     name: claims.given_name,
+    emailVerified: claims.email_verified === true || claims.email_verified === "true",
   };
 
   const rawRole = claims[ROLE_CLAIM] ?? "";

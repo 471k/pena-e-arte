@@ -127,7 +127,9 @@ describe("ClientRegisterPage", () => {
     await user.type(screen.getByLabelText(/^email$/i), "a@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "short");
     await user.click(screen.getByRole("button", { name: /create account/i }));
-    expect(await screen.findByText(/at least 8 characters/i)).toBeInTheDocument();
+    const passwordInput = await screen.findByLabelText(/^password$/i);
+    expect(passwordInput).toHaveAttribute("aria-describedby", "password-error");
+    expect(document.getElementById("password-error")).toHaveTextContent(/at least 8 characters/i);
   });
 
   it("requires confirmPassword to match password", async () => {

@@ -137,8 +137,10 @@ describe("NotificationBell", () => {
     const user = userEvent.setup();
     renderBell();
     await user.click(screen.getByRole("button", { name: /notifications/i }));
-    await screen.findByText("View all");
-    expect(screen.getAllByText(/^Body \d$/).length).toBe(5);
+    // "View all" renders immediately regardless of fetch state, so it isn't a reliable
+    // signal that the notification list has loaded — wait on the actual data instead,
+    // otherwise this assertion can race ahead of the mocked fetch under load.
+    expect(await screen.findAllByText(/^Body \d$/)).toHaveLength(5);
   });
 
   it("opening the panel clears the unread count", async () => {

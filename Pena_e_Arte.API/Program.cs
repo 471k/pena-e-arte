@@ -138,6 +138,7 @@ try
     app.MapReferralEndpoints();
     app.MapPlatformEndpoints();
     app.MapFeedbackEndpoints();
+    app.MapReviewEndpoints();
 
     app.Run();
 }

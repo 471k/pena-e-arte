@@ -207,4 +207,20 @@ public class GetPublicArtistHandlerTests
 
         result!.HourlyRate.Should().BeNull();
     }
+
+    [Fact]
+    public async Task PortfolioImages_include_style()
+    {
+        (Artist artist, _) = await SeedArtistWithStudioAsync();
+        PortfolioImage styled = _db.PortfolioImages.Local
+            .First(p => p.ArtistId == artist.Id && p.ImageUrl == "img1.jpg");
+        styled.Style = "blackwork";
+        await _db.SaveChangesAsync();
+
+        PublicArtistResponse? result = await CreateSut().Handle(
+            new GetPublicArtistQuery("maria-silva", null), CancellationToken.None);
+
+        result!.PortfolioImages.Should().Contain(p => p.ImageUrl == "img1.jpg" && p.Style == "blackwork");
+        result.PortfolioImages.Should().Contain(p => p.ImageUrl == "img2.jpg" && p.Style == null);
+    }
 }

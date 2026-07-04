@@ -262,6 +262,7 @@ public class IdentityService(
             new(JwtRegisteredClaimNames.Sub,   user.Id),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti,   Guid.NewGuid().ToString()),
+            new("email_verified", user.EmailConfirmed ? "true" : "false"),
         ];
 
         tokenClaims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   AtSign,
@@ -86,6 +86,29 @@ function ArtistAvatar({
       <span className="text-2xl font-bold text-white/25 select-none">{initials}</span>
     </div>
   );
+}
+
+// ── Style filter chips ─────────────────────────────────────────────────────────
+
+// Keep in sync with the STYLES array in PortfolioFeed.tsx (and TattooStyle.cs on the backend).
+const STYLES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "blackwork",       label: "Blackwork"       },
+  { value: "realism",         label: "Realism"         },
+  { value: "traditional",     label: "Traditional"     },
+  { value: "geometric",       label: "Geometric"       },
+  { value: "fineline",        label: "Fineline"        },
+  { value: "watercolor",      label: "Watercolor"      },
+  { value: "neo-traditional", label: "Neo-Traditional" },
+  { value: "japanese",        label: "Japanese"        },
+];
+
+function chipClass(active: boolean): string {
+  return `shrink-0 px-3 py-2 min-h-[44px] rounded-full text-xs font-medium
+          border transition-colors whitespace-nowrap flex items-center
+          ${active
+            ? "bg-violet-600 border-violet-500 text-white"
+            : "border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+          }`;
 }
 
 // ── Specialization chips ───────────────────────────────────────────────────────
@@ -216,18 +239,21 @@ function ProfileStrengthNudge({
 // ── Portfolio masonry ──────────────────────────────────────────────────────────
 
 function PortfolioGrid({
-  images, artistName, onImageClick,
+  images, artistName, onImageClick, emptyMessage,
 }: {
-  images:       ArtistPortfolioImage[];
-  artistName:   string;
-  onImageClick: (item: ArtistPortfolioImage) => void;
+  images:        ArtistPortfolioImage[];
+  artistName:    string;
+  onImageClick:  (item: ArtistPortfolioImage) => void;
+  emptyMessage?: string;
 }) {
   if (images.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center rounded-lg
                       border border-dashed border-border/50">
         <Images className="h-8 w-8 text-muted-foreground/30" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground">No portfolio images yet.</p>
+        <p className="text-sm text-muted-foreground">
+          {emptyMessage ?? "No portfolio images yet."}
+        </p>
       </div>
     );
   }
@@ -378,6 +404,7 @@ export function ArtistPortfolioPage() {
   const token          = useAppSelector((s) => s.auth.token);
   const reviewsRef     = useRef<HTMLDivElement>(null);
   const [lightboxItem, setLightboxItem] = useState<LightboxItem | null>(null);
+  const [activeStyle,  setActiveStyle]  = useState<string>("");
 
   const { data: artist, isLoading, isError } =
     useGetPublicArtistQuery(slug, { skip: !slug });
@@ -391,6 +418,13 @@ export function ArtistPortfolioPage() {
     if (!slug) return;
     void recordView(slug);
   }, [slug, recordView]);
+
+  // Styles derived from the loaded data, not the global list — no dead chips.
+  const availableStyles = useMemo(() => {
+    if (!artist) return [];
+    const seen = new Set(artist.portfolioImages.map((p) => p.style).filter(Boolean));
+    return STYLES.filter(({ value }) => seen.has(value));
+  }, [artist]);
 
   function scrollToReviews() {
     reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -415,6 +449,12 @@ export function ArtistPortfolioPage() {
   const bookUrl = `/book?studio=${artist.studioSlug}&artist=${artist.slug}`;
   const ctaUrl  = token ? bookUrl : `/login?redirect=${encodeURIComponent(bookUrl)}`;
 
+  const visibleImages = activeStyle
+    ? artist.portfolioImages.filter((p) => p.style === activeStyle)
+    : artist.portfolioImages;
+
+  const activeStyleLabel = STYLES.find(({ value }) => value === activeStyle)?.label ?? activeStyle;
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <ArtistMeta
@@ -434,7 +474,7 @@ export function ArtistPortfolioPage() {
 
       <PublicPageHeader />
 
-      <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6">
+      <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6 pb-20 lg:pb-8">
         {/* Back link */}
         <Link
           to={`/s/${artist.studioSlug}`}
@@ -548,10 +588,38 @@ export function ArtistPortfolioPage() {
                 )}
               </div>
 
+              {availableStyles.length > 1 && (
+                <div
+                  role="group"
+                  aria-label="Filter by tattoo style"
+                  className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1
+                             -mx-4 px-4 sm:mx-0 sm:px-0 mb-4"
+                >
+                  <button
+                    type="button" role="radio" aria-checked={activeStyle === ""}
+                    onClick={() => setActiveStyle("")}
+                    className={chipClass(activeStyle === "")}
+                  >
+                    All
+                  </button>
+                  {availableStyles.map(({ value, label }) => (
+                    <button
+                      key={value} type="button" role="radio"
+                      aria-checked={activeStyle === value}
+                      onClick={() => setActiveStyle(value)}
+                      className={chipClass(activeStyle === value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <PortfolioGrid
-                images={artist.portfolioImages}
+                images={visibleImages}
                 artistName={artist.name}
                 onImageClick={(item) => setLightboxItem(item)}
+                emptyMessage={activeStyle ? `No ${activeStyleLabel} images yet.` : undefined}
               />
             </section>
 
@@ -595,6 +663,23 @@ export function ArtistPortfolioPage() {
           Powered by Pena e Artë
         </a>
       </footer>
+
+      {artist.showBookingCta && (
+        <div
+          className="fixed bottom-0 inset-x-0 z-[90] lg:hidden
+                     border-t bg-background/95 backdrop-blur-sm px-4 py-3
+                     safe-area-inset-bottom"
+          aria-label="Quick book bar"
+        >
+          <Button
+            className="w-full bg-violet-600 hover:bg-violet-700
+                       text-white border-0 min-h-[44px] text-sm font-semibold"
+            asChild
+          >
+            <Link to={ctaUrl}>Book with {artist.name.split(" ")[0]}</Link>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

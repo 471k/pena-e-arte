@@ -209,6 +209,8 @@ function StudioPageSkeleton() {
 export function StudioPortfolioPage() {
   const { slug = "" }  = useParams<{ slug: string }>();
   const token          = useAppSelector((s) => s.auth.token);
+  const role           = useAppSelector((s) => s.auth.role);
+  const tenantId       = useAppSelector((s) => s.auth.tenantId);
   const [lightboxUrl,  setLightboxUrl] = useState<string | null>(null);
 
   const { data: studio, isLoading, isError } =
@@ -234,6 +236,7 @@ export function StudioPortfolioPage() {
   const ctaUrl  = token
     ? bookUrl
     : `/login?redirect=${encodeURIComponent(bookUrl)}&studioId=${studio.studioId}`;
+  const canRespond = role === "owner" && tenantId === studio.studioId;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -391,7 +394,7 @@ export function StudioPortfolioPage() {
               </section>
             )}
 
-            <ReviewSection slug={studio.slug} target="studio" token={token} />
+            <ReviewSection slug={studio.slug} target="studio" token={token} canRespond={canRespond} />
           </div>
 
           {/* Right: sticky sidebar */}

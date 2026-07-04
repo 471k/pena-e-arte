@@ -13,6 +13,8 @@ public class Review
     public int      Rating            { get; private set; }
     public string   Body              { get; private set; } = "";
     public DateTime CreatedAt         { get; private set; } = DateTime.UtcNow;
+    public string?  OwnerResponse     { get; private set; }
+    public DateTime? OwnerResponseAt  { get; private set; }
 
     public static Review ForStudio(
         Guid studioId, Guid authorUserId, string authorName, int rating, string body)
@@ -57,6 +59,15 @@ public class Review
         };
         review.Validate();
         return review;
+    }
+
+    public void Respond(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            throw new ArgumentException("Owner response cannot be blank.", nameof(response));
+
+        OwnerResponse   = response.Trim();
+        OwnerResponseAt = DateTime.UtcNow;
     }
 
     private void Validate()

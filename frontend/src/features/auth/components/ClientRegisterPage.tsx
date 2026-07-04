@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { PasswordInput } from "@/shared/components/ui/password-input";
+import { PasswordStrengthMeter } from "@/shared/components/ui/PasswordStrengthMeter";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useLoginMutation, useRegisterUserMutation } from "../authApi";
 import { setCredentials } from "../authSlice";
@@ -69,8 +70,11 @@ export function ClientRegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
+
+  const passwordValue = watch("password");
 
   async function onSubmit(values: FormValues) {
     try {
@@ -192,6 +196,7 @@ export function ClientRegisterPage() {
                     {errors.password.message}
                   </p>
                 )}
+                <PasswordStrengthMeter password={passwordValue ?? ""} />
               </div>
 
               <div className="space-y-1.5">

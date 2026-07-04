@@ -31,6 +31,7 @@ export interface PublicStudioResponse {
 export interface ArtistPortfolioImage {
   imageId:  string;
   imageUrl: string;
+  style:    string | null;
 }
 
 export interface PublicArtistResponse {
@@ -77,6 +78,8 @@ export interface ReviewResponse {
   body:              string;
   createdAt:         string;
   isVerifiedBooking: boolean;
+  ownerResponse:     string | null;
+  ownerResponseAt:   string | null;
 }
 
 export interface PortfolioImageResponse {

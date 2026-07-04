@@ -40,7 +40,8 @@ public class GetArtistReviewsHandler(IAppDbContext db)
             .Take(50)
             .Select(r => new ReviewResponse(
                 r.Id, r.AuthorName, r.Rating, r.Body, r.CreatedAt,
-                verifiedUserIds.Contains(r.AuthorUserId)))
+                verifiedUserIds.Contains(r.AuthorUserId),
+                r.OwnerResponse, r.OwnerResponseAt))
             .ToListAsync(ct);
     }
 }
