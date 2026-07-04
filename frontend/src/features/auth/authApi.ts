@@ -16,7 +16,7 @@ interface RegisterUserRequest {
   email:      string;
   password:   string;
   role:       string;
-  studioId:   string;
+  studioId?:  string;
   firstName?: string;
 }
 

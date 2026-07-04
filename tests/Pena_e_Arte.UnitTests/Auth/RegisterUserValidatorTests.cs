@@ -89,14 +89,34 @@ public class RegisterUserValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptyStudioId_FailsOnStudioId()
+    public void Validate_OwnerWithEmptyStudioId_FailsOnStudioId()
     {
         _sut.ShouldFailOn(Command("u@example.com", "Password1!", "owner", Guid.Empty), "Request.StudioId");
+    }
+
+    [Fact]
+    public void Validate_OwnerWithNullStudioId_FailsOnStudioId()
+    {
+        _sut.ShouldFailOn(Command("u@example.com", "Password1!", "owner", null), "Request.StudioId");
+    }
+
+    // Client registration is studio-less: a client's first Client row is created on
+    // demand later via the switch-studio flow, so StudioId is never required here.
+    [Fact]
+    public void Validate_ClientWithNullStudioId_IsValid()
+    {
+        _sut.ShouldBeValid(Command("u@example.com", "Password1!", "client", null));
+    }
+
+    [Fact]
+    public void Validate_ClientWithStudioId_IsValid()
+    {
+        _sut.ShouldBeValid(Command("u@example.com", "Password1!", "client", Guid.NewGuid()));
     }
 
     private static RegisterUserCommand ValidCommand() =>
         Command("user@example.com", "Password1!", "owner", Guid.NewGuid());
 
-    private static RegisterUserCommand Command(string email, string password, string role, Guid studioId) =>
+    private static RegisterUserCommand Command(string email, string password, string role, Guid? studioId) =>
         new(new RegisterUserRequest(email, password, role, studioId));
 }

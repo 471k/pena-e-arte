@@ -63,9 +63,13 @@ function rootReducer(state: AppState | undefined, action: UnknownAction): AppSta
   // everything except auth/ui/notifications and publicApi (public data is
   // cache-keyed by slug already, not tenant-scoped — resetting it mid-switch
   // just forces a refetch loop against the in-flight studio lookup).
+  // Deliberately NOT gated on prevTenantId being truthy: a studio-less client
+  // (registered with no studio) can fetch tenant-scoped data against a null
+  // tenant BEFORE ever switching (e.g. visiting /book directly), caching an
+  // empty/wrong result under a tenant-agnostic cache key — that must also be
+  // invalidated the moment they gain their first real tenantId.
   if (
     action.type === setCredentials.type &&
-    prevTenantId &&
     nextState.auth.tenantId &&
     prevTenantId !== nextState.auth.tenantId
   ) {

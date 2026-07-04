@@ -33,8 +33,12 @@ function makeFakeJwt(role: string, email = "owner@test.com") {
 
 // ── Mocked OAuth SDK hooks ─────────────────────────────────────────────────────
 
-vi.mock("@/shared/hooks/useGoogleSignIn", () => ({
-  useGoogleSignIn: () => () => Promise.resolve("fake-google-id-token"),
+vi.mock("@/shared/components/GoogleSignInButton", () => ({
+  GoogleSignInButton: ({ onCredential }: { onCredential: (credential: string) => void }) => (
+    <button type="button" onClick={() => onCredential("fake-google-id-token")}>
+      Continue with Google
+    </button>
+  ),
 }));
 
 vi.mock("@/shared/hooks/useAppleSignIn", () => ({
@@ -341,6 +345,20 @@ describe("LoginPage", () => {
     expect(
       screen.getByRole("link", { name: /register your studio/i })
     ).toBeInTheDocument();
+  });
+
+  it("always shows a generic 'Sign up' link to /client-register (studio-less signup)", () => {
+    renderPage();
+    expect(screen.getByRole("link", { name: /^sign up$/i })).toHaveAttribute(
+      "href", "/client-register",
+    );
+  });
+
+  it("'Sign up' link carries studioId when present in the URL", () => {
+    renderPage("/login?studioId=studio-1");
+    expect(screen.getByRole("link", { name: /^sign up$/i })).toHaveAttribute(
+      "href", "/client-register?studioId=studio-1",
+    );
   });
 
   it("renders the updated subtitle copy", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -92,10 +92,10 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("ClientRegisterPage", () => {
-  it("shows interstitial with 'Browse studios' link when studioId is missing", () => {
+  it("shows the registration form even when studioId is missing (studio-less signup)", () => {
     renderPage("/client-register");
-    expect(screen.getByRole("link", { name: /browse studios/i })).toHaveAttribute("href", "/discover");
-    expect(screen.queryByLabelText(/first name/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /create your account/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
   });
 
   it("shows the registration form when studioId is present", () => {
@@ -218,5 +218,42 @@ describe("ClientRegisterPage", () => {
   it("'Already have an account' link points to /login", () => {
     renderPage();
     expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/login");
+  });
+
+  it("omits studioId from the register payload when signing up with no studio", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let capturedBody: any = null;
+    server.use(
+      http.post("http://localhost/api/v1/auth/register", async ({ request }) => {
+        capturedBody = await request.json();
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderPage("/client-register");
+    await fillValidForm(user);
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => expect(capturedBody).not.toBeNull());
+    expect(capturedBody).not.toHaveProperty("studioId");
+  });
+
+  it("redirects to /discover by default when signing up with no studio", async () => {
+    const user = userEvent.setup();
+    renderPage("/client-register");
+    await fillValidForm(user);
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(await screen.findByTestId("discover-page")).toBeInTheDocument();
+  });
+
+  it("redirects to /book by default when signing up with a studio", async () => {
+    const user = userEvent.setup();
+    renderPage("/client-register?studioId=studio-1");
+    await fillValidForm(user);
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(await screen.findByTestId("book-page")).toBeInTheDocument();
   });
 });

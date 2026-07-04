@@ -34,17 +34,25 @@ public class SwitchStudioHandler(
 
         if (isNewMembership)
         {
-            Client template = await db.FindAnyClientRecordForUserAsync(currentUser.UserId, ct)
-                ?? throw new BusinessRuleViolationException("No existing client account found.");
+            // A studio-less registrant has no prior Client row anywhere — this is
+            // their first-ever studio membership, so seed from their own account
+            // instead of a template (which template lookup correctly returns null for).
+            Client? template = await db.FindAnyClientRecordForUserAsync(currentUser.UserId, ct);
+
+            string email = template?.Email ?? currentUser.Email
+                ?? throw new BusinessRuleViolationException("Could not determine an email for this account.");
+            string firstName = template?.FirstName ?? email.Split('@')[0];
+            string lastName  = template?.LastName ?? string.Empty;
+            string? phone    = template?.Phone;
 
             client = new Client
             {
                 StudioId  = targetStudioId,
                 UserId    = currentUser.UserId,
-                FirstName = template.FirstName,
-                LastName  = template.LastName,
-                Email     = template.Email,
-                Phone     = template.Phone,
+                FirstName = firstName,
+                LastName  = lastName,
+                Email     = email,
+                Phone     = phone,
             };
             db.Clients.Add(client);
 

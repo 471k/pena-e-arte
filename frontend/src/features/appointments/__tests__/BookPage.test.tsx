@@ -185,6 +185,47 @@ function renderForm(role: Role = Role.Client) {
   );
 }
 
+// A studio-less client (signed up with no studio, never booked anywhere) has no
+// active tenant — simulates that state to test the "browse studios" empty state.
+function renderFormWithNoTenant() {
+  const store = configureStore({
+    reducer: {
+      auth:                          authReducer,
+      ui:                            uiReducer,
+      [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+      [artistsApi.reducerPath]:      artistsApi.reducer,
+      [clientsApi.reducerPath]:      clientsApi.reducer,
+      [depositRulesApi.reducerPath]: depositRulesApi.reducer,
+      [studiosApi.reducerPath]:      studiosApi.reducer,
+      [paymentsApi.reducerPath]:     paymentsApi.reducer,
+      [publicApi.reducerPath]:       publicApi.reducer,
+      [authApi.reducerPath]:         authApi.reducer,
+    },
+    middleware: (gd) =>
+      gd()
+        .concat(appointmentsApi.middleware)
+        .concat(artistsApi.middleware)
+        .concat(clientsApi.middleware)
+        .concat(depositRulesApi.middleware)
+        .concat(studiosApi.middleware)
+        .concat(paymentsApi.middleware)
+        .concat(publicApi.middleware)
+        .concat(authApi.middleware),
+    preloadedState: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false },
+    },
+  });
+  render(
+    <Provider store={store}>
+      <MemoryRouter>
+        <BookAppointmentForm />
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
 function renderMyBookings(role: Role = Role.Client) {
   render(
     <Provider store={makeStore(role)}>
@@ -222,6 +263,17 @@ describe("BookPage", () => {
 // ── BookAppointmentForm ────────────────────────────────────────────────────────
 
 describe("BookAppointmentForm", () => {
+  it("shows a 'browse studios' empty state for a studio-less client with no active tenant", () => {
+    renderFormWithNoTenant();
+    expect(
+      screen.getByText(/haven.t joined a studio yet/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /browse studios/i })).toHaveAttribute(
+      "href", "/discover",
+    );
+    expect(screen.queryByLabelText("Select artist")).not.toBeInTheDocument();
+  });
+
   it("renders the Artist label and selector", async () => {
     renderForm();
     expect(screen.getByLabelText("Select artist")).toBeInTheDocument();

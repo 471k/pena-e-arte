@@ -84,14 +84,41 @@ public class SwitchStudioHandlerTests
     }
 
     [Fact]
-    public async Task Handle_UserHasNoClientRowAnywhere_ThrowsBusinessRuleViolationException()
+    public async Task Handle_UserHasNoClientRowAnywhere_CreatesClientRowFromCurrentUserEmail()
+    {
+        // A studio-less registrant (see RegisterUserHandler) has zero Client rows
+        // anywhere — this is their first-ever studio membership, seeded from the
+        // account's own email rather than a template Client row.
+        Guid targetStudioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = targetStudioId });
+        await _db.SaveChangesAsync();
+        IdentityIssuesTokens();
+
+        FakeCurrentUser currentUser = new(Guid.NewGuid(), "client", "ana@example.com");
+        SwitchStudioHandler sut = new(_db, _identity, currentUser, NullLogger<SwitchStudioHandler>.Instance);
+
+        SwitchStudioResponse response = await sut.Handle(
+            new SwitchStudioCommand(new SwitchStudioRequest(targetStudioId)), default);
+
+        response.IsNewMembership.Should().BeTrue();
+        Client created = _db.Clients.Single(c => c.StudioId == targetStudioId && c.UserId == currentUser.UserId);
+        created.Email.Should().Be("ana@example.com");
+        created.FirstName.Should().Be("ana");
+        created.LastName.Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public async Task Handle_UserHasNoClientRowAnywhereAndNoEmail_ThrowsBusinessRuleViolationException()
     {
         Guid targetStudioId = Guid.NewGuid();
         _db.Studios.Add(new Studio { Id = targetStudioId });
         await _db.SaveChangesAsync();
         IdentityIssuesTokens();
 
-        Func<Task> act = () => CreateSut().Handle(
+        FakeCurrentUser currentUser = new(Guid.NewGuid(), "client", null);
+        SwitchStudioHandler sut = new(_db, _identity, currentUser, NullLogger<SwitchStudioHandler>.Instance);
+
+        Func<Task> act = () => sut.Handle(
             new SwitchStudioCommand(new SwitchStudioRequest(targetStudioId)), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>();

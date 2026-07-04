@@ -43,7 +43,11 @@ export function ClientRegisterPage() {
   const existingRole = useAppSelector((s) => s.auth.role);
 
   const studioId   = params.get("studioId") ?? "";
-  const redirectTo = params.get("redirect") ?? "/book";
+  // A client can sign up with no studio at all (studio-less signup) — their first
+  // studio membership gets created on demand later via the switch-studio flow, the
+  // first time they book. /book needs an active tenant to be useful, so send a
+  // studio-less registrant to Discover to pick their first studio instead.
+  const redirectTo = params.get("redirect") ?? (studioId ? "/book" : "/discover");
 
   const [registerUser, { isLoading: isRegistering, error: registerError }] =
     useRegisterUserMutation();
@@ -51,9 +55,16 @@ export function ClientRegisterPage() {
 
   const isLoading = isRegistering || isLoggingIn;
 
+  // Kicks out a visitor who's ALREADY authenticated when they land on this page —
+  // deliberately checked only at mount, not reactively on every existingRole change.
+  // Reacting to existingRole would also fire the moment onSubmit's own login
+  // succeeds (existingRole transitions null -> "client"), racing with and silently
+  // overriding the explicit navigate(redirectTo) below with getRoleRedirectPath's
+  // hardcoded default — dropping any ?redirect= deep link (including ?studio=).
   useEffect(() => {
     if (existingRole) navigate(getRoleRedirectPath(existingRole), { replace: true });
-  }, [existingRole, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     register,
@@ -67,7 +78,7 @@ export function ClientRegisterPage() {
         email:     values.email,
         password:  values.password,
         role:      "client",
-        studioId,
+        ...(studioId ? { studioId } : {}),
         firstName: values.firstName,
       }).unwrap();
     } catch {
@@ -100,39 +111,6 @@ export function ClientRegisterPage() {
           "Registration failed. Please try again."
       : "Unable to reach the server. Please try again."
     : null;
-
-  if (!studioId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md space-y-6 text-center">
-          <div className="flex flex-col items-center gap-2">
-            <PenLine className="h-8 w-8" aria-hidden="true" />
-            <span className="text-2xl font-semibold tracking-tight">Pena e Artë</span>
-          </div>
-          <Card className="dark:bg-zinc-900/80 dark:border-zinc-800">
-            <CardContent className="pt-6 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                To create a client account you need to start from a studio's
-                booking page so we know which studio to link you to.
-              </p>
-              <Button asChild className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0">
-                <Link to="/discover">Browse studios</Link>
-              </Button>
-            </CardContent>
-          </Card>
-          <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link
-              to={`/login${redirectTo !== "/book" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
-              className="underline underline-offset-4 hover:text-foreground"
-            >
-              Sign in
-            </Link>
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
