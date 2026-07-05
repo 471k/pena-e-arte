@@ -17,7 +17,7 @@ import {
 import { cn } from "@/shared/utils/cn";
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
+import { useGetMyAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSignConsentFormMutation } from "../consentFormsApi";
 
 const schema = z.object({
@@ -33,7 +33,7 @@ export function SignConsentFormPage() {
   const navigate = useNavigate();
   const user = useCurrentUser();
 
-  const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
+  const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
   const relevantAppointments = appointments?.filter(
     (a) => a.status === "Pending" || a.status === "Confirmed",
   );

@@ -17,7 +17,7 @@ import {
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
+import { useGetMyAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useSubmitIntakeFormMutation } from "../intakeFormsApi";
 
 const schema = z.object({
@@ -34,7 +34,7 @@ export function SubmitIntakeFormPage() {
   const navigate = useNavigate();
   const user = useCurrentUser();
 
-  const { data: appointments, isLoading: loadingAppts } = useGetAppointmentsQuery({});
+  const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
   const relevantAppointments = appointments?.filter(
     (a) => a.status === "Pending" || a.status === "Confirmed",
   );

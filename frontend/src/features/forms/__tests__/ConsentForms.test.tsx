@@ -55,7 +55,7 @@ const PENDING_FORM: ConsentFormResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
-  http.get("http://localhost/api/v1/appointments", () => HttpResponse.json([APPOINTMENT])),
+  http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPOINTMENT])),
   http.post("http://localhost/api/v1/consent-forms", () => HttpResponse.json(SIGNED_FORM, { status: 201 })),
   http.get("http://localhost/api/v1/consent-forms", () => HttpResponse.json([SIGNED_FORM, PENDING_FORM])),
   http.get("http://localhost/api/v1/consent-forms/:id", ({ params }) =>

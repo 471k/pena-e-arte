@@ -61,7 +61,7 @@ const PLAIN_TEXT_FORM: IntakeFormResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
-  http.get("http://localhost/api/v1/appointments", () => HttpResponse.json([APPOINTMENT])),
+  http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPOINTMENT])),
   http.post("http://localhost/api/v1/intake-forms", () => HttpResponse.json(SUBMITTED_FORM, { status: 201 })),
   http.get("http://localhost/api/v1/intake-forms", () => HttpResponse.json([SUBMITTED_FORM, PLAIN_TEXT_FORM])),
   http.get("http://localhost/api/v1/intake-forms/:id", ({ params }) =>
