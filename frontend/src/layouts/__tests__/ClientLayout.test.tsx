@@ -144,12 +144,12 @@ describe("ClientLayout", () => {
     expect(screen.getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
   });
 
-  it("active nav link gets the primary background class", () => {
+  it("active nav link gets the violet background class", () => {
     renderLayout({}, "/book");
     const bookLink = screen.getByRole("link", { name: /book appointment/i });
-    expect(bookLink.className).toMatch(/bg-primary/);
+    expect(bookLink.className).toMatch(/bg-violet-600/);
     const designsLink = screen.getByRole("link", { name: /my designs/i });
-    expect(designsLink.className).not.toMatch(/bg-primary/);
+    expect(designsLink.className).not.toMatch(/bg-violet-600/);
   });
 
   it("SuspensionBanner is hidden when studio is not suspended", () => {

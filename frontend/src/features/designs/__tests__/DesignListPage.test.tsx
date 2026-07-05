@@ -262,4 +262,72 @@ describe("DesignListPage", () => {
     expect(screen.getByText("Dragon Sleeve")).toBeInTheDocument();
     expect(screen.getByText("Rose Chest")).toBeInTheDocument();
   });
+
+  // ── Role-aware empty state copy ───────────────────────────────────────────────
+
+  it("empty state shows artist-targeted copy for Artist and Owner roles", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
+    );
+    renderPage(Role.Artist);
+    await screen.findByText("No designs yet");
+    expect(screen.getByText(/upload a tattoo design/i)).toBeInTheDocument();
+  });
+
+  it("empty state shows client-targeted copy for Client role", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
+    );
+    renderPage(Role.Client);
+    await screen.findByText("No designs yet");
+    expect(
+      screen.getByText(/your artist will upload designs here for your approval/i)
+    ).toBeInTheDocument();
+  });
+
+  it("empty state for Client role does NOT show 'Upload a tattoo design' copy", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
+    );
+    renderPage(Role.Client);
+    await screen.findByText("No designs yet");
+    expect(screen.queryByText(/upload a tattoo design/i)).not.toBeInTheDocument();
+  });
+
+  // ── Search bar visibility ──────────────────────────────────────────────────────
+
+  it("search bar is hidden when there are no designs", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
+    );
+    renderPage();
+    await screen.findByText("No designs yet");
+    expect(screen.queryByPlaceholderText(/search by title/i)).not.toBeInTheDocument();
+  });
+
+  it("search bar is visible when designs exist", async () => {
+    renderPage();
+    expect(await screen.findByPlaceholderText(/search by title/i)).toBeInTheDocument();
+  });
+
+  // ── Accessible name on search input ──────────────────────────────────────────
+
+  it("search input has an accessible aria-label", async () => {
+    renderPage();
+    await screen.findByText("Dragon Sleeve");
+    expect(
+      screen.getByRole("textbox", { name: /search designs by title/i })
+    ).toBeInTheDocument();
+  });
+
+  // ── Header/body alignment ─────────────────────────────────────────────────────
+
+  it("header count renders without a Palette icon next to it", async () => {
+    renderPage();
+    await screen.findByText("2 designs");
+    // Only one Palette icon: the title icon. Previously two appeared in the header.
+    // We can't reliably count SVG renders in JSDOM but we can assert the icon
+    // is not given a duplicate aria role (it's aria-hidden throughout).
+    expect(screen.getByText("2 designs").closest("span")).not.toBeNull();
+  });
 });

@@ -15,3 +15,4 @@ export * from './ui/input';
 export * from './ui/textarea';
 export * from './ui/location-picker';
 export * from './DataTable';
+export { ResourceEmptyState } from './ResourceEmptyState';

@@ -1625,3 +1625,43 @@ Frontend modified:
 - `frontend/src/features/auth/__tests__/MyStudiosPage.test.tsx` — 1 test replaced, 7 added
 - `frontend/src/test/setup.ts` — JSDOM `focus()` re-dispatch patch (see gotcha above)
 - `frontend/package.json` — `@radix-ui/react-dropdown-menu`, `@radix-ui/react-alert-dialog`
+
+## My Designs Page — UX Audit Fixes — 2026-07-04
+
+### Issues resolved
+1. **Header/body left-edge misalignment** — header content now wrapped in
+   `max-w-4xl mx-auto px-4 py-3` matching `<main>`. Both edges align on all viewports.
+
+2. **Redundant Palette icon in counter** — removed from the design count row.
+   Palette now appears once in the header title and once in the empty state only.
+
+3. **Role-blind empty state copy** — `ResourceEmptyState` body is branched on `canCreate`:
+   - Artist/Owner/Issuer: "Upload a tattoo design to start tracking approvals."
+   - Client: "Your artist will upload designs here for your approval."
+
+4. **False affordance: search bar with nothing to search** — search `<div>` is now
+   wrapped in `{hasDesigns && (...)}`. Renders only when records exist.
+
+5. **Accessible name missing from search input** — `aria-label="Search designs by title"` added.
+
+6. **ClientLayout active nav color** — changed from `bg-primary text-primary-foreground`
+   (resolves near-white in dark theme) to `bg-violet-600 text-white` matching app-wide convention.
+
+7. **ClientLayout nav touch targets** — `py-1.5` → `py-2.5 sm:py-1.5` ensures
+   mobile touch targets are ≥40px at the breakpoint where short labels are active.
+
+### New shared component
+- `frontend/src/shared/components/ResourceEmptyState.tsx`
+  Props: `icon`, `heading`, `body`, `action?`.
+  Canonical empty-state shell for all resource list pages — use this instead of
+  inline flex+icon+p+p+button patterns. `MyStudiosPage` can adopt it in a follow-up.
+
+### Files changed
+- `frontend/src/features/designs/components/DesignListPage.tsx` (fix 1–5)
+- `frontend/src/layouts/ClientLayout.tsx` (fix 6–7)
+- `frontend/src/shared/components/ResourceEmptyState.tsx` (new)
+- `frontend/src/shared/components/index.ts` — barrel export
+- `frontend/src/features/designs/__tests__/DesignListPage.test.tsx` (+7 tests)
+- `frontend/src/shared/components/__tests__/ResourceEmptyState.test.tsx` (new, 5 tests)
+- `frontend/src/layouts/__tests__/ClientLayout.test.tsx` — updated stale `bg-primary`
+  assertion to `bg-violet-600` after fix 6

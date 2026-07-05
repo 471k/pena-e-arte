@@ -46,9 +46,9 @@ export function ClientLayout() {
               to={href}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors shrink-0",
+                  "flex items-center gap-1.5 px-3 py-2.5 sm:py-1.5 rounded-md text-sm transition-colors shrink-0",
                   isActive
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-violet-600 text-white"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )
               }
