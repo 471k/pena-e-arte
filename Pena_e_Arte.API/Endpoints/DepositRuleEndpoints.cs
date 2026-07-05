@@ -13,8 +13,11 @@ public static class DepositRuleEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/deposit-rules")
             .RequireAuthorization();
 
-        group.MapGet("/",            GetDepositRules).RequireAuthorization("ArtistAndAbove");
-        group.MapGet("{id:guid}",    GetDepositRule).RequireAuthorization("ArtistAndAbove");
+        // ClientAndAbove: clients need to read their studio's deposit rules to see
+        // deposit amounts while booking. The response carries no owner-sensitive
+        // data (name, amount, active flag) and is already tenant-scoped.
+        group.MapGet("/",            GetDepositRules).RequireAuthorization("ClientAndAbove");
+        group.MapGet("{id:guid}",    GetDepositRule).RequireAuthorization("ClientAndAbove");
         group.MapPost("/",           CreateDepositRule).RequireAuthorization("OwnerOnly");
         group.MapPut("{id:guid}",    UpdateDepositRule).RequireAuthorization("OwnerOnly");
         group.MapDelete("{id:guid}", DeleteDepositRule).RequireAuthorization("OwnerOnly");
