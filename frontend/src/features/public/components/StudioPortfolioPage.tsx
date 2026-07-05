@@ -16,6 +16,7 @@ import { Skeleton }          from "@/shared/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { StarRating }              from "@/shared/components/ui/StarRating";
 import { useAppSelector }          from "@/app/hooks";
@@ -148,9 +149,11 @@ function GalleryLightbox({
       <DialogContent
         className="max-w-5xl w-full p-0 bg-black border-0 overflow-hidden"
         aria-label={`Portfolio image from ${studioName}`}
+        aria-describedby={undefined}
       >
         {imageUrl && (
           <div className="relative">
+            <DialogTitle className="sr-only">Portfolio image from {studioName}</DialogTitle>
             <img
               src={imageUrl}
               alt={`Tattoo portfolio by ${studioName}`}
