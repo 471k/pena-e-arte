@@ -1565,6 +1565,27 @@ test failure. Two-part fix:
 doesn't change shape after opening), so the same pattern is safe for the "Leave studio" flow
 without the extra `onOpenAutoFocus` override.
 
+**Follow-up (2026-07-05, found via real-browser Playwright, not vitest/jsdom):** the jsdom fix
+above didn't catch the actual production bug — jsdom never applies real CSS `pointer-events`, so
+a stuck `body { pointer-events: none }` left behind by the modal `DropdownMenu` was invisible to
+every unit test. Reported symptom: after opening the kebab menu once, the whole page (including
+the kebab button itself) stops responding to clicks until a hard refresh. Root causes, found by
+writing a throwaway Playwright spec against real Chromium and bisecting with `git stash`:
+1. `DropdownMenu` is modal by default (locks `body` pointer-events while open, restores on
+   close). Combined with opening a second modal overlay (the Sheet) from one of its items, the
+   two overlays' body-lock bookkeeping raced and could leave the lock stuck. Fix: `<DropdownMenu
+   modal={false}>` on the per-card kebab menu — it's a small actions menu, not a true modal, so
+   losing the background-interaction lock is an acceptable tradeoff.
+2. The "Manage notifications" item's `onSelect` called `event.preventDefault()` to defer opening
+   the Sheet — but per Radix's API, preventing `onSelect` keeps the dropdown open indefinitely.
+   The dropdown stayed open (invisibly, under the Sheet), so pressing Escape closed the
+   still-open dropdown instead of the Sheet. Fix: keep the `setTimeout` deferral but drop the
+   `preventDefault()` — the dropdown now closes normally and the Sheet still opens on the next
+   tick, avoiding the original jsdom focus race without reintroducing this bug.
+Regression test: `frontend/e2e/my-studios-kebab-menu.spec.ts` — asserts `document.body.style
+.pointerEvents !== "none"` and that the kebab is still clickable after each close path
+(Leave-Cancel, Manage-notifications-Escape, Manage-notifications-X-button).
+
 ### Files added
 Backend:
 - `Pena_e_Arte.Domain/Entities/ClientNotificationPreference.cs`
@@ -1594,11 +1615,13 @@ Frontend added:
 - `frontend/src/shared/components/ui/sheet.tsx`
 - `frontend/src/features/auth/components/StudioNotificationSheet.tsx`
 - `frontend/src/features/auth/__tests__/StudioNotificationSheet.test.tsx`
+- `frontend/e2e/my-studios-kebab-menu.spec.ts` — real-browser regression test (see follow-up above)
 
 Frontend modified:
 - `frontend/src/shared/components/ui/button.tsx` — exported `buttonVariants`
 - `frontend/src/features/auth/authApi.ts` — 3 new endpoints + interfaces
-- `frontend/src/features/auth/components/MyStudiosPage.tsx` — kebab menu, leave dialog, notif sheet
+- `frontend/src/features/auth/components/MyStudiosPage.tsx` — kebab menu, leave dialog, notif sheet,
+  `modal={false}` + non-prevented deferred `onSelect` (see follow-up above)
 - `frontend/src/features/auth/__tests__/MyStudiosPage.test.tsx` — 1 test replaced, 7 added
 - `frontend/src/test/setup.ts` — JSDOM `focus()` re-dispatch patch (see gotcha above)
 - `frontend/package.json` — `@radix-ui/react-dropdown-menu`, `@radix-ui/react-alert-dialog`

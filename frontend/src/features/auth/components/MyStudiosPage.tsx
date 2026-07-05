@@ -134,7 +134,7 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch, onLeave, onNotifi
               </Button>
             )}
 
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="icon"
@@ -156,11 +156,12 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch, onLeave, onNotifi
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onSelect={(event) => {
-                    // Deferred: opening a Dialog-based overlay synchronously from a
-                    // DropdownMenuItem select races the menu's own focus-return
-                    // behavior against the dialog's focus trap and can loop forever.
-                    event.preventDefault();
+                  onSelect={() => {
+                    // Deferred (not prevented — a prevented onSelect keeps the
+                    // dropdown open indefinitely): opening a Dialog-based overlay
+                    // synchronously from a DropdownMenuItem select races the menu's
+                    // own close/focus-return behavior against the dialog's focus
+                    // trap and can loop forever.
                     setTimeout(() => onNotifications(studio), 0);
                   }}
                   className="flex items-center gap-2"
