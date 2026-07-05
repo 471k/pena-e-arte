@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   AtSign,
   ChevronLeft,
@@ -405,6 +405,12 @@ export function ArtistPortfolioPage() {
   const reviewsRef     = useRef<HTMLDivElement>(null);
   const [lightboxItem, setLightboxItem] = useState<LightboxItem | null>(null);
   const [activeStyle,  setActiveStyle]  = useState<string>("");
+  const navigate       = useNavigate();
+  const location       = useLocation();
+
+  // See StudioPortfolioPage — "default" is React Router's key for the first
+  // history entry, meaning there's nothing in-app to go back to.
+  const canGoBack = location.key !== "default";
 
   const { data: artist, isLoading, isError } =
     useGetPublicArtistQuery(slug, { skip: !slug });
@@ -449,6 +455,11 @@ export function ArtistPortfolioPage() {
   const bookUrl = `/book?studio=${artist.studioSlug}&artist=${artist.slug}`;
   const ctaUrl  = token ? bookUrl : `/login?redirect=${encodeURIComponent(bookUrl)}`;
 
+  function handleBack() {
+    if (canGoBack) navigate(-1);
+    else navigate(`/s/${artist.studioSlug}`);
+  }
+
   const visibleImages = activeStyle
     ? artist.portfolioImages.filter((p) => p.style === activeStyle)
     : artist.portfolioImages;
@@ -476,16 +487,17 @@ export function ArtistPortfolioPage() {
 
       <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6 pb-20 lg:pb-8">
         {/* Back link */}
-        <Link
-          to={`/s/${artist.studioSlug}`}
+        <button
+          type="button"
+          onClick={handleBack}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground
                      hover:text-foreground transition-colors
                      py-2 -my-2 min-h-[44px]"
-          aria-label={`Back to ${artist.studioName}`}
+          aria-label={canGoBack ? "Go back" : `Back to ${artist.studioName}`}
         >
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          {artist.studioName}
-        </Link>
+          {canGoBack ? "Back" : artist.studioName}
+        </button>
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 lg:gap-12 items-start">

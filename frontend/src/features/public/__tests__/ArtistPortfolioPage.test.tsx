@@ -240,10 +240,10 @@ describe("ArtistPortfolioPage", () => {
     expect(screen.getByText(/no portfolio images yet/i)).toBeInTheDocument();
   });
 
-  it("back link has aria-label containing the studio name", () => {
+  it("back button has aria-label containing the studio name", () => {
     renderPage();
-    const backLink = screen.getByRole("link", { name: /back to ink soul/i });
-    expect(backLink).toBeInTheDocument();
+    const backButton = screen.getByRole("button", { name: /back to ink soul/i });
+    expect(backButton).toBeInTheDocument();
   });
 
   it("renders studio link back to /s/{studioSlug}", () => {

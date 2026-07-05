@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -10,9 +11,11 @@ import type { PublicStudioResponse } from "@/features/public/publicApi";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
+const mockNavigate = vi.fn();
+
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>();
-  return { ...actual, useParams: () => ({ slug: "test-studio" }) };
+  return { ...actual, useParams: () => ({ slug: "test-studio" }), useNavigate: () => mockNavigate };
 });
 
 const mockUseGetPublicStudioQuery  = vi.fn();
@@ -102,6 +105,7 @@ describe("StudioPortfolioPage", () => {
   beforeEach(() => {
     mockUseGetPublicStudioQuery.mockReturnValue({ data: STUDIO, isLoading: false, isError: false });
     mockUseGetStudioReviewsQuery.mockReturnValue({ data: [], isLoading: false });
+    mockNavigate.mockClear();
   });
 
   it("renders studio name and city when data loads", () => {
@@ -221,10 +225,12 @@ describe("StudioPortfolioPage", () => {
     expect(screen.getByText("Neo-Traditional")).toBeInTheDocument();
   });
 
-  it("'Browse studios' back link points to /discover", () => {
+  it("'Browse studios' back button navigates to /discover when there's no in-app history", async () => {
+    const user = userEvent.setup();
     renderPage();
-    const backLink = screen.getByRole("link", { name: /back to studio discovery/i });
-    expect(backLink).toHaveAttribute("href", "/discover");
+    const backButton = screen.getByRole("button", { name: /back to studio discovery/i });
+    await user.click(backButton);
+    expect(mockNavigate).toHaveBeenCalledWith("/discover");
   });
 
   it("cover image renders with alt text including studio name", () => {

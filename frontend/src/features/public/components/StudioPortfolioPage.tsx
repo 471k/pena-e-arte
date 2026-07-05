@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   AtSign,
   ChevronLeft,
@@ -215,6 +215,18 @@ export function StudioPortfolioPage() {
   const role           = useAppSelector((s) => s.auth.role);
   const tenantId       = useAppSelector((s) => s.auth.tenantId);
   const [lightboxUrl,  setLightboxUrl] = useState<string | null>(null);
+  const navigate       = useNavigate();
+  const location       = useLocation();
+
+  // React Router gives the very first history entry key "default" — anything
+  // navigated to from within the app gets a real key. Only that case has
+  // somewhere to go back TO; otherwise (direct link, refresh) fall back to
+  // /discover instead of leaving the browser's own history.
+  const canGoBack = location.key !== "default";
+  function handleBack() {
+    if (canGoBack) navigate(-1);
+    else navigate("/discover");
+  }
 
   const { data: studio, isLoading, isError } =
     useGetPublicStudioQuery(slug, { skip: !slug });
@@ -292,16 +304,17 @@ export function StudioPortfolioPage() {
 
       {/* Content */}
       <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
-        <Link
-          to="/discover"
+        <button
+          type="button"
+          onClick={handleBack}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground
-                     hover:text-foreground transition-colors mb-6 block
+                     hover:text-foreground transition-colors mb-6
                      py-2 -my-2 min-h-[44px]"
-          aria-label="Back to studio discovery"
+          aria-label={canGoBack ? "Go back" : "Back to studio discovery"}
         >
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          Browse studios
-        </Link>
+          {canGoBack ? "Back" : "Browse studios"}
+        </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 lg:gap-12 items-start">
 
