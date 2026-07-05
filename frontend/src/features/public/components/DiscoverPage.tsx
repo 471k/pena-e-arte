@@ -174,7 +174,10 @@ export function DiscoverPage() {
   const [searchInput,   setSearchInput]   = useState<string>("");
   const [searchError,   setSearchError]   = useState<string | null>(null);
   const [isGeocoding,   setIsGeocoding]   = useState(false);
-  const [nearOnly,      setNearOnly]      = useState(false);
+  // Default on: once the user's location resolves, the feed should immediately
+  // prioritize nearby work rather than requiring an extra click on "Near me"
+  // (the header already displays the resolved location, implying it's in use).
+  const [nearOnly,      setNearOnly]      = useState(true);
 
   // Tab state lives in the URL so a shared /discover?tab=studios link opens on the
   // right tab instead of always defaulting to portfolio.
