@@ -32,6 +32,20 @@ window.HTMLElement.prototype.setPointerCapture    = () => {};
 window.HTMLElement.prototype.releasePointerCapture = () => {};
 window.HTMLElement.prototype.scrollIntoView       = () => {};
 
+// Unlike real browsers, JSDOM re-dispatches focus/focusin events even when an
+// element is already the activeElement. Radix's FocusScope/DismissableLayer
+// re-focus the last-active element as part of its own focus event handling,
+// which JSDOM then re-fires — an infinite loop that manifests as "Maximum call
+// stack size exceeded" whenever a Dialog's content changes shape while open
+// (e.g. a loading state resolving mid-render). Match real browser behavior by
+// making focus() a no-op when the element is already focused.
+const originalFocus = window.HTMLElement.prototype.focus;
+window.HTMLElement.prototype.focus = function (this: HTMLElement, ...args) {
+  if (document.activeElement !== this) {
+    originalFocus.apply(this, args);
+  }
+};
+
 // Radix UI's floating positioning uses ResizeObserver.
 class MockResizeObserver {
   observe()    {}

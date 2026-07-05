@@ -286,12 +286,120 @@ describe("MyStudiosPage", () => {
 
   // ── External link accessibility ───────────────────────────────────────────────
 
-  it("external portfolio link has an accessible aria-label including studio name", async () => {
+  it("'View public profile' menu item links to the studio's public profile", async () => {
+    const user = userEvent.setup();
     renderPage();
     await screen.findByText("Alpha Ink");
-    expect(
-      screen.getByRole("link", { name: /view alpha ink public profile/i })
-    ).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /more options/i })[0]);
+    const link = screen.getByRole("menuitem", { name: /view public profile/i });
+    expect(link).toHaveAttribute("href", "/s/alpha-ink");
+  });
+
+  // ── Overflow menu ─────────────────────────────────────────────────────────────
+
+  it("renders a kebab menu button for each studio card", async () => {
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    const kebabs = screen.getAllByRole("button", { name: /more options/i });
+    expect(kebabs).toHaveLength(2);
+  });
+
+  it("opens the dropdown with 'View public profile', 'Manage notifications', and 'Leave studio'", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    await user.click(screen.getAllByRole("button", { name: /more options/i })[0]);
+    expect(screen.getByRole("menuitem", { name: /view public profile/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /manage notifications/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /leave studio/i })).toBeInTheDocument();
+  });
+
+  // ── Leave studio ──────────────────────────────────────────────────────────────
+
+  it("opens a confirmation dialog when 'Leave studio' is clicked", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    await user.click(screen.getAllByRole("button", { name: /more options/i })[0]);
+    await user.click(screen.getByRole("menuitem", { name: /leave studio/i }));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.getByText(/leave alpha ink/i)).toBeInTheDocument();
+  });
+
+  it("calls the leave-studio API with the correct studioId on confirm", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.delete("http://localhost/api/v1/auth/my-studios/:studioId", ({ params }) => {
+        capturedUrl = params.studioId as string;
+        return HttpResponse.json({ isLeavingActiveTenant: false });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    await user.click(screen.getAllByRole("button", { name: /more options/i })[0]);
+    await user.click(screen.getByRole("menuitem", { name: /leave studio/i }));
+    await user.click(screen.getByRole("button", { name: /^leave studio$/i }));
+    await vi.waitFor(() => expect(capturedUrl).toBe("studio-aaa"));
+  });
+
+  it("navigates to /discover when leaving the active tenant studio", async () => {
+    server.use(
+      http.delete("http://localhost/api/v1/auth/my-studios/:studioId", () =>
+        HttpResponse.json({ isLeavingActiveTenant: true }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(
+      <Provider store={makeStore()}>
+        <MemoryRouter initialEntries={["/my-studios"]}>
+          <Routes>
+            <Route path="/my-studios" element={<MyStudiosPage />} />
+            <Route path="/discover"   element={<div>Discover Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+    await screen.findByText("Alpha Ink");
+    await user.click(screen.getAllByRole("button", { name: /more options/i })[0]);
+    await user.click(screen.getByRole("menuitem", { name: /leave studio/i }));
+    await user.click(screen.getByRole("button", { name: /^leave studio$/i }));
+    expect(await screen.findByText("Discover Page")).toBeInTheDocument();
+  });
+
+  it("shows a toast error when leaving a studio fails", async () => {
+    server.use(
+      http.delete("http://localhost/api/v1/auth/my-studios/:studioId", () =>
+        HttpResponse.json({ message: "error" }, { status: 500 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    await user.click(screen.getAllByRole("button", { name: /more options/i })[0]);
+    await user.click(screen.getByRole("menuitem", { name: /leave studio/i }));
+    await user.click(screen.getByRole("button", { name: /^leave studio$/i }));
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't leave the studio. Please try again."),
+    );
+  });
+
+  // ── Manage notifications ──────────────────────────────────────────────────────
+
+  it("opens the notification preferences sheet when 'Manage notifications' is clicked", async () => {
+    server.use(
+      http.get(
+        "http://localhost/api/v1/auth/my-studios/:studioId/notification-preferences",
+        () => HttpResponse.json({ preferences: [] }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Alpha Ink");
+    await user.click(screen.getAllByRole("button", { name: /more options/i })[0]);
+    await user.click(screen.getByRole("menuitem", { name: /manage notifications/i }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/notifications — alpha ink/i)).toBeInTheDocument();
   });
 
   // ── Active studio card visual treatment ──────────────────────────────────────

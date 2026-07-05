@@ -240,6 +240,21 @@ public class IdentityService(
         return (true, accessToken, newRefreshToken, null);
     }
 
+    public async Task RemoveTenantClaimAsync(Guid userId, Guid studioId, CancellationToken ct)
+    {
+        IdentityUser user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException($"User {userId} not found.");
+
+        IList<Claim> claims = await userManager.GetClaimsAsync(user);
+        Claim? tenantClaim = claims.FirstOrDefault(c => c.Type == "tenant_id" && c.Value == studioId.ToString());
+        if (tenantClaim is not null)
+            await userManager.RemoveClaimAsync(user, tenantClaim);
+
+        Guid? activeTenantId = await ReadActiveTenantIdAsync(user);
+        if (activeTenantId == studioId)
+            await userManager.RemoveAuthenticationTokenAsync(user, "App", "ActiveTenantId");
+    }
+
     private async Task<Guid?> ReadActiveTenantIdAsync(IdentityUser user)
     {
         string? stored = await userManager.GetAuthenticationTokenAsync(user, "App", "ActiveTenantId");

@@ -59,4 +59,11 @@ public interface IIdentityService
     /// </summary>
     Task<(bool Success, string? AccessToken, string? RefreshToken, string? Error)> IssueTokensForTenantAsync(
         Guid userId, Guid activeStudioId, CancellationToken ct);
+
+    /// <summary>
+    /// Removes the user's "tenant_id" claim for the given studio.
+    /// Also clears the active-tenant token if it matches the removed studio.
+    /// Idempotent — safe to call even if the user no longer holds that claim.
+    /// </summary>
+    Task RemoveTenantClaimAsync(Guid userId, Guid studioId, CancellationToken ct);
 }

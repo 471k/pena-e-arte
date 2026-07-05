@@ -25,6 +25,11 @@ public static class AuthEndpoints
         group.MapPost("/resend-verification",  ResendVerification).RequireAuthorization("ClientAndAbove");
         group.MapPost("/switch-studio",        SwitchStudio).RequireAuthorization("ClientOnly").RequireRateLimiting("auth");
         group.MapGet ("/my-studios",            GetMyStudios).RequireAuthorization("ClientOnly");
+        group.MapDelete("/my-studios/{studioId:guid}", LeaveStudio).RequireAuthorization("ClientOnly");
+        group.MapGet ("/my-studios/{studioId:guid}/notification-preferences",
+            GetStudioNotificationPreferences).RequireAuthorization("ClientOnly");
+        group.MapPut ("/my-studios/{studioId:guid}/notification-preferences",
+            UpdateStudioNotificationPreferences).RequireAuthorization("ClientOnly");
     }
 
     private static async Task<IResult> Login(
@@ -138,5 +143,35 @@ public static class AuthEndpoints
     {
         List<MyStudioResponse> result = await mediator.Send(new GetMyStudiosQuery(), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> LeaveStudio(
+        Guid              studioId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        LeaveStudioResponse result = await mediator.Send(new LeaveStudioCommand(studioId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetStudioNotificationPreferences(
+        Guid              studioId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        ClientNotificationPreferencesResponse result =
+            await mediator.Send(new GetClientStudioNotificationPreferencesQuery(studioId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateStudioNotificationPreferences(
+        Guid                                        studioId,
+        UpdateClientNotificationPreferencesRequest  request,
+        ISender                                     mediator,
+        CancellationToken                           ct)
+    {
+        await mediator.Send(
+            new UpdateClientStudioNotificationPreferencesCommand(studioId, request.Preferences), ct);
+        return Results.NoContent();
     }
 }

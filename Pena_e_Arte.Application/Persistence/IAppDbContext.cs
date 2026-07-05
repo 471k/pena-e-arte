@@ -25,6 +25,7 @@ public interface IAppDbContext
     DbSet<ConsentForm>     ConsentForms     { get; }
     DbSet<NotificationLog>               NotificationLogs               { get; }
     DbSet<StudioNotificationPreference>  StudioNotificationPreferences  { get; }
+    DbSet<ClientNotificationPreference>  ClientNotificationPreferences  { get; }
 
     // Issuer-level
     DbSet<Studio>              Studios             { get; }

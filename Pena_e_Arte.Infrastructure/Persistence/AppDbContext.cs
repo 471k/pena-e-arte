@@ -31,6 +31,7 @@ public class AppDbContext(
     public DbSet<ConsentForm>     ConsentForms     => Set<ConsentForm>();
     public DbSet<NotificationLog>               NotificationLogs              => Set<NotificationLog>();
     public DbSet<StudioNotificationPreference>  StudioNotificationPreferences => Set<StudioNotificationPreference>();
+    public DbSet<ClientNotificationPreference>  ClientNotificationPreferences => Set<ClientNotificationPreference>();
 
     // --- Issuer-level (no tenant filter) ---
     public DbSet<Studio>             Studios             => Set<Studio>();
@@ -86,6 +87,7 @@ public class AppDbContext(
         builder.Entity<ConsentForm>()    .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>()              .HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
         builder.Entity<StudioNotificationPreference>() .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+        // ClientNotificationPreference — NOT filtered, dual-keyed by (UserId, StudioId); see ClientNotificationPreferenceConfiguration.
 
         builder.Entity<SavedPortfolioImage>(b =>
         {

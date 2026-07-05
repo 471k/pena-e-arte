@@ -26,6 +26,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ConsentForm>     ConsentForms     => Set<ConsentForm>();
     public DbSet<NotificationLog>               NotificationLogs              => Set<NotificationLog>();
     public DbSet<StudioNotificationPreference>  StudioNotificationPreferences => Set<StudioNotificationPreference>();
+    public DbSet<ClientNotificationPreference>  ClientNotificationPreferences => Set<ClientNotificationPreference>();
     public DbSet<Studio>             Studios             => Set<Studio>();
     public DbSet<Plan>               Plans               => Set<Plan>();
     public DbSet<Subscription>       Subscriptions       => Set<Subscription>();

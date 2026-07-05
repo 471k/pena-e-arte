@@ -1504,3 +1504,101 @@ Frontend:
 ### Files changed
 - `frontend/src/features/auth/components/MyStudiosPage.tsx` (complete rewrite)
 - `frontend/src/features/auth/__tests__/MyStudiosPage.test.tsx` (1 test updated, 6 added)
+
+## My Studios — Overflow Menu, Leave Studio, Notification Preferences — 2026-07-05
+
+### Features added
+1. **Kebab overflow menu**: each studio card now has a `MoreVertical` `DropdownMenu` with three
+   items: "View public profile" (Link to `/s/{slug}`), "Manage notifications" (opens a Sheet),
+   "Leave studio" (opens an AlertDialog). The standalone external-link icon is removed.
+
+2. **Leave Studio** (full stack):
+   - `IIdentityService.RemoveTenantClaimAsync` — removes the `tenant_id` claim and clears the
+     active-tenant token (`"App"`/`"ActiveTenantId"`) if it matches the removed studio.
+   - `LeaveStudioCommand` — validates membership via `GetTenantIdsAsync`, calls
+     `RemoveTenantClaimAsync`, returns `IsLeavingActiveTenant`.
+   - `DELETE /api/v1/auth/my-studios/{studioId}` — `ClientOnly`.
+   - Frontend: `AlertDialog` confirmation, then either the studios list auto-refreshes via
+     `invalidatesTags: ["MyStudios"]` (non-active tenant), or
+     `dispatch(logout()) → navigate("/discover")` (leaving the active studio, since the current
+     JWT is no longer valid for any tenant).
+   - The `Client` DB row is NOT deleted — appointment/payment/consent history is retained so a
+     later `SwitchStudioCommand` back into the studio reuses the existing row.
+
+3. **Per-studio client notification preferences** (full stack):
+   - New entity `ClientNotificationPreference (Id, UserId, StudioId, Type, Channel, IsEnabled)`,
+     reusing the existing `NotificationType`/`NotificationChannel` enums (no new string-constant
+     type). Configured via `ClientNotificationPreferenceConfiguration`, unique index on
+     `(UserId, StudioId, Type, Channel)`. **No global query filter** — scoped by `(UserId, StudioId)`
+     in every query, since a client may hold preferences for a studio that isn't their active JWT
+     tenant.
+   - Restricted server-side to the 5 client-facing `NotificationType` values (AppointmentCreated,
+     AppointmentConfirmed, AppointmentCancelled, DepositCaptured, PaymentRefunded) — owner-facing
+     types (IntakeFormSubmitted, ConsentFormSigned, DesignReviewed) are silently ignored on write.
+   - Reuses the existing `Contracts.Responses.NotificationPreferenceItem(Type, Channel, IsEnabled)`
+     record rather than introducing a duplicate DTO shape.
+   - Default: all enabled (computed client-side in the query handler when no row is saved yet).
+   - `GET/PUT /api/v1/auth/my-studios/{studioId}/notification-preferences` — `ClientOnly`.
+   - `StudioNotificationSheet`: right-side `Sheet` with a toggle table, lazy-loaded
+     (`skip: !open`), auto-closes on successful save.
+
+### Frontend UI primitives added
+`dropdown-menu.tsx`, `alert-dialog.tsx` (new `@radix-ui/react-dropdown-menu` +
+`@radix-ui/react-alert-dialog` deps), and `sheet.tsx` (built on the already-installed
+`@radix-ui/react-dialog`, side-panel variant via `class-variance-authority`). `buttonVariants`
+exported from `button.tsx` so `AlertDialogAction`/`AlertDialogCancel` can reuse the same styles.
+
+### Gotcha: Dialog-based overlay opened from a DropdownMenuItem
+Opening a `Sheet`/`Dialog` synchronously from a `DropdownMenuItem`'s `onClick` — where the
+dialog's content shape then changes shape while open (e.g. a loading spinner resolving into a
+table after the preferences fetch completes) — can trigger an infinite `focus()`/`focusin` loop
+between Radix's `FocusScope`/`DismissableLayer` and JSDOM in tests (JSDOM re-dispatches focus
+events even when an element is already the `activeElement`; real browsers don't). Symptom is
+`RangeError: Maximum call stack size exceeded` or an outright worker-process crash, not a normal
+test failure. Two-part fix:
+1. `src/test/setup.ts` — patch `HTMLElement.prototype.focus` to no-op when the element is already
+   `document.activeElement`, matching real browser behavior.
+2. `StudioNotificationSheet.tsx` — pass `onOpenAutoFocus={(e) => e.preventDefault()}` to
+   `SheetContent` so Radix doesn't fight over initial focus while the sheet's content is still
+   loading.
+`AlertDialog` opened the same way from a `DropdownMenuItem` did NOT hit this loop (its content
+doesn't change shape after opening), so the same pattern is safe for the "Leave studio" flow
+without the extra `onOpenAutoFocus` override.
+
+### Files added
+Backend:
+- `Pena_e_Arte.Domain/Entities/ClientNotificationPreference.cs`
+- `Pena_e_Arte.Contracts/Responses/LeaveStudioResponse.cs`
+- `Pena_e_Arte.Contracts/Responses/ClientNotificationPreferencesResponse.cs`
+- `Pena_e_Arte.Contracts/Requests/UpdateClientNotificationPreferencesRequest.cs`
+- `Pena_e_Arte.Application/Auth/Commands/LeaveStudioCommand.cs`
+- `Pena_e_Arte.Application/Auth/Commands/UpdateClientStudioNotificationPreferencesCommand.cs`
+- `Pena_e_Arte.Application/Auth/Queries/GetClientStudioNotificationPreferencesQuery.cs`
+- `Pena_e_Arte.Infrastructure/Persistence/Configurations/ClientNotificationPreferenceConfiguration.cs`
+- Migration: `AddClientNotificationPreferences`
+- `tests/Pena_e_Arte.UnitTests/Auth/LeaveStudioHandlerTests.cs`
+- `tests/Pena_e_Arte.UnitTests/Auth/GetClientStudioNotificationPreferencesHandlerTests.cs`
+- `tests/Pena_e_Arte.UnitTests/Auth/UpdateClientStudioNotificationPreferencesHandlerTests.cs`
+
+Backend modified:
+- `Pena_e_Arte.Domain/Interfaces/IIdentityService.cs` — `RemoveTenantClaimAsync`
+- `Pena_e_Arte.Infrastructure/Services/IdentityService.cs` — implementation
+- `Pena_e_Arte.Application/Persistence/IAppDbContext.cs` — new `DbSet`
+- `Pena_e_Arte.Infrastructure/Persistence/AppDbContext.cs` — `DbSet` (no query filter)
+- `Pena_e_Arte.API/Endpoints/AuthEndpoints.cs` — DELETE + GET/PUT routes
+- `tests/Pena_e_Arte.UnitTests/Helpers/FakeDbContext.cs` — new `DbSet`
+
+Frontend added:
+- `frontend/src/shared/components/ui/dropdown-menu.tsx`
+- `frontend/src/shared/components/ui/alert-dialog.tsx`
+- `frontend/src/shared/components/ui/sheet.tsx`
+- `frontend/src/features/auth/components/StudioNotificationSheet.tsx`
+- `frontend/src/features/auth/__tests__/StudioNotificationSheet.test.tsx`
+
+Frontend modified:
+- `frontend/src/shared/components/ui/button.tsx` — exported `buttonVariants`
+- `frontend/src/features/auth/authApi.ts` — 3 new endpoints + interfaces
+- `frontend/src/features/auth/components/MyStudiosPage.tsx` — kebab menu, leave dialog, notif sheet
+- `frontend/src/features/auth/__tests__/MyStudiosPage.test.tsx` — 1 test replaced, 7 added
+- `frontend/src/test/setup.ts` — JSDOM `focus()` re-dispatch patch (see gotcha above)
+- `frontend/package.json` — `@radix-ui/react-dropdown-menu`, `@radix-ui/react-alert-dialog`

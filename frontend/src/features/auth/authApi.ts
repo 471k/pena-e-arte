@@ -67,10 +67,24 @@ export interface MyStudioResponse {
   isStudioActive: boolean;
 }
 
+export interface LeaveStudioResponse {
+  isLeavingActiveTenant: boolean;
+}
+
+export interface ClientNotificationPreferenceItem {
+  type:      string;
+  channel:   "Email" | "Sms";
+  isEnabled: boolean;
+}
+
+export interface ClientNotificationPreferencesResponse {
+  preferences: ClientNotificationPreferenceItem[];
+}
+
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery,
-  tagTypes: ["MyStudios"],
+  tagTypes: ["MyStudios", "ClientStudioNotificationPreferences"],
   endpoints: (builder) => ({
     login: builder.mutation<AuthResponse, LoginRequest>({
       query: (body) => ({ url: "auth/login", method: "POST", body }),
@@ -107,6 +121,35 @@ export const authApi = createApi({
       query: () => "auth/my-studios",
       providesTags: ["MyStudios"],
     }),
+    leaveStudio: builder.mutation<LeaveStudioResponse, { studioId: string }>({
+      query: ({ studioId }) => ({
+        url:    `auth/my-studios/${studioId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["MyStudios"],
+    }),
+    getClientStudioNotificationPreferences: builder.query<
+      ClientNotificationPreferencesResponse,
+      { studioId: string }
+    >({
+      query: ({ studioId }) => `auth/my-studios/${studioId}/notification-preferences`,
+      providesTags: (_result, _err, { studioId }) => [
+        { type: "ClientStudioNotificationPreferences", id: studioId },
+      ],
+    }),
+    updateClientStudioNotificationPreferences: builder.mutation<
+      void,
+      { studioId: string; preferences: ClientNotificationPreferenceItem[] }
+    >({
+      query: ({ studioId, preferences }) => ({
+        url:    `auth/my-studios/${studioId}/notification-preferences`,
+        method: "PUT",
+        body:   { preferences },
+      }),
+      invalidatesTags: (_result, _err, { studioId }) => [
+        { type: "ClientStudioNotificationPreferences", id: studioId },
+      ],
+    }),
   }),
 });
 
@@ -122,4 +165,7 @@ export const {
   useResendVerificationEmailMutation,
   useSwitchStudioMutation,
   useGetMyStudiosQuery,
+  useLeaveStudioMutation,
+  useGetClientStudioNotificationPreferencesQuery,
+  useUpdateClientStudioNotificationPreferencesMutation,
 } = authApi;

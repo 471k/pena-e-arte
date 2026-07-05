@@ -1,15 +1,32 @@
 import { useState } from "react";
-import { Building2, CheckCircle2, ExternalLink, Loader2, Plus } from "lucide-react";
+import {
+  Building2, CheckCircle2, ExternalLink, Bell, LogOut,
+  Loader2, MoreVertical, Plus,
+} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
+import { StudioNotificationSheet } from "@/features/auth/components/StudioNotificationSheet";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
-import { setCredentials } from "@/features/auth/authSlice";
+import { setCredentials, logout } from "@/features/auth/authSlice";
 import { decodeToken } from "@/shared/utils/jwt";
-import { useGetMyStudiosQuery, useSwitchStudioMutation } from "@/features/auth/authApi";
+import {
+  useGetMyStudiosQuery,
+  useSwitchStudioMutation,
+  useLeaveStudioMutation,
+} from "@/features/auth/authApi";
 import type { MyStudioResponse } from "@/features/auth/authApi";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -46,13 +63,15 @@ function StudioAvatar({ name, coverImageUrl }: { name: string; coverImageUrl: st
 // ── Studio card ───────────────────────────────────────────────────────────────
 
 interface StudioCardProps {
-  studio:      MyStudioResponse;
-  isActive:    boolean;
-  isSwitching: boolean;
-  onSwitch:    (studioId: string) => void;
+  studio:          MyStudioResponse;
+  isActive:        boolean;
+  isSwitching:     boolean;
+  onSwitch:        (studioId: string) => void;
+  onLeave:         (studio: MyStudioResponse) => void;
+  onNotifications: (studio: MyStudioResponse) => void;
 }
 
-function StudioCard({ studio, isActive, isSwitching, onSwitch }: StudioCardProps) {
+function StudioCard({ studio, isActive, isSwitching, onSwitch, onLeave, onNotifications }: StudioCardProps) {
   return (
     <Card
       className={`transition-colors ${
@@ -90,17 +109,6 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch }: StudioCardProps
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
-            <Link
-              to={`/s/${studio.slug}`}
-              aria-label={`View ${studio.name} public profile`}
-              title="View studio public profile"
-              className="inline-flex items-center justify-center h-8 w-8 rounded-md
-                         text-muted-foreground hover:text-foreground hover:bg-accent
-                         transition-colors"
-            >
-              <ExternalLink className="h-4 w-4" aria-hidden />
-            </Link>
-
             {isActive ? (
               <span
                 className="inline-flex items-center gap-1 rounded-full px-2.5 py-1
@@ -125,6 +133,51 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch }: StudioCardProps
                 Switch
               </Button>
             )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  aria-label={`More options for ${studio.name}`}
+                >
+                  <MoreVertical className="h-4 w-4" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link
+                    to={`/s/${studio.slug}`}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <ExternalLink className="h-4 w-4" aria-hidden />
+                    View public profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    // Deferred: opening a Dialog-based overlay synchronously from a
+                    // DropdownMenuItem select races the menu's own focus-return
+                    // behavior against the dialog's focus trap and can loop forever.
+                    event.preventDefault();
+                    setTimeout(() => onNotifications(studio), 0);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Bell className="h-4 w-4" aria-hidden />
+                  Manage notifications
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => onLeave(studio)}
+                  className="flex items-center gap-2 text-destructive focus:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden />
+                  Leave studio
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardContent>
@@ -143,7 +196,11 @@ export function MyStudiosPage() {
 
   const { data: studios, isLoading, isError, refetch } = useGetMyStudiosQuery();
   const [switchStudio]    = useSwitchStudioMutation();
+  const [leaveStudio]     = useLeaveStudioMutation();
   const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [leaveTarget, setLeaveTarget] = useState<MyStudioResponse | null>(null);
+  const [isLeaving, setIsLeaving]     = useState(false);
+  const [notifTarget, setNotifTarget] = useState<MyStudioResponse | null>(null);
 
   async function handleSwitch(studioId: string) {
     setSwitchingId(studioId);
@@ -161,6 +218,24 @@ export function MyStudiosPage() {
       toast.error("Couldn't switch studios. Please try again.");
     } finally {
       setSwitchingId(null);
+    }
+  }
+
+  async function handleLeave() {
+    if (!leaveTarget) return;
+    setIsLeaving(true);
+    try {
+      const result = await leaveStudio({ studioId: leaveTarget.studioId }).unwrap();
+      toast.success(`Left ${leaveTarget.name}.`);
+      if (result.isLeavingActiveTenant) {
+        dispatch(logout());
+        navigate("/discover", { replace: true });
+      }
+    } catch {
+      toast.error("Couldn't leave the studio. Please try again.");
+    } finally {
+      setIsLeaving(false);
+      setLeaveTarget(null);
     }
   }
 
@@ -250,11 +325,54 @@ export function MyStudiosPage() {
                 isActive={studio.studioId === currentTenantId}
                 isSwitching={switchingId === studio.studioId}
                 onSwitch={handleSwitch}
+                onLeave={setLeaveTarget}
+                onNotifications={setNotifTarget}
               />
             ))}
           </>
         )}
       </main>
+
+      {/* ── Leave confirmation dialog ── */}
+      <AlertDialog
+        open={leaveTarget !== null}
+        onOpenChange={(open) => !open && setLeaveTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave {leaveTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will lose access to this studio&apos;s booking flow.
+              Your appointment history and records are preserved — you can
+              rejoin the studio at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLeaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeave}
+              disabled={isLeaving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isLeaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Leave studio"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Notification preferences sheet ── */}
+      {notifTarget && (
+        <StudioNotificationSheet
+          studioId={notifTarget.studioId}
+          studioName={notifTarget.name}
+          open={notifTarget !== null}
+          onClose={() => setNotifTarget(null)}
+        />
+      )}
     </div>
   );
 }
