@@ -1665,3 +1665,17 @@ Frontend modified:
 - `frontend/src/shared/components/__tests__/ResourceEmptyState.test.tsx` (new, 5 tests)
 - `frontend/src/layouts/__tests__/ClientLayout.test.tsx` — updated stale `bg-primary`
   assertion to `bg-violet-600` after fix 6
+
+## User Manual — 2026-07-05
+
+A single self-contained offline HTML manual covering all five roles.
+
+- File: `frontend/public/user-manual/index.html`
+- URL (dev): `http://localhost:5173/user-manual/index.html`
+- No external deps — fully offline capable
+- Covers: Guest (11 sections), Client (14 sections), Artist (14 sections), Owner
+  (30 sections), Issuer (8 sections), and a Reference Glossary (6 sections) — 83
+  screen/topic sections plus 1 Introduction section, 84 total
+- Integration: see the HTML comment block at the bottom of the file for embed options
+- Section IDs follow the pattern `{role}-{feature}` for deep-linking
+
