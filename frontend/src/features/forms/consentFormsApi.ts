@@ -2,6 +2,7 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 import type {
   ConsentFormResponse,
+  ConsentFormDetailResponse,
   SignConsentFormRequest,
   GetConsentFormsParams,
 } from "./form.types";
@@ -21,7 +22,7 @@ export const consentFormsApi = createApi({
       }),
       providesTags: ["ConsentForm"],
     }),
-    getConsentFormById: builder.query<ConsentFormResponse, string>({
+    getConsentFormById: builder.query<ConsentFormDetailResponse, string>({
       query: (id) => `consent-forms/${id}`,
       providesTags: (_result, _error, id) => [{ type: "ConsentForm", id }],
     }),

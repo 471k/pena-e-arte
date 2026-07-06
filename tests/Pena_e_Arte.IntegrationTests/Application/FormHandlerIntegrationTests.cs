@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.ConsentForms.Commands;
 using Pena_e_Arte.Application.ConsentForms.Queries;
@@ -181,10 +182,12 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         ConsentFormResponse created = await SignConsent(tenantId, clientId, appointmentId, "sig");
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        ConsentFormResponse result = await new GetConsentFormByIdHandler(db, StaffUser())
+        ConsentFormDetailResponse result = await new GetConsentFormByIdHandler(db, StaffUser(), NullLogger<GetConsentFormByIdHandler>.Instance)
             .Handle(new GetConsentFormByIdQuery(created.Id), default);
 
         result.Id.Should().Be(created.Id);
+        result.ClientName.Should().Be("Jane Doe");
+        result.ArtistName.Should().Be("Art ist");
     }
 
     [Fact]
@@ -193,7 +196,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid tenantId = Guid.NewGuid();
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        Func<Task> act = () => new GetConsentFormByIdHandler(db, StaffUser())
+        Func<Task> act = () => new GetConsentFormByIdHandler(db, StaffUser(), NullLogger<GetConsentFormByIdHandler>.Instance)
             .Handle(new GetConsentFormByIdQuery(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();

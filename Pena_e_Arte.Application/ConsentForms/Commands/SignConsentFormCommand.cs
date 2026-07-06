@@ -65,7 +65,16 @@ public class SignConsentFormHandler(
 
         await sender.Send(new SendConsentFormSignedNotificationCommand(form.Id), ct);
 
-        return Map(form);
+        // The signer just submitted this form themselves — the confirmation screen
+        // never displays raw IDs, so an empty client name here is acceptable, but
+        // fetch the real name when available for API consumers that render it directly.
+        Client? client = await db.Clients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == form.ClientId, ct);
+        string clientName = client is null ? string.Empty
+            : $"{client.FirstName} {client.LastName}".Trim();
+
+        return Map(form, clientName);
     }
 
     private async Task<string?> TryGeneratePdfAsync(
@@ -107,6 +116,7 @@ public class SignConsentFormHandler(
         }
     }
 
-    internal static ConsentFormResponse Map(ConsentForm f) =>
-        new(f.Id, f.StudioId, f.ClientId, f.AppointmentId, f.FileUrl, f.SignatureData, f.SignedAt, f.CreatedAt);
+    internal static ConsentFormResponse Map(ConsentForm f, string clientName = "") =>
+        new(f.Id, f.StudioId, f.ClientId, f.AppointmentId, f.FileUrl, f.SignatureData, f.SignedAt, f.CreatedAt,
+            clientName);
 }

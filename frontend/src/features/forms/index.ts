@@ -21,6 +21,7 @@ export type {
   SubmitIntakeFormRequest,
   GetIntakeFormsParams,
   ConsentFormResponse,
+  ConsentFormDetailResponse,
   SignConsentFormRequest,
   GetConsentFormsParams,
 } from "./form.types";

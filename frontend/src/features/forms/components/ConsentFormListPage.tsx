@@ -30,10 +30,10 @@ function ConsentFormRow({ form }: { form: ConsentFormResponse }) {
               Consent Form
             </p>
             <p className="text-xs text-muted-foreground">
-              Client: <span className="font-mono">{form.clientId.slice(0, 8)}…</span>
+              {form.clientName || form.clientId.slice(0, 8) + "…"}
             </p>
-            <p className="text-xs text-muted-foreground">
-              Appt: <span className="font-mono">{form.appointmentId.slice(0, 8)}…</span>
+            <p className="text-xs text-muted-foreground font-mono">
+              {form.appointmentId.slice(0, 8)}…
             </p>
           </div>
           <div className="shrink-0 text-right space-y-0.5">

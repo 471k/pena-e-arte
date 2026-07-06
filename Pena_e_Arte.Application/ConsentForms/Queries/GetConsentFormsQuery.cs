@@ -1,6 +1,5 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Pena_e_Arte.Application.ConsentForms.Commands;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Interfaces;
@@ -32,7 +31,16 @@ public class GetConsentFormsHandler(IAppDbContext db, ICurrentUser currentUser)
 
         return await q
             .OrderByDescending(f => f.CreatedAt)
-            .Select(f => SignConsentFormHandler.Map(f))
+            .Select(f => new ConsentFormResponse(
+                f.Id,
+                f.StudioId,
+                f.ClientId,
+                f.AppointmentId,
+                f.FileUrl,
+                f.SignatureData,
+                f.SignedAt,
+                f.CreatedAt,
+                f.Client.FirstName + " " + f.Client.LastName))
             .ToListAsync(ct);
     }
 }

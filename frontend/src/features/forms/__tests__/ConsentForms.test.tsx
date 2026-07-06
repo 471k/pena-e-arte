@@ -16,7 +16,7 @@ import { SignConsentFormPage } from "@/features/forms/components/SignConsentForm
 import { ConsentFormListPage } from "@/features/forms/components/ConsentFormListPage";
 import { ConsentFormDetailPage } from "@/features/forms/components/ConsentFormDetailPage";
 
-import type { ConsentFormResponse } from "@/features/forms/form.types";
+import type { ConsentFormResponse, ConsentFormDetailResponse } from "@/features/forms/form.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import { Role } from "@/shared/types/roles";
 
@@ -38,9 +38,10 @@ const SIGNED_FORM: ConsentFormResponse = {
   id: "cf-001", studioId: "s-001", clientId: "c-001",
   appointmentId: "appt-001",
   fileUrl: "https://r2.example.com/consent.pdf",
-  signatureData: "Marco Cliente",
+  signatureData: "M. Cliente",
   signedAt: "2024-02-01T10:00:00Z",
   createdAt: "2024-02-01T09:55:00Z",
+  clientName: "Marco Cliente",
 };
 
 const PENDING_FORM: ConsentFormResponse = {
@@ -50,6 +51,21 @@ const PENDING_FORM: ConsentFormResponse = {
   signatureData: null,
   signedAt: null,
   createdAt: "2024-02-02T09:00:00Z",
+  clientName: "Pending Client",
+};
+
+const SIGNED_FORM_DETAIL: ConsentFormDetailResponse = {
+  ...SIGNED_FORM,
+  appointmentDate: APPOINTMENT.date,
+  artistName:      "Luca Artista",
+  artistId:        "artist-001",
+};
+
+const PENDING_FORM_DETAIL: ConsentFormDetailResponse = {
+  ...PENDING_FORM,
+  appointmentDate: FUTURE,
+  artistName:      null,
+  artistId:        null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -60,8 +76,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/consent-forms", () => HttpResponse.json([SIGNED_FORM, PENDING_FORM])),
   http.get("http://localhost/api/v1/consent-forms/:id", ({ params }) =>
     params.id === SIGNED_FORM.id
-      ? HttpResponse.json(SIGNED_FORM)
-      : HttpResponse.json(PENDING_FORM),
+      ? HttpResponse.json(SIGNED_FORM_DETAIL)
+      : HttpResponse.json(PENDING_FORM_DETAIL),
   ),
 );
 
@@ -232,13 +248,15 @@ describe("ConsentFormDetailPage", () => {
   it("shows a loading skeleton then renders the signed form", async () => {
     renderDetailPage(SIGNED_FORM.id);
     expect(screen.getByLabelText(/loading consent form/i)).toBeInTheDocument();
+    // Now shows client name, not raw UUID
     expect(await screen.findByText("Marco Cliente")).toBeInTheDocument();
     expect(screen.getAllByText("Signed").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders a document link when fileUrl is present", async () => {
     renderDetailPage(SIGNED_FORM.id);
-    const link = await screen.findByRole("link", { name: /view document/i });
+    // fileUrl ends in .pdf, so the label is the PDF-specific variant
+    const link = await screen.findByRole("link", { name: /view signed consent \(pdf\)/i });
     expect(link).toHaveAttribute("href", SIGNED_FORM.fileUrl);
   });
 
@@ -256,5 +274,55 @@ describe("ConsentFormDetailPage", () => {
     );
     renderDetailPage(SIGNED_FORM.id);
     expect(await screen.findByText(/failed to load consent form/i)).toBeInTheDocument();
+  });
+
+  it("renders base64 signatureData as an <img> not as text", async () => {
+    const base64Sig = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    server.use(
+      http.get("http://localhost/api/v1/consent-forms/:id", () =>
+        HttpResponse.json({ ...SIGNED_FORM_DETAIL, signatureData: base64Sig }),
+      ),
+    );
+    renderDetailPage(SIGNED_FORM.id);
+    const img = await screen.findByRole("img", { name: /digital signature/i });
+    expect(img).toHaveAttribute("src", base64Sig);
+    // The raw base64 string must NOT appear as visible text
+    expect(screen.queryByText(base64Sig)).not.toBeInTheDocument();
+  });
+
+  it("renders typed-name signatureData as italic text not as an image", async () => {
+    renderDetailPage(SIGNED_FORM.id);
+    // The typed signature should appear as text (not as an img src)
+    expect(await screen.findByText("M. Cliente")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /digital signature/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a 'not found' message on 404", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/consent-forms/:id", () =>
+        HttpResponse.json({ message: "Not found" }, { status: 404 }),
+      ),
+    );
+    renderDetailPage("nonexistent-id");
+    expect(await screen.findByText(/consent form not found/i)).toBeInTheDocument();
+  });
+
+  it("shows a download link when fileUrl ends in .pdf", async () => {
+    renderDetailPage(SIGNED_FORM.id);
+    expect(await screen.findByRole("link", { name: /download/i })).toBeInTheDocument();
+  });
+
+  it("shows a relative timestamp alongside the absolute date", async () => {
+    renderDetailPage(SIGNED_FORM.id);
+    // formatRelative returns strings like "Xd ago", "Xmo ago" — check for "ago"
+    const agos = await screen.findAllByText(/ago/);
+    expect(agos.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows client name as a link to the client profile", async () => {
+    renderDetailPage(SIGNED_FORM.id);
+    await screen.findByText("Marco Cliente");
+    const link = screen.getByRole("link", { name: "Marco Cliente" });
+    expect(link).toHaveAttribute("href", expect.stringContaining(SIGNED_FORM.clientId));
   });
 });

@@ -30,6 +30,23 @@ export interface ConsentFormResponse {
   signatureData: string | null;
   signedAt:      string | null;
   createdAt:     string;
+  clientName:    string;
+}
+
+export interface ConsentFormDetailResponse {
+  id:              string;
+  studioId:        string;
+  clientId:        string;
+  appointmentId:   string;
+  fileUrl:         string | null;
+  signatureData:   string | null;
+  signedAt:        string | null;
+  createdAt:       string;
+  // Resolved by the detail endpoint — never a raw UUID
+  clientName:      string;
+  appointmentDate: string;
+  artistName:      string | null;
+  artistId:        string | null;
 }
 
 export interface SignConsentFormRequest {

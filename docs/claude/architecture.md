@@ -1679,3 +1679,67 @@ A single self-contained offline HTML manual covering all five roles.
 - Integration: see the HTML comment block at the bottom of the file for embed options
 - Section IDs follow the pattern `{role}-{feature}` for deep-linking
 
+## Consent Form Detail — Bug Fixes & UI/UX Overhaul — 2026-07-06
+
+### Bugs fixed
+- **B-01 (CRITICAL) — Signature rendering:** `signatureData` now detected as image
+  (`data:image/` prefix) and rendered as `<img>`, or as italic text for typed names.
+  Previously the raw base64 string was injected into a `<p>` node as text.
+- **B-02 (CRITICAL) — Raw UUIDs:** `ConsentFormDetailResponse` (new) resolves
+  `ClientName`, `AppointmentDate`, `ArtistName` server-side. No UUID is shown to
+  end users on the detail page. List page uses `ClientName` from enriched
+  `ConsentFormResponse`.
+- **B-03 — Timestamp integrity guard:** `GetConsentFormByIdHandler` logs a warning
+  when `SignedAt < CreatedAt` so the anomaly is visible in Loki/Grafana.
+- **B-04 — WCAG AA contrast:** `DetailRow` labels changed from `text-muted-foreground`
+  (~3.8:1) to `text-foreground/65` (~6:1 on dark, verified against #000).
+- **B-05 — Missing UX:** Copy-to-clipboard on form ID, Download link for PDF consent,
+  link to client profile, link + "Back to appointment" button, `useDocumentMeta` added.
+- **B-06 — Not-found state:** 404 responses render a dedicated empty state with
+  explanatory text, distinct from the generic error state.
+
+### Architecture decisions
+- `ConsentFormDetailResponse` is a separate Contracts record (not an extended type) so
+  list endpoints remain lightweight — no forced LEFT JOIN on every list load.
+- `ConsentFormResponse` (list) was extended with `ClientName` via SQL projection in
+  `GetConsentFormsQuery.Select(f => new ConsentFormResponse(..., f.Client.FirstName + ...))`.
+  No `.Include()` needed — EF Core/Pomelo translates the nav-property access to a JOIN.
+- `SignatureDisplay` component detects `data:image/` prefix; renders `<img>` or italic
+  text accordingly. This handles both the current text-name UI and any legacy
+  canvas-signature data in the DB without a migration.
+- `useCopyToClipboard` added to `shared/hooks/`, reusable across other entity
+  detail pages (appointment ID, client ID, design ID, etc.).
+- `formatRelative` is a local helper (not a library) — keeps the dependency count stable.
+- **`ConsentForm.Client` and `Appointment.Artist` are required navigations** — EF Core
+  translates `Include`/`ThenInclude` on them into an INNER JOIN, not a LEFT JOIN. Since
+  both FKs are enforced in the real schema, this can never orphan a row in production,
+  but it means test fixtures must always seed a real matching `Client`/`Artist` row (a
+  dangling FK in a test silently filters the whole `ConsentForm` out of the result
+  instead of surfacing a null navigation).
+
+### Files changed
+Backend:
+- `Pena_e_Arte.Contracts/Responses/ConsentFormResponse.cs` (extended + new detail record)
+- `Pena_e_Arte.Application/ConsentForms/Queries/GetConsentFormByIdQuery.cs` (enriched)
+- `Pena_e_Arte.Application/ConsentForms/Queries/GetConsentFormsQuery.cs` (SQL projection)
+- `Pena_e_Arte.Application/ConsentForms/Commands/SignConsentFormCommand.cs` (Map updated)
+- `Pena_e_Arte.API/Endpoints/FormEndpoints.cs` (return type updated)
+- `tests/Pena_e_Arte.UnitTests/ConsentForms/GetConsentFormByIdHandlerTests.cs` (rewritten)
+- `tests/Pena_e_Arte.UnitTests/ConsentForms/GetConsentFormsHandlerTests.cs` (Client fixtures)
+- `tests/Pena_e_Arte.IntegrationTests/Application/FormHandlerIntegrationTests.cs` (updated)
+
+Frontend:
+- `frontend/src/features/forms/form.types.ts` (new ConsentFormDetailResponse)
+- `frontend/src/features/forms/consentFormsApi.ts` (updated return type)
+- `frontend/src/features/forms/components/ConsentFormDetailPage.tsx` (full rewrite)
+- `frontend/src/features/forms/components/ConsentFormListPage.tsx` (clientName)
+- `frontend/src/shared/hooks/useCopyToClipboard.ts` (new)
+- `frontend/src/features/forms/__tests__/ConsentForms.test.tsx` (fixtures + 6 new tests)
+- `frontend/src/features/forms/index.ts` (export ConsentFormDetailResponse)
+
+### Verification
+- `dotnet build` — clean
+- `dotnet test` — 1086 unit + 289 integration, all green
+- `pnpm tsc --noEmit` — clean
+- `pnpm test` — 1383 frontend tests, all green (full suite)
+- No new EF migration required (no schema change)

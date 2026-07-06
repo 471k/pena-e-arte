@@ -13,6 +13,21 @@ public class GetConsentFormsHandlerTests
 
     private GetConsentFormsHandler CreateSut() => new(_db, FakeCurrentUser.Artist());
 
+    private async Task<Guid> SeedClient()
+    {
+        Client client = new()
+        {
+            StudioId  = _studioId,
+            FirstName = "Marco",
+            LastName  = "Cliente",
+            Email     = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        return client.Id;
+    }
+
     private async Task SeedForm(Guid clientId, Guid appointmentId)
     {
         _db.ConsentForms.Add(new ConsentForm
@@ -24,13 +39,16 @@ public class GetConsentFormsHandlerTests
             SignedAt      = DateTime.UtcNow
         });
         await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
     }
 
     [Fact]
     public async Task Handle_NoFilters_ReturnsAllForms()
     {
-        await SeedForm(Guid.NewGuid(), Guid.NewGuid());
-        await SeedForm(Guid.NewGuid(), Guid.NewGuid());
+        Guid clientA = await SeedClient();
+        Guid clientB = await SeedClient();
+        await SeedForm(clientA, Guid.NewGuid());
+        await SeedForm(clientB, Guid.NewGuid());
 
         List<ConsentFormResponse> result = await CreateSut().Handle(new GetConsentFormsQuery(null, null), default);
 
@@ -38,10 +56,21 @@ public class GetConsentFormsHandlerTests
     }
 
     [Fact]
+    public async Task Handle_NoFilters_ProjectsClientName()
+    {
+        Guid clientId = await SeedClient();
+        await SeedForm(clientId, Guid.NewGuid());
+
+        List<ConsentFormResponse> result = await CreateSut().Handle(new GetConsentFormsQuery(null, null), default);
+
+        result.Should().ContainSingle(f => f.ClientName == "Marco Cliente");
+    }
+
+    [Fact]
     public async Task Handle_ClientIdFilter_ReturnsOnlyMatchingForms()
     {
-        Guid clientA = Guid.NewGuid();
-        Guid clientB = Guid.NewGuid();
+        Guid clientA = await SeedClient();
+        Guid clientB = await SeedClient();
         await SeedForm(clientA, Guid.NewGuid());
         await SeedForm(clientB, Guid.NewGuid());
 
@@ -54,8 +83,10 @@ public class GetConsentFormsHandlerTests
     public async Task Handle_AppointmentIdFilter_ReturnsOnlyMatchingForms()
     {
         Guid appointmentId = Guid.NewGuid();
-        await SeedForm(Guid.NewGuid(), appointmentId);
-        await SeedForm(Guid.NewGuid(), Guid.NewGuid());
+        Guid clientA = await SeedClient();
+        Guid clientB = await SeedClient();
+        await SeedForm(clientA, appointmentId);
+        await SeedForm(clientB, Guid.NewGuid());
 
         List<ConsentFormResponse> result = await CreateSut().Handle(new GetConsentFormsQuery(null, appointmentId), default);
 

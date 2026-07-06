@@ -79,7 +79,7 @@ public static class FormEndpoints
         ISender           mediator,
         CancellationToken ct)
     {
-        ConsentFormResponse result = await mediator.Send(new GetConsentFormByIdQuery(id), ct);
+        ConsentFormDetailResponse result = await mediator.Send(new GetConsentFormByIdQuery(id), ct);
         return Results.Ok(result);
     }
 }
