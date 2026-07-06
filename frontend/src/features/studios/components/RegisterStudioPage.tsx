@@ -14,6 +14,7 @@ import {
 } from "@/features/auth/authApi";
 import { setCredentials, setPendingReferralCode } from "@/features/auth/authSlice";
 import { OAuthButtons } from "@/shared/components/OAuthButtons";
+import { GuestAuthHeader } from "@/shared/components/GuestAuthHeader";
 import { Button } from "@/shared/components/ui/button";
 import {
   Card,
@@ -244,203 +245,207 @@ export function RegisterStudioPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex items-center gap-2">
-            <PenLine className="h-8 w-8" />
-            <span className="text-2xl font-semibold tracking-tight">Pena e Arte</span>
+    <div className="min-h-screen flex flex-col bg-background">
+      <GuestAuthHeader />
+
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex items-center gap-2">
+              <PenLine className="h-8 w-8" />
+              <span className="text-2xl font-semibold tracking-tight">Pena e Arte</span>
+            </div>
+            <p className="text-sm text-muted-foreground">Tattoo Studio Management</p>
           </div>
-          <p className="text-sm text-muted-foreground">Tattoo Studio Management</p>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Register your studio</CardTitle>
-            <CardDescription>
-              Step {step} of 2 — {step === 1 ? "Studio details" : "Owner account"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-              {step === 1 && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="name">Studio name</Label>
-                    <Input
-                      id="name"
-                      placeholder="Ink & Soul Studio"
-                      {...register("name")}
-                      aria-invalid={!!errors.name}
-                    />
-                    {errors.name && (
-                      <p className="text-xs text-destructive">{errors.name.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="slug">URL slug</Label>
-                    <Input
-                      id="slug"
-                      placeholder="ink-and-soul-studio"
-                      {...register("slug", {
-                        onChange: () => {
-                          slugManuallyEdited.current = true;
-                        },
-                      })}
-                      aria-invalid={!!errors.slug}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      penaearte.com/
-                      <strong>{slugValue || "your-slug"}</strong>
-                    </p>
-                    {errors.slug && (
-                      <p className="text-xs text-destructive">{errors.slug.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label>Studio location</Label>
-                    <LocationPicker
-                      value={
-                        !isNaN(latValue) && !isNaN(lngValue)
-                          ? { lat: latValue, lng: lngValue, city: cityValue }
-                          : undefined
-                      }
-                      onChange={({ lat, lng, city }) => {
-                        setValue("latitude",  lat,  { shouldValidate: true });
-                        setValue("longitude", lng,  { shouldValidate: true });
-                        setValue("city",      city, { shouldValidate: true });
-                      }}
-                      error={
-                        errors.latitude?.message ??
-                        errors.longitude?.message ??
-                        errors.city?.message
-                      }
-                    />
-                  </div>
-
-                  {serverError && (
-                    <p className="text-sm text-destructive" role="alert">
-                      {serverError}
-                    </p>
-                  )}
-
-                  <Button type="button" className="w-full" onClick={handleNext}>
-                    Next
-                  </Button>
-                </>
-              )}
-
-              {step === 2 && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      placeholder="owner@yourstudio.com"
-                      readOnly={oauthProvider !== null}
-                      className={oauthProvider !== null ? "bg-muted/40 cursor-default" : ""}
-                      {...register("email")}
-                      aria-invalid={!!errors.email}
-                    />
-                    {errors.email && (
-                      <p className="text-xs text-destructive">{errors.email.message}</p>
-                    )}
-                  </div>
-
-                  {oauthProvider === null && (
-                    <>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="password">Password</Label>
-                        <PasswordInput
-                          id="password"
-                          autoComplete="new-password"
-                          {...register("password")}
-                          aria-invalid={!!errors.password}
-                        />
-                        {errors.password && (
-                          <p className="text-xs text-destructive">{errors.password.message}</p>
-                        )}
-                        {(watch("password") !== "" || watch("confirmPassword") !== "") && (
-                          <PasswordStrengthMeter password={watch("password")} />
-                        )}
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="confirmPassword">Confirm password</Label>
-                        <PasswordInput
-                          id="confirmPassword"
-                          autoComplete="new-password"
-                          {...register("confirmPassword")}
-                          aria-invalid={!!errors.confirmPassword}
-                        />
-                        {errors.confirmPassword && (
-                          <p className="text-xs text-destructive">
-                            {errors.confirmPassword.message}
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {oauthProvider !== null && (
-                    <div className="flex items-center justify-between rounded-md border border-border/50 bg-muted/30 px-3 py-2">
-                      <p className="text-xs text-muted-foreground capitalize">
-                        Signing in with {oauthProvider}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => { setOauthProvider(null); setOauthIdToken(null); }}
-                        className="text-xs underline underline-offset-2 hover:text-foreground text-muted-foreground"
-                      >
-                        Change
-                      </button>
+          <Card>
+            <CardHeader>
+              <CardTitle>Register your studio</CardTitle>
+              <CardDescription>
+                Step {step} of 2 — {step === 1 ? "Studio details" : "Owner account"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+                {step === 1 && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name">Studio name</Label>
+                      <Input
+                        id="name"
+                        placeholder="Ink & Soul Studio"
+                        {...register("name")}
+                        aria-invalid={!!errors.name}
+                      />
+                      {errors.name && (
+                        <p className="text-xs text-destructive">{errors.name.message}</p>
+                      )}
                     </div>
-                  )}
 
-                  {oauthProvider === null && (
-                    <OAuthButtons onToken={handleOAuthToken} disabled={isSubmitting} />
-                  )}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="slug">URL slug</Label>
+                      <Input
+                        id="slug"
+                        placeholder="ink-and-soul-studio"
+                        {...register("slug", {
+                          onChange: () => {
+                            slugManuallyEdited.current = true;
+                          },
+                        })}
+                        aria-invalid={!!errors.slug}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        penaearte.com/
+                        <strong>{slugValue || "your-slug"}</strong>
+                      </p>
+                      {errors.slug && (
+                        <p className="text-xs text-destructive">{errors.slug.message}</p>
+                      )}
+                    </div>
 
-                  {serverError && (
-                    <p className="text-sm text-destructive" role="alert">
-                      {serverError}
-                    </p>
-                  )}
+                    <div className="space-y-1.5">
+                      <Label>Studio location</Label>
+                      <LocationPicker
+                        value={
+                          !isNaN(latValue) && !isNaN(lngValue)
+                            ? { lat: latValue, lng: lngValue, city: cityValue }
+                            : undefined
+                        }
+                        onChange={({ lat, lng, city }) => {
+                          setValue("latitude",  lat,  { shouldValidate: true });
+                          setValue("longitude", lng,  { shouldValidate: true });
+                          setValue("city",      city, { shouldValidate: true });
+                        }}
+                        error={
+                          errors.latitude?.message ??
+                          errors.longitude?.message ??
+                          errors.city?.message
+                        }
+                      />
+                    </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setStep(1)}
-                      disabled={isSubmitting}
-                    >
-                      Back
+                    {serverError && (
+                      <p className="text-sm text-destructive" role="alert">
+                        {serverError}
+                      </p>
+                    )}
+
+                    <Button type="button" className="w-full" onClick={handleNext}>
+                      Next
                     </Button>
-                    <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Register
-                    </Button>
-                  </div>
-                </>
-              )}
-            </form>
-          </CardContent>
-        </Card>
+                  </>
+                )}
 
-        <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            className="underline underline-offset-4 hover:text-primary"
-          >
-            Sign in
-          </Link>
-        </p>
+                {step === 2 && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="owner@yourstudio.com"
+                        readOnly={oauthProvider !== null}
+                        className={oauthProvider !== null ? "bg-muted/40 cursor-default" : ""}
+                        {...register("email")}
+                        aria-invalid={!!errors.email}
+                      />
+                      {errors.email && (
+                        <p className="text-xs text-destructive">{errors.email.message}</p>
+                      )}
+                    </div>
+
+                    {oauthProvider === null && (
+                      <>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="password">Password</Label>
+                          <PasswordInput
+                            id="password"
+                            autoComplete="new-password"
+                            {...register("password")}
+                            aria-invalid={!!errors.password}
+                          />
+                          {errors.password && (
+                            <p className="text-xs text-destructive">{errors.password.message}</p>
+                          )}
+                          {(watch("password") !== "" || watch("confirmPassword") !== "") && (
+                            <PasswordStrengthMeter password={watch("password")} />
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="confirmPassword">Confirm password</Label>
+                          <PasswordInput
+                            id="confirmPassword"
+                            autoComplete="new-password"
+                            {...register("confirmPassword")}
+                            aria-invalid={!!errors.confirmPassword}
+                          />
+                          {errors.confirmPassword && (
+                            <p className="text-xs text-destructive">
+                              {errors.confirmPassword.message}
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {oauthProvider !== null && (
+                      <div className="flex items-center justify-between rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+                        <p className="text-xs text-muted-foreground capitalize">
+                          Signing in with {oauthProvider}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => { setOauthProvider(null); setOauthIdToken(null); }}
+                          className="text-xs underline underline-offset-2 hover:text-foreground text-muted-foreground"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    )}
+
+                    {oauthProvider === null && (
+                      <OAuthButtons onToken={handleOAuthToken} disabled={isSubmitting} />
+                    )}
+
+                    {serverError && (
+                      <p className="text-sm text-destructive" role="alert">
+                        {serverError}
+                      </p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setStep(1)}
+                        disabled={isSubmitting}
+                      >
+                        Back
+                      </Button>
+                      <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Register
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="underline underline-offset-4 hover:text-primary"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath } from "@/app/router";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
+import { GuestAuthHeader } from "@/shared/components/GuestAuthHeader";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
@@ -117,143 +118,147 @@ export function ClientRegisterPage() {
     : null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 90% 55% at 50% -5%, rgba(113,113,122,0.18) 0%, transparent 100%)",
-        }}
-        aria-hidden="true"
-      />
+    <div className="min-h-screen flex flex-col bg-background">
+      <GuestAuthHeader />
 
-      <div className="w-full max-w-md space-y-6 relative">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex items-center gap-2">
-            <PenLine className="h-8 w-8" aria-hidden="true" />
-            <span className="text-2xl font-semibold tracking-tight">Pena e Artë</span>
+      <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 90% 55% at 50% -5%, rgba(113,113,122,0.18) 0%, transparent 100%)",
+          }}
+          aria-hidden="true"
+        />
+
+        <div className="w-full max-w-md space-y-6 relative">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex items-center gap-2">
+              <PenLine className="h-8 w-8" aria-hidden="true" />
+              <span className="text-2xl font-semibold tracking-tight">Pena e Artë</span>
+            </div>
+            <p className="text-sm text-foreground/65">
+              Create a client account to book appointments.
+            </p>
           </div>
-          <p className="text-sm text-foreground/65">
-            Create a client account to book appointments.
+
+          <Card className="dark:bg-zinc-900/80 dark:border-zinc-800 shadow-lg dark:shadow-black/60">
+            <CardHeader>
+              <CardTitle>Create your account</CardTitle>
+              <CardDescription>Free client account — book, track, and manage your appointments.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="firstName">First name</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    autoComplete="given-name"
+                    placeholder="Alex"
+                    {...register("firstName")}
+                    aria-invalid={!!errors.firstName}
+                    aria-describedby={errors.firstName ? "firstName-error" : undefined}
+                  />
+                  {errors.firstName && (
+                    <p id="firstName-error" className="text-xs text-destructive" role="alert">
+                      {errors.firstName.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    {...register("email")}
+                    aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? "email-error" : undefined}
+                  />
+                  {errors.email && (
+                    <p id="email-error" className="text-xs text-destructive" role="alert">
+                      {errors.email.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Password</Label>
+                  <PasswordInput
+                    id="password"
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    {...register("password")}
+                    aria-invalid={!!errors.password}
+                    aria-describedby={errors.password ? "password-error" : undefined}
+                  />
+                  {errors.password && (
+                    <p id="password-error" className="text-xs text-destructive" role="alert">
+                      {errors.password.message}
+                    </p>
+                  )}
+                  <PasswordStrengthMeter password={passwordValue ?? ""} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword">Confirm password</Label>
+                  <PasswordInput
+                    id="confirmPassword"
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    {...register("confirmPassword")}
+                    aria-invalid={!!errors.confirmPassword}
+                    aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
+                  />
+                  {errors.confirmPassword && (
+                    <p id="confirmPassword-error" className="text-xs text-destructive" role="alert">
+                      {errors.confirmPassword.message}
+                    </p>
+                  )}
+                </div>
+
+                {serverError && (
+                  <Alert variant="destructive" role="alert">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{serverError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 focus-visible:ring-violet-500"
+                  disabled={isLoading}
+                >
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create account
+                </Button>
+              </form>
+
+              <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-foreground/65">
+                Already have an account?{" "}
+                <Link
+                  to={`/login${redirectTo !== "/book" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
+                  className="underline underline-offset-4 text-foreground/65 hover:text-foreground py-2 inline-block"
+                >
+                  Sign in
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <p className="text-center text-sm text-foreground/40">
+            Registering a studio instead?{" "}
+            <Link
+              to="/register"
+              className="underline underline-offset-4 hover:text-foreground/70"
+            >
+              Register your studio
+            </Link>
           </p>
         </div>
-
-        <Card className="dark:bg-zinc-900/80 dark:border-zinc-800 shadow-lg dark:shadow-black/60">
-          <CardHeader>
-            <CardTitle>Create your account</CardTitle>
-            <CardDescription>Free client account — book, track, and manage your appointments.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="firstName">First name</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  autoComplete="given-name"
-                  placeholder="Alex"
-                  {...register("firstName")}
-                  aria-invalid={!!errors.firstName}
-                  aria-describedby={errors.firstName ? "firstName-error" : undefined}
-                />
-                {errors.firstName && (
-                  <p id="firstName-error" className="text-xs text-destructive" role="alert">
-                    {errors.firstName.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  {...register("email")}
-                  aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? "email-error" : undefined}
-                />
-                {errors.email && (
-                  <p id="email-error" className="text-xs text-destructive" role="alert">
-                    {errors.email.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <PasswordInput
-                  id="password"
-                  autoComplete="new-password"
-                  placeholder="••••••••"
-                  {...register("password")}
-                  aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? "password-error" : undefined}
-                />
-                {errors.password && (
-                  <p id="password-error" className="text-xs text-destructive" role="alert">
-                    {errors.password.message}
-                  </p>
-                )}
-                <PasswordStrengthMeter password={passwordValue ?? ""} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword">Confirm password</Label>
-                <PasswordInput
-                  id="confirmPassword"
-                  autoComplete="new-password"
-                  placeholder="••••••••"
-                  {...register("confirmPassword")}
-                  aria-invalid={!!errors.confirmPassword}
-                  aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
-                />
-                {errors.confirmPassword && (
-                  <p id="confirmPassword-error" className="text-xs text-destructive" role="alert">
-                    {errors.confirmPassword.message}
-                  </p>
-                )}
-              </div>
-
-              {serverError && (
-                <Alert variant="destructive" role="alert">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{serverError}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 focus-visible:ring-violet-500"
-                disabled={isLoading}
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create account
-              </Button>
-            </form>
-
-            <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-foreground/65">
-              Already have an account?{" "}
-              <Link
-                to={`/login${redirectTo !== "/book" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
-                className="underline underline-offset-4 text-foreground/65 hover:text-foreground py-2 inline-block"
-              >
-                Sign in
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-sm text-foreground/40">
-          Registering a studio instead?{" "}
-          <Link
-            to="/register"
-            className="underline underline-offset-4 hover:text-foreground/70"
-          >
-            Register your studio
-          </Link>
-        </p>
       </div>
     </div>
   );
