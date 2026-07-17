@@ -6,17 +6,22 @@ import type {
   PlatformSubscriptionResponse,
   PlatformReferralCodeResponse,
   IndustryReportSummary,
+  IssuerStudioSummaryResponse,
 } from "./platform.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
 export const platformApi = createApi({
   reducerPath: "platformApi",
   baseQuery,
-  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory"],
+  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "IssuerStudioSummary"],
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStatsResponse, void>({
       query: () => "platform/stats",
       providesTags: ["PlatformStats"],
+    }),
+    getIssuerStudioSummary: builder.query<IssuerStudioSummaryResponse, string>({
+      query: (studioId) => `platform/studios/${studioId}/summary`,
+      providesTags: (_result, _err, studioId) => [{ type: "IssuerStudioSummary", id: studioId }],
     }),
     getMrrHistory: builder.query<MrrDataPoint[], number | void>({
       query: (months) => months ? `platform/mrr-history?months=${months}` : "platform/mrr-history",
@@ -105,6 +110,7 @@ export const platformApi = createApi({
 
 export const {
   useGetPlatformStatsQuery,
+  useGetIssuerStudioSummaryQuery,
   useGetMrrHistoryQuery,
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,

@@ -28,6 +28,7 @@ import {
   useExtendTrialMutation,
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
+  useGetIssuerStudioSummaryQuery,
 } from "@/features/platform/platformApi";
 import { useGetIssuerPlansQuery } from "@/features/billing/billingApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
@@ -71,6 +72,8 @@ export function IssuerStudioDetailPage() {
   const { data: subscriptions } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: plans = [] } = useGetIssuerPlansQuery();
+  const { data: summary, isLoading: summaryLoading } =
+    useGetIssuerStudioSummaryQuery(studioId!, { skip: !studioId });
 
   const sub: PlatformSubscriptionResponse | undefined = useMemo(
     () => subscriptions?.find((s) => s.studioId === studioId),
@@ -195,234 +198,330 @@ export function IssuerStudioDetailPage() {
         <span className="font-semibold tracking-tight text-sm">{studio.name}</span>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        <div className="grid lg:grid-cols-[1fr_288px] gap-4 lg:gap-6 lg:items-start">
 
-        {/* ── Studio Info Card ──────────────────────────────────────────── */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <span>{studio.name}</span>
-              <span
-                className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLASSES[badgeStatus]}`}
-              >
-                {STATUS_LABELS[badgeStatus]}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-1.5">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-              <div>
-                <span className="text-muted-foreground">Slug</span>
-                <p className="font-mono">{studio.slug}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">City</span>
-                <p>{studio.city}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Registered</span>
-                <p>{fmt(studio.createdAt)}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Platform branding</span>
-                <p>{studio.showPlatformBranding ? "Shown" : "Hidden"}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Plan</span>
-                <p>
-                  {subStatus === "Trialing"
-                    ? "In Trial"
-                    : subStatus === "NoSubscription"
-                    ? "None"
-                    : (sub?.planName ?? "—")}
-                </p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Subscription status</span>
-                <p>{STATUS_LABELS[badgeStatus]}</p>
-              </div>
-              {sub?.currentPeriodEnd && sub.status === "Active" && (
-                <div>
-                  <span className="text-muted-foreground">Renews</span>
-                  <p>{fmt(sub.currentPeriodEnd)}</p>
-                </div>
-              )}
-              {trialDate && subStatus !== "Active" && (
-                <div>
-                  <span className="text-muted-foreground">Trial expiry</span>
-                  <p className={trialExpired ? "text-destructive" : ""}>
-                    {fmt(trialDate)}
-                    {trialExpired ? " (expired)" : ""}
-                  </p>
-                </div>
-              )}
-            </div>
+          {/* Left column */}
+          <div className="space-y-4">
 
-            <a
-              href={`/s/${studio.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-            >
-              <ExternalLink className="h-3 w-3" />
-              View public portfolio
-            </a>
-          </CardContent>
-        </Card>
-
-        {/* ── Actions Card ──────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {/* 1. Extend trial */}
-              {!anyExpanded && canExtendTrial && (
-                <Button size="sm" variant="outline" className="h-8 text-xs gap-1"
-                  onClick={() => setExtending(true)}>
-                  <Clock className="h-3.5 w-3.5" />
-                  {trialExpired ? "Grant extension" : "Extend Trial (+7 days)"}
-                </Button>
-              )}
-
-              {/* 2. Activate */}
-              {!anyExpanded && canActivate && (
-                <Button size="sm" className="h-8 text-xs gap-1"
-                  onClick={() => setActivating(true)}>
-                  <Banknote className="h-3.5 w-3.5" />
-                  Activate
-                </Button>
-              )}
-
-              {/* 3. Suspend / Reactivate */}
-              {confirmPlatform ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {confirmPlatform === "suspend" ? "Suspend this studio?" : "Reactivate this studio?"}
+            {/* ── Studio Info Card ──────────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <span>{studio.name}</span>
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLASSES[badgeStatus]}`}
+                  >
+                    {STATUS_LABELS[badgeStatus]}
                   </span>
-                  <Button
-                    size="sm"
-                    variant={confirmPlatform === "suspend" ? "destructive" : "default"}
-                    className="h-8 px-3 text-xs"
-                    disabled={suspending || unsuspending}
-                    onClick={executePlatform}
-                  >
-                    {(suspending || unsuspending)
-                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                      : "Confirm"}
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-8 px-3 text-xs"
-                    onClick={() => setConfirmPlatform(null)}>
-                    Cancel
-                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-1.5">
+                {/* Fixed 3×2 grid — always rendered */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">Slug</span>
+                    <p className="font-mono">{studio.slug}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">City</span>
+                    <p>{studio.city}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Registered</span>
+                    <p>{fmt(studio.createdAt)}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Platform branding</span>
+                    <p>{studio.showPlatformBranding ? "Shown" : "Hidden"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Plan</span>
+                    <p>
+                      {subStatus === "Trialing"
+                        ? "In Trial"
+                        : subStatus === "NoSubscription"
+                        ? "None"
+                        : (sub?.planName ?? "—")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Subscription status</span>
+                    <div className="mt-0.5">
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLASSES[badgeStatus]}`}>
+                        {STATUS_LABELS[badgeStatus]}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                !anyExpanded && (
-                  <Button
-                    size="sm" variant="ghost" className="h-8 text-xs gap-1"
-                    onClick={() => setConfirmPlatform(isSuspended ? "unsuspend" : "suspend")}
+
+                {/* Conditional fields — only if at least one is present */}
+                {(trialDate || (sub?.currentPeriodEnd && sub.status === "Active")) && (
+                  <div className="border-t pt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                    {sub?.currentPeriodEnd && sub.status === "Active" && (
+                      <div>
+                        <span className="text-muted-foreground">Renews</span>
+                        <p>{fmt(sub.currentPeriodEnd)}</p>
+                      </div>
+                    )}
+                    {trialDate && !(sub?.currentPeriodEnd && sub.status === "Active") && <div />}
+                    {trialDate && (
+                      <div>
+                        <span className="text-muted-foreground">Trial expiry</span>
+                        <p className="flex items-center gap-1.5 flex-wrap">
+                          {fmt(trialDate)}
+                          {trialExpired && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                              Expired
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                    {!trialDate && sub?.currentPeriodEnd && sub.status === "Active" && <div />}
+                  </div>
+                )}
+
+                <div className="border-t pt-3">
+                  <a
+                    href={`/s/${studio.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                   >
-                    {isSuspended
-                      ? <><PlayCircle className="h-3.5 w-3.5" /> Reactivate</>
-                      : <><PauseCircle className="h-3.5 w-3.5" /> Suspend</>}
-                  </Button>
-                )
-              )}
-
-              {/* 4. Cancel Subscription (LAST) */}
-              {!anyExpanded && canCancel && (
-                <Button
-                  size="sm" variant="outline"
-                  className="h-8 text-xs gap-1 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setConfirming(true)}>
-                  <XCircle className="h-3.5 w-3.5" />
-                  Cancel Subscription
-                </Button>
-              )}
-            </div>
-
-            {/* Extend trial form */}
-            {extending && (
-              <div className="flex items-center gap-2 pt-2 border-t">
-                <span className="text-xs text-muted-foreground">
-                  {trialExpired ? "Grant extension of" : "Extend trial by"}
-                </span>
-                <Input
-                  type="number" min="1" max="90"
-                  value={days} onChange={(e) => setDays(e.target.value)}
-                  className="h-7 w-20 text-xs"
-                />
-                <span className="text-xs text-muted-foreground">days</span>
-                <Button size="sm" className="h-7 px-2 text-xs" disabled={extending_} onClick={handleExtend}>
-                  {extending_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                  onClick={() => setExtending(false)}>Cancel</Button>
-              </div>
-            )}
-
-            {/* Activate (cash) form */}
-            {activating && (
-              <div className="pt-2 space-y-2 border-t">
-                <p className="text-xs font-medium text-muted-foreground">Activate — Cash Payment</p>
-                <div className="space-y-1">
-                  <Label htmlFor="detail-plan" className="text-xs">Plan</Label>
-                  <select
-                    id="detail-plan"
-                    value={cashPlanId}
-                    onChange={(e) => setCashPlanId(e.target.value)}
-                    className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-                  >
-                    <option value="">Select a plan…</option>
-                    {plans.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    View public portfolio
+                  </a>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="detail-note" className="text-xs">Note (optional)</Label>
-                  <Input
-                    id="detail-note"
-                    value={cashNote}
-                    onChange={(e) => setCashNote(e.target.value)}
-                    placeholder="e.g. Cash paid in person"
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm" className="h-7 px-2 text-xs flex-1"
-                    disabled={activating_ || !cashPlanId}
-                    onClick={handleActivate}
-                  >
-                    {activating_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Activate subscription"}
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                    onClick={() => { setActivating(false); setCashPlanId(""); setCashNote(""); }}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
+              </CardContent>
+            </Card>
 
-            {/* Cancel subscription confirm */}
-            {confirming && (
-              <div className="flex items-center gap-2 pt-2 border-t">
-                <span className="text-xs text-destructive font-medium">Cancel subscription permanently?</span>
-                <Button
-                  size="sm" variant="destructive" className="h-7 px-2 text-xs"
-                  disabled={cancelling_} onClick={handleCancel}
-                >
-                  {cancelling_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                  onClick={() => setConfirming(false)}>Back</Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            {/* ── Studio Overview Card ─────────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Studio Overview</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {summaryLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ) : summary ? (
+                  <div className="space-y-3">
+                    {/* Owner */}
+                    <div className="text-xs space-y-0.5">
+                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                        Owner
+                      </p>
+                      <p className="font-medium">{summary.ownerDisplayName}</p>
+                      {summary.ownerEmail !== "—" && (
+                        <a
+                          href={`mailto:${summary.ownerEmail}`}
+                          className="text-primary hover:underline"
+                        >
+                          {summary.ownerEmail}
+                        </a>
+                      )}
+                      {summary.ownerEmail === "—" && (
+                        <p className="text-muted-foreground">{summary.ownerEmail}</p>
+                      )}
+                    </div>
 
+                    {/* Metrics */}
+                    <div className="border-t pt-3 grid grid-cols-3 text-center gap-2">
+                      <div>
+                        <p className="text-base font-semibold tabular-nums">{summary.artistCount}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Artists</p>
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold tabular-nums">{summary.clientCount}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Clients</p>
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold tabular-nums">{summary.appointmentCount}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Appts</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Summary unavailable.</p>
+                )}
+              </CardContent>
+            </Card>
+
+          </div>
+
+          {/* Right column */}
+          <div>
+            {/* ── Actions Card ──────────────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {/* 1. Extend trial */}
+                  {!anyExpanded && canExtendTrial && (
+                    <Button size="sm" variant="outline" className="h-9 text-xs gap-1"
+                      onClick={() => setExtending(true)}>
+                      <Clock className="h-3.5 w-3.5" />
+                      {trialExpired ? "Grant extension" : "Extend Trial (+7 days)"}
+                    </Button>
+                  )}
+
+                  {/* 2. Activate */}
+                  {!anyExpanded && canActivate && (
+                    <Button size="sm" className="h-9 text-xs gap-1"
+                      onClick={() => setActivating(true)}>
+                      <Banknote className="h-3.5 w-3.5" />
+                      Activate
+                    </Button>
+                  )}
+
+                  {/* 3. Suspend / Reactivate */}
+                  {confirmPlatform ? (
+                    <div className="flex flex-col gap-1.5 pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {confirmPlatform === "suspend" ? "Suspend this studio?" : "Reactivate this studio?"}
+                      </p>
+                      {confirmPlatform === "suspend" && (
+                        <p className="text-xs text-muted-foreground">
+                          This immediately hides the studio from Discover and blocks all owner and artist logins.
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Button
+                          size="sm"
+                          variant={confirmPlatform === "suspend" ? "destructive" : "default"}
+                          className="h-8 px-3 text-xs"
+                          disabled={suspending || unsuspending}
+                          onClick={executePlatform}
+                        >
+                          {(suspending || unsuspending)
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : "Confirm"}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 px-3 text-xs"
+                          onClick={() => setConfirmPlatform(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    !anyExpanded && (
+                      <Button
+                        size="sm" variant="ghost" className="h-9 text-xs gap-1"
+                        onClick={() => setConfirmPlatform(isSuspended ? "unsuspend" : "suspend")}
+                      >
+                        {isSuspended
+                          ? <><PlayCircle className="h-3.5 w-3.5" /> Reactivate Studio</>
+                          : <><PauseCircle className="h-3.5 w-3.5" /> Suspend Studio</>}
+                      </Button>
+                    )
+                  )}
+
+                  {/* 4. Cancel Subscription (LAST) */}
+                  {!anyExpanded && canCancel && (
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-9 text-xs gap-1 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setConfirming(true)}>
+                      <XCircle className="h-3.5 w-3.5" />
+                      Cancel Subscription
+                    </Button>
+                  )}
+                </div>
+
+                {/* Extend trial form */}
+                {extending && (
+                  <div className="flex items-center gap-2 pt-2 border-t">
+                    <span className="text-xs text-muted-foreground">
+                      {trialExpired ? "Grant extension of" : "Extend trial by"}
+                    </span>
+                    <Input
+                      type="number" min="1" max="90"
+                      value={days} onChange={(e) => setDays(e.target.value)}
+                      className="h-7 w-20 text-xs"
+                    />
+                    <span className="text-xs text-muted-foreground">days</span>
+                    <Button size="sm" className="h-7 px-2 text-xs" disabled={extending_} onClick={handleExtend}>
+                      {extending_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                      onClick={() => setExtending(false)}>Cancel</Button>
+                  </div>
+                )}
+
+                {/* Activate (cash) form */}
+                {activating && (
+                  <div className="pt-2 space-y-2 border-t">
+                    <p className="text-xs font-medium text-muted-foreground">Activate — Cash Payment</p>
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-plan" className="text-xs">Plan</Label>
+                      <select
+                        id="detail-plan"
+                        value={cashPlanId}
+                        onChange={(e) => setCashPlanId(e.target.value)}
+                        className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                      >
+                        <option value="">Select a plan…</option>
+                        {plans.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-note" className="text-xs">Note (optional)</Label>
+                      <Input
+                        id="detail-note"
+                        value={cashNote}
+                        onChange={(e) => setCashNote(e.target.value)}
+                        placeholder="e.g. Cash paid in person"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm" className="h-7 px-2 text-xs flex-1"
+                        disabled={activating_ || !cashPlanId}
+                        onClick={handleActivate}
+                      >
+                        {activating_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Activate subscription"}
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                        onClick={() => { setActivating(false); setCashPlanId(""); setCashNote(""); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cancel subscription confirm */}
+                {confirming && (
+                  <div className="flex flex-col gap-1.5 pt-2 border-t">
+                    <p className="text-xs text-destructive font-medium">Cancel subscription permanently?</p>
+                    <p className="text-xs text-muted-foreground">
+                      Billing ends immediately. Studio data is retained and the studio can re-subscribe at any time.
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Button
+                        size="sm" variant="destructive" className="h-7 px-2 text-xs"
+                        disabled={cancelling_} onClick={handleCancel}
+                      >
+                        {cancelling_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                        onClick={() => setConfirming(false)}>Back</Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+        </div>
       </main>
     </div>
   );

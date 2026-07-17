@@ -15,6 +15,7 @@ public static class PlatformEndpoints
             .RequireAuthorization("IssuerOnly");
 
         group.MapGet("stats",                            GetStats);
+        group.MapGet("studios/{studioId:guid}/summary",  GetStudioSummary);
         group.MapGet("mrr-history",                      GetMrrHistory);
         group.MapGet("subscriptions",                    GetSubscriptions);
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
@@ -34,6 +35,16 @@ public static class PlatformEndpoints
         CancellationToken ct)
     {
         PlatformStatsResponse result = await mediator.Send(new GetPlatformStatsQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetStudioSummary(
+        Guid              studioId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        IssuerStudioSummaryResponse result =
+            await mediator.Send(new GetIssuerStudioSummaryQuery(studioId), ct);
         return Results.Ok(result);
     }
 

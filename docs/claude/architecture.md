@@ -453,6 +453,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 21 | `GetPortfolioImageReviewsQuery` (Appointments + Clients) | `IsVerifiedBooking` check — completed appointments at the image's studio cross-tenant | Anonymous |
 | 22 | `ExchangeInstagramCodeHandler` (Artists) | Resolve artist's StudioId from an anonymous OAuth callback; artistId is pre-authenticated via `IInstagramStateSigner` HMAC before this handler runs | Anonymous (state-signed) |
 | 23 | `GetPublicArtistInstagramPostsQuery` (Artists) | Cross-tenant artist slug lookup for public Instagram post feed | Anonymous |
+| 24 | `GetIssuerStudioSummaryHandler` | Cross-tenant: studio + owner lookup, artist/client/appointment counts for a single studio | IssuerOnly |
 
 ---
 

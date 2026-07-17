@@ -158,6 +158,15 @@ public class IdentityService(
         return Guid.TryParse(user.Id, out Guid id) ? id : null;
     }
 
+    public async Task<string?> GetUserDisplayNameAsync(string email, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByEmailAsync(email);
+        if (user is null) return null;
+
+        IList<Claim> claims = await userManager.GetClaimsAsync(user);
+        return claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.GivenName)?.Value;
+    }
+
     public async Task<(bool Success, string? AccessToken, string? Error)> LoginWithVerifiedEmailAsync(
         string email)
     {

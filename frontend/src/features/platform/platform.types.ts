@@ -53,3 +53,11 @@ export interface MrrDataPoint {
   month: string;
   mrr:   number;
 }
+
+export interface IssuerStudioSummaryResponse {
+  ownerEmail:       string;
+  ownerDisplayName: string;
+  artistCount:      number;
+  clientCount:      number;
+  appointmentCount: number;
+}

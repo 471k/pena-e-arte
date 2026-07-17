@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -64,6 +65,15 @@ const server = setupServer(
   http.get("http://localhost/api/v1/studios/s1", () => HttpResponse.json(STUDIO)),
   http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([SUB])),
   http.get("http://localhost/api/v1/billing/plans", () => HttpResponse.json(PLANS)),
+  http.get("http://localhost/api/v1/platform/studios/s1/summary", () =>
+    HttpResponse.json({
+      ownerEmail:       "owner@ink-soul.test",
+      ownerDisplayName: "Maria Silva",
+      artistCount:      3,
+      clientCount:      47,
+      appointmentCount: 129,
+    })
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -145,5 +155,61 @@ describe("IssuerStudioDetailPage", () => {
     renderPage();
     await screen.findAllByText("Ink Soul");
     expect(screen.getByRole("button", { name: /suspend/i })).toBeInTheDocument();
+  });
+
+  // ── Fix 1: Subscription status pill ──────────────────────────────────────────
+
+  it("renders subscription status as a pill badge, not plain text", async () => {
+    renderPage();
+    await screen.findAllByText("Ink Soul");
+    // Find the subscription status label
+    const label = screen.getByText("Subscription status");
+    // The value sibling must be a <span> with rounded-full class (pill), not a plain <p>
+    const field = label.closest("div")!;
+    const pill  = field.querySelector("span.rounded-full");
+    expect(pill).not.toBeNull();
+    expect(pill?.textContent).toBe("Active");
+  });
+
+  // ── Fix 4: Button labels ──────────────────────────────────────────────────────
+
+  it("suspend button is labelled 'Suspend Studio'", async () => {
+    renderPage();
+    await screen.findAllByText("Ink Soul");
+    expect(screen.getByRole("button", { name: /suspend studio/i })).toBeInTheDocument();
+  });
+
+  // ── Fix 5: Consequence copy ───────────────────────────────────────────────────
+
+  it("suspend confirm panel shows consequence copy", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("Ink Soul");
+    await user.click(screen.getByRole("button", { name: /suspend studio/i }));
+    expect(await screen.findByText(/immediately hides the studio from discover/i)).toBeInTheDocument();
+  });
+
+  // ── Fix 3: View public portfolio link ────────────────────────────────────────
+
+  it("'View public portfolio' renders as an <a> link pointing to the studio's public page", async () => {
+    renderPage();
+    await screen.findAllByText("Ink Soul");
+    const link = screen.getByRole("link", { name: /view public portfolio/i });
+    expect(link).toHaveAttribute("href", "/s/ink-soul");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  // ── Phase 2: Studio Overview card ────────────────────────────────────────────
+
+  it("Studio Overview card renders owner email", async () => {
+    renderPage();
+    expect(await screen.findByText("owner@ink-soul.test")).toBeInTheDocument();
+  });
+
+  it("Studio Overview card renders artist, client, and appointment counts", async () => {
+    renderPage();
+    expect(await screen.findByText("3")).toBeInTheDocument();   // artistCount
+    expect(screen.getByText("47")).toBeInTheDocument();          // clientCount
+    expect(screen.getByText("129")).toBeInTheDocument();         // appointmentCount
   });
 });

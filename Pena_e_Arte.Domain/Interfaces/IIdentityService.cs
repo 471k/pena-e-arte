@@ -21,6 +21,12 @@ public interface IIdentityService
     Task<Guid?>   GetUserIdByEmailAsync(string email, CancellationToken ct);
 
     /// <summary>
+    /// Returns the user's given-name Identity claim (set at registration when provided),
+    /// or null if no account exists for the email or no such claim was ever set.
+    /// </summary>
+    Task<string?> GetUserDisplayNameAsync(string email, CancellationToken ct);
+
+    /// <summary>
     /// Issues a JWT for a user identified only by their verified email address.
     /// The caller is responsible for having already validated the OAuth ID token.
     /// Returns an error if no account exists with that email.
