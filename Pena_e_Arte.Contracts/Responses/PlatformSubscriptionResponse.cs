@@ -8,4 +8,5 @@ public record PlatformSubscriptionResponse(
     string   Status,
     string?  PlanName,
     DateTime? TrialExpiresAt,
-    DateTime CurrentPeriodEnd);
+    DateTime CurrentPeriodEnd,
+    bool     IsSuspended);

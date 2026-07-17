@@ -29,6 +29,7 @@ export interface PlatformSubscriptionResponse {
   planName:        string | null;
   trialExpiresAt:  string | null;
   currentPeriodEnd: string;
+  isSuspended:     boolean;
 }
 
 export interface PlatformReferralCodeResponse {

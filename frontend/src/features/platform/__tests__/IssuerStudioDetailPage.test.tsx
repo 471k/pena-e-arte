@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -44,6 +44,7 @@ const SUB: PlatformSubscriptionResponse = {
   planName:         "Pro",
   trialExpiresAt:   new Date(Date.now() + 30 * 86_400_000).toISOString(),
   currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+  isSuspended:      false,
 };
 
 const PLANS: PlanResponse[] = [
@@ -211,5 +212,77 @@ describe("IssuerStudioDetailPage", () => {
     expect(await screen.findByText("3")).toBeInTheDocument();   // artistCount
     expect(screen.getByText("47")).toBeInTheDocument();          // clientCount
     expect(screen.getByText("129")).toBeInTheDocument();         // appointmentCount
+  });
+
+  describe("when studio is suspended", () => {
+    beforeEach(() => {
+      server.use(
+        http.get("http://localhost/api/v1/studios/s1", () =>
+          HttpResponse.json({ ...STUDIO, isActive: false }),
+        ),
+        http.get("http://localhost/api/v1/platform/subscriptions", () =>
+          HttpResponse.json([{ ...SUB, isSuspended: true }]),
+        ),
+      );
+    });
+
+    it("shows Suspended badge in amber (not red) in the card header", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      const badges = screen.getAllByText("Suspended");
+      expect(badges.length).toBeGreaterThan(0);
+      for (const badge of badges) {
+        expect(badge.className).toMatch(/amber/);
+        expect(badge.className).not.toMatch(/red/);
+      }
+    });
+
+    it("Reactivate Studio button has variant=default (filled)", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      const btn = screen.getByRole("button", { name: /reactivate studio/i });
+      expect(btn.className).toMatch(/bg-primary/);
+    });
+
+    it("does NOT show 'Renews' date when studio is suspended", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(screen.queryByText(/renews/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("trial expiry only shown in trial-relevant states", () => {
+    it("does NOT show trial expiry for an Active studio", async () => {
+      // SUB has status: "Active" and a future trialExpiresAt (converted studio)
+      server.use(
+        http.get("http://localhost/api/v1/platform/subscriptions", () =>
+          HttpResponse.json([{
+            ...SUB,
+            status: "Active",
+            isSuspended: false,
+            trialExpiresAt: new Date(Date.now() - 30 * 86_400_000).toISOString(), // expired 30 days ago
+          }]),
+        ),
+      );
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(screen.queryByText(/trial expiry/i)).not.toBeInTheDocument();
+    });
+
+    it("shows trial expiry for a Trialing studio", async () => {
+      server.use(
+        http.get("http://localhost/api/v1/platform/subscriptions", () =>
+          HttpResponse.json([{
+            ...SUB,
+            status: "Trialing",
+            isSuspended: false,
+            trialExpiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+          }]),
+        ),
+      );
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(await screen.findByText(/trial expiry/i)).toBeInTheDocument();
+    });
   });
 });

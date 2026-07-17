@@ -24,6 +24,7 @@ const STATUS_CLASSES: Record<string, string> = {
   GracePeriod:    "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   Cancelled:      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   NoSubscription: "bg-muted text-muted-foreground",
+  Suspended:      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
 };
 
 function fmt(date: string): string {
@@ -39,6 +40,7 @@ const STATUS_LABELS: Record<string, string> = {
   GracePeriod:    "Grace Period",
   Cancelled:      "Cancelled",
   NoSubscription: "No Subscription",
+  Suspended:      "Suspended",
 };
 
 function SubscriptionRowSkeleton() {
@@ -114,11 +116,14 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
     setCashPlanId("");
   }
 
-  const statusClass = STATUS_CLASSES[sub.status] ?? STATUS_CLASSES.NoSubscription;
-  const canActivate = CASH_ACTIVATABLE.has(sub.status);
-  const canCancel   = CANCELLABLE.has(sub.status);
+  const effectiveStatus = sub.isSuspended ? "Suspended" : sub.status;
+  const statusClass     = STATUS_CLASSES[effectiveStatus] ?? STATUS_CLASSES.NoSubscription;
+  const canActivate      = CASH_ACTIVATABLE.has(sub.status);
+  const canCancel        = CANCELLABLE.has(sub.status);
 
   const trialExpired = sub.trialExpiresAt ? new Date(sub.trialExpiresAt) < new Date() : false;
+  const isTrialRelevantState =
+    effectiveStatus === "Trialing" || effectiveStatus === "GracePeriod" || effectiveStatus === "NoSubscription";
 
   const periodText = (() => {
     if (sub.status === "Active")       return `Renews: ${fmt(sub.currentPeriodEnd)}`;
@@ -139,7 +144,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   }
 
   return (
-    <Card>
+    <Card className={sub.isSuspended ? "border-amber-400/40 dark:border-amber-600/30" : ""}>
       <CardContent className="p-4 space-y-2">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-0.5 min-w-0">
@@ -150,13 +155,13 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
                 {sub.studioSlug}
               </span>
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${statusClass}`}>
-                {STATUS_LABELS[sub.status] ?? sub.status}
+                {STATUS_LABELS[effectiveStatus] ?? effectiveStatus}
               </span>
             </div>
             <div className="space-y-0.5">
               <p className="text-xs text-muted-foreground">
                 {sub.status === "Trialing" ? "In Trial" : (sub.planName ?? "No paid plan")}
-                {sub.trialExpiresAt && (
+                {sub.trialExpiresAt && isTrialRelevantState && (
                   <>
                     {" · "}
                     {trialExpired ? `Trial expired ${fmt(sub.trialExpiresAt)}` : `Trial ends ${fmt(sub.trialExpiresAt)}`}
@@ -325,7 +330,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   );
 }
 
-const ALL_STATUSES = ["Active", "Trialing", "GracePeriod", "PastDue", "Cancelled", "NoSubscription"];
+const ALL_STATUSES = ["Suspended", "Active", "Trialing", "GracePeriod", "PastDue", "Cancelled", "NoSubscription"];
 
 export function SubscriptionOversightPage() {
   useDocumentMeta({ title: "Subscriptions — Platform Admin", canonical: "/platform/subscriptions" });
@@ -339,9 +344,10 @@ export function SubscriptionOversightPage() {
   const { data: subscriptions, isLoading, isError } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
 
-  const baseFiltered = subscriptions?.filter((s) =>
-    statusFilter ? s.status === statusFilter : true
-  ) ?? [];
+  const baseFiltered = subscriptions?.filter((s) => {
+    const effective = s.isSuspended ? "Suspended" : s.status;
+    return statusFilter ? effective === statusFilter : true;
+  }) ?? [];
 
   const q = search.trim().toLowerCase();
 
@@ -384,6 +390,7 @@ export function SubscriptionOversightPage() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5
                                text-muted-foreground pointer-events-none" />
             <Input
+              aria-label="Search subscriptions by studio name or slug"
               placeholder="Search by studio name or slug…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -413,7 +420,9 @@ export function SubscriptionOversightPage() {
               All ({subscriptions.length})
             </button>
             {ALL_STATUSES.map((s) => {
-              const count = subscriptions.filter((sub) => sub.status === s).length;
+              const count = subscriptions.filter(
+                (sub) => (sub.isSuspended ? "Suspended" : sub.status) === s,
+              ).length;
               if (count === 0) return null;
               return (
                 <button

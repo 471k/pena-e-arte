@@ -40,7 +40,7 @@ const STATUS_CLASSES: Record<string, string> = {
   GracePeriod:    "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   Cancelled:      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   NoSubscription: "bg-muted text-muted-foreground",
-  Suspended:      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  Suspended:      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -108,6 +108,10 @@ export function IssuerStudioDetailPage() {
 
   const trialDate    = sub?.trialExpiresAt ?? studio?.trialExpiresAt ?? "";
   const trialExpired = trialDate ? new Date(trialDate) < new Date() : false;
+  const showsRenews  = Boolean(sub?.currentPeriodEnd && sub.status === "Active" && !isSuspended);
+  const showsTrial   = Boolean(
+    trialDate && (subStatus === "Trialing" || subStatus === "GracePeriod" || subStatus === "NoSubscription"),
+  );
 
   async function executePlatform() {
     if (!studioId) return;
@@ -207,7 +211,7 @@ export function IssuerStudioDetailPage() {
             {/* ── Studio Info Card ──────────────────────────────────────────── */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <span>{studio.name}</span>
                   <span
                     className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLASSES[badgeStatus]}`}
@@ -256,16 +260,16 @@ export function IssuerStudioDetailPage() {
                 </div>
 
                 {/* Conditional fields — only if at least one is present */}
-                {(trialDate || (sub?.currentPeriodEnd && sub.status === "Active")) && (
+                {(showsRenews || showsTrial) && (
                   <div className="border-t pt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-                    {sub?.currentPeriodEnd && sub.status === "Active" && (
+                    {showsRenews && (
                       <div>
                         <span className="text-muted-foreground">Renews</span>
-                        <p>{fmt(sub.currentPeriodEnd)}</p>
+                        <p>{fmt(sub!.currentPeriodEnd)}</p>
                       </div>
                     )}
-                    {trialDate && !(sub?.currentPeriodEnd && sub.status === "Active") && <div />}
-                    {trialDate && (
+                    {showsTrial && !showsRenews && <div />}
+                    {showsTrial && (
                       <div>
                         <span className="text-muted-foreground">Trial expiry</span>
                         <p className="flex items-center gap-1.5 flex-wrap">
@@ -278,7 +282,7 @@ export function IssuerStudioDetailPage() {
                         </p>
                       </div>
                     )}
-                    {!trialDate && sub?.currentPeriodEnd && sub.status === "Active" && <div />}
+                    {!showsTrial && showsRenews && <div />}
                   </div>
                 )}
 
@@ -303,16 +307,34 @@ export function IssuerStudioDetailPage() {
               </CardHeader>
               <CardContent className="pt-0">
                 {summaryLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-4 w-1/2" />
+                  <div className="space-y-3">
+                    {/* Owner section skeleton */}
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-3 w-10" />
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3.5 w-44" />
+                    </div>
+                    {/* Metrics skeleton — 3 columns */}
+                    <div className="border-t pt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <Skeleton className="h-6 w-8" />
+                        <Skeleton className="h-2.5 w-10" />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <Skeleton className="h-6 w-8" />
+                        <Skeleton className="h-2.5 w-10" />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <Skeleton className="h-6 w-8" />
+                        <Skeleton className="h-2.5 w-14" />
+                      </div>
+                    </div>
                   </div>
                 ) : summary ? (
                   <div className="space-y-3">
                     {/* Owner */}
                     <div className="text-xs space-y-0.5">
-                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                      <p className="text-[11px] text-muted-foreground font-medium uppercase">
                         Owner
                       </p>
                       <p className="font-medium">{summary.ownerDisplayName}</p>
@@ -341,7 +363,7 @@ export function IssuerStudioDetailPage() {
                       </div>
                       <div>
                         <p className="text-base font-semibold tabular-nums">{summary.appointmentCount}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Appts</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Appointments</p>
                       </div>
                     </div>
                   </div>
@@ -354,7 +376,7 @@ export function IssuerStudioDetailPage() {
           </div>
 
           {/* Right column */}
-          <div>
+          <div className="lg:sticky lg:top-[72px]">
             {/* ── Actions Card ──────────────────────────────────────────────── */}
             <Card>
               <CardHeader className="pb-2">
@@ -412,7 +434,9 @@ export function IssuerStudioDetailPage() {
                   ) : (
                     !anyExpanded && (
                       <Button
-                        size="sm" variant="ghost" className="h-9 text-xs gap-1"
+                        size="sm"
+                        variant={isSuspended ? "default" : "ghost"}
+                        className="h-9 text-xs gap-1"
                         onClick={() => setConfirmPlatform(isSuspended ? "unsuspend" : "suspend")}
                       >
                         {isSuspended

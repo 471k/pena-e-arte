@@ -29,6 +29,7 @@ public class GetPlatformSubscriptionsHandler(IAppDbContext db)
             s.Subscription?.Status.ToString() ?? "NoSubscription",
             s.Subscription?.Plan?.Name,
             s.Subscription?.TrialExpiresAt,
-            s.Subscription?.CurrentPeriodEnd ?? DateTime.MinValue)).ToList();
+            s.Subscription?.CurrentPeriodEnd ?? DateTime.MinValue,
+            !s.IsActive)).ToList();
     }
 }

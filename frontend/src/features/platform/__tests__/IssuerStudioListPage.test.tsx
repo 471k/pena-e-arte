@@ -60,6 +60,7 @@ const SUB_ACTIVE: PlatformSubscriptionResponse = {
   planName:        "Pro",
   trialExpiresAt:  new Date(Date.now() + 30 * 86_400_000).toISOString(),
   currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+  isSuspended:     false,
 };
 
 const SUB_TRIALING: PlatformSubscriptionResponse = {

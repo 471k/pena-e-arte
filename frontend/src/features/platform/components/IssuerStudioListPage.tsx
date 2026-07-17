@@ -43,7 +43,7 @@ const STATUS_CLASSES: Record<string, string> = {
   GracePeriod:    "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   Cancelled:      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   NoSubscription: "bg-muted text-muted-foreground",
-  Suspended:      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  Suspended:      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -197,7 +197,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
   })();
 
   const periodText = (() => {
-    if (sub?.status === "Active" && sub?.currentPeriodEnd) {
+    if (sub?.status === "Active" && sub?.currentPeriodEnd && !isSuspended) {
       return `Renews: ${fmt(sub.currentPeriodEnd)}`;
     }
     if (sub?.status === "GracePeriod") {
@@ -206,8 +206,15 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
     if (sub?.status === "PastDue" && sub?.currentPeriodEnd) {
       return `Overdue since: ${fmt(sub.currentPeriodEnd)}`;
     }
-    if (trialExpired) return `Trial expired: ${fmt(trialDate)}`;
-    return `Expires: ${fmt(trialDate)}`;
+    if (sub?.status === "Cancelled") {
+      return `Cancelled — ended ${sub.currentPeriodEnd ? fmt(sub.currentPeriodEnd) : ""}`.trim();
+    }
+    // Trial dates only for trial-relevant states
+    const isTrialState = !sub || sub.status === "Trialing" || sub.status === "NoSubscription";
+    if (isTrialState && trialDate) {
+      return trialExpired ? `Trial expired: ${fmt(trialDate)}` : `Trial ends: ${fmt(trialDate)}`;
+    }
+    return null;
   })();
 
   return (
@@ -231,7 +238,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
               {studio.city}
               {" · "}Registered {fmt(studio.createdAt)}
               {" · "}{planDisplay}
-              {" · "}{periodText}
+              {periodText && <>{" · "}{periodText}</>}
             </p>
           </div>
 
@@ -491,6 +498,7 @@ export function IssuerStudioListPage() {
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
+            aria-label="Search studios by name or slug"
             placeholder="Search by name or slug…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

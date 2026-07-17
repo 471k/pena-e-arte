@@ -26,6 +26,7 @@ const SUBS: PlatformSubscriptionResponse[] = [
     planName:        "Pro",
     trialExpiresAt:  new Date(Date.now() + 30 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+    isSuspended:     false,
   },
   {
     studioId:        "s2",
@@ -36,6 +37,7 @@ const SUBS: PlatformSubscriptionResponse[] = [
     planName:        "Starter",
     trialExpiresAt:  new Date(Date.now() + 7 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    isSuspended:     false,
   },
   {
     studioId:        "s3",
@@ -46,6 +48,7 @@ const SUBS: PlatformSubscriptionResponse[] = [
     planName:        null,
     trialExpiresAt:  new Date(Date.now() - 30 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+    isSuspended:     false,
   },
 ];
 
@@ -360,6 +363,7 @@ describe("SubscriptionOversightPage", () => {
             planName:        "Pro",
             trialExpiresAt:  new Date(Date.now() - 14 * 86_400_000).toISOString(),
             currentPeriodEnd: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+            isSuspended:     false,
           },
         ]),
       ),
@@ -394,6 +398,7 @@ describe("SubscriptionOversightPage", () => {
             planName:        "Pro",
             trialExpiresAt:  new Date(Date.now() - 14 * 86_400_000).toISOString(),
             currentPeriodEnd: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+            isSuspended:     false,
           },
         ]),
       ),
@@ -405,5 +410,46 @@ describe("SubscriptionOversightPage", () => {
     await user.click(screen.getByRole("button", { name: /activate subscription for grace studio/i }));
 
     expect(screen.getByText(/record cash payment/i)).toBeInTheDocument();
+  });
+
+  it("shows Suspended (amber pill) for a studio with isSuspended: true", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{ ...SUBS[0], status: "Active", isSuspended: true }]),
+      ),
+    );
+    renderPage();
+    const badge = await screen.findByText("Suspended");
+    expect(badge).toBeInTheDocument();
+    expect(badge.className).toMatch(/amber/);
+  });
+
+  it("does NOT show Active badge for a suspended studio", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{ ...SUBS[0], status: "Active", isSuspended: true }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Suspended");
+    // "Active" pill should not be present
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
+  });
+
+  it("does NOT show trial expiry text for an Active (paid) studio", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{
+          ...SUBS[0],
+          status: "Active",
+          isSuspended: false,
+          trialExpiresAt: new Date(Date.now() - 60 * 86_400_000).toISOString(),
+        }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText(SUBS[0].studioName);
+    expect(screen.queryByText(/trial expired/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/trial ends/i)).not.toBeInTheDocument();
   });
 });
