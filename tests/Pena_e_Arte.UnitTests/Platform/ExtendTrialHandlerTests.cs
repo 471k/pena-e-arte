@@ -55,7 +55,7 @@ public class ExtendTrialHandlerTests
 
         Subscription stored = _db.Subscriptions.Single(s => s.StudioId == studioId);
         stored.Status.Should().Be(SubscriptionStatus.Trialing);
-        stored.GracePeriodEnd.Should().BeCloseTo(stored.TrialExpiresAt.AddDays(7), TimeSpan.FromSeconds(1));
+        stored.GracePeriodEnd.Should().BeCloseTo(stored.TrialExpiresAt!.Value.AddDays(7), TimeSpan.FromSeconds(1));
     }
 
     [Fact]

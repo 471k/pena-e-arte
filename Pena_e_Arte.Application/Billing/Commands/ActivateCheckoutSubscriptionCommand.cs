@@ -68,6 +68,7 @@ public class ActivateCheckoutSubscriptionHandler(
         if (plan is not null) subscription.PlanId = plan.Id;
         subscription.Status               = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd     = result.CurrentPeriodEnd;
+        subscription.TrialExpiresAt       = null;
 
         await RecordReferralRedemptionAsync(subscription.Studio, result.HasDiscount, ct);
 

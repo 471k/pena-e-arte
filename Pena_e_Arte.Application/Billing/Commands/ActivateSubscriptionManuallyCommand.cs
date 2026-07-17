@@ -41,7 +41,6 @@ public class ActivateSubscriptionManuallyHandler(
                 PlanId           = plan.Id,
                 Status           = SubscriptionStatus.Active,
                 CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1),
-                TrialExpiresAt   = studio.TrialExpiresAt,
             };
             db.Subscriptions.Add(studio.Subscription);
         }
@@ -50,6 +49,7 @@ public class ActivateSubscriptionManuallyHandler(
             studio.Subscription.PlanId           = plan.Id;
             studio.Subscription.Status           = SubscriptionStatus.Active;
             studio.Subscription.CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1);
+            studio.Subscription.TrialExpiresAt   = null;
         }
 
         // Note is deliberately not logged — free text could contain PII (Rule #3).

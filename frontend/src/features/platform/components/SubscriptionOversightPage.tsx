@@ -118,7 +118,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   const canActivate = CASH_ACTIVATABLE.has(sub.status);
   const canCancel   = CANCELLABLE.has(sub.status);
 
-  const trialExpired = new Date(sub.trialExpiresAt) < new Date();
+  const trialExpired = sub.trialExpiresAt ? new Date(sub.trialExpiresAt) < new Date() : false;
 
   const periodText = (() => {
     if (sub.status === "Active")       return `Renews: ${fmt(sub.currentPeriodEnd)}`;
@@ -156,8 +156,12 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
             <div className="space-y-0.5">
               <p className="text-xs text-muted-foreground">
                 {sub.status === "Trialing" ? "In Trial" : (sub.planName ?? "No paid plan")}
-                {" · "}
-                {trialExpired ? `Trial expired ${fmt(sub.trialExpiresAt)}` : `Trial ends ${fmt(sub.trialExpiresAt)}`}
+                {sub.trialExpiresAt && (
+                  <>
+                    {" · "}
+                    {trialExpired ? `Trial expired ${fmt(sub.trialExpiresAt)}` : `Trial ends ${fmt(sub.trialExpiresAt)}`}
+                  </>
+                )}
               </p>
               {periodText && (
                 <p className="text-xs text-muted-foreground">{periodText}</p>
@@ -350,7 +354,11 @@ export function SubscriptionOversightPage() {
 
   const filtered = [...searched].sort((a, b) => {
     if (sortKey === "name")      return a.studioName.localeCompare(b.studioName);
-    if (sortKey === "trialEnd")  return new Date(a.trialExpiresAt).getTime() - new Date(b.trialExpiresAt).getTime();
+    if (sortKey === "trialEnd") {
+      const aTime = a.trialExpiresAt ? new Date(a.trialExpiresAt).getTime() : Infinity;
+      const bTime = b.trialExpiresAt ? new Date(b.trialExpiresAt).getTime() : Infinity;
+      return aTime - bTime;
+    }
     if (sortKey === "periodEnd") return new Date(a.currentPeriodEnd).getTime() - new Date(b.currentPeriodEnd).getTime();
     return 0;
   });

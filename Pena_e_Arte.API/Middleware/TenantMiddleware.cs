@@ -69,7 +69,8 @@ public class TenantMiddleware(RequestDelegate next)
         DateTime now = DateTime.UtcNow;
 
         if (snapshot.Status == SubscriptionStatus.Active) return;
-        if (snapshot.Status == SubscriptionStatus.Trialing && now < snapshot.TrialExpiresAt) return;
+        if (snapshot.Status == SubscriptionStatus.Trialing &&
+            snapshot.TrialExpiresAt is DateTime trialExpiresAt && now < trialExpiresAt) return;
 
         if (snapshot.Status == SubscriptionStatus.GracePeriod && now < snapshot.GracePeriodEnd)
         {

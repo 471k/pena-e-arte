@@ -196,7 +196,7 @@ public static class DataSeeder
             StudioId             = Studio1Id,
             PlanId               = GrowthPlanId,
             Status               = SubscriptionStatus.Active,
-            TrialExpiresAt       = now.AddDays(-16),
+            TrialExpiresAt       = null,
             CurrentPeriodEnd     = now.AddDays(14),
             GracePeriodEnd       = now.AddDays(21),
             // Null = cash-billed semantics: there is no real Stripe subscription behind

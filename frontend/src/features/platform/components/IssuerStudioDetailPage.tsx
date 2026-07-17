@@ -247,7 +247,7 @@ export function IssuerStudioDetailPage() {
                   <p>{fmt(sub.currentPeriodEnd)}</p>
                 </div>
               )}
-              {trialDate && (
+              {trialDate && subStatus !== "Active" && (
                 <div>
                   <span className="text-muted-foreground">Trial expiry</span>
                   <p className={trialExpired ? "text-destructive" : ""}>

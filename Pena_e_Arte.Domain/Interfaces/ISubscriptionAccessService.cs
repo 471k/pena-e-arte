@@ -11,5 +11,5 @@ public interface ISubscriptionAccessService
 
 public sealed record SubscriptionSnapshot(
     SubscriptionStatus Status,
-    DateTime           TrialExpiresAt,
+    DateTime?          TrialExpiresAt,
     DateTime           GracePeriodEnd);

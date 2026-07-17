@@ -27,7 +27,7 @@ export interface PlatformSubscriptionResponse {
   subscriptionId:  string | null;
   status:          SubscriptionStatus;
   planName:        string | null;
-  trialExpiresAt:  string;
+  trialExpiresAt:  string | null;
   currentPeriodEnd: string;
 }
 

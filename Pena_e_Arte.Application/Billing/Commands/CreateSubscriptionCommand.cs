@@ -101,6 +101,7 @@ public class CreateSubscriptionHandler(
         subscription.PlanId           = command.Request.PlanId;
         subscription.Status           = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd = periodEnd;
+        subscription.TrialExpiresAt   = null;
 
         // Record redemption only when a discount was actually applied
         if (pendingCode is not null && discountApplied)

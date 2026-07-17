@@ -6,7 +6,7 @@ public record SubscriptionResponse(
     Guid?     PlanId,
     Guid?     PendingPlanId,
     string    Status,
-    DateTime  TrialExpiresAt,
+    DateTime? TrialExpiresAt,
     DateTime  CurrentPeriodEnd,
     DateTime  GracePeriodEnd,
     string?   StripeSubscriptionId);

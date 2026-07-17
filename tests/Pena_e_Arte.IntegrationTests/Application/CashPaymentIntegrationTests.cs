@@ -232,6 +232,31 @@ public class CashPaymentIntegrationTests
     }
 
     [Fact]
+    public async Task ActivateSubscriptionManually_GracePeriodSubscription_ClearsTrialExpiresAt()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid planId   = await SeedPlan();
+        await SeedStudio(tenantId);
+        await SeedSubscription(tenantId, planId, SubscriptionStatus.GracePeriod);
+
+        SubscriptionResponse result = await RunActivateHandler(tenantId, planId);
+
+        result.TrialExpiresAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ActivateSubscriptionManually_NoExistingSubscription_LeavesTrialExpiresAtNull()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid planId   = await SeedPlan();
+        await SeedStudio(tenantId);
+
+        SubscriptionResponse result = await RunActivateHandler(tenantId, planId);
+
+        result.TrialExpiresAt.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ActivateSubscriptionManually_StudioNotFound_ThrowsNotFoundException()
     {
         Guid planId = await SeedPlan();

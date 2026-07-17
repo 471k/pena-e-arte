@@ -33,8 +33,9 @@ public class ExtendTrialHandler(IAppDbContext db)
 
         if (studio.Subscription is not null)
         {
-            studio.Subscription.TrialExpiresAt = Extend(studio.Subscription.TrialExpiresAt, days);
-            studio.Subscription.GracePeriodEnd = studio.Subscription.TrialExpiresAt.AddDays(7);
+            DateTime extendedTrialExpiry = Extend(studio.Subscription.TrialExpiresAt ?? DateTime.UtcNow, days);
+            studio.Subscription.TrialExpiresAt = extendedTrialExpiry;
+            studio.Subscription.GracePeriodEnd = extendedTrialExpiry.AddDays(7);
 
             // A grace-period studio whose trial is extended goes back to trialing
             if (studio.Subscription.Status == SubscriptionStatus.GracePeriod)

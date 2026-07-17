@@ -12,7 +12,9 @@ public class Subscription
     public Guid?              PendingPlanId        { get; set; }
 
     public SubscriptionStatus Status               { get; set; }
-    public DateTime           TrialExpiresAt       { get; set; }
+
+    /// <summary>Null once the subscription converts to a paid plan — trial is no longer applicable.</summary>
+    public DateTime?          TrialExpiresAt       { get; set; }
     public DateTime           CurrentPeriodEnd     { get; set; }
     public DateTime           GracePeriodEnd       { get; set; }
     public string?            StripeSubscriptionId { get; set; }

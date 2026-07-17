@@ -7,5 +7,5 @@ public record PlatformSubscriptionResponse(
     Guid?    SubscriptionId,
     string   Status,
     string?  PlanName,
-    DateTime TrialExpiresAt,
+    DateTime? TrialExpiresAt,
     DateTime CurrentPeriodEnd);

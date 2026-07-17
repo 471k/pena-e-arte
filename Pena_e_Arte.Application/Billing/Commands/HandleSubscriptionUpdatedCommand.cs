@@ -31,6 +31,10 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
 
         subscription.CurrentPeriodEnd = command.CurrentPeriodEnd;
 
+        // Trial is no longer applicable once the subscription is active on a paid plan.
+        if (subscription.Status == SubscriptionStatus.Active)
+            subscription.TrialExpiresAt = null;
+
         if (command.StripePriceId is not null)
         {
             Domain.Entities.Plan? plan = await db.Plans.FirstOrDefaultAsync(

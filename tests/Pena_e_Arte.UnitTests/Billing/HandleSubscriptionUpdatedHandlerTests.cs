@@ -104,6 +104,32 @@ public class HandleSubscriptionUpdatedHandlerTests
     }
 
     [Fact]
+    public async Task Handle_TransitionsToActive_ClearsTrialExpiresAt()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.Trialing);
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "active", _nextPeriodEnd, null), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .TrialExpiresAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_TransitionsToTrialing_LeavesTrialExpiresAtUntouched()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.PastDue);
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "trialing", _nextPeriodEnd, null), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .TrialExpiresAt.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task Handle_UnknownStripeStatus_DoesNotChangeStatus()
     {
         string stripeSubId = "sub_abc";

@@ -4,7 +4,7 @@ export interface SubscriptionResponse {
   planId:               string | null;
   pendingPlanId:        string | null;
   status:               "Trialing" | "Active" | "PastDue" | "Cancelled" | "GracePeriod";
-  trialExpiresAt:       string;
+  trialExpiresAt:       string | null;
   currentPeriodEnd:     string;
   gracePeriodEnd:       string;
   stripeSubscriptionId: string | null;
