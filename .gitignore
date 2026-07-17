@@ -42,6 +42,7 @@ nuget.config
 *.env
 secrets.json
 **/secrets.json
+Seeded Test Accounts.txt
 
 ## Frontend
 **/node_modules/
