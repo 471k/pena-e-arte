@@ -3,9 +3,11 @@ import { Link, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
+  AlertTriangle,
   Banknote,
   Building2,
   Clock,
+  Copy,
   ExternalLink,
   Loader2,
   PauseCircle,
@@ -193,7 +195,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
   const planDisplay = (() => {
     if (subStatus === "Trialing") return "In Trial";
     if (subStatus === "NoSubscription") return "No subscription";
-    return sub?.planName ?? "—";
+    return sub?.planName ?? "No plan assigned";
   })();
 
   const periodText = (() => {
@@ -226,10 +228,22 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-2 flex-nowrap min-w-0">
               <span className="font-medium text-sm shrink-0">{studio.name}</span>
-              <span className="text-xs text-muted-foreground font-mono truncate max-w-[180px]"
-                    title={studio.slug}>
-                {studio.slug}
-              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void navigator.clipboard.writeText(studio.slug);
+                  toast.success("Slug copied");
+                }}
+                aria-label={`Copy slug ${studio.slug}`}
+                className="group flex items-center gap-0.5 text-xs text-muted-foreground
+                           font-mono hover:text-foreground transition-colors cursor-pointer
+                           max-w-[180px]"
+              >
+                <span className="truncate" title={studio.slug}>{studio.slug}</span>
+                <Copy className="h-2.5 w-2.5 shrink-0 opacity-0 group-hover:opacity-50
+                                 transition-opacity" />
+              </button>
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${STATUS_CLASSES[badgeStatus]}`}>
                 {STATUS_LABELS[badgeStatus]}
               </span>
@@ -238,6 +252,14 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
               {studio.city}
               {" · "}Registered {fmt(studio.createdAt)}
               {" · "}{planDisplay}
+              {subStatus !== "Trialing" && subStatus !== "NoSubscription" && !sub?.planName && (
+                <span
+                  title="Active subscription has no linked plan — check billing data"
+                  className="inline-flex items-center ml-1 text-amber-500"
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                </span>
+              )}
               {periodText && <>{" · "}{periodText}</>}
             </p>
           </div>
@@ -259,20 +281,25 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
                 onClick={() => setExtending(true)}>
                 <Clock className="h-3.5 w-3.5" />
-                {trialExpired ? "Grant extension" : "Extend Trial (+7 days)"}
+                {trialExpired ? "Grant Extension (+7 days)" : "Extend Trial (+7 days)"}
               </Button>
             )}
 
-            {/* 2. Activate (primary — filled) */}
+            {/* 2. Activate (primary for at-risk, outline for already-dead) */}
             {!anyExpanded && canActivate && (
-              <Button size="sm" className="h-7 text-xs gap-1"
-                onClick={() => setActivating(true)}>
+              <Button
+                size="sm"
+                variant={badgeStatus === "Cancelled" ? "outline" : "default"}
+                className="h-7 text-xs gap-1"
+                onClick={() => setActivating(true)}
+                aria-label={`Activate subscription for ${studio.name}`}
+              >
                 <Banknote className="h-3.5 w-3.5" />
                 Activate
               </Button>
             )}
 
-            {/* 3. Suspend / Reactivate (ghost) */}
+            {/* 3. Suspend / Reactivate */}
             {confirmPlatform ? (
               <>
                 <span className="text-xs text-muted-foreground">
@@ -297,7 +324,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
             ) : (
               !anyExpanded && (
                 <Button
-                  size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1"
+                  size="sm" variant={isSuspended ? "default" : "ghost"} className="h-7 px-2 text-xs gap-1"
                   onClick={() => setConfirmPlatform(isSuspended ? "unsuspend" : "suspend")}
                 >
                   {isSuspended
@@ -466,6 +493,21 @@ export function IssuerStudioListPage() {
       });
   }, [studios, subMap, search, statusFilter, planFilter]);
 
+  const groups = useMemo(() => {
+    const result: Array<{ status: string; items: StudioResponse[] }> = [];
+    for (const s of filtered) {
+      const sub  = subMap.get(s.id);
+      const eff  = !s.isActive ? "Suspended" : (sub?.status ?? "NoSubscription");
+      const last = result.at(-1);
+      if (last?.status === eff) {
+        last.items.push(s);
+      } else {
+        result.push({ status: eff, items: [s] });
+      }
+    }
+    return result;
+  }, [filtered, subMap]);
+
   // Scroll to and highlight the studio arriving from the dashboard at-risk link.
   useEffect(() => {
     if (!highlightId || !listRef.current) return;
@@ -481,7 +523,7 @@ export function IssuerStudioListPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-10">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
         <Building2 className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Studios</span>
         {studios && (
@@ -494,7 +536,7 @@ export function IssuerStudioListPage() {
       </header>
 
       {/* ── Search + filter bar ──────────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto px-4 pt-4 flex gap-2 flex-wrap">
+      <div className="max-w-5xl mx-auto px-4 pt-4 flex gap-2 flex-wrap">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
@@ -508,6 +550,7 @@ export function IssuerStudioListPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Filter by status"
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
           <option value="all">All statuses</option>
@@ -518,6 +561,7 @@ export function IssuerStudioListPage() {
         <select
           value={planFilter}
           onChange={(e) => setPlanFilter(e.target.value)}
+          aria-label="Filter by plan"
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
           <option value="all">All plans</option>
@@ -528,7 +572,7 @@ export function IssuerStudioListPage() {
         </select>
       </div>
 
-      <main className="max-w-3xl mx-auto px-4 py-4">
+      <main className="max-w-5xl mx-auto px-4 py-4">
         {isLoading && (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => <StudioRowSkeleton key={i} />)}
@@ -559,18 +603,33 @@ export function IssuerStudioListPage() {
           </p>
         )}
 
-        <div ref={listRef} className="space-y-3">
-          {!isLoading && !studiosError && filtered.map((s) => (
-            <div
-              key={s.id}
-              data-studio-id={s.id}
-              className={`rounded-lg transition-shadow duration-700 ${
-                highlightId === s.id && !dimHighlight
-                  ? "ring-2 ring-primary shadow-md"
-                  : ""
-              }`}
-            >
-              <StudioRow studio={s} sub={subMap.get(s.id)} plans={plans} />
+        <div ref={listRef} className="space-y-4">
+          {!isLoading && !studiosError && groups.map((group) => (
+            <div key={group.status} className="space-y-3">
+              {groups.length > 1 && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${STATUS_CLASSES[group.status] ?? ""}`}>
+                    {STATUS_LABELS[group.status] ?? group.status}
+                  </span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {group.items.length} {group.items.length === 1 ? "studio" : "studios"}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              )}
+              {group.items.map((s) => (
+                <div
+                  key={s.id}
+                  data-studio-id={s.id}
+                  className={`rounded-lg transition-shadow duration-700 ${
+                    highlightId === s.id && !dimHighlight
+                      ? "ring-2 ring-primary shadow-md"
+                      : ""
+                  }`}
+                >
+                  <StudioRow studio={s} sub={subMap.get(s.id)} plans={plans} />
+                </div>
+              ))}
             </div>
           ))}
         </div>

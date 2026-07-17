@@ -166,15 +166,17 @@ describe("IssuerStudioListPage", () => {
   it("shows Active status badge", async () => {
     renderPage();
     await screen.findByText("Ink Soul");
-    // "Active" also appears as a <option> in the status filter dropdown
-    expect(screen.getByText("Active", { selector: "span" })).toBeInTheDocument();
+    // "Active" also appears as a <option> in the status filter dropdown, and as a
+    // group divider pill (Fix #4) in addition to the row badge — at least one <span> shows it.
+    expect(screen.getAllByText("Active", { selector: "span" }).length).toBeGreaterThan(0);
   });
 
   it("shows Suspended status badge for suspended studio", async () => {
     renderPage();
     await screen.findByText("Suspended Studio");
-    // "Suspended" also appears as a <option> in the status filter dropdown
-    expect(screen.getByText("Suspended", { selector: "span" })).toBeInTheDocument();
+    // "Suspended" also appears as a <option> in the status filter dropdown, and as a
+    // group divider pill (Fix #4) in addition to the row badge — at least one <span> shows it.
+    expect(screen.getAllByText("Suspended", { selector: "span" }).length).toBeGreaterThan(0);
   });
 
   it("renders search input", async () => {
@@ -208,7 +210,7 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     await screen.findByText("Ink Soul");
     // Multiple active studios (s1 and s3) both have a Suspend button
-    const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
+    const suspendBtns = screen.getAllByRole("button", { name: /^suspend$/i });
     expect(suspendBtns.length).toBeGreaterThan(0);
   });
 
@@ -224,7 +226,7 @@ describe("IssuerStudioListPage", () => {
     await screen.findByText("Ink Soul");
 
     // Multiple active studios have Suspend buttons — click the first one
-    const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
+    const suspendBtns = screen.getAllByRole("button", { name: /^suspend$/i });
     await user.click(suspendBtns[0]);
 
     expect(screen.getByText(/suspend\?/i)).toBeInTheDocument();
@@ -237,7 +239,7 @@ describe("IssuerStudioListPage", () => {
     renderPage();
     await screen.findByText("Ink Soul");
 
-    const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
+    const suspendBtns = screen.getAllByRole("button", { name: /^suspend$/i });
     await user.click(suspendBtns[0]);
     await user.click(screen.getByRole("button", { name: /no/i }));
 
@@ -259,7 +261,7 @@ describe("IssuerStudioListPage", () => {
     await screen.findByText("Ink Soul");
 
     // After sort: s2 (Suspended → Reactivate), s3 (Trialing → Suspend), s1 (Active → Suspend)
-    const suspendBtns = screen.getAllByRole("button", { name: /suspend/i });
+    const suspendBtns = screen.getAllByRole("button", { name: /^suspend$/i });
     await user.click(suspendBtns[0]);
     await user.click(screen.getByRole("button", { name: /yes/i }));
 
@@ -379,5 +381,176 @@ describe("IssuerStudioListPage", () => {
     expect(planSelect).toBeInTheDocument();
     // Plans are from MSW seed: "Starter"
     expect(screen.getByRole("option", { name: "Starter" })).toBeInTheDocument();
+  });
+
+  // ── Fix #1: z-index / header ──────────────────────────────────────────────────
+
+  it("page header has z-20 class to prevent list content overlap", () => {
+    renderPage();
+    const header = document.querySelector("header");
+    expect(header?.className).toMatch(/z-20/);
+  });
+
+  // ── Fix #2: Plan display ──────────────────────────────────────────────────────
+
+  it("shows 'No plan assigned' for Active studio with null planName", async () => {
+    const STUDIO_NO_PLAN: StudioResponse = {
+      ...STUDIO_ACTIVE,
+      id:   "s-noplan",
+      name: "No Plan Studio",
+      slug: "no-plan-studio",
+    };
+    const SUB_NO_PLAN: PlatformSubscriptionResponse = {
+      studioId:         "s-noplan",
+      studioName:       "No Plan Studio",
+      studioSlug:       "no-plan-studio",
+      subscriptionId:   "sub-np",
+      status:           "Active",
+      planName:         null,
+      trialExpiresAt:   "",
+      currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+      isSuspended:      false,
+    };
+    server.use(
+      http.get("http://localhost/api/v1/studios", () =>
+        HttpResponse.json([STUDIO_NO_PLAN]),
+      ),
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([SUB_NO_PLAN]),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText("No Plan Studio")).toBeInTheDocument();
+    expect(screen.getByText(/no plan assigned/i)).toBeInTheDocument();
+  });
+
+  it("shows AlertTriangle icon for Active studio with null planName", async () => {
+    const STUDIO_NO_PLAN: StudioResponse = {
+      ...STUDIO_ACTIVE,
+      id:   "s-noplan2",
+      name: "No Plan Studio 2",
+      slug: "no-plan-studio-2",
+    };
+    server.use(
+      http.get("http://localhost/api/v1/studios", () =>
+        HttpResponse.json([STUDIO_NO_PLAN]),
+      ),
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{
+          studioId: "s-noplan2", studioName: "No Plan Studio 2",
+          studioSlug: "no-plan-studio-2", subscriptionId: "sub-np2",
+          status: "Active", planName: null, trialExpiresAt: "",
+          currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+          isSuspended: false,
+        }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("No Plan Studio 2");
+    const warnEl = document.querySelector('[title*="no linked plan"]');
+    expect(warnEl).not.toBeNull();
+  });
+
+  // ── Fix #3: aria-labels ───────────────────────────────────────────────────────
+
+  it("status filter select has aria-label", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    expect(screen.getByRole("combobox", { name: /filter by status/i })).toBeInTheDocument();
+  });
+
+  it("plan filter select has aria-label", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    expect(screen.getByRole("combobox", { name: /filter by plan/i })).toBeInTheDocument();
+  });
+
+  // ── Fix #4: Group dividers ────────────────────────────────────────────────────
+
+  it("shows status group divider headers when multiple status groups are present", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    // Seed has Suspended, Trialing, Active studios → 3 groups of 1 → each divider shows "1 studio"
+    expect(screen.getAllByText("1 studio", { selector: "span" }).length).toBe(3);
+  });
+
+  it("does NOT show group divider when filtered to a single status", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ink Soul");
+
+    const statusSelect = screen.getByRole("combobox", { name: /filter by status/i });
+    await user.selectOptions(statusSelect, "Suspended");
+
+    expect(screen.queryByText(/1 studio/, { selector: "span.rounded-full" })).not.toBeInTheDocument();
+  });
+
+  // ── Fix #5: Copy slug ─────────────────────────────────────────────────────────
+
+  it("slug is wrapped in a button with accessible copy label", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    expect(screen.getByRole("button", { name: /copy slug ink-soul/i })).toBeInTheDocument();
+  });
+
+  // ── Fix #6: Button hierarchy ──────────────────────────────────────────────────
+
+  it("Activate button for a Cancelled studio is an outline button, not filled", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios", () =>
+        HttpResponse.json([STUDIO_ACTIVE]),
+      ),
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{
+          ...SUB_ACTIVE,
+          status: "Cancelled",
+          isSuspended: false,
+        }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Ink Soul");
+    const activateBtn = screen.getByRole("button", { name: /activate/i });
+    expect(activateBtn.className).toMatch(/border/);
+    expect(activateBtn.className).not.toMatch(/bg-primary/);
+  });
+
+  it("Reactivate button for a Suspended studio is a filled (default) button", async () => {
+    renderPage();
+    await screen.findByText("Suspended Studio");
+    const reactivateBtn = screen.getByRole("button", { name: /reactivate/i });
+    expect(reactivateBtn.className).toMatch(/bg-primary/);
+  });
+
+  // ── Fix #8: Grant Extension label ─────────────────────────────────────────────
+
+  it("expired trial shows 'Grant Extension (+7 days)' label", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios", () =>
+        HttpResponse.json([{
+          ...STUDIO_ACTIVE,
+          id:             "s-expired",
+          name:           "Expired Trial Studio",
+          slug:           "expired-trial",
+          trialExpiresAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+        }]),
+      ),
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{
+          ...SUB_ACTIVE,
+          studioId:       "s-expired",
+          studioName:     "Expired Trial Studio",
+          studioSlug:     "expired-trial",
+          status:         "Trialing",
+          trialExpiresAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+          isSuspended:    false,
+        }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Expired Trial Studio");
+    expect(
+      screen.getByRole("button", { name: /grant extension \(\+7 days\)/i })
+    ).toBeInTheDocument();
   });
 });

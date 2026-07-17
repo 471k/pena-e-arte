@@ -9,6 +9,10 @@ using Pena_e_Arte.Domain.Exceptions;
 
 namespace Pena_e_Arte.Application.Billing.Commands;
 
+// Plan navigation set explicitly for change-tracker consistency. Note: SubscriptionResponse
+// (returned by CreateSubscriptionHandler.Map) does not carry PlanName, so this does not affect
+// the immediate return value — the "no plan" display case is a real data state (Subscription.PlanId
+// pointing at a deleted/missing Plan) handled by GetPlatformSubscriptionsQuery + the list page fallback.
 public record ActivateSubscriptionManuallyCommand(
     Guid    StudioId,
     Guid    PlanId,
@@ -39,6 +43,7 @@ public class ActivateSubscriptionManuallyHandler(
             {
                 StudioId         = studio.Id,
                 PlanId           = plan.Id,
+                Plan             = plan,
                 Status           = SubscriptionStatus.Active,
                 CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1),
             };
@@ -47,6 +52,7 @@ public class ActivateSubscriptionManuallyHandler(
         else
         {
             studio.Subscription.PlanId           = plan.Id;
+            studio.Subscription.Plan             = plan;
             studio.Subscription.Status           = SubscriptionStatus.Active;
             studio.Subscription.CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1);
             studio.Subscription.TrialExpiresAt   = null;
