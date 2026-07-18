@@ -90,6 +90,26 @@ const BASE_SUB: SubscriptionResponse = {
 const SUB_ACTIVE_CASH: SubscriptionResponse = { ...BASE_SUB, status: "Active", stripeSubscriptionId: null };
 const SUB_ACTIVE_CARD: SubscriptionResponse = { ...BASE_SUB, status: "Active", stripeSubscriptionId: "sub_stripe_xxx" };
 const SUB_ACTIVE_PENDING: SubscriptionResponse = { ...SUB_ACTIVE_CARD, pendingPlanId: "plan-2" };
+const SUB_ACTIVE_FREE: SubscriptionResponse = { ...BASE_SUB, status: "Active", planId: "plan-free", stripeSubscriptionId: null };
+
+const FREE_PLAN: PlanResponse = {
+  id:                    "plan-free",
+  name:                  "Free",
+  billingInterval:       "Monthly",
+  priceMonthly:          0,
+  priceYearly:           0,
+  yearlyDiscountPercent: 0,
+  allowBrandingRemoval:  false,
+  subscriberCount:       0,
+  maxArtists:               1,
+  maxAppointmentsPerMonth:  15,
+  maxNotificationsPerMonth: 50,
+  maxStorageGb:             1,
+  maxLocations:             1,
+  allowApiAccess:           false,
+  prioritySupport:          false,
+  pairedPlanId:             null,
+};
 const SUB_TRIALING: SubscriptionResponse    = { ...BASE_SUB, status: "Trialing",    planId: null };
 const SUB_GRACE: SubscriptionResponse       = { ...BASE_SUB, status: "GracePeriod", planId: null };
 const SUB_PAST_DUE: SubscriptionResponse    = { ...BASE_SUB, status: "PastDue" };
@@ -710,5 +730,79 @@ describe("BillingPage", () => {
     await screen.findByText(/plan usage/i);
 
     expect(screen.getByText("1.2 / 2 GB")).toBeInTheDocument();
+  });
+
+  // ── Free plan ──────────────────────────────────────────────────────────────────
+
+  it("shows 'Upgrade' button when the studio is on an active Free plan", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_FREE),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByRole("button", { name: /^upgrade$/i })).toBeInTheDocument();
+  });
+
+  it("hides the 'Cash-billed subscription' card when the studio is on a Free plan", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_FREE),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Active");
+    expect(screen.queryByText(/cash-billed subscription/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the 'Free plan' info card with an Upgrade CTA when on a Free plan", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_FREE),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/permanent Free plan/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /upgrade plan/i })).toBeInTheDocument();
+  });
+
+  it("shows a 'Free' price label (not €0) when on a Free plan", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_FREE),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Active");
+    // "Free" appears twice: the plan-name badge + the price line
+    expect(screen.getAllByText("Free")).toHaveLength(2);
+    expect(screen.queryByText(/€\s?0/)).not.toBeInTheDocument();
+  });
+
+  it("does not show a renewal date when on a Free plan", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_FREE),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Active");
+    expect(screen.queryByText(/active until/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/next charge/i)).not.toBeInTheDocument();
   });
 });

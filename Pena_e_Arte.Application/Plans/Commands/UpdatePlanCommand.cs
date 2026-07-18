@@ -88,9 +88,14 @@ public class UpdatePlanValidator : AbstractValidator<UpdatePlanCommand>
     {
         RuleFor(x => x.PlanId).NotEmpty();
         RuleFor(x => x.Request.Name).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.Request.PriceMonthly).GreaterThan(0);
-        RuleFor(x => x.Request.PriceYearly).GreaterThan(0);
+        RuleFor(x => x.Request.PriceMonthly).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Request.PriceYearly).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Request.YearlyDiscountPercent).InclusiveBetween(0, 100);
+        // See CreatePlanValidator — a plan is either fully free or fully paid, never mixed.
+        RuleFor(x => x.Request)
+            .Must(r => (r.PriceMonthly == 0) == (r.PriceYearly == 0))
+            .WithName("PriceMonthly")
+            .WithMessage("A plan must be either fully free (both prices = 0) or fully paid (both prices > 0).");
         RuleFor(x => x.Request.MaxArtists).GreaterThan(0)
             .When(x => x.Request.MaxArtists is not null);
         RuleFor(x => x.Request.MaxAppointmentsPerMonth).GreaterThan(0)

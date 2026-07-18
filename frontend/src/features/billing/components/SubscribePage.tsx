@@ -11,6 +11,7 @@ import {
   useGetSubscriptionQuery,
   useCreateCheckoutMutation,
   useChangePlanMutation,
+  useCreateSubscriptionMutation,
 } from "../billingApi";
 import type { PlanResponse } from "../billing.types";
 
@@ -63,8 +64,12 @@ function PlanCard({
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className="font-semibold">{formatPrice(price)}<span className="text-xs font-normal text-muted-foreground">/{isYearly ? "yr" : "mo"}</span></p>
-          {isYearly && (
+          {plan.priceMonthly === 0 ? (
+            <p className="font-semibold text-green-600 dark:text-green-400">Free</p>
+          ) : (
+            <p className="font-semibold">{formatPrice(price)}<span className="text-xs font-normal text-muted-foreground">/{isYearly ? "yr" : "mo"}</span></p>
+          )}
+          {isYearly && plan.priceMonthly > 0 && (
             <p className="text-xs text-green-600 dark:text-green-400">
               {formatPrice(perMonth)}/mo · save {plan.yearlyDiscountPercent}%
             </p>
@@ -90,6 +95,7 @@ export function SubscribePage() {
   const { data: sub } = useGetSubscriptionQuery(undefined, { refetchOnMountOrArgChange: true });
   const [createCheckout,     { isLoading: checkingOut }] = useCreateCheckoutMutation();
   const [changePlan,         { isLoading: switching }]   = useChangePlanMutation();
+  const [activateFree,       { isLoading: activating }]  = useCreateSubscriptionMutation();
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [submitError,    setSubmitError]    = useState<string | null>(null);
@@ -101,11 +107,20 @@ export function SubscribePage() {
   const isCardBilled      = isActive && sub.stripeSubscriptionId !== null;
   const isCashBilled      = isActive && sub.stripeSubscriptionId === null;
   const hasPendingChange  = isCardBilled && sub.pendingPlanId !== null;
-  const busy              = checkingOut || switching;
+  const busy              = checkingOut || switching || activating;
 
   // Derive once — used by the toggle label and the plan list.
   const yearlyDiscount = plans.find((p) => p.billingInterval === "Yearly")?.yearlyDiscountPercent ?? 0;
   const filteredPlans  = plans.filter((p) => p.billingInterval === billingCycle);
+
+  const selectedPlan       = filteredPlans.find((p) => p.id === selectedPlanId) ?? null;
+  const isFreePlanSelected = selectedPlan?.priceMonthly === 0;
+
+  // A studio already on an active Free plan is "cash-billed" in the existing model
+  // (Active + no Stripe subscription) — but its copy needs to read "upgrade", not
+  // "set up card billing" / "switch to card billing".
+  const currentSubPlan  = plans.find((p) => p.id === sub?.planId);
+  const isFreePlanActive = isActive && (currentSubPlan?.priceMonthly ?? -1) === 0;
 
   function handleCycleChange(cycle: "Monthly" | "Yearly") {
     setBillingCycle(cycle);
@@ -115,6 +130,20 @@ export function SubscribePage() {
   async function onSubscribe() {
     if (!selectedPlanId) return;
     setSubmitError(null);
+
+    // Free plan: activate directly through the existing no-Stripe subscribe endpoint —
+    // no card form, no Checkout redirect.
+    if (isFreePlanSelected) {
+      const result = await activateFree({ planId: selectedPlanId });
+      if ("error" in result) {
+        const err = result.error as { data?: { message?: string } } | undefined;
+        setSubmitError(err?.data?.message ?? "Failed to activate the Free plan. Please try again.");
+        return;
+      }
+      toast.success("Free plan activated. Welcome!");
+      navigate("/billing");
+      return;
+    }
 
     if (isCardBilled) {
       const result = await changePlan({ planId: selectedPlanId });
@@ -164,7 +193,13 @@ export function SubscribePage() {
         <div className="flex items-center gap-2">
           <Zap className="h-5 w-5" />
           <span className="font-semibold tracking-tight">
-            {isCardBilled ? "Change Plan" : isCashBilled ? "Set up card billing" : "Choose a Plan"}
+            {isCardBilled
+              ? "Change Plan"
+              : isFreePlanActive
+                ? "Upgrade from Free"
+                : isCashBilled
+                  ? "Set up card billing"
+                  : "Choose a Plan"}
           </span>
         </div>
       </header>
@@ -173,9 +208,11 @@ export function SubscribePage() {
         <p className="text-sm text-muted-foreground">
           {isCardBilled
             ? "Upgrades apply immediately (you pay only the prorated difference). Downgrades take effect at the end of your current billing period."
-            : isCashBilled
-            ? "Switch from cash to automatic card billing. Pick a plan and pay securely by card — you stay active throughout."
-            : "Select a plan to unlock full access for your studio."}
+            : isFreePlanActive
+              ? "You're on the Free plan. Choose a paid plan to unlock higher limits and additional features."
+              : isCashBilled
+                ? "Switch from cash to automatic card billing. Pick a plan and pay securely by card — you stay active throughout."
+                : "Select a plan to unlock full access for your studio."}
         </p>
 
         {hasPendingChange && (
@@ -271,7 +308,16 @@ export function SubscribePage() {
             {busy ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {isCardBilled ? "Switching…" : "Redirecting to checkout…"}
+                {isFreePlanSelected
+                  ? "Activating…"
+                  : isCardBilled
+                    ? "Switching…"
+                    : "Redirecting to checkout…"}
+              </>
+            ) : isFreePlanSelected ? (
+              <>
+                <CheckCircle className="h-4 w-4" />
+                Activate Free plan
               </>
             ) : isCardBilled ? (
               <>

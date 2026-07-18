@@ -73,9 +73,15 @@ public class CreatePlanValidator : AbstractValidator<CreatePlanCommand>
             .NotEmpty()
             .Must(v => Enum.TryParse<BillingInterval>(v, ignoreCase: true, out _))
             .WithMessage("BillingInterval must be 'Monthly' or 'Yearly'.");
-        RuleFor(x => x.Request.PriceMonthly).GreaterThan(0);
-        RuleFor(x => x.Request.PriceYearly).GreaterThan(0);
+        RuleFor(x => x.Request.PriceMonthly).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Request.PriceYearly).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Request.YearlyDiscountPercent).InclusiveBetween(0, 100);
+        // A plan is either fully free (lead-gen tier) or fully paid — never a mix of a
+        // free monthly price with a paid yearly price or vice versa.
+        RuleFor(x => x.Request)
+            .Must(r => (r.PriceMonthly == 0) == (r.PriceYearly == 0))
+            .WithName("PriceMonthly")
+            .WithMessage("A plan must be either fully free (both prices = 0) or fully paid (both prices > 0).");
         RuleFor(x => x.Request.MaxArtists).GreaterThan(0)
             .When(x => x.Request.MaxArtists is not null);
         RuleFor(x => x.Request.MaxAppointmentsPerMonth).GreaterThan(0)

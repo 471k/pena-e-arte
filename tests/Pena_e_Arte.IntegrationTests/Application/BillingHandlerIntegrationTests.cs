@@ -90,6 +90,35 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
         result.CurrentPeriodEnd.Should().BeCloseTo(DateTime.UtcNow.AddMonths(1), TimeSpan.FromSeconds(5));
     }
 
+    [Fact]
+    public async Task CreateSubscription_FreePlan_ActivatesWithFarFuturePeriodEndAndNoStripeCall()
+    {
+        Guid planId   = await SeedPlan(priceMonthly: 0m);
+        Guid studioId = await SeedStudioWithSubscription(SubscriptionStatus.Trialing, planId);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        ICurrentTenant tenant = TenantFor(studioId);
+        IStripeBillingService billing = Substitute.For<IStripeBillingService>();
+        IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
+        CreateSubscriptionHandler handler = new(db, tenant, billing, discounts,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
+
+        SubscriptionResponse result = await handler.Handle(
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        result.Status.Should().Be(SubscriptionStatus.Active.ToString());
+        result.CurrentPeriodEnd.Should().BeAfter(DateTime.UtcNow.AddYears(49));
+        result.StripeSubscriptionId.Should().BeNull();
+
+        await billing.DidNotReceiveWithAnyArgs().CreateCustomerAsync(default!, default);
+        await billing.DidNotReceiveWithAnyArgs().CreateSubscriptionAsync(default!, default!, default, default);
+
+        await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
+        Subscription sub = await verify.Subscriptions.SingleAsync(s => s.StudioId == studioId);
+        sub.CurrentPeriodEnd.Should().BeAfter(DateTime.UtcNow.AddYears(49));
+        sub.StripeSubscriptionId.Should().BeNull();
+    }
+
     // ── GetSubscription ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -139,14 +168,14 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
         return await SeedStudioWithSubscription(SubscriptionStatus.Trialing, null);
     }
 
-    private async Task<Guid> SeedPlan()
+    private async Task<Guid> SeedPlan(decimal priceMonthly = 49m)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);
         Plan plan = new()
         {
-            Name            = "Pro",
+            Name            = priceMonthly == 0 ? "Free" : "Pro",
             BillingInterval = BillingInterval.Monthly,
-            PriceMonthly    = 49m
+            PriceMonthly    = priceMonthly
         };
         ctx.Plans.Add(plan);
         await ctx.SaveChangesAsync();

@@ -20,6 +20,7 @@ public static class DataSeeder
     private static readonly Guid ProPlanId            = new("aaaa0003-0000-0000-0000-000000000000");
     private static readonly Guid PremiumMonthlyPlanId = new("aaaa0004-0000-0000-0000-000000000000");
     private static readonly Guid PremiumYearlyPlanId  = new("aaaa0005-0000-0000-0000-000000000000");
+    private static readonly Guid FreePlanId           = new("aaaa0006-0000-0000-0000-000000000000");
 
     private static readonly Guid Studio1Id       = new("bbbb0001-0000-0000-0000-000000000000");
     private static readonly Guid Studio2Id       = new("bbbb0002-0000-0000-0000-000000000000");
@@ -125,6 +126,12 @@ public static class DataSeeder
         await EnsureSeedUsersAsync(userManager);
         await EnsureArtistSlugsAsync(db);
 
+        // Always run: the Free plan is seeded independently of the one-time entity seed
+        // guard below, so a database that already has Starter/Growth/etc. still picks it
+        // up on the next deploy without re-running the full seed.
+        if (!await db.Plans.AnyAsync(p => p.Id == FreePlanId))
+            await SeedFreePlanAsync(db);
+
         // Guard: run entity seeding only once (when plans don't yet exist)
         if (await db.Plans.AnyAsync(p => p.Id == StarterPlanId))
             return;
@@ -228,6 +235,29 @@ public static class DataSeeder
                 MaxLocations             = 10,
             }
         );
+        await db.SaveChangesAsync();
+    }
+
+    // Free tier — €0, no Stripe price configured (routes CreateSubscriptionCommand down
+    // the no-Stripe path), non-removable platform branding by construction (AllowBrandingRemoval
+    // omitted, defaults to false). Limits are placeholders pending a business decision —
+    // see feature-request-free-tier-plan.md.
+    private static async Task SeedFreePlanAsync(AppDbContext db)
+    {
+        db.Plans.Add(new Plan
+        {
+            Id                       = FreePlanId,
+            Name                     = "Free",
+            BillingInterval          = BillingInterval.Monthly,
+            PriceMonthly             = 0m,
+            PriceYearly              = 0m,
+            YearlyDiscountPercent    = 0,
+            MaxArtists               = 1,
+            MaxAppointmentsPerMonth  = 15,
+            MaxNotificationsPerMonth = 50,
+            MaxStorageGb             = 1,
+            MaxLocations             = 1,
+        });
         await db.SaveChangesAsync();
     }
 

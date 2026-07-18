@@ -30,8 +30,8 @@ const optionalPositiveInt = z.preprocess((v) => {
 const schema = z.object({
   name:                     z.string().min(1, "Name is required").max(100),
   billingInterval:          z.enum(["Monthly", "Yearly"]),
-  priceMonthly:             z.number({ message: "Required" }).positive(),
-  priceYearly:              z.number({ message: "Required" }).positive(),
+  priceMonthly:             z.number({ message: "Required" }).min(0),
+  priceYearly:              z.number({ message: "Required" }).min(0),
   yearlyDiscountPercent:    z.number({ message: "Required" }).min(0).max(100),
   allowBrandingRemoval:     z.boolean(),
   stripePriceIdMonthly:     z.string().max(200).optional().nullable(),
@@ -43,6 +43,9 @@ const schema = z.object({
   maxLocations:             optionalPositiveInt,
   allowApiAccess:           z.boolean(),
   prioritySupport:          z.boolean(),
+}).refine((v) => (v.priceMonthly === 0) === (v.priceYearly === 0), {
+  message: "A plan must be either fully free (both prices = 0) or fully paid (both prices > 0).",
+  path:    ["priceMonthly"],
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -317,7 +320,9 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
             <p className="text-base font-semibold truncate" title={plan.name}>{plan.name}</p>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-muted-foreground">
-                {plan.billingInterval === "Monthly" ? "Billed monthly" : "Billed yearly only"}
+                {plan.priceMonthly === 0
+                  ? "Free forever"
+                  : plan.billingInterval === "Monthly" ? "Billed monthly" : "Billed yearly only"}
               </span>
               {plan.allowBrandingRemoval && (
                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
@@ -340,24 +345,30 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
               {formatLimit(plan.maxStorageGb, "GB")}
             </p>
             <div className="space-y-0.5 mt-1">
-              <p className="text-sm font-mono">
-                <span className="font-medium">
-                  {plan.billingInterval === "Monthly"
-                    ? formatCurrency(plan.priceMonthly)
-                    : formatCurrency(plan.priceYearly)}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {plan.billingInterval === "Monthly" ? "/mo" : "/yr"}
-                </span>
-              </p>
-              <p
-                className="text-[11px] text-muted-foreground/50 font-mono"
-                title="Reference only — not charged at checkout for this plan"
-              >
-                {plan.billingInterval === "Monthly"
-                  ? `${formatCurrency(plan.priceYearly)}/yr ref.`
-                  : `${formatCurrency(plan.priceMonthly)}/mo ref.`}
-              </p>
+              {plan.priceMonthly === 0 ? (
+                <p className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">Free</p>
+              ) : (
+                <>
+                  <p className="text-sm font-mono">
+                    <span className="font-medium">
+                      {plan.billingInterval === "Monthly"
+                        ? formatCurrency(plan.priceMonthly)
+                        : formatCurrency(plan.priceYearly)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {plan.billingInterval === "Monthly" ? "/mo" : "/yr"}
+                    </span>
+                  </p>
+                  <p
+                    className="text-[11px] text-muted-foreground/50 font-mono"
+                    title="Reference only — not charged at checkout for this plan"
+                  >
+                    {plan.billingInterval === "Monthly"
+                      ? `${formatCurrency(plan.priceYearly)}/yr ref.`
+                      : `${formatCurrency(plan.priceMonthly)}/mo ref.`}
+                  </p>
+                </>
+              )}
               {computedSavingsPct > 0 && (
                 <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium">
                   Save {computedSavingsPct}% annually

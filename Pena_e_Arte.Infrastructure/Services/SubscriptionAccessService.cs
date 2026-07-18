@@ -9,6 +9,11 @@ using System.Text.Json.Serialization;
 
 namespace Pena_e_Arte.Infrastructure.Services;
 
+// Free-plan studios have: Status = Active, StripeSubscriptionId = null,
+// CurrentPeriodEnd = ~50 years in the future (see CreateSubscriptionHandler). Access
+// checks here must not assume that Active + null StripeSubscriptionId means cash-billed —
+// it could equally be a Free-plan studio. IsPassThrough below is status-based only, so
+// this already holds; keep it that way.
 public class SubscriptionAccessService(
     AppDbContext      db,
     IDistributedCache cache,

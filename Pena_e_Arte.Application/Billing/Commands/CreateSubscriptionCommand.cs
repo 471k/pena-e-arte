@@ -44,7 +44,9 @@ public class CreateSubscriptionHandler(
         bool    discountApplied = false;
         ReferralCode? pendingCode = null;
 
-        if (subscription.Studio?.PendingReferralCodeId is Guid refCodeId)
+        // A Free plan (PriceMonthly == 0) has nothing to discount — skip coupon creation
+        // entirely rather than let it fail harmlessly into the catch block below.
+        if (plan.PriceMonthly > 0 && subscription.Studio?.PendingReferralCodeId is Guid refCodeId)
         {
             pendingCode = await db.ReferralCodes
                 .FirstOrDefaultAsync(r => r.Id == refCodeId && r.IsActive, ct);
@@ -95,7 +97,14 @@ public class CreateSubscriptionHandler(
         }
         else
         {
-            periodEnd = DateTime.UtcNow.AddMonths(1);
+            // Free plan (PriceMonthly == 0): never expires — use a far-future sentinel so
+            // it stays permanently in the Active pass-through state. This is deliberately
+            // NOT the same "+1 month" used for genuinely cash-billed paid plans below: a
+            // future recurring expiry job built for the cash-billing case must not sweep
+            // Free-tier studios into it.
+            periodEnd = plan.PriceMonthly == 0
+                ? DateTime.UtcNow.AddYears(50)
+                : DateTime.UtcNow.AddMonths(1);
         }
 
         subscription.PlanId           = command.Request.PlanId;

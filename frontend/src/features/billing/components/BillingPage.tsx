@@ -205,8 +205,11 @@ export function BillingPage() {
   }
 
   const cfg          = statusConfig(sub.status);
-  const canSubscribe = sub.status !== "Active";
   const isCashBilled = sub.stripeSubscriptionId === null;
+  const isFreePlan   = (currentPlan?.priceMonthly ?? -1) === 0;
+  // Free-plan studios are Active + cash-billed by the existing model, but still need a
+  // way to move to a paid plan — canSubscribe therefore also covers "Active on Free".
+  const canSubscribe  = sub.status !== "Active" || isFreePlan;
   const canChangePlan = sub.status === "Active" && !isCashBilled;
 
   return (
@@ -219,7 +222,11 @@ export function BillingPage() {
         {canSubscribe && (
           <Button size="sm" onClick={() => navigate("/billing/subscribe")} className="gap-1.5">
             <Zap className="h-3.5 w-3.5" />
-            {sub.status === "Trialing" || sub.status === "GracePeriod" ? "Subscribe" : "Reactivate"}
+            {isFreePlan && sub.status === "Active"
+              ? "Upgrade"
+              : sub.status === "Trialing" || sub.status === "GracePeriod"
+                ? "Subscribe"
+                : "Reactivate"}
           </Button>
         )}
       </header>
@@ -284,20 +291,27 @@ export function BillingPage() {
             {sub.status === "Active" && (
               <div className="space-y-1">
                 {currentPlan && (
-                  <p className="text-sm font-medium">
-                    {formatEur(currentPlan.priceMonthly)}
-                    <span className="text-muted-foreground font-normal"> / month</span>
-                  </p>
+                  isFreePlan ? (
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Free</p>
+                  ) : (
+                    <p className="text-sm font-medium">
+                      {formatEur(currentPlan.priceMonthly)}
+                      <span className="text-muted-foreground font-normal"> / month</span>
+                    </p>
+                  )
                 )}
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Calendar className="h-3.5 w-3.5 shrink-0" />
-                  {isCashBilled
-                    ? <span>Active until {formatDate(sub.currentPeriodEnd)}</span>
-                    : currentPlan
-                      ? <span>Next charge: {formatEur(currentPlan.priceMonthly)} on {formatDate(sub.currentPeriodEnd)}</span>
-                      : <span>Renews {formatDate(sub.currentPeriodEnd)}</span>
-                  }
-                </div>
+                {/* Free plan's period end is a far-future sentinel — showing it would confuse users */}
+                {!isFreePlan && (
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    {isCashBilled
+                      ? <span>Active until {formatDate(sub.currentPeriodEnd)}</span>
+                      : currentPlan
+                        ? <span>Next charge: {formatEur(currentPlan.priceMonthly)} on {formatDate(sub.currentPeriodEnd)}</span>
+                        : <span>Renews {formatDate(sub.currentPeriodEnd)}</span>
+                    }
+                  </div>
+                )}
               </div>
             )}
 
@@ -403,7 +417,7 @@ export function BillingPage() {
         )}
 
         {/* Cash-billed: keep cash (issuer-handled) or self-serve switch to card billing */}
-        {sub.status === "Active" && isCashBilled && (
+        {sub.status === "Active" && isCashBilled && !isFreePlan && (
           <Card>
             <CardContent className="p-5 space-y-3 text-sm">
               <p className="font-medium flex items-center gap-2">
@@ -432,6 +446,30 @@ export function BillingPage() {
                 </a>
                 .
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Free plan: informational card with an upgrade path */}
+        {sub.status === "Active" && isFreePlan && (
+          <Card>
+            <CardContent className="p-5 space-y-3 text-sm">
+              <p className="font-medium flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Free plan
+              </p>
+              <p className="text-muted-foreground">
+                You're on the permanent Free plan. Upgrade to a paid plan to unlock more
+                artists, appointments, storage, and features.
+              </p>
+              <Button
+                size="sm"
+                className="w-full gap-1.5"
+                onClick={() => navigate("/billing/subscribe")}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                Upgrade plan
+              </Button>
             </CardContent>
           </Card>
         )}

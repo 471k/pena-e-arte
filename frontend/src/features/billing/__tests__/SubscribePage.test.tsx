@@ -87,6 +87,32 @@ const SUB_ACTIVE_PENDING: SubscriptionResponse = {
   pendingPlanId: "plan-yearly",
 };
 
+const FREE_PLAN: PlanResponse = {
+  id:                    "plan-free",
+  name:                  "Free",
+  billingInterval:       "Monthly",
+  priceMonthly:          0,
+  priceYearly:           0,
+  yearlyDiscountPercent: 0,
+  allowBrandingRemoval:  false,
+  subscriberCount:       0,
+  maxArtists:               1,
+  maxAppointmentsPerMonth:  15,
+  maxNotificationsPerMonth: 50,
+  maxStorageGb:             1,
+  maxLocations:             1,
+  allowApiAccess:           false,
+  prioritySupport:          false,
+  pairedPlanId:             null,
+};
+
+const SUB_ACTIVE_FREE: SubscriptionResponse = {
+  ...BASE_SUB,
+  status:               "Active",
+  planId:               "plan-free",
+  stripeSubscriptionId: null,
+};
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -590,5 +616,97 @@ describe("SubscribePage", () => {
     renderPage();
     await screen.findByText("Change Plan");
     expect(screen.queryByText(/prefer to pay cash/i)).not.toBeInTheDocument();
+  });
+
+  // --- Free plan ---
+
+  it("shows the Free price label on the Free plan card", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Starter");
+    // "Free" appears twice on the card: plan name + price label
+    expect(screen.getAllByText("Free")).toHaveLength(2);
+  });
+
+  it("shows 'Activate Free plan' button when the Free plan is selected", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^free/i });
+
+    await user.click(screen.getByRole("button", { name: /^free/i }));
+
+    expect(await screen.findByRole("button", { name: /activate free plan/i })).toBeInTheDocument();
+  });
+
+  it("calls the direct subscribe endpoint (not checkout) for the Free plan and navigates to /billing", async () => {
+    const subscribeSpy = vi.fn();
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.post(
+        "http://localhost/api/v1/billing/subscription",
+        async ({ request }) => {
+          const body = await request.json();
+          subscribeSpy(body);
+          return HttpResponse.json({ ...SUB_ACTIVE_FREE });
+        },
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^free/i });
+
+    await user.click(screen.getByRole("button", { name: /^free/i }));
+    await user.click(screen.getByRole("button", { name: /activate free plan/i }));
+
+    await waitFor(() =>
+      expect(subscribeSpy).toHaveBeenCalledWith({ planId: "plan-free" }),
+    );
+    await screen.findByTestId("billing-page");
+  });
+
+  it("shows the server error message when Free plan activation fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.post(
+        "http://localhost/api/v1/billing/subscription",
+        () => HttpResponse.json({ message: "Free plan unavailable." }, { status: 400 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^free/i });
+
+    await user.click(screen.getByRole("button", { name: /^free/i }));
+    await user.click(screen.getByRole("button", { name: /activate free plan/i }));
+
+    expect(await screen.findByText("Free plan unavailable.")).toBeInTheDocument();
+  });
+
+  it("shows 'Upgrade from Free' header when the studio is on an active Free plan", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_FREE),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText("Upgrade from Free")).toBeInTheDocument();
   });
 });

@@ -146,13 +146,51 @@ public class CreateSubscriptionHandlerTests
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    private async Task<Guid> SeedPlan(string? stripePriceIdMonthly = null)
+    [Fact]
+    public async Task Handle_FreePlan_SetsFarFuturePeriodEnd()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 0m);
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        SubscriptionResponse result = await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        result.CurrentPeriodEnd.Should().BeAfter(DateTime.UtcNow.AddYears(49));
+    }
+
+    [Fact]
+    public async Task Handle_PaidPlanWithoutStripePriceId_SetsOneMonthPeriodEnd()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 49m);
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        SubscriptionResponse result = await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        result.CurrentPeriodEnd.Should().BeCloseTo(DateTime.UtcNow.AddMonths(1), TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task Handle_FreePlan_SkipsReferralCoupon()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 0m);
+        Guid referralCodeId = await SeedActiveReferralCode();
+        await SeedSubscription(SubscriptionStatus.Trialing, pendingReferralCodeId: referralCodeId);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    private async Task<Guid> SeedPlan(string? stripePriceIdMonthly = null, decimal priceMonthly = 49m)
     {
         Plan plan = new()
         {
             Name                 = "Pro",
             BillingInterval      = BillingInterval.Monthly,
-            PriceMonthly         = 49m,
+            PriceMonthly         = priceMonthly,
             StripePriceIdMonthly = stripePriceIdMonthly,
         };
         _db.Plans.Add(plan);
@@ -160,17 +198,31 @@ public class CreateSubscriptionHandlerTests
         return plan.Id;
     }
 
-    private async Task SeedSubscription(SubscriptionStatus status)
+    private async Task<Guid> SeedActiveReferralCode()
+    {
+        ReferralCode code = new()
+        {
+            StudioId = Guid.NewGuid(),
+            Code     = "REFCODE1",
+            IsActive = true,
+        };
+        _db.ReferralCodes.Add(code);
+        await _db.SaveChangesAsync();
+        return code.Id;
+    }
+
+    private async Task SeedSubscription(SubscriptionStatus status, Guid? pendingReferralCodeId = null)
     {
         Studio studio = new()
         {
-            Id             = _studioId,
-            Name           = "Test Studio",
-            Slug           = "test-studio",
-            City           = "Lisboa",
-            OwnerEmail     = "owner@test.com",
-            IsActive       = true,
-            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            Id                    = _studioId,
+            Name                  = "Test Studio",
+            Slug                  = "test-studio",
+            City                  = "Lisboa",
+            OwnerEmail            = "owner@test.com",
+            IsActive              = true,
+            TrialExpiresAt        = DateTime.UtcNow.AddDays(14),
+            PendingReferralCodeId = pendingReferralCodeId,
         };
         _db.Studios.Add(studio);
 
