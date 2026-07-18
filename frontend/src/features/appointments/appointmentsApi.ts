@@ -5,6 +5,7 @@ import type {
   CheckSlotAvailabilityParams,
   CreateAppointmentRequest,
   GetAppointmentsParams,
+  RescheduleAppointmentRequest,
   SlotAvailabilityResponse,
 } from "./appointment.types";
 
@@ -53,6 +54,17 @@ export const appointmentsApi = createApi({
       query: (id) => ({ url: `appointments/${id}/no-show`, method: "PATCH" }),
       invalidatesTags: ["Appointment"],
     }),
+    rescheduleAppointment: builder.mutation<
+      AppointmentResponse,
+      { id: string } & RescheduleAppointmentRequest
+    >({
+      query: ({ id, ...body }) => ({
+        url:    `appointments/${id}/reschedule`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Appointment"],
+    }),
     checkSlotAvailability: builder.query<SlotAvailabilityResponse, CheckSlotAvailabilityParams>({
       query: ({ artistId, date, durationMinutes }) => ({
         url:    "appointments/check-slot",
@@ -72,5 +84,6 @@ export const {
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
+  useRescheduleAppointmentMutation,
   useCheckSlotAvailabilityQuery,
 } = appointmentsApi;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -83,6 +83,16 @@ const server = setupServer(
   http.patch("http://localhost/api/v1/appointments/:id/no-show", ({ params }) =>
     HttpResponse.json({ ...APPT_CONFIRMED, id: params.id as string, status: "NoShow" }),
   ),
+  http.patch("http://localhost/api/v1/appointments/:id/reschedule", async ({ params, request }) => {
+    const body = await request.json() as { newDate: string; newDurationMinutes: number };
+    return HttpResponse.json({
+      ...APPT_PENDING, id: params.id as string,
+      date: body.newDate, durationMinutes: body.newDurationMinutes,
+    });
+  }),
+  http.get("http://localhost/api/v1/appointments/check-slot", () =>
+    HttpResponse.json({ available: true, reason: null }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -90,6 +100,13 @@ afterEach(() => { server.resetHandlers(); cleanup(); });
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+// Mirrors RescheduleDialog's own toDatetimeLocalValue — needed to assert against the rendered <input> value.
+function toDatetimeLocalValueForTest(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeStore(role: Role = Role.Artist) {
@@ -306,5 +323,57 @@ describe("AppointmentDetailPage", () => {
     renderPage("appt-002", Role.Artist);
     await user.click(await screen.findByRole("button", { name: /mark no-show/i }));
     expect(screen.queryByText(/failed/i)).not.toBeInTheDocument();
+  });
+
+  // ── Reschedule ──────────────────────────────────────────────────────────────
+
+  it("artist sees 'Reschedule' button for a non-terminal appointment", async () => {
+    renderPage("appt-001", Role.Artist);
+    expect(await screen.findByRole("button", { name: /^reschedule$/i })).toBeInTheDocument();
+  });
+
+  it("artist does NOT see 'Reschedule' for a Completed appointment", async () => {
+    renderPage("appt-003", Role.Artist);
+    await screen.findByText("90 min");
+    expect(screen.queryByRole("button", { name: /^reschedule$/i })).not.toBeInTheDocument();
+  });
+
+  it("client role does NOT see 'Reschedule'", async () => {
+    renderPage("appt-001", Role.Client);
+    await screen.findByText("90 min");
+    expect(screen.queryByRole("button", { name: /^reschedule$/i })).not.toBeInTheDocument();
+  });
+
+  it("clicking 'Reschedule' opens the reschedule dialog pre-filled with the current date and duration", async () => {
+    const user = userEvent.setup();
+    renderPage("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /^reschedule$/i }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/reschedule appointment/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/new date/i)).toHaveValue(toDatetimeLocalValueForTest(FUTURE));
+  });
+
+  it("dialog 'Cancel' button closes without calling the mutation", async () => {
+    const user = userEvent.setup();
+    renderPage("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /^reschedule$/i }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /^cancel$/i }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("submitting a new duration calls the reschedule mutation and closes the dialog", async () => {
+    const user = userEvent.setup();
+    renderPage("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /^reschedule$/i }));
+
+    const durationTrigger = screen.getByLabelText(/duration/i);
+    await user.click(durationTrigger);
+    await user.click(await screen.findByRole("option", { name: /1 hour$/i }));
+
+    await user.click(screen.getByRole("button", { name: /confirm reschedule/i }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 });

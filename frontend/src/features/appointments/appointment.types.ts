@@ -42,6 +42,12 @@ export interface CreateAppointmentRequest {
   notes:           string | null;
 }
 
+export interface RescheduleAppointmentRequest {
+  newDate:            string;
+  newDurationMinutes: number;
+  notes:              string | null;
+}
+
 export interface GetAppointmentsParams {
   from?:     string;
   to?:       string;

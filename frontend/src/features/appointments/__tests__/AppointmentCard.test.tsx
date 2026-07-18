@@ -1,0 +1,114 @@
+import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Provider } from "react-redux";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { configureStore } from "@reduxjs/toolkit";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+
+import authReducer from "@/features/auth/authSlice";
+import uiReducer from "@/features/ui/uiSlice";
+import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { AppointmentCard } from "@/features/appointments/components/AppointmentCard";
+
+import type { AppointmentResponse } from "@/features/appointments/appointment.types";
+import { Role } from "@/shared/types/roles";
+
+// ── Seed data ──────────────────────────────────────────────────────────────────
+
+const FUTURE = new Date(Date.now() + 7 * 86_400_000).toISOString();
+const FUTURE_END = new Date(Date.now() + 7 * 86_400_000 + 3_600_000).toISOString();
+
+const APPT_PENDING: AppointmentResponse = {
+  id: "appt-001", studioId: "s-001",
+  artistId: "a-001", clientId: "c-001",
+  date: FUTURE, endDate: FUTURE_END,
+  durationMinutes: 60,
+  status: "Pending",
+  depositStatus: "Pending",
+  depositAmount: 0,
+  notes: null,
+  createdAt: "2024-01-01T00:00:00Z",
+};
+
+const APPT_COMPLETED: AppointmentResponse = {
+  ...APPT_PENDING,
+  id: "appt-002",
+  status: "Completed",
+  depositStatus: "Paid",
+};
+
+// ── MSW server ─────────────────────────────────────────────────────────────────
+
+const server = setupServer(
+  http.get("http://localhost/api/v1/appointments/check-slot", () =>
+    HttpResponse.json({ available: true, reason: null }),
+  ),
+);
+
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => { server.resetHandlers(); cleanup(); });
+afterAll(() => server.close());
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeStore(role: Role = Role.Artist) {
+  return configureStore({
+    reducer: {
+      auth:                          authReducer,
+      ui:                            uiReducer,
+      [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+    },
+    middleware: (gd) => gd().concat(appointmentsApi.middleware),
+    preloadedState: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+    },
+  });
+}
+
+function renderCard(appointment: AppointmentResponse, role: Role = Role.Artist) {
+  render(
+    <Provider store={makeStore(role)}>
+      <MemoryRouter>
+        <Routes>
+          <Route path="/" element={<AppointmentCard appointment={appointment} />} />
+          <Route path="/appointments/:id" element={<div data-testid="detail-page" />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────────
+
+describe("AppointmentCard", () => {
+
+  it("artist sees the Reschedule icon button for a non-terminal appointment", () => {
+    renderCard(APPT_PENDING, Role.Artist);
+    expect(screen.getByRole("button", { name: /reschedule appointment/i })).toBeInTheDocument();
+  });
+
+  it("artist does NOT see the Reschedule icon button for a Completed appointment", () => {
+    renderCard(APPT_COMPLETED, Role.Artist);
+    expect(screen.queryByRole("button", { name: /reschedule appointment/i })).not.toBeInTheDocument();
+  });
+
+  it("client role does NOT see the Reschedule icon button", () => {
+    renderCard(APPT_PENDING, Role.Client);
+    expect(screen.queryByRole("button", { name: /reschedule appointment/i })).not.toBeInTheDocument();
+  });
+
+  it("clicking the Reschedule icon button opens the dialog and does not navigate to the detail page", async () => {
+    const user = userEvent.setup();
+    renderCard(APPT_PENDING, Role.Artist);
+
+    await user.click(screen.getByRole("button", { name: /reschedule appointment/i }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.queryByTestId("detail-page")).not.toBeInTheDocument();
+  });
+});

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, CreditCard, Loader2, Trash2, UserX } from "lucide-react";
+import { CalendarClock, Check, CreditCard, Loader2, Trash2, UserX } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { usePermission } from "@/shared/hooks/usePermission";
@@ -10,6 +10,7 @@ import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
+import { RescheduleDialog } from "./RescheduleDialog";
 import {
   useCancelAppointmentMutation,
   useConfirmAppointmentMutation,
@@ -48,6 +49,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const isArtistPlus  = usePermission(Role.Artist);
   const canOwner      = usePermission(Role.Owner);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
 
   const [cancel,   { isLoading: cancelling  }] = useCancelAppointmentMutation();
   const [confirm,  { isLoading: confirming  }] = useConfirmAppointmentMutation();
@@ -130,6 +132,18 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               </Button>
             )}
 
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={anyLoading}
+              onClick={() => setRescheduleDialogOpen(true)}
+              className="h-7 w-7 p-0 text-muted-foreground"
+              title="Reschedule"
+              aria-label="Reschedule appointment"
+            >
+              <CalendarClock className="h-3.5 w-3.5" />
+            </Button>
+
             {!isPending && !isTerminal && (
               <Button
                 variant="ghost"
@@ -195,6 +209,12 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
           </div>
         )}
       </CardContent>
+
+      <RescheduleDialog
+        appointment={appointment}
+        open={rescheduleDialogOpen}
+        onOpenChange={setRescheduleDialogOpen}
+      />
     </Card>
   );
 }
