@@ -211,6 +211,13 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
     }
   }
 
+  // Compute savings from actual prices — not from the stored yearlyDiscountPercent field,
+  // which can silently desync if prices are edited without updating the discount.
+  const computedSavingsPct =
+    plan.priceMonthly > 0
+      ? Math.round((1 - plan.priceYearly / (plan.priceMonthly * 12)) * 100)
+      : 0;
+
   return (
     <Card className="hover:border-border/60 transition-colors">
       <CardContent className="p-4 space-y-3">
@@ -218,8 +225,8 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
         <div className="flex items-start justify-between gap-4">
           {/* left: info */}
           <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base font-semibold">{plan.name}</span>
+            <p className="text-base font-semibold truncate" title={plan.name}>{plan.name}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-muted-foreground">Billing: {plan.billingInterval}</span>
               {plan.allowBrandingRemoval && (
                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
@@ -239,9 +246,9 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
                   <span className="text-xs text-muted-foreground">/yr</span>
                 </span>
               </p>
-              {plan.yearlyDiscountPercent > 0 && (
-                <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium">
-                  Save {plan.yearlyDiscountPercent}% vs monthly billing
+              {computedSavingsPct > 0 && (
+                <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium">
+                  Save {computedSavingsPct}% annually
                 </span>
               )}
             </div>
@@ -249,7 +256,11 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
 
           {/* right: subscriber count + actions */}
           <div className="flex items-center gap-2 shrink-0">
-            <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Studios on this plan">
+            <span
+              className="flex items-center gap-1 text-xs text-muted-foreground"
+              title={`${plan.subscriberCount} studio${plan.subscriberCount !== 1 ? "s" : ""} subscribed`}
+              aria-label={`${plan.subscriberCount} studio${plan.subscriberCount !== 1 ? "s" : ""} subscribed to ${plan.name}`}
+            >
               <Users className="h-3.5 w-3.5" />
               {plan.subscriberCount}
             </span>
@@ -269,7 +280,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive transition-colors"
+                  className="h-7 w-7 p-0 text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
                   onClick={() => setDeleting(true)}
                   aria-label={`Delete ${plan.name} plan`}
                   title="Delete"
@@ -362,7 +373,7 @@ export function PlanManagementPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-20">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Plans</span>
@@ -416,6 +427,19 @@ export function PlanManagementPage() {
             {plans.map((p) => (
               <PlanCard key={p.id} plan={p} />
             ))}
+
+            {/* Ghost tile: only shown when the grid has an unfilled last slot */}
+            {plans.length % 3 !== 0 && (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/40 p-8 text-muted-foreground/40 hover:border-border/70 hover:text-muted-foreground/60 transition-colors cursor-pointer min-h-[100px]"
+                aria-label="Create new plan"
+              >
+                <Plus className="h-5 w-5" />
+                <span className="text-xs">Add plan</span>
+              </button>
+            )}
           </div>
         )}
       </main>
