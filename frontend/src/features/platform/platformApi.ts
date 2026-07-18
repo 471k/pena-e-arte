@@ -7,13 +7,14 @@ import type {
   PlatformReferralCodeResponse,
   IndustryReportSummary,
   IssuerStudioSummaryResponse,
+  PlanUsageReportResponse,
 } from "./platform.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
 export const platformApi = createApi({
   reducerPath: "platformApi",
   baseQuery,
-  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "IssuerStudioSummary"],
+  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "IssuerStudioSummary", "PlanUsageReport"],
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStatsResponse, void>({
       query: () => "platform/stats",
@@ -105,6 +106,10 @@ export const platformApi = createApi({
       }),
       invalidatesTags: ["PlatformSubscription", "PlatformStats"],
     }),
+    getPlanUsageReport: builder.query<PlanUsageReportResponse, void>({
+      query: () => "platform/plan-usage-report",
+      providesTags: ["PlanUsageReport"],
+    }),
   }),
 });
 
@@ -123,4 +128,5 @@ export const {
   useDeleteReferralCodeMutation,
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
+  useGetPlanUsageReportQuery,
 } = platformApi;

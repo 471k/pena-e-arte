@@ -1,7 +1,7 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { RootState } from "@/app/store";
-import { setReadOnlyError, setSessionExpired, setStudioSuspended } from "@/features/ui/uiSlice";
+import { setReadOnlyError, setSessionExpired, setStudioSuspended, setPlanLimitError } from "@/features/ui/uiSlice";
 import { setCredentials, logout } from "@/features/auth/authSlice";
 import { decodeToken } from "@/shared/utils/jwt";
 
@@ -84,9 +84,11 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
     }
 
     if (result.error?.status === 403) {
-      const data = result.error.data as { code?: string } | undefined;
+      const data = result.error.data as { code?: string; message?: string } | undefined;
       if (data?.code === "STUDIO_SUSPENDED") {
         api.dispatch(setStudioSuspended());
+      } else if (data?.code === "PLAN_LIMIT_EXCEEDED") {
+        api.dispatch(setPlanLimitError(data.message ?? "This studio's plan limit was reached."));
       }
     }
 

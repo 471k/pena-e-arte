@@ -17,7 +17,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.17")
+                .HasAnnotation("ProductVersion", "9.0.18")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -1260,6 +1260,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<bool>("AllowApiAccess")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("AllowBrandingRemoval")
                         .HasColumnType("tinyint(1)");
 
@@ -1271,16 +1276,39 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int?>("MaxAppointmentsPerMonth")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxArtists")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxLocations")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxNotificationsPerMonth")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxStorageGb")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<Guid?>("PairedPlanId")
+                        .HasColumnType("char(36)");
 
                     b.Property<decimal>("PriceMonthly")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("PriceYearly")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("PrioritySupport")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("StripePriceIdMonthly")
                         .HasMaxLength(255)
@@ -1295,6 +1323,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_plans");
+
+                    b.HasIndex("PairedPlanId")
+                        .HasDatabaseName("ix_plans_paired_plan_id");
 
                     b.ToTable("plans", (string)null);
                 });
@@ -1599,6 +1630,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.Property<DateTime?>("SlugLockedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<long>("StorageUsageBytes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
 
                     b.Property<string>("StripeCustomerId")
                         .HasMaxLength(255)

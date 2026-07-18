@@ -66,4 +66,61 @@ public class CreatePlanHandlerTests
 
         await act.Should().ThrowAsync<Exception>();
     }
+
+    [Fact]
+    public async Task Handle_WithLimitFields_PersistsAndReturnsThem()
+    {
+        PlanResponse result = await CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Premium", "Monthly", 79m, 790m, 17,
+                MaxArtists: 6,
+                MaxAppointmentsPerMonth: 400,
+                MaxNotificationsPerMonth: 1200,
+                MaxStorageGb: 25,
+                MaxLocations: 2,
+                AllowApiAccess: false,
+                PrioritySupport: true)), default);
+
+        result.MaxArtists.Should().Be(6);
+        result.MaxAppointmentsPerMonth.Should().Be(400);
+        result.MaxNotificationsPerMonth.Should().Be(1200);
+        result.MaxStorageGb.Should().Be(25);
+        result.MaxLocations.Should().Be(2);
+        result.PrioritySupport.Should().BeTrue();
+        result.AllowApiAccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_NoLimitFields_ReturnsNullMeaningUnlimited()
+    {
+        PlanResponse result = await CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest("Pro", "Monthly", 99m, 990m, 17)), default);
+
+        result.MaxArtists.Should().BeNull();
+        result.MaxAppointmentsPerMonth.Should().BeNull();
+        result.MaxStorageGb.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_PairedPlanIdPointsToNonexistentPlan_ThrowsNotFoundException()
+    {
+        Func<Task> act = () => CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Premium", "Yearly", 79m, 790m, 17, PairedPlanId: Guid.NewGuid())), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_PairedPlanIdPointsToExistingPlan_Persists()
+    {
+        PlanResponse existing = await CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest("Premium", "Monthly", 79m, 790m, 17)), default);
+
+        PlanResponse result = await CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Premium", "Yearly", 79m, 790m, 17, PairedPlanId: existing.Id)), default);
+
+        result.PairedPlanId.Should().Be(existing.Id);
+    }
 }

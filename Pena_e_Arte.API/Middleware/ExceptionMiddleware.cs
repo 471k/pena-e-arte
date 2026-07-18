@@ -41,6 +41,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             ForbiddenException                  => (StatusCodes.Status403Forbidden,           ex.Message, null),
             TenantSuspendedException            => (StatusCodes.Status403Forbidden,           ex.Message, "STUDIO_SUSPENDED"),
             SubscriptionRequiredException       => (StatusCodes.Status402PaymentRequired,     ex.Message, null),
+            PlanLimitExceededException          => (StatusCodes.Status403Forbidden,           ex.Message, "PLAN_LIMIT_EXCEEDED"),
             BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message, null),
             ServiceUnavailableException         => (StatusCodes.Status503ServiceUnavailable,  ex.Message, null),
             UnauthorizedAccessException     => (StatusCodes.Status401Unauthorized,          ex.Message, null),

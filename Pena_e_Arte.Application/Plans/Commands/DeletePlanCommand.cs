@@ -24,6 +24,13 @@ public class DeletePlanHandler(IAppDbContext db)
             throw new BusinessRuleViolationException(
                 "Cannot delete a plan that has active subscriptions.");
 
+        // Don't leave the paired row (its Monthly/Yearly counterpart) pointing at a
+        // deleted plan.
+        Domain.Entities.Plan? paired = await db.Plans
+            .FirstOrDefaultAsync(p => p.PairedPlanId == command.PlanId, ct);
+        if (paired is not null)
+            paired.PairedPlanId = null;
+
         db.Plans.Remove(plan);
         await db.SaveChangesAsync(ct);
     }

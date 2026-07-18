@@ -4,19 +4,25 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Domain.Utilities;
 
 namespace Pena_e_Arte.Application.Artists.Commands;
 
-public record CreateArtistCommand(CreateArtistRequest Request) : IRequest<ArtistResponse>;
+public record CreateArtistCommand(CreateArtistRequest Request)
+    : IRequest<ArtistResponse>, IQuotaCheckedCommand
+{
+    public QuotaType QuotaType => QuotaType.Artists;
+}
 
 public class CreateArtistHandler(
-    IAppDbContext    db,
-    ICurrentTenant   tenant,
-    IIdentityService identity,
-    IJobScheduler    scheduler)
+    IAppDbContext     db,
+    ICurrentTenant    tenant,
+    IIdentityService  identity,
+    IJobScheduler     scheduler,
+    IPlanLimitService planLimits)
     : IRequestHandler<CreateArtistCommand, ArtistResponse>
 {
     public async Task<ArtistResponse> Handle(CreateArtistCommand command, CancellationToken ct)
@@ -71,6 +77,10 @@ public class CreateArtistHandler(
 
         db.Artists.Add(artist);
         await db.SaveChangesAsync(ct);
+
+        // Write-through cache invalidation — the next EnsureWithinLimitAsync call for
+        // this studio reflects this new artist immediately instead of up to 30s later.
+        await planLimits.InvalidateUsageCacheAsync(QuotaType.Artists, ct);
 
         // Fire-and-forget via Hangfire so the HTTP response returns immediately
         scheduler.EnqueueArtistInvite(req.Email, req.FirstName, tenant.StudioId);

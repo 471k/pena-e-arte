@@ -15,9 +15,11 @@ public static class DataSeeder
 
     // ─── Issuer-level IDs ──────────────────────────────────────────────────────
 
-    private static readonly Guid StarterPlanId = new("aaaa0001-0000-0000-0000-000000000000");
-    private static readonly Guid GrowthPlanId  = new("aaaa0002-0000-0000-0000-000000000000");
-    private static readonly Guid ProPlanId     = new("aaaa0003-0000-0000-0000-000000000000");
+    private static readonly Guid StarterPlanId        = new("aaaa0001-0000-0000-0000-000000000000");
+    private static readonly Guid GrowthPlanId         = new("aaaa0002-0000-0000-0000-000000000000");
+    private static readonly Guid ProPlanId            = new("aaaa0003-0000-0000-0000-000000000000");
+    private static readonly Guid PremiumMonthlyPlanId = new("aaaa0004-0000-0000-0000-000000000000");
+    private static readonly Guid PremiumYearlyPlanId  = new("aaaa0005-0000-0000-0000-000000000000");
 
     private static readonly Guid Studio1Id       = new("bbbb0001-0000-0000-0000-000000000000");
     private static readonly Guid Studio2Id       = new("bbbb0002-0000-0000-0000-000000000000");
@@ -140,30 +142,90 @@ public static class DataSeeder
         db.Plans.AddRange(
             new Plan
             {
-                Id                    = StarterPlanId,
-                Name                  = "Starter",
-                BillingInterval       = BillingInterval.Monthly,
-                PriceMonthly          = 29m,
-                PriceYearly           = 290m,
-                YearlyDiscountPercent = 17
+                Id                       = StarterPlanId,
+                Name                     = "Starter",
+                BillingInterval          = BillingInterval.Monthly,
+                PriceMonthly             = 29m,
+                PriceYearly              = 290m,
+                YearlyDiscountPercent    = 17,
+                MaxArtists               = 1,
+                MaxAppointmentsPerMonth  = 40,
+                MaxNotificationsPerMonth = 150,
+                MaxStorageGb             = 2,
+                MaxLocations             = 1,
             },
             new Plan
             {
-                Id                    = GrowthPlanId,
-                Name                  = "Growth",
-                BillingInterval       = BillingInterval.Monthly,
-                PriceMonthly          = 59m,
-                PriceYearly           = 590m,
-                YearlyDiscountPercent = 17
+                Id                       = GrowthPlanId,
+                Name                     = "Growth",
+                BillingInterval          = BillingInterval.Monthly,
+                PriceMonthly             = 59m,
+                PriceYearly              = 590m,
+                YearlyDiscountPercent    = 17,
+                AllowBrandingRemoval     = true,
+                MaxArtists               = 3,
+                MaxAppointmentsPerMonth  = 150,
+                MaxNotificationsPerMonth = 600,
+                MaxStorageGb             = 10,
+                MaxLocations             = 1,
+            },
+            // Premium sits between Growth and Pro. Two rows, not one — the billing
+            // interval is intentionally locked per-Plan-row (see Decisions Log: "Plan
+            // billing interval stays locked per-row"), so offering both cadences means
+            // two Plan rows sharing the same limits, linked via PairedPlanId.
+            // UpdatePlanHandler keeps their limit/feature fields in sync automatically.
+            new Plan
+            {
+                Id                       = PremiumMonthlyPlanId,
+                Name                     = "Premium",
+                BillingInterval          = BillingInterval.Monthly,
+                PriceMonthly             = 79m,
+                PriceYearly              = 790m,
+                YearlyDiscountPercent    = 17,
+                AllowBrandingRemoval     = true,
+                PrioritySupport          = true,
+                MaxArtists               = 6,
+                MaxAppointmentsPerMonth  = 400,
+                MaxNotificationsPerMonth = 1200,
+                MaxStorageGb             = 25,
+                MaxLocations             = 2,
+                PairedPlanId             = PremiumYearlyPlanId,
             },
             new Plan
             {
-                Id                    = ProPlanId,
-                Name                  = "Pro",
-                BillingInterval       = BillingInterval.Monthly,
-                PriceMonthly          = 99m,
-                PriceYearly           = 990m,
-                YearlyDiscountPercent = 17
+                Id                       = PremiumYearlyPlanId,
+                Name                     = "Premium",
+                BillingInterval          = BillingInterval.Yearly,
+                PriceMonthly             = 79m,
+                PriceYearly              = 790m,
+                YearlyDiscountPercent    = 17,
+                AllowBrandingRemoval     = true,
+                PrioritySupport          = true,
+                MaxArtists               = 6,
+                MaxAppointmentsPerMonth  = 400,
+                MaxNotificationsPerMonth = 1200,
+                MaxStorageGb             = 25,
+                MaxLocations             = 2,
+                PairedPlanId             = PremiumMonthlyPlanId,
+            },
+            new Plan
+            {
+                Id                       = ProPlanId,
+                Name                     = "Pro",
+                BillingInterval          = BillingInterval.Monthly,
+                PriceMonthly             = 99m,
+                PriceYearly              = 990m,
+                YearlyDiscountPercent    = 17,
+                AllowBrandingRemoval     = true,
+                AllowApiAccess           = true,
+                PrioritySupport          = true,
+                // Soft caps, not true unlimited — protects against a single runaway
+                // account inflating Twilio/Hangfire/DB load (owner decision, 2026-07-18).
+                MaxArtists               = 10,
+                MaxAppointmentsPerMonth  = 1000,
+                MaxNotificationsPerMonth = 2500,
+                MaxStorageGb             = 50,
+                MaxLocations             = 10,
             }
         );
         await db.SaveChangesAsync();

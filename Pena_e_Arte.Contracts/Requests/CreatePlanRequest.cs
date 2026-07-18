@@ -6,5 +6,13 @@ public record CreatePlanRequest(
     decimal PriceMonthly,
     decimal PriceYearly,
     int     YearlyDiscountPercent,
-    string? StripePriceIdMonthly = null,
-    string? StripePriceIdYearly  = null);
+    string? StripePriceIdMonthly     = null,
+    string? StripePriceIdYearly      = null,
+    int?    MaxArtists               = null,
+    int?    MaxAppointmentsPerMonth  = null,
+    int?    MaxNotificationsPerMonth = null,
+    int?    MaxStorageGb             = null,
+    int?    MaxLocations             = null,
+    bool    AllowApiAccess           = false,
+    bool    PrioritySupport          = false,
+    Guid?   PairedPlanId             = null);

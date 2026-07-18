@@ -62,6 +62,14 @@ const PLANS: PlanResponse[] = [
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
     subscriberCount:       2,
+    maxArtists:               null,
+    maxAppointmentsPerMonth:  null,
+    maxNotificationsPerMonth: null,
+    maxStorageGb:             null,
+    maxLocations:             null,
+    allowApiAccess:           false,
+    prioritySupport:          false,
+    pairedPlanId:             null,
   },
 ];
 

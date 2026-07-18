@@ -26,6 +26,7 @@ public static class BillingEndpoints
         billingGroup.MapDelete("/plans/{id:guid}", DeletePlan).RequireAuthorization("IssuerOnly");
 
         billingGroup.MapGet("/subscription",   GetSubscription).RequireAuthorization("OwnerOnly");
+        billingGroup.MapGet("/usage",          GetPlanUsage).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/subscription",  CreateSubscription).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/subscription/checkout",          CreateCheckout).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/subscription/checkout/finalize", FinalizeCheckout).RequireAuthorization("OwnerOnly");
@@ -80,6 +81,14 @@ public static class BillingEndpoints
         CancellationToken ct)
     {
         SubscriptionResponse result = await mediator.Send(new GetSubscriptionQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetPlanUsage(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        PlanUsageResponse? result = await mediator.Send(new GetPlanUsageQuery(), ct);
         return Results.Ok(result);
     }
 

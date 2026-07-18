@@ -38,7 +38,7 @@ function makeStoreWithSuspension(suspended: boolean) {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: suspended },
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: suspended, planLimitError: null },
     },
   });
 }

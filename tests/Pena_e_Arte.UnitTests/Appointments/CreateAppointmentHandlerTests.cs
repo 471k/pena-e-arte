@@ -15,14 +15,15 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class CreateAppointmentHandlerTests
 {
-    private readonly FakeDbContext     _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant    _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser      _user     = Substitute.For<ICurrentUser>();
-    private readonly ISlotLocker       _locker   = Substitute.For<ISlotLocker>();
-    private readonly IJobScheduler     _jobs     = Substitute.For<IJobScheduler>();
-    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender           _sender   = Substitute.For<ISender>();
-    private readonly Guid              _studioId = Guid.NewGuid();
+    private readonly FakeDbContext     _db         = FakeDbContext.Create();
+    private readonly ICurrentTenant    _tenant     = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser      _user       = Substitute.For<ICurrentUser>();
+    private readonly ISlotLocker       _locker     = Substitute.For<ISlotLocker>();
+    private readonly IJobScheduler     _jobs       = Substitute.For<IJobScheduler>();
+    private readonly IRealtimeNotifier _realtime   = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender           _sender     = Substitute.For<ISender>();
+    private readonly IPlanLimitService _planLimits = Substitute.For<IPlanLimitService>();
+    private readonly Guid              _studioId   = Guid.NewGuid();
 
     public CreateAppointmentHandlerTests()
     {
@@ -33,7 +34,15 @@ public class CreateAppointmentHandlerTests
     }
 
     private CreateAppointmentHandler CreateSut() =>
-        new(_db, _tenant, _user, _locker, _jobs, _realtime, _sender);
+        new(_db, _tenant, _user, _locker, _jobs, _realtime, _sender, _planLimits);
+
+    [Fact]
+    public void CreateAppointmentCommand_IsQuotaCheckedForAppointmentsPerMonth()
+    {
+        IQuotaCheckedCommand command = new CreateAppointmentCommand(ValidRequest());
+
+        command.QuotaType.Should().Be(QuotaType.AppointmentsPerMonth);
+    }
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsAppointmentResponse()
@@ -89,6 +98,32 @@ public class CreateAppointmentHandlerTests
         await CreateSut().Handle(new CreateAppointmentCommand(req), default);
 
         _db.Appointments.Should().ContainSingle(a => a.ArtistId == req.ArtistId && a.StudioId == _studioId);
+    }
+
+    [Fact]
+    public async Task Handle_ValidRequest_InvalidatesAppointmentsPerMonthUsageCache()
+    {
+        await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        await _planLimits.Received(1)
+            .InvalidateUsageCacheAsync(QuotaType.AppointmentsPerMonth, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_TimeOverlap_DoesNotInvalidateUsageCache()
+    {
+        CreateAppointmentRequest req = ValidRequest();
+        _db.Appointments.Add(new Appointment
+        {
+            StudioId = _studioId, ArtistId = req.ArtistId, ClientId = Guid.NewGuid(),
+            Date = req.Date.AddMinutes(30), EndDate = req.Date.AddMinutes(90),
+            DurationMinutes = 60, Status = AppointmentStatus.Pending, DepositStatus = DepositStatus.Pending,
+        });
+        await _db.SaveChangesAsync();
+
+        try { await CreateSut().Handle(new CreateAppointmentCommand(req), default); } catch { }
+
+        await _planLimits.DidNotReceiveWithAnyArgs().InvalidateUsageCacheAsync(default, default);
     }
 
     [Fact]

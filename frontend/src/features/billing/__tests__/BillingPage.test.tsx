@@ -12,7 +12,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { billingApi } from "@/features/billing/billingApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { BillingPage } from "@/features/billing/components/BillingPage";
-import type { SubscriptionResponse, PlanResponse } from "@/features/billing/billing.types";
+import type { SubscriptionResponse, PlanResponse, PlanUsageResponse } from "@/features/billing/billing.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -27,6 +27,14 @@ const PLANS: PlanResponse[] = [
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
     subscriberCount:       0,
+    maxArtists:               null,
+    maxAppointmentsPerMonth:  null,
+    maxNotificationsPerMonth: null,
+    maxStorageGb:             null,
+    maxLocations:             null,
+    allowApiAccess:           false,
+    prioritySupport:          false,
+    pairedPlanId:             null,
   },
   {
     id:                    "plan-2",
@@ -37,6 +45,14 @@ const PLANS: PlanResponse[] = [
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  true,
     subscriberCount:       0,
+    maxArtists:               null,
+    maxAppointmentsPerMonth:  null,
+    maxNotificationsPerMonth: null,
+    maxStorageGb:             null,
+    maxLocations:             null,
+    allowApiAccess:           false,
+    prioritySupport:          false,
+    pairedPlanId:             null,
   },
 ];
 
@@ -79,6 +95,15 @@ const SUB_GRACE: SubscriptionResponse       = { ...BASE_SUB, status: "GracePerio
 const SUB_PAST_DUE: SubscriptionResponse    = { ...BASE_SUB, status: "PastDue" };
 const SUB_CANCELLED: SubscriptionResponse   = { ...BASE_SUB, status: "Cancelled",   planId: null };
 
+const USAGE: PlanUsageResponse = {
+  planName:              "Starter",
+  artists:               { current: 2,   max: 6 },
+  appointmentsPerMonth:  { current: 12,  max: 40 },
+  notificationsPerMonth: { current: 30,  max: 150 },
+  storageGb:             { current: 1.2, max: 2 },
+  locations:             { current: 1,   max: 1 },
+};
+
 // Portal session redirects use window.location.href — mock it for testing
 Object.defineProperty(window, "location", {
   value: { href: "", assign: vi.fn() },
@@ -100,6 +125,9 @@ const server = setupServer(
   http.post("http://localhost/api/v1/billing/portal", () =>
     HttpResponse.json({ url: "https://billing.stripe.com/session/test_xxx" }),
   ),
+  http.get("http://localhost/api/v1/billing/usage", () =>
+    HttpResponse.json(null),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -120,7 +148,7 @@ function makeStore() {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake-token", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false },
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
     },
   });
 }
@@ -628,5 +656,59 @@ describe("BillingPage", () => {
 
     await waitFor(() => expect(portalSpy).toHaveBeenCalledOnce());
     expect(window.location.href).toBe("https://billing.stripe.com/session/test_xyz");
+  });
+
+  // ── Plan usage panel ───────────────────────────────────────────────────────────
+
+  it("does not show the usage panel when the usage endpoint returns null", async () => {
+    renderPage();
+    await screen.findByText("Active");
+    expect(screen.queryByText(/plan usage/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the usage panel with all five dimensions when usage data is present", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/usage", () => HttpResponse.json(USAGE)),
+    );
+    renderPage();
+    await screen.findByText(/plan usage/i);
+
+    expect(screen.getByText("Artists")).toBeInTheDocument();
+    expect(screen.getByText("Appointments this month")).toBeInTheDocument();
+    expect(screen.getByText("Notifications this month")).toBeInTheDocument();
+    expect(screen.getByText("Storage")).toBeInTheDocument();
+    expect(screen.getByText("Locations")).toBeInTheDocument();
+  });
+
+  it("shows current/max for a capped dimension", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/usage", () => HttpResponse.json(USAGE)),
+    );
+    renderPage();
+    await screen.findByText(/plan usage/i);
+
+    expect(screen.getByText("2 / 6")).toBeInTheDocument();
+  });
+
+  it("shows 'Unlimited' for a dimension with a null max", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/usage", () =>
+        HttpResponse.json({ ...USAGE, appointmentsPerMonth: { current: 12, max: null } }),
+      ),
+    );
+    renderPage();
+    await screen.findByText(/plan usage/i);
+
+    expect(screen.getByText(/12 · Unlimited/)).toBeInTheDocument();
+  });
+
+  it("shows the fractional storage value with one decimal", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/usage", () => HttpResponse.json(USAGE)),
+    );
+    renderPage();
+    await screen.findByText(/plan usage/i);
+
+    expect(screen.getByText("1.2 / 2 GB")).toBeInTheDocument();
   });
 });

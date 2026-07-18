@@ -94,7 +94,7 @@ function makeStore() {
         role: Role.Client,
         pendingReferralCode: null,
       },
-      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false },
+      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
     },
   });
 }

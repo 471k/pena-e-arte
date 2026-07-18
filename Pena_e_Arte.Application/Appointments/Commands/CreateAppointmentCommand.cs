@@ -12,7 +12,11 @@ using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
-public record CreateAppointmentCommand(CreateAppointmentRequest Request) : IRequest<AppointmentResponse>;
+public record CreateAppointmentCommand(CreateAppointmentRequest Request)
+    : IRequest<AppointmentResponse>, IQuotaCheckedCommand
+{
+    public QuotaType QuotaType => QuotaType.AppointmentsPerMonth;
+}
 
 public class CreateAppointmentHandler(
     IAppDbContext     db,
@@ -21,7 +25,8 @@ public class CreateAppointmentHandler(
     ISlotLocker       slotLocker,
     IJobScheduler     jobs,
     IRealtimeNotifier realtime,
-    ISender           sender)
+    ISender           sender,
+    IPlanLimitService planLimits)
     : IRequestHandler<CreateAppointmentCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(CreateAppointmentCommand command, CancellationToken ct)
@@ -112,6 +117,10 @@ public class CreateAppointmentHandler(
 
             db.Appointments.Add(appointment);
             await db.SaveChangesAsync(ct);
+
+            // Write-through cache invalidation — the next EnsureWithinLimitAsync call for
+            // this studio reflects this new appointment immediately instead of up to 30s later.
+            await planLimits.InvalidateUsageCacheAsync(QuotaType.AppointmentsPerMonth, ct);
 
             appointment.ReminderJobId48h = jobs.ScheduleAppointmentReminder(
                 appointment.Id, "48h", appointment.Date.AddHours(-48));

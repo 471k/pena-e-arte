@@ -75,6 +75,78 @@ public class UpdatePlanHandlerTests
         _db.Plans.Single(p => p.Id == planId).AllowBrandingRemoval.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Handle_WithLimitFields_PersistsAndReturnsThem()
+    {
+        Guid planId = await SeedPlan("Growth", 59m);
+
+        PlanResponse result = await CreateSut().Handle(
+            new UpdatePlanCommand(planId, new UpdatePlanRequest(
+                "Growth", 59m, 590m, 17,
+                AllowBrandingRemoval: true,
+                MaxArtists: 3,
+                MaxAppointmentsPerMonth: 150,
+                MaxNotificationsPerMonth: 600,
+                MaxStorageGb: 10,
+                MaxLocations: 1)), default);
+
+        result.MaxArtists.Should().Be(3);
+        result.MaxAppointmentsPerMonth.Should().Be(150);
+        _db.Plans.Single(p => p.Id == planId).MaxStorageGb.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task Handle_SelfPairedPlanId_ThrowsBusinessRuleViolationException()
+    {
+        Guid planId = await SeedPlan("Premium", 79m);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new UpdatePlanCommand(planId, new UpdatePlanRequest(
+                "Premium", 79m, 790m, 17, AllowBrandingRemoval: false, PairedPlanId: planId)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_PairedPlanIdPointsToNonexistentPlan_ThrowsNotFoundException()
+    {
+        Guid planId = await SeedPlan("Premium", 79m);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new UpdatePlanCommand(planId, new UpdatePlanRequest(
+                "Premium", 79m, 790m, 17, AllowBrandingRemoval: false, PairedPlanId: Guid.NewGuid())), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_PairedPlanId_PropagatesLimitFieldsToPairedPlan_ButNotPriceOrStripeIds()
+    {
+        Guid monthlyId = await SeedPlan("Premium", 79m);
+        Guid yearlyId  = await SeedPlan("Premium", 79m);
+
+        await CreateSut().Handle(
+            new UpdatePlanCommand(monthlyId, new UpdatePlanRequest(
+                "Premium", 79m, 790m, 17,
+                AllowBrandingRemoval: true,
+                StripePriceIdMonthly: "price_monthly_only",
+                MaxArtists: 6,
+                MaxAppointmentsPerMonth: 400,
+                PrioritySupport: true,
+                PairedPlanId: yearlyId)), default);
+
+        _db.ChangeTracker.Clear();
+        Plan paired = _db.Plans.Single(p => p.Id == yearlyId);
+
+        paired.MaxArtists.Should().Be(6);
+        paired.MaxAppointmentsPerMonth.Should().Be(400);
+        paired.PrioritySupport.Should().BeTrue();
+        paired.AllowBrandingRemoval.Should().BeTrue();
+        paired.PairedPlanId.Should().Be(monthlyId, "the link should become symmetric even though only the monthly row set it");
+        // Price and Stripe IDs are per-row by design — must NOT have been copied over.
+        paired.StripePriceIdMonthly.Should().BeNull();
+    }
+
     private async Task<Guid> SeedPlan(string name, decimal price)
     {
         Plan plan = new()

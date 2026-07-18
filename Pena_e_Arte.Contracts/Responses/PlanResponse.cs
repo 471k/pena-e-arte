@@ -10,4 +10,12 @@ public record PlanResponse(
     bool    AllowBrandingRemoval,
     string? StripePriceIdMonthly,
     string? StripePriceIdYearly,
-    int     SubscriberCount);
+    int     SubscriberCount,
+    int?    MaxArtists,
+    int?    MaxAppointmentsPerMonth,
+    int?    MaxNotificationsPerMonth,
+    int?    MaxStorageGb,
+    int?    MaxLocations,
+    bool    AllowApiAccess,
+    bool    PrioritySupport,
+    Guid?   PairedPlanId);

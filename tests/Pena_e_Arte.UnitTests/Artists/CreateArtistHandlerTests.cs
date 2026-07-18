@@ -12,11 +12,12 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class CreateArtistHandlerTests
 {
-    private readonly FakeDbContext    _db        = FakeDbContext.Create();
-    private readonly ICurrentTenant   _tenant    = Substitute.For<ICurrentTenant>();
-    private readonly IIdentityService _identity  = Substitute.For<IIdentityService>();
-    private readonly IJobScheduler    _scheduler = Substitute.For<IJobScheduler>();
-    private readonly Guid             _studioId  = Guid.NewGuid();
+    private readonly FakeDbContext    _db         = FakeDbContext.Create();
+    private readonly ICurrentTenant   _tenant     = Substitute.For<ICurrentTenant>();
+    private readonly IIdentityService _identity   = Substitute.For<IIdentityService>();
+    private readonly IJobScheduler    _scheduler  = Substitute.For<IJobScheduler>();
+    private readonly IPlanLimitService _planLimits = Substitute.For<IPlanLimitService>();
+    private readonly Guid             _studioId   = Guid.NewGuid();
 
     public CreateArtistHandlerTests()
     {
@@ -25,7 +26,15 @@ public class CreateArtistHandlerTests
             .ReturnsForAnyArgs((true, Guid.NewGuid(), Array.Empty<string>()));
     }
 
-    private CreateArtistHandler CreateSut() => new(_db, _tenant, _identity, _scheduler);
+    private CreateArtistHandler CreateSut() => new(_db, _tenant, _identity, _scheduler, _planLimits);
+
+    [Fact]
+    public void CreateArtistCommand_IsQuotaCheckedForArtists()
+    {
+        IQuotaCheckedCommand command = new CreateArtistCommand(new CreateArtistRequest("A", "B", "a@b.com", null));
+
+        command.QuotaType.Should().Be(Pena_e_Arte.Domain.Enums.QuotaType.Artists);
+    }
 
     [Fact]
     public async Task Handle_NewEmail_ReturnsArtistResponse()
@@ -92,5 +101,28 @@ public class CreateArtistHandlerTests
         try { await CreateSut().Handle(new CreateArtistCommand(new("C", "D", email, null)), default); } catch { }
 
         _db.Artists.Should().ContainSingle(a => a.Email == email);
+    }
+
+    [Fact]
+    public async Task Handle_NewEmail_InvalidatesArtistsUsageCache()
+    {
+        CreateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", null);
+
+        await CreateSut().Handle(new CreateArtistCommand(req), default);
+
+        await _planLimits.Received(1)
+            .InvalidateUsageCacheAsync(Pena_e_Arte.Domain.Enums.QuotaType.Artists, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateEmail_DoesNotInvalidateUsageCache()
+    {
+        const string email = "duplicate@studio.com";
+        _db.Artists.Add(new Artist { StudioId = _studioId, FirstName = "A", LastName = "B", Email = email });
+        await _db.SaveChangesAsync();
+
+        try { await CreateSut().Handle(new CreateArtistCommand(new("C", "D", email, null)), default); } catch { }
+
+        await _planLimits.DidNotReceiveWithAnyArgs().InvalidateUsageCacheAsync(default, default);
     }
 }

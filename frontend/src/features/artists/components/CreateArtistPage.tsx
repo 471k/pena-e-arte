@@ -43,7 +43,10 @@ export function CreateArtistPage() {
       toast.success("Artist created.");
       navigate(`/artists/${result.data!.id}`);
     } else {
-      toast.error("Failed to create artist.");
+      const errMsg =
+        (result.error as { data?: { message?: string } } | undefined)?.data?.message
+        ?? "Failed to create artist.";
+      toast.error(errMsg);
     }
   }
 

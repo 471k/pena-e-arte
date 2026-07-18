@@ -53,6 +53,7 @@ afterAll(() => server.close());
 type StoreOverrides = {
   readOnlyError?:   string | null;
   studioSuspended?: boolean;
+  planLimitError?:  string | null;
 };
 
 function makeStore(overrides: StoreOverrides = {}) {
@@ -68,7 +69,7 @@ function makeStore(overrides: StoreOverrides = {}) {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u2", email: "artist@ink.test" }, token: "fake", tenantId: "t1", role: "artist", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: overrides.studioSuspended ?? false },
+      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: overrides.studioSuspended ?? false, planLimitError: overrides.planLimitError ?? null },
     },
   });
 }
@@ -182,6 +183,18 @@ describe("ArtistLayout", () => {
     renderLayout({ readOnlyError: "Grace period: studio is in read-only mode." });
     expect(screen.getByText(/read-only mode/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
+  });
+
+  it("PlanLimitBanner is hidden when there is no plan limit error", () => {
+    renderLayout({ planLimitError: null });
+    expect(screen.queryByText(/upgrade the plan/i)).not.toBeInTheDocument();
+  });
+
+  it("PlanLimitBanner is visible for artist role but with no upgrade link (artist can't act on billing)", () => {
+    renderLayout({ planLimitError: "This studio's plan allows up to 6 artists. Upgrade the plan to continue." });
+    expect(screen.getByText(/allows up to 6 artists/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /manage subscription/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/ask the studio owner to upgrade the plan/i)).toBeInTheDocument();
   });
 
   it("active nav link gets the primary background class", () => {

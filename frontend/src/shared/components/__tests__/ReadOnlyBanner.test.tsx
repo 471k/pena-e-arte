@@ -15,7 +15,7 @@ function makeStore(readOnlyError: string | null = null) {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: null, token: null, tenantId: null, role: null } as any,
-      ui:   { readOnlyError, sessionExpired: false, studioSuspended: false },
+      ui:   { readOnlyError, sessionExpired: false, studioSuspended: false, planLimitError: null },
     },
   });
 }

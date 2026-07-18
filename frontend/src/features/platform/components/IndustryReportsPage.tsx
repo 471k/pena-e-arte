@@ -8,8 +8,10 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   useGetIndustryReportsQuery,
   useTriggerIndustryReportMutation,
+  useGetPlanUsageReportQuery,
 } from "@/features/platform/platformApi";
-import type { IndustryReportSummary } from "@/features/platform/platform.types";
+import type { IndustryReportSummary, StudioPlanUsageRow } from "@/features/platform/platform.types";
+import { cn } from "@/shared/utils/cn";
 
 function formatPeriod(period: string): string {
   const parts = period.split("-");
@@ -173,6 +175,79 @@ function GenerateTriggerButton() {
   );
 }
 
+function DimensionCell({ current, max }: { current: number; max: number | null }) {
+  if (max === null) {
+    return <span className="text-muted-foreground/60">Unlimited</span>;
+  }
+  const pct = max > 0 ? current / max : 0;
+  return (
+    <span className={cn("tabular-nums", pct >= 0.8 && "text-amber-600 dark:text-amber-400 font-medium")}>
+      {current} / {max}
+    </span>
+  );
+}
+
+function PlanUsageReportSection() {
+  const { data, isLoading, isError } = useGetPlanUsageReportQuery();
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-sm font-medium">Plan usage report</p>
+        <p className="text-xs text-muted-foreground">
+          Real per-studio usage against each plan's caps — sorted with studios closest to
+          any of their limits first. Validates the seeded numbers; does not change them.
+        </p>
+      </div>
+
+      {isLoading && (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full" />)}
+        </div>
+      )}
+
+      {isError && (
+        <p className="text-center text-sm text-destructive py-8">Failed to load plan usage report.</p>
+      )}
+
+      {!isLoading && !isError && data && data.studios.length === 0 && (
+        <p className="text-center text-xs text-muted-foreground py-8">
+          No studios with an active plan yet.
+        </p>
+      )}
+
+      {!isLoading && !isError && data && data.studios.length > 0 && (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b bg-muted/40 text-left text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Studio</th>
+                <th className="px-3 py-2 font-medium">Plan</th>
+                <th className="px-3 py-2 font-medium">Artists</th>
+                <th className="px-3 py-2 font-medium">Appts / mo</th>
+                <th className="px-3 py-2 font-medium">Notifs / mo</th>
+                <th className="px-3 py-2 font-medium">Storage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.studios.map((row: StudioPlanUsageRow) => (
+                <tr key={row.studioId} className="border-b last:border-b-0">
+                  <td className="px-3 py-2 font-medium truncate max-w-[160px]">{row.studioName}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{row.planName}</td>
+                  <td className="px-3 py-2"><DimensionCell current={row.artistCount} max={row.maxArtists} /></td>
+                  <td className="px-3 py-2"><DimensionCell current={row.appointmentsThisMonth} max={row.maxAppointmentsPerMonth} /></td>
+                  <td className="px-3 py-2"><DimensionCell current={row.notificationsThisMonth} max={row.maxNotificationsPerMonth} /></td>
+                  <td className="px-3 py-2"><DimensionCell current={row.storageGbUsed} max={row.maxStorageGb} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function IndustryReportsPage() {
   useDocumentMeta({ title: "Industry Reports — Platform Admin", canonical: "/platform/reports" });
 
@@ -240,6 +315,11 @@ export function IndustryReportsPage() {
         {!isLoading && !isError && reports?.map((report) => (
           <ReportRow key={report.period} report={report} />
         ))}
+
+        {/* ── Plan usage report ───────────────────────────────────── */}
+        <div className="border-t pt-4 mt-2">
+          <PlanUsageReportSection />
+        </div>
 
       </main>
     </div>

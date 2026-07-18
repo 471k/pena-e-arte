@@ -28,6 +28,7 @@ public static class PlatformEndpoints
         group.MapDelete("referral-codes/{id:guid}",                 DeleteReferralCode);
         group.MapGet("reports/industry",                            GetIndustryReports);
         group.MapPost("reports/industry/trigger",                   TriggerIndustryReport);
+        group.MapGet("plan-usage-report",                           GetPlanUsageReport);
     }
 
     private static async Task<IResult> GetStats(
@@ -159,5 +160,13 @@ public static class PlatformEndpoints
     {
         await mediator.Send(new TriggerIndustryReportCommand(), ct);
         return Results.Accepted();
+    }
+
+    private static async Task<IResult> GetPlanUsageReport(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        PlanUsageReportResponse result = await mediator.Send(new GetPlanUsageReportQuery(), ct);
+        return Results.Ok(result);
     }
 }

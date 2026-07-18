@@ -18,5 +18,13 @@ public class PlanConfiguration : IEntityTypeConfiguration<Plan>
         builder.Property(p => p.PriceYearly).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(p => p.StripePriceIdMonthly).HasMaxLength(255);
         builder.Property(p => p.StripePriceIdYearly).HasMaxLength(255);
+
+        builder.Property(p => p.AllowApiAccess).HasDefaultValue(false);
+        builder.Property(p => p.PrioritySupport).HasDefaultValue(false);
+
+        // Self-referencing link between a tier's Monthly/Yearly rows — see Plan.PairedPlanId.
+        // No FK constraint: deleting a plan clears the sibling's pointer explicitly in
+        // DeletePlanHandler rather than relying on cascade/set-null semantics.
+        builder.HasIndex(p => p.PairedPlanId).HasDatabaseName("ix_plans_paired_plan_id");
     }
 }

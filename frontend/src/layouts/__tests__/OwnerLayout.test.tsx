@@ -70,7 +70,8 @@ afterAll(() => server.close());
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 type StoreOverrides = {
-  readOnlyError?: string | null;
+  readOnlyError?:  string | null;
+  planLimitError?: string | null;
 };
 
 function makeStore(overrides: StoreOverrides = {}) {
@@ -87,7 +88,7 @@ function makeStore(overrides: StoreOverrides = {}) {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: false },
+      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: false, planLimitError: overrides.planLimitError ?? null },
     },
   });
 }
@@ -195,6 +196,17 @@ describe("OwnerLayout", () => {
     renderLayout({ readOnlyError: "Studio is in grace period — read-only mode." });
     expect(screen.getByText(/read-only mode/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
+  });
+
+  it("PlanLimitBanner is hidden when there is no plan limit error", () => {
+    renderLayout({ planLimitError: null });
+    expect(screen.queryByText(/upgrade the plan/i)).not.toBeInTheDocument();
+  });
+
+  it("PlanLimitBanner is visible when planLimitError is set in ui state", () => {
+    renderLayout({ planLimitError: "This studio's plan allows up to 6 artists. Upgrade the plan to continue." });
+    expect(screen.getByText(/allows up to 6 artists/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /manage subscription/i })).toBeInTheDocument();
   });
 
   it("SuspensionBanner is hidden when the studio is active", async () => {

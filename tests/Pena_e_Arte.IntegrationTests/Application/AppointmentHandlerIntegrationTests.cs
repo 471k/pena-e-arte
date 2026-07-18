@@ -25,6 +25,7 @@ public class AppointmentHandlerIntegrationTests
     private readonly IRealtimeNotifier   _realtime;
     private readonly ISender             _sender = Substitute.For<ISender>();
     private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IPlanLimitService   _planLimits = Substitute.For<IPlanLimitService>();
 
     public AppointmentHandlerIntegrationTests(DatabaseFixture fixture)
     {
@@ -233,7 +234,7 @@ public class AppointmentHandlerIntegrationTests
     private async Task<AppointmentResponse> RunCreateHandler(Guid tenantId, CreateAppointmentRequest req)
     {
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CreateAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _locker, _jobs, _realtime, _sender);
+        CreateAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _locker, _jobs, _realtime, _sender, _planLimits);
         return await handler.Handle(new CreateAppointmentCommand(req), default);
     }
 

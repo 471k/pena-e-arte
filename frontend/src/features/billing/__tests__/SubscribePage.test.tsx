@@ -25,6 +25,14 @@ const PLANS: PlanResponse[] = [
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
     subscriberCount:       0,
+    maxArtists:               null,
+    maxAppointmentsPerMonth:  null,
+    maxNotificationsPerMonth: null,
+    maxStorageGb:             null,
+    maxLocations:             null,
+    allowApiAccess:           false,
+    prioritySupport:          false,
+    pairedPlanId:             null,
   },
   {
     id:                    "plan-yearly",
@@ -35,6 +43,14 @@ const PLANS: PlanResponse[] = [
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  true,
     subscriberCount:       0,
+    maxArtists:               null,
+    maxAppointmentsPerMonth:  null,
+    maxNotificationsPerMonth: null,
+    maxStorageGb:             null,
+    maxLocations:             null,
+    allowApiAccess:           false,
+    prioritySupport:          false,
+    pairedPlanId:             null,
   },
 ];
 
@@ -99,7 +115,7 @@ function makeStore() {
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake-token", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false },
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
     },
   });
 }

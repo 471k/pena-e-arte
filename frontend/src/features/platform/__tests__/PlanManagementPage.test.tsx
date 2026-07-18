@@ -14,6 +14,19 @@ import type { PlanResponse } from "@/features/billing/billing.types";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
+// Shared defaults for the new limit/feature fields — tests below only care about the
+// fields they explicitly set, so every fixture spreads this in.
+const NO_LIMITS = {
+  maxArtists:               null,
+  maxAppointmentsPerMonth:  null,
+  maxNotificationsPerMonth: null,
+  maxStorageGb:             null,
+  maxLocations:             null,
+  allowApiAccess:           false,
+  prioritySupport:          false,
+  pairedPlanId:             null,
+};
+
 const PLANS: PlanResponse[] = [
   {
     id:                    "plan-1",
@@ -26,6 +39,7 @@ const PLANS: PlanResponse[] = [
     stripePriceIdMonthly:  "price_monthly_starter",
     stripePriceIdYearly:   null,
     subscriberCount:       4,
+    ...NO_LIMITS,
   },
   {
     id:                    "plan-2",
@@ -38,6 +52,7 @@ const PLANS: PlanResponse[] = [
     stripePriceIdMonthly:  null,
     stripePriceIdYearly:   "price_yearly_pro",
     subscriberCount:       0,
+    ...NO_LIMITS,
   },
 ];
 
@@ -344,6 +359,7 @@ describe("PlanManagementPage", () => {
           stripePriceIdMonthly:  null,
           stripePriceIdYearly:   null,
           subscriberCount:       1,
+          ...NO_LIMITS,
         }]),
       ),
     );
@@ -368,6 +384,7 @@ describe("PlanManagementPage", () => {
           stripePriceIdMonthly:  null,
           stripePriceIdYearly:   null,
           subscriberCount:       0,
+          ...NO_LIMITS,
         }]),
       ),
     );
@@ -439,6 +456,7 @@ describe("PlanManagementPage", () => {
             stripePriceIdMonthly:  null,
             stripePriceIdYearly:   null,
             subscriberCount:       0,
+            ...NO_LIMITS,
           },
         ]),
       ),
@@ -505,6 +523,7 @@ describe("PlanManagementPage", () => {
           stripePriceIdMonthly:  null,
           stripePriceIdYearly:   "price_yearly_annual",
           subscriberCount:       0,
+          ...NO_LIMITS,
         }]),
       ),
     );
@@ -560,6 +579,7 @@ describe("PlanManagementPage", () => {
           stripePriceIdMonthly:  null,
           stripePriceIdYearly:   "price_yr",
           subscriberCount:       0,
+          ...NO_LIMITS,
         }]),
       ),
     );

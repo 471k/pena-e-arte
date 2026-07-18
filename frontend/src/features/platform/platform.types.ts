@@ -62,3 +62,21 @@ export interface IssuerStudioSummaryResponse {
   clientCount:      number;
   appointmentCount: number;
 }
+
+export interface StudioPlanUsageRow {
+  studioId:                string;
+  studioName:               string;
+  planName:                 string;
+  artistCount:              number;
+  maxArtists:               number | null;
+  appointmentsThisMonth:    number;
+  maxAppointmentsPerMonth:  number | null;
+  notificationsThisMonth:   number;
+  maxNotificationsPerMonth: number | null;
+  storageGbUsed:            number;
+  maxStorageGb:             number | null;
+}
+
+export interface PlanUsageReportResponse {
+  studios: StudioPlanUsageRow[];
+}

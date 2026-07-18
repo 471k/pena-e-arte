@@ -42,6 +42,22 @@ public class DeletePlanHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
+    [Fact]
+    public async Task Handle_PlanWithPairedSibling_ClearsSiblingsPairedPlanId()
+    {
+        Plan monthly = new() { Name = "Premium", BillingInterval = BillingInterval.Monthly, PriceMonthly = 79m, PriceYearly = 790m };
+        Plan yearly  = new() { Name = "Premium", BillingInterval = BillingInterval.Yearly,  PriceMonthly = 79m, PriceYearly = 790m };
+        monthly.PairedPlanId = yearly.Id;
+        yearly.PairedPlanId  = monthly.Id;
+        _db.Plans.AddRange(monthly, yearly);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(new DeletePlanCommand(monthly.Id), default);
+
+        _db.Plans.Single(p => p.Id == yearly.Id).PairedPlanId.Should().BeNull();
+    }
+
     private async Task<Guid> SeedPlan()
     {
         Plan plan = new()

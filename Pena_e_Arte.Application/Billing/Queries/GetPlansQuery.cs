@@ -24,7 +24,15 @@ public class GetPlansHandler(IAppDbContext db)
                 p.AllowBrandingRemoval,
                 p.StripePriceIdMonthly,
                 p.StripePriceIdYearly,
-                db.Subscriptions.Count(s => s.PlanId == p.Id)))
+                db.Subscriptions.Count(s => s.PlanId == p.Id),
+                p.MaxArtists,
+                p.MaxAppointmentsPerMonth,
+                p.MaxNotificationsPerMonth,
+                p.MaxStorageGb,
+                p.MaxLocations,
+                p.AllowApiAccess,
+                p.PrioritySupport,
+                p.PairedPlanId))
             .ToListAsync(ct);
     }
 }

@@ -35,6 +35,7 @@ try
     builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(applicationAssembly));
     builder.Services.AddValidatorsFromAssembly(applicationAssembly);
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PlanLimitBehavior<,>));
 
     builder.Services.AddApiAuthentication(builder.Configuration);
     builder.Services.AddApiAuthorization();

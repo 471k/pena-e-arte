@@ -1,25 +1,41 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
-import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest, BillingPortalResponse } from "./billing.types";
+import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest, BillingPortalResponse, PlanUsageResponse } from "./billing.types";
 
 export interface CreatePlanRequest {
-  name:                  string;
-  billingInterval:       string;
-  priceMonthly:          number;
-  priceYearly:           number;
-  yearlyDiscountPercent: number;
-  stripePriceIdMonthly?: string | null;
-  stripePriceIdYearly?:  string | null;
+  name:                     string;
+  billingInterval:          string;
+  priceMonthly:             number;
+  priceYearly:              number;
+  yearlyDiscountPercent:    number;
+  stripePriceIdMonthly?:    string | null;
+  stripePriceIdYearly?:     string | null;
+  maxArtists?:              number | null;
+  maxAppointmentsPerMonth?: number | null;
+  maxNotificationsPerMonth?: number | null;
+  maxStorageGb?:            number | null;
+  maxLocations?:            number | null;
+  allowApiAccess?:          boolean;
+  prioritySupport?:         boolean;
+  pairedPlanId?:            string | null;
 }
 
 export interface UpdatePlanRequest {
-  name:                  string;
-  priceMonthly:          number;
-  priceYearly:           number;
-  yearlyDiscountPercent: number;
-  allowBrandingRemoval:  boolean;
-  stripePriceIdMonthly?: string | null;
-  stripePriceIdYearly?:  string | null;
+  name:                     string;
+  priceMonthly:             number;
+  priceYearly:              number;
+  yearlyDiscountPercent:    number;
+  allowBrandingRemoval:     boolean;
+  stripePriceIdMonthly?:    string | null;
+  stripePriceIdYearly?:     string | null;
+  maxArtists?:              number | null;
+  maxAppointmentsPerMonth?: number | null;
+  maxNotificationsPerMonth?: number | null;
+  maxStorageGb?:            number | null;
+  maxLocations?:            number | null;
+  allowApiAccess?:          boolean;
+  prioritySupport?:         boolean;
+  pairedPlanId?:            string | null;
 }
 
 export const billingApi = createApi({
@@ -33,6 +49,10 @@ export const billingApi = createApi({
     }),
     getSubscription: builder.query<SubscriptionResponse, void>({
       query: () => "billing/subscription",
+      providesTags: ["Subscription"],
+    }),
+    getPlanUsage: builder.query<PlanUsageResponse | null, void>({
+      query: () => "billing/usage",
       providesTags: ["Subscription"],
     }),
     createSubscription: builder.mutation<SubscriptionResponse, CreateSubscriptionRequest>({
@@ -88,6 +108,7 @@ export const billingApi = createApi({
 export const {
   useGetPlansQuery,
   useGetSubscriptionQuery,
+  useGetPlanUsageQuery,
   useCreateSubscriptionMutation,
   useCreateCheckoutMutation,
   useFinalizeCheckoutMutation,

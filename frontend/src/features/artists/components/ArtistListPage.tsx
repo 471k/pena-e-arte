@@ -11,6 +11,7 @@ import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { cn } from "@/shared/utils/cn";
 import { useGetArtistsQuery, useDeleteArtistMutation } from "../artistsApi";
+import { useGetPlanUsageQuery } from "@/features/billing/billingApi";
 import type { ArtistResponse } from "../artistsApi";
 
 function ArtistRowSkeleton() {
@@ -45,6 +46,8 @@ export function ArtistListPage() {
 
   const { data: artists, isLoading, isError } = useGetArtistsQuery(search);
   const errorMessage = useSuspensionAwareError(isError, "Failed to load artists. Please try again.");
+  // Plan usage endpoint is OwnerOnly — skip for artist role to avoid a guaranteed 403.
+  const { data: usage } = useGetPlanUsageQuery(undefined, { skip: !canManage });
   const [deleteArtist, { isLoading: isDeletingArtist }] = useDeleteArtistMutation();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [selectedSpec, setSelectedSpec]       = useState<string | null>(null);
@@ -202,6 +205,18 @@ export function ArtistListPage() {
               <Users className="h-3.5 w-3.5" />
               <span>{artists.length} artist{artists.length !== 1 ? "s" : ""}</span>
             </div>
+          )}
+          {canManage && usage && usage.artists.max !== null && (
+            <span
+              className={cn(
+                "text-xs",
+                usage.artists.current >= usage.artists.max
+                  ? "text-amber-600 dark:text-amber-400 font-medium"
+                  : "text-muted-foreground",
+              )}
+            >
+              {usage.artists.current} of {usage.artists.max} artists used
+            </span>
           )}
           {canManage && (isLoading || hasArtists || !!search) && (
             <Button size="sm" onClick={() => navigate("/artists/new")} className="gap-1.5">

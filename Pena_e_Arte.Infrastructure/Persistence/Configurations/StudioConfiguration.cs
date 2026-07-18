@@ -18,6 +18,7 @@ public class StudioConfiguration : IEntityTypeConfiguration<Studio>
         builder.Property(s => s.Description).HasMaxLength(1000);
         builder.Property(s => s.CoverImageUrl).HasMaxLength(500);
         builder.Property(s => s.StripeCustomerId).HasMaxLength(255);
+        builder.Property(s => s.StorageUsageBytes).HasDefaultValue(0L);
 
         builder.HasIndex(s => s.Slug).IsUnique().HasDatabaseName("ix_studios_slug");
         builder.HasIndex(s => s.IsActive).HasDatabaseName("ix_studios_is_active");

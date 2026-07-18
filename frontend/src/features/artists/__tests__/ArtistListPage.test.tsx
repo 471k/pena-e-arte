@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -11,6 +11,8 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { artistsApi } from "@/features/artists/artistsApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
+import { billingApi } from "@/features/billing/billingApi";
+import type { PlanUsageResponse } from "@/features/billing/billing.types";
 import { ArtistListPage } from "@/features/artists/components/ArtistListPage";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -58,6 +60,9 @@ const server = setupServer(
   http.delete("http://localhost/api/v1/artists/:id", () =>
     new HttpResponse(null, { status: 204 }),
   ),
+  http.get("http://localhost/api/v1/billing/usage", () =>
+    HttpResponse.json(null),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -72,8 +77,9 @@ function makeStore() {
       auth: authReducer,
       ui:   uiReducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
+      [billingApi.reducerPath]: billingApi.reducer,
     },
-    middleware: (gd) => gd().concat(artistsApi.middleware),
+    middleware: (gd) => gd().concat(artistsApi.middleware, billingApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u1", email: "owner@ink.test" },
@@ -83,7 +89,7 @@ function makeStore() {
         pendingReferralCode: null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
-      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false },
+      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
     },
   });
 }
@@ -94,8 +100,9 @@ function makeStoreAsArtist() {
       auth: authReducer,
       ui:   uiReducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
+      [billingApi.reducerPath]: billingApi.reducer,
     },
-    middleware: (gd) => gd().concat(artistsApi.middleware),
+    middleware: (gd) => gd().concat(artistsApi.middleware, billingApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u2", email: "artist@ink.test" },
@@ -105,7 +112,7 @@ function makeStoreAsArtist() {
         pendingReferralCode: null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
-      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false },
+      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
     },
   });
 }
@@ -337,5 +344,45 @@ describe("ArtistListPage", () => {
     await user.click(screen.getByRole("button", { name: /new artist/i }));
 
     expect(screen.getByTestId("artist-new")).toBeInTheDocument();
+  });
+
+  // ── Plan usage indicator ─────────────────────────────────────────────────────
+
+  it("does not show a usage indicator when the plan has unlimited artists (null max)", async () => {
+    renderPage();
+    await screen.findByText("Ana Costa");
+    expect(screen.queryByText(/artists used/i)).not.toBeInTheDocument();
+  });
+
+  it("shows '2 of 6 artists used' when usage data has a cap", async () => {
+    const usage: PlanUsageResponse = {
+      planName: "Starter",
+      artists: { current: 2, max: 6 },
+      appointmentsPerMonth:  { current: 0, max: null },
+      notificationsPerMonth: { current: 0, max: null },
+      storageGb:              { current: 0, max: null },
+      locations:               { current: 1, max: null },
+    };
+    server.use(
+      http.get("http://localhost/api/v1/billing/usage", () => HttpResponse.json(usage)),
+    );
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    expect(await screen.findByText("2 of 6 artists used")).toBeInTheDocument();
+  });
+
+  it("does not fetch plan usage for non-owner roles (OwnerOnly endpoint)", async () => {
+    const usageSpy = vi.fn();
+    server.use(
+      http.get("http://localhost/api/v1/billing/usage", () => {
+        usageSpy();
+        return HttpResponse.json(null);
+      }),
+    );
+    renderPageAsArtist();
+    await screen.findByText("Ana Costa");
+
+    expect(usageSpy).not.toHaveBeenCalled();
   });
 });

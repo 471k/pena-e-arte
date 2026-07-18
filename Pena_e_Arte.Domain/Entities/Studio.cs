@@ -32,6 +32,13 @@ public class Studio
     public string?  StripeCustomerId { get; set; }
     public DateTime CreatedAt       { get; init; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Running total of Cloudflare R2 usage (photos, consent PDFs, design revisions) in
+    /// bytes. Incremented/decremented at each successful R2 write/delete rather than
+    /// queried live from R2 — see PlanLimitBehavior / IPlanLimitService.
+    /// </summary>
+    public long     StorageUsageBytes { get; set; }
+
     public Guid? PendingReferralCodeId { get; set; }
 
     public Subscription? Subscription { get; set; }

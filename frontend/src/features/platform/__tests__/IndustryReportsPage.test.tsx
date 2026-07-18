@@ -10,7 +10,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { platformApi } from "@/features/platform/platformApi";
 import { IndustryReportsPage } from "@/features/platform/components/IndustryReportsPage";
-import type { IndustryReportSummary } from "@/features/platform/platform.types";
+import type { IndustryReportSummary, PlanUsageReportResponse } from "@/features/platform/platform.types";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -29,12 +29,34 @@ const REPORTS: IndustryReportSummary[] = [
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
+const USAGE_REPORT: PlanUsageReportResponse = {
+  studios: [
+    {
+      studioId: "stud-1", studioName: "Ink Soul", planName: "Starter",
+      artistCount: 5, maxArtists: 6,
+      appointmentsThisMonth: 12, maxAppointmentsPerMonth: 40,
+      notificationsThisMonth: 30, maxNotificationsPerMonth: 150,
+      storageGbUsed: 1.2, maxStorageGb: 2,
+    },
+    {
+      studioId: "stud-2", studioName: "Needle Works", planName: "Pro",
+      artistCount: 2, maxArtists: null,
+      appointmentsThisMonth: 8, maxAppointmentsPerMonth: null,
+      notificationsThisMonth: 20, maxNotificationsPerMonth: null,
+      storageGbUsed: 0.5, maxStorageGb: null,
+    },
+  ],
+};
+
 const server = setupServer(
   http.get("http://localhost/api/v1/platform/reports/industry", () =>
     HttpResponse.json(REPORTS),
   ),
   http.post("http://localhost/api/v1/platform/reports/industry/trigger", () =>
     new HttpResponse(null, { status: 202 }),
+  ),
+  http.get("http://localhost/api/v1/platform/plan-usage-report", () =>
+    HttpResponse.json(USAGE_REPORT),
   ),
 );
 
@@ -242,5 +264,49 @@ describe("IndustryReportsPage", () => {
 
     expect(await screen.findByText(/failed to queue — try again/i)).toBeInTheDocument();
     expect(screen.queryByText(/queued — report will appear shortly/i)).not.toBeInTheDocument();
+  });
+
+  // ── Plan usage report section ─────────────────────────────────────────────────
+
+  it("renders the Plan usage report table with studio names and plan names", async () => {
+    renderPage();
+    expect(await screen.findByText("Plan usage report")).toBeInTheDocument();
+    expect(await screen.findByText("Ink Soul")).toBeInTheDocument();
+    expect(screen.getByText("Needle Works")).toBeInTheDocument();
+    expect(screen.getByText("Starter")).toBeInTheDocument();
+    expect(screen.getByText("Pro")).toBeInTheDocument();
+  });
+
+  it("shows current/max for a capped dimension", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    expect(screen.getByText("5 / 6")).toBeInTheDocument();
+  });
+
+  it("shows 'Unlimited' for dimensions with a null max", async () => {
+    renderPage();
+    await screen.findByText("Needle Works");
+    // Needle Works has 4 unlimited dimensions
+    expect(screen.getAllByText("Unlimited").length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("shows an empty message when no studios have an active plan", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/plan-usage-report", () =>
+        HttpResponse.json({ studios: [] }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/no studios with an active plan yet/i)).toBeInTheDocument();
+  });
+
+  it("shows an error message when the plan usage report fetch fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/plan-usage-report", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/failed to load plan usage report/i)).toBeInTheDocument();
   });
 });

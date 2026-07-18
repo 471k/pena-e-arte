@@ -14,12 +14,13 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   useGetSubscriptionQuery,
   useGetPlansQuery,
+  useGetPlanUsageQuery,
   useCancelPlanChangeMutation,
   useFinalizeCheckoutMutation,
   useCreatePortalSessionMutation,
 } from "../billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
-import type { SubscriptionResponse, PlanResponse } from "../billing.types";
+import type { SubscriptionResponse, PlanResponse, PlanUsageDimension, PlanUsageResponse } from "../billing.types";
 
 function daysUntil(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
@@ -58,6 +59,60 @@ function pendingPlanName(sub: SubscriptionResponse, plans: PlanResponse[]): stri
   return plans.find((p) => p.id === sub.pendingPlanId)?.name ?? null;
 }
 
+interface UsageRowConfig {
+  label: string;
+  dim:   PlanUsageDimension;
+  unit?: string;
+}
+
+function formatUsageValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function UsageRow({ label, dim, unit }: UsageRowConfig) {
+  const isUnlimited = dim.max === null;
+  const pct = isUnlimited ? 0 : Math.min(100, (dim.current / Math.max(dim.max!, 1)) * 100);
+  const isNearCap = !isUnlimited && pct >= 80;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className={cn("font-medium tabular-nums", isNearCap && "text-amber-600 dark:text-amber-400")}>
+          {isUnlimited
+            ? `${formatUsageValue(dim.current)}${unit ?? ""} · Unlimited`
+            : `${formatUsageValue(dim.current)} / ${dim.max}${unit ?? ""}`}
+        </span>
+      </div>
+      {!isUnlimited && (
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn("h-full rounded-full", isNearCap ? "bg-amber-500" : "bg-primary")}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlanUsagePanel({ usage }: { usage: PlanUsageResponse }) {
+  return (
+    <Card>
+      <CardContent className="p-5 space-y-4">
+        <p className="text-sm font-medium">Plan usage</p>
+        <div className="space-y-3">
+          <UsageRow label="Artists"                    dim={usage.artists} />
+          <UsageRow label="Appointments this month"     dim={usage.appointmentsPerMonth} />
+          <UsageRow label="Notifications this month"    dim={usage.notificationsPerMonth} />
+          <UsageRow label="Storage"                     dim={usage.storageGb} unit=" GB" />
+          <UsageRow label="Locations"                   dim={usage.locations} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function BillingPageSkeleton() {
   return (
     <div className="min-h-screen bg-background">
@@ -94,6 +149,8 @@ export function BillingPage() {
     useGetPlansQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: studio } =
     useGetMyStudioQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: usage } =
+    useGetPlanUsageQuery(undefined, { refetchOnMountOrArgChange: true });
   const [cancelPlanChange, { isLoading: cancellingChange }] = useCancelPlanChangeMutation();
   const [createPortalSession, { isLoading: openingPortal }] = useCreatePortalSessionMutation();
 
@@ -311,6 +368,9 @@ export function BillingPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Plan usage — current vs. cap across all five dimensions */}
+        {usage && <PlanUsagePanel usage={usage} />}
 
         {/* Scheduled plan change (downgrade at period end) */}
         {sub.pendingPlanId && (

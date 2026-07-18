@@ -19,18 +19,38 @@ import {
 } from "@/features/billing/billingApi";
 import type { PlanResponse } from "@/features/billing/billing.types";
 
+// Blank input, undefined, or NaN all mean "unlimited" (null) — anything else must be a
+// positive integer. Used for the five Plan usage-limit fields below.
+const optionalPositiveInt = z.preprocess((v) => {
+  if (v === "" || v === undefined || v === null) return null;
+  const n = typeof v === "string" ? Number(v) : v;
+  return Number.isNaN(n) ? null : n;
+}, z.number().int().positive().nullable());
+
 const schema = z.object({
-  name:                  z.string().min(1, "Name is required").max(100),
-  billingInterval:       z.enum(["Monthly", "Yearly"]),
-  priceMonthly:          z.number({ message: "Required" }).positive(),
-  priceYearly:           z.number({ message: "Required" }).positive(),
-  yearlyDiscountPercent: z.number({ message: "Required" }).min(0).max(100),
-  allowBrandingRemoval:  z.boolean(),
-  stripePriceIdMonthly:  z.string().max(200).optional().nullable(),
-  stripePriceIdYearly:   z.string().max(200).optional().nullable(),
+  name:                     z.string().min(1, "Name is required").max(100),
+  billingInterval:          z.enum(["Monthly", "Yearly"]),
+  priceMonthly:             z.number({ message: "Required" }).positive(),
+  priceYearly:              z.number({ message: "Required" }).positive(),
+  yearlyDiscountPercent:    z.number({ message: "Required" }).min(0).max(100),
+  allowBrandingRemoval:     z.boolean(),
+  stripePriceIdMonthly:     z.string().max(200).optional().nullable(),
+  stripePriceIdYearly:      z.string().max(200).optional().nullable(),
+  maxArtists:               optionalPositiveInt,
+  maxAppointmentsPerMonth:  optionalPositiveInt,
+  maxNotificationsPerMonth: optionalPositiveInt,
+  maxStorageGb:             optionalPositiveInt,
+  maxLocations:             optionalPositiveInt,
+  allowApiAccess:           z.boolean(),
+  prioritySupport:          z.boolean(),
 });
 
 type FormValues = z.infer<typeof schema>;
+
+// null = unlimited on the plan
+function formatLimit(value: number | null, unit: string): string {
+  return value === null ? `Unlimited ${unit}` : `${value} ${unit}`;
+}
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-GB", {
@@ -51,7 +71,19 @@ interface PlanFormProps {
 function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { billingInterval: "Monthly", yearlyDiscountPercent: 17, allowBrandingRemoval: false, ...defaultValues },
+    defaultValues: {
+      billingInterval:          "Monthly",
+      yearlyDiscountPercent:    17,
+      allowBrandingRemoval:     false,
+      maxArtists:               null,
+      maxAppointmentsPerMonth:  null,
+      maxNotificationsPerMonth: null,
+      maxStorageGb:             null,
+      maxLocations:             null,
+      allowApiAccess:           false,
+      prioritySupport:          false,
+      ...defaultValues,
+    },
   });
 
   const watchedMonthly  = watch("priceMonthly");
@@ -120,6 +152,63 @@ function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
           {...register("allowBrandingRemoval")}
         />
         <Label htmlFor="allowBrandingRemoval" className="cursor-pointer">Allow branding removal</Label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          id="allowApiAccess"
+          type="checkbox"
+          className="h-4 w-4 rounded border-input accent-primary"
+          {...register("allowApiAccess")}
+        />
+        <Label htmlFor="allowApiAccess" className="cursor-pointer">Allow API access</Label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          id="prioritySupport"
+          type="checkbox"
+          className="h-4 w-4 rounded border-input accent-primary"
+          {...register("prioritySupport")}
+        />
+        <Label htmlFor="prioritySupport" className="cursor-pointer">Priority support</Label>
+      </div>
+
+      <div className="space-y-1.5 border-t pt-3">
+        <p className="text-xs font-medium text-muted-foreground">Limits (blank = unlimited)</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="maxArtists" className="text-xs text-muted-foreground">Artists</Label>
+            <Input id="maxArtists" type="number" min="1" placeholder="Unlimited" {...register("maxArtists")} />
+            {errors.maxArtists && <p className="text-xs text-destructive">{errors.maxArtists.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="maxAppointmentsPerMonth" className="text-xs text-muted-foreground">Appointments/mo</Label>
+            <Input id="maxAppointmentsPerMonth" type="number" min="1" placeholder="Unlimited"
+              {...register("maxAppointmentsPerMonth")} />
+            {errors.maxAppointmentsPerMonth && (
+              <p className="text-xs text-destructive">{errors.maxAppointmentsPerMonth.message}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="maxNotificationsPerMonth" className="text-xs text-muted-foreground">Notifications/mo</Label>
+            <Input id="maxNotificationsPerMonth" type="number" min="1" placeholder="Unlimited"
+              {...register("maxNotificationsPerMonth")} />
+            {errors.maxNotificationsPerMonth && (
+              <p className="text-xs text-destructive">{errors.maxNotificationsPerMonth.message}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="maxStorageGb" className="text-xs text-muted-foreground">Storage (GB)</Label>
+            <Input id="maxStorageGb" type="number" min="1" placeholder="Unlimited" {...register("maxStorageGb")} />
+            {errors.maxStorageGb && <p className="text-xs text-destructive">{errors.maxStorageGb.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="maxLocations" className="text-xs text-muted-foreground">Locations</Label>
+            <Input id="maxLocations" type="number" min="1" placeholder="Unlimited" {...register("maxLocations")} />
+            {errors.maxLocations && <p className="text-xs text-destructive">{errors.maxLocations.message}</p>}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -235,7 +324,21 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
                   White-label
                 </span>
               )}
+              {plan.allowApiAccess && (
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  API access
+                </span>
+              )}
+              {plan.prioritySupport && (
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  Priority support
+                </span>
+              )}
             </div>
+            <p className="text-[11px] text-muted-foreground/70">
+              {formatLimit(plan.maxArtists, "artists")} · {formatLimit(plan.maxAppointmentsPerMonth, "appts/mo")} ·{" "}
+              {formatLimit(plan.maxStorageGb, "GB")}
+            </p>
             <div className="space-y-0.5 mt-1">
               <p className="text-sm font-mono">
                 <span className="font-medium">
@@ -306,14 +409,21 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
           <div className="border-t pt-3">
             <PlanForm
               defaultValues={{
-                name:                  plan.name,
-                billingInterval:       plan.billingInterval,
-                priceMonthly:          plan.priceMonthly,
-                priceYearly:           plan.priceYearly,
-                yearlyDiscountPercent: plan.yearlyDiscountPercent,
-                allowBrandingRemoval:  plan.allowBrandingRemoval,
-                stripePriceIdMonthly:  plan.stripePriceIdMonthly ?? null,
-                stripePriceIdYearly:   plan.stripePriceIdYearly ?? null,
+                name:                     plan.name,
+                billingInterval:          plan.billingInterval,
+                priceMonthly:             plan.priceMonthly,
+                priceYearly:              plan.priceYearly,
+                yearlyDiscountPercent:    plan.yearlyDiscountPercent,
+                allowBrandingRemoval:     plan.allowBrandingRemoval,
+                stripePriceIdMonthly:     plan.stripePriceIdMonthly ?? null,
+                stripePriceIdYearly:      plan.stripePriceIdYearly ?? null,
+                maxArtists:               plan.maxArtists,
+                maxAppointmentsPerMonth:  plan.maxAppointmentsPerMonth,
+                maxNotificationsPerMonth: plan.maxNotificationsPerMonth,
+                maxStorageGb:             plan.maxStorageGb,
+                maxLocations:             plan.maxLocations,
+                allowApiAccess:           plan.allowApiAccess,
+                prioritySupport:          plan.prioritySupport,
               }}
               onSave={handleUpdate}
               onClose={() => setEditing(false)}

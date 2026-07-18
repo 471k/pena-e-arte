@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
+import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { Button } from "@/shared/components/ui/button";
@@ -47,6 +48,7 @@ export function OwnerLayout() {
     <div className="min-h-screen flex flex-col bg-background">
       <SuspensionBanner studio={studio} />
       <ReadOnlyBanner />
+      <PlanLimitBanner />
       <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Pena e Artë</span>
