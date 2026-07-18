@@ -75,8 +75,9 @@ function renderLayout(initialPath = "/platform") {
 describe("IssuerLayout", () => {
   it("renders 'Platform Admin' as the header title (not the studio brand)", () => {
     renderLayout();
-    // Appears in both the header title span and the UserChip role label span
-    expect(screen.getAllByText("Platform Admin")).toHaveLength(2);
+    // Now appears only once — the UserChip role label was renamed to "Super Admin"
+    // to disambiguate it from this section brand title.
+    expect(screen.getAllByText("Platform Admin")).toHaveLength(1);
   });
 
   it("does not render the studio brand name 'Pena e Artë'", () => {
@@ -106,12 +107,12 @@ describe("IssuerLayout", () => {
     expect(screen.getByRole("button", { name: /view notifications/i })).toBeInTheDocument();
   });
 
-  it("renders the UserChip with the issuer's identifier and 'Platform Admin' role label", () => {
+  it("renders the UserChip with the issuer's identifier and 'Super Admin' role label", () => {
     renderLayout();
     // email prefix: "issuer"
     expect(screen.getByText("issuer")).toBeInTheDocument();
-    // ROLE_LABELS["issuer"] = "Platform Admin" — present once in chip, once in header title
-    expect(screen.getAllByText("Platform Admin").length).toBeGreaterThanOrEqual(1);
+    // ROLE_LABELS["issuer"] = "Super Admin" — distinct from the "Platform Admin" header title
+    expect(screen.getByText("Super Admin")).toBeInTheDocument();
   });
 
   it("does not show Log out as a persistent top-level button", () => {

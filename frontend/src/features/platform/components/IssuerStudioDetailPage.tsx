@@ -189,7 +189,7 @@ export function IssuerStudioDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-10">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
         <Link
           to="/platform/studios"
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"

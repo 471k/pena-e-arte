@@ -41,17 +41,31 @@ describe("UserChip", () => {
     expect(screen.getByText("carol")).toBeInTheDocument();
   });
 
-  it("renders nothing when user is null", () => {
-    const { container } = render(
+  it("renders a skeleton (not nothing) when user is null, to avoid layout shift", () => {
+    render(
       <Provider store={makeStore(null)}>
         <UserChip />
       </Provider>,
     );
-    expect(container.firstChild).toBeNull();
+    expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
   });
 
   it("shows role label", () => {
     renderChip({ id: "u1", email: "owner@example.com", name: "Dana" }, "owner");
     expect(screen.getByText("Owner")).toBeInTheDocument();
+  });
+
+  it("issuer role shows 'Super Admin', not 'Platform Admin'", () => {
+    renderChip({ id: "u1", email: "admin@example.com", name: "Gabriel" }, "issuer");
+    expect(screen.getByText("Super Admin")).toBeInTheDocument();
+    expect(screen.queryByText("Platform Admin")).not.toBeInTheDocument();
+  });
+
+  it("name/role wrapper has gap-1 (not gap-0.5) for readable separation", () => {
+    renderChip({ id: "u1", email: "owner@example.com", name: "Dana" }, "owner");
+    const nameEl = screen.getByText("Dana");
+    const wrapper = nameEl.closest("div");
+    expect(wrapper?.className).toMatch(/\bgap-1\b/);
+    expect(wrapper?.className).not.toMatch(/gap-0\.5/);
   });
 });

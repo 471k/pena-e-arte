@@ -182,7 +182,7 @@ export function IndustryReportsPage() {
     <div className="min-h-screen bg-background">
 
       {/* ── Sticky header ───────────────────────────────────────── */}
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-10">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
         <BarChart3 className="h-5 w-5" aria-hidden="true" />
         <span className="font-semibold tracking-tight">Industry Reports</span>
         {reports && (

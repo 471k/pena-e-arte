@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
@@ -7,6 +7,8 @@ import { useGetNotificationsQuery } from "../notificationsApi";
 import { ChannelBadge } from "./ChannelBadge";
 import { formatDate, stripHtml } from "../notification.utils";
 import { NotificationDetailModal } from "./NotificationDetailModal";
+import { useClickOutside } from "@/shared/hooks/useClickOutside";
+import { useEscapeKey }    from "@/shared/hooks/useEscapeKey";
 import type { NotificationLogResponse } from "../notification.types";
 
 const MAX_RECENT = 5;
@@ -27,17 +29,10 @@ export function NotificationBell() {
     if (isOpen) dispatch(clearUnread());
   }, [isOpen, dispatch]);
 
-  // Close on outside click.
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        dispatch(toggleInbox());
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen, dispatch]);
+  const closeInbox = useCallback(() => { if (isOpen) dispatch(toggleInbox()); }, [isOpen, dispatch]);
+
+  useClickOutside(containerRef, isOpen, closeInbox);
+  useEscapeKey(isOpen, closeInbox);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -46,6 +41,7 @@ export function NotificationBell() {
         onClick={() => dispatch(toggleInbox())}
         aria-label={unreadCount > 0 ? `View notifications, ${unreadCount} unread` : "View notifications"}
         aria-expanded={isOpen}
+        title="Notifications"
         className="relative h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       >
         <Bell className="h-4 w-4" />

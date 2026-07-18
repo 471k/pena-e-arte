@@ -61,7 +61,7 @@ function pendingPlanName(sub: SubscriptionResponse, plans: PlanResponse[]): stri
 function BillingPageSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5 text-muted-foreground" />
           <Skeleton className="h-5 w-16" />
@@ -154,7 +154,7 @@ export function BillingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Billing</span>

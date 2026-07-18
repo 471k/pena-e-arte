@@ -455,11 +455,11 @@ describe("SubscriptionOversightPage", () => {
 
   // ── Header / layout parity with IssuerStudioListPage ───────────────────────────
 
-  it("page header has z-20 class to prevent list content overlap", async () => {
+  it("page header has z-10 class, below the global nav's z-20, to prevent it painting over the nav on scroll", async () => {
     renderPage();
     await screen.findByText("Active Studio");
     const header = document.querySelector("header");
-    expect(header?.className).toMatch(/z-20/);
+    expect(header?.className).toMatch(/z-10/);
   });
 
   // ── Copy slug button ─────────────────────────────────────────────────────────

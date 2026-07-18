@@ -283,4 +283,19 @@ describe("NotificationBell", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
+
+  it("closes notification panel on Escape key", async () => {
+    const user = userEvent.setup();
+    renderBell();
+    await user.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(await screen.findByText("View all")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByText("View all")).not.toBeInTheDocument();
+  });
+
+  it("bell button has title='Notifications' for mouse hover affordance", () => {
+    renderBell();
+    const bellBtn = screen.getByRole("button", { name: /view notifications/i });
+    expect(bellBtn).toHaveAttribute("title", "Notifications");
+  });
 });

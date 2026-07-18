@@ -407,10 +407,10 @@ describe("IssuerStudioListPage", () => {
 
   // ── Fix #1: z-index / header ──────────────────────────────────────────────────
 
-  it("page header has z-20 class to prevent list content overlap", () => {
+  it("page header has z-10 class, below the global nav's z-20, to prevent it painting over the nav on scroll", () => {
     renderPage();
     const header = document.querySelector("header");
-    expect(header?.className).toMatch(/z-20/);
+    expect(header?.className).toMatch(/z-10/);
   });
 
   // ── Fix #2: Plan display ──────────────────────────────────────────────────────

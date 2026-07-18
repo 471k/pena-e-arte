@@ -47,6 +47,12 @@
   }
 }
 
+:root {
+  /* Height of the IssuerLayout sticky global nav.
+     Must be kept in sync if the nav's py or content height changes. */
+  --issuer-nav-height: 64px;
+}
+
 * {
   border-color: var(--color-border);
 }
