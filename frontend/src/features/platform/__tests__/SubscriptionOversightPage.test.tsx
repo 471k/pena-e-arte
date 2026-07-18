@@ -452,4 +452,97 @@ describe("SubscriptionOversightPage", () => {
     expect(screen.queryByText(/trial expired/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/trial ends/i)).not.toBeInTheDocument();
   });
+
+  // ── Header / layout parity with IssuerStudioListPage ───────────────────────────
+
+  it("page header has z-20 class to prevent list content overlap", async () => {
+    renderPage();
+    await screen.findByText("Active Studio");
+    const header = document.querySelector("header");
+    expect(header?.className).toMatch(/z-20/);
+  });
+
+  // ── Copy slug button ─────────────────────────────────────────────────────────
+
+  it("slug is wrapped in a button with accessible copy label", async () => {
+    renderPage();
+    await screen.findByText("Active Studio");
+    expect(screen.getByRole("button", { name: /copy slug active-studio/i })).toBeInTheDocument();
+  });
+
+  // ── No-plan fallback + warning ───────────────────────────────────────────────
+
+  it("shows 'No plan assigned' and a warning icon for an Active subscription with null planName", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{ ...SUBS[0], planName: null }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Active Studio");
+    expect(screen.getByText(/no plan assigned/i)).toBeInTheDocument();
+    expect(document.querySelector('[title*="no linked plan"]')).not.toBeNull();
+  });
+
+  // ── Grant Extension label ────────────────────────────────────────────────────
+
+  it("expired trial shows 'Grant Extension (+7 days)' label", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{
+          ...SUBS[1],
+          trialExpiresAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+        }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Trialing Studio");
+    // aria-label ("Grant extension for Trialing Studio") overrides accessible name,
+    // so assert on the visible button text directly.
+    expect(screen.getByText("Grant Extension (+7 days)")).toBeInTheDocument();
+  });
+
+  // ── Activate button hierarchy ────────────────────────────────────────────────
+
+  it("Activate button for a Cancelled subscription is an outline button, not filled", async () => {
+    renderPage();
+    await screen.findByText("Cancelled Studio");
+    const activateBtn = screen.getByRole("button", { name: /activate subscription for cancelled studio/i });
+    expect(activateBtn.className).toMatch(/border/);
+    expect(activateBtn.className).not.toMatch(/bg-primary/);
+  });
+
+  // ── Pagination ───────────────────────────────────────────────────────────────
+
+  it("does not show pagination controls when results fit on one page", async () => {
+    renderPage();
+    await screen.findByText("Active Studio");
+    expect(screen.queryByText(/page \d+ of \d+/i)).not.toBeInTheDocument();
+  });
+
+  it("shows pagination controls when results exceed page size, and Next advances the page", async () => {
+    const user = userEvent.setup();
+    const many: PlatformSubscriptionResponse[] = Array.from({ length: 15 }, (_, i) => ({
+      ...SUBS[0],
+      studioId:   `m${i + 1}`,
+      studioName: `Sub Studio ${String(i + 1).padStart(2, "0")}`,
+      studioSlug: `sub-studio-${String(i + 1).padStart(2, "0")}`,
+      subscriptionId: `sub-m${i + 1}`,
+    }));
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json(many)),
+    );
+    renderPage();
+    await screen.findByText("Sub Studio 01");
+    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(screen.queryByText("Sub Studio 11")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /previous/i })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+    expect(await screen.findByText("Sub Studio 11")).toBeInTheDocument();
+    expect(screen.queryByText("Sub Studio 01")).not.toBeInTheDocument();
+    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^next$/i })).toBeDisabled();
+  });
 });

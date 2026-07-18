@@ -1,6 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Banknote, Clock, ExternalLink, Loader2, Receipt, Search, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  Banknote,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Copy,
+  ExternalLink,
+  Loader2,
+  Receipt,
+  Search,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Button } from "@/shared/components/ui/button";
@@ -125,6 +137,14 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   const isTrialRelevantState =
     effectiveStatus === "Trialing" || effectiveStatus === "GracePeriod" || effectiveStatus === "NoSubscription";
 
+  const planDisplay = (() => {
+    if (sub.status === "Trialing") return "In Trial";
+    if (sub.status === "NoSubscription") return "No subscription";
+    return sub.planName ?? "No plan assigned";
+  })();
+  const showNoPlanWarning =
+    sub.status !== "Trialing" && sub.status !== "NoSubscription" && !sub.planName;
+
   const periodText = (() => {
     if (sub.status === "Active")       return `Renews: ${fmt(sub.currentPeriodEnd)}`;
     if (sub.status === "GracePeriod")  return `Grace ends: ${fmt(sub.currentPeriodEnd)}`;
@@ -150,17 +170,37 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-2 flex-nowrap min-w-0">
               <span className="font-medium text-sm shrink-0">{sub.studioName}</span>
-              <span className="text-xs text-muted-foreground font-mono truncate max-w-[180px]"
-                    title={sub.studioSlug}>
-                {sub.studioSlug}
-              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void navigator.clipboard.writeText(sub.studioSlug);
+                  toast.success("Slug copied");
+                }}
+                aria-label={`Copy slug ${sub.studioSlug}`}
+                className="group flex items-center gap-0.5 text-xs text-muted-foreground
+                           font-mono hover:text-foreground transition-colors cursor-pointer
+                           max-w-[180px]"
+              >
+                <span className="truncate" title={sub.studioSlug}>{sub.studioSlug}</span>
+                <Copy className="h-2.5 w-2.5 shrink-0 opacity-0 group-hover:opacity-50
+                                 transition-opacity" />
+              </button>
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${statusClass}`}>
                 {STATUS_LABELS[effectiveStatus] ?? effectiveStatus}
               </span>
             </div>
             <div className="space-y-0.5">
               <p className="text-xs text-muted-foreground">
-                {sub.status === "Trialing" ? "In Trial" : (sub.planName ?? "No paid plan")}
+                {planDisplay}
+                {showNoPlanWarning && (
+                  <span
+                    title="Active subscription has no linked plan — check billing data"
+                    className="inline-flex items-center ml-1 text-amber-500"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                  </span>
+                )}
                 {sub.trialExpiresAt && isTrialRelevantState && (
                   <>
                     {" · "}
@@ -197,12 +237,13 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
                   : `Extend trial for ${sub.studioName}`}
               >
                 <Clock className="h-3.5 w-3.5" />
-                {trialExpired ? "Grant Extension" : "Extend Trial (+7 days)"}
+                {trialExpired ? "Grant Extension (+7 days)" : "Extend Trial (+7 days)"}
               </Button>
             )}
             {canActivate && !activating && !extending && !confirming && (
               <Button
                 size="sm"
+                variant={effectiveStatus === "Cancelled" ? "outline" : "default"}
                 className="h-7 text-xs gap-1"
                 onClick={() => setActivating(true)}
                 aria-label={`Activate subscription for ${sub.studioName}`}
@@ -332,6 +373,8 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
 
 const ALL_STATUSES = ["Suspended", "Active", "Trialing", "GracePeriod", "PastDue", "Cancelled", "NoSubscription"];
 
+const PAGE_SIZE = 10;
+
 export function SubscriptionOversightPage() {
   useDocumentMeta({ title: "Subscriptions — Platform Admin", canonical: "/platform/subscriptions" });
 
@@ -339,6 +382,7 @@ export function SubscriptionOversightPage() {
   const statusFilter = searchParams.get("status") ?? "";
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<"name" | "trialEnd" | "periodEnd">("trialEnd");
+  const [page, setPage] = useState(1);
 
   // Refetch on mount so the issuer always sees current subscription state.
   const { data: subscriptions, isLoading, isError } =
@@ -369,9 +413,18 @@ export function SubscriptionOversightPage() {
     return 0;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSubs   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Clamp the current page if filtering shrinks the result set below it.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-10">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
         <Receipt className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Subscriptions</span>
         {subscriptions && (
@@ -383,7 +436,7 @@ export function SubscriptionOversightPage() {
         )}
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-3">
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-3">
         {/* ── Search + sort toolbar ────────────────────────────────────── */}
         <div className="flex gap-2 flex-wrap mb-3">
           <div className="relative flex-1 min-w-48">
@@ -393,13 +446,13 @@ export function SubscriptionOversightPage() {
               aria-label="Search subscriptions by studio name or slug"
               placeholder="Search by studio name or slug…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="pl-8 h-8 text-sm"
             />
           </div>
           <select
             value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as typeof sortKey)}
+            onChange={(e) => { setSortKey(e.target.value as typeof sortKey); setPage(1); }}
             className="h-8 rounded-md border border-input bg-background px-2 text-xs"
             aria-label="Sort subscriptions"
           >
@@ -412,7 +465,7 @@ export function SubscriptionOversightPage() {
         {subscriptions && (
           <div className="flex flex-wrap gap-2 mb-4">
             <button
-              onClick={() => setSearchParams({})}
+              onClick={() => { setSearchParams({}); setPage(1); }}
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 !statusFilter ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
               }`}
@@ -427,7 +480,7 @@ export function SubscriptionOversightPage() {
               return (
                 <button
                   key={s}
-                  onClick={() => setSearchParams({ status: s })}
+                  onClick={() => { setSearchParams({ status: s }); setPage(1); }}
                   className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                     statusFilter === s
                       ? "bg-primary text-primary-foreground border-primary"
@@ -471,6 +524,7 @@ export function SubscriptionOversightPage() {
                 onClick={() => {
                   setSearch("");
                   setSearchParams({});
+                  setPage(1);
                 }}
               >
                 Clear filters
@@ -479,9 +533,33 @@ export function SubscriptionOversightPage() {
           </div>
         )}
 
-        {!isLoading && !isError && filtered.map((sub) => (
+        {!isLoading && !isError && pageSubs.map((sub) => (
           <SubscriptionRow key={sub.studioId} sub={sub} />
         ))}
+
+        {!isLoading && !isError && totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <Button
+              size="sm" variant="outline" className="h-7 text-xs gap-1"
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              size="sm" variant="outline" className="h-7 text-xs gap-1"
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
       </main>
     </div>
   );

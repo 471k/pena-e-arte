@@ -6,6 +6,8 @@ import {
   AlertTriangle,
   Banknote,
   Building2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Copy,
   ExternalLink,
@@ -75,6 +77,8 @@ const ALL_FILTER_STATUSES = [
   "Active", "Trialing", "GracePeriod", "PastDue",
   "Cancelled", "NoSubscription", "Suspended",
 ] as const;
+
+const PAGE_SIZE = 10;
 
 function fmt(date: string) {
   return new Date(date).toLocaleDateString("en-GB", {
@@ -448,6 +452,7 @@ export function IssuerStudioListPage() {
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [planFilter,   setPlanFilter]   = useState("all");
+  const [page,         setPage]         = useState(1);
 
   const { data: studios,       isLoading: studiosLoading, isError: studiosError } =
     useGetStudiosQuery();
@@ -493,9 +498,16 @@ export function IssuerStudioListPage() {
       });
   }, [studios, subMap, search, statusFilter, planFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  const pageStudios = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
+
   const groups = useMemo(() => {
     const result: Array<{ status: string; items: StudioResponse[] }> = [];
-    for (const s of filtered) {
+    for (const s of pageStudios) {
       const sub  = subMap.get(s.id);
       const eff  = !s.isActive ? "Suspended" : (sub?.status ?? "NoSubscription");
       const last = result.at(-1);
@@ -506,7 +518,23 @@ export function IssuerStudioListPage() {
       }
     }
     return result;
-  }, [filtered, subMap]);
+  }, [pageStudios, subMap]);
+
+  // Jump to whichever page contains the studio highlighted from the dashboard at-risk link.
+  useEffect(() => {
+    if (!highlightId) return;
+    const idx = filtered.findIndex((s) => s.id === highlightId);
+    if (idx === -1) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(Math.floor(idx / PAGE_SIZE) + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, filtered.length]);
+
+  // Clamp the current page if filtering shrinks the result set below it.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
 
   // Scroll to and highlight the studio arriving from the dashboard at-risk link.
   useEffect(() => {
@@ -517,7 +545,7 @@ export function IssuerStudioListPage() {
     setDimHighlight(false);
     const timer = setTimeout(() => setDimHighlight(true), 1800);
     return () => clearTimeout(timer);
-  }, [highlightId, filtered.length]);
+  }, [highlightId, filtered.length, page]);
 
   const isLoading = studiosLoading || subsLoading;
 
@@ -543,13 +571,13 @@ export function IssuerStudioListPage() {
             aria-label="Search studios by name or slug"
             placeholder="Search by name or slug…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-8 h-8 text-sm"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           aria-label="Filter by status"
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
@@ -560,7 +588,7 @@ export function IssuerStudioListPage() {
         </select>
         <select
           value={planFilter}
-          onChange={(e) => setPlanFilter(e.target.value)}
+          onChange={(e) => { setPlanFilter(e.target.value); setPage(1); }}
           aria-label="Filter by plan"
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
@@ -633,6 +661,30 @@ export function IssuerStudioListPage() {
             </div>
           ))}
         </div>
+
+        {!isLoading && !studiosError && totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4">
+            <Button
+              size="sm" variant="outline" className="h-7 text-xs gap-1"
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              size="sm" variant="outline" className="h-7 text-xs gap-1"
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
       </main>
     </div>
   );

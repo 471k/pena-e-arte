@@ -86,6 +86,28 @@ const PLANS: PlanResponse[] = [
   },
 ];
 
+function makeManyStudios(count: number): {
+  studios: StudioResponse[];
+  subs:    PlatformSubscriptionResponse[];
+} {
+  const studios: StudioResponse[] = [];
+  const subs:    PlatformSubscriptionResponse[] = [];
+  for (let i = 1; i <= count; i++) {
+    const id   = `m${i}`;
+    const name = `Studio ${String(i).padStart(2, "0")}`;
+    const slug = `studio-${String(i).padStart(2, "0")}`;
+    studios.push({ ...STUDIO_ACTIVE, id, name, slug });
+    subs.push({
+      ...SUB_ACTIVE,
+      studioId:       id,
+      studioName:     name,
+      studioSlug:     slug,
+      subscriptionId: `sub-${id}`,
+    });
+  }
+  return { studios, subs };
+}
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -552,5 +574,75 @@ describe("IssuerStudioListPage", () => {
     expect(
       screen.getByRole("button", { name: /grant extension \(\+7 days\)/i })
     ).toBeInTheDocument();
+  });
+
+  // ── Pagination ─────────────────────────────────────────────────────────────────
+
+  it("does not show pagination controls when results fit on one page", async () => {
+    renderPage();
+    await screen.findByText("Ink Soul");
+    expect(screen.queryByText(/page \d+ of \d+/i)).not.toBeInTheDocument();
+  });
+
+  it("shows pagination controls and correct page count when results exceed page size", async () => {
+    const { studios, subs } = makeManyStudios(15);
+    server.use(
+      http.get("http://localhost/api/v1/studios", () => HttpResponse.json(studios)),
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json(subs)),
+    );
+    renderPage();
+    await screen.findByText("Studio 01");
+    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    // Page size is 10 — item 11 should not be on the first page
+    expect(screen.queryByText("Studio 11")).not.toBeInTheDocument();
+  });
+
+  it("Previous button is disabled on the first page", async () => {
+    const { studios, subs } = makeManyStudios(15);
+    server.use(
+      http.get("http://localhost/api/v1/studios", () => HttpResponse.json(studios)),
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json(subs)),
+    );
+    renderPage();
+    await screen.findByText("Studio 01");
+    expect(screen.getByRole("button", { name: /previous/i })).toBeDisabled();
+  });
+
+  it("clicking Next advances to the next page and Next becomes disabled on the last page", async () => {
+    const user = userEvent.setup();
+    const { studios, subs } = makeManyStudios(15);
+    server.use(
+      http.get("http://localhost/api/v1/studios", () => HttpResponse.json(studios)),
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json(subs)),
+    );
+    renderPage();
+    await screen.findByText("Studio 01");
+
+    await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+    expect(await screen.findByText("Studio 11")).toBeInTheDocument();
+    expect(screen.queryByText("Studio 01")).not.toBeInTheDocument();
+    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^next$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /previous/i })).not.toBeDisabled();
+  });
+
+  it("changing the search term resets pagination back to page 1", async () => {
+    const user = userEvent.setup();
+    const { studios, subs } = makeManyStudios(15);
+    server.use(
+      http.get("http://localhost/api/v1/studios", () => HttpResponse.json(studios)),
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json(subs)),
+    );
+    renderPage();
+    await screen.findByText("Studio 01");
+
+    await user.click(screen.getByRole("button", { name: /^next$/i }));
+    expect(await screen.findByText("Studio 11")).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText(/search by name or slug/i), "Studio 0");
+
+    expect(await screen.findByText("Studio 01")).toBeInTheDocument();
+    expect(screen.queryByText(/page \d+ of \d+/i)).not.toBeInTheDocument();
   });
 });
