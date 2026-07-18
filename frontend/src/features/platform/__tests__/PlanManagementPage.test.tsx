@@ -399,13 +399,12 @@ describe("PlanManagementPage", () => {
 
   // ── Fix #3: Trash icon destructive color ─────────────────────────────────────
 
-  it("delete button has destructive color class by default (not muted-foreground)", async () => {
+  it("delete button uses text-red class, not text-destructive (dark-mode contrast fix)", async () => {
     renderPage();
     await screen.findByText("Starter");
     const deleteBtn = screen.getByRole("button", { name: /delete starter plan/i });
-    // Default class should include text-destructive (at some opacity), not text-muted-foreground
-    expect(deleteBtn.className).toMatch(/text-destructive/);
-    expect(deleteBtn.className).not.toMatch(/text-muted-foreground/);
+    expect(deleteBtn.className).toMatch(/text-red-/);
+    expect(deleteBtn.className).not.toMatch(/text-destructive/);
   });
 
   it("edit button does NOT have destructive color (it stays neutral)", async () => {
@@ -417,14 +416,14 @@ describe("PlanManagementPage", () => {
 
   // ── Fix #4: Ghost tile ────────────────────────────────────────────────────────
 
-  it("shows ghost 'Add plan' tile when plan count is not a multiple of 3", async () => {
+  it("ghost 'New plan' tile always appears regardless of plan count modulo 3", async () => {
     // PLANS seed has 2 plans (2 % 3 !== 0)
     renderPage();
     await screen.findByText("Starter");
-    expect(screen.getByRole("button", { name: /create new plan/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add a new plan/i })).toBeInTheDocument();
   });
 
-  it("does NOT show ghost tile when plan count is a multiple of 3", async () => {
+  it("ghost tile appears even when plan count is a multiple of 3", async () => {
     server.use(
       http.get("http://localhost/api/v1/billing/plans", () =>
         HttpResponse.json([
@@ -446,9 +445,15 @@ describe("PlanManagementPage", () => {
     );
     renderPage();
     await screen.findByText("Enterprise");
-    // 3 plans → 3 % 3 === 0 → no ghost tile
-    // The New Plan header button is "new plan" not "create new plan"
-    expect(screen.queryByRole("button", { name: /create new plan/i })).not.toBeInTheDocument();
+    // 3 plans → 3 % 3 === 0 → OLD logic would hide ghost; NEW logic always shows it
+    expect(screen.getByRole("button", { name: /add a new plan/i })).toBeInTheDocument();
+  });
+
+  it("ghost tile visible text is 'New plan', not 'Add plan'", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    const ghostTile = screen.getByRole("button", { name: /add a new plan/i });
+    expect(ghostTile.textContent?.trim()).toBe("New plan");
   });
 
   it("clicking ghost tile opens the create form", async () => {
@@ -456,7 +461,7 @@ describe("PlanManagementPage", () => {
     renderPage();
     await screen.findByText("Starter");
 
-    const ghostTile = screen.getByRole("button", { name: /create new plan/i });
+    const ghostTile = screen.getByRole("button", { name: /add a new plan/i });
     await user.click(ghostTile);
 
     expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
@@ -472,5 +477,115 @@ describe("PlanManagementPage", () => {
     expect(spans.length).toBe(2); // One for Starter, one for Pro
     const starterSpan = document.querySelector('[aria-label*="subscribed to Starter"]');
     expect(starterSpan?.getAttribute("aria-label")).toMatch(/4 studios subscribed to Starter/i);
+  });
+
+  // ── Fix #2: Dual-price display ──────────────────────────────────────────────
+
+  it("Monthly plan shows monthly price prominently and yearly as reference", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    // Monthly price displayed normally — no "ref." suffix
+    // Yearly price shown with "ref." marker indicating it's not the charged price
+    const refText = document.querySelector('[title*="Reference only"]');
+    expect(refText).not.toBeNull();
+    expect(refText?.textContent).toMatch(/\/yr ref\./);
+  });
+
+  it("Yearly plan shows yearly price prominently and monthly as reference", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([{
+          id:                    "plan-yearly",
+          name:                  "Annual",
+          billingInterval:       "Yearly",
+          priceMonthly:          30,
+          priceYearly:           200,
+          yearlyDiscountPercent: 44,
+          allowBrandingRemoval:  false,
+          stripePriceIdMonthly:  null,
+          stripePriceIdYearly:   "price_yearly_annual",
+          subscriberCount:       0,
+        }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Annual");
+    // The reference entry should be the /mo price
+    const refText = document.querySelector('[title*="Reference only"]');
+    expect(refText?.textContent).toMatch(/\/mo ref\./);
+  });
+
+  it("'ref.' prices appear in a muted element, not a prominent one", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    const refEl = document.querySelector('[title*="Reference only"]');
+    // muted-foreground/50 + text-[11px] = clearly secondary
+    expect(refEl?.className).toMatch(/muted-foreground/);
+  });
+
+  // ── Fix #4: "New plan" is primary action ────────────────────────────────────
+
+  it("'New plan' header button is a solid/filled button (variant default)", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    // Header button "New plan" (not "Add a new plan" which is the ghost tile)
+    const headerBtn = screen.getAllByRole("button", { name: /^new plan$/i })
+      .find(b => b.closest("header"));
+    expect(headerBtn).toBeTruthy();
+    // Default shadcn variant uses bg-primary — check for bg- class
+    expect(headerBtn?.className).toMatch(/bg-primary|bg-\[hsl/);
+    // Outline variant is "border border-input bg-background …" — that class must be absent
+    expect(headerBtn?.className).not.toMatch(/border-input/);
+  });
+
+  // ── Fix #6: Billing interval label ─────────────────────────────────────────
+
+  it("Monthly plan shows 'Billed monthly' label", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    expect(screen.getByText("Billed monthly")).toBeInTheDocument();
+  });
+
+  it("Yearly plan shows 'Billed yearly only' label", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([{
+          id:                    "plan-yearly",
+          name:                  "Annual",
+          billingInterval:       "Yearly",
+          priceMonthly:          30,
+          priceYearly:           200,
+          yearlyDiscountPercent: 44,
+          allowBrandingRemoval:  false,
+          stripePriceIdMonthly:  null,
+          stripePriceIdYearly:   "price_yr",
+          subscriberCount:       0,
+        }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Annual");
+    expect(screen.getByText("Billed yearly only")).toBeInTheDocument();
+  });
+
+  it("'Billing: Monthly' text no longer appears anywhere on the page", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    expect(screen.queryByText(/billing: monthly/i)).not.toBeInTheDocument();
+  });
+
+  // ── Fix #3: Icon cluster hit targets ───────────────────────────────────────
+
+  it("edit and delete buttons are h-8 w-8 (32px), not h-7 w-7 (28px)", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    const editBtn = screen.getByRole("button", { name: /edit starter plan/i });
+    const deleteBtn = screen.getByRole("button", { name: /delete starter plan/i });
+    // Both should have h-8 class
+    expect(editBtn.className).toMatch(/\bh-8\b/);
+    expect(deleteBtn.className).toMatch(/\bh-8\b/);
+    // Neither should have h-7
+    expect(editBtn.className).not.toMatch(/\bh-7\b/);
+    expect(deleteBtn.className).not.toMatch(/\bh-7\b/);
   });
 });
