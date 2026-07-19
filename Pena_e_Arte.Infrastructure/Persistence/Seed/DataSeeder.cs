@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.ValueObjects;
@@ -15,12 +16,12 @@ public static class DataSeeder
 
     // ─── Issuer-level IDs ──────────────────────────────────────────────────────
 
-    private static readonly Guid StarterPlanId        = new("aaaa0001-0000-0000-0000-000000000000");
-    private static readonly Guid GrowthPlanId         = new("aaaa0002-0000-0000-0000-000000000000");
-    private static readonly Guid ProPlanId            = new("aaaa0003-0000-0000-0000-000000000000");
-    private static readonly Guid PremiumMonthlyPlanId = new("aaaa0004-0000-0000-0000-000000000000");
-    private static readonly Guid PremiumYearlyPlanId  = new("aaaa0005-0000-0000-0000-000000000000");
-    private static readonly Guid FreePlanId           = new("aaaa0006-0000-0000-0000-000000000000");
+    internal static readonly Guid StarterPlanId        = new("aaaa0001-0000-0000-0000-000000000000");
+    internal static readonly Guid GrowthPlanId         = new("aaaa0002-0000-0000-0000-000000000000");
+    internal static readonly Guid ProPlanId            = new("aaaa0003-0000-0000-0000-000000000000");
+    internal static readonly Guid PremiumMonthlyPlanId = new("aaaa0004-0000-0000-0000-000000000000");
+    internal static readonly Guid PremiumYearlyPlanId  = new("aaaa0005-0000-0000-0000-000000000000");
+    internal static readonly Guid FreePlanId           = new("aaaa0006-0000-0000-0000-000000000000");
 
     private static readonly Guid Studio1Id       = new("bbbb0001-0000-0000-0000-000000000000");
     private static readonly Guid Studio2Id       = new("bbbb0002-0000-0000-0000-000000000000");
@@ -126,17 +127,32 @@ public static class DataSeeder
         await EnsureSeedUsersAsync(userManager);
         await EnsureArtistSlugsAsync(db);
 
-        // Always run: the Free plan is seeded independently of the one-time entity seed
-        // guard below, so a database that already has Starter/Growth/etc. still picks it
-        // up on the next deploy without re-running the full seed.
+        // Always run: the Free plan is seeded independently of the demo-entity guard
+        // below, so a database that already has Starter/Growth/etc. still picks it up
+        // on the next deploy without re-running the full seed.
         if (!await db.Plans.AnyAsync(p => p.Id == FreePlanId))
             await SeedFreePlanAsync(db);
 
-        // Guard: run entity seeding only once (when plans don't yet exist)
-        if (await db.Plans.AnyAsync(p => p.Id == StarterPlanId))
+        // Snapshot BEFORE reconciling. ReconcileCorePlansAsync will insert StarterPlanId
+        // if it's missing, which would make a post-reconcile check always true and
+        // silently skip demo-entity seeding on a genuinely fresh database.
+        bool coreEntitiesAlreadySeeded = await db.Plans.AnyAsync(p => p.Id == StarterPlanId);
+
+        // Always run: Starter/Growth/Premium (x2)/Pro are system-defined tiers, not
+        // issuer-owned data — their canonical values live in source control, not the
+        // database. This replaced a one-time "insert once, skip forever" guard that
+        // left multiple environments permanently stuck on a stale snapshot after the
+        // Max* limit fields and Premium's corrected pricing were added on 2026-07-18.
+        // See bug-report-plans-page-data-mismatch.md and architecture.md Decisions Log
+        // — "Core plan reconciliation replaces one-time plan seed".
+        await ReconcileCorePlansAsync(db);
+
+        // Guard: demo studios/subscriptions/appointments/designs/etc. still seed only
+        // once — unlike the five canonical plans, this fake data has no "correct"
+        // canonical state to reconcile toward on every boot.
+        if (coreEntitiesAlreadySeeded)
             return;
 
-        await SeedPlansAsync(db);
         await SeedStudiosAndSubscriptionsAsync(db);
         await SeedStudio1EntitiesAsync(db);
         await SeedStudio2EntitiesAsync(db);
@@ -144,9 +160,27 @@ public static class DataSeeder
 
     // ─── Plans ────────────────────────────────────────────────────────────────
 
-    private static async Task SeedPlansAsync(AppDbContext db)
+    // Starter/Growth/Premium (x2)/Pro are system-defined tiers. Unlike SeedFreePlanAsync
+    // (insert-once, by design — see its own comment) and the demo studios/appointments/etc.
+    // below, these five rows are reconciled to the literal values below on EVERY startup:
+    // any of the five that's missing gets inserted, and any that already exists gets its
+    // mutable fields corrected back to these values. This intentionally mirrors
+    // UpdatePlanHandler's own exclusion list for the cross-row pairing sync — Name,
+    // BillingInterval, PriceMonthly, PriceYearly, YearlyDiscountPercent, Stripe price IDs,
+    // and AllowBrandingRemoval are all included here (unlike the pairing sync, which
+    // excludes price/interval/Stripe IDs deliberately, because pairing sync only keeps two
+    // *existing* rows from drifting apart, it does not define what "correct" looks like).
+    //
+    // Practical consequence, spelled out because it's a real behavior change: if an issuer
+    // edits Starter, Growth, Premium, or Pro in place via PlanManagementPage, that edit will
+    // be reverted back to these values on the next app restart/deploy. That's the intended
+    // trade-off — see architecture.md Decisions Log, "Core plan reconciliation replaces
+    // one-time plan seed", for the reasoning and for what an issuer should do instead
+    // (clone a new Plan row rather than editing one of these five).
+    internal static async Task ReconcileCorePlansAsync(IAppDbContext db)
     {
-        db.Plans.AddRange(
+        Plan[] canonical =
+        [
             new Plan
             {
                 Id                       = StarterPlanId,
@@ -176,11 +210,9 @@ public static class DataSeeder
                 MaxStorageGb             = 10,
                 MaxLocations             = 1,
             },
-            // Premium sits between Growth and Pro. Two rows, not one — the billing
-            // interval is intentionally locked per-Plan-row (see Decisions Log: "Plan
-            // billing interval stays locked per-row"), so offering both cadences means
-            // two Plan rows sharing the same limits, linked via PairedPlanId.
-            // UpdatePlanHandler keeps their limit/feature fields in sync automatically.
+            // Premium sits between Growth and Pro. Two rows, not one — see Decisions Log:
+            // "Plan billing interval stays locked per-row". PairedPlanId links them so
+            // UpdatePlanHandler keeps their limit/feature fields in sync.
             new Plan
             {
                 Id                       = PremiumMonthlyPlanId,
@@ -233,8 +265,41 @@ public static class DataSeeder
                 MaxNotificationsPerMonth = 2500,
                 MaxStorageGb             = 50,
                 MaxLocations             = 10,
+            },
+        ];
+
+        Guid[] canonicalIds = canonical.Select(p => p.Id).ToArray();
+        Dictionary<Guid, Plan> existingById = await db.Plans
+            .Where(p => canonicalIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        foreach (Plan source in canonical)
+        {
+            if (existingById.TryGetValue(source.Id, out Plan? row))
+            {
+                row.Name                     = source.Name;
+                row.BillingInterval          = source.BillingInterval;
+                row.PriceMonthly             = source.PriceMonthly;
+                row.PriceYearly              = source.PriceYearly;
+                row.YearlyDiscountPercent    = source.YearlyDiscountPercent;
+                row.AllowBrandingRemoval     = source.AllowBrandingRemoval;
+                row.MaxArtists               = source.MaxArtists;
+                row.MaxAppointmentsPerMonth  = source.MaxAppointmentsPerMonth;
+                row.MaxNotificationsPerMonth = source.MaxNotificationsPerMonth;
+                row.MaxStorageGb             = source.MaxStorageGb;
+                row.MaxLocations             = source.MaxLocations;
+                row.AllowApiAccess           = source.AllowApiAccess;
+                row.PrioritySupport          = source.PrioritySupport;
+                row.PairedPlanId             = source.PairedPlanId;
+                // Stripe price IDs are deliberately left untouched — those are populated
+                // by StripeDemoSeeder / real Stripe dashboard configuration, not here.
             }
-        );
+            else
+            {
+                db.Plans.Add(source);
+            }
+        }
+
         await db.SaveChangesAsync();
     }
 
