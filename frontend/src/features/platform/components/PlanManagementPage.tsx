@@ -1,69 +1,13 @@
 import { useState } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { CreditCard, Edit2, Loader2, Plus, Trash2, Users, X } from "lucide-react";
+import { CreditCard, Edit2, Loader2, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import {
-  useGetIssuerPlansQuery,
-  useCreatePlanMutation,
-  useUpdatePlanMutation,
-  useDeletePlanMutation,
-  type PlanPriceRequest,
-} from "@/features/billing/billingApi";
+import { useGetIssuerPlansQuery, useDeletePlanMutation } from "@/features/billing/billingApi";
 import { priceFor, type PlanResponse } from "@/features/billing/billing.types";
-
-// Blank input, undefined, or NaN all mean "unlimited" (null) — anything else must be a
-// positive integer. Used for the five Plan usage-limit fields below.
-const optionalPositiveInt = z.preprocess((v) => {
-  if (v === "" || v === undefined || v === null) return null;
-  const n = typeof v === "string" ? Number(v) : v;
-  return Number.isNaN(n) ? null : n;
-}, z.number().int().positive().nullable());
-
-const priceSectionSchema = z.object({
-  enabled:       z.boolean(),
-  price:         z.number().min(0).optional(),
-  stripePriceId: z.string().max(200).optional().nullable(),
-});
-
-const schema = z.object({
-  name:                     z.string().min(1, "Name is required").max(100),
-  yearlyDiscountPercent:    z.number({ message: "Required" }).min(0).max(100),
-  monthly:                  priceSectionSchema,
-  yearly:                   priceSectionSchema,
-  allowBrandingRemoval:     z.boolean(),
-  maxArtists:               optionalPositiveInt,
-  maxAppointmentsPerMonth:  optionalPositiveInt,
-  maxNotificationsPerMonth: optionalPositiveInt,
-  maxStorageGb:             optionalPositiveInt,
-  maxLocations:             optionalPositiveInt,
-  allowApiAccess:           z.boolean(),
-  prioritySupport:          z.boolean(),
-}).refine((v) => v.monthly.enabled || v.yearly.enabled, {
-  message: "At least one billing interval must be enabled.",
-  path: ["monthly"],
-}).refine((v) => !v.monthly.enabled || v.monthly.price !== undefined, {
-  message: "Price is required when this interval is enabled.",
-  path: ["monthly", "price"],
-}).refine((v) => !v.yearly.enabled || v.yearly.price !== undefined, {
-  message: "Price is required when this interval is enabled.",
-  path: ["yearly", "price"],
-}).refine((v) => {
-  const prices = [v.monthly, v.yearly].filter((s) => s.enabled).map((s) => s.price ?? 0);
-  return prices.every((p) => p === 0) || prices.every((p) => p > 0);
-}, {
-  message: "A plan must be either fully free (both prices = 0) or fully paid (both prices > 0).",
-  path: ["monthly", "price"],
-});
-
-type FormValues = z.infer<typeof schema>;
 
 // null = unlimited on the plan
 function formatLimit(value: number | null, unit: string): string {
@@ -77,201 +21,6 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount);
-}
-
-interface PlanFormProps {
-  defaultValues?: Partial<FormValues>;
-  onSave:  (v: FormValues) => Promise<void>;
-  onClose: () => void;
-  saving:  boolean;
-}
-
-function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema) as Resolver<FormValues>,
-    defaultValues: {
-      yearlyDiscountPercent:    17,
-      monthly:                  { enabled: true, price: undefined, stripePriceId: null },
-      yearly:                   { enabled: false, price: undefined, stripePriceId: null },
-      allowBrandingRemoval:     false,
-      maxArtists:               null,
-      maxAppointmentsPerMonth:  null,
-      maxNotificationsPerMonth: null,
-      maxStorageGb:             null,
-      maxLocations:             null,
-      allowApiAccess:           false,
-      prioritySupport:          false,
-      ...defaultValues,
-    },
-  });
-
-  const watchedMonthlyEnabled = watch("monthly.enabled");
-  const watchedYearlyEnabled  = watch("yearly.enabled");
-  const watchedMonthlyPrice   = watch("monthly.price");
-  const watchedDiscount       = watch("yearlyDiscountPercent");
-  const suggestedYearly =
-    watchedMonthlyPrice !== undefined && watchedMonthlyPrice > 0 && watchedDiscount >= 0 && watchedDiscount < 100
-      ? watchedMonthlyPrice * 12 * (1 - watchedDiscount / 100)
-      : null;
-
-  return (
-    <form onSubmit={handleSubmit(onSave)} className="space-y-3 p-4 border rounded-lg bg-background">
-      <div className="space-y-1.5">
-        <Label htmlFor="planName">Name</Label>
-        <Input id="planName" {...register("name")} aria-invalid={!!errors.name} />
-        {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="discount">Yearly discount (%)</Label>
-        <Input id="discount" type="number" min="0" max="100"
-          {...register("yearlyDiscountPercent", { valueAsNumber: true })} />
-        {errors.yearlyDiscountPercent && (
-          <p className="text-xs text-destructive">{errors.yearlyDiscountPercent.message}</p>
-        )}
-      </div>
-
-      {/* Monthly price section */}
-      <div className="space-y-1.5 border-t pt-3">
-        <div className="flex items-center gap-2">
-          <input
-            id="monthlyEnabled"
-            type="checkbox"
-            className="h-4 w-4 rounded border-input accent-primary"
-            {...register("monthly.enabled")}
-          />
-          <Label htmlFor="monthlyEnabled" className="cursor-pointer font-medium">Monthly price</Label>
-        </div>
-        {watchedMonthlyEnabled && (
-          <div className="grid grid-cols-2 gap-3 pl-6">
-            <div className="space-y-1.5">
-              <Label htmlFor="monthlyPrice" className="text-xs text-muted-foreground">Monthly price (€)</Label>
-              <Input id="monthlyPrice" type="number" step="0.01" min="0"
-                {...register("monthly.price", { valueAsNumber: true })} />
-              {errors.monthly?.price && <p className="text-xs text-destructive">{errors.monthly.price.message}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="monthlyStripePriceId" className="text-xs text-muted-foreground">Stripe Monthly Price ID</Label>
-              <Input id="monthlyStripePriceId" placeholder="price_…" className="text-xs font-mono"
-                {...register("monthly.stripePriceId")} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Yearly price section */}
-      <div className="space-y-1.5 border-t pt-3">
-        <div className="flex items-center gap-2">
-          <input
-            id="yearlyEnabled"
-            type="checkbox"
-            className="h-4 w-4 rounded border-input accent-primary"
-            {...register("yearly.enabled")}
-          />
-          <Label htmlFor="yearlyEnabled" className="cursor-pointer font-medium">Yearly price</Label>
-        </div>
-        {watchedYearlyEnabled && (
-          <div className="grid grid-cols-2 gap-3 pl-6">
-            <div className="space-y-1.5">
-              <Label htmlFor="yearlyPrice" className="text-xs text-muted-foreground">Yearly price (€)</Label>
-              <Input id="yearlyPrice" type="number" step="0.01" min="0"
-                {...register("yearly.price", { valueAsNumber: true })} />
-              {suggestedYearly !== null && (
-                <p className="text-[10px] text-muted-foreground">
-                  Suggested: {formatCurrency(suggestedYearly)} (monthly × 12 × {100 - watchedDiscount}%)
-                </p>
-              )}
-              {errors.yearly?.price && <p className="text-xs text-destructive">{errors.yearly.price.message}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="yearlyStripePriceId" className="text-xs text-muted-foreground">Stripe Yearly Price ID</Label>
-              <Input id="yearlyStripePriceId" placeholder="price_…" className="text-xs font-mono"
-                {...register("yearly.stripePriceId")} />
-            </div>
-          </div>
-        )}
-        {errors.monthly?.message && (
-          <p className="text-xs text-destructive">{errors.monthly.message}</p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          id="allowBrandingRemoval"
-          type="checkbox"
-          className="h-4 w-4 rounded border-input accent-primary"
-          {...register("allowBrandingRemoval")}
-        />
-        <Label htmlFor="allowBrandingRemoval" className="cursor-pointer">Allow branding removal</Label>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          id="allowApiAccess"
-          type="checkbox"
-          className="h-4 w-4 rounded border-input accent-primary"
-          {...register("allowApiAccess")}
-        />
-        <Label htmlFor="allowApiAccess" className="cursor-pointer">Allow API access</Label>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          id="prioritySupport"
-          type="checkbox"
-          className="h-4 w-4 rounded border-input accent-primary"
-          {...register("prioritySupport")}
-        />
-        <Label htmlFor="prioritySupport" className="cursor-pointer">Priority support</Label>
-      </div>
-
-      <div className="space-y-1.5 border-t pt-3">
-        <p className="text-xs font-medium text-muted-foreground">Limits (blank = unlimited)</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="maxArtists" className="text-xs text-muted-foreground">Artists</Label>
-            <Input id="maxArtists" type="number" min="1" placeholder="Unlimited" {...register("maxArtists")} />
-            {errors.maxArtists && <p className="text-xs text-destructive">{errors.maxArtists.message}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="maxAppointmentsPerMonth" className="text-xs text-muted-foreground">Appointments/mo</Label>
-            <Input id="maxAppointmentsPerMonth" type="number" min="1" placeholder="Unlimited"
-              {...register("maxAppointmentsPerMonth")} />
-            {errors.maxAppointmentsPerMonth && (
-              <p className="text-xs text-destructive">{errors.maxAppointmentsPerMonth.message}</p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="maxNotificationsPerMonth" className="text-xs text-muted-foreground">Notifications/mo</Label>
-            <Input id="maxNotificationsPerMonth" type="number" min="1" placeholder="Unlimited"
-              {...register("maxNotificationsPerMonth")} />
-            {errors.maxNotificationsPerMonth && (
-              <p className="text-xs text-destructive">{errors.maxNotificationsPerMonth.message}</p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="maxStorageGb" className="text-xs text-muted-foreground">Storage (GB)</Label>
-            <Input id="maxStorageGb" type="number" min="1" placeholder="Unlimited" {...register("maxStorageGb")} />
-            {errors.maxStorageGb && <p className="text-xs text-destructive">{errors.maxStorageGb.message}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="maxLocations" className="text-xs text-muted-foreground">Locations</Label>
-            <Input id="maxLocations" type="number" min="1" placeholder="Unlimited" {...register("maxLocations")} />
-            {errors.maxLocations && <p className="text-xs text-destructive">{errors.maxLocations.message}</p>}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-2 pt-1">
-        <Button type="submit" size="sm" disabled={saving} className="flex-1">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    </form>
-  );
 }
 
 function PlanCardSkeleton() {
@@ -295,48 +44,12 @@ function PlanCardSkeleton() {
   );
 }
 
-function toPrices(values: FormValues): PlanPriceRequest[] {
-  const prices: PlanPriceRequest[] = [];
-  if (values.monthly.enabled) {
-    prices.push({ interval: "Monthly", price: values.monthly.price ?? 0, stripePriceId: values.monthly.stripePriceId });
-  }
-  if (values.yearly.enabled) {
-    prices.push({ interval: "Yearly", price: values.yearly.price ?? 0, stripePriceId: values.yearly.stripePriceId });
-  }
-  return prices;
-}
-
 function PlanCard({ plan }: { plan: PlanResponse }) {
-  const [editing,  setEditing]  = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [updatePlan, { isLoading: saving  }] = useUpdatePlanMutation();
   const [deletePlan, { isLoading: removing }] = useDeletePlanMutation();
 
   const monthly = priceFor(plan, "Monthly");
   const yearly  = priceFor(plan, "Yearly");
-
-  async function handleUpdate(values: FormValues) {
-    try {
-      await updatePlan({
-        id: plan.id,
-        name: values.name,
-        yearlyDiscountPercent: values.yearlyDiscountPercent,
-        prices: toPrices(values),
-        allowBrandingRemoval: values.allowBrandingRemoval,
-        maxArtists: values.maxArtists,
-        maxAppointmentsPerMonth: values.maxAppointmentsPerMonth,
-        maxNotificationsPerMonth: values.maxNotificationsPerMonth,
-        maxStorageGb: values.maxStorageGb,
-        maxLocations: values.maxLocations,
-        allowApiAccess: values.allowApiAccess,
-        prioritySupport: values.prioritySupport,
-      }).unwrap();
-      toast.success("Plan updated");
-      setEditing(false);
-    } catch {
-      toast.error("Failed to update plan");
-    }
-  }
 
   async function handleDelete() {
     try {
@@ -421,17 +134,18 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
               {plan.subscriberCount}
             </span>
 
-            {!editing && !deleting && (
+            {!deleting && (
               <>
                 <Button
+                  asChild
                   size="sm"
                   variant="ghost"
                   className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setEditing(true)}
-                  aria-label={`Edit ${plan.name} plan`}
                   title="Edit"
                 >
-                  <Edit2 className="h-3.5 w-3.5" />
+                  <Link to={`/platform/plans/${plan.id}/edit`} aria-label={`Edit ${plan.name} plan`}>
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </Link>
                 </Button>
                 <Button
                   size="sm"
@@ -447,39 +161,6 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
             )}
           </div>
         </div>
-
-        {/* ── Edit form ────────────────────────── */}
-        {editing && (
-          <div className="border-t pt-3">
-            <PlanForm
-              defaultValues={{
-                name:                     plan.name,
-                yearlyDiscountPercent:    plan.yearlyDiscountPercent,
-                monthly: {
-                  enabled:       monthly !== undefined,
-                  price:         monthly?.price,
-                  stripePriceId: monthly?.stripePriceId ?? null,
-                },
-                yearly: {
-                  enabled:       yearly !== undefined,
-                  price:         yearly?.price,
-                  stripePriceId: yearly?.stripePriceId ?? null,
-                },
-                allowBrandingRemoval:     plan.allowBrandingRemoval,
-                maxArtists:               plan.maxArtists,
-                maxAppointmentsPerMonth:  plan.maxAppointmentsPerMonth,
-                maxNotificationsPerMonth: plan.maxNotificationsPerMonth,
-                maxStorageGb:             plan.maxStorageGb,
-                maxLocations:             plan.maxLocations,
-                allowApiAccess:           plan.allowApiAccess,
-                prioritySupport:          plan.prioritySupport,
-              }}
-              onSave={handleUpdate}
-              onClose={() => setEditing(false)}
-              saving={saving}
-            />
-          </div>
-        )}
 
         {/* ── Delete confirmation ──────────────── */}
         {deleting && (
@@ -525,31 +206,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
 export function PlanManagementPage() {
   useDocumentMeta({ title: "Plans — Platform Admin", canonical: "/platform/plans" });
 
-  const [creating, setCreating] = useState(false);
   const { data: plans, isLoading, isError } = useGetIssuerPlansQuery();
-  const [createPlan, { isLoading: saving }] = useCreatePlanMutation();
-
-  async function handleCreate(values: FormValues) {
-    try {
-      await createPlan({
-        name: values.name,
-        yearlyDiscountPercent: values.yearlyDiscountPercent,
-        prices: toPrices(values),
-        allowBrandingRemoval: values.allowBrandingRemoval,
-        maxArtists: values.maxArtists,
-        maxAppointmentsPerMonth: values.maxAppointmentsPerMonth,
-        maxNotificationsPerMonth: values.maxNotificationsPerMonth,
-        maxStorageGb: values.maxStorageGb,
-        maxLocations: values.maxLocations,
-        allowApiAccess: values.allowApiAccess,
-        prioritySupport: values.prioritySupport,
-      }).unwrap();
-      toast.success("Plan created");
-      setCreating(false);
-    } catch {
-      toast.error("Failed to create plan");
-    }
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -558,23 +215,15 @@ export function PlanManagementPage() {
           <CreditCard className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Plans</span>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => setCreating((v) => !v)}>
-          <Plus className="h-4 w-4" />
-          New plan
+        <Button asChild size="sm" className="gap-1.5">
+          <Link to="/platform/plans/new">
+            <Plus className="h-4 w-4" />
+            New plan
+          </Link>
         </Button>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {creating && (
-          <div className="max-w-xl mb-6">
-            <PlanForm
-              onSave={handleCreate}
-              onClose={() => setCreating(false)}
-              saving={saving}
-            />
-          </div>
-        )}
-
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <PlanCardSkeleton />
@@ -587,17 +236,18 @@ export function PlanManagementPage() {
           <p className="text-center text-sm text-destructive py-16">Failed to load plans.</p>
         )}
 
-        {!isLoading && !isError && plans?.length === 0 && !creating && (
+        {!isLoading && !isError && plans?.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <CreditCard className="h-10 w-10 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">No plans yet.</p>
             <p className="text-xs text-muted-foreground max-w-xs text-center">
               Create your first plan to allow studios to subscribe.
             </p>
-            <Button size="sm" variant="outline" className="gap-1.5 mt-2"
-              onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" />
-              Create first plan
+            <Button asChild size="sm" variant="outline" className="gap-1.5 mt-2">
+              <Link to="/platform/plans/new">
+                <Plus className="h-4 w-4" />
+                Create first plan
+              </Link>
             </Button>
           </div>
         )}
@@ -609,15 +259,14 @@ export function PlanManagementPage() {
             ))}
 
             {/* Ghost tile — always last; CSS grid handles wrapping at every breakpoint */}
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
+            <Link
+              to="/platform/plans/new"
               className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/40 p-8 text-muted-foreground/40 hover:border-border/70 hover:text-muted-foreground/60 transition-colors cursor-pointer min-h-[100px]"
               aria-label="Add a new plan"
             >
               <Plus className="h-5 w-5" />
               <span className="text-xs">New plan</span>
-            </button>
+            </Link>
           </div>
         )}
       </main>

@@ -25,6 +25,7 @@ import {
   IssuerStudioListPage,
   IssuerStudioDetailPage,
   PlanManagementPage,
+  PlanEditPage,
   SubscriptionOversightPage,
   PlatformReferralPage,
   IndustryReportsPage,
@@ -156,7 +157,14 @@ export const router = createBrowserRouter([
                   { index: true,               element: <ErrorBoundary><IssuerDashboardPage /></ErrorBoundary> },
                   { path: "studios",           element: <ErrorBoundary><IssuerStudioListPage /></ErrorBoundary> },
                   { path: "studios/:studioId", element: <ErrorBoundary><IssuerStudioDetailPage /></ErrorBoundary> },
-                  { path: "plans",             element: <ErrorBoundary><PlanManagementPage /></ErrorBoundary> },
+                  {
+                    path: "plans",
+                    children: [
+                      { index: true,        element: <ErrorBoundary><PlanManagementPage /></ErrorBoundary> },
+                      { path: "new",        element: <ErrorBoundary><PlanEditPage /></ErrorBoundary> },
+                      { path: ":planId/edit", element: <ErrorBoundary><PlanEditPage /></ErrorBoundary> },
+                    ],
+                  },
                   { path: "subscriptions",     element: <ErrorBoundary><SubscriptionOversightPage /></ErrorBoundary> },
                   { path: "referrals",         element: <ErrorBoundary><PlatformReferralPage /></ErrorBoundary> },
                   { path: "reports",           element: <ErrorBoundary><IndustryReportsPage /></ErrorBoundary> },
