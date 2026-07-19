@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Infrastructure.Persistence.Seed;
@@ -163,5 +164,229 @@ public class DataSeederPlanReconciliationTests
         custom.Name.Should().Be("Studio X Custom Deal");
         custom.PriceMonthly.Should().Be(149m);
         custom.MaxArtists.Should().Be(20);
+    }
+
+    // ── RetireOrphanedNamedPlansAsync ───────────────────────────────────────────
+
+    [Fact]
+    public async Task RetireOrphanedNamedPlansAsync_NoOrphans_DoesNothing()
+    {
+        await DataSeeder.ReconcileCorePlansAsync(_db);
+
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance);
+
+        _db.Plans.Should().HaveCount(5);
+    }
+
+    [Fact]
+    public async Task RetireOrphanedNamedPlansAsync_OrphanPremiumYearlyWithActiveSubscription_ReassignsAndDeletes()
+    {
+        // Arrange — reproduces the exact bug: canonical rows already reconciled, PLUS a
+        // legacy pre-split Premium row under an unrelated Id, with a real subscription
+        // pointing at it.
+        await DataSeeder.ReconcileCorePlansAsync(_db);
+
+        Guid legacyPremiumId = Guid.NewGuid();
+        Guid studioId        = Guid.NewGuid();
+        _db.Plans.Add(new Plan
+        {
+            Id                    = legacyPremiumId,
+            Name                  = "Premium",
+            BillingInterval       = BillingInterval.Yearly,
+            PriceMonthly          = 30m,
+            PriceYearly           = 200m,
+            YearlyDiscountPercent = 44,
+        });
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId         = studioId,
+            PlanId           = legacyPremiumId,
+            Status           = SubscriptionStatus.Active,
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(20),
+            GracePeriodEnd   = DateTime.UtcNow.AddDays(27),
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance);
+
+        // Assert
+        _db.Plans.Should().HaveCount(5); // orphan removed, still exactly the 5 canonical
+        _db.Plans.Any(p => p.Id == legacyPremiumId).Should().BeFalse();
+
+        Subscription sub = _db.Subscriptions.Single(s => s.StudioId == studioId);
+        sub.PlanId.Should().Be(DataSeeder.PremiumYearlyPlanId);
+    }
+
+    [Fact]
+    public async Task RetireOrphanedNamedPlansAsync_OrphanWithMonthlyBillingInterval_ReassignsToPremiumMonthly()
+    {
+        await DataSeeder.ReconcileCorePlansAsync(_db);
+
+        Guid legacyPremiumId = Guid.NewGuid();
+        Guid studioId        = Guid.NewGuid();
+        _db.Plans.Add(new Plan
+        {
+            Id                    = legacyPremiumId,
+            Name                  = "Premium",
+            BillingInterval       = BillingInterval.Monthly,
+            PriceMonthly          = 30m,
+            PriceYearly           = 200m,
+            YearlyDiscountPercent = 44,
+        });
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId         = studioId,
+            PlanId           = legacyPremiumId,
+            Status           = SubscriptionStatus.Active,
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(20),
+            GracePeriodEnd   = DateTime.UtcNow.AddDays(27),
+        });
+        await _db.SaveChangesAsync();
+
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance);
+
+        Subscription sub = _db.Subscriptions.Single(s => s.StudioId == studioId);
+        sub.PlanId.Should().Be(DataSeeder.PremiumMonthlyPlanId);
+    }
+
+    [Fact]
+    public async Task RetireOrphanedNamedPlansAsync_OrphanReferencedByPendingPlanIdOnly_ReassignsPendingAndDeletes()
+    {
+        // A studio with an active canonical Growth subscription that has a SCHEDULED
+        // downgrade onto the legacy orphan row — PlanId is fine, only PendingPlanId
+        // points at the orphan. This is the gap the bug report's own FK grep prompted us
+        // to find; not mentioned in the report itself.
+        await DataSeeder.ReconcileCorePlansAsync(_db);
+
+        Guid legacyPremiumId = Guid.NewGuid();
+        Guid studioId        = Guid.NewGuid();
+        _db.Plans.Add(new Plan
+        {
+            Id                    = legacyPremiumId,
+            Name                  = "Premium",
+            BillingInterval       = BillingInterval.Yearly,
+            PriceMonthly          = 30m,
+            PriceYearly           = 200m,
+            YearlyDiscountPercent = 44,
+        });
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId         = studioId,
+            PlanId           = DataSeeder.GrowthPlanId,
+            PendingPlanId    = legacyPremiumId,
+            Status           = SubscriptionStatus.Active,
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(5),
+            GracePeriodEnd   = DateTime.UtcNow.AddDays(12),
+        });
+        await _db.SaveChangesAsync();
+
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance);
+
+        _db.Plans.Any(p => p.Id == legacyPremiumId).Should().BeFalse();
+        Subscription sub = _db.Subscriptions.Single(s => s.StudioId == studioId);
+        sub.PlanId.Should().Be(DataSeeder.GrowthPlanId); // untouched — was never the orphan
+        sub.PendingPlanId.Should().Be(DataSeeder.PremiumYearlyPlanId);
+    }
+
+    [Fact]
+    public async Task RetireOrphanedNamedPlansAsync_OrphanWithNoSubscriptions_DeletesCleanly()
+    {
+        await DataSeeder.ReconcileCorePlansAsync(_db);
+
+        Guid legacyPremiumId = Guid.NewGuid();
+        _db.Plans.Add(new Plan
+        {
+            Id                    = legacyPremiumId,
+            Name                  = "Premium",
+            BillingInterval       = BillingInterval.Yearly,
+            PriceMonthly          = 30m,
+            PriceYearly           = 200m,
+            YearlyDiscountPercent = 44,
+        });
+        await _db.SaveChangesAsync();
+
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance);
+
+        _db.Plans.Should().HaveCount(5);
+    }
+
+    [Fact]
+    public async Task RetireOrphanedNamedPlansAsync_CalledTwice_IsIdempotent()
+    {
+        await DataSeeder.ReconcileCorePlansAsync(_db);
+
+        Guid legacyPremiumId = Guid.NewGuid();
+        _db.Plans.Add(new Plan
+        {
+            Id                    = legacyPremiumId,
+            Name                  = "Premium",
+            BillingInterval       = BillingInterval.Yearly,
+            PriceMonthly          = 30m,
+            PriceYearly           = 200m,
+            YearlyDiscountPercent = 44,
+        });
+        await _db.SaveChangesAsync();
+
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance);
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance); // no-op second time
+
+        _db.Plans.Should().HaveCount(5);
+    }
+
+    [Fact]
+    public async Task RetireOrphanedNamedPlansAsync_DoesNotTouchDistinctlyNamedCustomPlan()
+    {
+        // Same custom-plan fixture used in the ReconcileCorePlansAsync tests above —
+        // confirms the accepted-trade-off boundary: a DIFFERENTLY named plan is safe
+        // regardless of Id, only the five reserved tier names are ever swept up.
+        await DataSeeder.ReconcileCorePlansAsync(_db);
+
+        Guid customPlanId = Guid.NewGuid();
+        _db.Plans.Add(new Plan
+        {
+            Id                    = customPlanId,
+            Name                  = "Studio X Custom Deal",
+            BillingInterval       = BillingInterval.Monthly,
+            PriceMonthly          = 149m,
+            PriceYearly           = 1490m,
+            YearlyDiscountPercent = 17,
+        });
+        await _db.SaveChangesAsync();
+
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance);
+
+        _db.Plans.Should().HaveCount(6); // 5 canonical + 1 untouched custom
+        _db.Plans.Any(p => p.Id == customPlanId).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RetireOrphanedNamedPlansAsync_OrphanWasPairedPlanIdTargetOfCanonicalRow_ClearsTheReference()
+    {
+        // Defensive case: some other Plan row's PairedPlanId still points at the orphan.
+        // Not expected in practice for this specific bug (PairedPlanId postdates the
+        // orphan), but RetireOrphanedNamedPlansAsync must not leave a dangling reference
+        // if it ever happens.
+        await DataSeeder.ReconcileCorePlansAsync(_db);
+
+        Guid legacyPremiumId = Guid.NewGuid();
+        _db.Plans.Add(new Plan
+        {
+            Id                    = legacyPremiumId,
+            Name                  = "Premium",
+            BillingInterval       = BillingInterval.Yearly,
+            PriceMonthly          = 30m,
+            PriceYearly           = 200m,
+            YearlyDiscountPercent = 44,
+        });
+        await _db.SaveChangesAsync();
+
+        Plan proPlan = _db.Plans.Single(p => p.Id == DataSeeder.ProPlanId);
+        proPlan.PairedPlanId = legacyPremiumId; // contrived, but must be handled safely
+        await _db.SaveChangesAsync();
+
+        await DataSeeder.RetireOrphanedNamedPlansAsync(_db, NullLogger.Instance);
+
+        _db.Plans.Single(p => p.Id == DataSeeder.ProPlanId).PairedPlanId.Should().BeNull();
     }
 }

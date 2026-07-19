@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -122,6 +123,8 @@ public static class DataSeeder
         AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         UserManager<IdentityUser> userManager =
             scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+        ILogger logger = scope.ServiceProvider
+            .GetRequiredService<ILoggerFactory>().CreateLogger("DataSeeder");
 
         // Always run: ensure seed credentials + artist slugs are correct
         await EnsureSeedUsersAsync(userManager);
@@ -140,12 +143,17 @@ public static class DataSeeder
 
         // Always run: Starter/Growth/Premium (x2)/Pro are system-defined tiers, not
         // issuer-owned data — their canonical values live in source control, not the
-        // database. This replaced a one-time "insert once, skip forever" guard that
-        // left multiple environments permanently stuck on a stale snapshot after the
-        // Max* limit fields and Premium's corrected pricing were added on 2026-07-18.
-        // See bug-report-plans-page-data-mismatch.md and architecture.md Decisions Log
-        // — "Core plan reconciliation replaces one-time plan seed".
+        // database. See architecture.md Decisions Log — "Core plan reconciliation
+        // replaces one-time plan seed".
         await ReconcileCorePlansAsync(db);
+
+        // Always run: retires any canonically-named plan row left behind under a
+        // non-canonical Id (e.g. Premium's pre-Monthly/Yearly-split row) and reassigns
+        // any Subscription still pointing at it. Must run AFTER ReconcileCorePlansAsync
+        // so the correct replacement rows already exist to reassign onto. See
+        // bug-report-premium-plan-duplicate-legacy-row.md and architecture.md Decisions
+        // Log — "Orphaned legacy plan retirement".
+        await RetireOrphanedNamedPlansAsync(db, logger);
 
         // Guard: demo studios/subscriptions/appointments/designs/etc. still seed only
         // once — unlike the five canonical plans, this fake data has no "correct"
@@ -298,6 +306,92 @@ public static class DataSeeder
             {
                 db.Plans.Add(source);
             }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static readonly string[] CanonicalPlanNames =
+        ["Free", "Starter", "Growth", "Premium", "Pro"];
+
+    // ─── Orphaned legacy plan retirement (always runs, after reconciliation) ───────
+    //
+    // ReconcileCorePlansAsync only ever touches the six fixed Ids above. Any environment
+    // where a canonically-named plan exists under a DIFFERENT Id — e.g. Premium's
+    // pre-Monthly/Yearly-split row from before the two-row pairing decision — is
+    // invisible to that method: neither updated nor removed, so its own insert-if-
+    // missing branch adds a fresh correct row *alongside* the leftover instead of
+    // replacing it. See bug-report-premium-plan-duplicate-legacy-row.md.
+    //
+    // This reassigns every Subscription referencing the orphan — both the active PlanId
+    // and a scheduled-downgrade PendingPlanId; confirmed via
+    // AppDbContextModelSnapshot.cs these are the ONLY two FKs anywhere that reference
+    // Plan.Id, Plan.PairedPlanId is a self-reference with no FK constraint — to the
+    // correct canonical replacement, clears any sibling's PairedPlanId still pointing at
+    // the orphan (mirrors DeletePlanHandler's own handling of that case), then deletes
+    // it. Runs every boot; becomes a no-op once no orphan remains, so — like
+    // ReconcileCorePlansAsync — it's safe to leave running indefinitely rather than
+    // requiring a one-time migration per environment.
+    //
+    // Accepted trade-off (see architecture.md Decisions Log — "Orphaned legacy plan
+    // retirement"): this matches ANY plan row named exactly one of the five reserved
+    // tier names with a non-canonical Id. It cannot distinguish a genuine pre-split
+    // leftover from an issuer-created custom plan that happens to share the name. An
+    // issuer needing a bespoke plan should give it a distinct name to avoid this.
+    internal static async Task RetireOrphanedNamedPlansAsync(IAppDbContext db, ILogger logger)
+    {
+        List<Plan> orphans = await db.Plans
+            .Where(p => CanonicalPlanNames.Contains(p.Name)
+                     && p.Id != StarterPlanId
+                     && p.Id != GrowthPlanId
+                     && p.Id != ProPlanId
+                     && p.Id != PremiumMonthlyPlanId
+                     && p.Id != PremiumYearlyPlanId
+                     && p.Id != FreePlanId)
+            .ToListAsync();
+
+        if (orphans.Count == 0)
+            return;
+
+        foreach (Plan orphan in orphans)
+        {
+            Guid replacementId = orphan.Name switch
+            {
+                "Starter" => StarterPlanId,
+                "Growth"  => GrowthPlanId,
+                "Pro"     => ProPlanId,
+                "Free"    => FreePlanId,
+                "Premium" => orphan.BillingInterval == BillingInterval.Yearly
+                    ? PremiumYearlyPlanId
+                    : PremiumMonthlyPlanId,
+                _ => throw new InvalidOperationException(
+                    $"Unreachable: '{orphan.Name}' is not one of the five canonical plan names."),
+            };
+
+            List<Subscription> activeSubs = await db.Subscriptions
+                .Where(s => s.PlanId == orphan.Id)
+                .ToListAsync();
+            foreach (Subscription sub in activeSubs)
+                sub.PlanId = replacementId;
+
+            List<Subscription> pendingSubs = await db.Subscriptions
+                .Where(s => s.PendingPlanId == orphan.Id)
+                .ToListAsync();
+            foreach (Subscription sub in pendingSubs)
+                sub.PendingPlanId = replacementId;
+
+            // Don't leave a sibling pointing at a row we're about to delete.
+            Plan? siblingPointingAtOrphan = await db.Plans
+                .FirstOrDefaultAsync(p => p.PairedPlanId == orphan.Id);
+            if (siblingPointingAtOrphan is not null)
+                siblingPointingAtOrphan.PairedPlanId = null;
+
+            db.Plans.Remove(orphan);
+
+            logger.LogWarning(
+                "Retired orphaned legacy plan {OrphanPlanId} ({PlanName}, {BillingInterval}) — " +
+                "reassigned {ActiveCount} active and {PendingCount} pending subscription(s) to {ReplacementPlanId}.",
+                orphan.Id, orphan.Name, orphan.BillingInterval, activeSubs.Count, pendingSubs.Count, replacementId);
         }
 
         await db.SaveChangesAsync();
