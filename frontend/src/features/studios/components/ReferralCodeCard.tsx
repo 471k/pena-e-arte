@@ -50,7 +50,7 @@ export function ReferralCodeCard() {
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Share your referral link. New studios that sign up with your code get one
-          month free when they subscribe.
+          month free when they subscribe — and so do you.
         </p>
 
         {codeLoading ? (
@@ -97,7 +97,7 @@ export function ReferralCodeCard() {
         )}
 
         {stats && (stats.redemptionCount > 0 || referralCode) && (
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="grid grid-cols-3 gap-3 pt-1">
             <div className="rounded-md border px-3 py-2 text-center">
               <p className="text-xl font-semibold">{stats.redemptionCount}</p>
               <p className="text-xs text-muted-foreground">
@@ -107,6 +107,10 @@ export function ReferralCodeCard() {
             <div className="rounded-md border px-3 py-2 text-center">
               <p className="text-xl font-semibold">{stats.discountsApplied}</p>
               <p className="text-xs text-muted-foreground">Discounts applied</p>
+            </div>
+            <div className="rounded-md border px-3 py-2 text-center">
+              <p className="text-xl font-semibold">{stats.referrerRewardsApplied}</p>
+              <p className="text-xs text-muted-foreground">Rewards earned</p>
             </div>
           </div>
         )}

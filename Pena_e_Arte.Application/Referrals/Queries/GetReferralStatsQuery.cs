@@ -38,7 +38,8 @@ public class GetReferralStatsHandler(IAppDbContext db, ICurrentTenant tenant)
         return new ReferralStatsResponse(
             active?.Code,
             redemptions.Count,
-            redemptions.Count(r => r.DiscountApplied));
+            redemptions.Count(r => r.DiscountApplied),
+            redemptions.Count(r => r.ReferrerRewardApplied));
     }
 }
 

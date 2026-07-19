@@ -48,9 +48,10 @@ export interface ReferralCodeResponse {
 }
 
 export interface ReferralStatsResponse {
-  code:             string | null;
-  redemptionCount:  number;
-  discountsApplied: number;
+  code:                   string | null;
+  redemptionCount:        number;
+  discountsApplied:       number;
+  referrerRewardsApplied: number;
 }
 
 export interface UpdateStudioRequest {

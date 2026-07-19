@@ -181,4 +181,18 @@ public class StripeBillingService(
     {
         await subscriptionService.CancelAsync(stripeSubscriptionId, null, null, ct);
     }
+
+    public async Task ApplyCouponToActiveSubscriptionAsync(
+        string stripeSubscriptionId, string couponId, CancellationToken ct)
+    {
+        SubscriptionUpdateOptions options = new()
+        {
+            Discounts = new List<SubscriptionDiscountOptions>
+            {
+                new() { Coupon = couponId },
+            },
+        };
+
+        await subscriptionService.UpdateAsync(stripeSubscriptionId, options, null, ct);
+    }
 }

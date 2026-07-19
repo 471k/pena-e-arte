@@ -67,4 +67,12 @@ public interface IStripeBillingService
     /// and log rather than rethrow — Stripe failure must not abort a local cancellation.
     /// </summary>
     Task CancelSubscriptionAsync(string stripeSubscriptionId, CancellationToken ct);
+
+    /// <summary>
+    /// Applies a Stripe coupon to an already-active subscription. Used to reward the
+    /// referring studio when their referral code converts a new paying studio. The coupon
+    /// is applied as a discount on the subscription's next invoice.
+    /// </summary>
+    Task ApplyCouponToActiveSubscriptionAsync(
+        string stripeSubscriptionId, string couponId, CancellationToken ct);
 }

@@ -18,6 +18,7 @@ public class CreateSubscriptionHandler(
     ICurrentTenant                         tenant,
     IStripeBillingService                  billing,
     IStripeDiscountService                 discounts,
+    IReferralRewardService                 rewardService,
     ILogger<CreateSubscriptionHandler>     logger)
     : IRequestHandler<CreateSubscriptionCommand, SubscriptionResponse>
 {
@@ -113,14 +114,16 @@ public class CreateSubscriptionHandler(
         subscription.TrialExpiresAt   = null;
 
         // Record redemption only when a discount was actually applied
+        ReferralRedemption? newRedemption = null;
         if (pendingCode is not null && discountApplied)
         {
-            db.ReferralRedemptions.Add(new ReferralRedemption
+            newRedemption = new ReferralRedemption
             {
                 ReferralCodeId  = pendingCode.Id,
                 NewStudioId     = tenant.StudioId,
                 DiscountApplied = true,
-            });
+            };
+            db.ReferralRedemptions.Add(newRedemption);
 
             if (pendingCode.IsSingleUse)
                 pendingCode.IsActive = false;
@@ -131,6 +134,11 @@ public class CreateSubscriptionHandler(
             subscription.Studio.PendingReferralCodeId = null;
 
         await db.SaveChangesAsync(ct);
+
+        // Reward the referrer now that the referred studio's discount is committed.
+        // Non-fatal: failure is logged inside RewardReferrerAsync; subscription is not rolled back.
+        if (newRedemption is not null)
+            await rewardService.RewardReferrerAsync(newRedemption.Id, ct);
 
         return Map(subscription);
     }

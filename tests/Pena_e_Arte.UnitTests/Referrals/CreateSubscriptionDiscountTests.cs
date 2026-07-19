@@ -16,6 +16,7 @@ public class CreateSubscriptionDiscountTests
     private readonly ICurrentTenant         _tenant    = Substitute.For<ICurrentTenant>();
     private readonly IStripeBillingService  _billing   = Substitute.For<IStripeBillingService>();
     private readonly IStripeDiscountService _discounts = Substitute.For<IStripeDiscountService>();
+    private readonly IReferralRewardService _rewardService = Substitute.For<IReferralRewardService>();
     private readonly Guid                   _studioId  = Guid.NewGuid();
 
     public CreateSubscriptionDiscountTests()
@@ -31,7 +32,7 @@ public class CreateSubscriptionDiscountTests
     }
 
     private CreateSubscriptionHandler CreateSut() =>
-        new(_db, _tenant, _billing, _discounts,
+        new(_db, _tenant, _billing, _discounts, _rewardService,
             NullLogger<CreateSubscriptionHandler>.Instance);
 
     [Fact]
@@ -93,6 +94,34 @@ public class CreateSubscriptionDiscountTests
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
 
         _db.ReferralCodes.Single(r => r.Id == code.Id).IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_WithValidPendingReferralCode_CallsRewardReferrerAsync()
+    {
+        Guid planId = await SeedPlan(stripePriceId: "price_monthly_ref");
+        ReferralCode code = await SeedReferralCode(isActive: true, expiresAt: null);
+        await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
+
+        await CreateSut().Handle(
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        await _rewardService.Received(1).RewardReferrerAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithoutDiscount_DoesNotCallRewardReferrerAsync()
+    {
+        Guid planId = await SeedPlan();
+        ReferralCode code = await SeedReferralCode(isActive: true, expiresAt: DateTime.UtcNow.AddDays(-1));
+        await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
+
+        await CreateSut().Handle(
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        await _rewardService.DidNotReceive().RewardReferrerAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

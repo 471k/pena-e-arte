@@ -111,6 +111,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IStripePaymentService,      StripePaymentService>();
         services.AddScoped<IStripeBillingService,      StripeBillingService>();
         services.AddScoped<IStripeDiscountService,     StripeDiscountService>();
+        services.AddScoped<IReferralRewardService,     ReferralRewardService>();
 
         services.AddScoped<IPortableProfileService,    PortableProfileService>();
         services.AddScoped<IQrCodeService,             QrCodeService>();

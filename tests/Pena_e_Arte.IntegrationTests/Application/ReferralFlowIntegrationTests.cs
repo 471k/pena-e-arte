@@ -124,11 +124,16 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         CurrentTenantService tenantSvc = new();
         tenantSvc.SetTenant(newStudio.Id);
 
+        ReferralRewardService rewardSvc = new(
+            fixture.CreateDbContext(Guid.Empty), billing, discounts,
+            NullLogger<ReferralRewardService>.Instance);
+
         CreateSubscriptionHandler subHandler = new(
             fixture.CreateDbContext(Guid.Empty),
             tenantSvc,
             billing,
             discounts,
+            rewardSvc,
             NullLogger<CreateSubscriptionHandler>.Instance);
 
         await subHandler.Handle(
@@ -179,6 +184,103 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
             .WithMessage("*invalid*");
     }
 
+    [Fact]
+    public async Task FullReferralFlow_WithReferrerOnStripeSub_AppliesRewardCoupon()
+    {
+        // 1. Referring studio is seeded with an active Stripe subscription.
+        Guid referringStudioId = await SeedReferringStudio();
+        string referrerStripeSubId = await SeedReferrerSubscription(referringStudioId);
+        string code = await GenerateCode(referringStudioId);
+
+        // 2. New studio registers with the referral code.
+        Guid planId   = await SeedPlan();
+        Guid newStudioId = await RegisterNewStudio(code);
+
+        // 3. Mock Stripe services.
+        IStripeBillingService billing = Substitute.For<IStripeBillingService>();
+        billing.CreateCustomerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+               .Returns("cus_two_sided");
+        billing.CreateSubscriptionAsync(
+                   Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+               .Returns(("sub_two_sided", DateTime.UtcNow.AddMonths(1)));
+
+        IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
+        discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                 .Returns("coup_two_sided");
+
+        ReferralRewardService rewardSvc = new(
+            fixture.CreateDbContext(Guid.Empty), billing, discounts,
+            NullLogger<ReferralRewardService>.Instance);
+
+        CurrentTenantService tenantSvc = new();
+        tenantSvc.SetTenant(newStudioId);
+
+        CreateSubscriptionHandler subHandler = new(
+            fixture.CreateDbContext(Guid.Empty), tenantSvc, billing, discounts,
+            rewardSvc, NullLogger<CreateSubscriptionHandler>.Instance);
+
+        // 4. New studio subscribes.
+        await subHandler.Handle(
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        // 5. Verify ReferralRedemption has ReferrerRewardApplied = true.
+        await using AppDbContext verifyDb = fixture.CreateDbContext(Guid.Empty);
+        ReferralRedemption? redemption = await verifyDb.ReferralRedemptions
+            .FirstOrDefaultAsync(r => r.NewStudioId == newStudioId);
+        redemption.Should().NotBeNull();
+        redemption!.ReferrerRewardApplied.Should().BeTrue();
+        redemption.ReferrerRewardCouponId.Should().Be("coup_two_sided");
+
+        // 6. Verify ApplyCouponToActiveSubscriptionAsync was called with the referrer's sub ID.
+        await billing.Received(1).ApplyCouponToActiveSubscriptionAsync(
+            referrerStripeSubId, "coup_two_sided", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task FullReferralFlow_ReferrerNotOnStripeSub_RedemptionSaved_RewardNotApplied()
+    {
+        // Referring studio has no Stripe subscription → reward not applied, but
+        // redemption is still recorded and the new studio's discount is unaffected.
+        Guid referringStudioId = await SeedReferringStudio();
+        string code = await GenerateCode(referringStudioId);
+
+        Guid planId      = await SeedPlan();
+        Guid newStudioId = await RegisterNewStudio(code);
+
+        IStripeBillingService billing = Substitute.For<IStripeBillingService>();
+        billing.CreateCustomerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+               .Returns("cus_no_reward");
+        billing.CreateSubscriptionAsync(
+                   Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+               .Returns(("sub_no_reward", DateTime.UtcNow.AddMonths(1)));
+
+        IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
+        discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                 .Returns("coup_no_reward");
+
+        ReferralRewardService rewardSvc = new(
+            fixture.CreateDbContext(Guid.Empty), billing, discounts,
+            NullLogger<ReferralRewardService>.Instance);
+
+        CurrentTenantService tenantSvc = new();
+        tenantSvc.SetTenant(newStudioId);
+
+        await new CreateSubscriptionHandler(
+            fixture.CreateDbContext(Guid.Empty), tenantSvc, billing, discounts,
+            rewardSvc, NullLogger<CreateSubscriptionHandler>.Instance)
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+
+        await using AppDbContext verifyDb = fixture.CreateDbContext(Guid.Empty);
+        ReferralRedemption? redemption = await verifyDb.ReferralRedemptions
+            .FirstOrDefaultAsync(r => r.NewStudioId == newStudioId);
+
+        redemption!.DiscountApplied.Should().BeTrue();
+        redemption.ReferrerRewardApplied.Should().BeFalse();
+
+        await billing.DidNotReceive().ApplyCouponToActiveSubscriptionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
     private async Task<Guid> SeedReferringStudio()
@@ -220,5 +322,54 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         db.Plans.Add(plan);
         await db.SaveChangesAsync();
         return plan.Id;
+    }
+
+    private async Task<string> SeedReferrerSubscription(Guid studioId)
+    {
+        string stripeSubId = $"sub_referrer_{studioId:N}";
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+
+        Plan plan = new() { Name = "Referrer Plan", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m };
+        db.Plans.Add(plan);
+
+        Subscription? existing = await db.Subscriptions.FirstOrDefaultAsync(s => s.StudioId == studioId);
+        if (existing is not null)
+        {
+            existing.PlanId               = plan.Id;
+            existing.Status               = SubscriptionStatus.Active;
+            existing.StripeSubscriptionId = stripeSubId;
+            existing.CurrentPeriodEnd     = DateTime.UtcNow.AddMonths(1);
+        }
+        else
+        {
+            db.Subscriptions.Add(new Subscription
+            {
+                StudioId             = studioId,
+                PlanId               = plan.Id,
+                Status               = SubscriptionStatus.Active,
+                StripeSubscriptionId = stripeSubId,
+                CurrentPeriodEnd     = DateTime.UtcNow.AddMonths(1),
+            });
+        }
+        await db.SaveChangesAsync();
+        return stripeSubId;
+    }
+
+    private async Task<Guid> RegisterNewStudio(string referralCode)
+    {
+        RegisterStudioHandler handler = new(
+            fixture.CreateDbContext(Guid.Empty),
+            Substitute.For<IJobScheduler>(),
+            NullLogger<RegisterStudioHandler>.Instance);
+
+        string slug = ("rwd-" + Guid.NewGuid().ToString("N"))[..20];
+        StudioResponse studio = await handler.Handle(
+            new RegisterStudioCommand(new RegisterStudioRequest(
+                Name: "Reward Test Studio", Slug: slug, City: "Lisbon",
+                Latitude: 38.7, Longitude: -9.1,
+                OwnerEmail: $"{slug}@test.com", ReferralCode: referralCode)),
+            default);
+
+        return studio.Id;
     }
 }

@@ -25,6 +25,7 @@ public record ActivateCheckoutSubscriptionCommand(string SessionId, Guid? Expect
 public class ActivateCheckoutSubscriptionHandler(
     IAppDbContext                                  db,
     IStripeBillingService                          billing,
+    IReferralRewardService                         rewardService,
     ILogger<ActivateCheckoutSubscriptionHandler>   logger)
     : IRequestHandler<ActivateCheckoutSubscriptionCommand, SubscriptionResponse?>
 {
@@ -70,30 +71,40 @@ public class ActivateCheckoutSubscriptionHandler(
         subscription.CurrentPeriodEnd     = result.CurrentPeriodEnd;
         subscription.TrialExpiresAt       = null;
 
-        await RecordReferralRedemptionAsync(subscription.Studio, result.HasDiscount, ct);
+        ReferralRedemption? newRedemption =
+            await RecordReferralRedemptionAsync(subscription.Studio, result.HasDiscount, ct);
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Subscription activated via checkout for studio {@StudioId}", studioId);
+
+        // Reward the referrer if the referred studio's discount was applied.
+        if (newRedemption is { DiscountApplied: true })
+            await rewardService.RewardReferrerAsync(newRedemption.Id, ct);
+
         return CreateSubscriptionHandler.Map(subscription);
     }
 
-    private async Task RecordReferralRedemptionAsync(Studio? studio, bool hasDiscount, CancellationToken ct)
+    private async Task<ReferralRedemption?> RecordReferralRedemptionAsync(
+        Studio? studio, bool hasDiscount, CancellationToken ct)
     {
-        if (studio?.PendingReferralCodeId is not Guid refCodeId) return;
+        if (studio?.PendingReferralCodeId is not Guid refCodeId) return null;
 
         ReferralCode? code = await db.ReferralCodes.FirstOrDefaultAsync(r => r.Id == refCodeId, ct);
 
-        db.ReferralRedemptions.Add(new ReferralRedemption
+        ReferralRedemption newRedemption = new()
         {
             ReferralCodeId  = refCodeId,
             NewStudioId     = studio.Id,
             DiscountApplied = hasDiscount,
-        });
+        };
+        db.ReferralRedemptions.Add(newRedemption);
 
         if (code is { IsSingleUse: true } && hasDiscount)
             code.IsActive = false;
 
         studio.PendingReferralCodeId = null;
+
+        return newRedemption;
     }
 }
 

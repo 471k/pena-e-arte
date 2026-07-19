@@ -17,6 +17,7 @@ public class CreateSubscriptionHandlerTests
     private readonly ICurrentTenant        _tenant   = Substitute.For<ICurrentTenant>();
     private readonly IStripeBillingService _billing  = Substitute.For<IStripeBillingService>();
     private readonly IStripeDiscountService _discounts = Substitute.For<IStripeDiscountService>();
+    private readonly IReferralRewardService _rewardService = Substitute.For<IReferralRewardService>();
     private readonly Guid                  _studioId = Guid.NewGuid();
 
     public CreateSubscriptionHandlerTests()
@@ -29,7 +30,7 @@ public class CreateSubscriptionHandlerTests
     }
 
     private CreateSubscriptionHandler CreateSut() =>
-        new(_db, _tenant, _billing, _discounts,
+        new(_db, _tenant, _billing, _discounts, _rewardService,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
 
     [Fact]

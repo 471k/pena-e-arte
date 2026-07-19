@@ -14,6 +14,13 @@ public class ReferralRedemptionConfiguration : IEntityTypeConfiguration<Referral
         builder.Property(r => r.ReferralCodeId).IsRequired();
         builder.Property(r => r.NewStudioId).IsRequired();
 
+        builder.Property(r => r.ReferrerRewardApplied)
+               .HasDefaultValue(false)
+               .IsRequired();
+
+        builder.Property(r => r.ReferrerRewardCouponId)
+               .HasMaxLength(255);
+
         builder.HasIndex(r => r.ReferralCodeId).HasDatabaseName("ix_referral_redemptions_code_id");
         builder.HasIndex(r => r.NewStudioId).IsUnique().HasDatabaseName("ix_referral_redemptions_new_studio_id");
     }

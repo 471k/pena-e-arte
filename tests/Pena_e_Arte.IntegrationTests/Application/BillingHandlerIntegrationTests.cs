@@ -100,7 +100,8 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
         ICurrentTenant tenant = TenantFor(studioId);
         IStripeBillingService billing = Substitute.For<IStripeBillingService>();
         IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
-        CreateSubscriptionHandler handler = new(db, tenant, billing, discounts,
+        IReferralRewardService rewardService = Substitute.For<IReferralRewardService>();
+        CreateSubscriptionHandler handler = new(db, tenant, billing, discounts, rewardService,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
 
         SubscriptionResponse result = await handler.Handle(
@@ -222,7 +223,8 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
         billing.CreateSubscriptionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                .Returns(("sub_test", DateTime.UtcNow.AddMonths(1)));
         IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
-        CreateSubscriptionHandler handler = new(db, tenant, billing, discounts,
+        IReferralRewardService rewardService = Substitute.For<IReferralRewardService>();
+        CreateSubscriptionHandler handler = new(db, tenant, billing, discounts, rewardService,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
         return await handler.Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
     }

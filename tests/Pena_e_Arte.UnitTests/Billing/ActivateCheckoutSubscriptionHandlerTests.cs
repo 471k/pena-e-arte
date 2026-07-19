@@ -15,10 +15,11 @@ public class ActivateCheckoutSubscriptionHandlerTests
 {
     private readonly FakeDbContext         _db       = FakeDbContext.Create();
     private readonly IStripeBillingService _billing  = Substitute.For<IStripeBillingService>();
+    private readonly IReferralRewardService _rewardService = Substitute.For<IReferralRewardService>();
     private readonly Guid                  _studioId = Guid.NewGuid();
 
     private ActivateCheckoutSubscriptionHandler CreateSut() =>
-        new(_db, _billing, NullLogger<ActivateCheckoutSubscriptionHandler>.Instance);
+        new(_db, _billing, _rewardService, NullLogger<ActivateCheckoutSubscriptionHandler>.Instance);
 
     private void StripeReturns(
         bool complete, string subId = "sub_new", string cust = "cus_new",
