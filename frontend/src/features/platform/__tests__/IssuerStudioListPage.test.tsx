@@ -77,9 +77,6 @@ const PLANS: PlanResponse[] = [
   {
     id:                    "plan-1",
     name:                  "Starter",
-    billingInterval:       "Monthly",
-    priceMonthly:          29,
-    priceYearly:           290,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
     subscriberCount:       0,
@@ -90,7 +87,9 @@ const PLANS: PlanResponse[] = [
     maxLocations:             null,
     allowApiAccess:           false,
     prioritySupport:          false,
-    pairedPlanId:             null,
+    prices: [
+      { id: "price-1-m", interval: "Monthly", price: 29, stripePriceId: null, isActive: true },
+    ],
   },
 ];
 

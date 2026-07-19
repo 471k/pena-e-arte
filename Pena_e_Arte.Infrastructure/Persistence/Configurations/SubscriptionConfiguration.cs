@@ -15,6 +15,11 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
                .HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(s => s.StripeSubscriptionId).HasMaxLength(255);
 
+        builder.Property(s => s.BillingInterval)
+               .HasConversion<string>().HasMaxLength(32).IsRequired().HasDefaultValue(Domain.Enums.BillingInterval.Monthly);
+        builder.Property(s => s.PendingBillingInterval)
+               .HasConversion<string>().HasMaxLength(32);
+
         builder.HasOne(s => s.Studio)
                .WithOne(st => st.Subscription)
                .HasForeignKey<Subscription>(s => s.StudioId)

@@ -21,9 +21,6 @@ const PLANS: PlanResponse[] = [
   {
     id:                    "plan-1",
     name:                  "Starter",
-    billingInterval:       "Monthly",
-    priceMonthly:          29,
-    priceYearly:           290,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
     subscriberCount:       0,
@@ -34,14 +31,13 @@ const PLANS: PlanResponse[] = [
     maxLocations:             null,
     allowApiAccess:           false,
     prioritySupport:          false,
-    pairedPlanId:             null,
+    prices: [
+      { id: "price-1-m", interval: "Monthly", price: 29, stripePriceId: null, isActive: true },
+    ],
   },
   {
     id:                    "plan-2",
     name:                  "Pro",
-    billingInterval:       "Yearly",
-    priceMonthly:          49,
-    priceYearly:           490,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  true,
     subscriberCount:       0,
@@ -52,7 +48,10 @@ const PLANS: PlanResponse[] = [
     maxLocations:             null,
     allowApiAccess:           false,
     prioritySupport:          false,
-    pairedPlanId:             null,
+    prices: [
+      { id: "price-2-m", interval: "Monthly", price: 49, stripePriceId: null, isActive: true },
+      { id: "price-2-y", interval: "Yearly", price: 490, stripePriceId: null, isActive: true },
+    ],
   },
 ];
 
@@ -76,28 +75,32 @@ const ACTIVE_STUDIO: StudioResponse = {
 const SUSPENDED_STUDIO: StudioResponse = { ...ACTIVE_STUDIO, isActive: false };
 
 const BASE_SUB: SubscriptionResponse = {
-  id:                   "sub-0001",
-  studioId:             "stud-0001",
-  planId:               "plan-1",
-  pendingPlanId:        null,
-  status:               "Active",
-  trialExpiresAt:       new Date(Date.now() + 7 * 86_400_000).toISOString(),
-  currentPeriodEnd:     new Date(Date.now() + 30 * 86_400_000).toISOString(),
-  gracePeriodEnd:       new Date(Date.now() + 7 * 86_400_000).toISOString(),
-  stripeSubscriptionId: null,
+  id:                     "sub-0001",
+  studioId:               "stud-0001",
+  planId:                 "plan-1",
+  billingInterval:        "Monthly",
+  pendingPlanId:          null,
+  pendingBillingInterval: null,
+  status:                 "Active",
+  trialExpiresAt:         new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  currentPeriodEnd:       new Date(Date.now() + 30 * 86_400_000).toISOString(),
+  gracePeriodEnd:         new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  stripeSubscriptionId:   null,
 };
 
 const SUB_ACTIVE_CASH: SubscriptionResponse = { ...BASE_SUB, status: "Active", stripeSubscriptionId: null };
 const SUB_ACTIVE_CARD: SubscriptionResponse = { ...BASE_SUB, status: "Active", stripeSubscriptionId: "sub_stripe_xxx" };
-const SUB_ACTIVE_PENDING: SubscriptionResponse = { ...SUB_ACTIVE_CARD, pendingPlanId: "plan-2" };
+const SUB_ACTIVE_PENDING: SubscriptionResponse = {
+  ...SUB_ACTIVE_CARD, pendingPlanId: "plan-2", pendingBillingInterval: "Monthly",
+};
+const SUB_ACTIVE_YEARLY_CARD: SubscriptionResponse = {
+  ...SUB_ACTIVE_CARD, planId: "plan-2", billingInterval: "Yearly",
+};
 const SUB_ACTIVE_FREE: SubscriptionResponse = { ...BASE_SUB, status: "Active", planId: "plan-free", stripeSubscriptionId: null };
 
 const FREE_PLAN: PlanResponse = {
   id:                    "plan-free",
   name:                  "Free",
-  billingInterval:       "Monthly",
-  priceMonthly:          0,
-  priceYearly:           0,
   yearlyDiscountPercent: 0,
   allowBrandingRemoval:  false,
   subscriberCount:       0,
@@ -108,7 +111,9 @@ const FREE_PLAN: PlanResponse = {
   maxLocations:             1,
   allowApiAccess:           false,
   prioritySupport:          false,
-  pairedPlanId:             null,
+  prices: [
+    { id: "price-free-m", interval: "Monthly", price: 0, stripePriceId: null, isActive: true },
+  ],
 };
 const SUB_TRIALING: SubscriptionResponse    = { ...BASE_SUB, status: "Trialing",    planId: null };
 const SUB_GRACE: SubscriptionResponse       = { ...BASE_SUB, status: "GracePeriod", planId: null };
@@ -590,6 +595,19 @@ describe("BillingPage", () => {
     await screen.findByText("Active");
     expect(await screen.findByText(/active until/i)).toBeInTheDocument();
     expect(screen.queryByText(/next charge/i)).not.toBeInTheDocument();
+  });
+
+  it("shows '/ year' and the yearly price for a yearly-billed subscription, not '/ month'", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_YEARLY_CARD),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Active");
+    expect(screen.getAllByText(/490/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\/\s*year/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\/\s*month/i)).not.toBeInTheDocument();
   });
 
   // ── Status badge visual indicator ─────────────────────────────────────────────

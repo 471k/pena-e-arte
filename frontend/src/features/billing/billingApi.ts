@@ -2,14 +2,17 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest, BillingPortalResponse, PlanUsageResponse } from "./billing.types";
 
+export interface PlanPriceRequest {
+  interval:       string;
+  price:          number;
+  stripePriceId?: string | null;
+  isActive?:      boolean;
+}
+
 export interface CreatePlanRequest {
   name:                     string;
-  billingInterval:          string;
-  priceMonthly:             number;
-  priceYearly:              number;
   yearlyDiscountPercent:    number;
-  stripePriceIdMonthly?:    string | null;
-  stripePriceIdYearly?:     string | null;
+  prices:                   PlanPriceRequest[];
   maxArtists?:              number | null;
   maxAppointmentsPerMonth?: number | null;
   maxNotificationsPerMonth?: number | null;
@@ -17,17 +20,14 @@ export interface CreatePlanRequest {
   maxLocations?:            number | null;
   allowApiAccess?:          boolean;
   prioritySupport?:         boolean;
-  pairedPlanId?:            string | null;
+  allowBrandingRemoval?:    boolean;
 }
 
 export interface UpdatePlanRequest {
   name:                     string;
-  priceMonthly:             number;
-  priceYearly:              number;
   yearlyDiscountPercent:    number;
+  prices:                   PlanPriceRequest[];
   allowBrandingRemoval:     boolean;
-  stripePriceIdMonthly?:    string | null;
-  stripePriceIdYearly?:     string | null;
   maxArtists?:              number | null;
   maxAppointmentsPerMonth?: number | null;
   maxNotificationsPerMonth?: number | null;
@@ -35,7 +35,6 @@ export interface UpdatePlanRequest {
   maxLocations?:            number | null;
   allowApiAccess?:          boolean;
   prioritySupport?:         boolean;
-  pairedPlanId?:            string | null;
 }
 
 export const billingApi = createApi({
@@ -62,7 +61,7 @@ export const billingApi = createApi({
     // Card subscribe via Stripe-hosted Checkout — returns a URL to redirect to.
     createCheckout: builder.mutation<
       { url: string },
-      { planId: string; successUrl: string; cancelUrl: string }
+      { planId: string; billingInterval: string; successUrl: string; cancelUrl: string }
     >({
       query: (body) => ({ url: "billing/subscription/checkout", method: "POST", body }),
     }),
@@ -72,7 +71,7 @@ export const billingApi = createApi({
       invalidatesTags: ["Subscription"],
     }),
     // Plan switching: upgrades apply immediately (prorated), downgrades at period end
-    changePlan: builder.mutation<SubscriptionResponse, { planId: string }>({
+    changePlan: builder.mutation<SubscriptionResponse, { planId: string; billingInterval: string }>({
       query: (body) => ({ url: "billing/subscription/plan", method: "PUT", body }),
       invalidatesTags: ["Subscription"],
     }),

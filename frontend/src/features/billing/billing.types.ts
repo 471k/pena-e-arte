@@ -1,25 +1,30 @@
+export interface PlanPriceResponse {
+  id:            string;
+  interval:      "Monthly" | "Yearly";
+  price:         number;
+  stripePriceId: string | null;
+  isActive:      boolean;
+}
+
 export interface SubscriptionResponse {
-  id:                   string;
-  studioId:             string;
-  planId:               string | null;
-  pendingPlanId:        string | null;
-  status:               "Trialing" | "Active" | "PastDue" | "Cancelled" | "GracePeriod";
-  trialExpiresAt:       string | null;
-  currentPeriodEnd:     string;
-  gracePeriodEnd:       string;
-  stripeSubscriptionId: string | null;
+  id:                     string;
+  studioId:               string;
+  planId:                 string | null;
+  billingInterval:        "Monthly" | "Yearly";
+  pendingPlanId:          string | null;
+  pendingBillingInterval: "Monthly" | "Yearly" | null;
+  status:                 "Trialing" | "Active" | "PastDue" | "Cancelled" | "GracePeriod";
+  trialExpiresAt:         string | null;
+  currentPeriodEnd:       string;
+  gracePeriodEnd:         string;
+  stripeSubscriptionId:   string | null;
 }
 
 export interface PlanResponse {
   id:                       string;
   name:                     string;
-  billingInterval:          "Monthly" | "Yearly";
-  priceMonthly:             number;
-  priceYearly:              number;
   yearlyDiscountPercent:    number;
   allowBrandingRemoval:     boolean;
-  stripePriceIdMonthly?:    string | null;
-  stripePriceIdYearly?:     string | null;
   subscriberCount:          number;
   maxArtists:               number | null;
   maxAppointmentsPerMonth:  number | null;
@@ -28,11 +33,12 @@ export interface PlanResponse {
   maxLocations:             number | null;
   allowApiAccess:           boolean;
   prioritySupport:          boolean;
-  pairedPlanId:             string | null;
+  prices:                   PlanPriceResponse[];
 }
 
 export interface CreateSubscriptionRequest {
-  planId: string;
+  planId:          string;
+  billingInterval: "Monthly" | "Yearly";
 }
 
 export interface PlanUsageDimension {
@@ -51,4 +57,10 @@ export interface PlanUsageResponse {
 
 export interface BillingPortalResponse {
   url: string;
+}
+
+// Returns the active price for the given plan at the given billing interval, or
+// undefined when the tier doesn't offer that interval (or it's currently disabled).
+export function priceFor(plan: PlanResponse, interval: "Monthly" | "Yearly"): PlanPriceResponse | undefined {
+  return plan.prices.find((p) => p.interval === interval && p.isActive);
 }

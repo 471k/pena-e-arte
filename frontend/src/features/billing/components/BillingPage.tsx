@@ -20,7 +20,7 @@ import {
   useCreatePortalSessionMutation,
 } from "../billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
-import type { SubscriptionResponse, PlanResponse, PlanUsageDimension, PlanUsageResponse } from "../billing.types";
+import { priceFor, type SubscriptionResponse, type PlanResponse, type PlanUsageDimension, type PlanUsageResponse } from "../billing.types";
 
 function daysUntil(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
@@ -204,9 +204,10 @@ export function BillingPage() {
     );
   }
 
-  const cfg          = statusConfig(sub.status);
-  const isCashBilled = sub.stripeSubscriptionId === null;
-  const isFreePlan   = (currentPlan?.priceMonthly ?? -1) === 0;
+  const cfg           = statusConfig(sub.status);
+  const isCashBilled  = sub.stripeSubscriptionId === null;
+  const currentPrice  = currentPlan ? priceFor(currentPlan, sub.billingInterval) : undefined;
+  const isFreePlan    = (currentPrice?.price ?? -1) === 0;
   // Free-plan studios are Active + cash-billed by the existing model, but still need a
   // way to move to a paid plan — canSubscribe therefore also covers "Active on Free".
   const canSubscribe  = sub.status !== "Active" || isFreePlan;
@@ -295,8 +296,8 @@ export function BillingPage() {
                     <p className="text-sm font-medium text-green-600 dark:text-green-400">Free</p>
                   ) : (
                     <p className="text-sm font-medium">
-                      {formatEur(currentPlan.priceMonthly)}
-                      <span className="text-muted-foreground font-normal"> / month</span>
+                      {formatEur(currentPrice?.price ?? 0)}
+                      <span className="text-muted-foreground font-normal"> / {sub.billingInterval === "Yearly" ? "year" : "month"}</span>
                     </p>
                   )
                 )}
@@ -307,7 +308,7 @@ export function BillingPage() {
                     {isCashBilled
                       ? <span>Active until {formatDate(sub.currentPeriodEnd)}</span>
                       : currentPlan
-                        ? <span>Next charge: {formatEur(currentPlan.priceMonthly)} on {formatDate(sub.currentPeriodEnd)}</span>
+                        ? <span>Next charge: {formatEur(currentPrice?.price ?? 0)} on {formatDate(sub.currentPeriodEnd)}</span>
                         : <span>Renews {formatDate(sub.currentPeriodEnd)}</span>
                     }
                   </div>

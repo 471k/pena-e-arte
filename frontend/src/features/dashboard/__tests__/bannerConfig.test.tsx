@@ -6,15 +6,17 @@ import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
 function sub(status: SubscriptionResponse["status"]): SubscriptionResponse {
   return {
-    id:                   "sub-0001",
-    studioId:             "studio-0001",
-    planId:               null,
-    pendingPlanId:        null,
+    id:                     "sub-0001",
+    studioId:               "studio-0001",
+    planId:                 null,
+    billingInterval:        "Monthly",
+    pendingPlanId:          null,
+    pendingBillingInterval: null,
     status,
-    trialExpiresAt:       new Date(Date.now() + 7 * 86_400_000).toISOString(),
-    currentPeriodEnd:     new Date(Date.now() + 30 * 86_400_000).toISOString(),
-    gracePeriodEnd:       new Date(Date.now() + 7 * 86_400_000).toISOString(),
-    stripeSubscriptionId: null,
+    trialExpiresAt:         new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    currentPeriodEnd:       new Date(Date.now() + 30 * 86_400_000).toISOString(),
+    gracePeriodEnd:         new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    stripeSubscriptionId:   null,
   };
 }
 

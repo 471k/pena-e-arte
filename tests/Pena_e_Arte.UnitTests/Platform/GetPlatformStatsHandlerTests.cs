@@ -74,7 +74,8 @@ public class GetPlatformStatsHandlerTests
     {
         Studio active   = SeedStudio(isActive: true);
         Studio trialing = SeedStudio(isActive: true);
-        Plan   plan     = new() { Name = "Pro", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m, PriceYearly = 490m };
+        Plan   plan     = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
 
@@ -82,6 +83,7 @@ public class GetPlatformStatsHandlerTests
         {
             StudioId         = active.Id,
             PlanId           = plan.Id,
+            BillingInterval  = BillingInterval.Monthly,
             Status           = SubscriptionStatus.Active,
             TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
@@ -90,6 +92,7 @@ public class GetPlatformStatsHandlerTests
         {
             StudioId         = trialing.Id,
             PlanId           = plan.Id,
+            BillingInterval  = BillingInterval.Monthly,
             Status           = SubscriptionStatus.Trialing,
             TrialExpiresAt   = DateTime.UtcNow.AddDays(7),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(7),
@@ -100,6 +103,37 @@ public class GetPlatformStatsHandlerTests
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
 
         result.Mrr.Should().Be(49m);
+    }
+
+    [Fact]
+    public async Task Handle_MrrCalculation_YearlySubscriptionContributesMonthlyEquivalent()
+    {
+        // Regression test for the confirmed pre-existing revenue-reporting bug: MRR must
+        // use the PlanPrice matching the subscription's actual BillingInterval, not the
+        // Plan's decorative Monthly reference figure. A €790/yr subscription contributes
+        // €65.83/mo to MRR, not the tier's separate €79 Monthly price.
+        Studio studio = SeedStudio(isActive: true);
+        Plan   plan   = new() { Name = "Premium" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 79m });
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = 790m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId         = studio.Id,
+            PlanId           = plan.Id,
+            BillingInterval  = BillingInterval.Yearly,
+            Status           = SubscriptionStatus.Active,
+            TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.Mrr.Should().BeApproximately(790m / 12m, 0.01m);
     }
 
     [Fact]
@@ -203,7 +237,8 @@ public class GetPlatformStatsHandlerTests
     {
         // Subscription created last month and still active this month → same in both periods → 0 % growth.
         Studio studio = SeedStudio(isActive: true);
-        Plan   plan   = new() { Name = "Pro", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m, PriceYearly = 490m };
+        Plan   plan   = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
 
@@ -213,6 +248,7 @@ public class GetPlatformStatsHandlerTests
         {
             StudioId         = studio.Id,
             PlanId           = plan.Id,
+            BillingInterval  = BillingInterval.Monthly,
             Status           = SubscriptionStatus.Active,
             CreatedAt        = lastMonthStart.AddDays(5),   // created last month
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30), // still active this month

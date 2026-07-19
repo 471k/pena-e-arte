@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,14 +10,14 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { cn } from "@/shared/utils/cn";
 import {
   useGetIssuerPlansQuery,
   useCreatePlanMutation,
   useUpdatePlanMutation,
   useDeletePlanMutation,
+  type PlanPriceRequest,
 } from "@/features/billing/billingApi";
-import type { PlanResponse } from "@/features/billing/billing.types";
+import { priceFor, type PlanResponse } from "@/features/billing/billing.types";
 
 // Blank input, undefined, or NaN all mean "unlimited" (null) — anything else must be a
 // positive integer. Used for the five Plan usage-limit fields below.
@@ -27,15 +27,18 @@ const optionalPositiveInt = z.preprocess((v) => {
   return Number.isNaN(n) ? null : n;
 }, z.number().int().positive().nullable());
 
+const priceSectionSchema = z.object({
+  enabled:       z.boolean(),
+  price:         z.number().min(0).optional(),
+  stripePriceId: z.string().max(200).optional().nullable(),
+});
+
 const schema = z.object({
   name:                     z.string().min(1, "Name is required").max(100),
-  billingInterval:          z.enum(["Monthly", "Yearly"]),
-  priceMonthly:             z.number({ message: "Required" }).min(0),
-  priceYearly:              z.number({ message: "Required" }).min(0),
   yearlyDiscountPercent:    z.number({ message: "Required" }).min(0).max(100),
+  monthly:                  priceSectionSchema,
+  yearly:                   priceSectionSchema,
   allowBrandingRemoval:     z.boolean(),
-  stripePriceIdMonthly:     z.string().max(200).optional().nullable(),
-  stripePriceIdYearly:      z.string().max(200).optional().nullable(),
   maxArtists:               optionalPositiveInt,
   maxAppointmentsPerMonth:  optionalPositiveInt,
   maxNotificationsPerMonth: optionalPositiveInt,
@@ -43,9 +46,21 @@ const schema = z.object({
   maxLocations:             optionalPositiveInt,
   allowApiAccess:           z.boolean(),
   prioritySupport:          z.boolean(),
-}).refine((v) => (v.priceMonthly === 0) === (v.priceYearly === 0), {
+}).refine((v) => v.monthly.enabled || v.yearly.enabled, {
+  message: "At least one billing interval must be enabled.",
+  path: ["monthly"],
+}).refine((v) => !v.monthly.enabled || v.monthly.price !== undefined, {
+  message: "Price is required when this interval is enabled.",
+  path: ["monthly", "price"],
+}).refine((v) => !v.yearly.enabled || v.yearly.price !== undefined, {
+  message: "Price is required when this interval is enabled.",
+  path: ["yearly", "price"],
+}).refine((v) => {
+  const prices = [v.monthly, v.yearly].filter((s) => s.enabled).map((s) => s.price ?? 0);
+  return prices.every((p) => p === 0) || prices.every((p) => p > 0);
+}, {
   message: "A plan must be either fully free (both prices = 0) or fully paid (both prices > 0).",
-  path:    ["priceMonthly"],
+  path: ["monthly", "price"],
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -73,10 +88,11 @@ interface PlanFormProps {
 
 function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: {
-      billingInterval:          "Monthly",
       yearlyDiscountPercent:    17,
+      monthly:                  { enabled: true, price: undefined, stripePriceId: null },
+      yearly:                   { enabled: false, price: undefined, stripePriceId: null },
       allowBrandingRemoval:     false,
       maxArtists:               null,
       maxAppointmentsPerMonth:  null,
@@ -89,18 +105,14 @@ function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
     },
   });
 
-  const watchedMonthly  = watch("priceMonthly");
-  const watchedDiscount = watch("yearlyDiscountPercent");
+  const watchedMonthlyEnabled = watch("monthly.enabled");
+  const watchedYearlyEnabled  = watch("yearly.enabled");
+  const watchedMonthlyPrice   = watch("monthly.price");
+  const watchedDiscount       = watch("yearlyDiscountPercent");
   const suggestedYearly =
-    watchedMonthly > 0 && watchedDiscount >= 0 && watchedDiscount < 100
-      ? watchedMonthly * 12 * (1 - watchedDiscount / 100)
+    watchedMonthlyPrice !== undefined && watchedMonthlyPrice > 0 && watchedDiscount >= 0 && watchedDiscount < 100
+      ? watchedMonthlyPrice * 12 * (1 - watchedDiscount / 100)
       : null;
-
-  const selectClass = cn(
-    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-    "disabled:cursor-not-allowed disabled:opacity-50"
-  );
 
   return (
     <form onSubmit={handleSubmit(onSave)} className="space-y-3 p-4 border rounded-lg bg-background">
@@ -111,39 +123,75 @@ function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="billingInterval">Billing interval</Label>
-        <select id="billingInterval" {...register("billingInterval")} className={selectClass}>
-          <option value="Monthly">Monthly</option>
-          <option value="Yearly">Yearly</option>
-        </select>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="priceMonthly">Monthly price (€)</Label>
-          <Input id="priceMonthly" type="number" step="0.01" min="0"
-            {...register("priceMonthly", { valueAsNumber: true })} />
-          {errors.priceMonthly && <p className="text-xs text-destructive">{errors.priceMonthly.message}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="priceYearly">Yearly price (€)</Label>
-          <Input id="priceYearly" type="number" step="0.01" min="0"
-            {...register("priceYearly", { valueAsNumber: true })} />
-          {suggestedYearly !== null && (
-            <p className="text-[10px] text-muted-foreground">
-              Suggested: {formatCurrency(suggestedYearly)} (monthly × 12 × {100 - watchedDiscount}%)
-            </p>
-          )}
-          {errors.priceYearly && <p className="text-xs text-destructive">{errors.priceYearly.message}</p>}
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
         <Label htmlFor="discount">Yearly discount (%)</Label>
         <Input id="discount" type="number" min="0" max="100"
           {...register("yearlyDiscountPercent", { valueAsNumber: true })} />
         {errors.yearlyDiscountPercent && (
           <p className="text-xs text-destructive">{errors.yearlyDiscountPercent.message}</p>
+        )}
+      </div>
+
+      {/* Monthly price section */}
+      <div className="space-y-1.5 border-t pt-3">
+        <div className="flex items-center gap-2">
+          <input
+            id="monthlyEnabled"
+            type="checkbox"
+            className="h-4 w-4 rounded border-input accent-primary"
+            {...register("monthly.enabled")}
+          />
+          <Label htmlFor="monthlyEnabled" className="cursor-pointer font-medium">Monthly price</Label>
+        </div>
+        {watchedMonthlyEnabled && (
+          <div className="grid grid-cols-2 gap-3 pl-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="monthlyPrice" className="text-xs text-muted-foreground">Monthly price (€)</Label>
+              <Input id="monthlyPrice" type="number" step="0.01" min="0"
+                {...register("monthly.price", { valueAsNumber: true })} />
+              {errors.monthly?.price && <p className="text-xs text-destructive">{errors.monthly.price.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="monthlyStripePriceId" className="text-xs text-muted-foreground">Stripe Monthly Price ID</Label>
+              <Input id="monthlyStripePriceId" placeholder="price_…" className="text-xs font-mono"
+                {...register("monthly.stripePriceId")} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Yearly price section */}
+      <div className="space-y-1.5 border-t pt-3">
+        <div className="flex items-center gap-2">
+          <input
+            id="yearlyEnabled"
+            type="checkbox"
+            className="h-4 w-4 rounded border-input accent-primary"
+            {...register("yearly.enabled")}
+          />
+          <Label htmlFor="yearlyEnabled" className="cursor-pointer font-medium">Yearly price</Label>
+        </div>
+        {watchedYearlyEnabled && (
+          <div className="grid grid-cols-2 gap-3 pl-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="yearlyPrice" className="text-xs text-muted-foreground">Yearly price (€)</Label>
+              <Input id="yearlyPrice" type="number" step="0.01" min="0"
+                {...register("yearly.price", { valueAsNumber: true })} />
+              {suggestedYearly !== null && (
+                <p className="text-[10px] text-muted-foreground">
+                  Suggested: {formatCurrency(suggestedYearly)} (monthly × 12 × {100 - watchedDiscount}%)
+                </p>
+              )}
+              {errors.yearly?.price && <p className="text-xs text-destructive">{errors.yearly.price.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="yearlyStripePriceId" className="text-xs text-muted-foreground">Stripe Yearly Price ID</Label>
+              <Input id="yearlyStripePriceId" placeholder="price_…" className="text-xs font-mono"
+                {...register("yearly.stripePriceId")} />
+            </div>
+          </div>
+        )}
+        {errors.monthly?.message && (
+          <p className="text-xs text-destructive">{errors.monthly.message}</p>
         )}
       </div>
 
@@ -214,37 +262,6 @@ function PlanForm({ defaultValues, onSave, onClose, saving }: PlanFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="stripePriceIdMonthly" className="text-xs text-muted-foreground">
-            Stripe Monthly Price ID
-          </Label>
-          <Input
-            id="stripePriceIdMonthly"
-            placeholder="price_…"
-            {...register("stripePriceIdMonthly")}
-            className="text-xs font-mono"
-          />
-          {errors.stripePriceIdMonthly && (
-            <p className="text-xs text-destructive">{errors.stripePriceIdMonthly.message}</p>
-          )}
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="stripePriceIdYearly" className="text-xs text-muted-foreground">
-            Stripe Yearly Price ID
-          </Label>
-          <Input
-            id="stripePriceIdYearly"
-            placeholder="price_…"
-            {...register("stripePriceIdYearly")}
-            className="text-xs font-mono"
-          />
-          {errors.stripePriceIdYearly && (
-            <p className="text-xs text-destructive">{errors.stripePriceIdYearly.message}</p>
-          )}
-        </div>
-      </div>
-
       <div className="flex gap-2 pt-1">
         <Button type="submit" size="sm" disabled={saving} className="flex-1">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
@@ -278,15 +295,42 @@ function PlanCardSkeleton() {
   );
 }
 
+function toPrices(values: FormValues): PlanPriceRequest[] {
+  const prices: PlanPriceRequest[] = [];
+  if (values.monthly.enabled) {
+    prices.push({ interval: "Monthly", price: values.monthly.price ?? 0, stripePriceId: values.monthly.stripePriceId });
+  }
+  if (values.yearly.enabled) {
+    prices.push({ interval: "Yearly", price: values.yearly.price ?? 0, stripePriceId: values.yearly.stripePriceId });
+  }
+  return prices;
+}
+
 function PlanCard({ plan }: { plan: PlanResponse }) {
   const [editing,  setEditing]  = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [updatePlan, { isLoading: saving  }] = useUpdatePlanMutation();
   const [deletePlan, { isLoading: removing }] = useDeletePlanMutation();
 
+  const monthly = priceFor(plan, "Monthly");
+  const yearly  = priceFor(plan, "Yearly");
+
   async function handleUpdate(values: FormValues) {
     try {
-      await updatePlan({ id: plan.id, ...values }).unwrap();
+      await updatePlan({
+        id: plan.id,
+        name: values.name,
+        yearlyDiscountPercent: values.yearlyDiscountPercent,
+        prices: toPrices(values),
+        allowBrandingRemoval: values.allowBrandingRemoval,
+        maxArtists: values.maxArtists,
+        maxAppointmentsPerMonth: values.maxAppointmentsPerMonth,
+        maxNotificationsPerMonth: values.maxNotificationsPerMonth,
+        maxStorageGb: values.maxStorageGb,
+        maxLocations: values.maxLocations,
+        allowApiAccess: values.allowApiAccess,
+        prioritySupport: values.prioritySupport,
+      }).unwrap();
       toast.success("Plan updated");
       setEditing(false);
     } catch {
@@ -303,12 +347,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
     }
   }
 
-  // Compute savings from actual prices — not from the stored yearlyDiscountPercent field,
-  // which can silently desync if prices are edited without updating the discount.
-  const computedSavingsPct =
-    plan.priceMonthly > 0
-      ? Math.round((1 - plan.priceYearly / (plan.priceMonthly * 12)) * 100)
-      : 0;
+  const isFree = monthly?.price === 0 || yearly?.price === 0;
 
   return (
     <Card className="hover:border-border/60 transition-colors">
@@ -320,9 +359,9 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
             <p className="text-base font-semibold truncate" title={plan.name}>{plan.name}</p>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-muted-foreground">
-                {plan.priceMonthly === 0
+                {isFree
                   ? "Free forever"
-                  : plan.billingInterval === "Monthly" ? "Billed monthly" : "Billed yearly only"}
+                  : monthly && yearly ? "Monthly & yearly" : monthly ? "Billed monthly" : "Billed yearly only"}
               </span>
               {plan.allowBrandingRemoval && (
                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
@@ -345,33 +384,27 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
               {formatLimit(plan.maxStorageGb, "GB")}
             </p>
             <div className="space-y-0.5 mt-1">
-              {plan.priceMonthly === 0 ? (
+              {isFree ? (
                 <p className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">Free</p>
               ) : (
                 <>
-                  <p className="text-sm font-mono">
-                    <span className="font-medium">
-                      {plan.billingInterval === "Monthly"
-                        ? formatCurrency(plan.priceMonthly)
-                        : formatCurrency(plan.priceYearly)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {plan.billingInterval === "Monthly" ? "/mo" : "/yr"}
-                    </span>
-                  </p>
-                  <p
-                    className="text-[11px] text-muted-foreground/50 font-mono"
-                    title="Reference only — not charged at checkout for this plan"
-                  >
-                    {plan.billingInterval === "Monthly"
-                      ? `${formatCurrency(plan.priceYearly)}/yr ref.`
-                      : `${formatCurrency(plan.priceMonthly)}/mo ref.`}
-                  </p>
+                  {monthly && (
+                    <p className="text-sm font-mono">
+                      <span className="font-medium">{formatCurrency(monthly.price)}</span>
+                      <span className="text-xs text-muted-foreground">/mo</span>
+                    </p>
+                  )}
+                  {yearly && (
+                    <p className="text-sm font-mono">
+                      <span className="font-medium">{formatCurrency(yearly.price)}</span>
+                      <span className="text-xs text-muted-foreground">/yr</span>
+                    </p>
+                  )}
                 </>
               )}
-              {computedSavingsPct > 0 && (
+              {monthly && yearly && monthly.price > 0 && (
                 <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium">
-                  Save {computedSavingsPct}% annually
+                  Save {Math.round((1 - yearly.price / (monthly.price * 12)) * 100)}% annually
                 </span>
               )}
             </div>
@@ -421,13 +454,18 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
             <PlanForm
               defaultValues={{
                 name:                     plan.name,
-                billingInterval:          plan.billingInterval,
-                priceMonthly:             plan.priceMonthly,
-                priceYearly:              plan.priceYearly,
                 yearlyDiscountPercent:    plan.yearlyDiscountPercent,
+                monthly: {
+                  enabled:       monthly !== undefined,
+                  price:         monthly?.price,
+                  stripePriceId: monthly?.stripePriceId ?? null,
+                },
+                yearly: {
+                  enabled:       yearly !== undefined,
+                  price:         yearly?.price,
+                  stripePriceId: yearly?.stripePriceId ?? null,
+                },
                 allowBrandingRemoval:     plan.allowBrandingRemoval,
-                stripePriceIdMonthly:     plan.stripePriceIdMonthly ?? null,
-                stripePriceIdYearly:      plan.stripePriceIdYearly ?? null,
                 maxArtists:               plan.maxArtists,
                 maxAppointmentsPerMonth:  plan.maxAppointmentsPerMonth,
                 maxNotificationsPerMonth: plan.maxNotificationsPerMonth,
@@ -493,7 +531,19 @@ export function PlanManagementPage() {
 
   async function handleCreate(values: FormValues) {
     try {
-      await createPlan(values).unwrap();
+      await createPlan({
+        name: values.name,
+        yearlyDiscountPercent: values.yearlyDiscountPercent,
+        prices: toPrices(values),
+        allowBrandingRemoval: values.allowBrandingRemoval,
+        maxArtists: values.maxArtists,
+        maxAppointmentsPerMonth: values.maxAppointmentsPerMonth,
+        maxNotificationsPerMonth: values.maxNotificationsPerMonth,
+        maxStorageGb: values.maxStorageGb,
+        maxLocations: values.maxLocations,
+        allowApiAccess: values.allowApiAccess,
+        prioritySupport: values.prioritySupport,
+      }).unwrap();
       toast.success("Plan created");
       setCreating(false);
     } catch {

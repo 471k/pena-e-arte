@@ -46,18 +46,18 @@ public class HandleSubscriptionUpdatedHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithMatchingPriceId_UpdatesPlanId()
+    public async Task Handle_WithMatchingPriceId_UpdatesPlanIdAndBillingInterval()
     {
         string stripeSubId = $"sub_{Guid.NewGuid():N}";
         await SeedSubscription(stripeSubId, SubscriptionStatus.Active);
 
-        Plan plan = new()
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice
         {
-            Name                 = "Pro",
-            BillingInterval      = BillingInterval.Monthly,
-            PriceMonthly         = 49m,
-            StripePriceIdMonthly = "price_monthly123"
-        };
+            Interval      = BillingInterval.Monthly,
+            Price         = 49m,
+            StripePriceId = "price_monthly123",
+        });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -65,32 +65,61 @@ public class HandleSubscriptionUpdatedHandlerTests
         await CreateSut().Handle(
             new HandleSubscriptionUpdatedCommand(stripeSubId, "active", _nextPeriodEnd, "price_monthly123"), default);
 
-        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
-            .PlanId.Should().Be(plan.Id);
+        Subscription stored = _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId);
+        stored.PlanId.Should().Be(plan.Id);
+        stored.BillingInterval.Should().Be(BillingInterval.Monthly);
     }
 
     [Fact]
-    public async Task Handle_PriceMatchesPendingPlan_ClearsPendingPlanId()
+    public async Task Handle_MatchingPriceId_YearlyInterval_SetsBillingIntervalYearly()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.Active);
+
+        Plan plan = new() { Name = "Premium" };
+        plan.Prices.Add(new PlanPrice
+        {
+            Interval      = BillingInterval.Yearly,
+            Price         = 790m,
+            StripePriceId = "price_yearly123",
+        });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "active", _nextPeriodEnd, "price_yearly123"), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .BillingInterval.Should().Be(BillingInterval.Yearly);
+    }
+
+    [Fact]
+    public async Task Handle_PriceMatchesPendingPlanAndInterval_ClearsPendingFields()
     {
         string stripeSubId = $"sub_{Guid.NewGuid():N}";
 
-        Plan plan = new()
+        Plan plan = new() { Name = "Basic" };
+        plan.Prices.Add(new PlanPrice
         {
-            Name                 = "Basic",
-            BillingInterval      = BillingInterval.Monthly,
-            PriceMonthly         = 29m,
-            StripePriceIdMonthly = "price_basic_pending"
-        };
+            Interval      = BillingInterval.Monthly,
+            Price         = 29m,
+            StripePriceId = "price_basic_pending",
+        });
         _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId             = Guid.NewGuid(),
-            StripeSubscriptionId = stripeSubId,
-            Status               = SubscriptionStatus.Active,
-            PendingPlanId        = plan.Id,
-            TrialExpiresAt       = DateTime.UtcNow.AddDays(-20),
-            CurrentPeriodEnd     = DateTime.UtcNow.AddDays(1),
-            GracePeriodEnd       = DateTime.UtcNow.AddDays(-13)
+            StudioId               = Guid.NewGuid(),
+            StripeSubscriptionId   = stripeSubId,
+            Status                 = SubscriptionStatus.Active,
+            PendingPlanId          = plan.Id,
+            PendingBillingInterval = BillingInterval.Monthly,
+            TrialExpiresAt         = DateTime.UtcNow.AddDays(-20),
+            CurrentPeriodEnd       = DateTime.UtcNow.AddDays(1),
+            GracePeriodEnd         = DateTime.UtcNow.AddDays(-13)
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -101,6 +130,7 @@ public class HandleSubscriptionUpdatedHandlerTests
         Subscription stored = _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId);
         stored.PlanId.Should().Be(plan.Id);
         stored.PendingPlanId.Should().BeNull();
+        stored.PendingBillingInterval.Should().BeNull();
     }
 
     [Fact]

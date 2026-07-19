@@ -21,12 +21,14 @@ public class PlatformStatsIntegrationTests(DatabaseFixture fixture)
         db.Studios.AddRange(activeStudio, suspendedStudio);
         await db.SaveChangesAsync();
 
-        Plan plan = new() { Name = "Pro", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m, PriceYearly = 490m };
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         db.Plans.Add(plan);
         db.Subscriptions.Add(new Subscription
         {
             StudioId         = activeStudio.Id,
             PlanId           = plan.Id,
+            BillingInterval  = BillingInterval.Monthly,
             Status           = SubscriptionStatus.Active,
             TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),

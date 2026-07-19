@@ -15,84 +15,52 @@ import type { SubscriptionResponse, PlanResponse } from "@/features/billing/bill
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
-const PLANS: PlanResponse[] = [
-  {
-    id:                    "plan-monthly",
-    name:                  "Starter",
-    billingInterval:       "Monthly",
-    priceMonthly:          29,
-    priceYearly:           290,
-    yearlyDiscountPercent: 17,
-    allowBrandingRemoval:  false,
-    subscriberCount:       0,
-    maxArtists:               null,
-    maxAppointmentsPerMonth:  null,
-    maxNotificationsPerMonth: null,
-    maxStorageGb:             null,
-    maxLocations:             null,
-    allowApiAccess:           false,
-    prioritySupport:          false,
-    pairedPlanId:             null,
-  },
-  {
-    id:                    "plan-yearly",
-    name:                  "Pro Annual",
-    billingInterval:       "Yearly",
-    priceMonthly:          49,
-    priceYearly:           490,
-    yearlyDiscountPercent: 17,
-    allowBrandingRemoval:  true,
-    subscriberCount:       0,
-    maxArtists:               null,
-    maxAppointmentsPerMonth:  null,
-    maxNotificationsPerMonth: null,
-    maxStorageGb:             null,
-    maxLocations:             null,
-    allowApiAccess:           false,
-    prioritySupport:          false,
-    pairedPlanId:             null,
-  },
-];
-
-const BASE_SUB: SubscriptionResponse = {
-  id:                   "sub-0001",
-  studioId:             "stud-0001",
-  planId:               null,
-  pendingPlanId:        null,
-  status:               "Trialing",
-  trialExpiresAt:       new Date(Date.now() + 7 * 86_400_000).toISOString(),
-  currentPeriodEnd:     new Date(Date.now() + 30 * 86_400_000).toISOString(),
-  gracePeriodEnd:       new Date(Date.now() + 7 * 86_400_000).toISOString(),
-  stripeSubscriptionId: null,
+// Starter offers Monthly only — used to prove a tier without a Yearly price stays
+// visible (disabled) rather than being silently dropped when the cycle switches.
+const PLAN_STARTER: PlanResponse = {
+  id:                    "plan-starter",
+  name:                  "Starter",
+  yearlyDiscountPercent: 0,
+  allowBrandingRemoval:  false,
+  subscriberCount:       0,
+  maxArtists:               null,
+  maxAppointmentsPerMonth:  null,
+  maxNotificationsPerMonth: null,
+  maxStorageGb:             null,
+  maxLocations:             null,
+  allowApiAccess:           false,
+  prioritySupport:          false,
+  prices: [
+    { id: "price-starter-m", interval: "Monthly", price: 29, stripePriceId: null, isActive: true },
+  ],
 };
 
-const SUB_TRIALING: SubscriptionResponse = { ...BASE_SUB, status: "Trialing" };
-
-const SUB_ACTIVE_CARD: SubscriptionResponse = {
-  ...BASE_SUB,
-  status:               "Active",
-  planId:               "plan-monthly",
-  stripeSubscriptionId: "sub_stripe_xxx",
+// Premium offers both intervals — used for the per-month breakdown and the
+// same-tier interval-only switch.
+const PLAN_PREMIUM: PlanResponse = {
+  id:                    "plan-premium",
+  name:                  "Premium",
+  yearlyDiscountPercent: 17,
+  allowBrandingRemoval:  true,
+  subscriberCount:       0,
+  maxArtists:               null,
+  maxAppointmentsPerMonth:  null,
+  maxNotificationsPerMonth: null,
+  maxStorageGb:             null,
+  maxLocations:             null,
+  allowApiAccess:           false,
+  prioritySupport:          false,
+  prices: [
+    { id: "price-premium-m", interval: "Monthly", price: 49, stripePriceId: "price_premium_m", isActive: true },
+    { id: "price-premium-y", interval: "Yearly", price: 490, stripePriceId: "price_premium_y", isActive: true },
+  ],
 };
 
-const SUB_ACTIVE_CASH: SubscriptionResponse = {
-  ...BASE_SUB,
-  status:               "Active",
-  planId:               "plan-monthly",
-  stripeSubscriptionId: null,
-};
-
-const SUB_ACTIVE_PENDING: SubscriptionResponse = {
-  ...SUB_ACTIVE_CARD,
-  pendingPlanId: "plan-yearly",
-};
+const PLANS: PlanResponse[] = [PLAN_STARTER, PLAN_PREMIUM];
 
 const FREE_PLAN: PlanResponse = {
   id:                    "plan-free",
   name:                  "Free",
-  billingInterval:       "Monthly",
-  priceMonthly:          0,
-  priceYearly:           0,
   yearlyDiscountPercent: 0,
   allowBrandingRemoval:  false,
   subscriberCount:       0,
@@ -103,13 +71,62 @@ const FREE_PLAN: PlanResponse = {
   maxLocations:             1,
   allowApiAccess:           false,
   prioritySupport:          false,
-  pairedPlanId:             null,
+  prices: [
+    { id: "price-free-m", interval: "Monthly", price: 0, stripePriceId: null, isActive: true },
+  ],
+};
+
+const BASE_SUB: SubscriptionResponse = {
+  id:                     "sub-0001",
+  studioId:               "stud-0001",
+  planId:                 null,
+  billingInterval:        "Monthly",
+  pendingPlanId:          null,
+  pendingBillingInterval: null,
+  status:                 "Trialing",
+  trialExpiresAt:         new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  currentPeriodEnd:       new Date(Date.now() + 30 * 86_400_000).toISOString(),
+  gracePeriodEnd:         new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  stripeSubscriptionId:   null,
+};
+
+const SUB_TRIALING: SubscriptionResponse = { ...BASE_SUB, status: "Trialing" };
+
+const SUB_ACTIVE_CARD: SubscriptionResponse = {
+  ...BASE_SUB,
+  status:               "Active",
+  planId:               "plan-starter",
+  billingInterval:      "Monthly",
+  stripeSubscriptionId: "sub_stripe_xxx",
+};
+
+const SUB_ACTIVE_CARD_PREMIUM_MONTHLY: SubscriptionResponse = {
+  ...BASE_SUB,
+  status:               "Active",
+  planId:               "plan-premium",
+  billingInterval:      "Monthly",
+  stripeSubscriptionId: "sub_stripe_premium",
+};
+
+const SUB_ACTIVE_CASH: SubscriptionResponse = {
+  ...BASE_SUB,
+  status:               "Active",
+  planId:               "plan-starter",
+  billingInterval:      "Monthly",
+  stripeSubscriptionId: null,
+};
+
+const SUB_ACTIVE_PENDING: SubscriptionResponse = {
+  ...SUB_ACTIVE_CARD,
+  pendingPlanId:          "plan-premium",
+  pendingBillingInterval: "Monthly",
 };
 
 const SUB_ACTIVE_FREE: SubscriptionResponse = {
   ...BASE_SUB,
   status:               "Active",
   planId:               "plan-free",
+  billingInterval:      "Monthly",
   stripeSubscriptionId: null,
 };
 
@@ -211,36 +228,38 @@ describe("SubscribePage", () => {
 
   // --- Plan listing ---
 
-  it("shows only monthly plans by default", async () => {
+  it("shows all plans regardless of the selected cycle", async () => {
     renderPage();
     expect(await screen.findByText("Starter")).toBeInTheDocument();
-    expect(screen.queryByText("Pro Annual")).not.toBeInTheDocument();
+    expect(screen.getByText("Premium")).toBeInTheDocument();
   });
 
-  it("shows only yearly plans after clicking the Yearly toggle", async () => {
+  it("a tier with no price at the current cycle stays visible but disabled", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole("button", { name: /^monthly/i });
+    await screen.findByText("Starter");
 
     await user.click(screen.getByRole("button", { name: /^yearly/i }));
 
-    expect(await screen.findByText("Pro Annual")).toBeInTheDocument();
-    expect(screen.queryByText("Starter")).not.toBeInTheDocument();
+    // Starter has no Yearly price — still rendered, not silently dropped.
+    expect(await screen.findByText("Starter")).toBeInTheDocument();
+    expect(screen.getByText(/not available on this billing cycle yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /starter/i })).toBeDisabled();
   });
 
   it("shows Billed monthly label on monthly plan cards", async () => {
     renderPage();
     await screen.findByText("Starter");
-    expect(screen.getByText("Billed monthly")).toBeInTheDocument();
+    expect(screen.getAllByText("Billed monthly").length).toBeGreaterThan(0);
   });
 
-  it("shows Billed yearly label on yearly plan cards after switching cycle", async () => {
+  it("shows Billed yearly label on yearly-priced plan cards after switching cycle", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole("button", { name: /^monthly/i });
 
     await user.click(screen.getByRole("button", { name: /^yearly/i }));
-    await screen.findByText("Pro Annual");
+    await screen.findByText("Premium");
 
     expect(screen.getByText("Billed yearly")).toBeInTheDocument();
   });
@@ -251,7 +270,7 @@ describe("SubscribePage", () => {
     await screen.findByRole("button", { name: /^monthly/i });
 
     await user.click(screen.getByRole("button", { name: /^yearly/i }));
-    await screen.findByText("Pro Annual");
+    await screen.findByText("Premium");
 
     // $490 / 12 ≈ $40.83 shown in the plan card (not the toggle badge)
     expect(screen.getByText(/\$40\.83\/mo/i)).toBeInTheDocument();
@@ -270,31 +289,14 @@ describe("SubscribePage", () => {
     renderPage();
     await screen.findByRole("button", { name: /^monthly/i });
 
-    await user.click(screen.getByRole("button", { name: /^yearly/i }));
-    await screen.findByText("Pro Annual");
-    await user.click(screen.getByRole("button", { name: /pro annual/i }));
+    await user.click(screen.getByRole("button", { name: /premium/i }));
     expect(screen.getByText("Selected")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /^monthly/i }));
-    await screen.findByText("Starter");
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    await screen.findByText("Premium");
 
     expect(screen.queryByText("Selected")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /continue to checkout/i })).toBeDisabled();
-  });
-
-  it("shows a no-plans message when no plans exist for the selected cycle", async () => {
-    server.use(
-      http.get("http://localhost/api/v1/billing/plans", () =>
-        HttpResponse.json([PLANS[1]]), // only the yearly plan
-      ),
-    );
-    const user = userEvent.setup();
-    renderPage();
-    // Monthly is default — no monthly plans in this fixture
-    expect(await screen.findByText(/no monthly plans available/i)).toBeInTheDocument();
-    // Switch to yearly → Pro Annual appears
-    await user.click(screen.getByRole("button", { name: /^yearly/i }));
-    expect(await screen.findByText("Pro Annual")).toBeInTheDocument();
   });
 
   // --- Plan selection ---
@@ -354,7 +356,7 @@ describe("SubscribePage", () => {
     expect(await screen.findByRole("button", { name: /continue to checkout/i })).toBeInTheDocument();
   });
 
-  it("calls createCheckout with the selected planId", async () => {
+  it("calls createCheckout with the selected planId and billingInterval", async () => {
     const checkoutSpy = vi.fn();
     server.use(
       http.post(
@@ -376,7 +378,7 @@ describe("SubscribePage", () => {
 
     await waitFor(() =>
       expect(checkoutSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ planId: "plan-monthly" }),
+        expect.objectContaining({ planId: "plan-starter", billingInterval: "Monthly" }),
       ),
     );
   });
@@ -440,7 +442,7 @@ describe("SubscribePage", () => {
     expect(await screen.findByRole("button", { name: /switch plan/i })).toBeInTheDocument();
   });
 
-  it("marks the current plan card as disabled for card-billed active users", async () => {
+  it("marks the current plan+interval card as disabled for card-billed active users", async () => {
     server.use(
       http.get("http://localhost/api/v1/billing/subscription", () =>
         HttpResponse.json(SUB_ACTIVE_CARD),
@@ -448,7 +450,7 @@ describe("SubscribePage", () => {
     );
     renderPage();
     await screen.findByText("Current plan");
-    // The Starter button is the current plan → disabled
+    // Starter/Monthly is the current plan+interval → disabled
     expect(screen.getByRole("button", { name: /starter/i })).toBeDisabled();
   });
 
@@ -462,7 +464,7 @@ describe("SubscribePage", () => {
     expect(await screen.findByText(/upgrades apply immediately/i)).toBeInTheDocument();
   });
 
-  it("calls changePlan with the selected planId and navigates to /billing", async () => {
+  it("calls changePlan with the selected planId and billingInterval, and navigates to /billing", async () => {
     const changeSpy = vi.fn();
     server.use(
       http.get("http://localhost/api/v1/billing/subscription", () =>
@@ -473,25 +475,60 @@ describe("SubscribePage", () => {
         async ({ request }) => {
           const body = await request.json();
           changeSpy(body);
-          return HttpResponse.json({ ...SUB_ACTIVE_CARD, planId: "plan-yearly", pendingPlanId: null });
+          return HttpResponse.json({ ...SUB_ACTIVE_CARD, planId: "plan-premium", pendingPlanId: null });
         },
       ),
     );
 
     const user = userEvent.setup();
     renderPage();
-    // Card-billed: Starter is current (monthly). Switch to Yearly to see Pro Annual.
-    await screen.findByRole("button", { name: /^monthly/i });
-    await user.click(screen.getByRole("button", { name: /^yearly/i }));
-    await screen.findByText("Pro Annual");
+    await screen.findByText("Premium");
 
-    await user.click(screen.getByRole("button", { name: /pro annual/i }));
+    await user.click(screen.getByRole("button", { name: /premium/i }));
     await user.click(screen.getByRole("button", { name: /switch plan/i }));
 
     await waitFor(() =>
-      expect(changeSpy).toHaveBeenCalledWith({ planId: "plan-yearly" }),
+      expect(changeSpy).toHaveBeenCalledWith({ planId: "plan-premium", billingInterval: "Monthly" }),
     );
     await screen.findByTestId("billing-page");
+  });
+
+  it("allows switching the same tier from Monthly to Yearly (interval-only switch)", async () => {
+    const changeSpy = vi.fn();
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_CARD_PREMIUM_MONTHLY),
+      ),
+      http.put(
+        "http://localhost/api/v1/billing/subscription/plan",
+        async ({ request }) => {
+          const body = await request.json();
+          changeSpy(body);
+          return HttpResponse.json({
+            ...SUB_ACTIVE_CARD_PREMIUM_MONTHLY,
+            pendingPlanId: "plan-premium",
+            pendingBillingInterval: "Yearly",
+          });
+        },
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^monthly/i });
+
+    // On Monthly cycle, Premium is the current plan+interval → disabled. Switch to
+    // Yearly to select the SAME tier under the other interval.
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    await screen.findByText("Premium");
+    expect(screen.getByRole("button", { name: /premium/i })).not.toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: /premium/i }));
+    await user.click(screen.getByRole("button", { name: /switch plan/i }));
+
+    await waitFor(() =>
+      expect(changeSpy).toHaveBeenCalledWith({ planId: "plan-premium", billingInterval: "Yearly" }),
+    );
   });
 
   it("shows the server error message when changePlan fails", async () => {
@@ -508,11 +545,9 @@ describe("SubscribePage", () => {
 
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole("button", { name: /^monthly/i });
-    await user.click(screen.getByRole("button", { name: /^yearly/i }));
-    await screen.findByText("Pro Annual");
+    await screen.findByText("Premium");
 
-    await user.click(screen.getByRole("button", { name: /pro annual/i }));
+    await user.click(screen.getByRole("button", { name: /premium/i }));
     await user.click(screen.getByRole("button", { name: /switch plan/i }));
 
     expect(await screen.findByText("Plan switch failed.")).toBeInTheDocument();
@@ -531,11 +566,9 @@ describe("SubscribePage", () => {
 
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole("button", { name: /^monthly/i });
-    await user.click(screen.getByRole("button", { name: /^yearly/i }));
-    await screen.findByText("Pro Annual");
+    await screen.findByText("Premium");
 
-    await user.click(screen.getByRole("button", { name: /pro annual/i }));
+    await user.click(screen.getByRole("button", { name: /premium/i }));
     await user.click(screen.getByRole("button", { name: /switch plan/i }));
 
     expect(await screen.findByText(/failed to change plan/i)).toBeInTheDocument();
@@ -628,8 +661,7 @@ describe("SubscribePage", () => {
     );
     renderPage();
     await screen.findByText("Starter");
-    // "Free" appears twice on the card: plan name + price label
-    expect(screen.getAllByText("Free")).toHaveLength(2);
+    expect(screen.getAllByText("Free")).toHaveLength(2); // plan name + price label
   });
 
   it("shows 'Activate Free plan' button when the Free plan is selected", async () => {
@@ -671,7 +703,7 @@ describe("SubscribePage", () => {
     await user.click(screen.getByRole("button", { name: /activate free plan/i }));
 
     await waitFor(() =>
-      expect(subscribeSpy).toHaveBeenCalledWith({ planId: "plan-free" }),
+      expect(subscribeSpy).toHaveBeenCalledWith({ planId: "plan-free", billingInterval: "Monthly" }),
     );
     await screen.findByTestId("billing-page");
   });

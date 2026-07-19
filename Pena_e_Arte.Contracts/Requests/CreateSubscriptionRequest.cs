@@ -1,3 +1,3 @@
 namespace Pena_e_Arte.Contracts.Requests;
 
-public record CreateSubscriptionRequest(Guid PlanId);
+public record CreateSubscriptionRequest(Guid PlanId, string BillingInterval);

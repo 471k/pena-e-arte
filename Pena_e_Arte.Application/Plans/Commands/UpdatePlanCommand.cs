@@ -5,6 +5,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 
 namespace Pena_e_Arte.Application.Plans.Commands;
@@ -17,30 +18,15 @@ public class UpdatePlanHandler(IAppDbContext db)
     public async Task<PlanResponse> Handle(UpdatePlanCommand command, CancellationToken ct)
     {
         Plan plan = await db.Plans
+            .Include(p => p.Prices)
             .FirstOrDefaultAsync(p => p.Id == command.PlanId, ct)
             ?? throw new NotFoundException(nameof(Plan), command.PlanId);
 
         UpdatePlanRequest req = command.Request;
 
-        if (req.PairedPlanId is Guid pairedId)
-        {
-            if (pairedId == command.PlanId)
-                throw new BusinessRuleViolationException("A plan cannot be paired with itself.");
-
-            bool pairedExists = await db.Plans.AnyAsync(p => p.Id == pairedId, ct);
-            if (!pairedExists)
-                throw new NotFoundException(nameof(Plan), pairedId);
-        }
-
-        plan.Name                  = req.Name;
-        plan.PriceMonthly          = req.PriceMonthly;
-        plan.PriceYearly           = req.PriceYearly;
-        plan.YearlyDiscountPercent = req.YearlyDiscountPercent;
-        plan.AllowBrandingRemoval  = req.AllowBrandingRemoval;
-        plan.StripePriceIdMonthly  = req.StripePriceIdMonthly;
-        plan.StripePriceIdYearly   = req.StripePriceIdYearly;
-
-        // Limit/feature fields + the pairing itself — never price, interval, or Stripe IDs.
+        plan.Name                     = req.Name;
+        plan.YearlyDiscountPercent    = req.YearlyDiscountPercent;
+        plan.AllowBrandingRemoval     = req.AllowBrandingRemoval;
         plan.MaxArtists               = req.MaxArtists;
         plan.MaxAppointmentsPerMonth  = req.MaxAppointmentsPerMonth;
         plan.MaxNotificationsPerMonth = req.MaxNotificationsPerMonth;
@@ -48,30 +34,38 @@ public class UpdatePlanHandler(IAppDbContext db)
         plan.MaxLocations             = req.MaxLocations;
         plan.AllowApiAccess           = req.AllowApiAccess;
         plan.PrioritySupport          = req.PrioritySupport;
-        plan.PairedPlanId             = req.PairedPlanId;
 
-        // Keep the paired row's limits/feature flags in sync — a tier's Monthly and
-        // Yearly rows represent the same product, just billed differently. Price,
-        // BillingInterval, and Stripe price IDs are intentionally excluded: those stay
-        // per-row (see Decisions Log — "Plan billing interval stays locked per-row").
-        if (plan.PairedPlanId is Guid linkedId)
+        List<PlanPrice> existingPrices = plan.Prices.ToList();
+        List<BillingInterval> requestedIntervals = req.Prices
+            .Select(pr => Enum.Parse<BillingInterval>(pr.Interval, ignoreCase: true))
+            .ToList();
+
+        foreach (PlanPriceRequest pr in req.Prices)
         {
-            Plan? paired = await db.Plans.FirstOrDefaultAsync(p => p.Id == linkedId, ct);
-            if (paired is not null)
+            BillingInterval interval = Enum.Parse<BillingInterval>(pr.Interval, ignoreCase: true);
+            PlanPrice? existing = existingPrices.FirstOrDefault(pp => pp.Interval == interval);
+            if (existing is not null)
             {
-                paired.MaxArtists               = plan.MaxArtists;
-                paired.MaxAppointmentsPerMonth  = plan.MaxAppointmentsPerMonth;
-                paired.MaxNotificationsPerMonth = plan.MaxNotificationsPerMonth;
-                paired.MaxStorageGb             = plan.MaxStorageGb;
-                paired.MaxLocations             = plan.MaxLocations;
-                paired.AllowApiAccess           = plan.AllowApiAccess;
-                paired.PrioritySupport          = plan.PrioritySupport;
-                paired.AllowBrandingRemoval     = plan.AllowBrandingRemoval;
-
-                // Keep the link symmetric even if it was only set on one side before.
-                paired.PairedPlanId ??= plan.Id;
+                existing.Price         = pr.Price;
+                existing.StripePriceId = pr.StripePriceId;
+                existing.IsActive      = pr.IsActive;
+            }
+            else
+            {
+                db.PlanPrices.Add(new PlanPrice
+                {
+                    PlanId = plan.Id, Interval = interval, Price = pr.Price,
+                    StripePriceId = pr.StripePriceId, IsActive = pr.IsActive,
+                });
             }
         }
+
+        // A price interval present on the existing plan but NOT in the request is removed —
+        // this is how an issuer turns an interval off from the editor (distinct from
+        // IsActive = false, which keeps the row but hides it from checkout; removing it
+        // entirely means "this tier never offered this interval").
+        foreach (PlanPrice stale in existingPrices.Where(ep => !requestedIntervals.Contains(ep.Interval)))
+            db.PlanPrices.Remove(stale);
 
         await db.SaveChangesAsync(ct);
 
@@ -88,14 +82,27 @@ public class UpdatePlanValidator : AbstractValidator<UpdatePlanCommand>
     {
         RuleFor(x => x.PlanId).NotEmpty();
         RuleFor(x => x.Request.Name).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.Request.PriceMonthly).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Request.PriceYearly).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Request.YearlyDiscountPercent).InclusiveBetween(0, 100);
+        RuleFor(x => x.Request.Prices).NotEmpty()
+            .WithMessage("At least one billing interval must be provided.");
+        RuleForEach(x => x.Request.Prices).ChildRules(price =>
+        {
+            price.RuleFor(p => p.Interval)
+                .NotEmpty()
+                .Must(v => Enum.TryParse<BillingInterval>(v, ignoreCase: true, out _))
+                .WithMessage("Interval must be 'Monthly' or 'Yearly'.");
+            price.RuleFor(p => p.Price).GreaterThanOrEqualTo(0);
+        });
+        RuleFor(x => x.Request.Prices)
+            .Must(prices => prices
+                .Select(p => p.Interval.ToUpperInvariant())
+                .Distinct().Count() == prices.Count)
+            .WithMessage("Each billing interval may only appear once.");
         // See CreatePlanValidator — a plan is either fully free or fully paid, never mixed.
-        RuleFor(x => x.Request)
-            .Must(r => (r.PriceMonthly == 0) == (r.PriceYearly == 0))
-            .WithName("PriceMonthly")
-            .WithMessage("A plan must be either fully free (both prices = 0) or fully paid (both prices > 0).");
+        RuleFor(x => x.Request.Prices)
+            .Must(prices => prices.Count == 0
+                || prices.All(p => p.Price == 0) || prices.All(p => p.Price > 0))
+            .WithMessage("A plan must be either fully free (all prices = 0) or fully paid (all prices > 0).");
         RuleFor(x => x.Request.MaxArtists).GreaterThan(0)
             .When(x => x.Request.MaxArtists is not null);
         RuleFor(x => x.Request.MaxAppointmentsPerMonth).GreaterThan(0)

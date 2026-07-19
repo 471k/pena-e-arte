@@ -57,16 +57,19 @@ public class ActivateCheckoutSubscriptionHandler(
             && subscription.StripeSubscriptionId == result.StripeSubscriptionId)
             return CreateSubscriptionHandler.Map(subscription);
 
-        Domain.Entities.Plan? plan = result.PriceId is null
+        PlanPrice? price = result.PriceId is null
             ? null
-            : await db.Plans.FirstOrDefaultAsync(
-                p => p.StripePriceIdMonthly == result.PriceId || p.StripePriceIdYearly == result.PriceId, ct);
+            : await db.PlanPrices.FirstOrDefaultAsync(pp => pp.StripePriceId == result.PriceId, ct);
 
         if (subscription.Studio is not null && result.StripeCustomerId is not null)
             subscription.Studio.StripeCustomerId = result.StripeCustomerId;
 
         subscription.StripeSubscriptionId = result.StripeSubscriptionId;
-        if (plan is not null) subscription.PlanId = plan.Id;
+        if (price is not null)
+        {
+            subscription.PlanId          = price.PlanId;
+            subscription.BillingInterval = price.Interval;
+        }
         subscription.Status               = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd     = result.CurrentPeriodEnd;
         subscription.TrialExpiresAt       = null;

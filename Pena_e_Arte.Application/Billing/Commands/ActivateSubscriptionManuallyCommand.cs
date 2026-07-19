@@ -45,6 +45,7 @@ public class ActivateSubscriptionManuallyHandler(
                 PlanId           = plan.Id,
                 Plan             = plan,
                 Status           = SubscriptionStatus.Active,
+                BillingInterval  = BillingInterval.Monthly, // cash-billed studios are always Monthly-equivalent
                 CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1),
             };
             db.Subscriptions.Add(studio.Subscription);
@@ -54,6 +55,7 @@ public class ActivateSubscriptionManuallyHandler(
             studio.Subscription.PlanId           = plan.Id;
             studio.Subscription.Plan             = plan;
             studio.Subscription.Status           = SubscriptionStatus.Active;
+            studio.Subscription.BillingInterval  = BillingInterval.Monthly;
             studio.Subscription.CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1);
             studio.Subscription.TrialExpiresAt   = null;
         }

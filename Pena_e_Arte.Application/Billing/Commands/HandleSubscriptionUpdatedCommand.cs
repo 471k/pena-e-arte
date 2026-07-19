@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Application.Billing.Commands;
@@ -37,17 +38,21 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
 
         if (command.StripePriceId is not null)
         {
-            Domain.Entities.Plan? plan = await db.Plans.FirstOrDefaultAsync(
-                p => p.StripePriceIdMonthly == command.StripePriceId ||
-                     p.StripePriceIdYearly  == command.StripePriceId, ct);
+            PlanPrice? price = await db.PlanPrices
+                .FirstOrDefaultAsync(pp => pp.StripePriceId == command.StripePriceId, ct);
 
-            if (plan is not null)
+            if (price is not null)
             {
-                subscription.PlanId = plan.Id;
+                subscription.PlanId          = price.PlanId;
+                subscription.BillingInterval = price.Interval;
 
-                // A scheduled downgrade has landed — the pending change is no longer pending
-                if (subscription.PendingPlanId == plan.Id)
-                    subscription.PendingPlanId = null;
+                // A scheduled change has landed — the pending change is no longer pending
+                if (subscription.PendingPlanId == price.PlanId
+                    && subscription.PendingBillingInterval == price.Interval)
+                {
+                    subscription.PendingPlanId          = null;
+                    subscription.PendingBillingInterval = null;
+                }
             }
         }
 

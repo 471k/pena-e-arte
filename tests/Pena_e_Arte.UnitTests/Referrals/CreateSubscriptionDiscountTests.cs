@@ -43,7 +43,7 @@ public class CreateSubscriptionDiscountTests
         await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
 
         await CreateSut().Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _discounts.Received(1).CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _billing.Received(1).CreateSubscriptionAsync(
@@ -63,7 +63,7 @@ public class CreateSubscriptionDiscountTests
         await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
 
         await CreateSut().Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
@@ -77,7 +77,7 @@ public class CreateSubscriptionDiscountTests
         await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
 
         await CreateSut().Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
@@ -91,7 +91,7 @@ public class CreateSubscriptionDiscountTests
         await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
 
         await CreateSut().Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         _db.ReferralCodes.Single(r => r.Id == code.Id).IsActive.Should().BeFalse();
     }
@@ -104,7 +104,7 @@ public class CreateSubscriptionDiscountTests
         await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
 
         await CreateSut().Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _rewardService.Received(1).RewardReferrerAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -118,7 +118,7 @@ public class CreateSubscriptionDiscountTests
         await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
 
         await CreateSut().Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _rewardService.DidNotReceive().RewardReferrerAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -131,7 +131,7 @@ public class CreateSubscriptionDiscountTests
         await SeedSubscription(planId: null, pendingReferralCodeId: null);
 
         await CreateSut().Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
@@ -139,7 +139,8 @@ public class CreateSubscriptionDiscountTests
 
     private async Task<Guid> SeedPlan(string? stripePriceId = null)
     {
-        Plan plan = new() { Name = "Pro", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m, StripePriceIdMonthly = stripePriceId };
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m, StripePriceId = stripePriceId });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         return plan.Id;

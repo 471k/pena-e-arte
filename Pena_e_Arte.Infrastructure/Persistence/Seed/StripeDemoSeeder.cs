@@ -48,15 +48,16 @@ public static class StripeDemoSeeder
             Stripe.PaymentMethodService paymentMethods = new();
             Stripe.SubscriptionService  subscriptions  = new();
 
-            // 1. Every plan gets real monthly + yearly Stripe prices, so any plan-change
-            //    target resolves to a real price id.
-            List<Plan> plans = await db.Plans.ToListAsync();
-            foreach (Plan plan in plans)
+            // 1. Every PlanPrice row gets a real Stripe price, so any plan-change target
+            //    resolves to a real price id. Only intervals a tier actually offers get a
+            //    row — Starter/Growth/Pro correctly get Monthly only, matching the data
+            //    migration's decision not to fabricate a Yearly price for tiers that never
+            //    had one.
+            List<PlanPrice> planPrices = await db.PlanPrices.Include(pp => pp.Plan).ToListAsync();
+            foreach (PlanPrice pp in planPrices)
             {
-                plan.StripePriceIdMonthly = await EnsurePriceAsync(
-                    prices, plan, "month", plan.PriceMonthly, plan.StripePriceIdMonthly);
-                plan.StripePriceIdYearly = await EnsurePriceAsync(
-                    prices, plan, "year", plan.PriceYearly, plan.StripePriceIdYearly);
+                string interval = pp.Interval == BillingInterval.Monthly ? "month" : "year";
+                pp.StripePriceId = await EnsurePriceAsync(prices, pp.Plan, interval, pp.Price, pp.StripePriceId);
             }
             await db.SaveChangesAsync();
 
@@ -80,8 +81,10 @@ public static class StripeDemoSeeder
                 return;
             }
 
-            Plan? currentPlan = plans.FirstOrDefault(p => p.Id == sub.PlanId) ?? plans.FirstOrDefault();
-            if (currentPlan?.StripePriceIdMonthly is null)
+            PlanPrice? currentPrice =
+                planPrices.FirstOrDefault(pp => pp.PlanId == sub.PlanId && pp.Interval == BillingInterval.Monthly)
+                ?? planPrices.FirstOrDefault(pp => pp.Interval == BillingInterval.Monthly);
+            if (currentPrice?.StripePriceId is null)
             {
                 logger.LogWarning("No plan price available — cannot provision a demo subscription.");
                 return;
@@ -106,12 +109,13 @@ public static class StripeDemoSeeder
             Stripe.Subscription stripeSub = await subscriptions.CreateAsync(new Stripe.SubscriptionCreateOptions
             {
                 Customer = customerId,
-                Items    = new List<Stripe.SubscriptionItemOptions> { new() { Price = currentPlan.StripePriceIdMonthly } },
+                Items    = new List<Stripe.SubscriptionItemOptions> { new() { Price = currentPrice.StripePriceId } },
             });
 
             studio.StripeCustomerId  = customerId;
             sub.StripeSubscriptionId = stripeSub.Id;
-            sub.PlanId               = currentPlan.Id;
+            sub.PlanId               = currentPrice.PlanId;
+            sub.BillingInterval      = BillingInterval.Monthly;
             sub.Status               = SubscriptionStatus.Active;
             sub.CurrentPeriodEnd     = stripeSub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
                                        ?? DateTime.UtcNow.AddMonths(1);

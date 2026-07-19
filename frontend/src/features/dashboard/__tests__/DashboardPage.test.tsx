@@ -44,15 +44,17 @@ const IN_1_DAY   = new Date(Date.now() + 1  * 86_400_000).toISOString();
 const IN_30_DAYS = new Date(Date.now() + 30 * 86_400_000).toISOString();
 
 const BASE_SUB: SubscriptionResponse = {
-  id:                   "sub-0001",
-  studioId:             "stud-0001",
-  planId:               "plan-1",
-  pendingPlanId:        null,
-  status:               "Active",
-  trialExpiresAt:       IN_7_DAYS,
-  currentPeriodEnd:     IN_30_DAYS,
-  gracePeriodEnd:       IN_7_DAYS,
-  stripeSubscriptionId: null,
+  id:                     "sub-0001",
+  studioId:               "stud-0001",
+  planId:                 "plan-1",
+  billingInterval:        "Monthly",
+  pendingPlanId:          null,
+  pendingBillingInterval: null,
+  status:                 "Active",
+  trialExpiresAt:         IN_7_DAYS,
+  currentPeriodEnd:       IN_30_DAYS,
+  gracePeriodEnd:         IN_7_DAYS,
+  stripeSubscriptionId:   null,
 };
 
 const SUB_ACTIVE:      SubscriptionResponse = { ...BASE_SUB, status: "Active" };

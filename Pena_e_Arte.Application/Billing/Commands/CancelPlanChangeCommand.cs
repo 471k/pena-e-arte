@@ -31,7 +31,8 @@ public class CancelPlanChangeHandler(
         if (subscription.StripeSubscriptionId is not null)
             await billing.CancelScheduledPriceChangeAsync(subscription.StripeSubscriptionId, ct);
 
-        subscription.PendingPlanId = null;
+        subscription.PendingPlanId          = null;
+        subscription.PendingBillingInterval = null;
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(

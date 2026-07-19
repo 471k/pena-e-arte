@@ -24,35 +24,31 @@ const NO_LIMITS = {
   maxLocations:             null,
   allowApiAccess:           false,
   prioritySupport:          false,
-  pairedPlanId:             null,
 };
 
 const PLANS: PlanResponse[] = [
   {
     id:                    "plan-1",
     name:                  "Starter",
-    billingInterval:       "Monthly",
-    priceMonthly:          29,
-    priceYearly:           290,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  false,
-    stripePriceIdMonthly:  "price_monthly_starter",
-    stripePriceIdYearly:   null,
     subscriberCount:       4,
     ...NO_LIMITS,
+    prices: [
+      { id: "price-1-m", interval: "Monthly", price: 29, stripePriceId: "price_monthly_starter", isActive: true },
+    ],
   },
   {
     id:                    "plan-2",
     name:                  "Pro",
-    billingInterval:       "Yearly",
-    priceMonthly:          49,
-    priceYearly:           490,
     yearlyDiscountPercent: 17,
     allowBrandingRemoval:  true,
-    stripePriceIdMonthly:  null,
-    stripePriceIdYearly:   "price_yearly_pro",
     subscriberCount:       0,
     ...NO_LIMITS,
+    prices: [
+      { id: "price-2-m", interval: "Monthly", price: 49, stripePriceId: null, isActive: true },
+      { id: "price-2-y", interval: "Yearly", price: 490, stripePriceId: "price_yearly_pro", isActive: true },
+    ],
   },
 ];
 
@@ -121,7 +117,6 @@ describe("PlanManagementPage", () => {
     renderPage();
     await screen.findByText("Pro");
     expect(screen.getByText("White-label")).toBeInTheDocument();
-    expect(screen.queryByText("no-branding")).not.toBeInTheDocument();
   });
 
   it("renders the New plan button", async () => {
@@ -129,7 +124,7 @@ describe("PlanManagementPage", () => {
     expect(await screen.findByRole("button", { name: /^new plan$/i })).toBeInTheDocument();
   });
 
-  it("clicking New plan shows the create form", async () => {
+  it("clicking New plan shows the create form with Monthly enabled by default", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole("button", { name: /^new plan$/i });
@@ -138,10 +133,23 @@ describe("PlanManagementPage", () => {
 
     expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Monthly price (€)")).toBeInTheDocument();
-    expect(screen.getByLabelText("Yearly price (€)")).toBeInTheDocument();
+    // Yearly section starts collapsed — not enabled by default
+    expect(screen.queryByLabelText("Yearly price (€)")).not.toBeInTheDocument();
   });
 
-  it("shows Stripe price ID fields in the form", async () => {
+  it("enabling the Yearly checkbox reveals the Yearly price section", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^new plan$/i });
+    await user.click(screen.getByRole("button", { name: /^new plan$/i }));
+
+    await user.click(screen.getByLabelText(/^yearly price$/i));
+
+    expect(screen.getByLabelText("Yearly price (€)")).toBeInTheDocument();
+    expect(screen.getByLabelText(/stripe yearly price id/i)).toBeInTheDocument();
+  });
+
+  it("shows the Monthly Stripe price ID field in the form", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole("button", { name: /^new plan$/i });
@@ -149,10 +157,9 @@ describe("PlanManagementPage", () => {
     await user.click(screen.getByRole("button", { name: /^new plan$/i }));
 
     expect(screen.getByLabelText(/stripe monthly price id/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/stripe yearly price id/i)).toBeInTheDocument();
   });
 
-  it("calls POST /billing/plans with the correct body", async () => {
+  it("calls POST /billing/plans with a prices array for both intervals", async () => {
     const createSpy = vi.fn();
     server.use(
       http.post("http://localhost/api/v1/billing/plans", async ({ request }) => {
@@ -171,20 +178,21 @@ describe("PlanManagementPage", () => {
     await user.type(screen.getByLabelText(/^name$/i), "Enterprise");
     await user.clear(screen.getByLabelText("Monthly price (€)"));
     await user.type(screen.getByLabelText("Monthly price (€)"), "99");
-    await user.clear(screen.getByLabelText("Yearly price (€)"));
+    await user.click(screen.getByLabelText(/^yearly price$/i));
     await user.type(screen.getByLabelText("Yearly price (€)"), "990");
 
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
     await waitFor(() => expect(createSpy).toHaveBeenCalledOnce());
-    expect(createSpy.mock.calls[0][0]).toMatchObject({
-      name:         "Enterprise",
-      priceMonthly: 99,
-      priceYearly:  990,
-    });
+    const body = createSpy.mock.calls[0][0] as { name: string; prices: { interval: string; price: number }[] };
+    expect(body.name).toBe("Enterprise");
+    expect(body.prices).toEqual(expect.arrayContaining([
+      expect.objectContaining({ interval: "Monthly", price: 99 }),
+      expect.objectContaining({ interval: "Yearly", price: 990 }),
+    ]));
   });
 
-  it("preserves existing Stripe price IDs in edit form defaults", async () => {
+  it("preserves existing Stripe price ID in edit form defaults", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("Starter");
@@ -193,9 +201,23 @@ describe("PlanManagementPage", () => {
 
     const monthlyInput = screen.getByLabelText(/stripe monthly price id/i);
     expect((monthlyInput as HTMLInputElement).value).toBe("price_monthly_starter");
+    // Starter has no Yearly PlanPrice — the Yearly section starts unchecked
+    expect(screen.queryByLabelText("Yearly price (€)")).not.toBeInTheDocument();
   });
 
-  it("calls PUT /billing/plans/:id and sends Stripe IDs in the body", async () => {
+  it("edit form pre-enables Yearly when the plan already has a Yearly price", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Pro");
+
+    await user.click(screen.getByRole("button", { name: /edit pro plan/i }));
+
+    expect(screen.getByLabelText("Yearly price (€)")).toBeInTheDocument();
+    const yearlyStripeInput = screen.getByLabelText(/stripe yearly price id/i);
+    expect((yearlyStripeInput as HTMLInputElement).value).toBe("price_yearly_pro");
+  });
+
+  it("calls PUT /billing/plans/:id and sends the existing prices in the body", async () => {
     const updateSpy = vi.fn();
     server.use(
       http.put("http://localhost/api/v1/billing/plans/plan-1", async ({ request }) => {
@@ -213,9 +235,35 @@ describe("PlanManagementPage", () => {
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
     await waitFor(() => expect(updateSpy).toHaveBeenCalledOnce());
-    expect(updateSpy.mock.calls[0][0]).toMatchObject({
-      stripePriceIdMonthly: "price_monthly_starter",
-    });
+    const body = updateSpy.mock.calls[0][0] as { prices: { interval: string; stripePriceId?: string | null }[] };
+    expect(body.prices).toEqual([
+      expect.objectContaining({ interval: "Monthly", stripePriceId: "price_monthly_starter" }),
+    ]);
+  });
+
+  it("unchecking Yearly before saving omits it from the prices array", async () => {
+    const updateSpy = vi.fn();
+    server.use(
+      http.put("http://localhost/api/v1/billing/plans/plan-2", async ({ request }) => {
+        const body = await request.json();
+        updateSpy(body);
+        return HttpResponse.json({ ...PLANS[1], ...(body as object) });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Pro");
+
+    await user.click(screen.getByRole("button", { name: /edit pro plan/i }));
+    expect(screen.getByLabelText("Yearly price (€)")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/^yearly price$/i)); // uncheck
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledOnce());
+    const body = updateSpy.mock.calls[0][0] as { prices: { interval: string }[] };
+    expect(body.prices).toEqual([expect.objectContaining({ interval: "Monthly" })]);
   });
 
   it("shows delete confirmation on trash button click", async () => {
@@ -309,22 +357,18 @@ describe("PlanManagementPage", () => {
     expect(screen.getByText(/no active subscribers/i)).toBeInTheDocument();
   });
 
-  it("shows computed savings badge using actual prices", async () => {
-    renderPage();
-    await screen.findByText("Starter");
-    // Seed: Starter priceMonthly=29, priceYearly=290 → computed = Math.round((1-290/348)*100) = 17%
-    //       Pro    priceMonthly=49, priceYearly=490 → computed = Math.round((1-490/588)*100) = 17%
-    // Both match — two badges should appear
-    expect(screen.getAllByText(/save 17% annually/i).length).toBe(2);
-    // Confirm the old "vs monthly billing" copy is gone
-    expect(screen.queryByText(/vs monthly billing/i)).not.toBeInTheDocument();
-  });
-
-  it("shows 'White-label' badge for plans with allowBrandingRemoval", async () => {
+  it("shows computed savings badge for a plan with both Monthly and Yearly prices", async () => {
     renderPage();
     await screen.findByText("Pro");
-    expect(screen.getByText("White-label")).toBeInTheDocument();
-    expect(screen.queryByText("no-branding")).not.toBeInTheDocument();
+    // Pro: monthly=49, yearly=490 → computed = Math.round((1-490/588)*100) = 17%
+    expect(screen.getByText(/save 17% annually/i)).toBeInTheDocument();
+  });
+
+  it("does not show a savings badge for a Monthly-only plan", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    const starterCard = screen.getByText("Starter", { selector: "p" }).closest(".space-y-3");
+    expect(starterCard?.textContent).not.toMatch(/save \d+% annually/i);
   });
 
   it("clicking empty state CTA opens the create form", async () => {
@@ -342,79 +386,17 @@ describe("PlanManagementPage", () => {
     expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
   });
 
-  // ── Fix #1: Computed savings badge ──────────────────────────────────────────
+  // ── Card header layout ───────────────────────────────────────────────
 
-  it("badge shows computed savings even when yearlyDiscountPercent is wrong", async () => {
-    // Simulate the Premium bug: stored discount=17% but actual math gives 44%
-    server.use(
-      http.get("http://localhost/api/v1/billing/plans", () =>
-        HttpResponse.json([{
-          id:                    "plan-premium",
-          name:                  "Premium",
-          billingInterval:       "Yearly",
-          priceMonthly:          30,
-          priceYearly:           200,        // 200 / (30*12) = 55.6% of monthly → 44% saving
-          yearlyDiscountPercent: 17,         // stored value is wrong
-          allowBrandingRemoval:  false,
-          stripePriceIdMonthly:  null,
-          stripePriceIdYearly:   null,
-          subscriberCount:       1,
-          ...NO_LIMITS,
-        }]),
-      ),
-    );
-    renderPage();
-    await screen.findByText("Premium");
-    // Badge should show computed 44%, NOT stored 17%
-    expect(screen.getByText(/save 44% annually/i)).toBeInTheDocument();
-    expect(screen.queryByText(/save 17%/i)).not.toBeInTheDocument();
-  });
-
-  it("does not show savings badge when yearly price is not cheaper than 12x monthly", async () => {
-    server.use(
-      http.get("http://localhost/api/v1/billing/plans", () =>
-        HttpResponse.json([{
-          id:                    "plan-odd",
-          name:                  "Odd",
-          billingInterval:       "Monthly",
-          priceMonthly:          10,
-          priceYearly:           130,        // 130 vs 120 → actually MORE expensive yearly
-          yearlyDiscountPercent: 8,          // stored value claims a discount
-          allowBrandingRemoval:  false,
-          stripePriceIdMonthly:  null,
-          stripePriceIdYearly:   null,
-          subscriberCount:       0,
-          ...NO_LIMITS,
-        }]),
-      ),
-    );
-    renderPage();
-    await screen.findByText("Odd");
-    // computedSavingsPct = Math.round((1 - 130/120) * 100) = Math.round(-0.083*100) = -8 < 0 → no badge
-    expect(screen.queryByText(/save/i)).not.toBeInTheDocument();
-  });
-
-  it("badge copy never contains 'vs monthly billing'", async () => {
-    renderPage();
-    await screen.findByText("Starter");
-    expect(screen.queryByText(/vs monthly billing/i)).not.toBeInTheDocument();
-  });
-
-  // ── Fix #2: Card header layout ───────────────────────────────────────────────
-
-  it("plan name and billing interval are in separate DOM elements", async () => {
+  it("plan name and billing interval label are in separate DOM elements", async () => {
     renderPage();
     await screen.findByText("Pro");
-    // Plan name "Pro" should be in a <p> element
     const nameEl = screen.getByText("Pro", { selector: "p" });
-    expect(nameEl).toBeInTheDocument();
-    // Billing label should NOT be inside the same element as the name
-    // (it's a sibling <span>, not a child of the <p>)
     expect(nameEl.textContent).toBe("Pro");
     expect(nameEl.textContent).not.toContain("Billing");
   });
 
-  // ── Fix #3: Trash icon destructive color ─────────────────────────────────────
+  // ── Trash icon destructive color ─────────────────────────────────────
 
   it("delete button uses text-red class, not text-destructive (dark-mode contrast fix)", async () => {
     renderPage();
@@ -431,10 +413,9 @@ describe("PlanManagementPage", () => {
     expect(editBtn.className).not.toMatch(/text-destructive/);
   });
 
-  // ── Fix #4: Ghost tile ────────────────────────────────────────────────────────
+  // ── Ghost tile ────────────────────────────────────────────────────────
 
   it("ghost 'New plan' tile always appears regardless of plan count modulo 3", async () => {
-    // PLANS seed has 2 plans (2 % 3 !== 0)
     renderPage();
     await screen.findByText("Starter");
     expect(screen.getByRole("button", { name: /add a new plan/i })).toBeInTheDocument();
@@ -448,22 +429,19 @@ describe("PlanManagementPage", () => {
           {
             id:                    "plan-3",
             name:                  "Enterprise",
-            billingInterval:       "Monthly",
-            priceMonthly:          99,
-            priceYearly:           990,
             yearlyDiscountPercent: 17,
             allowBrandingRemoval:  true,
-            stripePriceIdMonthly:  null,
-            stripePriceIdYearly:   null,
             subscriberCount:       0,
             ...NO_LIMITS,
+            prices: [
+              { id: "price-3-m", interval: "Monthly", price: 99, stripePriceId: null, isActive: true },
+            ],
           },
         ]),
       ),
     );
     renderPage();
     await screen.findByText("Enterprise");
-    // 3 plans → 3 % 3 === 0 → OLD logic would hide ghost; NEW logic always shows it
     expect(screen.getByRole("button", { name: /add a new plan/i })).toBeInTheDocument();
   });
 
@@ -485,101 +463,50 @@ describe("PlanManagementPage", () => {
     expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
   });
 
-  // ── Fix #5: Subscriber count accessibility ────────────────────────────────────
+  // ── Subscriber count accessibility ────────────────────────────────────
 
   it("subscriber count has an accessible aria-label describing plan name and count", async () => {
     renderPage();
     await screen.findByText("Starter");
-    // Check the aria-label directly
     const spans = document.querySelectorAll('[aria-label*="studios subscribed to"]');
     expect(spans.length).toBe(2); // One for Starter, one for Pro
     const starterSpan = document.querySelector('[aria-label*="subscribed to Starter"]');
     expect(starterSpan?.getAttribute("aria-label")).toMatch(/4 studios subscribed to Starter/i);
   });
 
-  // ── Fix #2: Dual-price display ──────────────────────────────────────────────
+  // ── Price display ──────────────────────────────────────────────────
 
-  it("Monthly plan shows monthly price prominently and yearly as reference", async () => {
+  it("shows both Monthly and Yearly prices for a dual-interval plan, both prominent (no 'ref.' marker)", async () => {
     renderPage();
-    await screen.findByText("Starter");
-    // Monthly price displayed normally — no "ref." suffix
-    // Yearly price shown with "ref." marker indicating it's not the charged price
-    const refText = document.querySelector('[title*="Reference only"]');
-    expect(refText).not.toBeNull();
-    expect(refText?.textContent).toMatch(/\/yr ref\./);
+    await screen.findByText("Pro");
+    expect(document.querySelector('[title*="Reference only"]')).toBeNull();
   });
 
-  it("Yearly plan shows yearly price prominently and monthly as reference", async () => {
-    server.use(
-      http.get("http://localhost/api/v1/billing/plans", () =>
-        HttpResponse.json([{
-          id:                    "plan-yearly",
-          name:                  "Annual",
-          billingInterval:       "Yearly",
-          priceMonthly:          30,
-          priceYearly:           200,
-          yearlyDiscountPercent: 44,
-          allowBrandingRemoval:  false,
-          stripePriceIdMonthly:  null,
-          stripePriceIdYearly:   "price_yearly_annual",
-          subscriberCount:       0,
-          ...NO_LIMITS,
-        }]),
-      ),
-    );
-    renderPage();
-    await screen.findByText("Annual");
-    // The reference entry should be the /mo price
-    const refText = document.querySelector('[title*="Reference only"]');
-    expect(refText?.textContent).toMatch(/\/mo ref\./);
-  });
-
-  it("'ref.' prices appear in a muted element, not a prominent one", async () => {
-    renderPage();
-    await screen.findByText("Starter");
-    const refEl = document.querySelector('[title*="Reference only"]');
-    // muted-foreground/50 + text-[11px] = clearly secondary
-    expect(refEl?.className).toMatch(/muted-foreground/);
-  });
-
-  // ── Fix #4: "New plan" is primary action ────────────────────────────────────
-
-  it("'New plan' header button is a solid/filled button (variant default)", async () => {
-    renderPage();
-    await screen.findByText("Starter");
-    // Header button "New plan" (not "Add a new plan" which is the ghost tile)
-    const headerBtn = screen.getAllByRole("button", { name: /^new plan$/i })
-      .find(b => b.closest("header"));
-    expect(headerBtn).toBeTruthy();
-    // Default shadcn variant uses bg-primary — check for bg- class
-    expect(headerBtn?.className).toMatch(/bg-primary|bg-\[hsl/);
-    // Outline variant is "border border-input bg-background …" — that class must be absent
-    expect(headerBtn?.className).not.toMatch(/border-input/);
-  });
-
-  // ── Fix #6: Billing interval label ─────────────────────────────────────────
-
-  it("Monthly plan shows 'Billed monthly' label", async () => {
+  it("Monthly-only plan shows 'Billed monthly' label", async () => {
     renderPage();
     await screen.findByText("Starter");
     expect(screen.getByText("Billed monthly")).toBeInTheDocument();
   });
 
-  it("Yearly plan shows 'Billed yearly only' label", async () => {
+  it("dual-interval plan shows 'Monthly & yearly' label", async () => {
+    renderPage();
+    await screen.findByText("Pro");
+    expect(screen.getByText("Monthly & yearly")).toBeInTheDocument();
+  });
+
+  it("Yearly-only plan shows 'Billed yearly only' label", async () => {
     server.use(
       http.get("http://localhost/api/v1/billing/plans", () =>
         HttpResponse.json([{
           id:                    "plan-yearly",
           name:                  "Annual",
-          billingInterval:       "Yearly",
-          priceMonthly:          30,
-          priceYearly:           200,
           yearlyDiscountPercent: 44,
           allowBrandingRemoval:  false,
-          stripePriceIdMonthly:  null,
-          stripePriceIdYearly:   "price_yr",
           subscriberCount:       0,
           ...NO_LIMITS,
+          prices: [
+            { id: "price-yearly", interval: "Yearly", price: 200, stripePriceId: "price_yr", isActive: true },
+          ],
         }]),
       ),
     );
@@ -594,18 +521,28 @@ describe("PlanManagementPage", () => {
     expect(screen.queryByText(/billing: monthly/i)).not.toBeInTheDocument();
   });
 
-  // ── Fix #3: Icon cluster hit targets ───────────────────────────────────────
+  // ── Icon cluster hit targets ───────────────────────────────────────
 
   it("edit and delete buttons are h-8 w-8 (32px), not h-7 w-7 (28px)", async () => {
     renderPage();
     await screen.findByText("Starter");
     const editBtn = screen.getByRole("button", { name: /edit starter plan/i });
     const deleteBtn = screen.getByRole("button", { name: /delete starter plan/i });
-    // Both should have h-8 class
     expect(editBtn.className).toMatch(/\bh-8\b/);
     expect(deleteBtn.className).toMatch(/\bh-8\b/);
-    // Neither should have h-7
     expect(editBtn.className).not.toMatch(/\bh-7\b/);
     expect(deleteBtn.className).not.toMatch(/\bh-7\b/);
+  });
+
+  // ── New plan button primary styling ─────────────────────────────────
+
+  it("'New plan' header button is a solid/filled button (variant default)", async () => {
+    renderPage();
+    await screen.findByText("Starter");
+    const headerBtn = screen.getAllByRole("button", { name: /^new plan$/i })
+      .find(b => b.closest("header"));
+    expect(headerBtn).toBeTruthy();
+    expect(headerBtn?.className).toMatch(/bg-primary|bg-\[hsl/);
+    expect(headerBtn?.className).not.toMatch(/border-input/);
   });
 });

@@ -40,7 +40,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing);
 
         SubscriptionResponse result = await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         result.Status.Should().Be(SubscriptionStatus.Active.ToString());
         result.PlanId.Should().Be(planId);
@@ -53,7 +53,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing);
 
         await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         _db.Subscriptions.Single(s => s.StudioId == _studioId).Status.Should().Be(SubscriptionStatus.Active);
     }
@@ -65,7 +65,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.GracePeriod);
 
         SubscriptionResponse result = await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         result.Status.Should().Be(SubscriptionStatus.Active.ToString());
     }
@@ -76,7 +76,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing);
 
         Func<Task> act = () => CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(Guid.NewGuid())), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(Guid.NewGuid(), "Monthly")), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -87,7 +87,7 @@ public class CreateSubscriptionHandlerTests
         Guid planId = await SeedPlan();
 
         Func<Task> act = () => CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -99,7 +99,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Active);
 
         Func<Task> act = () => CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*active*");
@@ -112,7 +112,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing);
 
         await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _billing.Received(1).CreateSubscriptionAsync(
             Arg.Any<string>(), "price_monthly_abc", Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -128,7 +128,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing);
 
         await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _billing.Received(1).CreateCustomerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Studios.Single(s => s.Id == _studioId).StripeCustomerId.Should().Be("cus_test123");
@@ -141,7 +141,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing);
 
         await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _billing.DidNotReceive().CreateSubscriptionAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -154,7 +154,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing);
 
         SubscriptionResponse result = await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         result.CurrentPeriodEnd.Should().BeAfter(DateTime.UtcNow.AddYears(49));
     }
@@ -166,7 +166,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing);
 
         SubscriptionResponse result = await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         result.CurrentPeriodEnd.Should().BeCloseTo(DateTime.UtcNow.AddMonths(1), TimeSpan.FromMinutes(1));
     }
@@ -179,7 +179,7 @@ public class CreateSubscriptionHandlerTests
         await SeedSubscription(SubscriptionStatus.Trialing, pendingReferralCodeId: referralCodeId);
 
         await CreateSut()
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -187,13 +187,13 @@ public class CreateSubscriptionHandlerTests
 
     private async Task<Guid> SeedPlan(string? stripePriceIdMonthly = null, decimal priceMonthly = 49m)
     {
-        Plan plan = new()
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice
         {
-            Name                 = "Pro",
-            BillingInterval      = BillingInterval.Monthly,
-            PriceMonthly         = priceMonthly,
-            StripePriceIdMonthly = stripePriceIdMonthly,
-        };
+            Interval      = BillingInterval.Monthly,
+            Price         = priceMonthly,
+            StripePriceId = stripePriceIdMonthly,
+        });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         return plan.Id;

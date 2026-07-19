@@ -1,3 +1,3 @@
 namespace Pena_e_Arte.Contracts.Requests;
 
-public record ChangePlanRequest(Guid PlanId);
+public record ChangePlanRequest(Guid PlanId, string BillingInterval);

@@ -138,13 +138,13 @@ public class ActivateCheckoutSubscriptionHandlerTests
 
     private async Task<Plan> SeedPlan(string priceMonthly)
     {
-        Plan plan = new()
+        Plan plan = new() { Name = "Growth" };
+        plan.Prices.Add(new PlanPrice
         {
-            Name                 = "Growth",
-            BillingInterval      = BillingInterval.Monthly,
-            PriceMonthly         = 59m,
-            StripePriceIdMonthly = priceMonthly,
-        };
+            Interval      = BillingInterval.Monthly,
+            Price         = 59m,
+            StripePriceId = priceMonthly,
+        });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         return plan;

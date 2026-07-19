@@ -3,7 +3,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -17,12 +16,11 @@ public static class DataSeeder
 
     // ─── Issuer-level IDs ──────────────────────────────────────────────────────
 
-    internal static readonly Guid StarterPlanId        = new("aaaa0001-0000-0000-0000-000000000000");
-    internal static readonly Guid GrowthPlanId         = new("aaaa0002-0000-0000-0000-000000000000");
-    internal static readonly Guid ProPlanId            = new("aaaa0003-0000-0000-0000-000000000000");
-    internal static readonly Guid PremiumMonthlyPlanId = new("aaaa0004-0000-0000-0000-000000000000");
-    internal static readonly Guid PremiumYearlyPlanId  = new("aaaa0005-0000-0000-0000-000000000000");
-    internal static readonly Guid FreePlanId           = new("aaaa0006-0000-0000-0000-000000000000");
+    internal static readonly Guid StarterPlanId = new("aaaa0001-0000-0000-0000-000000000000");
+    internal static readonly Guid GrowthPlanId  = new("aaaa0002-0000-0000-0000-000000000000");
+    internal static readonly Guid ProPlanId     = new("aaaa0003-0000-0000-0000-000000000000");
+    internal static readonly Guid PremiumPlanId = new("aaaa0004-0000-0000-0000-000000000000");
+    internal static readonly Guid FreePlanId    = new("aaaa0006-0000-0000-0000-000000000000");
 
     private static readonly Guid Studio1Id       = new("bbbb0001-0000-0000-0000-000000000000");
     private static readonly Guid Studio2Id       = new("bbbb0002-0000-0000-0000-000000000000");
@@ -123,37 +121,22 @@ public static class DataSeeder
         AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         UserManager<IdentityUser> userManager =
             scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
-        ILogger logger = scope.ServiceProvider
-            .GetRequiredService<ILoggerFactory>().CreateLogger("DataSeeder");
 
         // Always run: ensure seed credentials + artist slugs are correct
         await EnsureSeedUsersAsync(userManager);
         await EnsureArtistSlugsAsync(db);
 
-        // Always run: the Free plan is seeded independently of the demo-entity guard
-        // below, so a database that already has Starter/Growth/etc. still picks it up
-        // on the next deploy without re-running the full seed.
-        if (!await db.Plans.AnyAsync(p => p.Id == FreePlanId))
-            await SeedFreePlanAsync(db);
-
-        // Snapshot BEFORE reconciling. ReconcileCorePlansAsync will insert StarterPlanId
+        // Snapshot BEFORE reconciling. ReconcileCoreTiersAsync will insert StarterPlanId
         // if it's missing, which would make a post-reconcile check always true and
         // silently skip demo-entity seeding on a genuinely fresh database.
         bool coreEntitiesAlreadySeeded = await db.Plans.AnyAsync(p => p.Id == StarterPlanId);
 
-        // Always run: Starter/Growth/Premium (x2)/Pro are system-defined tiers, not
-        // issuer-owned data — their canonical values live in source control, not the
-        // database. See architecture.md Decisions Log — "Core plan reconciliation
-        // replaces one-time plan seed".
-        await ReconcileCorePlansAsync(db);
-
-        // Always run: retires any canonically-named plan row left behind under a
-        // non-canonical Id (e.g. Premium's pre-Monthly/Yearly-split row) and reassigns
-        // any Subscription still pointing at it. Must run AFTER ReconcileCorePlansAsync
-        // so the correct replacement rows already exist to reassign onto. See
-        // bug-report-premium-plan-duplicate-legacy-row.md and architecture.md Decisions
-        // Log — "Orphaned legacy plan retirement".
-        await RetireOrphanedNamedPlansAsync(db, logger);
+        // Always run: Starter/Growth/Premium/Pro/Free are system-defined tiers, not
+        // issuer-owned data — their canonical values (and their PlanPrice rows) live in
+        // source control, not the database. Keyed on tier Name + (PlanId, Interval), so
+        // an orphan row under a non-canonical Id cannot occur by construction. See
+        // architecture.md Decisions Log — "Plan/PlanPrice split".
+        await ReconcileCoreTiersAsync(db);
 
         // Guard: demo studios/subscriptions/appointments/designs/etc. still seed only
         // once — unlike the five canonical plans, this fake data has no "correct"
@@ -168,255 +151,97 @@ public static class DataSeeder
 
     // ─── Plans ────────────────────────────────────────────────────────────────
 
-    // Starter/Growth/Premium (x2)/Pro are system-defined tiers. Unlike SeedFreePlanAsync
-    // (insert-once, by design — see its own comment) and the demo studios/appointments/etc.
-    // below, these five rows are reconciled to the literal values below on EVERY startup:
-    // any of the five that's missing gets inserted, and any that already exists gets its
-    // mutable fields corrected back to these values. This intentionally mirrors
-    // UpdatePlanHandler's own exclusion list for the cross-row pairing sync — Name,
-    // BillingInterval, PriceMonthly, PriceYearly, YearlyDiscountPercent, Stripe price IDs,
-    // and AllowBrandingRemoval are all included here (unlike the pairing sync, which
-    // excludes price/interval/Stripe IDs deliberately, because pairing sync only keeps two
-    // *existing* rows from drifting apart, it does not define what "correct" looks like).
+    private sealed record TierPrice(BillingInterval Interval, decimal Price);
+
+    private sealed record CoreTier(
+        Guid Id, string Name, int YearlyDiscountPercent, bool AllowBrandingRemoval,
+        bool AllowApiAccess, bool PrioritySupport,
+        int? MaxArtists, int? MaxAppointmentsPerMonth, int? MaxNotificationsPerMonth,
+        int? MaxStorageGb, int? MaxLocations, TierPrice[] Prices);
+
+    // ─── Core tiers (always reconciled) ─────────────────────────────────────────
     //
-    // Practical consequence, spelled out because it's a real behavior change: if an issuer
-    // edits Starter, Growth, Premium, or Pro in place via PlanManagementPage, that edit will
-    // be reverted back to these values on the next app restart/deploy. That's the intended
-    // trade-off — see architecture.md Decisions Log, "Core plan reconciliation replaces
-    // one-time plan seed", for the reasoning and for what an issuer should do instead
-    // (clone a new Plan row rather than editing one of these five).
-    internal static async Task ReconcileCorePlansAsync(IAppDbContext db)
+    // Replaces ReconcileCorePlansAsync + RetireOrphanedNamedPlansAsync (see
+    // architecture.md Decisions Log — "Plan/PlanPrice split"). Keyed on tier Name, not a
+    // fixed Plan.Id list, and on (PlanId, Interval) for prices — a reconciler with this
+    // shape cannot produce the "orphan row under an unrecognized Id" bug class the prior
+    // two fixes had to clean up after, by construction: there is nowhere for a second row
+    // with the same Name to hide.
+    //
+    // Practical consequence, spelled out because it's a real behavior change: if an
+    // issuer edits Starter, Growth, Premium, Pro, or Free in place via
+    // PlanManagementPage, that edit will be reverted back to these values on the next
+    // app restart/deploy. That's the intended trade-off — see architecture.md Decisions
+    // Log, "Core plan reconciliation replaces one-time plan seed", for the reasoning and
+    // for what an issuer should do instead (clone a new Plan row rather than editing one
+    // of these five).
+    internal static async Task ReconcileCoreTiersAsync(IAppDbContext db)
     {
-        Plan[] canonical =
+        CoreTier[] tiers =
         [
-            new Plan
-            {
-                Id                       = StarterPlanId,
-                Name                     = "Starter",
-                BillingInterval          = BillingInterval.Monthly,
-                PriceMonthly             = 29m,
-                PriceYearly              = 290m,
-                YearlyDiscountPercent    = 17,
-                MaxArtists               = 1,
-                MaxAppointmentsPerMonth  = 40,
-                MaxNotificationsPerMonth = 150,
-                MaxStorageGb             = 2,
-                MaxLocations             = 1,
-            },
-            new Plan
-            {
-                Id                       = GrowthPlanId,
-                Name                     = "Growth",
-                BillingInterval          = BillingInterval.Monthly,
-                PriceMonthly             = 59m,
-                PriceYearly              = 590m,
-                YearlyDiscountPercent    = 17,
-                AllowBrandingRemoval     = true,
-                MaxArtists               = 3,
-                MaxAppointmentsPerMonth  = 150,
-                MaxNotificationsPerMonth = 600,
-                MaxStorageGb             = 10,
-                MaxLocations             = 1,
-            },
-            // Premium sits between Growth and Pro. Two rows, not one — see Decisions Log:
-            // "Plan billing interval stays locked per-row". PairedPlanId links them so
-            // UpdatePlanHandler keeps their limit/feature fields in sync.
-            new Plan
-            {
-                Id                       = PremiumMonthlyPlanId,
-                Name                     = "Premium",
-                BillingInterval          = BillingInterval.Monthly,
-                PriceMonthly             = 79m,
-                PriceYearly              = 790m,
-                YearlyDiscountPercent    = 17,
-                AllowBrandingRemoval     = true,
-                PrioritySupport          = true,
-                MaxArtists               = 6,
-                MaxAppointmentsPerMonth  = 400,
-                MaxNotificationsPerMonth = 1200,
-                MaxStorageGb             = 25,
-                MaxLocations             = 2,
-                PairedPlanId             = PremiumYearlyPlanId,
-            },
-            new Plan
-            {
-                Id                       = PremiumYearlyPlanId,
-                Name                     = "Premium",
-                BillingInterval          = BillingInterval.Yearly,
-                PriceMonthly             = 79m,
-                PriceYearly              = 790m,
-                YearlyDiscountPercent    = 17,
-                AllowBrandingRemoval     = true,
-                PrioritySupport          = true,
-                MaxArtists               = 6,
-                MaxAppointmentsPerMonth  = 400,
-                MaxNotificationsPerMonth = 1200,
-                MaxStorageGb             = 25,
-                MaxLocations             = 2,
-                PairedPlanId             = PremiumMonthlyPlanId,
-            },
-            new Plan
-            {
-                Id                       = ProPlanId,
-                Name                     = "Pro",
-                BillingInterval          = BillingInterval.Monthly,
-                PriceMonthly             = 99m,
-                PriceYearly              = 990m,
-                YearlyDiscountPercent    = 17,
-                AllowBrandingRemoval     = true,
-                AllowApiAccess           = true,
-                PrioritySupport          = true,
-                // Soft caps, not true unlimited — protects against a single runaway
-                // account inflating Twilio/Hangfire/DB load (owner decision, 2026-07-18).
-                MaxArtists               = 10,
-                MaxAppointmentsPerMonth  = 1000,
-                MaxNotificationsPerMonth = 2500,
-                MaxStorageGb             = 50,
-                MaxLocations             = 10,
-            },
+            new CoreTier(FreePlanId, "Free", 0, false, false, false,
+                1, 15, 50, 1, 1,
+                [new TierPrice(BillingInterval.Monthly, 0m)]),
+            new CoreTier(StarterPlanId, "Starter", 17, false, false, false,
+                1, 40, 150, 2, 1,
+                [new TierPrice(BillingInterval.Monthly, 29m)]),
+            new CoreTier(GrowthPlanId, "Growth", 17, true, false, false,
+                3, 150, 600, 10, 1,
+                [new TierPrice(BillingInterval.Monthly, 59m)]),
+            new CoreTier(PremiumPlanId, "Premium", 17, true, false, true,
+                6, 400, 1200, 25, 2,
+                [new TierPrice(BillingInterval.Monthly, 79m), new TierPrice(BillingInterval.Yearly, 790m)]),
+            // Soft caps, not true unlimited — protects against a single runaway account
+            // inflating Twilio/Hangfire/DB load (owner decision, 2026-07-18).
+            new CoreTier(ProPlanId, "Pro", 17, true, true, true,
+                10, 1000, 2500, 50, 10,
+                [new TierPrice(BillingInterval.Monthly, 99m)]),
         ];
 
-        Guid[] canonicalIds = canonical.Select(p => p.Id).ToArray();
-        Dictionary<Guid, Plan> existingById = await db.Plans
-            .Where(p => canonicalIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id);
-
-        foreach (Plan source in canonical)
+        foreach (CoreTier tier in tiers)
         {
-            if (existingById.TryGetValue(source.Id, out Plan? row))
+            Plan? plan = await db.Plans.FirstOrDefaultAsync(p => p.Id == tier.Id);
+            if (plan is null)
             {
-                row.Name                     = source.Name;
-                row.BillingInterval          = source.BillingInterval;
-                row.PriceMonthly             = source.PriceMonthly;
-                row.PriceYearly              = source.PriceYearly;
-                row.YearlyDiscountPercent    = source.YearlyDiscountPercent;
-                row.AllowBrandingRemoval     = source.AllowBrandingRemoval;
-                row.MaxArtists               = source.MaxArtists;
-                row.MaxAppointmentsPerMonth  = source.MaxAppointmentsPerMonth;
-                row.MaxNotificationsPerMonth = source.MaxNotificationsPerMonth;
-                row.MaxStorageGb             = source.MaxStorageGb;
-                row.MaxLocations             = source.MaxLocations;
-                row.AllowApiAccess           = source.AllowApiAccess;
-                row.PrioritySupport          = source.PrioritySupport;
-                row.PairedPlanId             = source.PairedPlanId;
-                // Stripe price IDs are deliberately left untouched — those are populated
-                // by StripeDemoSeeder / real Stripe dashboard configuration, not here.
+                plan = new Plan { Id = tier.Id };
+                db.Plans.Add(plan);
             }
-            else
+
+            plan.Name                     = tier.Name;
+            plan.YearlyDiscountPercent    = tier.YearlyDiscountPercent;
+            plan.AllowBrandingRemoval     = tier.AllowBrandingRemoval;
+            plan.AllowApiAccess           = tier.AllowApiAccess;
+            plan.PrioritySupport          = tier.PrioritySupport;
+            plan.MaxArtists               = tier.MaxArtists;
+            plan.MaxAppointmentsPerMonth  = tier.MaxAppointmentsPerMonth;
+            plan.MaxNotificationsPerMonth = tier.MaxNotificationsPerMonth;
+            plan.MaxStorageGb             = tier.MaxStorageGb;
+            plan.MaxLocations             = tier.MaxLocations;
+
+            foreach (TierPrice tp in tier.Prices)
             {
-                db.Plans.Add(source);
+                PlanPrice? price = await db.PlanPrices
+                    .FirstOrDefaultAsync(pp => pp.PlanId == tier.Id && pp.Interval == tp.Interval);
+
+                if (price is null)
+                {
+                    db.PlanPrices.Add(new PlanPrice
+                    {
+                        PlanId   = tier.Id,
+                        Interval = tp.Interval,
+                        Price    = tp.Price,
+                        // StripePriceId intentionally left null — populated by
+                        // StripeDemoSeeder or an issuer, never reconciled here (matches
+                        // the established precedent from the pre-PlanPrice reconciler).
+                    });
+                }
+                else
+                {
+                    price.Price = tp.Price; // reconcile price only — StripePriceId untouched
+                }
             }
         }
 
-        await db.SaveChangesAsync();
-    }
-
-    private static readonly string[] CanonicalPlanNames =
-        ["Free", "Starter", "Growth", "Premium", "Pro"];
-
-    // ─── Orphaned legacy plan retirement (always runs, after reconciliation) ───────
-    //
-    // ReconcileCorePlansAsync only ever touches the six fixed Ids above. Any environment
-    // where a canonically-named plan exists under a DIFFERENT Id — e.g. Premium's
-    // pre-Monthly/Yearly-split row from before the two-row pairing decision — is
-    // invisible to that method: neither updated nor removed, so its own insert-if-
-    // missing branch adds a fresh correct row *alongside* the leftover instead of
-    // replacing it. See bug-report-premium-plan-duplicate-legacy-row.md.
-    //
-    // This reassigns every Subscription referencing the orphan — both the active PlanId
-    // and a scheduled-downgrade PendingPlanId; confirmed via
-    // AppDbContextModelSnapshot.cs these are the ONLY two FKs anywhere that reference
-    // Plan.Id, Plan.PairedPlanId is a self-reference with no FK constraint — to the
-    // correct canonical replacement, clears any sibling's PairedPlanId still pointing at
-    // the orphan (mirrors DeletePlanHandler's own handling of that case), then deletes
-    // it. Runs every boot; becomes a no-op once no orphan remains, so — like
-    // ReconcileCorePlansAsync — it's safe to leave running indefinitely rather than
-    // requiring a one-time migration per environment.
-    //
-    // Accepted trade-off (see architecture.md Decisions Log — "Orphaned legacy plan
-    // retirement"): this matches ANY plan row named exactly one of the five reserved
-    // tier names with a non-canonical Id. It cannot distinguish a genuine pre-split
-    // leftover from an issuer-created custom plan that happens to share the name. An
-    // issuer needing a bespoke plan should give it a distinct name to avoid this.
-    internal static async Task RetireOrphanedNamedPlansAsync(IAppDbContext db, ILogger logger)
-    {
-        List<Plan> orphans = await db.Plans
-            .Where(p => CanonicalPlanNames.Contains(p.Name)
-                     && p.Id != StarterPlanId
-                     && p.Id != GrowthPlanId
-                     && p.Id != ProPlanId
-                     && p.Id != PremiumMonthlyPlanId
-                     && p.Id != PremiumYearlyPlanId
-                     && p.Id != FreePlanId)
-            .ToListAsync();
-
-        if (orphans.Count == 0)
-            return;
-
-        foreach (Plan orphan in orphans)
-        {
-            Guid replacementId = orphan.Name switch
-            {
-                "Starter" => StarterPlanId,
-                "Growth"  => GrowthPlanId,
-                "Pro"     => ProPlanId,
-                "Free"    => FreePlanId,
-                "Premium" => orphan.BillingInterval == BillingInterval.Yearly
-                    ? PremiumYearlyPlanId
-                    : PremiumMonthlyPlanId,
-                _ => throw new InvalidOperationException(
-                    $"Unreachable: '{orphan.Name}' is not one of the five canonical plan names."),
-            };
-
-            List<Subscription> activeSubs = await db.Subscriptions
-                .Where(s => s.PlanId == orphan.Id)
-                .ToListAsync();
-            foreach (Subscription sub in activeSubs)
-                sub.PlanId = replacementId;
-
-            List<Subscription> pendingSubs = await db.Subscriptions
-                .Where(s => s.PendingPlanId == orphan.Id)
-                .ToListAsync();
-            foreach (Subscription sub in pendingSubs)
-                sub.PendingPlanId = replacementId;
-
-            // Don't leave a sibling pointing at a row we're about to delete.
-            Plan? siblingPointingAtOrphan = await db.Plans
-                .FirstOrDefaultAsync(p => p.PairedPlanId == orphan.Id);
-            if (siblingPointingAtOrphan is not null)
-                siblingPointingAtOrphan.PairedPlanId = null;
-
-            db.Plans.Remove(orphan);
-
-            logger.LogWarning(
-                "Retired orphaned legacy plan {OrphanPlanId} ({PlanName}, {BillingInterval}) — " +
-                "reassigned {ActiveCount} active and {PendingCount} pending subscription(s) to {ReplacementPlanId}.",
-                orphan.Id, orphan.Name, orphan.BillingInterval, activeSubs.Count, pendingSubs.Count, replacementId);
-        }
-
-        await db.SaveChangesAsync();
-    }
-
-    // Free tier — €0, no Stripe price configured (routes CreateSubscriptionCommand down
-    // the no-Stripe path), non-removable platform branding by construction (AllowBrandingRemoval
-    // omitted, defaults to false). Limits are placeholders pending a business decision —
-    // see feature-request-free-tier-plan.md.
-    private static async Task SeedFreePlanAsync(AppDbContext db)
-    {
-        db.Plans.Add(new Plan
-        {
-            Id                       = FreePlanId,
-            Name                     = "Free",
-            BillingInterval          = BillingInterval.Monthly,
-            PriceMonthly             = 0m,
-            PriceYearly              = 0m,
-            YearlyDiscountPercent    = 0,
-            MaxArtists               = 1,
-            MaxAppointmentsPerMonth  = 15,
-            MaxNotificationsPerMonth = 50,
-            MaxStorageGb             = 1,
-            MaxLocations             = 1,
-        });
         await db.SaveChangesAsync();
     }
 
@@ -446,6 +271,7 @@ public static class DataSeeder
             Id                   = Subscription1Id,
             StudioId             = Studio1Id,
             PlanId               = GrowthPlanId,
+            BillingInterval      = BillingInterval.Monthly,
             Status               = SubscriptionStatus.Active,
             TrialExpiresAt       = null,
             CurrentPeriodEnd     = now.AddDays(14),
@@ -472,10 +298,11 @@ public static class DataSeeder
 
         db.Subscriptions.Add(new Subscription
         {
-            Id             = Subscription2Id,
-            StudioId       = Studio2Id,
-            PlanId         = StarterPlanId,
-            Status         = SubscriptionStatus.Trialing,
+            Id              = Subscription2Id,
+            StudioId        = Studio2Id,
+            PlanId          = StarterPlanId,
+            BillingInterval = BillingInterval.Monthly,
+            Status          = SubscriptionStatus.Trialing,
             TrialExpiresAt = now.AddDays(10),
             CurrentPeriodEnd = now.AddDays(10),
             GracePeriodEnd   = now.AddDays(17)

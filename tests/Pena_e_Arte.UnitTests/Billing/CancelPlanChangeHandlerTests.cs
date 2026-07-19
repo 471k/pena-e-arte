@@ -37,6 +37,17 @@ public class CancelPlanChangeHandlerTests
     }
 
     [Fact]
+    public async Task Handle_PendingChange_ClearsPendingBillingInterval()
+    {
+        await SeedSubscription(pendingPlanId: Guid.NewGuid(), stripeSubId: "sub_123", pendingBillingInterval: BillingInterval.Yearly);
+
+        SubscriptionResponse result = await CreateSut().Handle(new CancelPlanChangeCommand(), default);
+
+        result.PendingBillingInterval.Should().BeNull();
+        _db.Subscriptions.Single(s => s.StudioId == _studioId).PendingBillingInterval.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_NoPendingChange_ThrowsBusinessRuleViolation()
     {
         await SeedSubscription(pendingPlanId: null, stripeSubId: "sub_123");
@@ -55,17 +66,19 @@ public class CancelPlanChangeHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
-    private async Task SeedSubscription(Guid? pendingPlanId, string? stripeSubId)
+    private async Task SeedSubscription(
+        Guid? pendingPlanId, string? stripeSubId, BillingInterval? pendingBillingInterval = null)
     {
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId             = _studioId,
-            PendingPlanId        = pendingPlanId,
-            Status               = SubscriptionStatus.Active,
-            StripeSubscriptionId = stripeSubId,
-            TrialExpiresAt       = DateTime.UtcNow.AddDays(-20),
-            CurrentPeriodEnd     = DateTime.UtcNow.AddDays(10),
-            GracePeriodEnd       = DateTime.UtcNow.AddDays(-13),
+            StudioId               = _studioId,
+            PendingPlanId          = pendingPlanId,
+            PendingBillingInterval = pendingBillingInterval,
+            Status                 = SubscriptionStatus.Active,
+            StripeSubscriptionId   = stripeSubId,
+            TrialExpiresAt         = DateTime.UtcNow.AddDays(-20),
+            CurrentPeriodEnd       = DateTime.UtcNow.AddDays(10),
+            GracePeriodEnd         = DateTime.UtcNow.AddDays(-13),
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

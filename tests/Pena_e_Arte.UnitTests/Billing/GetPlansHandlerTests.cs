@@ -24,15 +24,8 @@ public class GetPlansHandlerTests
     [Fact]
     public async Task Handle_WithPlan_ReturnsZeroSubscribers_WhenNoneExist()
     {
-        Plan plan = new()
-        {
-            Id                    = Guid.NewGuid(),
-            Name                  = "Starter",
-            BillingInterval       = BillingInterval.Monthly,
-            PriceMonthly          = 29m,
-            PriceYearly           = 290m,
-            YearlyDiscountPercent = 17,
-        };
+        Plan plan = new() { Id = Guid.NewGuid(), Name = "Starter", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 29m });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -43,17 +36,27 @@ public class GetPlansHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithPlan_ReturnsItsPrices()
+    {
+        Plan plan = new() { Id = Guid.NewGuid(), Name = "Premium", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 79m });
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = 790m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(), default);
+
+        result.Single().Prices.Should().HaveCount(2);
+        result.Single().Prices.Should().Contain(p => p.Interval == "Monthly" && p.Price == 79m);
+        result.Single().Prices.Should().Contain(p => p.Interval == "Yearly" && p.Price == 790m);
+    }
+
+    [Fact]
     public async Task Handle_WithSubscribers_ReturnsCorrectCount()
     {
-        Plan plan = new()
-        {
-            Id                    = Guid.NewGuid(),
-            Name                  = "Pro",
-            BillingInterval       = BillingInterval.Monthly,
-            PriceMonthly          = 49m,
-            PriceYearly           = 490m,
-            YearlyDiscountPercent = 17,
-        };
+        Plan plan = new() { Id = Guid.NewGuid(), Name = "Pro", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
 
@@ -87,24 +90,10 @@ public class GetPlansHandlerTests
     [Fact]
     public async Task Handle_MultiplePlans_SubscriberCountsArePerPlan()
     {
-        Plan planA = new()
-        {
-            Id                    = Guid.NewGuid(),
-            Name                  = "A",
-            BillingInterval       = BillingInterval.Monthly,
-            PriceMonthly          = 10m,
-            PriceYearly           = 100m,
-            YearlyDiscountPercent = 17,
-        };
-        Plan planB = new()
-        {
-            Id                    = Guid.NewGuid(),
-            Name                  = "B",
-            BillingInterval       = BillingInterval.Monthly,
-            PriceMonthly          = 20m,
-            PriceYearly           = 200m,
-            YearlyDiscountPercent = 17,
-        };
+        Plan planA = new() { Id = Guid.NewGuid(), Name = "A", YearlyDiscountPercent = 17 };
+        planA.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 10m });
+        Plan planB = new() { Id = Guid.NewGuid(), Name = "B", YearlyDiscountPercent = 17 };
+        planB.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 20m });
         _db.Plans.AddRange(planA, planB);
         await _db.SaveChangesAsync();
 
@@ -141,7 +130,7 @@ public class GetPlansHandlerTests
 
         List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(), default);
 
-        result.OrderBy(r => r.PriceMonthly).First().SubscriberCount.Should().Be(1);
-        result.OrderBy(r => r.PriceMonthly).Last().SubscriberCount.Should().Be(2);
+        result.Single(r => r.Name == "A").SubscriberCount.Should().Be(1);
+        result.Single(r => r.Name == "B").SubscriberCount.Should().Be(2);
     }
 }

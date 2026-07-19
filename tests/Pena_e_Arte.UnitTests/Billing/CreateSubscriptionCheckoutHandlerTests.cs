@@ -34,8 +34,8 @@ public class CreateSubscriptionCheckoutHandlerTests
     private CreateSubscriptionCheckoutHandler CreateSut() =>
         new(_db, _tenant, _billing, _discounts, NullLogger<CreateSubscriptionCheckoutHandler>.Instance);
 
-    private static CreateCheckoutRequest Req(Guid planId) =>
-        new(planId, "https://app.test/billing?session_id={CHECKOUT_SESSION_ID}", "https://app.test/billing/subscribe");
+    private static CreateCheckoutRequest Req(Guid planId, string billingInterval = "Monthly") =>
+        new(planId, billingInterval, "https://app.test/billing?session_id={CHECKOUT_SESSION_ID}", "https://app.test/billing/subscribe");
 
     [Fact]
     public async Task Handle_ValidPlan_ReturnsCheckoutUrlWithCorrectPrice()
@@ -128,14 +128,13 @@ public class CreateSubscriptionCheckoutHandlerTests
 
     private async Task<Plan> SeedPlan(string? stripePriceMonthly = "price_monthly")
     {
-        Plan plan = new()
+        Plan plan = new() { Name = "Growth" };
+        plan.Prices.Add(new PlanPrice
         {
-            Name                 = "Growth",
-            BillingInterval      = BillingInterval.Monthly,
-            PriceMonthly         = 59m,
-            PriceYearly          = 590m,
-            StripePriceIdMonthly = stripePriceMonthly,
-        };
+            Interval      = BillingInterval.Monthly,
+            Price         = 59m,
+            StripePriceId = stripePriceMonthly,
+        });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         return plan;

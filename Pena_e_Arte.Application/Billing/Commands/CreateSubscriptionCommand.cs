@@ -36,18 +36,24 @@ public class CreateSubscriptionHandler(
         if (subscription.Status == SubscriptionStatus.Active)
             throw new BusinessRuleViolationException("Studio already has an active subscription.");
 
-        string? priceId = plan.BillingInterval == BillingInterval.Monthly
-            ? plan.StripePriceIdMonthly
-            : plan.StripePriceIdYearly;
+        BillingInterval requestedInterval =
+            Enum.Parse<BillingInterval>(command.Request.BillingInterval, ignoreCase: true);
+
+        PlanPrice price = await db.PlanPrices
+            .FirstOrDefaultAsync(pp => pp.PlanId == plan.Id && pp.Interval == requestedInterval && pp.IsActive, ct)
+            ?? throw new BusinessRuleViolationException(
+                "This plan is not available at that billing interval. Please contact the platform.");
+
+        string? priceId = price.StripePriceId;
 
         // Resolve referral discount — re-validate at subscription time as a safety net
         string? couponId      = null;
         bool    discountApplied = false;
         ReferralCode? pendingCode = null;
 
-        // A Free plan (PriceMonthly == 0) has nothing to discount — skip coupon creation
+        // A Free plan (price == 0) has nothing to discount — skip coupon creation
         // entirely rather than let it fail harmlessly into the catch block below.
-        if (plan.PriceMonthly > 0 && subscription.Studio?.PendingReferralCodeId is Guid refCodeId)
+        if (price.Price > 0 && subscription.Studio?.PendingReferralCodeId is Guid refCodeId)
         {
             pendingCode = await db.ReferralCodes
                 .FirstOrDefaultAsync(r => r.Id == refCodeId && r.IsActive, ct);
@@ -98,17 +104,18 @@ public class CreateSubscriptionHandler(
         }
         else
         {
-            // Free plan (PriceMonthly == 0): never expires — use a far-future sentinel so
-            // it stays permanently in the Active pass-through state. This is deliberately
+            // Free plan (price == 0): never expires — use a far-future sentinel so it
+            // stays permanently in the Active pass-through state. This is deliberately
             // NOT the same "+1 month" used for genuinely cash-billed paid plans below: a
             // future recurring expiry job built for the cash-billing case must not sweep
             // Free-tier studios into it.
-            periodEnd = plan.PriceMonthly == 0
+            periodEnd = price.Price == 0
                 ? DateTime.UtcNow.AddYears(50)
                 : DateTime.UtcNow.AddMonths(1);
         }
 
         subscription.PlanId           = command.Request.PlanId;
+        subscription.BillingInterval  = requestedInterval;
         subscription.Status           = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd = periodEnd;
         subscription.TrialExpiresAt   = null;
@@ -144,6 +151,7 @@ public class CreateSubscriptionHandler(
     }
 
     internal static SubscriptionResponse Map(Subscription s) => new(
-        s.Id, s.StudioId, s.PlanId, s.PendingPlanId, s.Status.ToString(),
+        s.Id, s.StudioId, s.PlanId, s.BillingInterval.ToString(),
+        s.PendingPlanId, s.PendingBillingInterval?.ToString(), s.Status.ToString(),
         s.TrialExpiresAt, s.CurrentPeriodEnd, s.GracePeriodEnd, s.StripeSubscriptionId);
 }

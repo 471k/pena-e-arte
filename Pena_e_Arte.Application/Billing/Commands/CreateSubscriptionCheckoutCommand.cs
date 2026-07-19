@@ -48,9 +48,13 @@ public class CreateSubscriptionCheckoutHandler(
             throw new BusinessRuleViolationException(
                 "Studio already has a card subscription. Use change plan instead.");
 
-        string? priceId = plan.BillingInterval == BillingInterval.Monthly
-            ? plan.StripePriceIdMonthly
-            : plan.StripePriceIdYearly;
+        BillingInterval requestedInterval =
+            Enum.Parse<BillingInterval>(req.BillingInterval, ignoreCase: true);
+
+        PlanPrice? price = await db.PlanPrices
+            .FirstOrDefaultAsync(pp => pp.PlanId == plan.Id && pp.Interval == requestedInterval && pp.IsActive, ct);
+
+        string? priceId = price?.StripePriceId;
 
         if (priceId is null || subscription.Studio is null)
             throw new BusinessRuleViolationException(
@@ -118,6 +122,10 @@ public class CreateSubscriptionCheckoutValidator : AbstractValidator<CreateSubsc
     public CreateSubscriptionCheckoutValidator()
     {
         RuleFor(x => x.Request.PlanId).NotEmpty();
+        RuleFor(x => x.Request.BillingInterval)
+            .NotEmpty()
+            .Must(v => Enum.TryParse<BillingInterval>(v, ignoreCase: true, out _))
+            .WithMessage("BillingInterval must be 'Monthly' or 'Yearly'.");
         RuleFor(x => x.Request.SuccessUrl).NotEmpty().Must(BeAbsoluteHttpUrl)
             .WithMessage("SuccessUrl must be an absolute http(s) URL.");
         RuleFor(x => x.Request.CancelUrl).NotEmpty().Must(BeAbsoluteHttpUrl)

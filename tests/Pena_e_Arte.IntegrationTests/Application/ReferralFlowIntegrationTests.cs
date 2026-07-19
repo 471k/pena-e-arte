@@ -137,7 +137,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
             NullLogger<CreateSubscriptionHandler>.Instance);
 
         await subHandler.Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         // 4. Verify ReferralRedemption was created with DiscountApplied = true
         await using AppDbContext finalDb = fixture.CreateDbContext(Guid.Empty);
@@ -221,7 +221,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
 
         // 4. New studio subscribes.
         await subHandler.Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         // 5. Verify ReferralRedemption has ReferrerRewardApplied = true.
         await using AppDbContext verifyDb = fixture.CreateDbContext(Guid.Empty);
@@ -268,7 +268,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         await new CreateSubscriptionHandler(
             fixture.CreateDbContext(Guid.Empty), tenantSvc, billing, discounts,
             rewardSvc, NullLogger<CreateSubscriptionHandler>.Instance)
-            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await using AppDbContext verifyDb = fixture.CreateDbContext(Guid.Empty);
         ReferralRedemption? redemption = await verifyDb.ReferralRedemptions
@@ -318,7 +318,8 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
     private async Task<Guid> SeedPlan()
     {
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        Plan plan = new() { Name = "Pro", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m };
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         db.Plans.Add(plan);
         await db.SaveChangesAsync();
         return plan.Id;
@@ -329,7 +330,8 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         string stripeSubId = $"sub_referrer_{studioId:N}";
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
 
-        Plan plan = new() { Name = "Referrer Plan", BillingInterval = BillingInterval.Monthly, PriceMonthly = 49m };
+        Plan plan = new() { Name = "Referrer Plan" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         db.Plans.Add(plan);
 
         Subscription? existing = await db.Subscriptions.FirstOrDefaultAsync(s => s.StudioId == studioId);

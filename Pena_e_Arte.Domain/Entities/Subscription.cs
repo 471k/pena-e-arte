@@ -5,11 +5,19 @@ namespace Pena_e_Arte.Domain.Entities;
 public class Subscription
 {
     public Guid               Id                   { get; init; } = Guid.NewGuid();
-    public Guid               StudioId             { get; set; }
-    public Guid?              PlanId               { get; set; }
+    public Guid                StudioId             { get; set; }
+    public Guid?                PlanId               { get; set; }
+
+    /// <summary>Which cadence this subscription is actually billed on. Independent of
+    /// PlanId — see architecture.md Decisions Log, "Plan/PlanPrice split".</summary>
+    public BillingInterval      BillingInterval      { get; set; } = BillingInterval.Monthly;
 
     /// <summary>Plan a scheduled downgrade switches to at the end of the current period. Null when no change is pending.</summary>
-    public Guid?              PendingPlanId        { get; set; }
+    public Guid?                PendingPlanId        { get; set; }
+
+    /// <summary>Interval that PendingPlanId will apply under, once it lands. Set and
+    /// cleared together with PendingPlanId — always both null or both non-null.</summary>
+    public BillingInterval?     PendingBillingInterval { get; set; }
 
     public SubscriptionStatus Status               { get; set; }
 

@@ -1,12 +1,10 @@
 using FluentValidation;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
-using Pena_e_Arte.Domain.Exceptions;
 
 namespace Pena_e_Arte.Application.Plans.Commands;
 
@@ -19,24 +17,11 @@ public class CreatePlanHandler(IAppDbContext db)
     {
         CreatePlanRequest req = command.Request;
 
-        BillingInterval interval = Enum.Parse<BillingInterval>(req.BillingInterval, ignoreCase: true);
-
-        if (req.PairedPlanId is Guid pairedId)
-        {
-            bool pairedExists = await db.Plans.AnyAsync(p => p.Id == pairedId, ct);
-            if (!pairedExists)
-                throw new NotFoundException(nameof(Plan), pairedId);
-        }
-
         Plan plan = new()
         {
             Name                     = req.Name,
-            BillingInterval          = interval,
-            PriceMonthly             = req.PriceMonthly,
-            PriceYearly              = req.PriceYearly,
             YearlyDiscountPercent    = req.YearlyDiscountPercent,
-            StripePriceIdMonthly     = req.StripePriceIdMonthly,
-            StripePriceIdYearly      = req.StripePriceIdYearly,
+            AllowBrandingRemoval     = req.AllowBrandingRemoval,
             MaxArtists               = req.MaxArtists,
             MaxAppointmentsPerMonth  = req.MaxAppointmentsPerMonth,
             MaxNotificationsPerMonth = req.MaxNotificationsPerMonth,
@@ -44,8 +29,18 @@ public class CreatePlanHandler(IAppDbContext db)
             MaxLocations             = req.MaxLocations,
             AllowApiAccess           = req.AllowApiAccess,
             PrioritySupport          = req.PrioritySupport,
-            PairedPlanId             = req.PairedPlanId,
         };
+
+        foreach (PlanPriceRequest pr in req.Prices)
+        {
+            plan.Prices.Add(new PlanPrice
+            {
+                Interval      = Enum.Parse<BillingInterval>(pr.Interval, ignoreCase: true),
+                Price         = pr.Price,
+                StripePriceId = pr.StripePriceId,
+                IsActive      = pr.IsActive,
+            });
+        }
 
         db.Plans.Add(plan);
         await db.SaveChangesAsync(ct);
@@ -54,14 +49,12 @@ public class CreatePlanHandler(IAppDbContext db)
     }
 
     internal static PlanResponse Map(Plan plan, int subscriberCount) => new(
-        plan.Id, plan.Name, plan.BillingInterval.ToString(),
-        plan.PriceMonthly, plan.PriceYearly, plan.YearlyDiscountPercent,
-        plan.AllowBrandingRemoval,
-        plan.StripePriceIdMonthly, plan.StripePriceIdYearly,
+        plan.Id, plan.Name, plan.YearlyDiscountPercent, plan.AllowBrandingRemoval,
         subscriberCount,
         plan.MaxArtists, plan.MaxAppointmentsPerMonth, plan.MaxNotificationsPerMonth,
         plan.MaxStorageGb, plan.MaxLocations, plan.AllowApiAccess, plan.PrioritySupport,
-        plan.PairedPlanId);
+        plan.Prices.Select(pp => new PlanPriceResponse(
+            pp.Id, pp.Interval.ToString(), pp.Price, pp.StripePriceId, pp.IsActive)).ToList());
 }
 
 public class CreatePlanValidator : AbstractValidator<CreatePlanCommand>
@@ -69,19 +62,28 @@ public class CreatePlanValidator : AbstractValidator<CreatePlanCommand>
     public CreatePlanValidator()
     {
         RuleFor(x => x.Request.Name).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.Request.BillingInterval)
-            .NotEmpty()
-            .Must(v => Enum.TryParse<BillingInterval>(v, ignoreCase: true, out _))
-            .WithMessage("BillingInterval must be 'Monthly' or 'Yearly'.");
-        RuleFor(x => x.Request.PriceMonthly).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Request.PriceYearly).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Request.YearlyDiscountPercent).InclusiveBetween(0, 100);
+        RuleFor(x => x.Request.Prices).NotEmpty()
+            .WithMessage("At least one billing interval must be provided.");
+        RuleForEach(x => x.Request.Prices).ChildRules(price =>
+        {
+            price.RuleFor(p => p.Interval)
+                .NotEmpty()
+                .Must(v => Enum.TryParse<BillingInterval>(v, ignoreCase: true, out _))
+                .WithMessage("Interval must be 'Monthly' or 'Yearly'.");
+            price.RuleFor(p => p.Price).GreaterThanOrEqualTo(0);
+        });
+        RuleFor(x => x.Request.Prices)
+            .Must(prices => prices
+                .Select(p => p.Interval.ToUpperInvariant())
+                .Distinct().Count() == prices.Count)
+            .WithMessage("Each billing interval may only appear once.");
         // A plan is either fully free (lead-gen tier) or fully paid — never a mix of a
-        // free monthly price with a paid yearly price or vice versa.
-        RuleFor(x => x.Request)
-            .Must(r => (r.PriceMonthly == 0) == (r.PriceYearly == 0))
-            .WithName("PriceMonthly")
-            .WithMessage("A plan must be either fully free (both prices = 0) or fully paid (both prices > 0).");
+        // free interval alongside a paid one.
+        RuleFor(x => x.Request.Prices)
+            .Must(prices => prices.Count == 0
+                || prices.All(p => p.Price == 0) || prices.All(p => p.Price > 0))
+            .WithMessage("A plan must be either fully free (all prices = 0) or fully paid (all prices > 0).");
         RuleFor(x => x.Request.MaxArtists).GreaterThan(0)
             .When(x => x.Request.MaxArtists is not null);
         RuleFor(x => x.Request.MaxAppointmentsPerMonth).GreaterThan(0)

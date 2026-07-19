@@ -23,6 +23,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
             .IgnoreQueryFilters()
             .Include(s => s.Subscription)
                 .ThenInclude(sub => sub!.Plan)
+                    .ThenInclude(plan => plan!.Prices)
             .ToListAsync(ct);
 
         // Suspended = manually deactivated by issuer (IsActive = false). These studios are still
@@ -41,10 +42,12 @@ public class GetPlatformStatsHandler(IAppDbContext db)
         int pastDueStudios      = active.Count(s => s.Subscription?.Status == SubscriptionStatus.PastDue);
         int cancelledStudios    = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Cancelled);
 
-        // MRR — active subscriptions only, sum of plan monthly price.
+        // MRR — active subscriptions only, sum of each subscription's monthly-equivalent price
+        // (a Yearly-billed subscription contributes Price / 12, not the Plan's decorative
+        // Monthly reference figure — see architecture.md Decisions Log, "Plan/PlanPrice split").
         decimal mrr = active
             .Where(s => s.Subscription?.Status == SubscriptionStatus.Active && s.Subscription.Plan is not null)
-            .Sum(s => s.Subscription!.Plan!.PriceMonthly);
+            .Sum(s => MonthlyEquivalentRevenue(s.Subscription!));
 
         // MRR growth: compare with last calendar month.
         // Approximation: counts active subs that existed before this month and whose period covered last month.
@@ -56,7 +59,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
                 && s.Subscription.CreatedAt < monthStart       // existed last month
                 && s.Subscription.CurrentPeriodEnd >= lastMonth // was active last month
                 && s.Subscription.Status == SubscriptionStatus.Active)
-            .Sum(s => s.Subscription!.Plan!.PriceMonthly);
+            .Sum(s => MonthlyEquivalentRevenue(s.Subscription!));
 
         double mrrGrowthPercent = lastMonthMrr == 0
             ? (mrr > 0 ? 100.0 : 0.0)
@@ -82,4 +85,9 @@ public class GetPlatformStatsHandler(IAppDbContext db)
             trialConversionRate,
             newStudiosThisMonth);
     }
+
+    private static decimal MonthlyEquivalentRevenue(Subscription s) =>
+        s.Plan?.Prices.FirstOrDefault(pp => pp.Interval == s.BillingInterval) is PlanPrice pp
+            ? (pp.Interval == BillingInterval.Monthly ? pp.Price : pp.Price / 12m)
+            : 0m;
 }

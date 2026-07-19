@@ -105,7 +105,7 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
 
         SubscriptionResponse result = await handler.Handle(
-            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         result.Status.Should().Be(SubscriptionStatus.Active.ToString());
         result.CurrentPeriodEnd.Should().BeAfter(DateTime.UtcNow.AddYears(49));
@@ -172,12 +172,8 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<Guid> SeedPlan(decimal priceMonthly = 49m)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);
-        Plan plan = new()
-        {
-            Name            = priceMonthly == 0 ? "Free" : "Pro",
-            BillingInterval = BillingInterval.Monthly,
-            PriceMonthly    = priceMonthly
-        };
+        Plan plan = new() { Name = priceMonthly == 0 ? "Free" : "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = priceMonthly });
         ctx.Plans.Add(plan);
         await ctx.SaveChangesAsync();
         return plan.Id;
@@ -226,7 +222,7 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
         IReferralRewardService rewardService = Substitute.For<IReferralRewardService>();
         CreateSubscriptionHandler handler = new(db, tenant, billing, discounts, rewardService,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
-        return await handler.Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId)), default);
+        return await handler.Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
     }
 
     private async Task<SubscriptionResponse> RunGetHandler(Guid studioId)

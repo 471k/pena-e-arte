@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Application.Platform.Queries;
 
@@ -18,6 +20,7 @@ public class GetMrrHistoryHandler(IAppDbContext db)
         var subscriptions = await db.Subscriptions
             .AsNoTracking()
             .Include(s => s.Plan)
+                .ThenInclude(p => p!.Prices)
             .Where(s => s.Plan != null)
             .ToListAsync(ct);
 
@@ -31,11 +34,16 @@ public class GetMrrHistoryHandler(IAppDbContext db)
 
             decimal mrr = subscriptions
                 .Where(s => s.CreatedAt < monthEnd && s.CurrentPeriodEnd >= monthStart)
-                .Sum(s => s.Plan!.PriceMonthly);
+                .Sum(MonthlyEquivalentRevenue);
 
             result.Add(new MrrDataPointResponse(monthStart.ToString("yyyy-MM"), mrr));
         }
 
         return result;
     }
+
+    private static decimal MonthlyEquivalentRevenue(Subscription s) =>
+        s.Plan?.Prices.FirstOrDefault(pp => pp.Interval == s.BillingInterval) is PlanPrice pp
+            ? (pp.Interval == BillingInterval.Monthly ? pp.Price : pp.Price / 12m)
+            : 0m;
 }

@@ -358,13 +358,8 @@ public class CashPaymentIntegrationTests
     private async Task<Guid> SeedPlan()
     {
         await using AppDbContext ctx = _fixture.CreateDbContext(Guid.Empty);
-        Plan plan = new()
-        {
-            Name             = $"Test Plan {Guid.NewGuid():N}",
-            BillingInterval  = BillingInterval.Monthly,
-            PriceMonthly     = 29m,
-            PriceYearly      = 299m,
-        };
+        Plan plan = new() { Name = $"Test Plan {Guid.NewGuid():N}" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 29m });
         ctx.Plans.Add(plan);
         await ctx.SaveChangesAsync();
         return plan.Id;

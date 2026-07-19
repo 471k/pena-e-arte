@@ -13,17 +13,13 @@ public class GetPlansHandler(IAppDbContext db)
     public async Task<List<PlanResponse>> Handle(GetPlansQuery query, CancellationToken ct)
     {
         return await db.Plans
-            .OrderBy(p => p.PriceMonthly)
+            .Include(p => p.Prices)
+            .OrderBy(p => p.Prices.Min(pp => pp.Price))
             .Select(p => new PlanResponse(
                 p.Id,
                 p.Name,
-                p.BillingInterval.ToString(),
-                p.PriceMonthly,
-                p.PriceYearly,
                 p.YearlyDiscountPercent,
                 p.AllowBrandingRemoval,
-                p.StripePriceIdMonthly,
-                p.StripePriceIdYearly,
                 db.Subscriptions.Count(s => s.PlanId == p.Id),
                 p.MaxArtists,
                 p.MaxAppointmentsPerMonth,
@@ -32,7 +28,8 @@ public class GetPlansHandler(IAppDbContext db)
                 p.MaxLocations,
                 p.AllowApiAccess,
                 p.PrioritySupport,
-                p.PairedPlanId))
+                p.Prices.Select(pp => new PlanPriceResponse(
+                    pp.Id, pp.Interval.ToString(), pp.Price, pp.StripePriceId, pp.IsActive)).ToList()))
             .ToListAsync(ct);
     }
 }

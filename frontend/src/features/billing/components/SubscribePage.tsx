@@ -13,7 +13,7 @@ import {
   useChangePlanMutation,
   useCreateSubscriptionMutation,
 } from "../billingApi";
-import type { PlanResponse } from "../billing.types";
+import { priceFor, type PlanResponse, type PlanPriceResponse } from "../billing.types";
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(price);
@@ -21,32 +21,34 @@ function formatPrice(price: number): string {
 
 function PlanCard({
   plan,
+  price,
   selected,
   onSelect,
   disabled,
   isCurrent = false,
 }: {
   plan:       PlanResponse;
+  price:      PlanPriceResponse | undefined;
   selected:   boolean;
   onSelect:   () => void;
   disabled:   boolean;
   isCurrent?: boolean;
 }) {
-  const isYearly   = plan.billingInterval === "Yearly";
-  const price      = isYearly ? plan.priceYearly : plan.priceMonthly;
-  const perMonth   = isYearly ? plan.priceYearly / 12 : plan.priceMonthly;
+  const unavailable = price === undefined;
+  const isYearly    = price?.interval === "Yearly";
+  const perMonth    = price ? (isYearly ? price.price / 12 : price.price) : 0;
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      disabled={disabled || isCurrent}
+      disabled={disabled || isCurrent || unavailable}
       className={cn(
         "w-full text-left rounded-lg border-2 p-4 transition-colors",
         selected
           ? "border-primary bg-primary/5"
           : "border-input hover:border-ring",
-        (disabled || isCurrent) && "opacity-50 cursor-not-allowed",
+        (disabled || isCurrent || unavailable) && "opacity-50 cursor-not-allowed",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -60,16 +62,18 @@ function PlanCard({
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {plan.billingInterval === "Yearly" ? "Billed yearly" : "Billed monthly"}
+            {unavailable
+              ? "Not available on this billing cycle yet"
+              : isYearly ? "Billed yearly" : "Billed monthly"}
           </p>
         </div>
         <div className="text-right shrink-0">
-          {plan.priceMonthly === 0 ? (
+          {unavailable ? null : price.price === 0 ? (
             <p className="font-semibold text-green-600 dark:text-green-400">Free</p>
           ) : (
-            <p className="font-semibold">{formatPrice(price)}<span className="text-xs font-normal text-muted-foreground">/{isYearly ? "yr" : "mo"}</span></p>
+            <p className="font-semibold">{formatPrice(price.price)}<span className="text-xs font-normal text-muted-foreground">/{isYearly ? "yr" : "mo"}</span></p>
           )}
-          {isYearly && plan.priceMonthly > 0 && (
+          {!unavailable && isYearly && price.price > 0 && (
             <p className="text-xs text-green-600 dark:text-green-400">
               {formatPrice(perMonth)}/mo · save {plan.yearlyDiscountPercent}%
             </p>
@@ -109,22 +113,33 @@ export function SubscribePage() {
   const hasPendingChange  = isCardBilled && sub.pendingPlanId !== null;
   const busy              = checkingOut || switching || activating;
 
-  // Derive once — used by the toggle label and the plan list.
-  const yearlyDiscount = plans.find((p) => p.billingInterval === "Yearly")?.yearlyDiscountPercent ?? 0;
-  const filteredPlans  = plans.filter((p) => p.billingInterval === billingCycle);
+  // Derive once — used by the toggle label and the plan list. Every plan carries its
+  // own YearlyDiscountPercent regardless of which intervals it offers — use the
+  // currently-selected tier once one is picked, or the first plan that HAS a Yearly
+  // price otherwise, so the toggle's "Save X%" badge stays meaningful before selection.
+  const yearlyDiscount =
+    (selectedPlanId ? plans.find((p) => p.id === selectedPlanId) : undefined)?.yearlyDiscountPercent
+    ?? plans.find((p) => priceFor(p, "Yearly"))?.yearlyDiscountPercent
+    ?? 0;
 
-  const selectedPlan       = filteredPlans.find((p) => p.id === selectedPlanId) ?? null;
-  const isFreePlanSelected = selectedPlan?.priceMonthly === 0;
+  // Every tier stays visible in both toggle states — a tier with no price at the
+  // current cycle renders disabled instead of being silently dropped from the list.
+  const plansWithPrice = plans.map((p) => ({ plan: p, price: priceFor(p, billingCycle) }));
+
+  const selectedPlan       = plans.find((p) => p.id === selectedPlanId) ?? null;
+  const selectedPrice      = selectedPlan ? priceFor(selectedPlan, billingCycle) : undefined;
+  const isFreePlanSelected = selectedPrice?.price === 0;
 
   // A studio already on an active Free plan is "cash-billed" in the existing model
   // (Active + no Stripe subscription) — but its copy needs to read "upgrade", not
   // "set up card billing" / "switch to card billing".
-  const currentSubPlan  = plans.find((p) => p.id === sub?.planId);
-  const isFreePlanActive = isActive && (currentSubPlan?.priceMonthly ?? -1) === 0;
+  const currentSubPlan   = plans.find((p) => p.id === sub?.planId);
+  const isFreePlanActive = isActive
+    && (currentSubPlan?.prices.find((p) => p.interval === sub?.billingInterval)?.price ?? -1) === 0;
 
   function handleCycleChange(cycle: "Monthly" | "Yearly") {
     setBillingCycle(cycle);
-    setSelectedPlanId(null);   // reset selection — different cycle = different plan IDs
+    setSelectedPlanId(null);   // reset selection — different cycle = different price
   }
 
   async function onSubscribe() {
@@ -134,7 +149,7 @@ export function SubscribePage() {
     // Free plan: activate directly through the existing no-Stripe subscribe endpoint —
     // no card form, no Checkout redirect.
     if (isFreePlanSelected) {
-      const result = await activateFree({ planId: selectedPlanId });
+      const result = await activateFree({ planId: selectedPlanId, billingInterval: billingCycle });
       if ("error" in result) {
         const err = result.error as { data?: { message?: string } } | undefined;
         setSubmitError(err?.data?.message ?? "Failed to activate the Free plan. Please try again.");
@@ -146,7 +161,7 @@ export function SubscribePage() {
     }
 
     if (isCardBilled) {
-      const result = await changePlan({ planId: selectedPlanId });
+      const result = await changePlan({ planId: selectedPlanId, billingInterval: billingCycle });
       if ("error" in result) {
         const err = result.error as { data?: { message?: string } } | undefined;
         setSubmitError(err?.data?.message ?? "Failed to change plan. Please try again.");
@@ -165,9 +180,10 @@ export function SubscribePage() {
     // New subscription OR cash → card switch → Stripe-hosted Checkout collects the card.
     const origin = window.location.origin;
     const result = await createCheckout({
-      planId:     selectedPlanId,
-      successUrl: `${origin}/billing?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl:  `${origin}/billing/subscribe`,
+      planId:          selectedPlanId,
+      billingInterval: billingCycle,
+      successUrl:      `${origin}/billing?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl:       `${origin}/billing/subscribe`,
     });
     if ("error" in result) {
       const err = result.error as { data?: { message?: string } } | undefined;
@@ -274,24 +290,17 @@ export function SubscribePage() {
               ))}
             </div>
 
-            {filteredPlans.map((plan) => (
+            {plansWithPrice.map(({ plan, price }) => (
               <PlanCard
                 key={plan.id}
                 plan={plan}
+                price={price}
                 selected={selectedPlanId === plan.id}
                 onSelect={() => setSelectedPlanId(plan.id)}
                 disabled={busy}
-                isCurrent={isCardBilled && plan.id === sub?.planId}
+                isCurrent={isCardBilled && plan.id === sub?.planId && billingCycle === sub?.billingInterval}
               />
             ))}
-
-            {filteredPlans.length === 0 && (
-              <Card>
-                <CardContent className="p-5 text-center text-sm text-muted-foreground">
-                  No {billingCycle.toLowerCase()} plans available.
-                </CardContent>
-              </Card>
-            )}
           </div>
         )}
 

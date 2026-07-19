@@ -2,7 +2,6 @@ using FluentAssertions;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
-using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.UnitTests.Helpers;
 
@@ -18,11 +17,11 @@ public class CreatePlanHandlerTests
     public async Task Handle_ValidRequest_ReturnsPlanResponse()
     {
         PlanResponse result = await CreateSut().Handle(
-            new CreatePlanCommand(new CreatePlanRequest("Pro", "Monthly", 49m, 490m, 17)), default);
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Monthly", 49m)])), default);
 
         result.Name.Should().Be("Pro");
-        result.BillingInterval.Should().Be("Monthly");
-        result.PriceMonthly.Should().Be(49m);
+        result.Prices.Should().ContainSingle(p => p.Interval == "Monthly" && p.Price == 49m);
         result.SubscriberCount.Should().Be(0);
     }
 
@@ -30,7 +29,8 @@ public class CreatePlanHandlerTests
     public async Task Handle_ValidRequest_PersistsPlan()
     {
         await CreateSut().Handle(
-            new CreatePlanCommand(new CreatePlanRequest("Basic", "Yearly", 29m, 290m, 17)), default);
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Basic", 17, [new PlanPriceRequest("Yearly", 290m)])), default);
 
         _db.Plans.Should().ContainSingle(p => p.Name == "Basic");
     }
@@ -39,7 +39,8 @@ public class CreatePlanHandlerTests
     public async Task Handle_ValidRequest_ReturnsNewId()
     {
         PlanResponse result = await CreateSut().Handle(
-            new CreatePlanCommand(new CreatePlanRequest("Enterprise", "Monthly", 99m, 990m, 17)), default);
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Enterprise", 17, [new PlanPriceRequest("Monthly", 99m)])), default);
 
         result.Id.Should().NotBeEmpty();
     }
@@ -49,20 +50,24 @@ public class CreatePlanHandlerTests
     {
         PlanResponse result = await CreateSut().Handle(
             new CreatePlanCommand(new CreatePlanRequest(
-                "Pro", "Monthly", 49m, 490m, 17,
-                StripePriceIdMonthly: "price_monthly_xyz",
-                StripePriceIdYearly:  "price_yearly_xyz")), default);
+                "Pro", 17,
+                [
+                    new PlanPriceRequest("Monthly", 49m, StripePriceId: "price_monthly_xyz"),
+                    new PlanPriceRequest("Yearly", 490m, StripePriceId: "price_yearly_xyz"),
+                ])), default);
 
-        result.StripePriceIdMonthly.Should().Be("price_monthly_xyz");
-        result.StripePriceIdYearly.Should().Be("price_yearly_xyz");
-        _db.Plans.Single(p => p.Name == "Pro").StripePriceIdMonthly.Should().Be("price_monthly_xyz");
+        result.Prices.Single(p => p.Interval == "Monthly").StripePriceId.Should().Be("price_monthly_xyz");
+        result.Prices.Single(p => p.Interval == "Yearly").StripePriceId.Should().Be("price_yearly_xyz");
+        _db.PlanPrices.Single(p => p.Interval == Domain.Enums.BillingInterval.Monthly)
+            .StripePriceId.Should().Be("price_monthly_xyz");
     }
 
     [Fact]
     public async Task Handle_InvalidBillingInterval_ThrowsException()
     {
         Func<Task> act = () => CreateSut().Handle(
-            new CreatePlanCommand(new CreatePlanRequest("Pro", "Weekly", 49m, 490m, 17)), default);
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Weekly", 49m)])), default);
 
         await act.Should().ThrowAsync<Exception>();
     }
@@ -72,7 +77,7 @@ public class CreatePlanHandlerTests
     {
         PlanResponse result = await CreateSut().Handle(
             new CreatePlanCommand(new CreatePlanRequest(
-                "Premium", "Monthly", 79m, 790m, 17,
+                "Premium", 17, [new PlanPriceRequest("Monthly", 79m)],
                 MaxArtists: 6,
                 MaxAppointmentsPerMonth: 400,
                 MaxNotificationsPerMonth: 1200,
@@ -94,7 +99,8 @@ public class CreatePlanHandlerTests
     public async Task Handle_NoLimitFields_ReturnsNullMeaningUnlimited()
     {
         PlanResponse result = await CreateSut().Handle(
-            new CreatePlanCommand(new CreatePlanRequest("Pro", "Monthly", 99m, 990m, 17)), default);
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Monthly", 99m)])), default);
 
         result.MaxArtists.Should().BeNull();
         result.MaxAppointmentsPerMonth.Should().BeNull();
@@ -102,25 +108,17 @@ public class CreatePlanHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PairedPlanIdPointsToNonexistentPlan_ThrowsNotFoundException()
+    public async Task Handle_MultiplePrices_PersistsBothIntervals()
     {
-        Func<Task> act = () => CreateSut().Handle(
-            new CreatePlanCommand(new CreatePlanRequest(
-                "Premium", "Yearly", 79m, 790m, 17, PairedPlanId: Guid.NewGuid())), default);
-
-        await act.Should().ThrowAsync<NotFoundException>();
-    }
-
-    [Fact]
-    public async Task Handle_PairedPlanIdPointsToExistingPlan_Persists()
-    {
-        PlanResponse existing = await CreateSut().Handle(
-            new CreatePlanCommand(new CreatePlanRequest("Premium", "Monthly", 79m, 790m, 17)), default);
-
         PlanResponse result = await CreateSut().Handle(
             new CreatePlanCommand(new CreatePlanRequest(
-                "Premium", "Yearly", 79m, 790m, 17, PairedPlanId: existing.Id)), default);
+                "Premium", 17,
+                [
+                    new PlanPriceRequest("Monthly", 79m),
+                    new PlanPriceRequest("Yearly", 790m),
+                ])), default);
 
-        result.PairedPlanId.Should().Be(existing.Id);
+        result.Prices.Should().HaveCount(2);
+        _db.PlanPrices.Count(p => p.PlanId == result.Id).Should().Be(2);
     }
 }
