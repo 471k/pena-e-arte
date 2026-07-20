@@ -80,3 +80,16 @@ export interface StudioPlanUsageRow {
 export interface PlanUsageReportResponse {
   studios: StudioPlanUsageRow[];
 }
+
+export interface HelpQueryFrequency {
+  query:      string;
+  count:      number;
+  rolesAsked: string[];
+}
+
+export interface HelpSearchInsightsResponse {
+  totalSearches:     number;
+  days:              number;
+  topQueries:        HelpQueryFrequency[];
+  zeroResultQueries: HelpQueryFrequency[];
+}

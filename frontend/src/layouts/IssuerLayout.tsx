@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { BarChart3, Building2, CreditCard, LayoutDashboard, MessageSquare, PenLine, Receipt, Share2 } from "lucide-react";
+import { BarChart3, Building2, CreditCard, HelpCircle, LayoutDashboard, MessageSquare, PenLine, Receipt, Share2 } from "lucide-react";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { label: "Referrals",     href: "/platform/referrals",     icon: <Share2          className="h-4 w-4" /> },
   { label: "Reports",       href: "/platform/reports",       icon: <BarChart3       className="h-4 w-4" /> },
   { label: "Feedback",      href: "/platform/feedback",      icon: <MessageSquare   className="h-4 w-4" /> },
+  { label: "Help Insights", href: "/platform/help-insights", icon: <HelpCircle      className="h-4 w-4" /> },
 ];
 
 export function IssuerLayout() {

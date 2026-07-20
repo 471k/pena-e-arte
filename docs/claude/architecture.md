@@ -243,6 +243,7 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 23 | Multi-Studio Client View | No new entity (`Studio` + Identity claims) | `IIdentityService.GetTenantIdsAsync` | Per-user, cross-tenant |
 | 24 | Plan Usage Limits + Owner Visibility | No new entity (`Plan.Max*`, `Studio.StorageUsageBytes`) | `IPlanLimitService`/`PlanLimitService` (Redis-cached), `PlanLimitBehavior` (MediatR pipeline) | Per-tenant (enforcement/visibility), Issuer-level (validation report) |
 | 25 | In-App Help Menu | No entity (static content) | None — frontend-only, no backend | All roles |
+| 26 | Help Search Analytics | `HelpSearchLog` | `IgnoreQueryFilters()` — 39th approved usage (issuer insights read) | Per-tenant (write), Issuer-level (aggregate read) |
 
 ### In-App Help Menu — 2026-07-20
 
@@ -265,6 +266,44 @@ Keyboard shortcut `Shift+?` opens the panel from anywhere (ignored while typing 
 input/textarea). Verified in a real browser (Playwright, `verifier-gui` skill) as all
 four roles: menu opens, search narrows results, FAQ tab renders, the issuer-only
 "show all roles' guides" toggle appears only for issuer, and the shortcut opens the sheet.
+
+### Help Search Analytics — 2026-07-21
+
+Logs every Help-menu search (query text + result count) to a new tenant-scoped
+`HelpSearchLog` entity, and gives the issuer an aggregate view of what studio users
+search for — the single highest-signal list of missing documentation or confusing UX,
+same reasoning Intercom/Zendesk/Help Scout apply to their own search analytics.
+
+- **Write path**: `POST /api/v1/help/search-log` (`ClientAndAbove`) → `LogHelpSearchCommand`
+  → `LogHelpSearchHandler` reads `StudioId`/`UserId`/`Role` from `ICurrentTenant`/`ICurrentUser`,
+  same "cheap, fire-and-forget" shape as `RecordArtistView`, except this one does persist to
+  the DB (the query text has analytical value a Redis-only counter would lose). No rate
+  limiting — per the Redis rate-limiting rule, authenticated-only endpoints don't get one;
+  volume is controlled client-side by an 800ms debounce plus a per-open-session dedupe Set
+  in `HelpMenu.tsx`, so at most one log call per distinct query per Sheet-open.
+- **Read path**: `GET /api/v1/platform/help-search-insights?days=30` (`IssuerOnly`) →
+  `GetHelpSearchInsightsHandler`, in `Application/Platform/Queries/` (not `Application/Help/`)
+  to match where `PlatformEndpoints.cs` already groups every other issuer aggregate-report
+  endpoint. Uses `IgnoreQueryFilters()` — approved usage #39 (see table above) — groups by
+  lowercased `Query`, returns top 20 by count plus every zero-result query, each with the
+  distinct set of roles that asked it.
+- `HelpSearchLog` is a normal `TenantEntity` (standard global query filter applies to the
+  write path); only the issuer's cross-tenant aggregate read needs to bypass it.
+- Frontend: new `helpApi` RTK Query slice (first one this feature needed — Part A had none).
+  `HelpInsightsPage` at `/platform/help-insights` (`IssuerOnly`) follows `IndustryReportsPage`'s
+  plain `<table>` style, not `MrrChart`'s chart treatment. Linked from `IssuerLayout`'s nav
+  and a quick-link at the bottom of `IssuerDashboardPage`.
+- Verified end-to-end against the real backend + local MySQL: the GET aggregate path (issuer,
+  cross-tenant) worked correctly. The POST write path (client, tenant-scoped) reliably 500'd
+  locally — traced to `SubscriptionAccessService.GetSnapshotAsync`, a pre-existing tenant-access
+  gate that runs on every authenticated tenant-scoped request and falls back to a DB query when
+  its Redis read fails; Redis is not running at all in this local dev environment (no Docker,
+  no local Redis service), so the fallback DB call gets cancelled under load. This reproduces
+  for any tenant-scoped write locally, not just this endpoint — confirmed by tracing the
+  exception into `SubscriptionAccessService` (a generic dependency of `TenantMiddleware`, unrelated
+  to this feature's code). Verified correct instead with a route-mocked backend (same technique
+  as Part A): the debounced POST fires with the right `{ query, resultCount }` payload, and
+  `HelpInsightsPage` renders top/zero-result queries and the total-searches badge correctly.
 
 ```
 OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rate-limited)
@@ -492,6 +531,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 36 | `AppointmentReminderJob`, `DesignRevisionTimeoutJob`, `PaymentReconciliationJob`, `SendArtistInviteJob` | Hangfire background jobs run with no request/tenant scope at all — same class as `IndustryReportJob` (#3) | Hangfire job (system) |
 | 37 | `DataSeeder` | Startup seed data — runs before any request or tenant scope exists | System (startup) |
 | 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
+| 39 | `GetHelpSearchInsightsHandler` | Cross-tenant aggregate of help search queries for the issuer product-insights view | IssuerOnly |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`

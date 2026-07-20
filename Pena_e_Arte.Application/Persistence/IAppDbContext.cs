@@ -48,5 +48,8 @@ public interface IAppDbContext
     // Platform feedback — no tenant filter (issuer reads across all studios)
     DbSet<FeedbackReport> FeedbackReports { get; }
 
+    // Help search analytics — tenant-scoped write, issuer reads cross-tenant via IgnoreQueryFilters
+    DbSet<HelpSearchLog> HelpSearchLogs { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
