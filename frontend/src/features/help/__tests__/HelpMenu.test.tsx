@@ -7,12 +7,18 @@ import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
+import { authApi } from "@/features/auth/authApi";
 import { helpApi } from "../helpApi";
+import { onboardingApi } from "../onboardingApi";
 import { HelpMenu } from "../components/HelpMenu";
 import type { Role } from "@/shared/types/roles";
 
 const server = setupServer(
   http.post("http://localhost/api/v1/help/search-log", () => new HttpResponse(null, { status: 204 })),
+  // Tour already completed by default — keeps it out of the way of unrelated assertions.
+  http.get("http://localhost/api/v1/onboarding/tour-status", () => HttpResponse.json({ hasCompletedTour: true })),
+  http.post("http://localhost/api/v1/onboarding/tour-complete", () => new HttpResponse(null, { status: 204 })),
+  http.get("http://localhost/api/v1/auth/my-studios", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -21,8 +27,13 @@ afterAll(() => server.close());
 
 function makeStore(role: Role) {
   return configureStore({
-    reducer: { auth: authReducer, [helpApi.reducerPath]: helpApi.reducer },
-    middleware: (gd) => gd().concat(helpApi.middleware),
+    reducer: {
+      auth: authReducer,
+      [helpApi.reducerPath]: helpApi.reducer,
+      [onboardingApi.reducerPath]: onboardingApi.reducer,
+      [authApi.reducerPath]: authApi.reducer,
+    },
+    middleware: (gd) => gd().concat(helpApi.middleware, onboardingApi.middleware, authApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake", tenantId: "t1", role } as any,
@@ -168,4 +179,19 @@ describe("HelpMenu", () => {
 
     expect(callCount).toBe(1);
   }, 10000);
+
+  it("'Take the tour again' closes the sheet and relaunches the tour even though it was already completed", async () => {
+    // The owner tour's earlier steps target nav elements that this isolated
+    // render doesn't include, so the tour auto-skips through them (~1s each)
+    // before reaching the last step, "owner-help-button" — the trigger button
+    // HelpMenu itself renders, which does resolve.
+    const user = userEvent.setup();
+    renderMenu("owner" as Role);
+
+    await user.click(screen.getByRole("button", { name: /open help menu/i }));
+    await user.click(screen.getByRole("button", { name: /take the tour again/i }));
+
+    expect(screen.queryByRole("heading", { name: /^help$/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("dialog", {}, { timeout: 8000 })).toBeInTheDocument();
+  }, 15000);
 });

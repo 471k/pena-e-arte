@@ -42,6 +42,7 @@ export function NotificationBell() {
         aria-label={unreadCount > 0 ? `View notifications, ${unreadCount} unread` : "View notifications"}
         aria-expanded={isOpen}
         title="Notifications"
+        data-tour="artist-notifications-bell"
         className="relative h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       >
         <Bell className="h-4 w-4" />

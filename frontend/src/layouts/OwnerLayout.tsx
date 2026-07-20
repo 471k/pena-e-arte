@@ -20,14 +20,14 @@ import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",       href: "/dashboard",  icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: "Dashboard",       href: "/dashboard",  icon: <LayoutDashboard className="h-4 w-4" />, tourId: "owner-dashboard-nav" },
   { label: "Schedule",        href: "/schedule",   icon: <CalendarDays    className="h-4 w-4" /> },
-  { label: "Artists",         href: "/artists",    icon: <Users           className="h-4 w-4" /> },
+  { label: "Artists",         href: "/artists",    icon: <Users           className="h-4 w-4" />, tourId: "owner-add-artist-nav" },
   { label: "Clients",         href: "/clients",    icon: <UserSquare      className="h-4 w-4" /> },
   { label: "Designs",         href: "/designs",    icon: <Palette         className="h-4 w-4" /> },
   { label: "Payments",        href: "/payments",   icon: <CreditCard      className="h-4 w-4" /> },
-  { label: "Billing",         href: "/billing",    icon: <Receipt         className="h-4 w-4" /> },
-  { label: "Studio Settings", href: "/studios/me", icon: <Settings        className="h-4 w-4" /> },
+  { label: "Billing",         href: "/billing",    icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
+  { label: "Studio Settings", href: "/studios/me", icon: <Settings        className="h-4 w-4" />, tourId: "owner-studio-profile-nav" },
 ];
 
 export function OwnerLayout() {
@@ -55,10 +55,11 @@ export function OwnerLayout() {
         <span className="font-semibold tracking-tight">Pena e Artë</span>
 
         <nav className="ml-6 flex items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {NAV_ITEMS.map(({ label, href, icon }) => (
+          {NAV_ITEMS.map(({ label, href, icon, tourId }) => (
             <NavLink
               key={href}
               to={href}
+              data-tour={tourId}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors shrink-0",

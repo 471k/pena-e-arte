@@ -6,10 +6,11 @@ import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
 
 interface ChecklistItem {
-  label: string;
-  done:  boolean;
-  href:  string;
-  cta:   string;
+  label:  string;
+  done:   boolean;
+  href:   string;
+  cta:    string;
+  tourId?: string;
 }
 
 export function SetupChecklist() {
@@ -25,10 +26,11 @@ export function SetupChecklist() {
       cta:   "Add artist",
     },
     {
-      label: "Set a deposit rule",
-      done:  depositRules.length > 0,
-      href:  "/deposit-rules/new",
-      cta:   "Set rule",
+      label:  "Set a deposit rule",
+      done:   depositRules.length > 0,
+      href:   "/deposit-rules/new",
+      cta:    "Set rule",
+      tourId: "owner-deposit-rules-nav",
     },
   ];
 
@@ -79,6 +81,7 @@ export function SetupChecklist() {
                   variant="outline"
                   className="h-6 text-xs px-2 shrink-0"
                   onClick={() => navigate(item.href)}
+                  data-tour={item.tourId}
                 >
                   {item.cta}
                 </Button>

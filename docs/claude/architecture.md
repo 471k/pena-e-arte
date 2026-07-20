@@ -244,6 +244,7 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 24 | Plan Usage Limits + Owner Visibility | No new entity (`Plan.Max*`, `Studio.StorageUsageBytes`) | `IPlanLimitService`/`PlanLimitService` (Redis-cached), `PlanLimitBehavior` (MediatR pipeline) | Per-tenant (enforcement/visibility), Issuer-level (validation report) |
 | 25 | In-App Help Menu | No entity (static content) | None — frontend-only, no backend | All roles |
 | 26 | Help Search Analytics | `HelpSearchLog` | `IgnoreQueryFilters()` — 39th approved usage (issuer insights read) | Per-tenant (write), Issuer-level (aggregate read) |
+| 27 | First-Run Onboarding Tour | `UserOnboardingState` (no tenant filter) | None — no `IgnoreQueryFilters()` needed, no filter registered on this entity | Per-user, cross-tenant |
 
 ### In-App Help Menu — 2026-07-20
 
@@ -304,6 +305,53 @@ same reasoning Intercom/Zendesk/Help Scout apply to their own search analytics.
   to this feature's code). Verified correct instead with a route-mocked backend (same technique
   as Part A): the debounced POST fires with the right `{ query, resultCount }` payload, and
   `HelpInsightsPage` renders top/zero-result queries and the total-searches badge correctly.
+
+### First-Run Onboarding Tour — 2026-07-21
+
+A short, skippable, per-role guided walkthrough shown automatically on first login,
+replayable anytime from the Help menu ("Take the tour again"). Hand-built (no npm
+package) — consistent with the codebase's existing "no package" pattern for similar UI
+mechanics (masonry via CSS columns, lightbox via shadcn Dialog).
+
+- **Engine**: `frontend/src/shared/components/OnboardingTour.tsx` — generic, reusable.
+  Finds each step's target via `document.querySelector(step.targetSelector)`, spotlights it
+  with a `box-shadow: 0 0 0 9999px rgba(0,0,0,.6)` cutout (no canvas/SVG mask), and positions
+  a popover adjacent per `step.placement`. Recomputes on resize/scroll via `ResizeObserver` +
+  scroll listener while a step is showing. A step can carry a `route` field — the engine
+  navigates there first (two `requestAnimationFrame`s, then polls up to ~1s for the target to
+  appear) before measuring. If a step's selector never resolves, it's skipped automatically —
+  this is normal, not an error path: e.g. the owner tour's deposit-rules step targets the
+  Dashboard's `SetupChecklist` "Set rule" button, which only renders while that setup item is
+  incomplete, so an already-configured studio correctly skips straight past it.
+- **Content**: `frontend/src/features/help/tours/{client,artist,owner,issuer}Tour.ts` — plain
+  `TourStep[]` (or a function, for the client tour's conditional My Studios step — only shown
+  if `useGetMyStudiosQuery` returns more than one studio). Targets are `data-tour="..."`
+  attributes added to the real nav links/buttons they describe — added directly to
+  `ClientLayout`/`ArtistLayout`/`OwnerLayout`/`IssuerLayout`'s nav item arrays, `NotificationBell`,
+  `DesignListPage`'s "New Design" button (both the header and empty-state variants — whichever
+  renders), `SetupChecklist`'s "Set rule" button, and `HelpMenu`'s own trigger button
+  (`data-tour="{role}-help-button"`, closing the loop back to Help).
+- **Persistence**: new `UserOnboardingState` entity — not tenant-scoped (per-user, like
+  `SavedPortfolioImage`/`FeedbackReport`), configured inline in `AppDbContext.OnModelCreating`,
+  unique index on `(UserId, Role)`. `GET /api/v1/onboarding/tour-status?role=` and
+  `POST /api/v1/onboarding/tour-complete` (both `ClientAndAbove`, in `HelpEndpoints.cs`) — both
+  handlers reject with `ForbiddenException` (403) if the `role` parameter doesn't match the
+  caller's actual JWT role, so a client can't mark another role's tour complete for themselves.
+  Upsert semantics in the command handler; no `IgnoreQueryFilters()` needed since this entity
+  has no query filter registered at all (same non-tenant shape as `FeedbackReport`).
+- **Frontend**: `useOnboardingTour(role)` hook (`features/help/useOnboardingTour.tsx`) — fetches
+  status via RTK Query, renders `<OnboardingTour>` when not completed, marks complete on either
+  Skip or the final Done (skip counts as complete — standard convention for these tours, don't
+  nag again). Tracks a local `dismissed` flag set synchronously on finish, rather than relying
+  solely on the invalidated status query's refetch — the network round-trip is too slow to hide
+  the tour immediately, which was an actual bug caught by the hook's own test suite (see below).
+  Called from inside `HelpMenu` (not each of the four layouts separately) since `HelpMenu` is
+  already mounted in every layout header — avoids prop-drilling `restartTour` from layout to
+  menu for the "Take the tour again" button.
+- Verified end-to-end in a real browser (route-mocked backend, Playwright): all 6 owner tour
+  steps resolve and advance in the correct order, Done fires the completion call and closes the
+  tour, a completed tour doesn't show on next load, and "Take the tour again" relaunches it
+  regardless of completion state.
 
 ```
 OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rate-limited)

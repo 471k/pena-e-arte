@@ -11,6 +11,8 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
+import { authApi } from "@/features/auth/authApi";
+import { onboardingApi } from "@/features/help/onboardingApi";
 import { ClientLayout } from "@/layouts/ClientLayout";
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -18,6 +20,13 @@ import { ClientLayout } from "@/layouts/ClientLayout";
 const server = setupServer(
   http.get("http://localhost/api/v1/notifications", () =>
     HttpResponse.json([]),
+  ),
+  http.get("http://localhost/api/v1/auth/my-studios", () =>
+    HttpResponse.json([]),
+  ),
+  // Onboarding tour: complete by default so it doesn't interfere with unrelated assertions.
+  http.get("http://localhost/api/v1/onboarding/tour-status", () =>
+    HttpResponse.json({ hasCompletedTour: true }),
   ),
 );
 
@@ -39,8 +48,10 @@ function makeStore(overrides: StoreOverrides = {}) {
       ui:                              uiReducer,
       notifications:                   notificationsReducer,
       [notificationsApi.reducerPath]:  notificationsApi.reducer,
+      [authApi.reducerPath]:           authApi.reducer,
+      [onboardingApi.reducerPath]:     onboardingApi.reducer,
     },
-    middleware: (gd) => gd().concat(notificationsApi.middleware),
+    middleware: (gd) => gd().concat(notificationsApi.middleware, authApi.middleware, onboardingApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: "client", pendingReferralCode: null } as any,

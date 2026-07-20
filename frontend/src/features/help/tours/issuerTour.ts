@@ -1,0 +1,29 @@
+import type { TourStep } from "@/shared/components/OnboardingTour";
+
+export const issuerTourSteps: TourStep[] = [
+  {
+    targetSelector: '[data-tour="issuer-dashboard-nav"]',
+    title: "Platform dashboard",
+    body: "How the whole platform is doing — studio counts, revenue, and which studios need attention.",
+  },
+  {
+    targetSelector: '[data-tour="issuer-studios-nav"]',
+    title: "All studios",
+    body: "Search, filter, and manage every studio on the platform here.",
+  },
+  {
+    targetSelector: '[data-tour="issuer-plans-nav"]',
+    title: "Subscription plans",
+    body: "Manage the plan catalogue studios can subscribe to.",
+  },
+  {
+    targetSelector: '[data-tour="issuer-subscriptions-nav"]',
+    title: "Subscription oversight",
+    body: "Review every studio's subscription status and take action — extend a trial, activate, or cancel.",
+  },
+  {
+    targetSelector: '[data-tour="issuer-help-button"]',
+    title: "Need help?",
+    body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",
+  },
+];
