@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
 import { ReviewSection } from "@/features/public/components/ReviewSection";
 import type { ReviewResponse } from "@/features/public/publicApi";
+import { toast } from "sonner";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
 const mockCreateArtistReview         = vi.fn();
 const mockCreateStudioReview         = vi.fn();
 const mockCreatePortfolioImageReview = vi.fn();
+const mockRespondToReview            = vi.fn();
 
 const mockArtistReviewsResult = { data: [] as ReviewResponse[], isLoading: false };
 
@@ -23,16 +25,23 @@ vi.mock("@/features/public/publicApi", () => ({
   useCreatePortfolioImageReviewMutation: () => [mockCreatePortfolioImageReview, { isLoading: false }],
 }));
 
+vi.mock("@/features/reviews/reviewsApi", () => ({
+  useRespondToReviewMutation: () => [mockRespondToReview, { isLoading: false }],
+}));
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function renderSection(
   token:   string | null = "test-token",
   target:  "studio" | "artist" | "tattoo" = "artist",
   imageId?: string,
+  canRespond?: boolean,
 ) {
   render(
     <MemoryRouter>
-      <ReviewSection slug="maria-silva" target={target} token={token} imageId={imageId} />
+      <ReviewSection slug="maria-silva" target={target} token={token} imageId={imageId} canRespond={canRespond} />
     </MemoryRouter>,
   );
 }
@@ -231,5 +240,51 @@ describe("ReviewSection — form DOM order", () => {
       el.textContent?.includes("Write a review")
     );
     expect(formIdx).toBeGreaterThan(headingIdx);
+  });
+});
+
+describe("ReviewSection — owner reply", () => {
+  beforeEach(() => {
+    mockArtistReviewsResult.data = [{
+      id: "r-1",
+      authorName: "Ana Costa",
+      rating: 5,
+      body: "Fantastic work",
+      createdAt: "2026-06-01T00:00:00Z",
+      isVerifiedBooking: true,
+      ownerResponse: null,
+      ownerResponseAt: null,
+    }];
+  });
+
+  it("submitting a reply shows a success toast and collapses the form", async () => {
+    mockRespondToReview.mockReturnValue({ unwrap: () => Promise.resolve() });
+    const user = userEvent.setup();
+    renderSection("test-token", "artist", undefined, true);
+
+    await user.click(screen.getByRole("button", { name: /^reply$/i }));
+    await user.type(screen.getByLabelText(/write a reply/i), "Thank you!");
+    await user.click(screen.getByRole("button", { name: /post reply/i }));
+
+    await waitFor(() => expect(mockRespondToReview).toHaveBeenCalledWith({
+      reviewId: "r-1", response: "Thank you!",
+    }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Reply posted."));
+    expect(screen.queryByLabelText(/write a reply/i)).not.toBeInTheDocument();
+  });
+
+  it("a failed reply submission shows an error toast, not a silent no-op", async () => {
+    mockRespondToReview.mockReturnValue({ unwrap: () => Promise.reject(new Error("fail")) });
+    const user = userEvent.setup();
+    renderSection("test-token", "artist", undefined, true);
+
+    await user.click(screen.getByRole("button", { name: /^reply$/i }));
+    await user.type(screen.getByLabelText(/write a reply/i), "Thank you!");
+    await user.click(screen.getByRole("button", { name: /post reply/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to post reply."));
+    expect(toast.success).not.toHaveBeenCalled();
+    // Form stays open — a failed reply must not silently discard the draft.
+    expect(screen.getByLabelText(/write a reply/i)).toBeInTheDocument();
   });
 });

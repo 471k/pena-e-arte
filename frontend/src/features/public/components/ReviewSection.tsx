@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { MessageSquare, CheckCircle, BadgeCheck, Star } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -38,8 +39,11 @@ function OwnerReplyForm({ reviewId }: { reviewId: string }) {
   function handleSubmit() {
     if (text.trim().length === 0) return;
     void respond({ reviewId, response: text.trim() }).unwrap().then(() => {
+      toast.success("Reply posted.");
       setExpanded(false);
       setText("");
+    }).catch(() => {
+      toast.error("Failed to post reply.");
     });
   }
 

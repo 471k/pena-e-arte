@@ -152,6 +152,15 @@ export function BillingPage() {
   const { data: usage } =
     useGetPlanUsageQuery(undefined, { refetchOnMountOrArgChange: true });
   const [cancelPlanChange, { isLoading: cancellingChange }] = useCancelPlanChangeMutation();
+
+  async function handleCancelPlanChange() {
+    try {
+      await cancelPlanChange().unwrap();
+      toast.success("Scheduled plan change cancelled.");
+    } catch {
+      toast.error("Failed to cancel the scheduled plan change.");
+    }
+  }
   const [createPortalSession, { isLoading: openingPortal }] = useCreatePortalSessionMutation();
 
   // Resolve the full PlanResponse so we can show price information.
@@ -407,7 +416,7 @@ export function BillingPage() {
                 size="sm"
                 className="w-full"
                 disabled={cancellingChange}
-                onClick={() => cancelPlanChange()}
+                onClick={handleCancelPlanChange}
               >
                 {cancellingChange
                   ? <Loader2 className="h-4 w-4 animate-spin" />

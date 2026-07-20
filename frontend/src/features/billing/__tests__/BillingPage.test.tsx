@@ -14,6 +14,9 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { BillingPage } from "@/features/billing/components/BillingPage";
 import type { SubscriptionResponse, PlanResponse, PlanUsageResponse } from "@/features/billing/billing.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
+import { toast } from "sonner";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -156,7 +159,7 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => { server.resetHandlers(); cleanup(); vi.clearAllMocks(); });
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -504,6 +507,29 @@ describe("BillingPage", () => {
     await user.click(screen.getByRole("button", { name: /keep current plan/i }));
 
     await waitFor(() => expect(cancelSpy).toHaveBeenCalledOnce());
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Scheduled plan change cancelled."));
+  });
+
+  it("a failed cancel of the scheduled plan change shows an error toast, not a silent no-op", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_PENDING),
+      ),
+      http.delete(
+        "http://localhost/api/v1/billing/subscription/plan/pending",
+        () => HttpResponse.json({ message: "Server error" }, { status: 500 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText(/scheduled plan change/i);
+
+    await user.click(screen.getByRole("button", { name: /keep current plan/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Failed to cancel the scheduled plan change."));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   // --- Studio suspension ---
