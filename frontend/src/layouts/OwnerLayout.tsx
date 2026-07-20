@@ -17,6 +17,7 @@ import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { NotificationBell } from "@/features/notifications";
 import { FeedbackDialog } from "@/features/feedback";
+import { HelpMenu } from "@/features/help";
 
 const NAV_ITEMS = [
   { label: "Dashboard",       href: "/dashboard",  icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -84,6 +85,7 @@ export function OwnerLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
+          <HelpMenu />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

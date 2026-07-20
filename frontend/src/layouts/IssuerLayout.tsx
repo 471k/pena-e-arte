@@ -6,6 +6,7 @@ import { logout } from "@/features/auth/authSlice";
 import { cn } from "@/shared/utils/cn";
 import { NotificationBell } from "@/features/notifications";
 import { useGetFeedbackReportsQuery } from "@/features/feedback";
+import { HelpMenu } from "@/features/help";
 
 const NAV_ITEMS = [
   { label: "Dashboard",     href: "/platform",               icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -61,6 +62,7 @@ export function IssuerLayout() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <HelpMenu />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>
