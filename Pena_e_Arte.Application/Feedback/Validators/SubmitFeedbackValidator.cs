@@ -1,17 +1,25 @@
 using FluentValidation;
 using Pena_e_Arte.Application.Feedback.Commands;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Feedback.Validators;
 
 public class SubmitFeedbackValidator : AbstractValidator<SubmitFeedbackCommand>
 {
-    public SubmitFeedbackValidator()
+    public SubmitFeedbackValidator(ICurrentUser currentUser)
     {
         RuleFor(x => x.Request.Type)
             .NotEmpty()
             .Must(v => Enum.TryParse<FeedbackType>(v, ignoreCase: true, out _))
-            .WithMessage("Type must be BugReport, FeatureRequest, or General.");
+            .WithMessage("Type must be BugReport, FeatureRequest, General, or SupportRequest.");
+
+        // Clients can only reach this endpoint via the Help menu's Contact Support flow —
+        // Bug Report / Feature Request / General stay restricted to studio staff.
+        RuleFor(x => x.Request.Type)
+            .Must(v => !string.Equals(currentUser.Role, "client", StringComparison.OrdinalIgnoreCase)
+                       || string.Equals(v, "SupportRequest", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Clients can only submit support requests.");
 
         RuleFor(x => x.Request.Title)
             .NotEmpty()

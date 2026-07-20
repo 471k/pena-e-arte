@@ -13,6 +13,7 @@ import {
 } from "../feedbackApi";
 import { FEEDBACK_TYPE, FEEDBACK_STATUS } from "../feedback.types";
 import type { FeedbackReportResponse, FeedbackType, FeedbackStatus } from "../feedback.types";
+import { SupportTicketThread } from "./SupportTicketThread";
 
 const TYPE_FILTERS = ["all", ...Object.values(FEEDBACK_TYPE)] as const;
 const STATUS_FILTERS = ["all", ...Object.values(FEEDBACK_STATUS)] as const;
@@ -21,12 +22,14 @@ const TYPE_LABEL: Record<FeedbackType, string> = {
   BugReport:      "Bug Report",
   FeatureRequest: "Feature Request",
   General:        "General",
+  SupportRequest: "Support Request",
 };
 
 const TYPE_BADGE: Record<FeedbackType, string> = {
   BugReport:      "bg-red-500/15 text-red-600",
   FeatureRequest: "bg-purple-500/15 text-purple-600",
   General:        "bg-sky-500/15 text-sky-600",
+  SupportRequest: "bg-emerald-500/15 text-emerald-600",
 };
 
 const STATUS_BADGE: Record<FeedbackStatus, string> = {
@@ -105,7 +108,7 @@ function FeedbackCard({ report }: FeedbackCardProps) {
 
         {expanded && (
           <div className="pt-2 space-y-3 border-t">
-            <p className="text-sm whitespace-pre-wrap">{report.body}</p>
+            <SupportTicketThread report={report} canReply />
 
             <div className="space-y-1.5">
               <label htmlFor={`issuer-note-${report.id}`} className="text-xs font-medium text-muted-foreground">

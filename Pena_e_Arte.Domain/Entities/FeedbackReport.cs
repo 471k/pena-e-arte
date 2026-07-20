@@ -19,6 +19,8 @@ public class FeedbackReport
     public DateTime       CreatedAt       { get; private set; } = DateTime.UtcNow;
     public DateTime?      ResolvedAt      { get; private set; }
 
+    public ICollection<FeedbackMessage> Messages { get; private set; } = [];
+
     public static FeedbackReport Create(
         Guid         studioId,
         Guid         submitterUserId,
@@ -48,4 +50,9 @@ public class FeedbackReport
             ? DateTime.UtcNow
             : null;
     }
+
+    /// <summary>Issuer can access any ticket; everyone else only their own, within their own studio.</summary>
+    public bool IsAccessibleBy(Guid userId, Guid studioId, string role) =>
+        string.Equals(role, "issuer", StringComparison.OrdinalIgnoreCase)
+        || (SubmitterUserId == userId && StudioId == studioId);
 }

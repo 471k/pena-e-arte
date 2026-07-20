@@ -8,6 +8,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { authApi } from "@/features/auth/authApi";
+import { feedbackApi } from "@/features/feedback/feedbackApi";
 import { helpApi } from "../helpApi";
 import { onboardingApi } from "../onboardingApi";
 import { HelpMenu } from "../components/HelpMenu";
@@ -19,6 +20,7 @@ const server = setupServer(
   http.get("http://localhost/api/v1/onboarding/tour-status", () => HttpResponse.json({ hasCompletedTour: true })),
   http.post("http://localhost/api/v1/onboarding/tour-complete", () => new HttpResponse(null, { status: 204 })),
   http.get("http://localhost/api/v1/auth/my-studios", () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/feedback/mine", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -32,8 +34,9 @@ function makeStore(role: Role) {
       [helpApi.reducerPath]: helpApi.reducer,
       [onboardingApi.reducerPath]: onboardingApi.reducer,
       [authApi.reducerPath]: authApi.reducer,
+      [feedbackApi.reducerPath]: feedbackApi.reducer,
     },
-    middleware: (gd) => gd().concat(helpApi.middleware, onboardingApi.middleware, authApi.middleware),
+    middleware: (gd) => gd().concat(helpApi.middleware, onboardingApi.middleware, authApi.middleware, feedbackApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake", tenantId: "t1", role } as any,
@@ -194,4 +197,33 @@ describe("HelpMenu", () => {
     expect(screen.queryByRole("heading", { name: /^help$/i })).not.toBeInTheDocument();
     expect(await screen.findByRole("dialog", {}, { timeout: 8000 })).toBeInTheDocument();
   }, 15000);
+
+  it("Contact Support tab shows the request form when there is no open ticket", async () => {
+    const user = userEvent.setup();
+    renderMenu("client" as Role);
+
+    await user.click(screen.getByRole("button", { name: /open help menu/i }));
+    await user.click(screen.getByRole("tab", { name: /contact support/i }));
+
+    expect(await screen.findByLabelText(/subject/i)).toBeInTheDocument();
+  });
+
+  it("Contact Support tab shows the ticket thread when an open ticket exists", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/feedback/mine", () => HttpResponse.json([{
+        id: "fb-1", type: "SupportRequest", title: "Need help", body: "Can't find billing.",
+        status: "Open", studioName: "Ink Soul", submitterRole: "client",
+        issuerNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
+      }])),
+      http.get("http://localhost/api/v1/feedback/fb-1/messages", () => HttpResponse.json([])),
+    );
+    const user = userEvent.setup();
+    renderMenu("client" as Role);
+
+    await user.click(screen.getByRole("button", { name: /open help menu/i }));
+    await user.click(screen.getByRole("tab", { name: /contact support/i }));
+
+    expect(await screen.findByText("Need help")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/subject/i)).not.toBeInTheDocument();
+  });
 });

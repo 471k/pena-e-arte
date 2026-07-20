@@ -106,6 +106,7 @@ try
     app.MapHub<ScheduleHub>("/hubs/schedule");
     app.MapHub<DesignHub>("/hubs/design");
     app.MapHub<NotificationHub>("/hubs/notification");
+    app.MapHub<SupportHub>("/hubs/support");
     app.MapHealthChecks("/health");
     app.MapHealthChecks("/health/live",  new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {

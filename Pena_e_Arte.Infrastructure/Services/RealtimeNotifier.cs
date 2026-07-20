@@ -7,7 +7,8 @@ namespace Pena_e_Arte.Infrastructure.Services;
 public class RealtimeNotifier(
     IHubContext<ScheduleHub>     scheduleHub,
     IHubContext<DesignHub>       designHub,
-    IHubContext<NotificationHub> notificationHub) : IRealtimeNotifier
+    IHubContext<NotificationHub> notificationHub,
+    IHubContext<SupportHub>      supportHub) : IRealtimeNotifier
 {
     private static readonly HashSet<string> DesignEvents =
     [
@@ -25,4 +26,7 @@ public class RealtimeNotifier(
         };
         await target.SendAsync(eventName, payload, ct);
     }
+
+    public async Task NotifyTicketAsync(Guid feedbackReportId, string eventName, object payload, CancellationToken ct) =>
+        await supportHub.Clients.Group($"ticket:{feedbackReportId}").SendAsync(eventName, payload, ct);
 }

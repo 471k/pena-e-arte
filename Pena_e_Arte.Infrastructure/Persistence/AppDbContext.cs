@@ -54,6 +54,7 @@ public class AppDbContext(
 
     // --- Platform feedback (no tenant filter — issuer reads across all studios) ---
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
+    public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
 
     // --- Help search analytics (tenant-scoped write; issuer aggregate read via IgnoreQueryFilters) ---
     public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();
@@ -149,6 +150,22 @@ public class AppDbContext(
             entity.HasIndex(r => r.StudioId);
             entity.HasIndex(r => r.Status);
             entity.HasIndex(r => r.CreatedAt);
+
+            entity.HasMany(r => r.Messages)
+                  .WithOne()
+                  .HasForeignKey(m => m.FeedbackReportId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<FeedbackMessage>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+
+            entity.Property(m => m.AuthorRole).HasMaxLength(20).IsRequired();
+            entity.Property(m => m.Body).HasMaxLength(2000).IsRequired();
+
+            // No HasQueryFilter — child of a non-tenant entity, same as FeedbackReport itself.
+            entity.HasIndex(m => m.FeedbackReportId);
         });
 
         builder.Entity<UserOnboardingState>(entity =>

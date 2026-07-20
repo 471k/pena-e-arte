@@ -37,6 +37,7 @@ const server = setupServer(
   http.patch("http://localhost/api/v1/platform/feedback/:id/status", ({ params }) =>
     HttpResponse.json({ ...REPORTS[0], id: params.id as string, status: "Reviewing" }),
   ),
+  http.get("http://localhost/api/v1/feedback/:id/messages", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
