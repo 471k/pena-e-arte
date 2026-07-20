@@ -60,10 +60,17 @@ public class RescheduleAppointmentHandler(
 
 public class RescheduleAppointmentValidator : AbstractValidator<RescheduleAppointmentCommand>
 {
+    // Mirrors CreateAppointmentValidator's ValidDurations / RescheduleDialog.tsx's
+    // DURATION_OPTIONS — the same discrete session-length set booking uses, so
+    // rescheduling can't be used to set a duration a new booking never could.
+    private static readonly int[] ValidDurations = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
+
     public RescheduleAppointmentValidator()
     {
         RuleFor(x => x.AppointmentId).NotEmpty();
         RuleFor(x => x.Request.NewDate).GreaterThan(DateTime.UtcNow);
-        RuleFor(x => x.Request.NewDurationMinutes).InclusiveBetween(30, 480);
+        RuleFor(x => x.Request.NewDurationMinutes)
+            .Must(d => ValidDurations.Contains(d))
+            .WithMessage($"Duration must be one of: {string.Join(", ", ValidDurations)} minutes.");
     }
 }
