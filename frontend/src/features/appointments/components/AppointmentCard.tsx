@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { CalendarClock, Check, CreditCard, Loader2, Trash2, UserX } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
@@ -68,8 +69,28 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
   async function handleCancel() {
     if (!confirmCancel) { setConfirmCancel(true); return; }
-    await cancel(appointment.id);
+    const result = await cancel(appointment.id);
     setConfirmCancel(false);
+    if ("data" in result) toast.success("Appointment cancelled.");
+    else                  toast.error("Failed to cancel appointment.");
+  }
+
+  async function handleConfirm() {
+    const result = await confirm(appointment.id);
+    if ("data" in result) toast.success("Appointment confirmed.");
+    else                  toast.error("Failed to confirm appointment.");
+  }
+
+  async function handleComplete() {
+    const result = await complete(appointment.id);
+    if ("data" in result) toast.success("Appointment marked complete.");
+    else                  toast.error("Failed to complete appointment.");
+  }
+
+  async function handleNoShow() {
+    const result = await noShow(appointment.id);
+    if ("data" in result) toast.success("Appointment marked as no-show.");
+    else                  toast.error("Failed to mark appointment as no-show.");
   }
 
   return (
@@ -111,7 +132,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                 variant="outline"
                 size="sm"
                 disabled={anyLoading}
-                onClick={() => confirm(appointment.id)}
+                onClick={handleConfirm}
                 className="h-7 px-2 text-xs gap-1"
               >
                 {confirming ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
@@ -124,7 +145,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                 variant="outline"
                 size="sm"
                 disabled={anyLoading}
-                onClick={() => complete(appointment.id)}
+                onClick={handleComplete}
                 className="h-7 px-2 text-xs gap-1"
               >
                 {completing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
@@ -149,7 +170,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                 variant="ghost"
                 size="sm"
                 disabled={anyLoading}
-                onClick={() => noShow(appointment.id)}
+                onClick={handleNoShow}
                 className="h-7 px-2 text-xs gap-1 text-muted-foreground"
                 title="Mark no-show"
               >

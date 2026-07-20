@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import { ArrowLeft, Calendar, ChevronRight, Mail, Pencil, Phone, Loader2, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
@@ -104,7 +105,7 @@ export function ClientDetailPage() {
 
   async function onSave(values: ProfileFormValues) {
     if (!id) return;
-    await upsertProfile({
+    const result = await upsertProfile({
       clientId: id,
       body: {
         dateOfBirth:  values.dateOfBirth?.trim()  || null,
@@ -112,6 +113,11 @@ export function ClientDetailPage() {
         allergies:    values.allergies?.trim()    || null,
       },
     });
+    if ("error" in result) {
+      toast.error("Failed to save profile.");
+      return;
+    }
+    toast.success("Profile saved.");
     setIsEditing(false);
   }
 
@@ -122,7 +128,12 @@ export function ClientDetailPage() {
 
   async function saveBodyMap() {
     if (!id) return;
-    await updateBodyMap({ clientId: id, locations: bodyMapDraft });
+    const result = await updateBodyMap({ clientId: id, locations: bodyMapDraft });
+    if ("error" in result) {
+      toast.error("Failed to save body map.");
+      return;
+    }
+    toast.success("Body map saved.");
     setBodyMapMode("view");
   }
 

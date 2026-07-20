@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Application.Public.Queries;
 
@@ -14,13 +15,21 @@ public class GetPublicArtistInstagramPostsHandler(IAppDbContext db)
         GetPublicArtistInstagramPostsQuery request, CancellationToken ct)
     {
         // Approved: public Instagram feed read — see architecture.md IgnoreQueryFilters entry 23.
-        Guid? artistId = await db.Artists
+        Artist? artist = await db.Artists
             .IgnoreQueryFilters()
-            .Where(a => a.Slug == request.Slug && a.DeletedAt == null)
-            .Select(a => (Guid?)a.Id)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(a => a.Slug == request.Slug && a.DeletedAt == null, ct);
 
-        if (artistId is null) return [];
+        if (artist is null) return [];
+
+        // Mirrors GetPublicArtistQuery's Studio.IsActive check — a suspended studio's artist
+        // must not leak Instagram posts here even though this is a separate public endpoint.
+        bool studioActive = await db.Studios
+            .IgnoreQueryFilters()
+            .AnyAsync(s => s.Id == artist.StudioId && s.IsActive, ct);
+
+        if (!studioActive) return [];
+
+        Guid artistId = artist.Id;
 
         return await db.InstagramPosts
             .Where(p => p.ArtistId == artistId && p.IsVisible)

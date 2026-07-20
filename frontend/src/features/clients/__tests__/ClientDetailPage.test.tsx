@@ -112,6 +112,7 @@ const CONSENT_FORM: ConsentFormResponse = {
   id:            "consent-001",
   studioId:      "stud-0001",
   clientId:      CLIENT_ID,
+  clientName:    "Test Client",
   appointmentId: "appt-001",
   fileUrl:       null,
   signatureData: "sig",
@@ -310,6 +311,35 @@ describe("ClientDetailPage", () => {
     await user.click(screen.getByRole("button", { name: /edit profile/i }));
     await user.click(screen.getByRole("button", { name: /save profile/i }));
     expect(await screen.findByRole("tab", { name: /profile/i })).toBeInTheDocument();
+  });
+
+  it("failed profile save stays in edit mode and does not silently discard the draft", async () => {
+    server.use(
+      http.put("http://localhost/api/v1/clients/:id/profile", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Artist);
+    await screen.findByText("Ana Ferreira");
+    await user.click(screen.getByRole("button", { name: /edit profile/i }));
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+    // Still on the edit form — a failed save must not silently exit edit mode.
+    expect(await screen.findByRole("button", { name: /save profile/i })).toBeInTheDocument();
+  });
+
+  it("failed body map save stays in edit mode and does not silently discard the draft", async () => {
+    server.use(
+      http.patch("http://localhost/api/v1/clients/:id/profile/body-map", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Artist);
+    await screen.findByText("Ana Ferreira");
+    await screen.findByText("Body Map");
+    await user.click(screen.getByTestId("edit-body-map"));
+    await user.click(screen.getByRole("button", { name: /save/i }));
+    // Still in edit mode — a failed save must not silently exit edit mode.
+    expect(await screen.findByLabelText("Chest")).toHaveAttribute("role", "button");
   });
 
   it("'Cancel' while editing the profile returns to the tabs view without saving", async () => {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Banknote, Check, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { useConfirmCashDepositMutation } from "@/features/payments/paymentsApi";
@@ -18,7 +19,15 @@ export function CashDepositConfirmButton({
   const [confirmCash, { isLoading }] = useConfirmCashDepositMutation();
 
   async function handleConfirm() {
-    await confirmCash(paymentId);
+    try {
+      await confirmCash(paymentId).unwrap();
+      toast.success("Cash payment confirmed.");
+    } catch (err: unknown) {
+      const message =
+        (err as { data?: { message?: string } } | undefined)?.data?.message
+        ?? "Failed to confirm cash payment.";
+      toast.error(message);
+    }
     setConfirm(false);
   }
 

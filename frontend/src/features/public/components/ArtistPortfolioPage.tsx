@@ -454,10 +454,11 @@ export function ArtistPortfolioPage() {
 
   const bookUrl = `/book?studio=${artist.studioSlug}&artist=${artist.slug}`;
   const ctaUrl  = token ? bookUrl : `/login?redirect=${encodeURIComponent(bookUrl)}`;
+  const studioSlug = artist.studioSlug;
 
   function handleBack() {
     if (canGoBack) navigate(-1);
-    else navigate(`/s/${artist.studioSlug}`);
+    else navigate(`/s/${studioSlug}`);
   }
 
   const visibleImages = activeStyle

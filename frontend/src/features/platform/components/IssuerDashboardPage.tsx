@@ -176,7 +176,7 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
               {sub.status === "PastDue" ? "Past due" : "Grace period"}
             </span>
             <ExpiryLabel
-              dateStr={sub.status === "GracePeriod" ? sub.currentPeriodEnd : sub.trialExpiresAt}
+              dateStr={sub.currentPeriodEnd}
               status={sub.status}
             />
           </div>

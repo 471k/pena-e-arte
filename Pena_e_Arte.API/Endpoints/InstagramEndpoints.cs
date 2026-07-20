@@ -28,7 +28,9 @@ public static class InstagramEndpoints
     /// </summary>
     public static void MapInstagramCallbackEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/v1/instagram/callback", HandleCallback).AllowAnonymous();
+        app.MapGet("/api/v1/instagram/callback", HandleCallback)
+            .AllowAnonymous()
+            .RequireRateLimiting("public-write");
     }
 
     private static async Task<IResult> GetConnectUrl(

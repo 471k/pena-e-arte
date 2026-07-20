@@ -14,6 +14,9 @@ import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { billingApi } from "@/features/billing/billingApi";
 import type { PlanUsageResponse } from "@/features/billing/billing.types";
 import { ArtistListPage } from "@/features/artists/components/ArtistListPage";
+import { toast } from "sonner";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -66,7 +69,7 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => { server.resetHandlers(); cleanup(); vi.clearAllMocks(); });
 afterAll(() => server.close());
 
 // ── Store / render helpers ─────────────────────────────────────────────────────
@@ -286,6 +289,31 @@ describe("ArtistListPage", () => {
     await waitFor(() => {
       expect(screen.queryByText(/delete ana costa\?/i)).not.toBeInTheDocument();
     });
+    expect(toast.success).toHaveBeenCalledWith("Artist deleted.");
+  });
+
+  it("a failed delete shows the backend's specific error message, not a silent no-op", async () => {
+    server.use(
+      http.delete("http://localhost/api/v1/artists/:id", () =>
+        HttpResponse.json(
+          { message: "This artist has upcoming appointments and cannot be deleted." },
+          { status: 422 },
+        )),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Costa");
+
+    await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "This artist has upcoming appointments and cannot be deleted.",
+      ));
+    expect(toast.success).not.toHaveBeenCalled();
+    // Artist still in the list — the row was never actually removed.
+    expect(screen.getByText("Ana Costa")).toBeInTheDocument();
   });
 
   // ── Specialization filter ───────────────────────────────────────────────────

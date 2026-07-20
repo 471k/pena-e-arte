@@ -57,7 +57,7 @@ interface ReferralCodeRowProps {
   code: PlatformReferralCodeResponse;
 }
 
-function ReferralCodeRow({ code }: ReferralCodeRowProps) {
+export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
   const [copied,       setCopied]       = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [reactivating, setReactivating] = useState(false);

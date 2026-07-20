@@ -42,8 +42,8 @@ const ARTIST: PublicArtistResponse = {
   bio:             "Specialises in neo-trad and blackwork.",
   profileImageUrl: null,
   portfolioImages: [
-    { imageId: "img-001", imageUrl: "https://cdn.example.com/port1.jpg" },
-    { imageId: "img-002", imageUrl: "https://cdn.example.com/port2.jpg" },
+    { imageId: "img-001", imageUrl: "https://cdn.example.com/port1.jpg", style: null },
+    { imageId: "img-002", imageUrl: "https://cdn.example.com/port2.jpg", style: null },
   ] satisfies ArtistPortfolioImage[],
   specializations: "Blackwork, Neo-Trad",
   hourlyRate:      120,

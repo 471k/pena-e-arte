@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -371,6 +371,55 @@ describe("PlatformReferralPage", () => {
 
     expect(screen.getByText(/generate referral code/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/studio/i)).toBeInTheDocument();
+  });
+
+  it("generate form's studio selector is populated from the studios list", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("INK2026");
+    await user.click(screen.getByRole("button", { name: /generate new referral code/i }));
+
+    const studioSelect = screen.getByLabelText(/studio/i);
+    expect(await within(studioSelect).findByText("Ink Soul")).toBeInTheDocument();
+  });
+
+  it("Generate button is disabled until a studio is selected", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("INK2026");
+    await user.click(screen.getByRole("button", { name: /generate new referral code/i }));
+
+    const generateBtn = screen.getByRole("button", { name: /^generate$/i });
+    expect(generateBtn).toBeDisabled();
+
+    const studioSelect = screen.getByLabelText(/studio/i);
+    await within(studioSelect).findByText("Ink Soul");
+    await user.selectOptions(studioSelect, "s1");
+    expect(generateBtn).not.toBeDisabled();
+  });
+
+  it("submitting the generate form calls the studio-scoped endpoint", async () => {
+    let capturedStudioId: string | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/platform/studios/:studioId/referral-codes", ({ params }) => {
+        capturedStudioId = params.studioId as string;
+        return HttpResponse.json({
+          id: "code-new", studioId: "s1", studioName: "Ink Soul", code: "NEWCODE1",
+          isActive: true, isSingleUse: true, createdAt: "2026-06-01T00:00:00Z",
+          expiresAt: null, redemptionCount: 0,
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("INK2026");
+    await user.click(screen.getByRole("button", { name: /generate new referral code/i }));
+    const studioSelect = screen.getByLabelText(/studio/i);
+    await within(studioSelect).findByText("Ink Soul");
+    await user.selectOptions(studioSelect, "s1");
+    await user.click(screen.getByRole("button", { name: /^generate$/i }));
+
+    await waitFor(() => expect(capturedStudioId).toBe("s1"));
   });
 
   it("each code has a copy button with aria-label", async () => {

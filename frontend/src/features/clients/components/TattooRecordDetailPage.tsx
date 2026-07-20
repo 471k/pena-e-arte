@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import {
   ArrowLeft, CalendarDays, ImageIcon, Loader2, MapPin, Pencil, Trash2, X,
 } from "lucide-react";
@@ -85,23 +86,32 @@ export function TattooRecordDetailPage() {
 
   async function onSave(values: EditFormValues) {
     if (!clientId || !tattooId || !record) return;
-    await updateRecord({
-      clientId,
-      tattooId,
-      body: {
-        description:  values.description,
-        bodyLocation: values.bodyLocation,
-        photoUrls:    [...record.photoUrls, ...newPhotoUrls],
-        completedAt:  new Date(values.completedAt + "T00:00:00Z").toISOString(),
-      },
-    });
-    setMode("view");
+    try {
+      await updateRecord({
+        clientId,
+        tattooId,
+        body: {
+          description:  values.description,
+          bodyLocation: values.bodyLocation,
+          photoUrls:    [...record.photoUrls, ...newPhotoUrls],
+          completedAt:  new Date(values.completedAt + "T00:00:00Z").toISOString(),
+        },
+      }).unwrap();
+      toast.success("Tattoo record saved.");
+      setMode("view");
+    } catch {
+      toast.error("Failed to save tattoo record.");
+    }
   }
 
   async function onDelete() {
     if (!clientId || !tattooId) return;
-    await deleteRecord({ clientId, tattooId });
-    navigate(`/clients/${clientId}`);
+    try {
+      await deleteRecord({ clientId, tattooId }).unwrap();
+      navigate(`/clients/${clientId}`);
+    } catch {
+      toast.error("Failed to delete tattoo record.");
+    }
   }
 
   if (isLoading || isUninitialized) {

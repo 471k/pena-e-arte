@@ -67,7 +67,7 @@ export function bannerConfig(sub: SubscriptionResponse): BannerConfig | null {
       return {
         bg:   "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
         icon: <Zap className="h-4 w-4 shrink-0" />,
-        text: `Trial ends in ${daysUntil(sub.trialExpiresAt)} day${daysUntil(sub.trialExpiresAt) !== 1 ? "s" : ""}.`,
+        text: `Trial ends in ${daysUntil(sub.trialExpiresAt ?? sub.currentPeriodEnd)} day${daysUntil(sub.trialExpiresAt ?? sub.currentPeriodEnd) !== 1 ? "s" : ""}.`,
         cta:  "Subscribe",
         href: "/billing/subscribe",
       };

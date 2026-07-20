@@ -13,7 +13,7 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { billingApi } from "@/features/billing/billingApi";
 import { IssuerStudioDetailPage } from "@/features/platform/components/IssuerStudioDetailPage";
 import type { StudioResponse } from "@/features/studios/studiosApi";
-import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
+import type { PlatformSubscriptionResponse, PlatformReferralCodeResponse } from "@/features/platform/platform.types";
 import type { PlanResponse } from "@/features/billing/billing.types";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -69,6 +69,18 @@ const PLANS: PlanResponse[] = [
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
+const REFERRAL_CODE: PlatformReferralCodeResponse = {
+  id:              "code-1",
+  studioId:        "s1",
+  studioName:      "Ink Soul",
+  code:            "INKSOUL1",
+  isActive:        true,
+  isSingleUse:     true,
+  createdAt:       "2026-06-01T00:00:00Z",
+  expiresAt:       null,
+  redemptionCount: 0,
+};
+
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/s1", () => HttpResponse.json(STUDIO)),
   http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([SUB])),
@@ -82,6 +94,9 @@ const server = setupServer(
       appointmentCount: 129,
     })
   ),
+  http.get("http://localhost/api/v1/platform/referral-codes", () => HttpResponse.json([])),
+  http.post("http://localhost/api/v1/platform/studios/:studioId/referral-codes", () =>
+    HttpResponse.json(REFERRAL_CODE)),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -290,6 +305,96 @@ describe("IssuerStudioDetailPage", () => {
       renderPage();
       await screen.findAllByText("Ink Soul");
       expect(await screen.findByText(/trial expiry/i)).toBeInTheDocument();
+    });
+  });
+
+  // Phase 3 row 9 of the full-app master audit: this is the single point in the app
+  // where Free plan tier + referral-code conversion + OAuth-registered owner all
+  // converge on one read. OAuth vs password registration produces identical Studio/
+  // Subscription/Client rows (see RegisterOAuthUserHandler audit note), and a
+  // referral-code redemption never appears on this page (no referral section exists
+  // here), so the two conditions actually exercised by this page's own data are: an
+  // Active subscription on a Free-tier plan whose TrialExpiresAt has already been
+  // cleared to null (CreateSubscriptionHandler always nulls it on activation,
+  // including for price == 0 plans) and whose CurrentPeriodEnd is the 50-year
+  // far-future sentinel rather than a real renewal date.
+  describe("when studio is on a converted Free-tier subscription (Phase 3 row 9)", () => {
+    beforeEach(() => {
+      server.use(
+        http.get("http://localhost/api/v1/platform/subscriptions", () =>
+          HttpResponse.json([{
+            ...SUB,
+            status:           "Active",
+            planName:         "Free",
+            trialExpiresAt:   null,
+            currentPeriodEnd: new Date(Date.now() + 50 * 365 * 86_400_000).toISOString(),
+            isSuspended:      false,
+          }]),
+        ),
+      );
+    });
+
+    it("renders without crashing and shows the Free plan name and Active badge", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(screen.getByText("Free")).toBeInTheDocument();
+      expect(screen.getAllByText("Active").length).toBeGreaterThan(0);
+    });
+
+    it("renders no 'undefined' or 'NaN' text anywhere on the page", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(document.body.textContent).not.toMatch(/undefined/i);
+      expect(document.body.textContent).not.toContain("NaN");
+    });
+  });
+
+  describe("Referral Codes card", () => {
+    it("shows an empty state when the studio has no referral codes", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(await screen.findByText(/no referral codes generated for this studio yet/i))
+        .toBeInTheDocument();
+    });
+
+    it("shows only this studio's codes, not other studios'", async () => {
+      server.use(
+        http.get("http://localhost/api/v1/platform/referral-codes", () =>
+          HttpResponse.json([
+            REFERRAL_CODE,
+            { ...REFERRAL_CODE, id: "code-2", studioId: "s2", studioName: "Other Studio", code: "OTHER123" },
+          ])),
+      );
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(await screen.findByText("INKSOUL1")).toBeInTheDocument();
+      expect(screen.queryByText("OTHER123")).not.toBeInTheDocument();
+    });
+
+    it("clicking 'Generate Code' opens the expiry-date form", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      await user.click(screen.getByRole("button", { name: /generate code/i }));
+      expect(screen.getByLabelText(/expiry date/i)).toBeInTheDocument();
+    });
+
+    it("generating a code calls the studio-scoped endpoint and closes the form", async () => {
+      let capturedStudioId: string | null = null;
+      server.use(
+        http.post("http://localhost/api/v1/platform/studios/:studioId/referral-codes", ({ params }) => {
+          capturedStudioId = params.studioId as string;
+          return HttpResponse.json(REFERRAL_CODE);
+        }),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      await user.click(screen.getByRole("button", { name: /generate code/i }));
+      await user.click(screen.getByRole("button", { name: /^generate$/i }));
+
+      expect(await screen.findByRole("button", { name: /generate code/i })).toBeInTheDocument();
+      expect(capturedStudioId).toBe("s1");
     });
   });
 });

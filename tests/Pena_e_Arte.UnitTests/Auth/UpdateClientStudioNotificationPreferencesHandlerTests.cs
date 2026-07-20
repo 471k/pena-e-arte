@@ -1,23 +1,49 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Auth.Commands;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Auth;
 
 public class UpdateClientStudioNotificationPreferencesHandlerTests
 {
-    private readonly FakeDbContext   _db          = FakeDbContext.Create();
-    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Client();
+    private readonly FakeDbContext    _db          = FakeDbContext.Create();
+    private readonly IIdentityService _identity    = Substitute.For<IIdentityService>();
+    private readonly FakeCurrentUser  _currentUser = FakeCurrentUser.Client();
 
-    private UpdateClientStudioNotificationPreferencesHandler CreateSut() => new(_db, _currentUser);
+    private UpdateClientStudioNotificationPreferencesHandler CreateSut() => new(_db, _identity, _currentUser);
+
+    private void UserHasTenantIds(params Guid[] studioIds) =>
+        _identity.GetTenantIdsAsync(_currentUser.UserId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Guid>)studioIds);
+
+    [Fact]
+    public async Task Handle_UserNotMemberOfStudio_ThrowsNotFound()
+    {
+        Guid studioId = Guid.NewGuid();
+        UserHasTenantIds(Guid.NewGuid()); // member of a different studio only
+        List<NotificationPreferenceItem> preferences =
+        [
+            new(nameof(NotificationType.AppointmentCreated), nameof(NotificationChannel.Email), false),
+        ];
+
+        Func<Task> act = () => CreateSut().Handle(
+            new UpdateClientStudioNotificationPreferencesCommand(studioId, preferences), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+        _db.ClientNotificationPreferences.Should().BeEmpty();
+    }
 
     [Fact]
     public async Task Handle_NewPreference_CreatesRow()
     {
         Guid studioId = Guid.NewGuid();
+        UserHasTenantIds(studioId);
         List<NotificationPreferenceItem> preferences =
         [
             new(nameof(NotificationType.AppointmentCreated), nameof(NotificationChannel.Email), false),
@@ -38,6 +64,7 @@ public class UpdateClientStudioNotificationPreferencesHandlerTests
     public async Task Handle_ExistingPreference_UpdatesIsEnabled()
     {
         Guid studioId = Guid.NewGuid();
+        UserHasTenantIds(studioId);
         _db.ClientNotificationPreferences.Add(new ClientNotificationPreference
         {
             UserId    = _currentUser.UserId,
@@ -63,6 +90,7 @@ public class UpdateClientStudioNotificationPreferencesHandlerTests
     public async Task Handle_TypeOutsideClientFacingSet_IsIgnored()
     {
         Guid studioId = Guid.NewGuid();
+        UserHasTenantIds(studioId);
         List<NotificationPreferenceItem> preferences =
         [
             new(nameof(NotificationType.IntakeFormSubmitted), nameof(NotificationChannel.Email), false),
@@ -79,6 +107,7 @@ public class UpdateClientStudioNotificationPreferencesHandlerTests
     {
         Guid studioA = Guid.NewGuid();
         Guid studioB = Guid.NewGuid();
+        UserHasTenantIds(studioA, studioB);
         _db.ClientNotificationPreferences.Add(new ClientNotificationPreference
         {
             UserId    = _currentUser.UserId,

@@ -53,4 +53,16 @@ public class RescheduleAppointmentValidatorTests
                 new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(1), 500, null)),
             "Request.NewDurationMinutes");
     }
+
+    [Fact]
+    public void Validate_DurationInRangeButNotInDiscreteSet_FailsOnNewDurationMinutes()
+    {
+        // 100 is within the old 30-480 inclusive range but isn't one of the discrete
+        // session lengths CreateAppointmentValidator/BookAppointmentForm offer —
+        // rescheduling must not be a way to set a duration a new booking never could.
+        _validator.ShouldFailOn(
+            new RescheduleAppointmentCommand(Guid.NewGuid(),
+                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(1), 100, null)),
+            "Request.NewDurationMinutes");
+    }
 }

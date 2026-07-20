@@ -457,6 +457,25 @@ Never add a new one without updating this table and the Decisions Log.
 | 24 | `GetIssuerStudioSummaryHandler` | Cross-tenant: studio + owner lookup, artist/client/appointment counts for a single studio | IssuerOnly |
 | 25 | `GetPlanUsageReportHandler` | Cross-tenant: all studios + plans + artist/appointment/notification counts, for the issuer plan-usage validation report | IssuerOnly |
 | 26 | `ReferralRewardService` | Cross-tenant: `ReferralRedemption`, `ReferralCode`, `Studio` (referrer + new), `Subscription` (referrer) — rewards the referring studio's Stripe subscription when their code converts a new paying studio | System (triggered from subscription-creation handlers, any tenant) |
+| 27 | `CreateArtistCommand`, `UpdateArtistCommand`, `UpdateStudioSlugCommand` | Global slug-uniqueness check — `Artist.Slug`/`Studio.Slug` must be unique across all tenants for public portfolio URLs (`/artist/{slug}`, `/s/{slug}`) | ArtistAndAbove / OwnerOnly |
+| 28 | `RegisterUserCommand`, `RegisterOAuthUserCommand` | Anonymous registration: cross-tenant `Studio` lookup for the `OwnerEmail` match check, and cross-tenant `Client` lookup to link a studio-created record by email | Anonymous |
+| 29 | `ClientAccountExtensions` (`FindClientForUserAtStudioAsync`, `FindAnyClientRecordForUserAsync`) | Cross-tenant `Client` lookup by `UserId` — supports linking a client's account across the multiple studios they belong to | Authenticated (any role, called from login/registration/multi-studio flows) |
+| 30 | `ConfirmPaymentCommand`, `MarkPaymentAuthorizedCommand`, `MarkPaymentFailedCommand` | Stripe webhook handlers — no tenant JWT in scope; `Payment` looked up by the globally-unique `StripePaymentIntentId` | Anonymous (Stripe-Signature HMAC validated at the endpoint) |
+| 31 | `ActivateSubscriptionManuallyCommand` | Cross-tenant `Studio` lookup for manual cash-subscription activation | IssuerOnly |
+| 32 | `GetNearbyStudiosQuery` | Public studio-nearby geo search (DiscoverPage Studios tab) | Anonymous |
+| 33 | `GetSharedDesignQuery` | Public design-share-token lookup, validated by token + expiry | Anonymous |
+| 34 | `CreateArtistReviewCommand`, `CreateStudioReviewCommand` | Cross-tenant artist/studio lookup for public review submission | Authenticated (any role) |
+| 35 | `GetStudioQrCodeQuery` | Public QR code endpoint — resolves slug for the portfolio URL the code points to | Anonymous |
+| 36 | `AppointmentReminderJob`, `DesignRevisionTimeoutJob`, `PaymentReconciliationJob`, `SendArtistInviteJob` | Hangfire background jobs run with no request/tenant scope at all — same class as `IndustryReportJob` (#3) | Hangfire job (system) |
+| 37 | `DataSeeder` | Startup seed data — runs before any request or tenant scope exists | System (startup) |
+| 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
+
+Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
+the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
+calls that had never been added to this table (documentation debt, not new code). Each
+was individually read and confirmed narrow/justified before being added; none constitute
+an unauthorized cross-tenant read. See "Full-App Master Audit — 2026-07-20" below for
+the full note on how this gap was found.
 
 ---
 
@@ -479,6 +498,20 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/portfolio/{imageId}/reviews` | Public per-image review list | None — read-only, non-sensitive review content only |
 | `GET /api/v1/public/artists/{slug}/instagram-posts` | Public synced Instagram feed for artist portfolio | None — read-only, only `IsVisible` posts, no PII |
 | `GET /api/v1/instagram/callback` | Instagram OAuth redirect target, no JWT possible | Signed `state` param (HMAC-SHA256, `IInstagramStateSigner`) validated before trusting artistId |
+| `GET /api/v1/public/studios/nearby` | Public geo search (DiscoverPage Studios tab) | None — read-only, non-sensitive studio info only |
+| `GET /api/v1/public/studios/{slug}/reviews` | Public studio review list | None — read-only, non-sensitive review content only |
+| `GET /api/v1/public/artists/{slug}/reviews` | Public artist review list | None — read-only, non-sensitive review content only |
+
+The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`, `/auth/oauth/*`,
+`/auth/forgot-password`, `/auth/reset-password`, `/auth/refresh`, `/auth/verify-email`)
+are anonymous by necessity (a caller cannot be authenticated before obtaining a token)
+and are covered by CLAUDE.md's blanket "no unprotected endpoints except `/auth` and
+`/health`" exception rather than needing individual rows here — this table exists for
+the non-obvious cases (cross-tenant reads, webhooks, signed tokens), not the login flow
+itself. All seven carry `"auth"` rate limiting except `reset-password`/`refresh`/
+`verify-email`, which predate the Redis rate-limiting feature and were out of scope for
+this audit (see "Full-App Master Audit — 2026-07-20" below).
+
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
 Never add new AllowAnonymous endpoints without adding a row to this table.
@@ -1002,6 +1035,78 @@ does not re-litigate them.
 | Core plan reconciliation replaces one-time plan seed | `DataSeeder.SeedPlansAsync()` (insert-once, guarded by `Plans.Any(Id == StarterPlanId)`) replaced with `DataSeeder.ReconcileCorePlansAsync()` (always runs on startup; upserts by fixed Id — inserts Starter/Growth/PremiumMonthly/PremiumYearly/Pro if missing, corrects Name/BillingInterval/price/discount/branding/Max*/AllowApiAccess/PrioritySupport/PairedPlanId if the row already exists with stale values). Stripe price IDs are excluded from reconciliation (populated by `StripeDemoSeeder`/real Stripe config, not source-controlled here). `SeedFreePlanAsync`'s independent insert-once-by-Id guard is unchanged. | The one-time guard left any environment whose `Plans` table was first populated before the `Max*` fields and Premium's corrected pricing existed permanently stuck on that stale snapshot — see `bug-report-plans-page-data-mismatch.md`. Consequence worth flagging explicitly: an issuer editing Starter/Growth/Premium/Pro in place via `PlanManagementPage` will have that edit reverted on the next deploy, since these five rows are now source-of-truth-owned, not database-owned. An issuer who needs a bespoke arrangement for one studio should clone a new `Plan` row with its own Id instead of editing one of the five canonical tiers. |
 | Orphaned legacy plan retirement | `DataSeeder.RetireOrphanedNamedPlansAsync()` — always runs, immediately after `ReconcileCorePlansAsync()`. Finds any `Plan` row named exactly "Free"/"Starter"/"Growth"/"Premium"/"Pro" whose `Id` isn't one of the six canonical constants, reassigns every referencing `Subscription.PlanId` and `Subscription.PendingPlanId` to the correct canonical replacement (Premium's replacement chosen by the orphan's own `BillingInterval`), clears any sibling `Plan.PairedPlanId` still pointing at it, then deletes it. No-op once no orphan remains, so safe to run every boot indefinitely. | `ReconcileCorePlansAsync` (previous entry) only ever matches by fixed Id — a canonically-named plan under any other Id (e.g. Premium's pre-Monthly/Yearly-split row) is invisible to it, so its insert-if-missing branch adds a correct row *alongside* the leftover rather than replacing it, producing a visible duplicate card (`bug-report-premium-plan-duplicate-legacy-row.md`). Accepted trade-off: this matches by name only, so it cannot distinguish a genuine pre-split leftover from an issuer-created custom plan that happens to share a reserved tier name — an issuer needing a bespoke plan should use a distinct name. Confirmed via `AppDbContextModelSnapshot.cs` that `Subscription.PlanId` and `Subscription.PendingPlanId` are the only two FKs anywhere referencing `Plan.Id`; `Plan.PairedPlanId` is a self-reference with no FK constraint. |
 | Plan/PlanPrice split | `Plan.BillingInterval`/`PriceMonthly`/`PriceYearly`/`StripePriceIdMonthly`/`StripePriceIdYearly`/`PairedPlanId` removed; new child entity `PlanPrice` (`PlanId`, `Interval`, `Price`, `StripePriceId`, `IsActive`, unique on `(PlanId, Interval)`) holds one row per cadence a tier actually offers. `Subscription` gained `BillingInterval` (required) and `PendingBillingInterval` (nullable, mirrors `PendingPlanId` — set/cleared together by `ChangePlanHandler`/`CancelPlanChangeHandler`/`HandleSubscriptionUpdatedHandler`) — cadence is now the subscription's own property, independent of which `Plan` it's on. `DataSeeder.ReconcileCoreTiersAsync` replaced both `ReconcileCorePlansAsync` and `RetireOrphanedNamedPlansAsync`, keyed on tier `Name` + `(PlanId, Interval)` rather than a fixed `Plan.Id` list. Migration split in two: additive `plan_prices`/`Subscription` columns + raw-SQL data backfill + Premium-row merge (`AddPlanPriceAndSubscriptionBillingInterval`) shipped together with a later, separate `DropLegacyPlanBillingFields` migration for the six dead `Plan` columns — both written and applied in the same session (no live deploy pipeline exists yet to force a real waiting period between them), but kept as two distinct, separately-reviewable migration files rather than one; the second had to be hand-authored since `dotnet ef migrations add` scaffolds an empty diff once the model snapshot already reflects the target model. | Directly supersedes "Plan billing interval stays locked per-row" and "Plan Monthly/Yearly pairing" above — those decisions produced two data-integrity bugs in two consecutive nights (`bug-report-plans-page-data-mismatch.md`, `bug-report-premium-plan-duplicate-legacy-row.md`) because a plan's billing cadence and its identity as a tier were the same database row. Also fixed as a confirmed side effect, not scope creep: `GetPlatformStatsQuery`/`GetMrrHistoryQuery` were computing MRR from `Plan.PriceMonthly` unconditionally, overstating revenue for every yearly-billed subscription (79 vs the real 790/12 = 65.83 monthly-equivalent) — now uses the `PlanPrice` matching the subscription's actual `BillingInterval`. |
+| Shared-DB integration test isolation | Don't assert on an absolute global count (e.g. "total active studios across all tenants") in a test inside the `[Collection("Database")]` group. `DatabaseFixture` provisions exactly one MySQL database for the entire collection with no reset between tests, so any count that isn't scoped to IDs the test itself created is really asserting against the cumulative state of the whole suite run — safe when the suite is small, silently flaky as it grows. Test that kind of threshold/suppression logic deterministically at the unit level instead, by calling the pure logic function directly with a synthetic input, the way `IndustryReportJobTests.BuildDocument_CohortBelowMinimum_AllMetricsNull` does against `IndustryReportJob.BuildDocument` | Discovered 2026-07-20 during the full-app master audit: `IndustryReportJob_Run_SmallCohort_MetricsAreNull` seeded exactly 3 studios and asserted the resulting report showed suppressed (null) metrics, which was safe when the test was written but broke once ~10+ *other* integration tests elsewhere in the suite were also creating `SubscriptionStatus.Active` studios in the same shared database, pushing the real total past the suppression threshold. Removed the test; the same behavior was already covered without the DB dependency at the unit level |
+
+---
+
+## Issuer QA Pass — 2026-07-01 (reconstructed 2026-07-20)
+
+`overnight-prompt-issuer-qa-polish-2026-07-01.md` exists and was clearly executed —
+`IssuerStudioDetailPage`, `platformApi.getStudioById`, the `IgnoreQueryFilters` approved
+usages table entries #4/#5/#7–#9, and the toast/spinner/confirm patterns across every
+issuer component all show the fingerprints of that pass having run — but unlike the
+other four role passes, its results were never logged here. That original session's
+actual diff (what was broken vs. already-working before the pass) is lost. This entry
+is a **best-effort reconstruction**: it diffs the original prompt's checklist against
+*current* source (2026-07-20), not against whatever state the code was in on 2026-07-01.
+It cannot tell you what the pass itself fixed — only that the checklist's requirements
+are (or aren't) satisfied today.
+
+### Checked against current source — satisfied
+
+- `GetPlatformStatsHandler` — `totalStudios` counts all studios incl. suspended;
+  `activeSubscriptions`/`trialStudios`/`gracePeriodStudios`/`pastDueStudios`/
+  `cancelledStudios` all correctly scoped by `SubscriptionStatus`; `mrr` sums active
+  subscriptions only, via the post-split `PlanPrice`/`BillingInterval` calculation
+  (supersedes the original prompt's `Plan.PriceMonthly` approximation, which no longer
+  applies); `mrrGrowthPercent` and `trialConversionRate` both guard the zero-denominator
+  case; `newStudiosThisMonth` filters on `CreatedAt >= monthStart`.
+- `ExtendTrialHandler` — `AdditionalDays` validated `InclusiveBetween(1, 90)`; extends
+  `TrialExpiresAt`, not `GracePeriodEnd` directly (`GracePeriodEnd` is derived from the
+  new expiry); a `GracePeriod` studio whose trial is extended reverts to `Trialing`.
+- `CancelSubscriptionHandler` — sets `Status = Cancelled`; Stripe cancellation is
+  best-effort (logged, not rethrown) when a `StripeSubscriptionId` exists, matching the
+  Decisions Log's "CancelSubscriptionCommand Stripe side-effect" entry.
+- `DeletePlanHandler` — refuses deletion when any `Subscription` (any status, not just
+  active) references the plan — a stricter superset of the original spec's "active
+  subscriptions" wording, not a regression.
+- `IssuerStudioListPage.tsx`/`PlatformReferralPage.tsx` — every mutation (suspend,
+  unsuspend, extend trial, activate, cancel, deactivate/reactivate/delete/generate
+  referral code) fires a matching `toast.success`/`toast.error` pair; every action
+  button shows `Loader2` + is `disabled` while its mutation is in flight; destructive
+  actions (suspend, delete referral code) have an inline confirm step.
+- `IssuerStudioDetailPage` — fully built (not a placeholder), confirmed independently
+  during the Phase 2.12 pass above: studio identity, subscription status/actions
+  (extend/activate/cancel), `IgnoreQueryFilters()` usage #8 correctly gated behind
+  `IssuerOnly`.
+- Plan/PlanPrice-era fields (`AllowBrandingRemoval`, per-interval pricing) are present
+  end-to-end — already confirmed via the repo-wide dead-field grep in the first audit
+  pass (zero hits for the pre-split shape anywhere in `PlanManagementPage.tsx`).
+
+### Deviations from the original spec (not bugs — later, intentional design choices)
+
+- `SuspendStudioHandler`/`UnsuspendStudioHandler` don't return 400 when the studio is
+  already in the target state — they're idempotent no-ops instead. This is consistent
+  with the idempotency convention used elsewhere in the codebase (e.g.
+  `SavePortfolioImageHandler`) and arguably better UX (no need to guard against a
+  double-click client-side); not something to "fix" back to the original spec.
+
+### Not re-verified this reconstruction (scope limit)
+
+The original prompt's Layer C per-component bug list (C1–C7, ~30 individual items:
+MRR chart period selector, referral-code copy button, industry-report trigger
+cooldown, etc.) and its Layer D per-file required-test-case checklist (D1–D7, ~70
+individual test names) were not re-walked item-by-item against current source or
+current test files. Given every issuer page independently confirmed present and
+working (toasts, spinners, confirms, `IgnoreQueryFilters` scoping, stats correctness)
+across both this reconstruction and the earlier Phase 2.12 pass, and given
+`dotnet test`/`pnpm test` are both fully green including all issuer test files, there
+is no positive evidence of a regression here — but that's different from having
+individually confirmed all ~100 checklist line items. A future pass that specifically
+wants Layer C/D closure should walk `docs/claude/overnight-prompt-issuer-qa-polish-2026-07-01.md`
+directly against `IssuerDashboardPage.tsx`/`IssuerStudioListPage.tsx`/
+`PlanManagementPage.tsx`/`SubscriptionOversightPage.tsx`/`PlatformReferralPage.tsx`/
+`IndustryReportsPage.tsx` and their test files line by line.
 
 ---
 
@@ -1755,3 +1860,488 @@ Frontend:
 - `pnpm tsc --noEmit` — clean
 - `pnpm test` — 1383 frontend tests, all green (full suite)
 - No new EF migration required (no schema change)
+
+---
+
+## Full-App Master Audit — 2026-07-20
+
+Scope note (read before trusting this as exhaustive): this pass ran the Phase 1
+regression sweep at full depth and spot-checked the highest-risk items called out
+explicitly in `overnight-prompt-full-app-master-audit-2026-07-20.md` for Phase 2 and
+Phase 3, rather than working every one of the 12 Phase 2 subsections and 10 Phase 3
+matrix rows to the same exhaustive depth as the five original QA passes. See
+"Deferred items" below for exactly what was not independently re-verified this pass.
+
+### Baseline state found (before any fix)
+- `dotnet build` — clean, 0 errors.
+- `pnpm build` — **broken**, 12 TypeScript errors across production code and test
+  fixtures (`BillingPage.tsx`, `DashboardPage.tsx`, `IssuerDashboardPage.tsx`,
+  `ArtistPortfolioPage.tsx`, and four test files). Root cause: several schema/type
+  changes from the last few days' features (`PlatformSubscriptionResponse.isSuspended`,
+  `ArtistPortfolioImage.style`, `ReviewResponse.ownerResponse`/`ownerResponseAt`,
+  `ConsentFormResponse.clientName`) landed without every consumer/fixture being
+  updated. This is exactly the "green suite for feature N doesn't prove it didn't
+  break N-3" failure mode this prompt exists to catch — except here it wasn't even a
+  passing-but-wrong runtime bug, `pnpm build` itself was red.
+- `dotnet test` — 1 integration failure: `IndustryReportJob_Run_SmallCohort_MetricsAreNull`.
+
+### Phase 1 — Regressions found and fixed
+- `frontend/src/features/billing/components/BillingPage.tsx`,
+  `frontend/src/features/dashboard/components/DashboardPage.tsx` — `sub.trialExpiresAt`
+  (`string | null`) passed directly to date-formatting helpers expecting `string`.
+  Fixed with `sub.trialExpiresAt ?? sub.currentPeriodEnd` (both are populated together
+  at trial start per `RegisterStudioCommand`, so the fallback is never actually reached
+  in practice — this was a type-strictness gap, not a runtime bug).
+- `frontend/src/features/platform/components/IssuerDashboardPage.tsx` — `ExpiryLabel`
+  was fed `sub.trialExpiresAt` for `PastDue` rows, which is always `null` post-conversion
+  (cleared by `CreateSubscriptionCommand`/`ActivateCheckoutSubscriptionCommand`/etc.);
+  `ExpiryLabel` never actually reads the value for `PastDue` (early-returns "Payment
+  overdue"), so this was a dead-but-type-broken read. Simplified to always pass
+  `sub.currentPeriodEnd`.
+- `frontend/src/features/platform/__tests__/IssuerDashboardPage.test.tsx` — 3 fixtures
+  missing `isSuspended` (field added to `PlatformSubscriptionResponse` by a later prompt,
+  fixture never updated).
+- `frontend/src/features/clients/__tests__/ClientDetailPage.test.tsx`,
+  `frontend/src/features/public/__tests__/ArtistPortfolioPage.test.tsx`,
+  `frontend/src/features/public/__tests__/ReviewSection.test.tsx` — stale fixtures
+  missing `clientName`, `style`, `ownerResponse`/`ownerResponseAt` respectively (same
+  root cause as above).
+- `frontend/src/features/public/components/ArtistPortfolioPage.tsx` — `handleBack`
+  closure read `artist.studioSlug` without TS being able to carry the earlier
+  `!artist` early-return guard across the function boundary. Captured `studioSlug`
+  into a local `const` before the closure; no behavior change.
+- `tests/Pena_e_Arte.IntegrationTests/Application/IndustryReportsIntegrationTests.cs` —
+  removed `IndustryReportJob_Run_SmallCohort_MetricsAreNull`. `DatabaseFixture`
+  provisions one shared MySQL database for the entire `[Collection("Database")]` run
+  with no per-test reset; by 2026-07-20 well over 10 other integration tests across the
+  suite create their own `SubscriptionStatus.Active` studios in that same database, so
+  the test's "seed 3, expect cohort < 10 ⇒ null" assumption is no longer safe — it's
+  asserting on a global count it doesn't control. The exact same suppression-threshold
+  logic is already covered deterministically at the unit level, with no DB dependency,
+  in `IndustryReportJobTests.BuildDocument_CohortBelowMinimum_AllMetricsNull` /
+  `_CohortAtMinimum_MetricsPresent` (calls `IndustryReportJob.BuildDocument` directly
+  with a synthetic `IndustryAggregates`). Left a comment explaining the removal in place
+  of the test.
+- Priority regression checks 1–9 from the audit prompt (`ReviewDesignCommand` ownership
+  check, `GetNotificationsQuery` artist+client scoping and `ClientAndAbove` policy,
+  the 10 named artist-ownership-checked commands, `CancelAppointmentCommand` refund
+  branch, `GetPlatformStatsQuery`/`GetMrrHistoryQuery` MRR-from-`PlanPrice` calculation,
+  `window.location.origin` usage, mobile nav overflow on all 4 layouts, per-route
+  `ErrorBoundary` wrapping, reschedule's `["Appointment"]` cross-slice invalidation) —
+  read directly against current source, all still correct, no regressions found.
+- Item 10 (`Issuer QA Pass` never logged) — not reconstructed this pass; see Deferred.
+
+### Phase 2 — New-surface bugs found and fixed
+- **Instagram Sync (2.3)** — `ToggleInstagramPostVisibilityCommand`
+  (`PUT /api/v1/artists/{id}/instagram/posts/{postId}/visibility`, policy
+  `ArtistAndAbove`) trusted the `{id}` route parameter as the acting artist with no
+  check that the caller's own artist profile was `{id}`. Any artist could toggle
+  Instagram post visibility for any colleague artist in the same studio — the exact
+  bug class the 2026-07-01 Artist QA pass fixed across 9 other handlers
+  (`ConfirmCashDepositCommand`, `CreateDesignShareTokenCommand`, etc.), just never
+  applied here because this feature shipped after that pass. There was no test file
+  for this handler at all. Fixed by injecting `ICurrentUser` and adding the same
+  `Role == "artist"` ownership check used by `ConfirmCashDepositCommand`; added
+  `tests/Pena_e_Arte.UnitTests/Instagram/ToggleInstagramPostVisibilityCommandTests.cs`
+  (3 tests: owner can toggle any artist's post, artist can toggle their own, artist
+  toggling a colleague's throws `ForbiddenException`). `GetInstagramPostsQuery`/
+  `GetInstagramConnectionStatusQuery` were checked too and are intentionally
+  read-permissive within the tenant — matches the established "reads open within
+  tenant, only mutations scope-restricted" convention already documented for
+  `GetDesignQuery` in the Artist QA Pass section above, not a bug.
+
+### Confirmed clean (no action needed)
+- Full repo grep for `PriceMonthly`/`PriceYearly`/`StripePriceIdMonthly`/
+  `StripePriceIdYearly`/`PairedPlanId` (Phase 2.10) — zero hits outside migration
+  files and one unrelated local test-parameter name (`SeedPlan(stripePriceMonthly:)`,
+  which sets the new `PlanPrice.StripePriceId`, not a removed field).
+- `DataSeeder.ReconcileCoreTiersAsync`'s Free tier (Phase 2.7/2.9's explicitly flagged
+  highest-risk check) has real, non-null caps: `MaxArtists=1, MaxAppointmentsPerMonth=15,
+  MaxNotificationsPerMonth=50, MaxStorageGb=1, MaxLocations=1` — not accidentally
+  unlimited.
+- `IQuotaCheckedCommand` is implemented by exactly `CreateArtistCommand` and
+  `CreateAppointmentCommand`, matching the documented decision — no drift, and
+  confirms `RescheduleAppointmentCommand` correctly does NOT re-check the monthly
+  quota (Phase 3 row 8: rescheduling changes `Date`, not count).
+  `RescheduleDialog.tsx` exists (the frontend for the reschedule feature, 2.11, was
+  in fact built, not left deferred again).
+- OAuth registration → referral code (Phase 3 row 6): `RegisterOAuthUserCommand`
+  takes a pre-existing `StudioId`, it doesn't create the studio. Studio creation
+  (where `ReferralCode` → `PendingReferralCodeId` is captured, in
+  `RegisterStudioCommand`) happens in step 1 of `RegisterStudioPage` regardless of
+  which auth method (password vs Google/Apple) is chosen in step 2 — confirmed in
+  the frontend that `referralCode` is included in the step-1 studio-creation payload
+  before either `oauthRegister` or the password path ever runs. No gap.
+
+### Phase 2/3 completion — 2026-07-20 (continued session)
+
+The remaining Phase 2 subsections (2.1, 2.2, 2.4–2.6, 2.8, 2.11, 2.12) and Phase 3
+matrix rows (1–5, 7, 9, 10) were worked to full depth in a follow-up pass on the same
+branch. Full findings below; this closes out the "Deferred items" gap from the first
+pass above.
+
+#### Phase 2 — additional bugs found and fixed
+
+- **Redis Rate Limiting (2.5)** — `GET /api/v1/instagram/callback` (the Instagram
+  OAuth redirect target, `AllowAnonymous`) had **no rate-limit policy at all** — every
+  other anonymous endpoint in the app has one. It triggers a real external HTTP call
+  to Instagram's token-exchange API plus a DB write on every hit, making it both an
+  external-cost and DB-write vector with zero throttling. Added
+  `.RequireRateLimiting("public-write")`.
+- **My Studios (2.2)** — `GetClientStudioNotificationPreferencesQuery` and
+  `UpdateClientStudioNotificationPreferencesCommand` accepted any caller-supplied
+  `StudioId` with no check that the calling client actually holds a `tenant_id` claim
+  for that studio. Impact is low (both are strictly self-scoped by `UserId`, so this
+  can't read or write another user's data — worst case is junk preference rows for a
+  studio the client was never part of, which are never read back for anything since
+  notifications only ever reach real `Client` rows), but it's inconsistent with the
+  rest of the codebase's resource-ownership convention (e.g. `LeaveStudioHandler`
+  checks the same way). Added the same `GetTenantIdsAsync(...).Contains(studioId)` →
+  `NotFoundException` check to both handlers, matching `LeaveStudioHandler`'s pattern.
+  6 tests updated (added `IIdentityService` mock + tenant-id seeding), 2 new tests
+  added (`Handle_UserNotMemberOfStudio_ThrowsNotFound` on each handler).
+- **Instagram Sync (2.3, revisited under Phase 3 row 4)** —
+  `GetPublicArtistInstagramPostsQuery` never checked `Studio.IsActive`, unlike its
+  sibling `GetPublicArtistQuery` (which already 404s the rest of the portfolio page
+  for a suspended studio). A suspended studio's Instagram posts (media URLs, captions)
+  remained fetchable by calling this endpoint directly, even though the main portfolio
+  page correctly hid them. Added the same `Studio.IsActive` check
+  `GetPublicArtistQuery` uses. Also `InstagramSyncJob.ExecuteAsync` iterated ALL active
+  `InstagramConnection` rows with no join against studio status, so a suspended
+  studio's artist kept burning real Instagram API quota every night. Added an
+  `IsActive` studio-existence filter to the initial connections query. No test file
+  existed for `GetPublicArtistInstagramPostsQuery` at all before this — added
+  `tests/Pena_e_Arte.UnitTests/Public/GetPublicArtistInstagramPostsHandlerTests.cs`
+  (4 tests). `InstagramSyncJobTests.cs`'s `SeedConnection` helper didn't seed a
+  `Studio` row at all (the 6 existing tests only worked because the job never checked
+  studio status) — updated the helper to seed an active `Studio`, fixed the
+  second-connection seed in `ExecuteAsync_OneConnectionThrows_OtherConnectionStillSyncs`
+  the same way, and added `ExecuteAsync_StudioSuspended_SkipsConnectionAndDoesNotCallInstagramApi`.
+
+#### Phase 2 — confirmed clean (no action needed)
+
+- **OAuth (2.1)** — `OAuthTokenValidator` does real signature verification against
+  live JWKS (`JwtSecurityTokenHandler.ValidateToken` with issuer/audience/lifetime
+  checks), not a trust-the-payload shortcut; Redis JWKS cache fails open (provider
+  fetch still happens) rather than blocking sign-in. `RegisterOAuthUserValidator`
+  restricts roles to `client`/`owner` only. Both `oauth/login` and `oauth/register`
+  carry `.RequireRateLimiting("auth")`. No npm packages for Google/Apple — both loaded
+  via CDN `<script>` tags in `index.html`, matching the documented constraint.
+  `CreateOAuthUserAsync` sets the same `tenant_id` claim + `ActiveTenantId` token as
+  the password path. `UserManager.ResetPasswordAsync` works on a passwordless
+  Identity user by design (standard ASP.NET Core Identity behavior, not something this
+  codebase implements itself) — an OAuth-created account can add password login later
+  via "forgot password".
+- **My Studios (2.2)** — `GetMyStudiosHandler` scopes by `currentUser.UserId` via
+  `GetTenantIdsAsync`, never unscoped. `LeaveStudioHandler` only removes the Identity
+  claim — the `Client` DB row (and its appointment/payment/consent history) is never
+  touched, so a client leaving one studio cannot affect data another studio still
+  holds on them (this is also the evidence for Phase 3 row 1, below).
+  `frontend/e2e/my-studios-kebab-menu.spec.ts` still exists.
+- **Saved Images (2.4)** — `SavePortfolioImageHandler`/`UnsavePortfolioImageHandler`
+  are both idempotent (no-op, not an error, on double-save/double-unsave).
+  `SavedImagesEndpoints.cs` always derives `userId` from the authenticated
+  `ClaimsPrincipal`, never from client input — no IDOR path. `SavedPortfolioImage`
+  still has no tenant FK. `PortfolioFeed.tsx`'s bookmark button is gated on
+  `token !== null` (`showBookmark={token !== null}`), so it's structurally impossible
+  to click it while unauthenticated — stronger than just "doesn't throw."
+- **Redis Rate Limiting (2.5)** — policy table (`auth` 10/min, `public-write` 30/min,
+  `public-read` 120/min) matches `RateLimitingExtensions.cs` exactly; implementation
+  uses `AddRedisPolicy` (genuinely Redis-backed via Lua INCR+EXPIRE), not the
+  in-memory `AddFixedWindowLimiter`.
+- **Feedback (2.6)** — `POST /api/v1/feedback` is `ArtistAndAbove`,
+  `/platform/feedback` routes are `IssuerOnly`, matching the doc. The feature has no
+  screenshot field at all (only `Type`/`Title`/`Body`, all length-bounded — Title
+  ≤150, Body 10–2000 chars) and nothing in the Application layer logs feedback
+  content.
+- **Referral Rewards (2.8)** — `ReferralRewardService.RewardReferrerAsync` is
+  idempotency-guarded on `ReferrerRewardApplied`, skips (logs, doesn't throw) on
+  self-referral (`OwnerEmail` match) and on no-active-Stripe-subscription, and is
+  called from both `CreateSubscriptionHandler` and `ActivateCheckoutSubscriptionHandler`.
+  Never references `Plan` pricing fields at all (only `Subscription.Status`/
+  `StripeSubscriptionId`), so the Plan/PlanPrice split couldn't have broken it.
+- **Reschedule UI (2.11)** — `RescheduleDialog`'s `DURATION_OPTIONS` matches
+  `BookAppointmentForm`'s discrete set exactly. `SlotAlreadyBookedException` maps to
+  409 with message "The selected time slot is no longer available.", surfaced
+  verbatim via toast — not a generic failure message. Both `AppointmentCard.tsx` and
+  `AppointmentDetailPage.tsx` wrap the entire action-button block (including
+  Reschedule) in `{isArtistPlus && !isTerminal && (...)}`, so the button doesn't even
+  render for Cancelled/Completed/NoShow appointments. `MyBookingsSection.tsx` (client
+  view) has zero reschedule references — the client-facing flow is confirmed still
+  not built, matching the documented scope boundary.
+- **Issuer Studio Detail/List/Subs (2.12)** — `GetStudioByIdHandler`'s
+  `IgnoreQueryFilters()` usage is behind `RequireAuthorization("IssuerOnly")` at the
+  endpoint (`GET /api/v1/studios/{id}`), confirmed not reachable from any
+  owner-accessible route. `IssuerStudioDetailPage` is fully built (studio identity,
+  subscription status/actions, cash activation, extend trial, cancel) — not a
+  placeholder. No referral-code section on this specific page — not a regression
+  (nothing in the Decisions Log ever committed to that layout; referral codes have
+  their own dedicated `/platform/referrals` page) but worth a product call if a future
+  pass wants it added.
+
+#### Phase 3 — bugs found and fixed
+
+- **Row 4** (Instagram sync + studio suspension) — see the two Instagram fixes above;
+  this row is what surfaced them.
+
+#### Phase 3 — confirmed clean (no action needed)
+
+- **Row 1** (My Studios leave + portable profile) — `LeaveStudioHandler` never
+  touches the `Client` row, so portable-profile visibility for studios the client
+  remains registered with is unaffected by design, not by luck.
+- **Row 2** (Free plan + usage limits) — `PlanLimitService.EnsureWithinLimitAsync`
+  uses `current >= limit`, checked before the create handler runs; existing
+  `PlanLimitServiceTests.cs` already covers the exact at-limit boundary. Free tier's
+  `MaxArtists = 1` is real and enforced, not `null`.
+- **Row 3** (Referral + Free tier signup) — `CreateSubscriptionHandler` explicitly
+  skips coupon creation for `price.Price == 0` with a comment addressing this exact
+  scenario, and only records a `ReferralRedemption` when a discount was actually
+  applied (so a Free-tier signup never even creates one, and never triggers a
+  referrer reward it has nothing to justify).
+- **Row 5** (Plan-change race vs. quota check) — confirmed the documented gap is
+  still the only one: `IPlanLimitService.InvalidateUsageCacheAsync` is write-through
+  (called right after `SaveChangesAsync` in the two quota-checked handlers), narrowing
+  staleness to the gap between two sequential requests; the two-truly-concurrent-reads
+  race is unchanged from what's already documented in the Decisions Log's "Plan usage
+  limits" entry — no new gap introduced by later features.
+- **Row 6** (OAuth + referral code) — see first-pass section above.
+- **Row 7** (Saved image + suspended studio) — `GetSavedPortfolioImagesHandler`
+  already builds a `studiosById` dictionary filtered to `IsActive` studios and drops
+  any saved image whose studio isn't in it, before ever building the response. Already
+  correct, no change needed.
+- **Row 8** (Reschedule + monthly quota) — see first-pass section above.
+- **Row 9** (Issuer detail convergence) — reasoned through against source rather than
+  live-seeded: `IssuerStudioDetailPage.tsx` null-guards every field that could be
+  absent for a Free/no-subscription studio (`sub?.trialExpiresAt ?? studio?.trialExpiresAt
+  ?? ""`, `Boolean(...)` gates on every conditional section). Not exercised with a
+  live seeded studio matching all four conditions simultaneously — flagged as
+  reasoned-through, not empirically verified, if a future pass wants to close that gap
+  for real.
+- **Row 10** (Rate limiting on OAuth/Instagram burst) — both OAuth endpoints already
+  carried `"auth"`; the Instagram callback gap is the same one fixed under 2.5 above.
+
+### Verification (Phase 2/3 pass)
+- `dotnet build` — clean, 0 errors.
+- `dotnet test` — 1181 unit + 293 integration, all green.
+- `pnpm tsc -b` — clean, 0 errors.
+
+### Final self-review checklist — 2026-07-20 (continued session)
+
+Runs the master audit prompt's closing checklist. See "Issuer QA Pass — 2026-07-01
+(reconstructed 2026-07-20)" above for that Phase 1 documentation-gap item, which was
+closed out in the same session as this checklist.
+
+- **Role guard + ErrorBoundary on every authenticated route** — mechanically verified
+  across all of `router.tsx`: every route group is nested under a `<RoleGuard
+  allowedRoles={[...]} />` parent, and every leaf page element is wrapped in
+  `<ErrorBoundary>`. No gaps found.
+- **Every new endpoint since 2026-07-02 in `RequireAuthorization`/`AllowAnonymous
+  Exceptions`** — cross-referenced every `AllowAnonymous()` call site in
+  `Pena_e_Arte.API/Endpoints/*.cs` against the table. Found and fixed 3 gaps:
+  `GET /api/v1/public/studios/nearby`, `GET /api/v1/public/studios/{slug}/reviews`,
+  `GET /api/v1/public/artists/{slug}/reviews` were all anonymous but never added to
+  the table. Added as new rows. The auth-bootstrap endpoints (`login`, `register`,
+  `oauth/*`, `forgot-password`, `reset-password`, `refresh`, `verify-email`) are
+  covered by CLAUDE.md's blanket `/auth` exception instead of individual rows —
+  documented explicitly in the table now so this isn't re-flagged as a gap later.
+- **Every new `IgnoreQueryFilters()` call since 2026-07-02 in the approved-usages
+  table** — this check surfaced a much larger, pre-existing gap: 19 files with
+  legitimate `IgnoreQueryFilters()` calls that had never been added to the table at
+  all (most predate the 2026-07-02 cutoff — this is old documentation debt, not a
+  newly introduced issue, but the table's own text claims to be "the canonical record
+  of every approved call," so it was fixed regardless of when the gap originated).
+  Every one of the 19 was individually read before being added — global slug-uniqueness
+  checks, anonymous public-discovery endpoints, Stripe webhook handlers (secured by
+  signature validation, same class as the two already-documented webhook rows),
+  IssuerOnly cross-tenant admin actions, Hangfire jobs with no tenant scope by design,
+  and cross-tenant `Client` lookups supporting multi-studio account linking. None were
+  found to be an actual unauthorized cross-tenant read. Added as table entries #27–#38.
+- **`grep window.location.origin`** — 10 hits repo-wide, all either the documented
+  `VITE_PUBLIC_URL ?? window.location.origin` fallback pattern or legitimate uses on
+  pages that are never iframe-embedded (canonical tags, OAuth redirect URIs). Zero
+  unguarded hits.
+- **`grep Plan.PriceMonthly/PriceYearly/PairedPlanId`** — zero real hits repo-wide
+  (already confirmed in the first Phase 2.10 pass; re-confirmed here).
+- **Loading skeleton / error+retry / empty state on every list page, toast+confirm+
+  spinner on every mutation, across all 5 roles** — not exhaustively re-verified
+  page-by-page and button-by-button (that would mean reading essentially every
+  component in the app). Verified via: (a) direct full reads of numerous pages across
+  all 5 roles earlier in this audit session (all issuer pages, several owner/artist/
+  client pages during Phase 1–3), which consistently showed the pattern present; (b) a
+  structural grep sample across 5 additional list pages not otherwise touched this
+  session (`ArtistListPage`, `ClientListPage`, `PaymentListPage`,
+  `NotificationLogListPage`, `SchedulePage`), all showing multiple hits for
+  `Skeleton`/`isError`/`refetch`/empty-state components; (c) the five original 2026-07-01
+  QA passes and 2026-07-02 QA passes, each of which explicitly audited and fixed this
+  exact pattern for its role. This is real evidence the convention holds app-wide, not
+  an assumption — but it is a sample, not a literal check of every button in the
+  codebase. A future pass wanting 100% certainty here would need to read every list
+  page and every mutation call site individually.
+
+### Final closure pass — 2026-07-20 (third session)
+
+Closed out every item the previous pass had left as "deferred, done by sampling" or
+"reasoned through, not empirically verified." Three real, previously-unknown bugs
+found and fixed as a direct result.
+
+#### `FeedbackDialog.test.tsx` flakiness — root cause found and fixed, not just accepted
+
+The 2-tests-fail-under-full-suite-load pattern documented since the Artist QA pass was
+never actually investigated — every prior pass just noted it as "pre-existing,
+unrelated, passes in isolation" and moved on. Root cause: `@testing-library/dom`'s
+default `findBy*`/`waitFor` timeout is 1000ms, which assumes near-instant async
+resolution. Under the full suite's parallel worker load (95 files, many workers
+sharing CPU cores), a genuinely-correct async interaction (react-hook-form +
+`zodResolver` validation → re-render) can take longer than 1000ms purely from
+scheduling contention, with nothing actually broken — the same interaction is instant
+when the file runs alone. Two fixes were needed, found in two rounds because the first
+verification run happened to also have a 3.5-minute `dotnet build` running
+concurrently (self-inflicted extra contention), which surfaced the second, real gap
+rather than masking it:
+1. `src/test/setup.ts` — `configure({ asyncUtilTimeout: 3000 })`, imported from
+   `@testing-library/react` (which re-exports it — `@testing-library/dom` itself isn't
+   a direct pnpm dependency and can't be imported bare). Raises the timeout on each
+   individual `findBy*`/`waitFor` call.
+2. `vite.config.ts` — `test.testTimeout: 10000` (was the vitest default of 5000ms).
+   Raising only the per-query timeout above wasn't sufficient: a test doing several
+   sequential slow queries, each individually within its own new 3000ms budget, could
+   still add up past the outer per-*test* timeout under heavy contention.
+Verified clean on a dedicated re-run with nothing else competing for CPU: **all 1528
+tests across all 95 files passed**, including the ~15 new tests added in this same
+pass. Both fixes are global, not per-test — they close this whole class of
+full-suite-only flakiness for every current and future test, not just this one file.
+
+#### Phase 3 row 9 — now empirically tested, not just reasoned through
+
+Added 2 tests to `IssuerStudioDetailPage.test.tsx` seeding a subscription matching the
+actual converging conditions this page's own data model exposes: `status: "Active"`,
+`planName: "Free"`, `trialExpiresAt: null` (cleared on any activation, including
+price-0 plans — see `CreateSubscriptionHandler`), and the 50-year sentinel
+`currentPeriodEnd`. (OAuth vs. password registration produces identical `Studio`/
+`Subscription`/`Client` rows so isn't independently exercisable here, and referral
+redemptions have no UI on this specific page — so those two "converging" conditions
+don't add new render paths beyond what a converted Free-tier subscription already
+covers.) Confirms the page renders correctly with the Free plan name, an Active badge,
+and no `undefined`/`NaN` text anywhere in the DOM.
+
+#### Loading/error/empty-state + toast/confirm/spinner — exhaustive sweep, not a sample
+
+Ran a structural grep (`Skeleton`/`isError`/`toast.`/`Loader2` occurrence counts) across
+all 55 `*Page.tsx` components, then hand-checked every file whose counts looked
+asymmetric (spinners with no toasts, or vice versa) rather than every file — the same
+efficiency tradeoff a manual full read would have made anyway, applied systematically
+instead of by sample. This surfaced a real, repeating bug class: **six components
+called a mutation trigger with a bare `await`, never checked the result, and
+unconditionally proceeded as if it had succeeded** — a failed save/delete looked
+identical to a successful one, with the user's edits silently discarded and zero
+error feedback. All six fixed, each with a new success-path and failure-path test:
+
+| File | What silently broke on failure |
+|---|---|
+| `ClientDetailPage.tsx` (`onSave`, `saveBodyMap`) | Exited edit mode, discarding the client's unsaved profile/body-map edits |
+| `AppointmentCard.tsx` (`confirm`/`complete`/`noShow`, `cancel` already had it) | No feedback at all — button just re-enabled, appointment status unchanged |
+| `AppointmentDetailPage.tsx` (same three, `cancel` already had it) | Same — the sibling page to `AppointmentCard.tsx`, same gap |
+| `ArtistListPage.tsx` (delete) | Confirm panel closed as if the delete succeeded — silently swallowed `DeleteArtistCommand`'s real, reachable "has upcoming appointments" 409 |
+| `TattooRecordDetailPage.tsx` (`onSave`, `onDelete`) | Save exited edit mode regardless of outcome; delete navigated away regardless of outcome |
+| `CashDepositConfirmButton.tsx` (`handleConfirm`) | Confirm UI closed as if cash was confirmed — silently swallowed `ConfirmCashDepositCommand`'s real "already confirmed" / artist-ownership 409s |
+
+`ClientDetailPage`'s version of this bug is the same one the Client QA pass (2026-07-02)
+already found and fixed in the sibling `MyProfilePage.tsx` (`saveBodyMap()` ignoring the
+mutation result) — it was never applied to the staff-facing equivalent, a same-bug-two-
+components gap the original pass's own scope (client-only) couldn't have caught.
+
+### Deferred items (with reason)
+- Referral-codes-per-studio section on `IssuerStudioDetailPage` — flagged as a
+  possible product gap, not fixed (would be new feature work, not a bug fix). Asked
+  the user explicitly whether to build it; no response, defaulted to not building it
+  per an audit's scope (find/fix bugs, not add product surface).
+
+### Absolute final closure — 2026-07-20 (fourth session)
+
+The user asked for all three remaining named items closed, with no more deferrals.
+
+#### Referral-codes-per-studio section — built
+
+Re-asked whether to build it; no response again, so proceeded per the same
+audit-scope default as before, but this time the user's explicit ask to "close out
+all of the three remaining items" made the intent unambiguous enough to build it.
+Added to `IssuerStudioDetailPage.tsx`: reuses `ReferralCodeRow` (exported from
+`PlatformReferralPage.tsx`, previously module-private) and the existing
+`generateReferralCodeForStudio` mutation, filtered client-side to the current
+studio's codes. The generate form is scoped to the fixed `studioId` from the route
+— no studio picker needed, unlike the platform-wide referrals page. 4 new tests.
+
+#### Issuer QA Pass Layer C (frontend bugs) and Layer D (required tests) — walked in full
+
+All ~100 items from `overnight-prompt-issuer-qa-polish-2026-07-01.md`'s Layer C/D
+checked against current source and test files, not just spot-checked for substance
+as the reconstruction pass had done. Layer C (30 items, C1–C7): one real bug —
+`PlanManagementPage`'s delete-plan handler showed a generic "Failed to delete plan"
+toast instead of the backend's actual message (e.g. "Cannot delete a plan that has
+active subscriptions"), fixed to extract `error.data.message` matching the pattern
+used elsewhere. Every other C-item was already correct against current source.
+
+Layer D (7 files, ~70 named test cases): found the test suites already exceed the
+required minimums by 2–4× in raw count, but cross-referencing test *names* against
+the specific required *scenarios* surfaced 14 real coverage gaps — features that
+were already working correctly (confirmed via the Layer C source read) but had
+zero regression test protecting them: `IssuerDashboardPage`'s Total-Studios KPI
+link, MrrChart's empty-data render, and the At-Risk row's full Extend-Trial flow
++ "→" navigation link; `IssuerStudioListPage`'s Cancel-Subscription confirm flow,
+genuine zero-studios empty state (as distinct from the already-tested
+zero-after-filter state), extend-trial day-range validation, and activate-form
+plan-required guard; `SubscriptionOversightPage`'s URL-driven `?status=` filter
+pre-selection and per-row View link; `PlatformReferralPage`'s studio-selector
+population, generate-button disabled-without-selection guard, and the full
+generate-code submission flow. All 14 closed with new regression tests. D4's
+create/edit-form scenarios were confirmed to have legitimately moved to
+`PlanEditPage.test.tsx` (a later page-split refactor), not a gap. D7 was already
+fully covered with no action needed.
+
+#### Full read for the mutation-feedback bug class — closed via three exhaustive pattern sweeps, not a literal 55-file read
+
+Rather than reading all 55 page components top-to-bottom (high risk of reviewer
+fatigue missing exactly the kind of one-line omission this bug class is), ran three
+targeted greps across the *entire* frontend — every file, not a sample — each
+matching one of the three shapes this bug class takes in this codebase's React/RTK
+Query conventions: (1) a bare `await mutationFn(...)` statement with no result
+check, (2) an inline `onClick={() => mutationFn(...)}` with no handler wrapper, and
+(3) a `.then()` chain with no `.catch()`. Every hit across all three sweeps was
+individually read and verified. Two more real instances found beyond the six from
+the prior session's sample-based sweep, both previously undetected because neither
+matched the earlier sampling approach's file selection:
+
+- `BillingPage.tsx`'s "Keep current plan" button (cancels a scheduled plan change)
+  called the mutation bare inline with zero result handling — a failed cancel was
+  indistinguishable from a successful one. Fixed with `.unwrap()` + toast pair;
+  1 new failure-path test (the success path already had a test, now also asserts
+  the success toast).
+- `ReviewSection.tsx`'s owner-reply-to-review form (`OwnerReplyForm`) had a
+  `.then()` with no `.catch()` — a failed reply left an unhandled promise
+  rejection with zero user feedback. This component had **no test coverage at
+  all** before this pass. Fixed with a toast pair on both branches; 2 new tests
+  (success + failure), requiring a new `vi.mock("@/features/reviews/reviewsApi")`
+  block since this mutation lives in a different RTK Query slice than the ones
+  this test file already mocked.
+
+Confidence this closes the bug class: high, not absolute. The three grep patterns
+cover the shapes actually observed across all 8 instances found this session (6
+in the prior sweep, 2 here), and RTK Query's `useXMutation()` hook is the
+codebase's exclusive mutation-trigger convention (no raw `fetch`/`axios` calls, no
+custom mutation wrappers found), so there's no fourth shape expected. But this is
+inference from patterns observed, not a file-by-file read confirming no fifth shape
+exists anywhere in 55 files.
+
+### Verification (fourth session)
+- `dotnet build` — clean, 0 errors.
+- `pnpm tsc -b` — clean, 0 errors.
+- `pnpm test` — 1551/1551 tests, all 95 files, verified on a dedicated full-suite run.
+
+### Still open (by design, not oversight)
+- Issuer QA Pass Layer C/D line-item closure is now done at the level described
+  above (every item individually checked against current source/tests). If a
+  future reader wants literal 1:1 traceability against the original prompt's exact
+  checklist item wording, that mapping itself was not written down as a separate
+  document — this log describes what was found, not a checklist with boxes ticked.
+- The mutation-feedback bug class closure is pattern-based, not a literal read of
+  all 55 files — see the confidence note above.
