@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -215,5 +216,54 @@ describe("IssuerDashboardPage", () => {
     // Loading state resolves — no KPI data shown, no crash
     await screen.findByText("Platform Overview");
     expect(screen.queryByText("12")).not.toBeInTheDocument();
+  });
+
+  it("KPI card 'Total Studios' links to /platform/studios", async () => {
+    renderPage();
+    await screen.findByText("8");
+    const link = screen.getByRole("link", { name: /total studios/i });
+    expect(link).toHaveAttribute("href", "/platform/studios");
+  });
+
+  it("MRR chart renders 'No MRR data yet.' without crashing on empty history", async () => {
+    renderPage();
+    expect(await screen.findByText(/no mrr data yet/i)).toBeInTheDocument();
+  });
+
+  it("At-Risk row: clicking 'Extend trial' reveals the days input and Confirm button", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const row = (await screen.findByText("GracePeriod Studio")).closest(".border-b") as HTMLElement;
+    await user.click(within(row).getByRole("button", { name: /extend trial/i }));
+    expect(within(row).getByRole("spinbutton")).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: /confirm/i })).toBeInTheDocument();
+  });
+
+  it("At-Risk row: Confirm calls extendTrial with the row's studioId and entered days", async () => {
+    let captured: { studioId: string; body: unknown } | null = null;
+    server.use(
+      http.patch("http://localhost/api/v1/platform/subscriptions/:studioId/trial", async ({ params, request }) => {
+        captured = { studioId: params.studioId as string, body: await request.json() };
+        return HttpResponse.json({});
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    const row = (await screen.findByText("GracePeriod Studio")).closest(".border-b") as HTMLElement;
+    await user.click(within(row).getByRole("button", { name: /extend trial/i }));
+    await user.clear(within(row).getByRole("spinbutton"));
+    await user.type(within(row).getByRole("spinbutton"), "14");
+    await user.click(within(row).getByRole("button", { name: /confirm/i }));
+
+    await waitFor(() => expect(captured).not.toBeNull());
+    expect(captured!.studioId).toBe("s1");
+    expect(captured!.body).toEqual({ additionalDays: 14 });
+  });
+
+  it("At-Risk row: the '→' link navigates to /platform/studios with the row highlighted", async () => {
+    renderPage();
+    const row = (await screen.findByText("GracePeriod Studio")).closest(".border-b") as HTMLElement;
+    const link = within(row).getByRole("link", { name: "→" });
+    expect(link).toHaveAttribute("href", "/platform/studios");
   });
 });

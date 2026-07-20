@@ -11,6 +11,7 @@ import {
   Loader2,
   PauseCircle,
   PlayCircle,
+  Ticket,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -29,9 +30,12 @@ import {
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
   useGetIssuerStudioSummaryQuery,
+  useGetPlatformReferralCodesQuery,
+  useGenerateReferralCodeForStudioMutation,
 } from "@/features/platform/platformApi";
 import { useGetIssuerPlansQuery } from "@/features/billing/billingApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
+import { ReferralCodeRow } from "./PlatformReferralPage";
 
 const STATUS_CLASSES: Record<string, string> = {
   Active:         "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
@@ -74,6 +78,12 @@ export function IssuerStudioDetailPage() {
   const { data: plans = [] } = useGetIssuerPlansQuery();
   const { data: summary, isLoading: summaryLoading } =
     useGetIssuerStudioSummaryQuery(studioId!, { skip: !studioId });
+  const { data: allReferralCodes, isLoading: codesLoading } = useGetPlatformReferralCodesQuery();
+
+  const studioReferralCodes = useMemo(
+    () => allReferralCodes?.filter((c) => c.studioId === studioId) ?? [],
+    [allReferralCodes, studioId],
+  );
 
   const sub: PlatformSubscriptionResponse | undefined = useMemo(
     () => subscriptions?.find((s) => s.studioId === studioId),
@@ -100,6 +110,15 @@ export function IssuerStudioDetailPage() {
   const [extendTrial,      { isLoading: extending_  }] = useExtendTrialMutation();
   const [activateManually, { isLoading: activating_ }] = useActivateSubscriptionManuallyMutation();
   const [cancelSub,        { isLoading: cancelling_ }] = useCancelSubscriptionMutation();
+
+  // Referral code generation
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [codeExpiresAt,  setCodeExpiresAt]  = useState("");
+  const [generateCode,   { isLoading: generatingCode_ }] = useGenerateReferralCodeForStudioMutation();
+
+  const codeMinDate = new Date();
+  codeMinDate.setDate(codeMinDate.getDate() + 1);
+  const codeMinDateStr = codeMinDate.toISOString().split("T")[0];
 
   const canExtendTrial = subStatus !== "Active";
   const canActivate    = CASH_ACTIVATABLE.has(subStatus);
@@ -159,6 +178,18 @@ export function IssuerStudioDetailPage() {
       setConfirming(false);
     } catch {
       toast.error("Failed to cancel subscription");
+    }
+  }
+
+  async function handleGenerateCode() {
+    if (!studioId) return;
+    try {
+      await generateCode({ studioId, expiresAt: codeExpiresAt || undefined }).unwrap();
+      toast.success("Referral code generated");
+      setGeneratingCode(false);
+      setCodeExpiresAt("");
+    } catch {
+      toast.error("Failed to generate referral code");
     }
   }
 
@@ -369,6 +400,81 @@ export function IssuerStudioDetailPage() {
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">Summary unavailable.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── Referral Codes Card ──────────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-sm">Referral Codes</CardTitle>
+                {!generatingCode && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setGeneratingCode(true)}
+                  >
+                    <Ticket className="h-3.5 w-3.5" />
+                    Generate Code
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="pt-0 space-y-2">
+                {generatingCode && (
+                  <div className="pb-2 space-y-2 border-b">
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-code-expires" className="text-xs">
+                        Expiry date <span className="text-muted-foreground font-normal">(optional)</span>
+                      </Label>
+                      <input
+                        id="detail-code-expires"
+                        type="date"
+                        min={codeMinDateStr}
+                        value={codeExpiresAt}
+                        onChange={(e) => setCodeExpiresAt(e.target.value)}
+                        className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Generates an 8-character single-use code. Any existing active
+                      code for this studio will be deactivated.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-xs gap-1"
+                        disabled={generatingCode_}
+                        onClick={handleGenerateCode}
+                      >
+                        {generatingCode_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Generate"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-3 text-xs"
+                        onClick={() => { setGeneratingCode(false); setCodeExpiresAt(""); }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {codesLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ) : studioReferralCodes.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No referral codes generated for this studio yet.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {studioReferralCodes.map((code) => (
+                      <ReferralCodeRow key={code.id} code={code} />
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>

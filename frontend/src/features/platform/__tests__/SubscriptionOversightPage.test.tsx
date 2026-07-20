@@ -105,11 +105,11 @@ function makeStore() {
   });
 }
 
-function renderPage() {
+function renderPage(initialEntries: string[] = ["/platform/subscriptions"]) {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
         <SubscriptionOversightPage />
       </MemoryRouter>
     </Provider>,
@@ -551,5 +551,26 @@ describe("SubscriptionOversightPage", () => {
     expect(screen.queryByText("Sub Studio 01")).not.toBeInTheDocument();
     expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^next$/i })).toBeDisabled();
+  });
+
+  it("reads ?status=Active from the URL and pre-filters to only Active subscriptions on load", async () => {
+    renderPage(["/platform/subscriptions?status=Active"]);
+    await screen.findByText("Active Studio");
+    expect(screen.queryByText("Trialing Studio")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cancelled Studio")).not.toBeInTheDocument();
+  });
+
+  it("reads ?status=Trialing from the URL and pre-filters to only Trialing subscriptions on load", async () => {
+    renderPage(["/platform/subscriptions?status=Trialing"]);
+    await screen.findByText("Trialing Studio");
+    expect(screen.queryByText("Active Studio")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cancelled Studio")).not.toBeInTheDocument();
+  });
+
+  it("each row's View link points to that studio's detail page", async () => {
+    renderPage();
+    await screen.findByText("Active Studio");
+    const viewButton = screen.getByRole("button", { name: /view active studio studio details/i });
+    expect(viewButton.closest("a")).toHaveAttribute("href", "/platform/studios/s1");
   });
 });

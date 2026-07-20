@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -401,6 +401,75 @@ describe("IssuerStudioListPage", () => {
     const suspendIdx = allButtons.findIndex((b) => /^suspend$/i.test(b.textContent?.trim() ?? ""));
     const cancelIdx  = allButtons.findIndex((b) => /cancel subscription/i.test(b.textContent ?? ""));
     expect(suspendIdx).toBeLessThan(cancelIdx);
+  });
+
+  it("clicking Cancel Subscription shows a confirmation step, and Confirm calls the cancel mutation", async () => {
+    let cancelledStudioId: string | null = null;
+    server.use(
+      http.patch("http://localhost/api/v1/platform/subscriptions/:studioId/cancel", ({ params }) => {
+        cancelledStudioId = params.studioId as string;
+        return HttpResponse.json({});
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ink Soul");
+    // Rows are sorted by risk priority, not array order — scope to Ink Soul's own row
+    // (s1) via its stable data-studio-id attribute rather than assuming array/render order.
+    const row = document.querySelector<HTMLElement>('[data-studio-id="s1"]')!;
+
+    await user.click(within(row).getByRole("button", { name: /cancel subscription/i }));
+    expect(within(row).getByText(/cancel subscription permanently\?/i)).toBeInTheDocument();
+
+    await user.click(within(row).getByRole("button", { name: /^confirm$/i }));
+    await waitFor(() => expect(cancelledStudioId).toBe("s1"));
+  });
+
+  it("shows 'No studios registered yet' when there are genuinely zero studios (not just filtered out)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios", () => HttpResponse.json([])),
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([])),
+    );
+    renderPage();
+    expect(await screen.findByText(/no studios registered yet/i)).toBeInTheDocument();
+  });
+
+  it("extend trial form: entering an out-of-range day count does not call the mutation", async () => {
+    let extendCalled = false;
+    server.use(
+      http.patch("http://localhost/api/v1/platform/subscriptions/:studioId/trial", () => {
+        extendCalled = true;
+        return HttpResponse.json({});
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ink Soul");
+
+    const extendBtns = screen.getAllByRole("button", { name: /extend trial|grant extension/i });
+    await user.click(extendBtns[0]);
+    const dayInput = screen.getByRole("spinbutton");
+    await user.clear(dayInput);
+    await user.type(dayInput, "0");
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+    expect(extendCalled).toBe(false);
+  });
+
+  it("activate form: Activate button is disabled until a plan is selected", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Suspended Studio");
+
+    const activateBtns = screen.getAllByRole("button", { name: /activate subscription/i });
+    await user.click(activateBtns[0]);
+
+    const confirmActivateBtn = screen.getByRole("button", { name: /activate subscription/i });
+    expect(confirmActivateBtn).toBeDisabled();
+
+    const planSelect = screen.getByLabelText(/^plan$/i);
+    await user.selectOptions(planSelect, "plan-1");
+    expect(confirmActivateBtn).not.toBeDisabled();
   });
 
   it("plan filter shows available plans in dropdown", async () => {

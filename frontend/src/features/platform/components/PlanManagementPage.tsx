@@ -55,8 +55,11 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
     try {
       await deletePlan(plan.id).unwrap();
       toast.success("Plan deleted");
-    } catch {
-      toast.error("Failed to delete plan");
+    } catch (err: unknown) {
+      const message =
+        (err as { data?: { message?: string } } | undefined)?.data?.message
+        ?? "Failed to delete plan.";
+      toast.error(message);
     }
   }
 

@@ -11,6 +11,9 @@ import authReducer from "@/features/auth/authSlice";
 import { billingApi } from "@/features/billing/billingApi";
 import { PlanManagementPage } from "@/features/platform/components/PlanManagementPage";
 import type { PlanResponse } from "@/features/billing/billing.types";
+import { toast } from "sonner";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +64,7 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => { server.resetHandlers(); cleanup(); vi.clearAllMocks(); });
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -184,6 +187,28 @@ describe("PlanManagementPage", () => {
     await user.click(screen.getByRole("button", { name: /yes, delete/i }));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledOnce());
+  });
+
+  it("a failed delete shows the backend's specific error message, not a generic one", async () => {
+    server.use(
+      http.delete("http://localhost/api/v1/billing/plans/plan-1", () =>
+        HttpResponse.json(
+          { message: "Cannot delete a plan that has active subscriptions." },
+          { status: 409 },
+        )),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Starter");
+
+    await user.click(screen.getByRole("button", { name: /delete starter plan/i }));
+    await user.click(screen.getByRole("button", { name: /yes, delete/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Cannot delete a plan that has active subscriptions.",
+      ));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("shows error state when plans fetch fails", async () => {
