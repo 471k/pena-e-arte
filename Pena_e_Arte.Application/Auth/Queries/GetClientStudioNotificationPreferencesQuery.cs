@@ -4,6 +4,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Auth.Queries;
@@ -12,8 +13,9 @@ public record GetClientStudioNotificationPreferencesQuery(Guid StudioId)
     : IRequest<ClientNotificationPreferencesResponse>;
 
 public class GetClientStudioNotificationPreferencesHandler(
-    IAppDbContext db,
-    ICurrentUser  currentUser)
+    IAppDbContext    db,
+    IIdentityService identity,
+    ICurrentUser     currentUser)
     : IRequestHandler<GetClientStudioNotificationPreferencesQuery, ClientNotificationPreferencesResponse>
 {
     // Only the notification types actually sent to clients — excludes owner-facing
@@ -30,6 +32,10 @@ public class GetClientStudioNotificationPreferencesHandler(
     public async Task<ClientNotificationPreferencesResponse> Handle(
         GetClientStudioNotificationPreferencesQuery query, CancellationToken ct)
     {
+        IReadOnlyList<Guid> tenantIds = await identity.GetTenantIdsAsync(currentUser.UserId, ct);
+        if (!tenantIds.Contains(query.StudioId))
+            throw new NotFoundException("Studio membership", query.StudioId);
+
         List<ClientNotificationPreference> saved = await db
             .ClientNotificationPreferences
             .Where(p => p.UserId == currentUser.UserId && p.StudioId == query.StudioId)

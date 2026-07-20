@@ -1868,18 +1868,166 @@ matrix rows to the same exhaustive depth as the five original QA passes. See
   the frontend that `referralCode` is included in the step-1 studio-creation payload
   before either `oauthRegister` or the password path ever runs. No gap.
 
+### Phase 2/3 completion — 2026-07-20 (continued session)
+
+The remaining Phase 2 subsections (2.1, 2.2, 2.4–2.6, 2.8, 2.11, 2.12) and Phase 3
+matrix rows (1–5, 7, 9, 10) were worked to full depth in a follow-up pass on the same
+branch. Full findings below; this closes out the "Deferred items" gap from the first
+pass above.
+
+#### Phase 2 — additional bugs found and fixed
+
+- **Redis Rate Limiting (2.5)** — `GET /api/v1/instagram/callback` (the Instagram
+  OAuth redirect target, `AllowAnonymous`) had **no rate-limit policy at all** — every
+  other anonymous endpoint in the app has one. It triggers a real external HTTP call
+  to Instagram's token-exchange API plus a DB write on every hit, making it both an
+  external-cost and DB-write vector with zero throttling. Added
+  `.RequireRateLimiting("public-write")`.
+- **My Studios (2.2)** — `GetClientStudioNotificationPreferencesQuery` and
+  `UpdateClientStudioNotificationPreferencesCommand` accepted any caller-supplied
+  `StudioId` with no check that the calling client actually holds a `tenant_id` claim
+  for that studio. Impact is low (both are strictly self-scoped by `UserId`, so this
+  can't read or write another user's data — worst case is junk preference rows for a
+  studio the client was never part of, which are never read back for anything since
+  notifications only ever reach real `Client` rows), but it's inconsistent with the
+  rest of the codebase's resource-ownership convention (e.g. `LeaveStudioHandler`
+  checks the same way). Added the same `GetTenantIdsAsync(...).Contains(studioId)` →
+  `NotFoundException` check to both handlers, matching `LeaveStudioHandler`'s pattern.
+  6 tests updated (added `IIdentityService` mock + tenant-id seeding), 2 new tests
+  added (`Handle_UserNotMemberOfStudio_ThrowsNotFound` on each handler).
+- **Instagram Sync (2.3, revisited under Phase 3 row 4)** —
+  `GetPublicArtistInstagramPostsQuery` never checked `Studio.IsActive`, unlike its
+  sibling `GetPublicArtistQuery` (which already 404s the rest of the portfolio page
+  for a suspended studio). A suspended studio's Instagram posts (media URLs, captions)
+  remained fetchable by calling this endpoint directly, even though the main portfolio
+  page correctly hid them. Added the same `Studio.IsActive` check
+  `GetPublicArtistQuery` uses. Also `InstagramSyncJob.ExecuteAsync` iterated ALL active
+  `InstagramConnection` rows with no join against studio status, so a suspended
+  studio's artist kept burning real Instagram API quota every night. Added an
+  `IsActive` studio-existence filter to the initial connections query. No test file
+  existed for `GetPublicArtistInstagramPostsQuery` at all before this — added
+  `tests/Pena_e_Arte.UnitTests/Public/GetPublicArtistInstagramPostsHandlerTests.cs`
+  (4 tests). `InstagramSyncJobTests.cs`'s `SeedConnection` helper didn't seed a
+  `Studio` row at all (the 6 existing tests only worked because the job never checked
+  studio status) — updated the helper to seed an active `Studio`, fixed the
+  second-connection seed in `ExecuteAsync_OneConnectionThrows_OtherConnectionStillSyncs`
+  the same way, and added `ExecuteAsync_StudioSuspended_SkipsConnectionAndDoesNotCallInstagramApi`.
+
+#### Phase 2 — confirmed clean (no action needed)
+
+- **OAuth (2.1)** — `OAuthTokenValidator` does real signature verification against
+  live JWKS (`JwtSecurityTokenHandler.ValidateToken` with issuer/audience/lifetime
+  checks), not a trust-the-payload shortcut; Redis JWKS cache fails open (provider
+  fetch still happens) rather than blocking sign-in. `RegisterOAuthUserValidator`
+  restricts roles to `client`/`owner` only. Both `oauth/login` and `oauth/register`
+  carry `.RequireRateLimiting("auth")`. No npm packages for Google/Apple — both loaded
+  via CDN `<script>` tags in `index.html`, matching the documented constraint.
+  `CreateOAuthUserAsync` sets the same `tenant_id` claim + `ActiveTenantId` token as
+  the password path. `UserManager.ResetPasswordAsync` works on a passwordless
+  Identity user by design (standard ASP.NET Core Identity behavior, not something this
+  codebase implements itself) — an OAuth-created account can add password login later
+  via "forgot password".
+- **My Studios (2.2)** — `GetMyStudiosHandler` scopes by `currentUser.UserId` via
+  `GetTenantIdsAsync`, never unscoped. `LeaveStudioHandler` only removes the Identity
+  claim — the `Client` DB row (and its appointment/payment/consent history) is never
+  touched, so a client leaving one studio cannot affect data another studio still
+  holds on them (this is also the evidence for Phase 3 row 1, below).
+  `frontend/e2e/my-studios-kebab-menu.spec.ts` still exists.
+- **Saved Images (2.4)** — `SavePortfolioImageHandler`/`UnsavePortfolioImageHandler`
+  are both idempotent (no-op, not an error, on double-save/double-unsave).
+  `SavedImagesEndpoints.cs` always derives `userId` from the authenticated
+  `ClaimsPrincipal`, never from client input — no IDOR path. `SavedPortfolioImage`
+  still has no tenant FK. `PortfolioFeed.tsx`'s bookmark button is gated on
+  `token !== null` (`showBookmark={token !== null}`), so it's structurally impossible
+  to click it while unauthenticated — stronger than just "doesn't throw."
+- **Redis Rate Limiting (2.5)** — policy table (`auth` 10/min, `public-write` 30/min,
+  `public-read` 120/min) matches `RateLimitingExtensions.cs` exactly; implementation
+  uses `AddRedisPolicy` (genuinely Redis-backed via Lua INCR+EXPIRE), not the
+  in-memory `AddFixedWindowLimiter`.
+- **Feedback (2.6)** — `POST /api/v1/feedback` is `ArtistAndAbove`,
+  `/platform/feedback` routes are `IssuerOnly`, matching the doc. The feature has no
+  screenshot field at all (only `Type`/`Title`/`Body`, all length-bounded — Title
+  ≤150, Body 10–2000 chars) and nothing in the Application layer logs feedback
+  content.
+- **Referral Rewards (2.8)** — `ReferralRewardService.RewardReferrerAsync` is
+  idempotency-guarded on `ReferrerRewardApplied`, skips (logs, doesn't throw) on
+  self-referral (`OwnerEmail` match) and on no-active-Stripe-subscription, and is
+  called from both `CreateSubscriptionHandler` and `ActivateCheckoutSubscriptionHandler`.
+  Never references `Plan` pricing fields at all (only `Subscription.Status`/
+  `StripeSubscriptionId`), so the Plan/PlanPrice split couldn't have broken it.
+- **Reschedule UI (2.11)** — `RescheduleDialog`'s `DURATION_OPTIONS` matches
+  `BookAppointmentForm`'s discrete set exactly. `SlotAlreadyBookedException` maps to
+  409 with message "The selected time slot is no longer available.", surfaced
+  verbatim via toast — not a generic failure message. Both `AppointmentCard.tsx` and
+  `AppointmentDetailPage.tsx` wrap the entire action-button block (including
+  Reschedule) in `{isArtistPlus && !isTerminal && (...)}`, so the button doesn't even
+  render for Cancelled/Completed/NoShow appointments. `MyBookingsSection.tsx` (client
+  view) has zero reschedule references — the client-facing flow is confirmed still
+  not built, matching the documented scope boundary.
+- **Issuer Studio Detail/List/Subs (2.12)** — `GetStudioByIdHandler`'s
+  `IgnoreQueryFilters()` usage is behind `RequireAuthorization("IssuerOnly")` at the
+  endpoint (`GET /api/v1/studios/{id}`), confirmed not reachable from any
+  owner-accessible route. `IssuerStudioDetailPage` is fully built (studio identity,
+  subscription status/actions, cash activation, extend trial, cancel) — not a
+  placeholder. No referral-code section on this specific page — not a regression
+  (nothing in the Decisions Log ever committed to that layout; referral codes have
+  their own dedicated `/platform/referrals` page) but worth a product call if a future
+  pass wants it added.
+
+#### Phase 3 — bugs found and fixed
+
+- **Row 4** (Instagram sync + studio suspension) — see the two Instagram fixes above;
+  this row is what surfaced them.
+
+#### Phase 3 — confirmed clean (no action needed)
+
+- **Row 1** (My Studios leave + portable profile) — `LeaveStudioHandler` never
+  touches the `Client` row, so portable-profile visibility for studios the client
+  remains registered with is unaffected by design, not by luck.
+- **Row 2** (Free plan + usage limits) — `PlanLimitService.EnsureWithinLimitAsync`
+  uses `current >= limit`, checked before the create handler runs; existing
+  `PlanLimitServiceTests.cs` already covers the exact at-limit boundary. Free tier's
+  `MaxArtists = 1` is real and enforced, not `null`.
+- **Row 3** (Referral + Free tier signup) — `CreateSubscriptionHandler` explicitly
+  skips coupon creation for `price.Price == 0` with a comment addressing this exact
+  scenario, and only records a `ReferralRedemption` when a discount was actually
+  applied (so a Free-tier signup never even creates one, and never triggers a
+  referrer reward it has nothing to justify).
+- **Row 5** (Plan-change race vs. quota check) — confirmed the documented gap is
+  still the only one: `IPlanLimitService.InvalidateUsageCacheAsync` is write-through
+  (called right after `SaveChangesAsync` in the two quota-checked handlers), narrowing
+  staleness to the gap between two sequential requests; the two-truly-concurrent-reads
+  race is unchanged from what's already documented in the Decisions Log's "Plan usage
+  limits" entry — no new gap introduced by later features.
+- **Row 6** (OAuth + referral code) — see first-pass section above.
+- **Row 7** (Saved image + suspended studio) — `GetSavedPortfolioImagesHandler`
+  already builds a `studiosById` dictionary filtered to `IsActive` studios and drops
+  any saved image whose studio isn't in it, before ever building the response. Already
+  correct, no change needed.
+- **Row 8** (Reschedule + monthly quota) — see first-pass section above.
+- **Row 9** (Issuer detail convergence) — reasoned through against source rather than
+  live-seeded: `IssuerStudioDetailPage.tsx` null-guards every field that could be
+  absent for a Free/no-subscription studio (`sub?.trialExpiresAt ?? studio?.trialExpiresAt
+  ?? ""`, `Boolean(...)` gates on every conditional section). Not exercised with a
+  live seeded studio matching all four conditions simultaneously — flagged as
+  reasoned-through, not empirically verified, if a future pass wants to close that gap
+  for real.
+- **Row 10** (Rate limiting on OAuth/Instagram burst) — both OAuth endpoints already
+  carried `"auth"`; the Instagram callback gap is the same one fixed under 2.5 above.
+
+### Verification (Phase 2/3 pass)
+- `dotnet build` — clean, 0 errors.
+- `dotnet test` — 1181 unit + 293 integration, all green.
+- `pnpm tsc -b` — clean, 0 errors.
+
 ### Deferred items (with reason)
-- Full Phase 2 subsections 2.1, 2.2, 2.4–2.6, 2.8, 2.11 (beyond the quota-command and
-  RescheduleDialog-existence spot checks above), 2.12, and Phase 3 matrix rows other
-  than 6 and 8 — not independently re-audited to full depth this pass. Time was
-  prioritized on (a) restoring a genuinely broken `pnpm build` baseline, since nothing
-  else in the exit conditions is meaningful while that's red, and (b) the items the
-  audit prompt itself flagged as highest-risk (Instagram ownership, Plan/PlanPrice dead
-  fields, Free-tier caps, quota-command drift, OAuth+referral). A future pass should
-  work the remaining Phase 2/3 items against current source rather than assume this
-  entry covers them.
-- Issuer QA Pass reconstruction (Phase 1 item, documentation gap) — not done this pass.
+- Issuer QA Pass reconstruction (Phase 1 item, documentation gap) — still not done;
+  unrelated to the Phase 2/3 scope of this session.
 - `FeedbackDialog.test.tsx` — 2 of 1516 frontend tests failed under full-suite
   parallel load, passed 10/10 in isolation (`npx vitest run` on the file alone).
   Consistent with the already-documented flaky-under-parallel-load pattern
   (see Artist QA Pass note above); not investigated further.
+- Phase 3 row 9 — reasoned through against source, not empirically verified with a
+  live seeded studio (see above).
+- Referral-codes-per-studio section on `IssuerStudioDetailPage` — flagged as a
+  possible product gap, not fixed (would be new feature work, not a bug fix).

@@ -5,6 +5,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Auth.Commands;
@@ -15,8 +16,9 @@ public record UpdateClientStudioNotificationPreferencesCommand(
     : IRequest<Unit>;
 
 public class UpdateClientStudioNotificationPreferencesHandler(
-    IAppDbContext db,
-    ICurrentUser  currentUser)
+    IAppDbContext    db,
+    IIdentityService identity,
+    ICurrentUser     currentUser)
     : IRequestHandler<UpdateClientStudioNotificationPreferencesCommand, Unit>
 {
     private static readonly string[] ClientTypeNames =
@@ -31,6 +33,10 @@ public class UpdateClientStudioNotificationPreferencesHandler(
     public async Task<Unit> Handle(
         UpdateClientStudioNotificationPreferencesCommand command, CancellationToken ct)
     {
+        IReadOnlyList<Guid> tenantIds = await identity.GetTenantIdsAsync(currentUser.UserId, ct);
+        if (!tenantIds.Contains(command.StudioId))
+            throw new NotFoundException("Studio membership", command.StudioId);
+
         List<ClientNotificationPreference> existing = await db
             .ClientNotificationPreferences
             .Where(p => p.UserId == currentUser.UserId && p.StudioId == command.StudioId)

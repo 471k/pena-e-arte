@@ -20,8 +20,11 @@ public class InstagramSyncJob(
 {
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
+        // Skip connections belonging to suspended studios — a suspended tenant shouldn't
+        // keep burning Instagram API quota on a nightly sync nobody can see the result of
+        // (the public read path already hides these posts via GetPublicArtistInstagramPostsQuery).
         List<InstagramConnection> connections = await db.InstagramConnections
-            .Where(c => c.IsActive)
+            .Where(c => c.IsActive && db.Studios.Any(s => s.Id == c.StudioId && s.IsActive))
             .ToListAsync(ct);
 
         logger.LogInformation(

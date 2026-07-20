@@ -19,9 +19,25 @@ public class InstagramSyncJobTests
 
     private InstagramSyncJob CreateSut() => new(_db, _instagram, _encryptor, _logger);
 
+    private async Task SeedStudio(Guid studioId, bool isActive = true)
+    {
+        _db.Studios.Add(new Studio
+        {
+            Id         = studioId,
+            Name       = "Test Studio",
+            Slug       = "studio-" + studioId.ToString("N")[..8],
+            City       = "Lisboa",
+            OwnerEmail = "owner@studio.com",
+            IsActive   = isActive,
+        });
+        await _db.SaveChangesAsync();
+    }
+
     private async Task<InstagramConnection> SeedConnection(
         DateTime? tokenExpiresAt = null, bool isActive = true)
     {
+        await SeedStudio(_studioId);
+
         InstagramConnection conn = new()
         {
             StudioId        = _studioId,
@@ -136,9 +152,11 @@ public class InstagramSyncJobTests
     {
         await SeedConnection();
         Guid otherArtistId = Guid.NewGuid();
+        Guid otherStudioId = Guid.NewGuid();
+        await SeedStudio(otherStudioId);
         _db.InstagramConnections.Add(new InstagramConnection
         {
-            StudioId        = Guid.NewGuid(),
+            StudioId        = otherStudioId,
             ArtistId        = otherArtistId,
             InstagramUserId = "ig-user-2",
             Username        = "other_artist",
@@ -158,5 +176,23 @@ public class InstagramSyncJobTests
         await CreateSut().ExecuteAsync();
 
         _db.InstagramPosts.Should().ContainSingle(p => p.ArtistId == otherArtistId);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_StudioSuspended_SkipsConnectionAndDoesNotCallInstagramApi()
+    {
+        InstagramConnection conn = await SeedConnection();
+        conn.StudioId = _studioId; // seeded active above; now suspend it
+        Studio studio = _db.Studios.Single(s => s.Id == _studioId);
+        studio.IsActive = false;
+        await _db.SaveChangesAsync();
+
+        _encryptor.Decrypt("encrypted-token").Returns("plain-token");
+
+        await CreateSut().ExecuteAsync();
+
+        await _instagram.DidNotReceive().GetMediaAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _db.InstagramPosts.Should().BeEmpty();
+        _db.InstagramConnections.Single(c => c.ArtistId == _artistId).LastSyncedAt.Should().BeNull();
     }
 }
