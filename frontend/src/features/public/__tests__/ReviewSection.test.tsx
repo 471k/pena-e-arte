@@ -210,6 +210,8 @@ describe("ReviewSection — Verified client badge", () => {
       body: "Fantastic work",
       createdAt: "2026-06-01T00:00:00Z",
       isVerifiedBooking: true,
+      ownerResponse: null,
+      ownerResponseAt: null,
     }];
     renderSection();
     expect(screen.getByText(/verified client/i)).toBeInTheDocument();

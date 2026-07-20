@@ -138,31 +138,15 @@ public class IndustryReportsIntegrationTests(DatabaseFixture fixture)
         json.Should().NotContain("user_id");
     }
 
-    [Fact]
-    public async Task IndustryReportJob_Run_SmallCohort_MetricsAreNull()
-    {
-        await SeedActiveStudios(count: 3); // below MinCohortSize (10)
-
-        byte[]? captured = null;
-        IR2Service r2 = Substitute.For<IR2Service>();
-        r2.When(x => x.UploadAsync(
-                Arg.Any<string>(), Arg.Any<byte[]>(),
-                Arg.Any<string>(), Arg.Any<CancellationToken>()))
-            .Do(c => captured = c.ArgAt<byte[]>(1));
-
-        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        IndustryReportJob job = new(db, r2);
-        await job.RunAsync();
-
-        string json = Encoding.UTF8.GetString(captured!);
-        using JsonDocument doc = JsonDocument.Parse(json);
-
-        JsonElement metrics = doc.RootElement.GetProperty("metrics");
-        metrics.GetProperty("avg_appointments_per_studio_per_month").ValueKind.Should().Be(JsonValueKind.Null);
-        metrics.GetProperty("peak_booking_hour_utc").ValueKind.Should().Be(JsonValueKind.Null);
-        metrics.GetProperty("trial_to_paid_conversion_rate").ValueKind.Should().Be(JsonValueKind.Null);
-        metrics.GetProperty("avg_retention_months").ValueKind.Should().Be(JsonValueKind.Null);
-    }
+    // Cohort-suppression threshold behavior (metrics null below MinCohortSize) is
+    // covered deterministically at the unit level against IndustryReportJob.BuildDocument
+    // directly (IndustryReportJobTests.BuildDocument_CohortBelowMinimum_AllMetricsNull /
+    // _CohortAtMinimum_MetricsPresent). An integration-level equivalent asserting an
+    // absolute "cohort < 10" outcome is not reliable here: DatabaseFixture provisions one
+    // shared database for the whole "Database" collection with no per-test reset, and by
+    // 2026-07-20 well over 10 other integration tests across the suite create their own
+    // SubscriptionStatus.Active studios in that same database, so the real cohort count
+    // this job sees is cumulative across the full run, not just this test's own seed data.
 
     // ── Helpers ───────────────────────────────────────────────────────────────────
 

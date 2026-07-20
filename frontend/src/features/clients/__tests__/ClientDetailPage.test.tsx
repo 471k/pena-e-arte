@@ -112,6 +112,7 @@ const CONSENT_FORM: ConsentFormResponse = {
   id:            "consent-001",
   studioId:      "stud-0001",
   clientId:      CLIENT_ID,
+  clientName:    "Test Client",
   appointmentId: "appt-001",
   fileUrl:       null,
   signatureData: "sig",

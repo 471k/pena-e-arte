@@ -320,10 +320,10 @@ export function BillingPage() {
             {sub.status === "Trialing" && (
               <div className="space-y-1">
                 <p className="text-sm">
-                  Trial ends <span className="font-medium">{formatDate(sub.trialExpiresAt)}</span>
+                  Trial ends <span className="font-medium">{formatDate(sub.trialExpiresAt ?? sub.currentPeriodEnd)}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {daysUntil(sub.trialExpiresAt)} day{daysUntil(sub.trialExpiresAt) !== 1 ? "s" : ""} remaining
+                  {daysUntil(sub.trialExpiresAt ?? sub.currentPeriodEnd)} day{daysUntil(sub.trialExpiresAt ?? sub.currentPeriodEnd) !== 1 ? "s" : ""} remaining
                 </p>
               </div>
             )}
