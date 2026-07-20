@@ -292,4 +292,45 @@ describe("IssuerStudioDetailPage", () => {
       expect(await screen.findByText(/trial expiry/i)).toBeInTheDocument();
     });
   });
+
+  // Phase 3 row 9 of the full-app master audit: this is the single point in the app
+  // where Free plan tier + referral-code conversion + OAuth-registered owner all
+  // converge on one read. OAuth vs password registration produces identical Studio/
+  // Subscription/Client rows (see RegisterOAuthUserHandler audit note), and a
+  // referral-code redemption never appears on this page (no referral section exists
+  // here), so the two conditions actually exercised by this page's own data are: an
+  // Active subscription on a Free-tier plan whose TrialExpiresAt has already been
+  // cleared to null (CreateSubscriptionHandler always nulls it on activation,
+  // including for price == 0 plans) and whose CurrentPeriodEnd is the 50-year
+  // far-future sentinel rather than a real renewal date.
+  describe("when studio is on a converted Free-tier subscription (Phase 3 row 9)", () => {
+    beforeEach(() => {
+      server.use(
+        http.get("http://localhost/api/v1/platform/subscriptions", () =>
+          HttpResponse.json([{
+            ...SUB,
+            status:           "Active",
+            planName:         "Free",
+            trialExpiresAt:   null,
+            currentPeriodEnd: new Date(Date.now() + 50 * 365 * 86_400_000).toISOString(),
+            isSuspended:      false,
+          }]),
+        ),
+      );
+    });
+
+    it("renders without crashing and shows the Free plan name and Active badge", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(screen.getByText("Free")).toBeInTheDocument();
+      expect(screen.getAllByText("Active").length).toBeGreaterThan(0);
+    });
+
+    it("renders no 'undefined' or 'NaN' text anywhere on the page", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(document.body.textContent).not.toMatch(/undefined/i);
+      expect(document.body.textContent).not.toContain("NaN");
+    });
+  });
 });

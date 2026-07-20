@@ -1,15 +1,18 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { toast } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { CashDepositConfirmButton } from "@/features/payments/components/CashDepositConfirmButton";
 import type { PaymentResponse } from "@/features/payments/payment.types";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -37,7 +40,7 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => { server.resetHandlers(); cleanup(); vi.clearAllMocks(); });
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -114,6 +117,28 @@ describe("CashDepositConfirmButton", () => {
     await user.click(screen.getByRole("button", { name: /yes/i }));
 
     expect(capturedId).toBe(paymentId);
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cash payment confirmed."));
+  });
+
+  it("a failed confirm shows an error toast, not a silent no-op", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/payments/:id/cash/confirm", () =>
+        HttpResponse.json(
+          { message: "This cash payment has already been confirmed." },
+          { status: 422 },
+        )),
+    );
+    const user = userEvent.setup();
+    renderButton();
+
+    await user.click(screen.getByRole("button", { name: /mark cash received/i }));
+    await user.click(screen.getByRole("button", { name: /yes/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "This cash payment has already been confirmed.",
+      ));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("cancel returns to initial state without calling API", async () => {

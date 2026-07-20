@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -168,7 +169,15 @@ export function ArtistListPage() {
                   className="h-6 text-xs"
                   disabled={isDeletingArtist}
                   onClick={async () => {
-                    await deleteArtist(a.id);
+                    try {
+                      await deleteArtist(a.id).unwrap();
+                      toast.success("Artist deleted.");
+                    } catch (err: unknown) {
+                      const message =
+                        (err as { data?: { message?: string } } | undefined)?.data?.message
+                        ?? "Failed to delete artist.";
+                      toast.error(message);
+                    }
                     setConfirmDeleteId(null);
                   }}
                 >

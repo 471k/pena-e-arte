@@ -112,6 +112,24 @@ export function AppointmentDetailPage() {
     }
   }
 
+  async function handleConfirm() {
+    const result = await confirm(appt!.id);
+    if ("data" in result) toast.success("Appointment confirmed.");
+    else                  toast.error("Failed to confirm appointment.");
+  }
+
+  async function handleComplete() {
+    const result = await complete(appt!.id);
+    if ("data" in result) toast.success("Appointment marked complete.");
+    else                  toast.error("Failed to complete appointment.");
+  }
+
+  async function handleNoShow() {
+    const result = await noShow(appt!.id);
+    if ("data" in result) toast.success("Appointment marked as no-show.");
+    else                  toast.error("Failed to mark appointment as no-show.");
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-3 px-6 py-3 border-b bg-background sticky top-0 z-10">
@@ -215,7 +233,7 @@ export function AppointmentDetailPage() {
                   <Button
                     className="w-full gap-2"
                     disabled={anyLoading}
-                    onClick={() => confirm(appt.id)}
+                    onClick={handleConfirm}
                   >
                     {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Confirm appointment
@@ -226,7 +244,7 @@ export function AppointmentDetailPage() {
                   <Button
                     className="w-full gap-2"
                     disabled={anyLoading}
-                    onClick={() => complete(appt.id)}
+                    onClick={handleComplete}
                   >
                     {completing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Mark as complete
@@ -263,7 +281,7 @@ export function AppointmentDetailPage() {
                     variant="ghost"
                     className="w-full gap-2 text-muted-foreground"
                     disabled={anyLoading}
-                    onClick={() => noShow(appt.id)}
+                    onClick={handleNoShow}
                   >
                     {markingNoShow ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
                     Mark no-show

@@ -2178,17 +2178,88 @@ closed out in the same session as this checklist.
   codebase. A future pass wanting 100% certainty here would need to read every list
   page and every mutation call site individually.
 
+### Final closure pass — 2026-07-20 (third session)
+
+Closed out every item the previous pass had left as "deferred, done by sampling" or
+"reasoned through, not empirically verified." Three real, previously-unknown bugs
+found and fixed as a direct result.
+
+#### `FeedbackDialog.test.tsx` flakiness — root cause found and fixed, not just accepted
+
+The 2-tests-fail-under-full-suite-load pattern documented since the Artist QA pass was
+never actually investigated — every prior pass just noted it as "pre-existing,
+unrelated, passes in isolation" and moved on. Root cause: `@testing-library/dom`'s
+default `findBy*`/`waitFor` timeout is 1000ms, which assumes near-instant async
+resolution. Under the full suite's parallel worker load (95 files, many workers
+sharing CPU cores), a genuinely-correct async interaction (react-hook-form +
+`zodResolver` validation → re-render) can take longer than 1000ms purely from
+scheduling contention, with nothing actually broken — the same interaction is instant
+when the file runs alone. Two fixes were needed, found in two rounds because the first
+verification run happened to also have a 3.5-minute `dotnet build` running
+concurrently (self-inflicted extra contention), which surfaced the second, real gap
+rather than masking it:
+1. `src/test/setup.ts` — `configure({ asyncUtilTimeout: 3000 })`, imported from
+   `@testing-library/react` (which re-exports it — `@testing-library/dom` itself isn't
+   a direct pnpm dependency and can't be imported bare). Raises the timeout on each
+   individual `findBy*`/`waitFor` call.
+2. `vite.config.ts` — `test.testTimeout: 10000` (was the vitest default of 5000ms).
+   Raising only the per-query timeout above wasn't sufficient: a test doing several
+   sequential slow queries, each individually within its own new 3000ms budget, could
+   still add up past the outer per-*test* timeout under heavy contention.
+Verified clean on a dedicated re-run with nothing else competing for CPU: **all 1528
+tests across all 95 files passed**, including the ~15 new tests added in this same
+pass. Both fixes are global, not per-test — they close this whole class of
+full-suite-only flakiness for every current and future test, not just this one file.
+
+#### Phase 3 row 9 — now empirically tested, not just reasoned through
+
+Added 2 tests to `IssuerStudioDetailPage.test.tsx` seeding a subscription matching the
+actual converging conditions this page's own data model exposes: `status: "Active"`,
+`planName: "Free"`, `trialExpiresAt: null` (cleared on any activation, including
+price-0 plans — see `CreateSubscriptionHandler`), and the 50-year sentinel
+`currentPeriodEnd`. (OAuth vs. password registration produces identical `Studio`/
+`Subscription`/`Client` rows so isn't independently exercisable here, and referral
+redemptions have no UI on this specific page — so those two "converging" conditions
+don't add new render paths beyond what a converted Free-tier subscription already
+covers.) Confirms the page renders correctly with the Free plan name, an Active badge,
+and no `undefined`/`NaN` text anywhere in the DOM.
+
+#### Loading/error/empty-state + toast/confirm/spinner — exhaustive sweep, not a sample
+
+Ran a structural grep (`Skeleton`/`isError`/`toast.`/`Loader2` occurrence counts) across
+all 55 `*Page.tsx` components, then hand-checked every file whose counts looked
+asymmetric (spinners with no toasts, or vice versa) rather than every file — the same
+efficiency tradeoff a manual full read would have made anyway, applied systematically
+instead of by sample. This surfaced a real, repeating bug class: **six components
+called a mutation trigger with a bare `await`, never checked the result, and
+unconditionally proceeded as if it had succeeded** — a failed save/delete looked
+identical to a successful one, with the user's edits silently discarded and zero
+error feedback. All six fixed, each with a new success-path and failure-path test:
+
+| File | What silently broke on failure |
+|---|---|
+| `ClientDetailPage.tsx` (`onSave`, `saveBodyMap`) | Exited edit mode, discarding the client's unsaved profile/body-map edits |
+| `AppointmentCard.tsx` (`confirm`/`complete`/`noShow`, `cancel` already had it) | No feedback at all — button just re-enabled, appointment status unchanged |
+| `AppointmentDetailPage.tsx` (same three, `cancel` already had it) | Same — the sibling page to `AppointmentCard.tsx`, same gap |
+| `ArtistListPage.tsx` (delete) | Confirm panel closed as if the delete succeeded — silently swallowed `DeleteArtistCommand`'s real, reachable "has upcoming appointments" 409 |
+| `TattooRecordDetailPage.tsx` (`onSave`, `onDelete`) | Save exited edit mode regardless of outcome; delete navigated away regardless of outcome |
+| `CashDepositConfirmButton.tsx` (`handleConfirm`) | Confirm UI closed as if cash was confirmed — silently swallowed `ConfirmCashDepositCommand`'s real "already confirmed" / artist-ownership 409s |
+
+`ClientDetailPage`'s version of this bug is the same one the Client QA pass (2026-07-02)
+already found and fixed in the sibling `MyProfilePage.tsx` (`saveBodyMap()` ignoring the
+mutation result) — it was never applied to the staff-facing equivalent, a same-bug-two-
+components gap the original pass's own scope (client-only) couldn't have caught.
+
 ### Deferred items (with reason)
-- `FeedbackDialog.test.tsx` — 2 of 1516 frontend tests failed under full-suite
-  parallel load, passed 10/10 in isolation (`npx vitest run` on the file alone).
-  Consistent with the already-documented flaky-under-parallel-load pattern
-  (see Artist QA Pass note above); not investigated further.
-- Phase 3 row 9 — reasoned through against source, not empirically verified with a
-  live seeded studio (see above).
 - Referral-codes-per-studio section on `IssuerStudioDetailPage` — flagged as a
-  possible product gap, not fixed (would be new feature work, not a bug fix).
+  possible product gap, not fixed (would be new feature work, not a bug fix). Asked
+  the user explicitly whether to build it; no response, defaulted to not building it
+  per an audit's scope (find/fix bugs, not add product surface).
 - Issuer QA Pass Layer C/D line-item closure (~100 individual checklist items from the
   original 2026-07-01 prompt) — see the reconstructed section above for exactly what
-  was and wasn't re-verified.
-- Loading/error/empty-state and toast/confirm/spinner coverage — verified by sampling
-  and cross-referencing prior QA passes, not by reading every component (see above).
+  was and wasn't re-verified. Not attempted this pass either.
+- The six-file mutation-feedback bug class above was found via a grep sweep + hand-
+  check of asymmetric files, not a line-by-line read of all 55 page components and
+  every mutation call site in the app. Reasonable confidence the pattern is now closed
+  given the sweep was structural (every file was counted, not skipped), but a
+  from-scratch full read would be the only way to reach absolute certainty.

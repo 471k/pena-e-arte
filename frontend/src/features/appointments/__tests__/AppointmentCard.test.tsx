@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { toast } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
@@ -14,6 +15,8 @@ import { AppointmentCard } from "@/features/appointments/components/AppointmentC
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import { Role } from "@/shared/types/roles";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -48,7 +51,7 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => { server.resetHandlers(); cleanup(); vi.clearAllMocks(); });
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -110,5 +113,33 @@ describe("AppointmentCard", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.queryByTestId("detail-page")).not.toBeInTheDocument();
+  });
+
+  it("confirming a pending appointment shows a success toast", async () => {
+    server.use(
+      http.patch("http://localhost/api/v1/appointments/appt-001/confirm", () =>
+        HttpResponse.json({ ...APPT_PENDING, status: "Confirmed" })),
+    );
+    const user = userEvent.setup();
+    renderCard(APPT_PENDING, Role.Artist);
+
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Appointment confirmed."));
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("a failed confirm shows an error toast, not a silent no-op", async () => {
+    server.use(
+      http.patch("http://localhost/api/v1/appointments/appt-001/confirm", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderCard(APPT_PENDING, Role.Artist);
+
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to confirm appointment."));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { toast } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import { clientsApi } from "@/features/clients/clientsApi";
@@ -14,6 +15,8 @@ import type { ArtistResponse } from "@/features/artists/artistsApi";
 import type { TattooRecordResponse } from "@/features/clients/clientsApi";
 import { TattooRecordDetailPage } from "@/features/clients/components/TattooRecordDetailPage";
 import { Role } from "@/shared/types/roles";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -66,7 +69,7 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); currentRecord = RECORD; });
+afterEach(() => { server.resetHandlers(); cleanup(); currentRecord = RECORD; vi.clearAllMocks(); });
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -198,6 +201,22 @@ describe("TattooRecordDetailPage", () => {
     await user.click(screen.getByRole("button", { name: /save changes/i }));
     expect(await screen.findByText("Updated rose design")).toBeInTheDocument();
     expect(screen.queryByText("Edit Record")).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith("Tattoo record saved.");
+  });
+
+  it("a failed save shows an error toast and stays in edit mode", async () => {
+    server.use(
+      http.patch("http://localhost/api/v1/clients/:clientId/tattoos/:tattooId", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Artist);
+    await screen.findByText("Rose on forearm");
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to save tattoo record."));
+    expect(screen.getByText("Edit Record")).toBeInTheDocument();
   });
 
   // ── Delete flow ──────────────────────────────────────────────────────────────
@@ -227,5 +246,20 @@ describe("TattooRecordDetailPage", () => {
     await user.click(screen.getByRole("button", { name: /delete/i }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(await screen.findByTestId("client-page")).toBeInTheDocument();
+  });
+
+  it("a failed delete shows an error toast and does not navigate away", async () => {
+    server.use(
+      http.delete("http://localhost/api/v1/clients/:clientId/tattoos/:tattooId", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Artist);
+    await screen.findByText("Rose on forearm");
+    await user.click(screen.getByRole("button", { name: /delete/i }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to delete tattoo record."));
+    expect(screen.queryByTestId("client-page")).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,15 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
+import { configure } from "@testing-library/react";
+
+// Default findBy*/waitFor timeout (1000ms) assumes near-instant async resolution.
+// Under the full suite's parallel worker load, CPU contention can genuinely push a
+// correct async validation/re-render (e.g. react-hook-form + zodResolver) past that
+// default even though nothing is actually broken — the same interaction is instant
+// when the file runs in isolation. Raising this globally fixes that whole class of
+// full-suite-only flakiness rather than bumping timeouts test-by-test as each one
+// is hit by it.
+configure({ asyncUtilTimeout: 3000 });
 
 // Mock SignalR globally — prevents real WebSocket connections in JSDOM.
 // HubConnectionBuilder.build() throws "Cannot resolve '/hubs/schedule'" without this.
