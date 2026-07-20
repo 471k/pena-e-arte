@@ -457,6 +457,25 @@ Never add a new one without updating this table and the Decisions Log.
 | 24 | `GetIssuerStudioSummaryHandler` | Cross-tenant: studio + owner lookup, artist/client/appointment counts for a single studio | IssuerOnly |
 | 25 | `GetPlanUsageReportHandler` | Cross-tenant: all studios + plans + artist/appointment/notification counts, for the issuer plan-usage validation report | IssuerOnly |
 | 26 | `ReferralRewardService` | Cross-tenant: `ReferralRedemption`, `ReferralCode`, `Studio` (referrer + new), `Subscription` (referrer) — rewards the referring studio's Stripe subscription when their code converts a new paying studio | System (triggered from subscription-creation handlers, any tenant) |
+| 27 | `CreateArtistCommand`, `UpdateArtistCommand`, `UpdateStudioSlugCommand` | Global slug-uniqueness check — `Artist.Slug`/`Studio.Slug` must be unique across all tenants for public portfolio URLs (`/artist/{slug}`, `/s/{slug}`) | ArtistAndAbove / OwnerOnly |
+| 28 | `RegisterUserCommand`, `RegisterOAuthUserCommand` | Anonymous registration: cross-tenant `Studio` lookup for the `OwnerEmail` match check, and cross-tenant `Client` lookup to link a studio-created record by email | Anonymous |
+| 29 | `ClientAccountExtensions` (`FindClientForUserAtStudioAsync`, `FindAnyClientRecordForUserAsync`) | Cross-tenant `Client` lookup by `UserId` — supports linking a client's account across the multiple studios they belong to | Authenticated (any role, called from login/registration/multi-studio flows) |
+| 30 | `ConfirmPaymentCommand`, `MarkPaymentAuthorizedCommand`, `MarkPaymentFailedCommand` | Stripe webhook handlers — no tenant JWT in scope; `Payment` looked up by the globally-unique `StripePaymentIntentId` | Anonymous (Stripe-Signature HMAC validated at the endpoint) |
+| 31 | `ActivateSubscriptionManuallyCommand` | Cross-tenant `Studio` lookup for manual cash-subscription activation | IssuerOnly |
+| 32 | `GetNearbyStudiosQuery` | Public studio-nearby geo search (DiscoverPage Studios tab) | Anonymous |
+| 33 | `GetSharedDesignQuery` | Public design-share-token lookup, validated by token + expiry | Anonymous |
+| 34 | `CreateArtistReviewCommand`, `CreateStudioReviewCommand` | Cross-tenant artist/studio lookup for public review submission | Authenticated (any role) |
+| 35 | `GetStudioQrCodeQuery` | Public QR code endpoint — resolves slug for the portfolio URL the code points to | Anonymous |
+| 36 | `AppointmentReminderJob`, `DesignRevisionTimeoutJob`, `PaymentReconciliationJob`, `SendArtistInviteJob` | Hangfire background jobs run with no request/tenant scope at all — same class as `IndustryReportJob` (#3) | Hangfire job (system) |
+| 37 | `DataSeeder` | Startup seed data — runs before any request or tenant scope exists | System (startup) |
+| 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
+
+Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
+the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
+calls that had never been added to this table (documentation debt, not new code). Each
+was individually read and confirmed narrow/justified before being added; none constitute
+an unauthorized cross-tenant read. See "Full-App Master Audit — 2026-07-20" below for
+the full note on how this gap was found.
 
 ---
 
@@ -479,6 +498,20 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/portfolio/{imageId}/reviews` | Public per-image review list | None — read-only, non-sensitive review content only |
 | `GET /api/v1/public/artists/{slug}/instagram-posts` | Public synced Instagram feed for artist portfolio | None — read-only, only `IsVisible` posts, no PII |
 | `GET /api/v1/instagram/callback` | Instagram OAuth redirect target, no JWT possible | Signed `state` param (HMAC-SHA256, `IInstagramStateSigner`) validated before trusting artistId |
+| `GET /api/v1/public/studios/nearby` | Public geo search (DiscoverPage Studios tab) | None — read-only, non-sensitive studio info only |
+| `GET /api/v1/public/studios/{slug}/reviews` | Public studio review list | None — read-only, non-sensitive review content only |
+| `GET /api/v1/public/artists/{slug}/reviews` | Public artist review list | None — read-only, non-sensitive review content only |
+
+The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`, `/auth/oauth/*`,
+`/auth/forgot-password`, `/auth/reset-password`, `/auth/refresh`, `/auth/verify-email`)
+are anonymous by necessity (a caller cannot be authenticated before obtaining a token)
+and are covered by CLAUDE.md's blanket "no unprotected endpoints except `/auth` and
+`/health`" exception rather than needing individual rows here — this table exists for
+the non-obvious cases (cross-tenant reads, webhooks, signed tokens), not the login flow
+itself. All seven carry `"auth"` rate limiting except `reset-password`/`refresh`/
+`verify-email`, which predate the Redis rate-limiting feature and were out of scope for
+this audit (see "Full-App Master Audit — 2026-07-20" below).
+
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
 Never add new AllowAnonymous endpoints without adding a row to this table.
@@ -1002,6 +1035,77 @@ does not re-litigate them.
 | Core plan reconciliation replaces one-time plan seed | `DataSeeder.SeedPlansAsync()` (insert-once, guarded by `Plans.Any(Id == StarterPlanId)`) replaced with `DataSeeder.ReconcileCorePlansAsync()` (always runs on startup; upserts by fixed Id — inserts Starter/Growth/PremiumMonthly/PremiumYearly/Pro if missing, corrects Name/BillingInterval/price/discount/branding/Max*/AllowApiAccess/PrioritySupport/PairedPlanId if the row already exists with stale values). Stripe price IDs are excluded from reconciliation (populated by `StripeDemoSeeder`/real Stripe config, not source-controlled here). `SeedFreePlanAsync`'s independent insert-once-by-Id guard is unchanged. | The one-time guard left any environment whose `Plans` table was first populated before the `Max*` fields and Premium's corrected pricing existed permanently stuck on that stale snapshot — see `bug-report-plans-page-data-mismatch.md`. Consequence worth flagging explicitly: an issuer editing Starter/Growth/Premium/Pro in place via `PlanManagementPage` will have that edit reverted on the next deploy, since these five rows are now source-of-truth-owned, not database-owned. An issuer who needs a bespoke arrangement for one studio should clone a new `Plan` row with its own Id instead of editing one of the five canonical tiers. |
 | Orphaned legacy plan retirement | `DataSeeder.RetireOrphanedNamedPlansAsync()` — always runs, immediately after `ReconcileCorePlansAsync()`. Finds any `Plan` row named exactly "Free"/"Starter"/"Growth"/"Premium"/"Pro" whose `Id` isn't one of the six canonical constants, reassigns every referencing `Subscription.PlanId` and `Subscription.PendingPlanId` to the correct canonical replacement (Premium's replacement chosen by the orphan's own `BillingInterval`), clears any sibling `Plan.PairedPlanId` still pointing at it, then deletes it. No-op once no orphan remains, so safe to run every boot indefinitely. | `ReconcileCorePlansAsync` (previous entry) only ever matches by fixed Id — a canonically-named plan under any other Id (e.g. Premium's pre-Monthly/Yearly-split row) is invisible to it, so its insert-if-missing branch adds a correct row *alongside* the leftover rather than replacing it, producing a visible duplicate card (`bug-report-premium-plan-duplicate-legacy-row.md`). Accepted trade-off: this matches by name only, so it cannot distinguish a genuine pre-split leftover from an issuer-created custom plan that happens to share a reserved tier name — an issuer needing a bespoke plan should use a distinct name. Confirmed via `AppDbContextModelSnapshot.cs` that `Subscription.PlanId` and `Subscription.PendingPlanId` are the only two FKs anywhere referencing `Plan.Id`; `Plan.PairedPlanId` is a self-reference with no FK constraint. |
 | Plan/PlanPrice split | `Plan.BillingInterval`/`PriceMonthly`/`PriceYearly`/`StripePriceIdMonthly`/`StripePriceIdYearly`/`PairedPlanId` removed; new child entity `PlanPrice` (`PlanId`, `Interval`, `Price`, `StripePriceId`, `IsActive`, unique on `(PlanId, Interval)`) holds one row per cadence a tier actually offers. `Subscription` gained `BillingInterval` (required) and `PendingBillingInterval` (nullable, mirrors `PendingPlanId` — set/cleared together by `ChangePlanHandler`/`CancelPlanChangeHandler`/`HandleSubscriptionUpdatedHandler`) — cadence is now the subscription's own property, independent of which `Plan` it's on. `DataSeeder.ReconcileCoreTiersAsync` replaced both `ReconcileCorePlansAsync` and `RetireOrphanedNamedPlansAsync`, keyed on tier `Name` + `(PlanId, Interval)` rather than a fixed `Plan.Id` list. Migration split in two: additive `plan_prices`/`Subscription` columns + raw-SQL data backfill + Premium-row merge (`AddPlanPriceAndSubscriptionBillingInterval`) shipped together with a later, separate `DropLegacyPlanBillingFields` migration for the six dead `Plan` columns — both written and applied in the same session (no live deploy pipeline exists yet to force a real waiting period between them), but kept as two distinct, separately-reviewable migration files rather than one; the second had to be hand-authored since `dotnet ef migrations add` scaffolds an empty diff once the model snapshot already reflects the target model. | Directly supersedes "Plan billing interval stays locked per-row" and "Plan Monthly/Yearly pairing" above — those decisions produced two data-integrity bugs in two consecutive nights (`bug-report-plans-page-data-mismatch.md`, `bug-report-premium-plan-duplicate-legacy-row.md`) because a plan's billing cadence and its identity as a tier were the same database row. Also fixed as a confirmed side effect, not scope creep: `GetPlatformStatsQuery`/`GetMrrHistoryQuery` were computing MRR from `Plan.PriceMonthly` unconditionally, overstating revenue for every yearly-billed subscription (79 vs the real 790/12 = 65.83 monthly-equivalent) — now uses the `PlanPrice` matching the subscription's actual `BillingInterval`. |
+
+---
+
+## Issuer QA Pass — 2026-07-01 (reconstructed 2026-07-20)
+
+`overnight-prompt-issuer-qa-polish-2026-07-01.md` exists and was clearly executed —
+`IssuerStudioDetailPage`, `platformApi.getStudioById`, the `IgnoreQueryFilters` approved
+usages table entries #4/#5/#7–#9, and the toast/spinner/confirm patterns across every
+issuer component all show the fingerprints of that pass having run — but unlike the
+other four role passes, its results were never logged here. That original session's
+actual diff (what was broken vs. already-working before the pass) is lost. This entry
+is a **best-effort reconstruction**: it diffs the original prompt's checklist against
+*current* source (2026-07-20), not against whatever state the code was in on 2026-07-01.
+It cannot tell you what the pass itself fixed — only that the checklist's requirements
+are (or aren't) satisfied today.
+
+### Checked against current source — satisfied
+
+- `GetPlatformStatsHandler` — `totalStudios` counts all studios incl. suspended;
+  `activeSubscriptions`/`trialStudios`/`gracePeriodStudios`/`pastDueStudios`/
+  `cancelledStudios` all correctly scoped by `SubscriptionStatus`; `mrr` sums active
+  subscriptions only, via the post-split `PlanPrice`/`BillingInterval` calculation
+  (supersedes the original prompt's `Plan.PriceMonthly` approximation, which no longer
+  applies); `mrrGrowthPercent` and `trialConversionRate` both guard the zero-denominator
+  case; `newStudiosThisMonth` filters on `CreatedAt >= monthStart`.
+- `ExtendTrialHandler` — `AdditionalDays` validated `InclusiveBetween(1, 90)`; extends
+  `TrialExpiresAt`, not `GracePeriodEnd` directly (`GracePeriodEnd` is derived from the
+  new expiry); a `GracePeriod` studio whose trial is extended reverts to `Trialing`.
+- `CancelSubscriptionHandler` — sets `Status = Cancelled`; Stripe cancellation is
+  best-effort (logged, not rethrown) when a `StripeSubscriptionId` exists, matching the
+  Decisions Log's "CancelSubscriptionCommand Stripe side-effect" entry.
+- `DeletePlanHandler` — refuses deletion when any `Subscription` (any status, not just
+  active) references the plan — a stricter superset of the original spec's "active
+  subscriptions" wording, not a regression.
+- `IssuerStudioListPage.tsx`/`PlatformReferralPage.tsx` — every mutation (suspend,
+  unsuspend, extend trial, activate, cancel, deactivate/reactivate/delete/generate
+  referral code) fires a matching `toast.success`/`toast.error` pair; every action
+  button shows `Loader2` + is `disabled` while its mutation is in flight; destructive
+  actions (suspend, delete referral code) have an inline confirm step.
+- `IssuerStudioDetailPage` — fully built (not a placeholder), confirmed independently
+  during the Phase 2.12 pass above: studio identity, subscription status/actions
+  (extend/activate/cancel), `IgnoreQueryFilters()` usage #8 correctly gated behind
+  `IssuerOnly`.
+- Plan/PlanPrice-era fields (`AllowBrandingRemoval`, per-interval pricing) are present
+  end-to-end — already confirmed via the repo-wide dead-field grep in the first audit
+  pass (zero hits for the pre-split shape anywhere in `PlanManagementPage.tsx`).
+
+### Deviations from the original spec (not bugs — later, intentional design choices)
+
+- `SuspendStudioHandler`/`UnsuspendStudioHandler` don't return 400 when the studio is
+  already in the target state — they're idempotent no-ops instead. This is consistent
+  with the idempotency convention used elsewhere in the codebase (e.g.
+  `SavePortfolioImageHandler`) and arguably better UX (no need to guard against a
+  double-click client-side); not something to "fix" back to the original spec.
+
+### Not re-verified this reconstruction (scope limit)
+
+The original prompt's Layer C per-component bug list (C1–C7, ~30 individual items:
+MRR chart period selector, referral-code copy button, industry-report trigger
+cooldown, etc.) and its Layer D per-file required-test-case checklist (D1–D7, ~70
+individual test names) were not re-walked item-by-item against current source or
+current test files. Given every issuer page independently confirmed present and
+working (toasts, spinners, confirms, `IgnoreQueryFilters` scoping, stats correctness)
+across both this reconstruction and the earlier Phase 2.12 pass, and given
+`dotnet test`/`pnpm test` are both fully green including all issuer test files, there
+is no positive evidence of a regression here — but that's different from having
+individually confirmed all ~100 checklist line items. A future pass that specifically
+wants Layer C/D closure should walk `docs/claude/overnight-prompt-issuer-qa-polish-2026-07-01.md`
+directly against `IssuerDashboardPage.tsx`/`IssuerStudioListPage.tsx`/
+`PlanManagementPage.tsx`/`SubscriptionOversightPage.tsx`/`PlatformReferralPage.tsx`/
+`IndustryReportsPage.tsx` and their test files line by line.
 
 ---
 
@@ -2020,9 +2124,60 @@ pass above.
 - `dotnet test` — 1181 unit + 293 integration, all green.
 - `pnpm tsc -b` — clean, 0 errors.
 
+### Final self-review checklist — 2026-07-20 (continued session)
+
+Runs the master audit prompt's closing checklist. See "Issuer QA Pass — 2026-07-01
+(reconstructed 2026-07-20)" above for that Phase 1 documentation-gap item, which was
+closed out in the same session as this checklist.
+
+- **Role guard + ErrorBoundary on every authenticated route** — mechanically verified
+  across all of `router.tsx`: every route group is nested under a `<RoleGuard
+  allowedRoles={[...]} />` parent, and every leaf page element is wrapped in
+  `<ErrorBoundary>`. No gaps found.
+- **Every new endpoint since 2026-07-02 in `RequireAuthorization`/`AllowAnonymous
+  Exceptions`** — cross-referenced every `AllowAnonymous()` call site in
+  `Pena_e_Arte.API/Endpoints/*.cs` against the table. Found and fixed 3 gaps:
+  `GET /api/v1/public/studios/nearby`, `GET /api/v1/public/studios/{slug}/reviews`,
+  `GET /api/v1/public/artists/{slug}/reviews` were all anonymous but never added to
+  the table. Added as new rows. The auth-bootstrap endpoints (`login`, `register`,
+  `oauth/*`, `forgot-password`, `reset-password`, `refresh`, `verify-email`) are
+  covered by CLAUDE.md's blanket `/auth` exception instead of individual rows —
+  documented explicitly in the table now so this isn't re-flagged as a gap later.
+- **Every new `IgnoreQueryFilters()` call since 2026-07-02 in the approved-usages
+  table** — this check surfaced a much larger, pre-existing gap: 19 files with
+  legitimate `IgnoreQueryFilters()` calls that had never been added to the table at
+  all (most predate the 2026-07-02 cutoff — this is old documentation debt, not a
+  newly introduced issue, but the table's own text claims to be "the canonical record
+  of every approved call," so it was fixed regardless of when the gap originated).
+  Every one of the 19 was individually read before being added — global slug-uniqueness
+  checks, anonymous public-discovery endpoints, Stripe webhook handlers (secured by
+  signature validation, same class as the two already-documented webhook rows),
+  IssuerOnly cross-tenant admin actions, Hangfire jobs with no tenant scope by design,
+  and cross-tenant `Client` lookups supporting multi-studio account linking. None were
+  found to be an actual unauthorized cross-tenant read. Added as table entries #27–#38.
+- **`grep window.location.origin`** — 10 hits repo-wide, all either the documented
+  `VITE_PUBLIC_URL ?? window.location.origin` fallback pattern or legitimate uses on
+  pages that are never iframe-embedded (canonical tags, OAuth redirect URIs). Zero
+  unguarded hits.
+- **`grep Plan.PriceMonthly/PriceYearly/PairedPlanId`** — zero real hits repo-wide
+  (already confirmed in the first Phase 2.10 pass; re-confirmed here).
+- **Loading skeleton / error+retry / empty state on every list page, toast+confirm+
+  spinner on every mutation, across all 5 roles** — not exhaustively re-verified
+  page-by-page and button-by-button (that would mean reading essentially every
+  component in the app). Verified via: (a) direct full reads of numerous pages across
+  all 5 roles earlier in this audit session (all issuer pages, several owner/artist/
+  client pages during Phase 1–3), which consistently showed the pattern present; (b) a
+  structural grep sample across 5 additional list pages not otherwise touched this
+  session (`ArtistListPage`, `ClientListPage`, `PaymentListPage`,
+  `NotificationLogListPage`, `SchedulePage`), all showing multiple hits for
+  `Skeleton`/`isError`/`refetch`/empty-state components; (c) the five original 2026-07-01
+  QA passes and 2026-07-02 QA passes, each of which explicitly audited and fixed this
+  exact pattern for its role. This is real evidence the convention holds app-wide, not
+  an assumption — but it is a sample, not a literal check of every button in the
+  codebase. A future pass wanting 100% certainty here would need to read every list
+  page and every mutation call site individually.
+
 ### Deferred items (with reason)
-- Issuer QA Pass reconstruction (Phase 1 item, documentation gap) — still not done;
-  unrelated to the Phase 2/3 scope of this session.
 - `FeedbackDialog.test.tsx` — 2 of 1516 frontend tests failed under full-suite
   parallel load, passed 10/10 in isolation (`npx vitest run` on the file alone).
   Consistent with the already-documented flaky-under-parallel-load pattern
@@ -2031,3 +2186,8 @@ pass above.
   live seeded studio (see above).
 - Referral-codes-per-studio section on `IssuerStudioDetailPage` — flagged as a
   possible product gap, not fixed (would be new feature work, not a bug fix).
+- Issuer QA Pass Layer C/D line-item closure (~100 individual checklist items from the
+  original 2026-07-01 prompt) — see the reconstructed section above for exactly what
+  was and wasn't re-verified.
+- Loading/error/empty-state and toast/confirm/spinner coverage — verified by sampling
+  and cross-referencing prior QA passes, not by reading every component (see above).
