@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -103,5 +104,25 @@ describe("HelpInsightsPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText(/failed to load help search insights/i)).toBeInTheDocument());
+  });
+
+  it("retries the request when 'Try again' is clicked", async () => {
+    let requestCount = 0;
+    server.use(
+      http.get("http://localhost/api/v1/platform/help-search-insights", () => {
+        requestCount += 1;
+        return requestCount === 1
+          ? HttpResponse.json({ message: "fail" }, { status: 500 })
+          : HttpResponse.json(INSIGHTS);
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    const retryButton = await screen.findByRole("button", { name: /try again/i });
+    await user.click(retryButton);
+
+    expect(await screen.findByText("book appointment")).toBeInTheDocument();
   });
 });

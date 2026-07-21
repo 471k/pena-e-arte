@@ -25,6 +25,13 @@ public class CheckSlotAvailabilityHandler(IAppDbContext db)
         TimeSpan  startTime = query.Date.TimeOfDay;
         TimeSpan  endTime   = end.TimeOfDay;
 
+        bool studioClosed = await db.StudioClosures.AnyAsync(
+            c => c.StartDate <= query.Date.Date &&
+                 c.EndDate   >= query.Date.Date, ct);
+
+        if (studioClosed)
+            return new SlotAvailabilityResult(false, "Studio is closed that day.");
+
         var schedule = await db.ArtistSchedules
             .Where(s => s.ArtistId == query.ArtistId &&
                         s.DayOfWeek == day &&

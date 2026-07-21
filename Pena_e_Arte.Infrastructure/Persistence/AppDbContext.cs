@@ -20,6 +20,7 @@ public class AppDbContext(
     public DbSet<Artist>          Artists          => Set<Artist>();
     public DbSet<ArtistSchedule>  ArtistSchedules  => Set<ArtistSchedule>();
     public DbSet<ArtistTimeOff>   ArtistTimeOffs   => Set<ArtistTimeOff>();
+    public DbSet<StudioClosure>   StudioClosures   => Set<StudioClosure>();
     public DbSet<PortfolioImage>  PortfolioImages  => Set<PortfolioImage>();
     public DbSet<Design>           Designs           => Set<Design>();
     public DbSet<DesignRevision>   DesignRevisions   => Set<DesignRevision>();
@@ -84,6 +85,7 @@ public class AppDbContext(
         builder.Entity<Artist>()         .HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
         builder.Entity<ArtistSchedule>() .HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<ArtistTimeOff>()  .HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
+        builder.Entity<StudioClosure>()  .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<PortfolioImage>() .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Design>()         .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<DesignRevision>()   .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);

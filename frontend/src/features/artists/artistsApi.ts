@@ -57,10 +57,35 @@ export interface ConnectInstagramResponse {
   authUrl: string;
 }
 
+export interface ArtistScheduleEntry {
+  dayOfWeek:   number; // 0 = Sunday .. 6 = Saturday, matches .NET DayOfWeek
+  startTime:   string; // "HH:mm:ss"
+  endTime:     string; // "HH:mm:ss"
+  isAvailable: boolean;
+}
+
+export interface ArtistTimeOffEntry {
+  id:        string;
+  startDate: string;
+  endDate:   string;
+  reason:    string;
+}
+
+export interface ArtistAvailabilityResponse {
+  schedule: ArtistScheduleEntry[];
+  timeOff:  ArtistTimeOffEntry[];
+}
+
+export interface AddArtistTimeOffRequest {
+  startDate: string;
+  endDate:   string;
+  reason:    string;
+}
+
 export const artistsApi = createApi({
   reducerPath: "artistsApi",
   baseQuery,
-  tagTypes: ["Artist"],
+  tagTypes: ["Artist", "ArtistSchedule"],
   endpoints: (builder) => ({
     getMyArtist: builder.query<ArtistResponse, void>({
       query: () => "artists/me",
@@ -137,6 +162,33 @@ export const artistsApi = createApi({
       }),
       invalidatesTags: (_result, _err, artistId) => [{ type: "Artist", id: `${artistId}-instagram` }],
     }),
+    getArtistSchedule: builder.query<ArtistAvailabilityResponse, string>({
+      query: (artistId) => `artists/${artistId}/schedule`,
+      providesTags: (_result, _err, artistId) => [{ type: "ArtistSchedule", id: artistId }],
+    }),
+    upsertArtistSchedule: builder.mutation<void, { artistId: string; entries: ArtistScheduleEntry[] }>({
+      query: ({ artistId, entries }) => ({
+        url:    `artists/${artistId}/schedule`,
+        method: "PUT",
+        body:   { entries },
+      }),
+      invalidatesTags: (_result, _err, { artistId }) => [{ type: "ArtistSchedule", id: artistId }],
+    }),
+    addArtistTimeOff: builder.mutation<{ id: string }, { artistId: string; body: AddArtistTimeOffRequest }>({
+      query: ({ artistId, body }) => ({
+        url:    `artists/${artistId}/time-off`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (_result, _err, { artistId }) => [{ type: "ArtistSchedule", id: artistId }],
+    }),
+    deleteArtistTimeOff: builder.mutation<void, { artistId: string; timeOffId: string }>({
+      query: ({ artistId, timeOffId }) => ({
+        url:    `artists/${artistId}/time-off/${timeOffId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _err, { artistId }) => [{ type: "ArtistSchedule", id: artistId }],
+    }),
   }),
 });
 
@@ -153,4 +205,8 @@ export const {
   useGetInstagramPostsQuery,
   useToggleInstagramPostVisibilityMutation,
   useDisconnectInstagramMutation,
+  useGetArtistScheduleQuery,
+  useUpsertArtistScheduleMutation,
+  useAddArtistTimeOffMutation,
+  useDeleteArtistTimeOffMutation,
 } = artistsApi;

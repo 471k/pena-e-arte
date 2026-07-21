@@ -63,10 +63,23 @@ export interface UpdateStudioRequest {
   instagramHandle?: string | null;
 }
 
+export interface StudioClosureResponse {
+  id:        string;
+  startDate: string;
+  endDate:   string;
+  reason:    string;
+}
+
+export interface AddStudioClosureRequest {
+  startDate: string;
+  endDate:   string;
+  reason:    string;
+}
+
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
-  tagTypes: ["Studio", "Referral"],
+  tagTypes: ["Studio", "Referral", "StudioClosure"],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),
@@ -154,6 +167,25 @@ export const studiosApi = createApi({
       }),
       invalidatesTags: ["Studio"],
     }),
+    getStudioClosures: builder.query<StudioClosureResponse[], string>({
+      query: (id) => `studios/${id}/closures`,
+      providesTags: ["StudioClosure"],
+    }),
+    addStudioClosure: builder.mutation<{ id: string }, { id: string; body: AddStudioClosureRequest }>({
+      query: ({ id, body }) => ({
+        url:    `studios/${id}/closures`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["StudioClosure"],
+    }),
+    deleteStudioClosure: builder.mutation<void, { id: string; closureId: string }>({
+      query: ({ id, closureId }) => ({
+        url:    `studios/${id}/closures/${closureId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["StudioClosure"],
+    }),
   }),
 });
 
@@ -173,4 +205,7 @@ export const {
   useGetReferralCodeQuery,
   useGetReferralStatsQuery,
   useUpdateStudioSlugMutation,
+  useGetStudioClosuresQuery,
+  useAddStudioClosureMutation,
+  useDeleteStudioClosureMutation,
 } = studiosApi;

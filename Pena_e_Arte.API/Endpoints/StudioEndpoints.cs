@@ -25,6 +25,11 @@ public static class StudioEndpoints
         group.MapPatch("{id:guid}/branding",   UpdateBranding).RequireAuthorization("OwnerOnly");
         group.MapPatch("{id:guid}/slug",       UpdateSlug).RequireAuthorization("OwnerOnly");
 
+        // Owner: studio-wide closures (holidays, renovation, etc.)
+        group.MapGet("{id:guid}/closures",                   GetClosures).RequireAuthorization("ClientAndAbove");
+        group.MapPost("{id:guid}/closures",                  AddClosure).RequireAuthorization("OwnerOnly");
+        group.MapDelete("{id:guid}/closures/{closureId:guid}", DeleteClosure).RequireAuthorization("OwnerOnly");
+
         // Issuer: list all studios + suspension controls
         group.MapGet("/",                      GetStudios).RequireAuthorization("IssuerOnly");
         group.MapGet("{id:guid}",              GetStudioById).RequireAuthorization("IssuerOnly");
@@ -119,6 +124,36 @@ public static class StudioEndpoints
         CancellationToken ct)
     {
         await mediator.Send(new UnsuspendStudioCommand(id), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetClosures(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<StudioClosureResponse> result = await mediator.Send(new GetStudioClosuresQuery(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> AddClosure(
+        Guid                     id,
+        AddStudioClosureRequest  body,
+        ISender                  mediator,
+        CancellationToken        ct)
+    {
+        Guid closureId = await mediator.Send(
+            new AddStudioClosureCommand(id, body.StartDate, body.EndDate, body.Reason), ct);
+        return Results.Created($"/api/v1/studios/{id}/closures/{closureId}", new { id = closureId });
+    }
+
+    private static async Task<IResult> DeleteClosure(
+        Guid              id,
+        Guid              closureId,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new DeleteStudioClosureCommand(id, closureId), ct);
         return Results.NoContent();
     }
 

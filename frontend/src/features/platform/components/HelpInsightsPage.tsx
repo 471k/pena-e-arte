@@ -49,7 +49,7 @@ function QueryTable({ rows, emptyLabel }: { rows: HelpQueryFrequency[]; emptyLab
 export function HelpInsightsPage() {
   useDocumentMeta({ title: "Help Search Insights — Platform Admin", canonical: "/platform/help-insights" });
 
-  const { data, isLoading, isError } = useGetHelpSearchInsightsQuery({ days: 30 });
+  const { data, isLoading, isError, refetch } = useGetHelpSearchInsightsQuery({ days: 30 });
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,8 +76,11 @@ export function HelpInsightsPage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">
-            Failed to load help search insights.
+          <p className="text-center text-sm text-destructive py-16" role="alert">
+            Failed to load help search insights.{" "}
+            <button type="button" className="underline" onClick={() => refetch()}>
+              Try again
+            </button>
           </p>
         )}
 
@@ -90,7 +93,7 @@ export function HelpInsightsPage() {
 
             <div className="space-y-3 border-t pt-4">
               <div className="flex items-center gap-1.5">
-                <SearchX className="h-4 w-4 text-amber-500" aria-hidden="true" />
+                <SearchX className="h-4 w-4 text-amber-500 dark:text-amber-400" aria-hidden="true" />
                 <p className="text-sm font-medium">Zero-result queries</p>
               </div>
               <QueryTable rows={data.zeroResultQueries} emptyLabel="No zero-result searches — nice." />

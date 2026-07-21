@@ -283,6 +283,7 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 26 | Help Search Analytics | `HelpSearchLog` | `IgnoreQueryFilters()` — 39th approved usage (issuer insights read) | Per-tenant (write), Issuer-level (aggregate read) |
 | 27 | First-Run Onboarding Tour | `UserOnboardingState` (no tenant filter) | None — no `IgnoreQueryFilters()` needed, no filter registered on this entity | Per-user, cross-tenant |
 | 28 | Support Escalation (Help menu ticket threads) | `FeedbackMessage` (child of `FeedbackReport`, no tenant filter, cascade delete) | `SupportHub` SignalR hub, `IRealtimeNotifier.NotifyTicketAsync` | Per-user (own tickets), Issuer-level (all tickets) |
+| 29 | Studio-Wide Closures | `StudioClosure` | None — checked in `CheckSlotAvailabilityQuery` alongside per-artist schedule/time-off | Per-tenant |
 
 ### In-App Help Menu — 2026-07-20
 
@@ -735,6 +736,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 37 | `DataSeeder` | Startup seed data — runs before any request or tenant scope exists | System (startup) |
 | 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
 | 39 | `GetHelpSearchInsightsHandler` | Cross-tenant aggregate of help search queries for the issuer product-insights view | IssuerOnly |
+| 40 | `GetSitemapUrlsHandler` | Public SEO sitemap — active studio/artist slugs across all tenants for `/sitemap.xml` | Anonymous |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -2615,3 +2617,24 @@ exists anywhere in 55 files.
   document — this log describes what was found, not a checklist with boxes ticked.
 - The mutation-feedback bug class closure is pattern-based, not a literal read of
   all 55 files — see the confidence note above.
+
+## Industry Feature-Parity Audit — 2026-07-20
+
+Competitive gap analysis (guest → issuer, backend + frontend + UI/UX) against the
+vertical booking-SaaS category (Vagaro, Fresha, Boulevard, Mindbody, Zenoti,
+GlossGenius, Booksy, Mangomint, Schedulicity, Square Appointments) plus general B2B
+SaaS platform-admin standards for the issuer role. Full findings, market-research
+grounding, per-item verdicts, and the consolidated P0–P3 backlog live in
+`docs/claude/industry-feature-parity-report-2026-07-20.md` — this entry is a
+pointer, not a duplicate.
+
+Highlights: two real P0 gaps were found and fixed same-session (studio-wide
+closures via new `StudioClosure` entity; artist working-hours/time-off frontend,
+backend already existed). The `Plan.AllowApiAccess` toggle was found to be a live,
+help-documented, fully-unwired feature flag — hidden from `PlanEditPage.tsx` and
+help content immediately as a billing-integrity fix. Everything else building on
+money/auth/tenant logic (client self-reschedule/cancel, cancellation policy,
+revenue reporting, audit logging, dunning, support impersonation, gift cards,
+packages, multi-location) was intentionally left as a fully-specified backlog item
+rather than built blind, per this project's "consultation and specification, not
+implementation" rule for anything beyond a clearly-scoped fix.

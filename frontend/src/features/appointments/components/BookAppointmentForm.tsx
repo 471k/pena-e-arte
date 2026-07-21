@@ -64,7 +64,7 @@ const schema = z.object({
   ),
   durationMinutes: z.number().refine(
     (v) => (VALID_DURATIONS as readonly number[]).includes(v),
-    "Select a valid session length"
+    "Select a valid appointment duration"
   ),
   depositRuleId:   z.string().nullable().optional(),
   notes:           z.string().optional(),
@@ -566,7 +566,7 @@ export function BookAppointmentForm() {
         </div>
       )}
 
-      {/* Date & Time + Session Length */}
+      {/* Date & Time + Appointment Duration */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
           <FieldLabel htmlFor="scheduledAt" required>Date &amp; Time</FieldLabel>
@@ -585,7 +585,7 @@ export function BookAppointmentForm() {
         </div>
 
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
-          <FieldLabel htmlFor="durationMinutes" required>Session Length</FieldLabel>
+          <FieldLabel htmlFor="durationMinutes" required>Appointment Duration</FieldLabel>
           <Controller
             control={control}
             name="durationMinutes"

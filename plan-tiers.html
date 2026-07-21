@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pena e Artë — Plan Tiers</title>
+<style>
+  :root {
+    --border: #d8d6cf;
+    --text-primary: #17161a;
+    --text-secondary: #55534c;
+    --text-muted: #86837a;
+    --surface-0: #fbfaf7;
+    --surface-1: #f2f0ea;
+    --surface-2: #ffffff;
+    --accent: #0c447c;
+    --accent-bg: #e6f1fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2.5rem;
+    background: var(--surface-0);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text-primary);
+    line-height: 1.55;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 500; margin: 0 0 0.15rem; }
+  .subtitle { font-size: 13px; color: var(--text-muted); margin: 0 0 1.75rem; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 13.5px;
+  }
+  thead th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--surface-1);
+    padding: 10px 14px;
+    border-bottom: 0.5px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 0.5px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-1); }
+  td.tier {
+    font-weight: 500;
+  }
+  .yes { color: #27500a; font-weight: 500; }
+  .no  { color: var(--text-muted); }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+  .notes {
+    margin-top: 2rem;
+  }
+  .notes h2 {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 0.75rem;
+    color: var(--text-primary);
+  }
+  .notes ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+  .notes li { margin-bottom: 0.6rem; }
+  .notes li:last-child { margin-bottom: 0; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    background: var(--surface-1);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .source {
+    margin-top: 1.75rem;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Plan tiers — features &amp; limitations</h1>
+  <p class="subtitle">Canonical values as reconciled by <code>DataSeeder.ReconcileCoreTiersAsync</code> — updated 2026-07-20</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tier</th>
+        <th>Monthly</th>
+        <th>Yearly</th>
+        <th>Max artists</th>
+        <th>Max appts/mo</th>
+        <th>Max notifications/mo</th>
+        <th>Storage</th>
+        <th>Locations</th>
+        <th>Branding removal</th>
+        <th>API access</th>
+        <th>Priority support</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="tier">Free</td>
+        <td>$0</td>
+        <td>—</td>
+        <td>1</td>
+        <td>15</td>
+        <td>50</td>
+        <td>1 GB</td>
+        <td>1</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+      </tr>
+      <tr>
+        <td class="tier">Starter</td>
+        <td>$29</td>
+        <td>—</td>
+        <td>1</td>
+        <td>40</td>
+        <td>150</td>
+        <td>2 GB</td>
+        <td>1</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+      </tr>
+      <tr>
+        <td class="tier">Growth</td>
+        <td>$59</td>
+        <td>—</td>
+        <td>3</td>
+        <td>150</td>
+        <td>600</td>
+        <td>10 GB</td>
+        <td>1</td>
+        <td class="yes">Yes</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+      </tr>
+      <tr>
+        <td class="tier">Premium</td>
+        <td>$79</td>
+        <td>$790</td>
+        <td>6</td>
+        <td>400</td>
+        <td>1200</td>
+        <td>25 GB</td>
+        <td>2</td>
+        <td class="yes">Yes</td>
+        <td class="no">No</td>
+        <td class="yes">Yes</td>
+      </tr>
+      <tr>
+        <td class="tier">Pro</td>
+        <td>$99</td>
+        <td>—</td>
+        <td>10<span class="badge">soft cap</span></td>
+        <td>1000</td>
+        <td>2500</td>
+        <td>50 GB</td>
+        <td>10</td>
+        <td class="yes">Yes</td>
+        <td class="yes">Yes</td>
+        <td class="yes">Yes</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="notes">
+    <h2>Limitations to flag</h2>
+    <ul>
+      <li>Only <strong>Premium</strong> has a seeded yearly <code>PlanPrice</code> row. The other four tiers carry <code>YearlyDiscountPercent = 17</code>, but that's the "Save 17%" marketing figure only — there's no purchasable yearly price for them yet.</li>
+      <li>Every <code>Max*</code> field is non-null on all five tiers — none is truly unlimited. Pro's caps are explicitly a soft ceiling (per seeder comment) to protect shared Twilio/Hangfire/DB load, not a real unlimited tier.</li>
+      <li><code>MaxLocations</code> is not enforced today: <code>PlanLimitService</code> always reports usage of 1 for the Locations quota because <code>Studio</code> is still single-location. That column is aspirational until multi-location ships.</li>
+      <li>Storage limit is enforced as <code>MaxStorageGb × 1024³</code> bytes against <code>Studio.StorageUsageBytes</code> — a stored counter, not a live recount.</li>
+      <li>These five rows are not issuer-editable through <code>PlanManagementPage</code> — they're reconciled from source control on every app start. To change a value, edit the <code>CoreTier</code> array in <code>DataSeeder.cs</code>. Issuers get new tiers by cloning a new <code>Plan</code> row, not editing a core one.</li>
+    </ul>
+  </div>
+
+  <p class="source">Source: <code>Pena_e_Arte.Infrastructure/Persistence/Seed/DataSeeder.cs</code> (ReconcileCoreTiersAsync) · <code>Pena_e_Arte.Domain/Entities/Plan.cs</code> · <code>Pena_e_Arte.Infrastructure/Services/PlanLimitService.cs</code></p>
+</div>
+</body>
+</html>

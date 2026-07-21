@@ -13,7 +13,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Request a tattoo appointment by picking an artist, a date, and how long the session should be.",
     steps: [
       "If a banner asks you to verify your email, click \"Resend verification email\" (you must verify before your booking is finalized).",
-      "In the \"Book an appointment\" card, choose an artist, a date, and a session length.",
+      "In the \"Book an appointment\" card, choose an artist, a date, and an appointment duration.",
       "Submit the booking request.",
       "Check \"My Bookings\" below the form to see your pending and upcoming appointments.",
     ],
@@ -731,7 +731,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Enter the plan Name and the Yearly discount percentage.",
       "Turn on Monthly price and/or Yearly price, entering the price for each.",
-      "Toggle feature flags: Allow branding removal, Allow API access, Priority support.",
+      "Toggle feature flags: Allow branding removal, Priority support.",
       "Set usage limits (Artists, Appointments/mo, Notifications/mo, Storage, Locations) or check \"Unlimited\".",
       "Click Save.",
     ],
@@ -822,6 +822,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Optionally write an internal note (only visible to you, not the sender).",
       "Click a status button to mark it Open, Reviewing, Resolved, or Dismissed.",
     ],
+  },
+  {
+    id: "issuer-help-insights",
+    roles: [Issuer],
+    title: "Review Help search insights",
+    route: "/platform/help-insights",
+    keywords: ["help search analytics", "zero-result queries", "missing documentation"],
+    summary: "See what studio users searched for in the in-app Help menu, including which searches returned no results — the clearest signal of missing or confusing documentation.",
+    steps: [
+      "Open Help Insights from the platform nav.",
+      "Review the top queries table to see what users look for most.",
+      "Review the zero-result queries table — each of these is a documentation or UX gap worth fixing.",
+    ],
+    tips: ["Data covers a rolling 30-day window and is aggregated across all studios."],
   },
 ];
 
