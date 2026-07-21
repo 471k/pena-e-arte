@@ -30,6 +30,7 @@ public static class PlatformEndpoints
         group.MapPost("reports/industry/trigger",                   TriggerIndustryReport);
         group.MapGet("plan-usage-report",                           GetPlanUsageReport);
         group.MapGet("help-search-insights",                        GetHelpSearchInsights);
+        group.MapGet("audit-log",                                   GetAuditLog);
     }
 
     private static async Task<IResult> GetStats(
@@ -178,6 +179,21 @@ public static class PlatformEndpoints
     {
         HelpSearchInsightsResponse result =
             await mediator.Send(new GetHelpSearchInsightsQuery(Math.Clamp(days ?? 30, 1, 365)), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetAuditLog(
+        ISender           mediator,
+        CancellationToken ct,
+        string?           action     = null,
+        string?           targetType = null,
+        DateTime?         from       = null,
+        DateTime?         to         = null,
+        int               page       = 1,
+        int               pageSize   = 20)
+    {
+        AuditLogPageResponse result = await mediator.Send(
+            new GetAuditLogQuery(action, targetType, from, to, page, pageSize), ct);
         return Results.Ok(result);
     }
 }

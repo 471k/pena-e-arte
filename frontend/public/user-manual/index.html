@@ -455,6 +455,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#issuer-reports" data-nav-link>Industry reports</a></li>
           <li><a href="#issuer-feedback" data-nav-link>Feedback inbox</a></li>
           <li><a href="#issuer-help-insights" data-nav-link>Help search insights</a></li>
+          <li><a href="#issuer-audit-log" data-nav-link>Audit log</a></li>
         </ul>
       </div>
     </div>
@@ -2208,7 +2209,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The studio settings hub at <code>/studios/me</code>: name, phone, Instagram, location, and URL slug at the top, followed by branding, QR code, embed code, referral, and notification preference cards below.</p>
+<p>The studio settings hub at <code>/studios/me</code>: name, phone, Instagram, location, and URL slug at the top, followed by branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2230,10 +2231,10 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
 <li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span>, <span class="step-title">Instagram handle</span>, and <span class="step-title">Location</span> (drag the map pin), then <span class="step-title">Save changes</span>.</li>
-<li>Below: <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, and <a href="#owner-notifications-prefs">Notification preferences</a> cards.</li>
+<li>Below: <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully.</div>
-<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
+<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#issuer-audit-log">Issuer: audit log</a></div>
 </section>
 
 <section id="owner-branding" data-role="owner">
@@ -2696,6 +2697,33 @@ ol.steps li { margin: 6px 0; }
 <li>Review the zero-result queries table — each row is a search that found nothing, which is the clearest signal of a documentation gap or confusing UX to fix in the in-app FAQ or this manual.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#issuer-feedback">Feedback inbox</a></div>
+</section>
+
+<section id="issuer-audit-log" data-role="issuer">
+<h2><span class="role-badge role-issuer">Issuer</span> Audit log</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>At <code>/platform/audit-log</code>: a searchable, cross-tenant log of every trust-sensitive action taken on the platform — studio suspensions, subscription cancellations/manual activations, trial extensions, plan edits, and referral code changes.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 340" role="img" aria-label="Audit log wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Audit Log</text><text x="700" y="25" font-size="9" text-anchor="end">128</text>
+<rect x="20" y="56" width="720" height="46" rx="6" fill="currentColor" fill-opacity="0.03"/>
+<text x="32" y="76" font-size="8" fill-opacity="0.6">Action</text><text x="220" y="76" font-size="8" fill-opacity="0.6">Target type</text><text x="400" y="76" font-size="8" fill-opacity="0.6">From</text><text x="560" y="76" font-size="8" fill-opacity="0.6">To</text>
+<rect x="20" y="112" width="720" height="24" fill="currentColor" fill-opacity="0.06"/>
+<text x="32" y="128" font-size="8" font-weight="700">When</text><text x="160" y="128" font-size="8" font-weight="700">Action</text><text x="360" y="128" font-size="8" font-weight="700">Target</text><text x="520" y="128" font-size="8" font-weight="700">Studio</text><text x="640" y="128" font-size="8" font-weight="700">Actor role</text>
+<text x="32" y="152" font-size="8">20 Jul 2026, 10:00</text><text x="160" y="152" font-size="8">Studio.Suspended</text><text x="360" y="152" font-size="8">Studio · a1b2c3d4</text><text x="520" y="152" font-size="8">s0e1f2a3</text><text x="640" y="152" font-size="8">issuer</text>
+<text x="32" y="172" font-size="8">19 Jul 2026, 09:30</text><text x="160" y="172" font-size="8">Plan.Updated</text><text x="360" y="172" font-size="8">Plan · p9z8y7x6</text><text x="520" y="172" font-size="8" fill-opacity="0.6">Platform-wide</text><text x="640" y="172" font-size="8">issuer</text>
+</svg>
+</figure>
+<figcaption>Audit log — filters above the table, most recent entry first</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Filter by <span class="step-title">Action</span>, <span class="step-title">Target type</span>, or a date range.</li>
+<li>Each row shows when it happened, what happened, its target, which studio ("Platform-wide" for actions with no single studio target, e.g. a plan edit), and the actor's role.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> entries never contain names, emails, or free text — only IDs, roles, and structural values.</div>
+<div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile (Recent studio activity)</a></div>
 </section>
 
 <section id="ref-design-statuses" data-role="reference">

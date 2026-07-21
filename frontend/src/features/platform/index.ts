@@ -7,3 +7,4 @@ export { PlatformReferralPage }     from "./components/PlatformReferralPage";
 export { IndustryReportsPage }      from "./components/IndustryReportsPage";
 export { IssuerDashboardPage }      from "./components/IssuerDashboardPage";
 export { HelpInsightsPage }         from "./components/HelpInsightsPage";
+export { AuditLogPage }             from "./components/AuditLogPage";

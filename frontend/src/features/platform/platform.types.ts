@@ -93,3 +93,31 @@ export interface HelpSearchInsightsResponse {
   topQueries:        HelpQueryFrequency[];
   zeroResultQueries: HelpQueryFrequency[];
 }
+
+export interface AuditLogEntryResponse {
+  id:          string;
+  actorUserId: string;
+  actorRole:   string;
+  action:      string;
+  targetType:  string;
+  targetId:    string;
+  studioId:    string | null;
+  metadata:    string;
+  createdAt:   string;
+}
+
+export interface AuditLogPageResponse {
+  items:      AuditLogEntryResponse[];
+  totalCount: number;
+  page:       number;
+  pageSize:   number;
+}
+
+export interface AuditLogQueryParams {
+  action?:     string;
+  targetType?: string;
+  from?:       string;
+  to?:         string;
+  page?:       number;
+  pageSize?:   number;
+}

@@ -63,6 +63,9 @@ public class AppDbContext(
     // --- Onboarding tour completion (no tenant filter — per-user, cross-tenant) ---
     public DbSet<UserOnboardingState> UserOnboardingStates => Set<UserOnboardingState>();
 
+    // --- Structured audit log (no tenant filter — StudioId nullable, platform-wide actions allowed) ---
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
@@ -178,6 +181,24 @@ public class AppDbContext(
 
             // No HasQueryFilter — state belongs to the user, not a studio.
             entity.HasIndex(u => new { u.UserId, u.Role }).IsUnique();
+        });
+
+        builder.Entity<AuditLogEntry>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+
+            entity.Property(a => a.ActorRole).HasMaxLength(20).IsRequired();
+            entity.Property(a => a.Action).HasMaxLength(100).IsRequired();
+            entity.Property(a => a.TargetType).HasMaxLength(50).IsRequired();
+            entity.Property(a => a.Metadata).HasColumnType("json").IsRequired();
+
+            // No HasQueryFilter — deliberate deviation from the standard TenantEntity shape.
+            // StudioId is nullable (null = platform-wide action); "who can read which rows" is
+            // enforced in the query handlers (GetAuditLogHandler / GetMyStudioAuditLogHandler),
+            // not here. Same non-tenant-scoped shape as FeedbackReport/UserOnboardingState above.
+            entity.HasIndex(a => a.Action);
+            entity.HasIndex(a => a.CreatedAt);
+            entity.HasIndex(a => a.StudioId);
         });
     }
 }

@@ -42,6 +42,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<FeedbackMessage>       FeedbackMessages     => Set<FeedbackMessage>();
     public DbSet<HelpSearchLog>         HelpSearchLogs       => Set<HelpSearchLog>();
     public DbSet<UserOnboardingState>   UserOnboardingStates => Set<UserOnboardingState>();
+    public DbSet<AuditLogEntry>         AuditLogEntries      => Set<AuditLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

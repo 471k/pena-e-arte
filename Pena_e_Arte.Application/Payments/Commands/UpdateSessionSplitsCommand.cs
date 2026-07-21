@@ -3,13 +3,22 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
+// AuditStudioId left at its default (null) — AuditLogBehavior falls back to the caller's
+// ICurrentTenant.StudioId, always set for this OwnerOnly tenant-scoped command.
 public record UpdateSessionSplitsCommand(Guid PaymentId, UpdateSessionSplitsRequest Request)
-    : IRequest<PaymentResponse>;
+    : IRequest<PaymentResponse>, IAuditableCommand
+{
+    public string AuditAction     => AuditActions.SessionSplitsUpdated;
+    public string AuditTargetType => AuditTargetTypes.Payment;
+    public Guid   AuditTargetId   => PaymentId;
+}
 
 public class UpdateSessionSplitsHandler(IAppDbContext db)
     : IRequestHandler<UpdateSessionSplitsCommand, PaymentResponse>

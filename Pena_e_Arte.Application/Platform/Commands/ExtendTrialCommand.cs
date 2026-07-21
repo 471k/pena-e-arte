@@ -3,13 +3,21 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
-public record ExtendTrialCommand(Guid StudioId, ExtendTrialRequest Request) : IRequest;
+public record ExtendTrialCommand(Guid StudioId, ExtendTrialRequest Request) : IRequest, IAuditableCommand
+{
+    public string AuditAction     => AuditActions.StudioTrialExtended;
+    public string AuditTargetType => AuditTargetTypes.Studio;
+    public Guid   AuditTargetId   => StudioId;
+    public Guid?  AuditStudioId   => StudioId;
+}
 
 public class ExtendTrialHandler(IAppDbContext db)
     : IRequestHandler<ExtendTrialCommand>

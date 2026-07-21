@@ -31,6 +31,7 @@ import {
   PlatformReferralPage,
   IndustryReportsPage,
   HelpInsightsPage,
+  AuditLogPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage } from "@/features/public";
@@ -172,6 +173,7 @@ export const router = createBrowserRouter([
                   { path: "reports",           element: <ErrorBoundary><IndustryReportsPage /></ErrorBoundary> },
                   { path: "feedback",          element: <ErrorBoundary><FeedbackInboxPage /></ErrorBoundary> },
                   { path: "help-insights",     element: <ErrorBoundary><HelpInsightsPage /></ErrorBoundary> },
+                  { path: "audit-log",         element: <ErrorBoundary><AuditLogPage /></ErrorBoundary> },
                 ],
               },
 

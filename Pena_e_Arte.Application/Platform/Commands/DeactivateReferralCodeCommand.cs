@@ -2,11 +2,22 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
-public record DeactivateReferralCodeCommand(Guid ReferralCodeId) : IRequest;
+// The command only carries ReferralCodeId, not the code's StudioId — AuditStudioId is left
+// at its default (null) rather than adding a DB lookup to the marker interface's synchronous
+// property. Known limitation: these entries currently log as platform-wide even though a
+// referral code is conceptually studio-scoped. See architecture.md Decisions Log.
+public record DeactivateReferralCodeCommand(Guid ReferralCodeId) : IRequest, IAuditableCommand
+{
+    public string AuditAction     => AuditActions.ReferralCodeDeactivated;
+    public string AuditTargetType => AuditTargetTypes.ReferralCode;
+    public Guid   AuditTargetId   => ReferralCodeId;
+}
 
 public class DeactivateReferralCodeHandler(IAppDbContext db)
     : IRequestHandler<DeactivateReferralCodeCommand>

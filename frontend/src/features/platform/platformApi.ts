@@ -9,13 +9,15 @@ import type {
   IssuerStudioSummaryResponse,
   PlanUsageReportResponse,
   HelpSearchInsightsResponse,
+  AuditLogPageResponse,
+  AuditLogQueryParams,
 } from "./platform.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
 export const platformApi = createApi({
   reducerPath: "platformApi",
   baseQuery,
-  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "IssuerStudioSummary", "PlanUsageReport"],
+  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "IssuerStudioSummary", "PlanUsageReport", "AuditLog"],
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStatsResponse, void>({
       query: () => "platform/stats",
@@ -115,6 +117,10 @@ export const platformApi = createApi({
       query: (args) => `platform/help-search-insights${args?.days ? `?days=${args.days}` : ""}`,
       providesTags: ["PlatformStats"],
     }),
+    getAuditLog: builder.query<AuditLogPageResponse, AuditLogQueryParams | void>({
+      query: (params) => ({ url: "platform/audit-log", params: params ?? undefined }),
+      providesTags: ["AuditLog"],
+    }),
   }),
 });
 
@@ -135,4 +141,5 @@ export const {
   useCancelSubscriptionMutation,
   useGetPlanUsageReportQuery,
   useGetHelpSearchInsightsQuery,
+  useGetAuditLogQuery,
 } = platformApi;

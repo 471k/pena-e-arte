@@ -892,6 +892,32 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: ["Data covers a rolling 30-day window and is aggregated across all studios."],
   },
+  {
+    id: "issuer-audit-log",
+    roles: [Issuer],
+    title: "Review the platform audit log",
+    route: "/platform/audit-log",
+    keywords: ["audit log", "admin actions", "compliance", "who did what"],
+    summary: "A searchable, cross-tenant log of every trust-sensitive action taken on the platform — studio suspensions, subscription changes, plan edits, referral code changes, and more.",
+    steps: [
+      "Open Audit Log from the platform nav.",
+      "Filter by action, target type, or a date range.",
+      "Each row shows when it happened, what happened, what it targeted, which studio (or \"Platform-wide\" for actions with no single studio target), and the actor's role.",
+    ],
+    tips: ["Entries never contain names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data."],
+  },
+  {
+    id: "owner-audit-log",
+    roles: [Owner],
+    title: "Recent studio activity",
+    route: "/studios/me",
+    keywords: ["recent activity", "audit", "who did what"],
+    summary: "A read-only list of the most recent trust-sensitive actions taken on your studio (e.g. a client-cancelled appointment), shown on your Studio Settings page.",
+    steps: [
+      "Go to Studio Settings and scroll to \"Recent studio activity\".",
+      "Each entry shows the action and when it happened.",
+    ],
+  },
 ];
 
 export const FAQ_ITEMS: FaqItem[] = [

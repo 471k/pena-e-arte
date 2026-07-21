@@ -4,13 +4,22 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Plans.Commands;
 
-public record UpdatePlanCommand(Guid PlanId, UpdatePlanRequest Request) : IRequest<PlanResponse>;
+// Plan is issuer-owned, not tenant-scoped — this is a genuinely platform-wide action
+// with no single studio target, so AuditStudioId is left at its default (null).
+public record UpdatePlanCommand(Guid PlanId, UpdatePlanRequest Request) : IRequest<PlanResponse>, IAuditableCommand
+{
+    public string AuditAction     => AuditActions.PlanUpdated;
+    public string AuditTargetType => AuditTargetTypes.Plan;
+    public Guid   AuditTargetId   => PlanId;
+}
 
 public class UpdatePlanHandler(IAppDbContext db)
     : IRequestHandler<UpdatePlanCommand, PlanResponse>

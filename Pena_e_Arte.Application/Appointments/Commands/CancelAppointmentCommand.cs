@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -10,9 +11,18 @@ using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
+// AuditStudioId is left at its default (null) — AuditLogBehavior falls back to the caller's
+// ICurrentTenant.StudioId, which is always set for this tenant-scoped command (both the
+// client self-cancel and staff-cancel paths). The audit entry's ActorRole records which
+// role actually performed the cancellation.
 public record CancelAppointmentCommand(
     Guid               AppointmentId,
-    CancellationReason Reason = CancellationReason.StudioCancelled) : IRequest;
+    CancellationReason Reason = CancellationReason.StudioCancelled) : IRequest, IAuditableCommand
+{
+    public string AuditAction     => AuditActions.AppointmentCancelled;
+    public string AuditTargetType => AuditTargetTypes.Appointment;
+    public Guid   AuditTargetId   => AppointmentId;
+}
 
 public class CancelAppointmentHandler(
     IAppDbContext        db,

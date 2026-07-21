@@ -20,6 +20,7 @@ public static class StudioEndpoints
         // All authenticated users can read their own studio (clients need it for booking context)
         group.MapGet("/me",  GetMyStudio).RequireAuthorization("ClientAndAbove");
         group.MapPut("/me",  UpdateMyStudio).RequireAuthorization("OwnerOnly");
+        group.MapGet("/me/audit-log", GetMyStudioAuditLog).RequireAuthorization("OwnerOnly");
 
         // Owner: manage branding and slug for their studio
         group.MapPatch("{id:guid}/branding",   UpdateBranding).RequireAuthorization("OwnerOnly");
@@ -166,5 +167,19 @@ public static class StudioEndpoints
         string fmt = format?.ToLowerInvariant() ?? "png";
         QrCodeResponse result = await mediator.Send(new GetStudioQrCodeQuery(id, fmt), ct);
         return Results.File(result.Data, result.ContentType, $"{result.Slug}-qr.{fmt}");
+    }
+
+    private static async Task<IResult> GetMyStudioAuditLog(
+        ISender           mediator,
+        CancellationToken ct,
+        string?           action   = null,
+        DateTime?         from     = null,
+        DateTime?         to       = null,
+        int               page     = 1,
+        int               pageSize = 20)
+    {
+        AuditLogPageResponse result = await mediator.Send(
+            new GetMyStudioAuditLogQuery(action, from, to, page, pageSize), ct);
+        return Results.Ok(result);
     }
 }

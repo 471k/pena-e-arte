@@ -22,6 +22,11 @@ export const issuerTourSteps: TourStep[] = [
     body: "Review every studio's subscription status and take action — extend a trial, activate, or cancel.",
   },
   {
+    targetSelector: '[data-tour="issuer-audit-log-nav"]',
+    title: "Audit log",
+    body: "Every suspend, cancel, plan-edit, and other trust-sensitive action taken across the platform, in one searchable log.",
+  },
+  {
     targetSelector: '[data-tour="issuer-help-button"]',
     title: "Need help?",
     body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",
