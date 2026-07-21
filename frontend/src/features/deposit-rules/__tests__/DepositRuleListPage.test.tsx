@@ -25,6 +25,8 @@ const RULE_FIXED: DepositRuleResponse = {
   isActive:      true,
   createdAt:     "2024-01-15T10:00:00Z",
   updatedAt:     "2024-01-15T10:00:00Z",
+  cancellationWindowHours:   null,
+  refundPercentOnLateCancel: 0,
 };
 
 const RULE_PERCENT: DepositRuleResponse = {
@@ -36,6 +38,8 @@ const RULE_PERCENT: DepositRuleResponse = {
   isActive:      false,
   createdAt:     "2024-02-01T10:00:00Z",
   updatedAt:     "2024-02-01T10:00:00Z",
+  cancellationWindowHours:   null,
+  refundPercentOnLateCancel: 0,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

@@ -674,6 +674,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
     warnings: ["Downgrading an existing card-billed plan takes effect only at the end of your current billing period, and you can't select a new plan while a change is already scheduled."],
   },
   {
+    id: "owner-reports",
+    roles: [Owner],
+    title: "Revenue reports",
+    route: "/reports",
+    keywords: ["revenue", "trend", "per artist", "earnings", "analytics"],
+    summary: "See your studio's revenue trend over the last 12 months and a breakdown of revenue by artist.",
+    steps: [
+      "Go to Reports to see the revenue trend chart, based on paid deposits over the last 12 months.",
+      "Hover over a point on the chart to see that month's exact revenue.",
+      "Scroll down to \"Revenue by artist\" for a breakdown of the last 30 days, sorted highest first.",
+    ],
+    tips: ["Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't."],
+  },
+  {
     id: "owner-instagram-sync",
     roles: [Owner, Artist],
     title: "Connect Instagram to sync your artists' posts",

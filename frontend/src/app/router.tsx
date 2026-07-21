@@ -18,6 +18,7 @@ import {
   ConsentFormDetailPage,
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
+import { ReportsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
 import {
@@ -308,6 +309,15 @@ export const router = createBrowserRouter([
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
                 children: [
                   { path: "me", element: <ErrorBoundary><StudioProfilePage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: reports ───────────────────────────────────────────────
+              {
+                path: "reports",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><ReportsPage /></ErrorBoundary> },
                 ],
               },
 

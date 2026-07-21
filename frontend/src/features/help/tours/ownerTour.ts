@@ -27,6 +27,11 @@ export const ownerTourSteps: TourStep[] = [
     body: "Check your trial status, plan usage, and manage your subscription here.",
   },
   {
+    targetSelector: '[data-tour="owner-reports-nav"]',
+    title: "Revenue reports",
+    body: "See your monthly revenue trend and a breakdown by artist here.",
+  },
+  {
     targetSelector: '[data-tour="owner-help-button"]',
     title: "Need help?",
     body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",
