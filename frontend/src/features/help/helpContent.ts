@@ -36,6 +36,24 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Cancellation can only be self-served for a Pending or Confirmed appointment — once it's Completed or marked as a no-show, contact the studio directly.",
       "The refund outcome shown is a preview; the studio's cancellation policy (notice window and late-cancel refund %) is what's actually applied.",
     ],
+    relatedArticleIds: ["client-reschedule-booking"],
+  },
+  {
+    id: "client-reschedule-booking",
+    roles: [Client],
+    title: "Reschedule an appointment",
+    route: "/book",
+    keywords: ["reschedule appointment", "change date", "move appointment", "notice window"],
+    summary: "Move one of your own upcoming appointments to a new date, time, or duration directly from My Bookings.",
+    steps: [
+      "Under \"My Bookings\", find the appointment and click \"Reschedule\".",
+      "Pick a new date & time and duration — a live availability check appears for the new slot.",
+      "Click \"Confirm reschedule\".",
+    ],
+    tips: [
+      "Reschedule is only available with enough notice (the studio's configured window, 24 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly.",
+      "Rescheduling doesn't change the appointment's status — a Confirmed appointment stays Confirmed.",
+    ],
   },
   {
     id: "client-my-studios",

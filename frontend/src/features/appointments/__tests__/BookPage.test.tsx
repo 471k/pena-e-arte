@@ -128,6 +128,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
   http.post("http://localhost/api/v1/appointments",           () => HttpResponse.json(CREATED_APPT, { status: 201 })),
   http.delete("http://localhost/api/v1/appointments/:id",     () => new HttpResponse(null, { status: 204 })),
+  http.patch("http://localhost/api/v1/appointments/:id/reschedule", () =>
+    HttpResponse.json(APPT_UPCOMING)),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -711,5 +713,48 @@ describe("MyBookingsSection", () => {
     await user.click(await screen.findByText("Cancel appointment"));
     await user.click(screen.getByRole("button", { name: /yes, cancel/i }));
     expect(await screen.findByText("Failed to cancel appointment.")).toBeInTheDocument();
+  });
+
+  // ── Client self-reschedule ─────────────────────────────────────────────────
+
+  it("shows an enabled 'Reschedule' button for a Pending upcoming booking outside the notice window", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+    );
+    renderMyBookings();
+    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeEnabled();
+  });
+
+  it("disables 'Reschedule' and shows a cutoff message inside the notice window", async () => {
+    const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, date: soon }]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeDisabled();
+    expect(screen.getByText(/less than 24 hours away/i)).toBeInTheDocument();
+  });
+
+  it("clicking 'Reschedule' opens the reschedule dialog with a client-facing description", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByRole("button", { name: /reschedule/i }));
+    expect(screen.getByText("Reschedule appointment")).toBeInTheDocument();
+    expect(screen.getByText(/pick a new date, time, and duration for your appointment/i)).toBeInTheDocument();
+    expect(screen.queryByText(/not automatically notified/i)).not.toBeInTheDocument();
+  });
+
+  it("does not show 'Reschedule' for a past/completed booking", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_PAST])),
+    );
+    renderMyBookings();
+    await screen.findByText("Completed");
+    expect(screen.queryByRole("button", { name: /reschedule/i })).not.toBeInTheDocument();
   });
 });

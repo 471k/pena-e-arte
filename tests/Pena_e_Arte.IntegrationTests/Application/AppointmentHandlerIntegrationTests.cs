@@ -227,6 +227,55 @@ public class AppointmentHandlerIntegrationTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
+    // ── RescheduleAppointment (client self-service) ─────────────────────────────
+
+    [Fact]
+    public async Task RescheduleAppointment_ClientOutsideNoticeWindow_Succeeds()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId, userId);
+
+        DateTime start = DateTime.UtcNow.AddDays(10);
+        Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
+
+        ICurrentUser clientUser = Substitute.For<ICurrentUser>();
+        clientUser.Role.Returns("client");
+        clientUser.UserId.Returns(userId);
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime);
+        DateTime newStart = DateTime.UtcNow.AddDays(11);
+        AppointmentResponse result = await handler.Handle(
+            new RescheduleAppointmentCommand(apptId, new RescheduleAppointmentRequest(newStart, 90, null)), default);
+
+        result.Date.Should().Be(newStart);
+    }
+
+    [Fact]
+    public async Task RescheduleAppointment_ClientInsideNoticeWindow_ThrowsBusinessRuleViolationException()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId, userId);
+
+        DateTime start = DateTime.UtcNow.AddHours(2);
+        Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
+
+        ICurrentUser clientUser = Substitute.For<ICurrentUser>();
+        clientUser.Role.Returns("client");
+        clientUser.UserId.Returns(userId);
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime);
+
+        Func<Task> act = () => handler.Handle(
+            new RescheduleAppointmentCommand(apptId,
+                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(3), 90, null)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
     // ── Seed helpers ─────────────────────────────────────────────────────────────
 
     private Task<(Guid ArtistId, Guid ClientId)> SeedArtistAndClient(Guid tenantId) =>

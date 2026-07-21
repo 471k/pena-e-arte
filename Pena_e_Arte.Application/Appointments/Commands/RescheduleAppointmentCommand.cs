@@ -1,12 +1,15 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
@@ -16,6 +19,7 @@ public record RescheduleAppointmentCommand(Guid AppointmentId, RescheduleAppoint
 public class RescheduleAppointmentHandler(
     IAppDbContext     db,
     ICurrentTenant    tenant,
+    ICurrentUser      currentUser,
     IRealtimeNotifier realtime)
     : IRequestHandler<RescheduleAppointmentCommand, AppointmentResponse>
 {
@@ -25,11 +29,41 @@ public class RescheduleAppointmentHandler(
             .FirstOrDefaultAsync(a => a.Id == command.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
 
+        bool isClient = currentUser.Role == "client";
+
+        // A client may only reschedule their own appointment — 404 (not 403) on mismatch,
+        // matching CancelAppointmentHandler/ReviewDesignHandler's scope-violation convention.
+        if (isClient)
+        {
+            Client? me = await db.FindClientForUserAsync(currentUser, ct);
+            if (me is null || me.Id != appointment.ClientId)
+                throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
+        }
+
         if (appointment.Status is AppointmentStatus.Cancelled
                                 or AppointmentStatus.Completed
                                 or AppointmentStatus.NoShow)
             throw new BusinessRuleViolationException(
                 $"Cannot reschedule a {appointment.Status} appointment.");
+
+        // Client self-reschedule is cutoff-gated by the same notice window as self-cancel
+        // (Phase 1/2) — reused rather than a second, separate "reschedule window" field.
+        // Staff reschedule is unaffected: no notice-window check at all for that path.
+        if (isClient)
+        {
+            DepositRule? rule = await db.DepositRules
+                .Where(r => r.IsActive)
+                .OrderByDescending(r => r.UpdatedAt)
+                .FirstOrDefaultAsync(ct);
+
+            if (!ClientCancellationPolicy.IsWithinNoticeWindow(rule, appointment.Date, DateTime.UtcNow))
+            {
+                int windowHours = rule?.CancellationWindowHours
+                    ?? Domain.Constants.AppointmentSelfServiceDefaults.CancellationWindowHours;
+                throw new BusinessRuleViolationException(
+                    $"This appointment is less than {windowHours} hours away — please contact the studio directly to reschedule.");
+            }
+        }
 
         RescheduleAppointmentRequest req = command.Request;
         DateTime newEnd = req.NewDate.AddMinutes(req.NewDurationMinutes);

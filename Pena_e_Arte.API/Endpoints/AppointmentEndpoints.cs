@@ -22,7 +22,7 @@ public static class AppointmentEndpoints
         group.MapPatch("{id:guid}/confirm",     ConfirmAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/complete",    CompleteAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/no-show",     MarkNoShow).RequireAuthorization("ArtistAndAbove");
-        group.MapPatch("{id:guid}/reschedule",  RescheduleAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapPatch("{id:guid}/reschedule",  RescheduleAppointment).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}/calendar.ics",  GetIcs).RequireAuthorization("ClientAndAbove");
     }
 
