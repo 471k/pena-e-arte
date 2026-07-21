@@ -239,7 +239,6 @@ export function PlanEditPage() {
   const watchedMonthlyPrice   = useWatch({ control, name: "monthly.price" });
   const watchedDiscount       = useWatch({ control, name: "yearlyDiscountPercent" });
   const watchedBranding       = useWatch({ control, name: "allowBrandingRemoval" });
-  const watchedPrioritySupport = useWatch({ control, name: "prioritySupport" });
 
   const suggestedYearly =
     watchedMonthlyPrice !== undefined && watchedMonthlyPrice > 0 && watchedDiscount >= 0 && watchedDiscount < 100
@@ -441,14 +440,8 @@ export function PlanEditPage() {
                 <Label>Allow branding removal</Label>
               </div>
               {/* allowApiAccess toggle intentionally hidden — no API/webhook subsystem exists yet */}
-              <div className="flex items-center gap-2">
-                <ToggleSwitch
-                  checked={watchedPrioritySupport}
-                  onChange={() => setValue("prioritySupport", !watchedPrioritySupport, { shouldDirty: true })}
-                  aria-label="Priority support"
-                />
-                <Label>Priority support</Label>
-              </div>
+              {/* prioritySupport toggle intentionally hidden — no support-priority routing
+                  is implemented; same reasoning as allowApiAccess above. */}
             </CardContent>
           </Card>
 

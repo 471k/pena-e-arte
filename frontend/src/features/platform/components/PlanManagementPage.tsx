@@ -84,16 +84,9 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
                   White-label
                 </span>
               )}
-              {plan.allowApiAccess && (
-                <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                  API access
-                </span>
-              )}
-              {plan.prioritySupport && (
-                <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                  Priority support
-                </span>
-              )}
+              {/* API access / Priority support badges intentionally hidden — neither has a
+                  backing implementation (no API/webhook subsystem, no support-priority
+                  routing). Matches PlanEditPage's toggle being hidden for the same reason. */}
             </div>
             <p className="text-[11px] text-muted-foreground/70">
               {formatLimit(plan.maxArtists, "artists")} · {formatLimit(plan.maxAppointmentsPerMonth, "appts/mo")} ·{" "}

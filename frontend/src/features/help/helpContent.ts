@@ -786,7 +786,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Enter the plan Name and the Yearly discount percentage.",
       "Turn on Monthly price and/or Yearly price, entering the price for each.",
-      "Toggle feature flags: Allow branding removal, Priority support.",
+      "Toggle feature flags: Allow branding removal.",
       "Set usage limits (Artists, Appointments/mo, Notifications/mo, Storage, Locations) or check \"Unlimited\".",
       "Click Save.",
     ],
