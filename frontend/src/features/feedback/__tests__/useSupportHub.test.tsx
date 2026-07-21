@@ -9,16 +9,19 @@ import { Role } from "@/shared/types/roles";
 import { feedbackApi } from "../feedbackApi";
 import { useSupportHub } from "../useSupportHub";
 
-const { mockOn, mockStart, mockInvoke, mockStop, eventHandlers } = vi.hoisted(() => {
-  const eventHandlers: Record<string, () => void> = {};
+const { mockOn, mockStart, mockInvoke, mockStop, mockOnReconnected, eventHandlers, fireReconnected } = vi.hoisted(() => {
+  const eventHandlers: Record<string, (...args: unknown[]) => void> = {};
+  let reconnectedHandler: (() => void) | undefined;
   return {
     eventHandlers,
     mockStop:   vi.fn().mockResolvedValue(undefined),
     mockInvoke: vi.fn().mockResolvedValue(undefined),
     mockStart:  vi.fn().mockResolvedValue(undefined),
-    mockOn:     vi.fn((event: string, handler: () => void) => {
+    mockOn:     vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       eventHandlers[event] = handler;
     }),
+    mockOnReconnected: vi.fn((handler: () => void) => { reconnectedHandler = handler; }),
+    fireReconnected: () => reconnectedHandler?.(),
   };
 });
 
@@ -28,10 +31,11 @@ vi.mock("@microsoft/signalr", () => {
     this.withAutomaticReconnect = vi.fn().mockReturnValue(this);
     this.configureLogging       = vi.fn().mockReturnValue(this);
     this.build                  = vi.fn(() => ({
-      on:     mockOn,
-      start:  mockStart,
-      invoke: mockInvoke,
-      stop:   mockStop,
+      on:            mockOn,
+      onreconnected: mockOnReconnected,
+      start:         mockStart,
+      invoke:        mockInvoke,
+      stop:          mockStop,
     }));
   }
   return { HubConnectionBuilder, LogLevel: { Warning: 2 } };
@@ -67,6 +71,7 @@ describe("useSupportHub", () => {
     mockStart.mockClear();
     mockInvoke.mockClear();
     mockStop.mockClear();
+    mockOnReconnected.mockClear();
   });
 
   afterEach(() => {
@@ -110,14 +115,14 @@ describe("useSupportHub", () => {
     expect(mockInvoke).toHaveBeenCalledWith("JoinTicket", "fb-456");
   });
 
-  it("SupportMessageReceived invalidates the FeedbackMessage tag for that ticket", async () => {
+  it("SupportMessageReceived from another user invalidates the FeedbackMessage tag for that ticket", async () => {
     const store = makeStore();
     const dispatchSpy = vi.spyOn(store, "dispatch");
     renderSupportHub(store, "fb-123");
     await act(async () => { /* flush */ });
     dispatchSpy.mockClear();
 
-    act(() => { eventHandlers["SupportMessageReceived"](); });
+    act(() => { eventHandlers["SupportMessageReceived"]({ authorUserId: "someone-else" }); });
 
     const calls = dispatchSpy.mock.calls as unknown as [unknown][];
     const invalidations = calls
@@ -126,5 +131,33 @@ describe("useSupportHub", () => {
 
     expect(invalidations).toHaveLength(1);
     expect(invalidations[0].payload).toEqual([{ type: "FeedbackMessage", id: "fb-123" }]);
+  });
+
+  it("SupportMessageReceived echoing the sender's own message does NOT invalidate again", async () => {
+    const store = makeStore(); // current user id is "u1"
+    const dispatchSpy = vi.spyOn(store, "dispatch");
+    renderSupportHub(store, "fb-123");
+    await act(async () => { /* flush */ });
+    dispatchSpy.mockClear();
+
+    act(() => { eventHandlers["SupportMessageReceived"]({ authorUserId: "u1" }); });
+
+    const calls = dispatchSpy.mock.calls as unknown as [unknown][];
+    const invalidations = calls
+      .map(([a]) => a as ReturnType<typeof feedbackApi.util.invalidateTags>)
+      .filter((a: ReturnType<typeof feedbackApi.util.invalidateTags>) => a?.type === feedbackApi.util.invalidateTags.type);
+
+    expect(invalidations).toHaveLength(0);
+  });
+
+  it("re-invokes JoinTicket after an automatic reconnect", async () => {
+    renderSupportHub(makeStore(), "fb-123");
+    await act(async () => { /* flush */ });
+    mockInvoke.mockClear();
+
+    act(() => { fireReconnected(); });
+    await act(async () => { /* flush */ });
+
+    expect(mockInvoke).toHaveBeenCalledWith("JoinTicket", "fb-123");
   });
 });

@@ -418,6 +418,60 @@ issuer-facing ticket inbox, just one-shot until now.
   writes 500 here due to `SubscriptionAccessService`/Redis being absent in this dev
   environment, unrelated to this feature's own code.
 
+#### Local `/code-review high` pass — 2026-07-21, before merge
+
+Ran an 8-angle review (correctness, removed-behavior, cross-file, reuse, simplification,
+efficiency, altitude, CLAUDE.md conventions) against this Part C diff specifically, since it
+changes authorization on a production endpoint. 8 candidates survived verification; all 8
+were fixed before merge, not just logged:
+
+- **`SupportHub.JoinTicket` didn't validate ticket ownership** (security) — any authenticated
+  user who learned a ticket GUID could join its SignalR group and read all future reply
+  content in real time, bypassing the REST-layer `IsAccessibleBy` check entirely. The
+  "matches `ScheduleHub`'s precedent" reasoning held for the *mechanism* but not the *risk*:
+  `ScheduleHub` broadcasts studio-wide data any studio member already sees; this hub
+  broadcasts a private two-party conversation. Fixed by validating ownership inside
+  `JoinTicket` itself — reading claims directly from `Context.User` (not `ICurrentUser`/
+  `ICurrentTenant`, which are never populated for hub invocations: `/hubs` paths are in
+  `TenantMiddleware.ExemptPrefixes`) and calling `FeedbackReport.IsAccessibleBy` before
+  adding the caller to the group.
+- **Studio-less client → unhandled 500 from the Contact Support flow meant to help them** —
+  widening `POST /api/v1/feedback` to `ClientAndAbove` newly let a studio-less client
+  (a real, supported state — see `MyStudiosPage`'s empty state) reach `SubmitFeedbackHandler`,
+  which throws `InvalidOperationException` when `tenant.StudioId` doesn't resolve to a real
+  `Studio`. Fixed with a `SubmitFeedbackValidator` rule on `ICurrentTenant.IsSet`, returning a
+  clean 422 instead of a 500.
+- **`ContactSupportPanel` silently fell through to the submission form on a failed ticket
+  lookup** — risked a duplicate ticket submission if `GET /api/v1/feedback/mine` failed
+  transiently. Fixed with an explicit error + retry state.
+- **`useSupportHub` never re-joined the ticket group after SignalR's automatic reconnect** —
+  a brief network drop silently stopped future replies from arriving (mirrors an identical
+  pre-existing gap in `useSignalR.ts`, left as a separate follow-up since it's out of this
+  diff's scope). Fixed with an `onreconnected` handler.
+- **`GetMyFeedbackReportsHandler` duplicated `GetFeedbackReportsHandler`'s entire response
+  projection** verbatim — extracted a shared `internal static readonly Expression<Func<...>>`
+  (not a compiled `Func`, so EF Core still translates it into the SQL projection).
+- **The ownership-check block was duplicated across two handlers** with no structural
+  guarantee a future third handler would remember it, despite `PlanLimitBehavior` already
+  establishing a pipeline-behavior pattern for exactly this kind of cross-cutting check —
+  extracted a shared `FeedbackAccessGuard.LoadAccessibleReportAsync` helper (a full pipeline
+  behavior was judged like overkill for two call sites; revisit if a third handler needs it).
+- **Sending a reply refetched the message list twice** — once from the mutation's own
+  `invalidatesTags`, once from the SignalR echo of the sender's own message (the sender is a
+  member of their own ticket's group). Fixed by having `useSupportHub` skip invalidation when
+  the echoed message's `authorUserId` matches the current user.
+- **Every reply invalidated the unscoped `"Feedback"` tag**, forcing a full report-list
+  refetch (issuer's entire cross-tenant inbox) even when replying to an already-`Open` ticket
+  changes no report-level field. Fixed by threading a `mayReopen` flag through the mutation
+  (computed client-side from the same condition `PostFeedbackMessageHandler` uses server-side:
+  studio-side reply + `Resolved`/`Dismissed` status) so `"Feedback"` is only invalidated when
+  a reopen is actually possible.
+
+All fixes covered by new/updated tests (backend: +1 validator test; frontend: +2
+`useSupportHub` tests) — full suite verified green after: 1225 backend, 1617 frontend.
+Re-verified the Contact Support flow's error/retry state and the happy path in a
+route-mocked browser after these changes.
+
 ```
 OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rate-limited)
                            POST /api/v1/auth/oauth/register  (AllowAnonymous, rate-limited)

@@ -9,10 +9,15 @@ namespace Pena_e_Arte.UnitTests.Feedback;
 
 public class SubmitFeedbackValidatorTests
 {
-    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
-    private SubmitFeedbackValidator Sut() => new(_user);
+    private readonly ICurrentUser   _user   = Substitute.For<ICurrentUser>();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private SubmitFeedbackValidator Sut() => new(_user, _tenant);
 
-    public SubmitFeedbackValidatorTests() => _user.Role.Returns("artist");
+    public SubmitFeedbackValidatorTests()
+    {
+        _user.Role.Returns("artist");
+        _tenant.IsSet.Returns(true);
+    }
 
     [Fact]
     public void Validate_ValidRequest_IsValid()
@@ -95,6 +100,14 @@ public class SubmitFeedbackValidatorTests
     {
         _user.Role.Returns("owner");
         Sut().ShouldBeValid(Command("FeatureRequest", "Title", "A description with enough characters."));
+    }
+
+    [Fact]
+    public void Validate_StudioLessClient_FailsOnStudio()
+    {
+        _user.Role.Returns("client");
+        _tenant.IsSet.Returns(false);
+        Sut().ShouldFailOn(Command("SupportRequest", "Need help", "A description with enough characters."), "Studio");
     }
 
     private static SubmitFeedbackCommand Command(string type, string title, string body) =>

@@ -34,16 +34,21 @@ interface SupportTicketThreadProps {
 export function SupportTicketThread({ report, canReply = true }: SupportTicketThreadProps) {
   const [reply, setReply] = useState("");
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
+  const currentRole   = useAppSelector((s) => s.auth.role);
   const { data: messages, isLoading } = useGetFeedbackMessagesQuery(report.id);
   const [postMessage, { isLoading: isSending }] = usePostFeedbackMessageMutation();
 
   useSupportHub(report.id);
 
+  // Mirrors PostFeedbackMessageHandler's own reopen condition — only a studio-side reply
+  // (not issuer) on an already-closed ticket can change the report row.
+  const mayReopen = currentRole !== "issuer" && (report.status === "Resolved" || report.status === "Dismissed");
+
   async function handleSend() {
     const body = reply.trim();
     if (!body) return;
     try {
-      await postMessage({ feedbackReportId: report.id, body }).unwrap();
+      await postMessage({ feedbackReportId: report.id, body, mayReopen }).unwrap();
       setReply("");
     } catch {
       toast.error("Failed to send message.");

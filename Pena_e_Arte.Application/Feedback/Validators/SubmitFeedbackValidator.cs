@@ -7,8 +7,17 @@ namespace Pena_e_Arte.Application.Feedback.Validators;
 
 public class SubmitFeedbackValidator : AbstractValidator<SubmitFeedbackCommand>
 {
-    public SubmitFeedbackValidator(ICurrentUser currentUser)
+    public SubmitFeedbackValidator(ICurrentUser currentUser, ICurrentTenant currentTenant)
     {
+        // A studio-less client (registered with no studio, or between studios) has no
+        // tenant_id claim, so ICurrentTenant is never set for their request — reaching this
+        // far and having SubmitFeedbackHandler look up a nonexistent Studio would otherwise
+        // throw an unhandled 500 instead of a clean, actionable message.
+        RuleFor(x => x)
+            .Must(_ => currentTenant.IsSet)
+            .WithName("Studio")
+            .WithMessage("You need to belong to a studio to submit feedback.");
+
         RuleFor(x => x.Request.Type)
             .NotEmpty()
             .Must(v => Enum.TryParse<FeedbackType>(v, ignoreCase: true, out _))

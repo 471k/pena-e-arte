@@ -22,17 +22,6 @@ public class GetMyFeedbackReportsHandler(IAppDbContext db, ICurrentUser user, IC
         if (!string.IsNullOrEmpty(query.Type) && Enum.TryParse(query.Type, ignoreCase: true, out FeedbackType type))
             q = q.Where(r => r.Type == type);
 
-        return await q.Select(r => new FeedbackReportResponse(
-                r.Id,
-                r.Type.ToString(),
-                r.Title,
-                r.Body,
-                r.Status.ToString(),
-                r.StudioName,
-                r.SubmitterRole,
-                r.IssuerNote,
-                r.CreatedAt,
-                r.ResolvedAt))
-            .ToListAsync(ct);
+        return await q.Select(GetFeedbackReportsHandler.ToResponse).ToListAsync(ct);
     }
 }

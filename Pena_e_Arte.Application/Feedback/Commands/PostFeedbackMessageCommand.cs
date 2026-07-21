@@ -1,11 +1,9 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
-using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Feedback.Commands;
@@ -22,12 +20,8 @@ public class PostFeedbackMessageHandler(
 {
     public async Task<FeedbackMessageResponse> Handle(PostFeedbackMessageCommand command, CancellationToken ct)
     {
-        FeedbackReport report = await db.FeedbackReports
-            .FirstOrDefaultAsync(r => r.Id == command.FeedbackReportId, ct)
-            ?? throw new NotFoundException(nameof(FeedbackReport), command.FeedbackReportId);
-
-        if (!report.IsAccessibleBy(user.UserId, tenant.StudioId, user.Role))
-            throw new ForbiddenException("You do not have access to this feedback ticket.");
+        FeedbackReport report = await FeedbackAccessGuard.LoadAccessibleReportAsync(
+            db, command.FeedbackReportId, user, tenant, ct);
 
         FeedbackMessage message = FeedbackMessage.Create(
             report.Id, user.UserId, user.Role, command.Request.Body);
