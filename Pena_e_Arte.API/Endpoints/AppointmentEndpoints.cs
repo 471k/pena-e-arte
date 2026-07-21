@@ -18,7 +18,7 @@ public static class AppointmentEndpoints
         group.MapGet("/check-slot",             CheckSlotAvailability).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}",               GetAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/",                      CreateAppointment).RequireAuthorization("ClientAndAbove");
-        group.MapDelete("{id:guid}",            CancelAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("{id:guid}",            CancelAppointment).RequireAuthorization("ClientAndAbove");
         group.MapPatch("{id:guid}/confirm",     ConfirmAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/complete",    CompleteAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/no-show",     MarkNoShow).RequireAuthorization("ArtistAndAbove");

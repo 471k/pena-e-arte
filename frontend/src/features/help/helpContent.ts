@@ -18,6 +18,24 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Check \"My Bookings\" below the form to see your pending and upcoming appointments.",
     ],
     tips: ["Your booking is a request, not a confirmed slot — the studio replies within 24 hours."],
+    relatedArticleIds: ["client-cancel-booking"],
+  },
+  {
+    id: "client-cancel-booking",
+    roles: [Client],
+    title: "Cancel an appointment",
+    route: "/book",
+    keywords: ["cancel appointment", "cancel booking", "refund", "forfeit deposit", "notice window"],
+    summary: "Cancel one of your own upcoming appointments directly from My Bookings, with a preview of what happens to your deposit.",
+    steps: [
+      "Under \"My Bookings\", find the appointment and click \"Cancel appointment\".",
+      "Read the message: cancelling with enough notice refunds your deposit in full; cancelling too close to the appointment may forfeit some or all of it.",
+      "Click \"Yes, cancel\" to confirm, or \"Keep booking\" to back out.",
+    ],
+    tips: [
+      "Cancellation can only be self-served for a Pending or Confirmed appointment — once it's Completed or marked as a no-show, contact the studio directly.",
+      "The refund outcome shown is a preview; the studio's cancellation policy (notice window and late-cancel refund %) is what's actually applied.",
+    ],
   },
   {
     id: "client-my-studios",
@@ -879,6 +897,13 @@ export const FAQ_ITEMS: FaqItem[] = [
     question: "What do the different deposit statuses mean?",
     answer: "Pending means the deposit hasn't been paid yet. Paid means it's been received (card captured or cash confirmed). Refunded means it was paid back to the client. Forfeited means the client kept it forfeited per your studio's cancellation terms.",
     relatedArticleIds: ["owner-payments"],
+  },
+  {
+    id: "faq-client-cancel-refund",
+    roles: [Client],
+    question: "Do I get my deposit back if I cancel my appointment?",
+    answer: "It depends on the studio's cancellation policy. Cancel with enough notice (the studio's configured notice window, 24 hours by default) and you get a full refund. Cancel later than that and you may only get a partial refund, or none at all, depending on the studio's settings.",
+    relatedArticleIds: ["client-cancel-booking"],
   },
   {
     id: "faq-design-statuses",
