@@ -11,6 +11,7 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { NotificationBell } from "@/features/notifications";
+import { HelpMenu } from "@/features/help";
 
 const NAV_ITEMS = [
   { label: "Book Appointment", shortLabel: "Book",    href: "/book",         icon: <CalendarDays className="h-4 w-4" /> },
@@ -64,6 +65,7 @@ export function ClientLayout() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <HelpMenu />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

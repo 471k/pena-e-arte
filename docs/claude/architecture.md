@@ -242,6 +242,29 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 22 | Google/Apple OAuth Sign-In | No new entity — Identity `IdentityUser` created passwordless via `CreateOAuthUserAsync` | `IOAuthTokenValidator` (JWKS via `IHttpClientFactory`, cached 1h in Redis); Google/Apple JS SDKs via CDN, no npm packages | Per-tenant (owner/client only) |
 | 23 | Multi-Studio Client View | No new entity (`Studio` + Identity claims) | `IIdentityService.GetTenantIdsAsync` | Per-user, cross-tenant |
 | 24 | Plan Usage Limits + Owner Visibility | No new entity (`Plan.Max*`, `Studio.StorageUsageBytes`) | `IPlanLimitService`/`PlanLimitService` (Redis-cached), `PlanLimitBehavior` (MediatR pipeline) | Per-tenant (enforcement/visibility), Issuer-level (validation report) |
+| 25 | In-App Help Menu | No entity (static content) | None — frontend-only, no backend | All roles |
+
+### In-App Help Menu — 2026-07-20
+
+Searchable, role-scoped help panel opened from every layout header (mirrors the
+FeedbackDialog integration pattern). Content lives entirely in
+`frontend/src/features/help/helpContent.ts` — no backend, no entity, no endpoint.
+Search is plain substring scoring in `helpSearch.ts` (title > keyword > body), same
+approach as the standalone manual at `frontend/public/user-manual/index.html`. Issuer
+role gets an additional toggle to browse Client/Artist/Owner guides for support purposes.
+Keep this file and the standalone manual in sync when either is updated — they cover the
+same screens from two different delivery mechanisms (in-app panel vs. offline document).
+
+Added `@radix-ui/react-accordion` + `frontend/src/shared/components/ui/accordion.tsx` —
+the FAQ tab needed a shadcn Accordion and none existed yet. Consistent with the codebase's
+existing use of many other `@radix-ui/react-*` headless primitives (Tabs, Dialog, Select,
+Dropdown Menu, Alert Dialog); not a new class of dependency the way `QRCoder` was, so not
+logged as a separate Decisions Log entry.
+
+Keyboard shortcut `Shift+?` opens the panel from anywhere (ignored while typing in an
+input/textarea). Verified in a real browser (Playwright, `verifier-gui` skill) as all
+four roles: menu opens, search narrows results, FAQ tab renders, the issuer-only
+"show all roles' guides" toggle appears only for issuer, and the shortcut opens the sheet.
 
 ```
 OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rate-limited)

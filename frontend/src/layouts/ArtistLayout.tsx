@@ -14,6 +14,7 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { NotificationBell } from "@/features/notifications";
 import { FeedbackDialog } from "@/features/feedback";
+import { HelpMenu } from "@/features/help";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 
@@ -97,6 +98,7 @@ export function ArtistLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
+          <HelpMenu />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>
