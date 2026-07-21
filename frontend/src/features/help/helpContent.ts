@@ -18,6 +18,42 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Check \"My Bookings\" below the form to see your pending and upcoming appointments.",
     ],
     tips: ["Your booking is a request, not a confirmed slot — the studio replies within 24 hours."],
+    relatedArticleIds: ["client-cancel-booking"],
+  },
+  {
+    id: "client-cancel-booking",
+    roles: [Client],
+    title: "Cancel an appointment",
+    route: "/book",
+    keywords: ["cancel appointment", "cancel booking", "refund", "forfeit deposit", "notice window"],
+    summary: "Cancel one of your own upcoming appointments directly from My Bookings, with a preview of what happens to your deposit.",
+    steps: [
+      "Under \"My Bookings\", find the appointment and click \"Cancel appointment\".",
+      "Read the message: cancelling with enough notice refunds your deposit in full; cancelling too close to the appointment may forfeit some or all of it.",
+      "Click \"Yes, cancel\" to confirm, or \"Keep booking\" to back out.",
+    ],
+    tips: [
+      "Cancellation can only be self-served for a Pending or Confirmed appointment — once it's Completed or marked as a no-show, contact the studio directly.",
+      "The refund outcome shown is a preview; the studio's cancellation policy (notice window and late-cancel refund %) is what's actually applied.",
+    ],
+    relatedArticleIds: ["client-reschedule-booking"],
+  },
+  {
+    id: "client-reschedule-booking",
+    roles: [Client],
+    title: "Reschedule an appointment",
+    route: "/book",
+    keywords: ["reschedule appointment", "change date", "move appointment", "notice window"],
+    summary: "Move one of your own upcoming appointments to a new date, time, or duration directly from My Bookings.",
+    steps: [
+      "Under \"My Bookings\", find the appointment and click \"Reschedule\".",
+      "Pick a new date & time and duration — a live availability check appears for the new slot.",
+      "Click \"Confirm reschedule\".",
+    ],
+    tips: [
+      "Reschedule is only available with enough notice (the studio's configured window, 24 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly.",
+      "Rescheduling doesn't change the appointment's status — a Confirmed appointment stays Confirmed.",
+    ],
   },
   {
     id: "client-my-studios",
@@ -455,16 +491,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Create a new deposit rule",
     route: "/deposit-rules/new",
-    keywords: ["new deposit rule", "percentage deposit"],
-    summary: "Create a new deposit rule that determines how much of a deposit clients pay when booking.",
+    keywords: ["new deposit rule", "percentage deposit", "cancellation policy", "notice window", "late cancellation refund"],
+    summary: "Create a new deposit rule that determines how much of a deposit clients pay when booking, and your studio's cancellation policy.",
     steps: [
       "Go to Deposit Rules and click \"New Rule\".",
       "Enter a name for the rule (e.g. \"Standard Deposit\").",
       "Choose \"Fixed amount\" (a set euro amount) or \"Percentage\" (a % of the session cost).",
       "Enter the amount or percentage.",
+      "Optionally set a \"Cancellation notice window\" — how many hours' notice a client must give to self-cancel without forfeiting their deposit. Leave blank to use the 24-hour platform default.",
+      "Optionally set \"Refund if cancelled late\" — the percentage of the deposit refunded if a client cancels within that window. 0% (the default) forfeits the deposit entirely.",
       "Leave \"Active\" checked if you want the rule to apply immediately, then click \"Create Rule\".",
     ],
-    tips: ["Percentage rules must be between 0.01% and 100%."],
+    tips: [
+      "Percentage rules must be between 0.01% and 100%.",
+      "The cancellation notice window also gates client self-reschedule, not just self-cancel.",
+    ],
   },
   {
     id: "owner-schedule",
@@ -633,6 +674,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
     warnings: ["Downgrading an existing card-billed plan takes effect only at the end of your current billing period, and you can't select a new plan while a change is already scheduled."],
   },
   {
+    id: "owner-reports",
+    roles: [Owner],
+    title: "Revenue reports",
+    route: "/reports",
+    keywords: ["revenue", "trend", "per artist", "earnings", "analytics"],
+    summary: "See your studio's revenue trend over the last 12 months and a breakdown of revenue by artist.",
+    steps: [
+      "Go to Reports to see the revenue trend chart, based on paid deposits over the last 12 months.",
+      "Hover over a point on the chart to see that month's exact revenue.",
+      "Scroll down to \"Revenue by artist\" for a breakdown of the last 30 days, sorted highest first.",
+    ],
+    tips: ["Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't."],
+  },
+  {
     id: "owner-instagram-sync",
     roles: [Owner, Artist],
     title: "Connect Instagram to sync your artists' posts",
@@ -731,7 +786,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Enter the plan Name and the Yearly discount percentage.",
       "Turn on Monthly price and/or Yearly price, entering the price for each.",
-      "Toggle feature flags: Allow branding removal, Priority support.",
+      "Toggle feature flags: Allow branding removal.",
       "Set usage limits (Artists, Appointments/mo, Notifications/mo, Storage, Locations) or check \"Unlimited\".",
       "Click Save.",
     ],
@@ -837,6 +892,32 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: ["Data covers a rolling 30-day window and is aggregated across all studios."],
   },
+  {
+    id: "issuer-audit-log",
+    roles: [Issuer],
+    title: "Review the platform audit log",
+    route: "/platform/audit-log",
+    keywords: ["audit log", "admin actions", "compliance", "who did what"],
+    summary: "A searchable, cross-tenant log of every trust-sensitive action taken on the platform — studio suspensions, subscription changes, plan edits, referral code changes, and more.",
+    steps: [
+      "Open Audit Log from the platform nav.",
+      "Filter by action, target type, or a date range.",
+      "Each row shows when it happened, what happened, what it targeted, which studio (or \"Platform-wide\" for actions with no single studio target), and the actor's role.",
+    ],
+    tips: ["Entries never contain names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data."],
+  },
+  {
+    id: "owner-audit-log",
+    roles: [Owner],
+    title: "Recent studio activity",
+    route: "/studios/me",
+    keywords: ["recent activity", "audit", "who did what"],
+    summary: "A read-only list of the most recent trust-sensitive actions taken on your studio (e.g. a client-cancelled appointment), shown on your Studio Settings page.",
+    steps: [
+      "Go to Studio Settings and scroll to \"Recent studio activity\".",
+      "Each entry shows the action and when it happened.",
+    ],
+  },
 ];
 
 export const FAQ_ITEMS: FaqItem[] = [
@@ -874,6 +955,13 @@ export const FAQ_ITEMS: FaqItem[] = [
     question: "What do the different deposit statuses mean?",
     answer: "Pending means the deposit hasn't been paid yet. Paid means it's been received (card captured or cash confirmed). Refunded means it was paid back to the client. Forfeited means the client kept it forfeited per your studio's cancellation terms.",
     relatedArticleIds: ["owner-payments"],
+  },
+  {
+    id: "faq-client-cancel-refund",
+    roles: [Client],
+    question: "Do I get my deposit back if I cancel my appointment?",
+    answer: "It depends on the studio's cancellation policy. Cancel with enough notice (the studio's configured notice window, 24 hours by default) and you get a full refund. Cancel later than that and you may only get a partial refund, or none at all, depending on the studio's settings.",
+    relatedArticleIds: ["client-cancel-booking"],
   },
   {
     id: "faq-design-statuses",

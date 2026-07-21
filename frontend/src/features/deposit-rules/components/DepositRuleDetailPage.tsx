@@ -30,10 +30,12 @@ import type { UpdateDepositRuleRequest } from "../depositRule.types";
 
 const editSchema = z
   .object({
-    name:        z.string().min(1, "Name is required").max(100, "Max 100 characters"),
-    depositType: z.enum(["fixed", "percent"]),
-    amount:      z.number({ error: "Amount is required" }).positive("Must be greater than 0"),
-    isActive:    z.boolean(),
+    name:                      z.string().min(1, "Name is required").max(100, "Max 100 characters"),
+    depositType:               z.enum(["fixed", "percent"]),
+    amount:                    z.number({ error: "Amount is required" }).positive("Must be greater than 0"),
+    isActive:                  z.boolean(),
+    cancellationWindowHours:   z.number().positive("Must be greater than 0").nullable(),
+    refundPercentOnLateCancel: z.number().min(0, "Must be between 0 and 100").max(100, "Must be between 0 and 100"),
   })
   .superRefine((data, ctx) => {
     if (data.depositType === "percent" && data.amount > 100) {
@@ -80,10 +82,12 @@ export function DepositRuleDetailPage() {
   function startEdit() {
     if (!rule) return;
     reset({
-      name:        rule.name,
-      depositType: rule.amountFixed !== null ? "fixed" : "percent",
-      amount:      (rule.amountFixed ?? rule.amountPercent) as number,
-      isActive:    rule.isActive,
+      name:                      rule.name,
+      depositType:               rule.amountFixed !== null ? "fixed" : "percent",
+      amount:                    (rule.amountFixed ?? rule.amountPercent) as number,
+      isActive:                  rule.isActive,
+      cancellationWindowHours:   rule.cancellationWindowHours,
+      refundPercentOnLateCancel: rule.refundPercentOnLateCancel,
     });
     setMode("edit");
   }
@@ -91,10 +95,12 @@ export function DepositRuleDetailPage() {
   async function onSave(values: EditFormValues) {
     if (!id) return;
     const body: UpdateDepositRuleRequest = {
-      name:          values.name,
-      amountFixed:   values.depositType === "fixed"   ? values.amount : null,
-      amountPercent: values.depositType === "percent" ? values.amount : null,
-      isActive:      values.isActive,
+      name:                      values.name,
+      amountFixed:               values.depositType === "fixed"   ? values.amount : null,
+      amountPercent:             values.depositType === "percent" ? values.amount : null,
+      isActive:                  values.isActive,
+      cancellationWindowHours:   values.cancellationWindowHours,
+      refundPercentOnLateCancel: values.refundPercentOnLateCancel,
     };
     const result = await updateRule({ id, body });
     if ("data" in result) {
@@ -217,6 +223,15 @@ export function DepositRuleDetailPage() {
                     {isFixed ? "Fixed" : "Percentage"} · {formatAmount(rule.amountFixed, rule.amountPercent)}
                   </span>
                 </div>
+                <div className="text-xs text-muted-foreground pt-1 border-t space-y-1">
+                  <p>
+                    Cancellation notice: {rule.cancellationWindowHours ?? 24} hours
+                    {rule.cancellationWindowHours === null && " (platform default)"}
+                  </p>
+                  <p>
+                    Late cancellation refund: {rule.refundPercentOnLateCancel}%
+                  </p>
+                </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t">
                   <Calendar className="h-3.5 w-3.5 shrink-0" />
                   <span>Created {formatDate(rule.createdAt)}</span>
@@ -277,6 +292,48 @@ export function DepositRuleDetailPage() {
               {errors.amount && (
                 <p className="text-xs text-destructive">{errors.amount.message}</p>
               )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-cancellationWindowHours">Cancellation notice window (hours)</Label>
+              <Input
+                id="edit-cancellationWindowHours"
+                type="number"
+                step="1"
+                min="1"
+                placeholder="24 (platform default)"
+                {...register("cancellationWindowHours", {
+                  setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                })}
+                className={cn(errors.cancellationWindowHours && "border-destructive")}
+              />
+              {errors.cancellationWindowHours && (
+                <p className="text-xs text-destructive">{errors.cancellationWindowHours.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                How much notice a client must give to cancel without forfeiting their deposit.
+                Leave blank to use the platform default (24 hours).
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-refundPercentOnLateCancel">Refund if cancelled late (%)</Label>
+              <Input
+                id="edit-refundPercentOnLateCancel"
+                type="number"
+                step="1"
+                min="0"
+                max="100"
+                {...register("refundPercentOnLateCancel", { valueAsNumber: true })}
+                className={cn(errors.refundPercentOnLateCancel && "border-destructive")}
+              />
+              {errors.refundPercentOnLateCancel && (
+                <p className="text-xs text-destructive">{errors.refundPercentOnLateCancel.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                What percentage of the deposit to refund if a client cancels within the notice
+                window. 0 means the deposit is forfeited, matching today's behavior.
+              </p>
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer">

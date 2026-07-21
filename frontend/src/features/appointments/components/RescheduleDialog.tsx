@@ -33,6 +33,8 @@ interface RescheduleDialogProps {
   appointment: AppointmentResponse;
   open:        boolean;
   onOpenChange: (open: boolean) => void;
+  /** Client self-reschedule doesn't need the staff-facing "notify separately" note. */
+  description?: string;
 }
 
 // Formats an ISO datetime string for an <input type="datetime-local"> value (local time, no seconds).
@@ -42,7 +44,7 @@ function toDatetimeLocalValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function RescheduleDialog({ appointment, open, onOpenChange }: RescheduleDialogProps) {
+export function RescheduleDialog({ appointment, open, onOpenChange, description }: RescheduleDialogProps) {
   const [newDate, setNewDate] = useState(() => toDatetimeLocalValue(appointment.date));
   const [newDuration, setNewDuration] = useState(appointment.durationMinutes);
   const [reschedule, { isLoading }] = useRescheduleAppointmentMutation();
@@ -100,7 +102,8 @@ export function RescheduleDialog({ appointment, open, onOpenChange }: Reschedule
         <DialogHeader>
           <DialogTitle>Reschedule appointment</DialogTitle>
           <DialogDescription>
-            Pick a new date, time, and duration. The client is not automatically notified — let them know separately.
+            {description ??
+              "Pick a new date, time, and duration. The client is not automatically notified — let them know separately."}
           </DialogDescription>
         </DialogHeader>
 

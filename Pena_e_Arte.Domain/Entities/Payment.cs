@@ -20,6 +20,14 @@ public class Payment : TenantEntity
 
     public DateTime? PaidAt                      { get; set; }
 
+    /// <summary>
+    /// How much of Amount has actually been refunded — null/0 means none. Distinguishes a
+    /// partial refund from a full one when Status is Refunded (there is no separate
+    /// "PartiallyRefunded" status); revenue reporting subtracts this from Amount rather than
+    /// treating any Refunded payment as contributing zero.
+    /// </summary>
+    public decimal? RefundedAmount                { get; set; }
+
     public Appointment Appointment               { get; set; } = null!;
     public Client      Client                    { get; set; } = null!;
     public ICollection<SessionSplit> SessionSplits { get; set; } = [];

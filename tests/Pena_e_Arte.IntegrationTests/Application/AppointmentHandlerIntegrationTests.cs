@@ -140,7 +140,7 @@ public class AppointmentHandlerIntegrationTests
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe);
         await handler.Handle(new CancelAppointmentCommand(apptId), default);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -154,7 +154,7 @@ public class AppointmentHandlerIntegrationTests
     {
         Guid tenantId = Guid.NewGuid();
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(Guid.NewGuid()), default);
 
@@ -172,21 +172,121 @@ public class AppointmentHandlerIntegrationTests
                                             AppointmentStatus.Completed);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(apptId), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>();
     }
 
+    [Fact]
+    public async Task CancelAppointment_ClientOwnAppointment_Succeeds()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId, userId);
+
+        DateTime start = DateTime.UtcNow.AddDays(10);
+        Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
+
+        ICurrentUser clientUser = Substitute.For<ICurrentUser>();
+        clientUser.Role.Returns("client");
+        clientUser.UserId.Returns(userId);
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender, _jobs, _stripe);
+        await handler.Handle(new CancelAppointmentCommand(apptId), default);
+
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        Appointment? appt = await verify.Appointments.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(a => a.Id == apptId);
+        appt!.Status.Should().Be(AppointmentStatus.Cancelled);
+        appt.CancellationReason.Should().Be(CancellationReason.ClientCancelled);
+    }
+
+    [Fact]
+    public async Task CancelAppointment_ClientAnotherClientsAppointment_ThrowsNotFoundException()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+        await SeedArtistAndClient(tenantId, userId);
+        (Guid artistId, Guid otherClientId) = await SeedArtistAndClient(tenantId);
+
+        DateTime start = DateTime.UtcNow.AddDays(10);
+        Guid apptId = await SeedAppointment(tenantId, artistId, otherClientId, start, start.AddMinutes(90));
+
+        ICurrentUser clientUser = Substitute.For<ICurrentUser>();
+        clientUser.Role.Returns("client");
+        clientUser.UserId.Returns(userId);
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender, _jobs, _stripe);
+
+        Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(apptId), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    // ── RescheduleAppointment (client self-service) ─────────────────────────────
+
+    [Fact]
+    public async Task RescheduleAppointment_ClientOutsideNoticeWindow_Succeeds()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId, userId);
+
+        DateTime start = DateTime.UtcNow.AddDays(10);
+        Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
+
+        ICurrentUser clientUser = Substitute.For<ICurrentUser>();
+        clientUser.Role.Returns("client");
+        clientUser.UserId.Returns(userId);
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime);
+        DateTime newStart = DateTime.UtcNow.AddDays(11);
+        AppointmentResponse result = await handler.Handle(
+            new RescheduleAppointmentCommand(apptId, new RescheduleAppointmentRequest(newStart, 90, null)), default);
+
+        result.Date.Should().Be(newStart);
+    }
+
+    [Fact]
+    public async Task RescheduleAppointment_ClientInsideNoticeWindow_ThrowsBusinessRuleViolationException()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId, userId);
+
+        DateTime start = DateTime.UtcNow.AddHours(2);
+        Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
+
+        ICurrentUser clientUser = Substitute.For<ICurrentUser>();
+        clientUser.Role.Returns("client");
+        clientUser.UserId.Returns(userId);
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime);
+
+        Func<Task> act = () => handler.Handle(
+            new RescheduleAppointmentCommand(apptId,
+                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(3), 90, null)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
     // ── Seed helpers ─────────────────────────────────────────────────────────────
 
-    private async Task<(Guid ArtistId, Guid ClientId)> SeedArtistAndClient(Guid tenantId)
+    private Task<(Guid ArtistId, Guid ClientId)> SeedArtistAndClient(Guid tenantId) =>
+        SeedArtistAndClient(tenantId, null);
+
+    private async Task<(Guid ArtistId, Guid ClientId)> SeedArtistAndClient(Guid tenantId, Guid? clientUserId)
     {
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
 
         Artist artist = new() { StudioId = tenantId, FirstName = "A", LastName = "B", Email = $"{Guid.NewGuid()}@a.com" };
-        Client client = new() { StudioId = tenantId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid()}@c.com" };
+        Client client = new() { StudioId = tenantId, UserId = clientUserId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid()}@c.com" };
         ctx.Artists.Add(artist);
         ctx.Clients.Add(client);
         await ctx.SaveChangesAsync();

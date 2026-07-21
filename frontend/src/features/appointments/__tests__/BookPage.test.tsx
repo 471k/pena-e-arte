@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { Toaster } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
@@ -72,6 +73,7 @@ const ACTIVE_RULE: DepositRuleResponse = {
   name: "Standard (€50)", amountFixed: 50, amountPercent: null,
   isActive: true, createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
+  cancellationWindowHours: null, refundPercentOnLateCancel: 0,
 };
 
 const INACTIVE_RULE: DepositRuleResponse = {
@@ -79,6 +81,7 @@ const INACTIVE_RULE: DepositRuleResponse = {
   name: "Old rule", amountFixed: 100, amountPercent: null,
   isActive: false, createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
+  cancellationWindowHours: null, refundPercentOnLateCancel: 0,
 };
 
 const FUTURE = new Date(Date.now() + 7 * 86_400_000).toISOString();
@@ -124,6 +127,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
   http.post("http://localhost/api/v1/appointments",           () => HttpResponse.json(CREATED_APPT, { status: 201 })),
+  http.delete("http://localhost/api/v1/appointments/:id",     () => new HttpResponse(null, { status: 204 })),
+  http.patch("http://localhost/api/v1/appointments/:id/reschedule", () =>
+    HttpResponse.json(APPT_UPCOMING)),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -229,6 +235,7 @@ function renderFormWithNoTenant() {
 function renderMyBookings(role: Role = Role.Client) {
   render(
     <Provider store={makeStore(role)}>
+      <Toaster />
       <MemoryRouter>
         <MyBookingsSection />
       </MemoryRouter>
@@ -626,5 +633,164 @@ describe("MyBookingsSection", () => {
     );
     renderMyBookings();
     expect(await screen.findByText("Completed")).toBeInTheDocument();
+  });
+
+  // ── Client self-cancel ─────────────────────────────────────────────────────
+
+  it("shows a 'Cancel appointment' link for a Pending upcoming booking", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+    );
+    renderMyBookings();
+    expect(await screen.findByText("Cancel appointment")).toBeInTheDocument();
+  });
+
+  it("does not show 'Cancel appointment' for a past/completed booking", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_PAST])),
+    );
+    renderMyBookings();
+    await screen.findByText("Completed");
+    expect(screen.queryByText("Cancel appointment")).not.toBeInTheDocument();
+  });
+
+  it("clicking 'Cancel appointment' shows a confirmation with a full-refund message when outside the notice window", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, depositAmount: 50, depositStatus: "Paid" }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
+          stripePaymentIntentId: "pi_1", clientSecret: null, cashNote: null,
+          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null,
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(screen.getByText(/you'll receive a full refund/i)).toBeInTheDocument();
+  });
+
+  it("shows a forfeiture message when the appointment is within the notice window", async () => {
+    const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, date: soon, depositAmount: 50, depositStatus: "Paid" }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
+          stripePaymentIntentId: "pi_1", clientSecret: null, cashNote: null,
+          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null,
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(screen.getByText(/cancelling now forfeits 100% of your deposit/i)).toBeInTheDocument();
+  });
+
+  it("does not show a forfeiture warning for a CashPending (not-yet-collected) deposit", async () => {
+    const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, date: soon, depositAmount: 50, depositStatus: "Pending" }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, status: "CashPending", method: "Cash",
+          stripePaymentIntentId: null, clientSecret: null, cashNote: null,
+          paidAt: null, clientName: "Marco Cliente", appointmentDate: null,
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(screen.getByText("Cancel this appointment?")).toBeInTheDocument();
+    expect(screen.queryByText(/forfeit/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/full refund/i)).not.toBeInTheDocument();
+  });
+
+  it("'Keep booking' dismisses the confirmation without cancelling", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    await user.click(screen.getByRole("button", { name: /keep booking/i }));
+    expect(screen.getByText("Cancel appointment")).toBeInTheDocument();
+  });
+
+  it("confirming cancellation shows a success toast", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    await user.click(screen.getByRole("button", { name: /yes, cancel/i }));
+    expect(await screen.findByText("Appointment cancelled.")).toBeInTheDocument();
+  });
+
+  it("shows an error toast when cancellation fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+      http.delete("http://localhost/api/v1/appointments/:id", () =>
+        HttpResponse.json({ message: "error" }, { status: 500 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    await user.click(screen.getByRole("button", { name: /yes, cancel/i }));
+    expect(await screen.findByText("Failed to cancel appointment.")).toBeInTheDocument();
+  });
+
+  // ── Client self-reschedule ─────────────────────────────────────────────────
+
+  it("shows an enabled 'Reschedule' button for a Pending upcoming booking outside the notice window", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+    );
+    renderMyBookings();
+    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeEnabled();
+  });
+
+  it("disables 'Reschedule' and shows a cutoff message inside the notice window", async () => {
+    const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, date: soon }]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeDisabled();
+    expect(screen.getByText(/less than 24 hours away/i)).toBeInTheDocument();
+  });
+
+  it("clicking 'Reschedule' opens the reschedule dialog with a client-facing description", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByRole("button", { name: /reschedule/i }));
+    expect(screen.getByText("Reschedule appointment")).toBeInTheDocument();
+    expect(screen.getByText(/pick a new date, time, and duration for your appointment/i)).toBeInTheDocument();
+    expect(screen.queryByText(/not automatically notified/i)).not.toBeInTheDocument();
+  });
+
+  it("does not show 'Reschedule' for a past/completed booking", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_PAST])),
+    );
+    renderMyBookings();
+    await screen.findByText("Completed");
+    expect(screen.queryByRole("button", { name: /reschedule/i })).not.toBeInTheDocument();
   });
 });

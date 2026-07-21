@@ -437,6 +437,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#owner-notifications-prefs" data-nav-link>Notification preferences</a></li>
           <li><a href="#owner-billing" data-nav-link>Billing</a></li>
           <li><a href="#owner-subscribe" data-nav-link>Choose / change plan</a></li>
+          <li><a href="#owner-reports" data-nav-link>Revenue reports</a></li>
         </ul>
       </div>
     </div>
@@ -454,6 +455,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#issuer-reports" data-nav-link>Industry reports</a></li>
           <li><a href="#issuer-feedback" data-nav-link>Feedback inbox</a></li>
           <li><a href="#issuer-help-insights" data-nav-link>Help search insights</a></li>
+          <li><a href="#issuer-audit-log" data-nav-link>Audit log</a></li>
         </ul>
       </div>
     </div>
@@ -906,8 +908,11 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Request Appointment</span>.</li>
 <li>If a deposit is required, you're immediately offered <span class="step-title">Card</span> or <span class="step-title">Cash</span> to secure the slot (or you can defer it).</li>
 <li>Your existing bookings are listed below the form.</li>
+<li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it — you'll see whether it's a full refund or a partial/forfeited one before confirming, then click <span class="step-title">Yes, cancel</span>.</li>
+<li>Click <span class="step-title">Reschedule</span> to move the same booking to a new date, time, or duration (only enabled with enough notice — otherwise contact the studio directly).</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first.</div>
+<div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 24 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled.</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
 </section>
 
@@ -1932,26 +1937,30 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Create deposit rule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/deposit-rules/new</code>: name a rule, choose fixed-amount or percentage, and set whether it's active.</p>
+<p>At <code>/deposit-rules/new</code>: name a rule, choose fixed-amount or percentage, set your cancellation policy, and set whether it's active.</p>
 <figure class="wireframe">
-<svg viewBox="0 0 760 480" role="img" aria-label="Create deposit rule wireframe">
+<svg viewBox="0 0 760 520" role="img" aria-label="Create deposit rule wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="10" font-weight="700">‹ Deposit Rules</text>
-<rect x="260" y="60" width="240" height="240" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<rect x="260" y="60" width="240" height="320" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="280" y="88" font-size="12" font-weight="700">New Deposit Rule</text>
 <text x="280" y="108" font-size="9" fill-opacity="0.6">Rule name</text><rect x="280" y="114" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="146" font-size="9" fill-opacity="0.6">Deposit type</text><text x="280" y="160" font-size="8">○ Fixed amount &nbsp;&nbsp; ○ Percentage</text>
 <text x="280" y="180" font-size="9" fill-opacity="0.6">Amount (€)</text><rect x="280" y="186" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="220" font-size="8">☑ Active</text>
-<rect x="280" y="232" width="200" height="26" rx="4" fill="#7c3aed"/><text x="325" y="249" font-size="10" fill="#fff">Create Rule</text>
+<text x="280" y="218" font-size="9" fill-opacity="0.6">Cancellation notice window (hours)</text><rect x="280" y="224" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="256" font-size="9" fill-opacity="0.6">Refund if cancelled late (%)</text><rect x="280" y="262" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="298" font-size="8">☑ Active</text>
+<rect x="280" y="312" width="200" height="26" rx="4" fill="#7c3aed"/><text x="325" y="329" font-size="10" fill="#fff">Create Rule</text>
 </svg>
 </figure>
-<figcaption>Create deposit rule — fields in order: name, type, amount, active toggle</figcaption>
+<figcaption>Create deposit rule — fields in order: name, type, amount, cancellation notice window, late-refund percent, active toggle</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li>Enter a <span class="step-title">Rule name</span> (e.g. "Standard Deposit").</li>
 <li>Choose <span class="step-title">Fixed amount</span> or <span class="step-title">Percentage</span>.</li>
 <li>Enter the <span class="step-title">Amount</span> (€ or %, 0.01–100 for percentages).</li>
+<li>Optionally set the <span class="step-title">Cancellation notice window</span> (hours a client must give to self-cancel/reschedule without forfeiting their deposit). Leave blank for the 24-hour platform default.</li>
+<li>Optionally set <span class="step-title">Refund if cancelled late</span> (% of the deposit refunded on a late self-cancel). 0% forfeits it entirely.</li>
 <li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
 <li>Click <span class="step-title">Create Rule</span>.</li>
 </ol>
@@ -1970,15 +1979,17 @@ ol.steps li { margin: 6px 0; }
 <circle cx="300" cy="90" r="24" fill="#3b82f6" fill-opacity="0.15"/><text x="288" y="96" font-size="12">€</text>
 <text x="336" y="86" font-size="13" font-weight="700">Standard Deposit</text>
 <rect x="336" y="96" width="45" height="14" rx="7" fill="#22c55e" fill-opacity="0.5"/><text x="344" y="106" font-size="7">Active</text>
-<rect x="260" y="140" width="240" height="60" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<rect x="260" y="140" width="240" height="90" rx="6" fill="currentColor" fill-opacity="0.05"/>
 <text x="272" y="160" font-size="9">Fixed · €50.00</text>
-<text x="272" y="178" font-size="8" fill-opacity="0.6">Created 3 Mar 2026</text>
+<text x="272" y="178" font-size="8" fill-opacity="0.6">Cancellation notice: 24 hours (platform default)</text>
+<text x="272" y="192" font-size="8" fill-opacity="0.6">Late cancellation refund: 0%</text>
+<text x="272" y="212" font-size="8" fill-opacity="0.6">Created 3 Mar 2026</text>
 </svg>
 </figure>
 <figcaption>Deposit rule detail — view, edit, and confirm-delete modes</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Click <span class="step-title">Edit</span> to change name, type, amount, or active state.</li>
+<li>Click <span class="step-title">Edit</span> to change name, type, amount, cancellation policy, or active state.</li>
 <li>Click <span class="step-title">Delete</span> to remove it (with confirmation).</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> deleting a deposit rule cannot be undone; existing appointments keep their already-calculated deposit.</div>
@@ -2198,7 +2209,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The studio settings hub at <code>/studios/me</code>: name, phone, Instagram, location, and URL slug at the top, followed by branding, QR code, embed code, referral, and notification preference cards below.</p>
+<p>The studio settings hub at <code>/studios/me</code>: name, phone, Instagram, location, and URL slug at the top, followed by branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2220,10 +2231,10 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
 <li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span>, <span class="step-title">Instagram handle</span>, and <span class="step-title">Location</span> (drag the map pin), then <span class="step-title">Save changes</span>.</li>
-<li>Below: <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, and <a href="#owner-notifications-prefs">Notification preferences</a> cards.</li>
+<li>Below: <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully.</div>
-<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
+<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#issuer-audit-log">Issuer: audit log</a></div>
 </section>
 
 <section id="owner-branding" data-role="owner">
@@ -2414,6 +2425,33 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#owner-billing">Billing</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
 </section>
 
+<section id="owner-reports" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Revenue reports</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>At <code>/reports</code>: a monthly revenue trend chart for the last 12 months, plus a per-artist revenue breakdown for the last 30 days. Only fully paid deposits count (card captured or cash confirmed) — pending, refunded, or forfeited ones don't.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 420" role="img" aria-label="Reports wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Reports</text>
+<rect x="20" y="60" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="82" font-size="10" font-weight="700">Revenue trend (last 12 months)</text>
+<polyline points="60,190 150,170 240,180 330,140 420,150 510,110 600,130 690,90" fill="none" stroke="#7c3aed" stroke-width="2"/>
+<rect x="20" y="236" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="258" font-size="10" font-weight="700">Revenue by artist (last 30 days)</text>
+<text x="40" y="284" font-size="9" fill-opacity="0.7">Luna Artista</text><text x="700" y="284" font-size="9" text-anchor="end">€500.00</text>
+<text x="40" y="304" font-size="9" fill-opacity="0.7">Besa Klienti</text><text x="700" y="304" font-size="9" text-anchor="end">€150.00</text>
+</svg>
+</figure>
+<figcaption>Reports — revenue trend chart above, per-artist breakdown table below</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>View the <span class="step-title">Revenue trend</span> chart — hover a point for that month's exact figure.</li>
+<li>Scroll to <span class="step-title">Revenue by artist</span> for a table sorted highest-earning artist first.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-billing">Billing</a>, <a href="#owner-payments">Track deposits and payments</a></div>
+</section>
+
 <section id="issuer-dashboard" data-role="issuer">
 <h2><span class="role-badge role-issuer">Issuer</span> Platform overview</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -2513,7 +2551,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-issuer">Issuer</span> Plan management</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (sees plans read-only when subscribing)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/platform/plans</code>: define the subscription plans studios can choose from — pricing per billing interval (monthly and/or yearly), yearly discount, usage limits (Artists, Appointments/mo, Notifications/mo, Storage, Locations — or "Unlimited"), feature flags (branding removal, priority support), and the linked Stripe Price IDs.</p>
+<p>At <code>/platform/plans</code>: define the subscription plans studios can choose from — pricing per billing interval (monthly and/or yearly), yearly discount, usage limits (Artists, Appointments/mo, Notifications/mo, Storage, Locations — or "Unlimited"), the branding-removal feature flag, and the linked Stripe Price IDs.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Plan management wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -2659,6 +2697,33 @@ ol.steps li { margin: 6px 0; }
 <li>Review the zero-result queries table — each row is a search that found nothing, which is the clearest signal of a documentation gap or confusing UX to fix in the in-app FAQ or this manual.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#issuer-feedback">Feedback inbox</a></div>
+</section>
+
+<section id="issuer-audit-log" data-role="issuer">
+<h2><span class="role-badge role-issuer">Issuer</span> Audit log</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>At <code>/platform/audit-log</code>: a searchable, cross-tenant log of every trust-sensitive action taken on the platform — studio suspensions, subscription cancellations/manual activations, trial extensions, plan edits, and referral code changes.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 340" role="img" aria-label="Audit log wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Audit Log</text><text x="700" y="25" font-size="9" text-anchor="end">128</text>
+<rect x="20" y="56" width="720" height="46" rx="6" fill="currentColor" fill-opacity="0.03"/>
+<text x="32" y="76" font-size="8" fill-opacity="0.6">Action</text><text x="220" y="76" font-size="8" fill-opacity="0.6">Target type</text><text x="400" y="76" font-size="8" fill-opacity="0.6">From</text><text x="560" y="76" font-size="8" fill-opacity="0.6">To</text>
+<rect x="20" y="112" width="720" height="24" fill="currentColor" fill-opacity="0.06"/>
+<text x="32" y="128" font-size="8" font-weight="700">When</text><text x="160" y="128" font-size="8" font-weight="700">Action</text><text x="360" y="128" font-size="8" font-weight="700">Target</text><text x="520" y="128" font-size="8" font-weight="700">Studio</text><text x="640" y="128" font-size="8" font-weight="700">Actor role</text>
+<text x="32" y="152" font-size="8">20 Jul 2026, 10:00</text><text x="160" y="152" font-size="8">Studio.Suspended</text><text x="360" y="152" font-size="8">Studio · a1b2c3d4</text><text x="520" y="152" font-size="8">s0e1f2a3</text><text x="640" y="152" font-size="8">issuer</text>
+<text x="32" y="172" font-size="8">19 Jul 2026, 09:30</text><text x="160" y="172" font-size="8">Plan.Updated</text><text x="360" y="172" font-size="8">Plan · p9z8y7x6</text><text x="520" y="172" font-size="8" fill-opacity="0.6">Platform-wide</text><text x="640" y="172" font-size="8">issuer</text>
+</svg>
+</figure>
+<figcaption>Audit log — filters above the table, most recent entry first</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Filter by <span class="step-title">Action</span>, <span class="step-title">Target type</span>, or a date range.</li>
+<li>Each row shows when it happened, what happened, its target, which studio ("Platform-wide" for actions with no single studio target, e.g. a plan edit), and the actor's role.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> entries never contain names, emails, or free text — only IDs, roles, and structural values.</div>
+<div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile (Recent studio activity)</a></div>
 </section>
 
 <section id="ref-design-statuses" data-role="reference">

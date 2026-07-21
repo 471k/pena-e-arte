@@ -284,6 +284,21 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 27 | First-Run Onboarding Tour | `UserOnboardingState` (no tenant filter) | None — no `IgnoreQueryFilters()` needed, no filter registered on this entity | Per-user, cross-tenant |
 | 28 | Support Escalation (Help menu ticket threads) | `FeedbackMessage` (child of `FeedbackReport`, no tenant filter, cascade delete) | `SupportHub` SignalR hub, `IRealtimeNotifier.NotifyTicketAsync` | Per-user (own tickets), Issuer-level (all tickets) |
 | 29 | Studio-Wide Closures | `StudioClosure` | None — checked in `CheckSlotAvailabilityQuery` alongside per-artist schedule/time-off | Per-tenant |
+| 30 | Client Self-Service Cancel/Reschedule | Reuses `Appointment`, `DepositRule` (+ Phase 1's new cancellation-policy fields) | `ClientCancellationPolicy` domain service | Per-tenant |
+| 31 | Owner Revenue & Trend Reporting | No entity (aggregate reads over `Payment`/`Appointment`) | None — standard tenant-scoped read | Per-tenant |
+| 32 | Structured Admin/Audit Log | `AuditLogEntry` (no tenant filter, `StudioId` nullable) | `IAuditableCommand` marker + `AuditLogBehavior` (MediatR pipeline) | Per-tenant (owner read), Issuer-level (cross-tenant read) |
+
+### Client Self-Service Cancel/Reschedule + Owner Revenue Reporting + Structured Audit Log — 2026-07-21
+
+See "P0 Remediation Round 2 — 2026-07-21" further down this file for the full write-up
+(what shipped, deviations from the source prompt's stale citations, Help sync, and
+verification). Summary: `DepositRule` gained a cancellation-window/late-refund-percent
+policy; `CancelAppointmentCommand`/`RescheduleAppointmentCommand` are now callable by
+`ClientAndAbove` with role-conditional ownership + policy checks; a new
+`GetRevenueSummaryQuery` gives owners a 12-month trend + per-artist breakdown; a new
+`AuditLogEntry` + `IAuditableCommand`/`AuditLogBehavior` pipeline mechanism logs
+trust-sensitive issuer/owner actions, readable by issuer (cross-tenant) and owner
+(own-studio only).
 
 ### In-App Help Menu — 2026-07-20
 
@@ -532,6 +547,112 @@ OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rat
                            likewise restricts roles to client/owner only (no artist/issuer),
                            matching RegisterUserValidator.
 ```
+
+### P0 Remediation Round 2 — 2026-07-21
+
+Branch `fix/p0-remediation-2026-07-21`. Built the six highest-severity items from
+`industry-feature-parity-report-2026-07-20.md`'s P0 backlog that were too large for a
+single-night whitelist pass on 2026-07-20. Full per-phase design rationale is in
+`overnight-prompt-p0-remediation-2026-07-21.md`; the report's own "Round 2" addendum has
+the backlog-carry-forward detail. This entry is the architecture-level summary.
+
+#### What was built (per phase)
+
+- **Phase 1 — Cancellation policy configuration.** `DepositRule` gains
+  `CancellationWindowHours` (`int?`, null = platform default) and
+  `RefundPercentOnLateCancel` (`int`, default 0). New
+  `Domain/Constants/AppointmentSelfServiceDefaults.CancellationWindowHours = 24`. Migration
+  `AddCancellationPolicyToDepositRule`. No DB-level `CHECK` constraint added (no existing
+  precedent for one anywhere in this codebase's entity configurations — FluentValidation is
+  the sole validation layer, matching the codebase's established convention).
+- **Phase 2 — Client self-cancel.** `DELETE /api/v1/appointments/{id}` widened
+  `ArtistAndAbove` → `ClientAndAbove`. `CancelAppointmentHandler` gained a role-conditional
+  ownership check (client → `FindClientForUserAsync` → 404 on mismatch, mirroring
+  `ReviewDesignHandler`'s scope-violation convention) and a refund-percent branch via new
+  `Domain/Services/ClientCancellationPolicy.ResolveRefundPercent`. Staff-initiated cancel is
+  completely unaffected (separate code path, regression-tested). Client UI lives in
+  `MyBookingsSection.tsx`/`BookingRow` (clients have no route to `AppointmentDetailPage` —
+  confirmed via `router.tsx`, matching the 2026-07-01 client-QA-pass finding still holding).
+- **Phase 3 — Client self-reschedule.** `PATCH .../reschedule` widened the same way.
+  Cutoff-gated (not tiered like cancel — `ClientCancellationPolicy.IsWithinNoticeWindow`),
+  reusing the identical notice window as Phase 1/2 rather than a second field. Reuses
+  `RescheduleDialog.tsx` with a new optional `description` prop overriding the staff-facing
+  "notify separately" copy for the client path.
+- **Phase 4 — Owner revenue & trend reporting.** New `Application/Reports/Queries/
+  GetRevenueSummaryQuery` (`OwnerOnly`, standard tenant-scoped read — no
+  `IgnoreQueryFilters()`): 12-month monthly revenue trend (same lookback window as
+  `GetMrrHistoryQuery`) + per-artist breakdown for the trailing 30 days, aggregated from
+  `Payment.Status == Paid`. New `ReportEndpoints.cs` (`GET /api/v1/reports/revenue-summary`).
+  New `frontend/src/features/reports/` module — `RevenueTrendChart.tsx` is a hand-rolled
+  inline SVG chart (same treatment as `MrrChart.tsx`, which itself is NOT recharts-based
+  despite the source prompt assuming otherwise — recharts isn't installed anywhere in this
+  frontend). New `/reports` route + owner nav item + tour step.
+- **Phase 5 — Structured admin/audit log.** New `AuditLogEntry` entity — deliberately NOT a
+  `TenantEntity`: `StudioId` is nullable, no `HasQueryFilter()` registered at all (same
+  non-tenant shape as `FeedbackReport`/`UserOnboardingState`), so it doesn't get a row in
+  the `IgnoreQueryFilters()` Approved Usages table above — "who can read which rows" is
+  enforced entirely in `GetAuditLogHandler` (issuer, cross-tenant) and
+  `GetMyStudioAuditLogHandler` (owner, explicit `.Where(StudioId == tenant.StudioId)`). New
+  `IAuditableCommand` marker interface (mirrors `IQuotaCheckedCommand`'s exact shape) +
+  `AuditLogBehavior` MediatR pipeline behavior, registered immediately after
+  `PlanLimitBehavior` in `Program.cs`, logging only after the handler's own
+  `SaveChangesAsync` succeeds (a validation failure or mid-handler exception produces no
+  audit row — tested explicitly). Metadata is built by a new whitelisting
+  `AuditMetadataBuilder` (per-command-type field allowlist, never a wholesale command
+  serialize) to keep PII out of `Metadata` by construction.
+  Wired onto: `SuspendStudioCommand`, `UnsuspendStudioCommand`, `ExtendTrialCommand`,
+  `CancelSubscriptionCommand`, `ActivateSubscriptionManuallyCommand`, `UpdatePlanCommand`,
+  `Deactivate/Reactivate/DeleteReferralCodeCommand`, `CancelAppointmentCommand`,
+  `UpdateSessionSplitsCommand` — 9 of the originally-scoped commands. **Not wired:** a
+  "delete client record" command, because no such command exists anywhere in this codebase
+  (grepped `ClientEndpoints.cs` and the whole `Application` layer) — the source prompt's
+  citation was stale/invented, not a real gap in this pass's scope.
+  New endpoints: `GET /api/v1/platform/audit-log` (issuer, in `PlatformEndpoints.cs`'s
+  existing `IssuerOnly` group) and `GET /api/v1/studios/me/audit-log` (owner, in
+  `StudioEndpoints.cs`). Frontend: `AuditLogPage.tsx` (issuer, filterable table) +
+  `StudioAuditLogCard.tsx` (owner, read-only recent-activity list on `StudioProfilePage.tsx`).
+- **Phase 6 — `AllowApiAccess`/`PrioritySupport` verification.** Re-grepping
+  case-insensitively (the 2026-07-20 pass's case-sensitive grep for the literal string
+  `AllowApiAccess` missed the camelCase `plan.allowApiAccess` field reference) found
+  `PlanManagementPage.tsx` still rendering an "API access" badge that the 2026-07-20 fix
+  missed entirely (only `PlanEditPage.tsx`'s toggle was hidden that night). Also found
+  `PrioritySupport` (flagged as "same risk, lower severity" on 2026-07-20 but never acted
+  on) was still a live issuer-editable toggle + list-page badge + documented in both Help
+  surfaces, with zero backing implementation (no support-priority routing anywhere in the
+  codebase). Both hidden now, same treatment as `AllowApiAccess` — data model untouched,
+  UI/Help surfaces only.
+
+#### Design decisions confirmed or revised against live source
+
+- No per-appointment `DepositRuleId` exists — the actual model is a single active
+  deposit rule per studio (`DepositRule.IsActive`, most-recently-updated wins), not an
+  "attached rule" per booking. Phases 1–3 all resolve the policy this same way.
+- `Payment.PaidAt` is reliably set on every path that transitions `Status` to `Paid`
+  (`ConfirmPaymentCommand`, `ConfirmCashDepositCommand`, `CaptureDepositCommand`, etc.) —
+  confirmed before relying on it for Phase 4's revenue aggregation.
+- Referral-code commands (`Deactivate`/`Reactivate`/`DeleteReferralCodeCommand`) carry only
+  `ReferralCodeId`, not `StudioId` — their audit entries log as platform-wide (`StudioId`
+  null) rather than adding an async DB lookup to `IAuditableCommand`'s synchronous
+  `AuditStudioId` property. Accepted as a known, explicit limitation.
+
+#### Help / documentation sync
+
+Every phase updated `helpContent.ts` + the standalone manual in the same change:
+Phase 1 (deposit-rule create/edit entries), Phase 2 (`client-cancel-booking` article +
+FAQ), Phase 3 (`client-reschedule-booking` article), Phase 4 (`owner-reports` article +
+manual section), Phase 5 (`issuer-audit-log` + `owner-audit-log` articles, manual sections
+for both), Phase 6 (removed the `Priority support` feature-flag line from both surfaces).
+Tour steps added for Phase 4 (`owner-reports-nav`) and Phase 5 (`issuer-audit-log-nav`);
+Phases 1–3 deliberately did NOT get new tour steps since they're new fields/actions on
+already-covered tour stops, not new nav items — verified by checking each tour file's
+existing target selectors before deciding. Phase 5's owner-facing card likewise got no new
+tour step, since it's a card on the already-covered `owner-studio-profile-nav` stop.
+
+#### Verification
+
+`dotnet build` 0 errors; `dotnet test` 1301 unit + 21 integration, all green; `pnpm build`
+(`tsc -b` + `vite build`) 0 TypeScript errors; full frontend `vitest` suite 112 files / 1670
+tests green.
 
 ---
 
@@ -1304,6 +1425,13 @@ does not re-litigate them.
 | Orphaned legacy plan retirement | `DataSeeder.RetireOrphanedNamedPlansAsync()` — always runs, immediately after `ReconcileCorePlansAsync()`. Finds any `Plan` row named exactly "Free"/"Starter"/"Growth"/"Premium"/"Pro" whose `Id` isn't one of the six canonical constants, reassigns every referencing `Subscription.PlanId` and `Subscription.PendingPlanId` to the correct canonical replacement (Premium's replacement chosen by the orphan's own `BillingInterval`), clears any sibling `Plan.PairedPlanId` still pointing at it, then deletes it. No-op once no orphan remains, so safe to run every boot indefinitely. | `ReconcileCorePlansAsync` (previous entry) only ever matches by fixed Id — a canonically-named plan under any other Id (e.g. Premium's pre-Monthly/Yearly-split row) is invisible to it, so its insert-if-missing branch adds a correct row *alongside* the leftover rather than replacing it, producing a visible duplicate card (`bug-report-premium-plan-duplicate-legacy-row.md`). Accepted trade-off: this matches by name only, so it cannot distinguish a genuine pre-split leftover from an issuer-created custom plan that happens to share a reserved tier name — an issuer needing a bespoke plan should use a distinct name. Confirmed via `AppDbContextModelSnapshot.cs` that `Subscription.PlanId` and `Subscription.PendingPlanId` are the only two FKs anywhere referencing `Plan.Id`; `Plan.PairedPlanId` is a self-reference with no FK constraint. |
 | Plan/PlanPrice split | `Plan.BillingInterval`/`PriceMonthly`/`PriceYearly`/`StripePriceIdMonthly`/`StripePriceIdYearly`/`PairedPlanId` removed; new child entity `PlanPrice` (`PlanId`, `Interval`, `Price`, `StripePriceId`, `IsActive`, unique on `(PlanId, Interval)`) holds one row per cadence a tier actually offers. `Subscription` gained `BillingInterval` (required) and `PendingBillingInterval` (nullable, mirrors `PendingPlanId` — set/cleared together by `ChangePlanHandler`/`CancelPlanChangeHandler`/`HandleSubscriptionUpdatedHandler`) — cadence is now the subscription's own property, independent of which `Plan` it's on. `DataSeeder.ReconcileCoreTiersAsync` replaced both `ReconcileCorePlansAsync` and `RetireOrphanedNamedPlansAsync`, keyed on tier `Name` + `(PlanId, Interval)` rather than a fixed `Plan.Id` list. Migration split in two: additive `plan_prices`/`Subscription` columns + raw-SQL data backfill + Premium-row merge (`AddPlanPriceAndSubscriptionBillingInterval`) shipped together with a later, separate `DropLegacyPlanBillingFields` migration for the six dead `Plan` columns — both written and applied in the same session (no live deploy pipeline exists yet to force a real waiting period between them), but kept as two distinct, separately-reviewable migration files rather than one; the second had to be hand-authored since `dotnet ef migrations add` scaffolds an empty diff once the model snapshot already reflects the target model. | Directly supersedes "Plan billing interval stays locked per-row" and "Plan Monthly/Yearly pairing" above — those decisions produced two data-integrity bugs in two consecutive nights (`bug-report-plans-page-data-mismatch.md`, `bug-report-premium-plan-duplicate-legacy-row.md`) because a plan's billing cadence and its identity as a tier were the same database row. Also fixed as a confirmed side effect, not scope creep: `GetPlatformStatsQuery`/`GetMrrHistoryQuery` were computing MRR from `Plan.PriceMonthly` unconditionally, overstating revenue for every yearly-billed subscription (79 vs the real 790/12 = 65.83 monthly-equivalent) — now uses the `PlanPrice` matching the subscription's actual `BillingInterval`. |
 | Shared-DB integration test isolation | Don't assert on an absolute global count (e.g. "total active studios across all tenants") in a test inside the `[Collection("Database")]` group. `DatabaseFixture` provisions exactly one MySQL database for the entire collection with no reset between tests, so any count that isn't scoped to IDs the test itself created is really asserting against the cumulative state of the whole suite run — safe when the suite is small, silently flaky as it grows. Test that kind of threshold/suppression logic deterministically at the unit level instead, by calling the pure logic function directly with a synthetic input, the way `IndustryReportJobTests.BuildDocument_CohortBelowMinimum_AllMetricsNull` does against `IndustryReportJob.BuildDocument` | Discovered 2026-07-20 during the full-app master audit: `IndustryReportJob_Run_SmallCohort_MetricsAreNull` seeded exactly 3 studios and asserted the resulting report showed suppressed (null) metrics, which was safe when the test was written but broke once ~10+ *other* integration tests elsewhere in the suite were also creating `SubscriptionStatus.Active` studios in the same shared database, pushing the real total past the suppression threshold. Removed the test; the same behavior was already covered without the DB dependency at the unit level |
+| Client self-service notice window | `DepositRule.CancellationWindowHours`/`RefundPercentOnLateCancel` (2026-07-21), single window shared by both self-cancel (tiered refund via `ClientCancellationPolicy.ResolveRefundPercent`) and self-reschedule (hard cutoff via `IsWithinNoticeWindow`, no partial-consequence concept) | Deliberate v1 simplicity — a second, separate "reschedule window" field was considered and rejected; split them later only if real studio usage shows a genuine need for different windows per action |
+| Structured audit log entity shape | `AuditLogEntry` (2026-07-21) is NOT a `TenantEntity` — `StudioId` is nullable, no `HasQueryFilter()` registered at all; scoping is enforced entirely in `GetAuditLogHandler`/`GetMyStudioAuditLogHandler`, not a query filter | Same non-tenant shape as `FeedbackReport`/`UserOnboardingState`, but genuinely new in kind: those two are single-role-owned (issuer-only or per-user-only) reads, while audit log entries are read by two different roles with two different scoping rules against the same table |
+| `IAuditableCommand` / `AuditLogBehavior` | New MediatR pipeline behavior, registered immediately after `PlanLimitBehavior`, mirrors `IQuotaCheckedCommand`'s exact marker-interface shape but logs AFTER `next()` succeeds rather than gating before it | Sibling pattern, not a copy — an audit log records what happened after the fact, a quota check must run before the handler does its work; the two behaviors' relative pipeline position (Validation → PlanLimit → AuditLog) is intentional: validate shape, then check quota, then execute, then log only real successes |
+| Audit log metadata whitelisting | `AuditMetadataBuilder.Build(object command)` — a `switch` over concrete command types building an explicit field allowlist per action, never a wholesale `JsonSerializer.Serialize(command)` | The whole point of a compliance audit log is that it must never itself become a PII leak vector; a wholesale serialize is exactly how a free-text field would end up in `Metadata` by accident as the codebase evolves |
+| Referral-code audit entries have no `StudioId` | `Deactivate`/`Reactivate`/`DeleteReferralCodeCommand` only carry `ReferralCodeId`; `AuditStudioId` is left at its interface default (`null`), so these entries log as platform-wide even though a referral code is studio-scoped | Accepted limitation, not an oversight — resolving it would mean either adding an async DB lookup to `IAuditableCommand`'s synchronous property (breaks the marker-interface pattern's simplicity) or changing these three commands' shape to carry `StudioId` (broader surgery than this round's scope); revisit if/when audit completeness for referral actions becomes a real requirement |
+| CashPending self-cancel is exempt from `ClientCancellationPolicy` | `CancelAppointmentHandler`'s `CashPending` branch (2026-07-21, `/code-review high` finding) unconditionally waives the deposit regardless of `isClient`/notice window — deliberate, not a policy bypass, per a code comment added at the branch | `CashPending` means the client only declared intent to pay cash (`DeclareCashDepositCommand`); no money has been collected yet (that only happens via `ConfirmCashDepositCommand`, which moves the payment to `Paid`) — there is nothing to forfeit or partially refund from an amount never taken. The actually-fixed bug was on the frontend: `MyBookingsSection.tsx`'s `CancelArea` now gates the forfeiture-warning copy on the real `Payment.status` (`Captured`/`Paid`) via `useGetPaymentByAppointmentQuery`, not `Appointment.depositStatus` alone, so it no longer shows a forfeiture warning for a deposit that was never actually collected |
+| `Payment.RefundedAmount` | New nullable `decimal` column (2026-07-21, `/code-review high` finding) tracking how much of `Payment.Amount` was actually refunded — there is no separate `PartiallyRefunded` status, so `Status == Refunded` alone can't distinguish a full refund from a partial one. Set by both `CancelAppointmentCommand`'s partial/full-refund branches and the pre-existing owner-initiated `RefundPaymentCommand` (which had the identical gap already, now fixed consistently in the same change) | `GetRevenueSummaryQuery` was filtering strictly on `Status == Paid`, so a partially-refunded payment (e.g. a late self-cancel under a 50%-refund policy) disappeared from historical revenue reports entirely, including the retained portion the studio actually kept. Now includes `Status == Paid \|\| Status == Refunded` and sums `Amount - (RefundedAmount ?? 0)` per payment (clamped at 0) instead of `Amount` outright — a fully-refunded payment naturally contributes 0 and is filtered out of the per-artist breakdown rather than shown as a zero-revenue row |
 
 ---
 

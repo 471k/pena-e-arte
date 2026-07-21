@@ -1,5 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
+import type { AuditLogPageResponse, AuditLogQueryParams } from "@/features/platform/platform.types";
 
 export interface RegisterStudioRequest {
   name:          string;
@@ -79,7 +80,7 @@ export interface AddStudioClosureRequest {
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
-  tagTypes: ["Studio", "Referral", "StudioClosure"],
+  tagTypes: ["Studio", "Referral", "StudioClosure", "StudioAuditLog"],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),
@@ -94,6 +95,10 @@ export const studiosApi = createApi({
     updateMyStudio: builder.mutation<StudioResponse, UpdateStudioRequest>({
       query: (body) => ({ url: "studios/me", method: "PUT", body }),
       invalidatesTags: ["Studio"],
+    }),
+    getMyStudioAuditLog: builder.query<AuditLogPageResponse, AuditLogQueryParams | void>({
+      query: (params) => ({ url: "studios/me/audit-log", params: params ?? undefined }),
+      providesTags: ["StudioAuditLog"],
     }),
     // Issuer: list all studios
     getStudios: builder.query<StudioResponse[], void>({
@@ -208,4 +213,5 @@ export const {
   useGetStudioClosuresQuery,
   useAddStudioClosureMutation,
   useDeleteStudioClosureMutation,
+  useGetMyStudioAuditLogQuery,
 } = studiosApi;

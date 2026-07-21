@@ -2,11 +2,19 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
-public record ReactivateReferralCodeCommand(Guid ReferralCodeId) : IRequest;
+// See DeactivateReferralCodeCommand's comment — AuditStudioId left at its default (null).
+public record ReactivateReferralCodeCommand(Guid ReferralCodeId) : IRequest, IAuditableCommand
+{
+    public string AuditAction     => AuditActions.ReferralCodeReactivated;
+    public string AuditTargetType => AuditTargetTypes.ReferralCode;
+    public Guid   AuditTargetId   => ReferralCodeId;
+}
 
 public class ReactivateReferralCodeHandler(IAppDbContext db)
     : IRequestHandler<ReactivateReferralCodeCommand>

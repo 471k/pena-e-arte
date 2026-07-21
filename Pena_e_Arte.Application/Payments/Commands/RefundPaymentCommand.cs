@@ -40,8 +40,9 @@ public class RefundPaymentHandler(
         await stripePayments.RefundPaymentIntentAsync(
             payment.StripePaymentIntentId, amountInCents, ct);
 
-        payment.Status    = PaymentStatus.Refunded;
-        payment.UpdatedAt = DateTime.UtcNow;
+        payment.Status         = PaymentStatus.Refunded;
+        payment.RefundedAmount = refundAmount;
+        payment.UpdatedAt      = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 

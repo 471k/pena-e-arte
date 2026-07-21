@@ -2,12 +2,19 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Studios.Commands;
 
-public record UnsuspendStudioCommand(Guid StudioId) : IRequest;
+public record UnsuspendStudioCommand(Guid StudioId) : IRequest, IAuditableCommand
+{
+    public string AuditAction     => AuditActions.StudioUnsuspended;
+    public string AuditTargetType => AuditTargetTypes.Studio;
+    public Guid   AuditTargetId   => StudioId;
+    public Guid?  AuditStudioId   => StudioId;
+}
 
 public class UnsuspendStudioHandler(IAppDbContext db, ISubscriptionAccessService subscriptionAccess)
     : IRequestHandler<UnsuspendStudioCommand>

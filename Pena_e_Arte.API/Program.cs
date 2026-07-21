@@ -36,6 +36,7 @@ try
     builder.Services.AddValidatorsFromAssembly(applicationAssembly);
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PlanLimitBehavior<,>));
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuditLogBehavior<,>));
 
     builder.Services.AddApiAuthentication(builder.Configuration);
     builder.Services.AddApiAuthorization();
@@ -142,6 +143,7 @@ try
     app.MapFeedbackEndpoints();
     app.MapReviewEndpoints();
     app.MapHelpEndpoints();
+    app.MapReportEndpoints();
 
     app.Run();
 }

@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -10,7 +11,13 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
-public record CancelSubscriptionCommand(Guid StudioId) : IRequest;
+public record CancelSubscriptionCommand(Guid StudioId) : IRequest, IAuditableCommand
+{
+    public string AuditAction     => AuditActions.SubscriptionCancelledByIssuer;
+    public string AuditTargetType => AuditTargetTypes.Subscription;
+    public Guid   AuditTargetId   => StudioId;
+    public Guid?  AuditStudioId   => StudioId;
+}
 
 public class CancelSubscriptionHandler(
     IAppDbContext                      db,

@@ -463,6 +463,54 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("ArtistTimeOffs");
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.AuditLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.Property<Guid?>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Action");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("StudioId");
+
+                    b.ToTable("AuditLogEntries");
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Client", b =>
                 {
                     b.Property<Guid>("Id")
@@ -674,6 +722,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<decimal?>("AmountPercent")
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<int?>("CancellationWindowHours")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -687,6 +738,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<int>("RefundPercentOnLateCancel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<Guid>("StudioId")
                         .HasColumnType("char(36)");
@@ -1304,6 +1360,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<decimal?>("RefundedAmount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Status")
                         .IsRequired()

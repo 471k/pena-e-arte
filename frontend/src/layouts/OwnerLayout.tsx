@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, MessageSquareMore,
+  Receipt, Settings, PenLine, MessageSquareMore, BarChart3,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { label: "Designs",         href: "/designs",    icon: <Palette         className="h-4 w-4" /> },
   { label: "Payments",        href: "/payments",   icon: <CreditCard      className="h-4 w-4" /> },
   { label: "Billing",         href: "/billing",    icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
+  { label: "Reports",         href: "/reports",    icon: <BarChart3       className="h-4 w-4" />, tourId: "owner-reports-nav" },
   { label: "Studio Settings", href: "/studios/me", icon: <Settings        className="h-4 w-4" />, tourId: "owner-studio-profile-nav" },
 ];
 

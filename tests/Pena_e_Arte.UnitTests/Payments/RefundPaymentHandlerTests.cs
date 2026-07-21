@@ -76,6 +76,30 @@ public class RefundPaymentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_PartialRefund_RecordsRefundedAmount()
+    {
+        // Regression: revenue reporting relies on RefundedAmount to distinguish a partial
+        // refund from a full one (Status alone is Refunded either way).
+        await SeedStudio();
+        Guid paymentId = await SeedPayment(200m, PaymentStatus.Paid, "pi_test");
+
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, 50m), default);
+
+        _db.Payments.Single(p => p.Id == paymentId).RefundedAmount.Should().Be(50m);
+    }
+
+    [Fact]
+    public async Task Handle_FullRefund_RecordsRefundedAmountAsFullOriginalAmount()
+    {
+        await SeedStudio();
+        Guid paymentId = await SeedPayment(200m, PaymentStatus.Paid, "pi_test");
+
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
+
+        _db.Payments.Single(p => p.Id == paymentId).RefundedAmount.Should().Be(200m);
+    }
+
+    [Fact]
     public async Task Handle_UnpaidPayment_ThrowsBusinessRuleViolationException()
     {
         await SeedStudio();

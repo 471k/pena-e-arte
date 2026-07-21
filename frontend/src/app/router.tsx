@@ -18,6 +18,7 @@ import {
   ConsentFormDetailPage,
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
+import { ReportsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
 import {
@@ -30,6 +31,7 @@ import {
   PlatformReferralPage,
   IndustryReportsPage,
   HelpInsightsPage,
+  AuditLogPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage } from "@/features/public";
@@ -171,6 +173,7 @@ export const router = createBrowserRouter([
                   { path: "reports",           element: <ErrorBoundary><IndustryReportsPage /></ErrorBoundary> },
                   { path: "feedback",          element: <ErrorBoundary><FeedbackInboxPage /></ErrorBoundary> },
                   { path: "help-insights",     element: <ErrorBoundary><HelpInsightsPage /></ErrorBoundary> },
+                  { path: "audit-log",         element: <ErrorBoundary><AuditLogPage /></ErrorBoundary> },
                 ],
               },
 
@@ -308,6 +311,15 @@ export const router = createBrowserRouter([
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
                 children: [
                   { path: "me", element: <ErrorBoundary><StudioProfilePage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: reports ───────────────────────────────────────────────
+              {
+                path: "reports",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><ReportsPage /></ErrorBoundary> },
                 ],
               },
 

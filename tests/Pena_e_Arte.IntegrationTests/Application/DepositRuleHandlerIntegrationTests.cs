@@ -70,6 +70,20 @@ public class DepositRuleHandlerIntegrationTests(DatabaseFixture fixture)
         bRule!.IsActive.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task CreateDepositRule_WithCancellationPolicy_PersistsToDatabase()
+    {
+        Guid tenantId = Guid.NewGuid();
+        CreateDepositRuleRequest req = new("Standard Deposit", 50m, null, false, 48, 50);
+
+        DepositRuleResponse result = await RunCreateHandler(tenantId, req);
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        DepositRule? rule = await verify.DepositRules.FindAsync(result.Id);
+        rule!.CancellationWindowHours.Should().Be(48);
+        rule.RefundPercentOnLateCancel.Should().Be(50);
+    }
+
     // ── UpdateDepositRule ────────────────────────────────────────────────────────
 
     [Fact]

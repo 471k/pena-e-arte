@@ -8,4 +8,6 @@ public record DepositRuleResponse(
     decimal? AmountPercent,
     bool     IsActive,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    int?     CancellationWindowHours,
+    int      RefundPercentOnLateCancel);

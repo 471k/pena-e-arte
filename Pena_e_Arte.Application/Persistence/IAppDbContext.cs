@@ -56,5 +56,8 @@ public interface IAppDbContext
     // Onboarding tour completion — per-user, cross-tenant, no tenant filter needed
     DbSet<UserOnboardingState> UserOnboardingStates { get; }
 
+    // Structured audit log — no tenant filter (StudioId nullable, platform-wide actions allowed)
+    DbSet<AuditLogEntry> AuditLogEntries { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
