@@ -53,7 +53,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "client-design-approve",
     roles: [Client],
     title: "Approve a design or request changes",
-    route: "/designs/:id",
+    route: "/designs",
     keywords: ["approve", "request changes", "reject design", "design revision"],
     summary: "Look at the artwork your artist uploaded and tell them whether it's ready or needs changes.",
     steps: [
@@ -199,7 +199,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "artist-appointment-detail",
     roles: [Artist],
     title: "Open an appointment's details",
-    route: "/appointments/:id",
+    route: "/schedule",
     keywords: ["confirm", "reschedule", "cancel", "no-show", "complete appointment"],
     summary: "Shows the full details of a single appointment — client, date/time, duration, status, and deposit — plus actions to move it forward.",
     steps: [
@@ -230,7 +230,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "artist-client-detail",
     roles: [Artist],
     title: "View a client's profile and tattoo history",
-    route: "/clients/:id",
+    route: "/clients",
     keywords: ["client profile", "medical notes", "cross-studio"],
     summary: "A client's full profile — contact info, health details, body map, forms, and appointment history — all in one place.",
     steps: [
@@ -277,7 +277,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "artist-upload-revision",
     roles: [Artist],
     title: "Upload a revised design",
-    route: "/designs/:id/upload",
+    route: "/designs",
     keywords: ["upload artwork", "revision", "new version"],
     summary: "Upload a new version of artwork to an existing design for the client to review.",
     steps: [
@@ -683,7 +683,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "issuer-studio-detail",
     roles: [Issuer],
     title: "Open a single studio's detail",
-    route: "/platform/studios/:studioId",
+    route: "/platform/studios",
     keywords: ["studio detail", "owner info"],
     summary: "A full profile of one studio — its info, owner, usage numbers, referral codes, and all the actions you can take on it.",
     steps: [

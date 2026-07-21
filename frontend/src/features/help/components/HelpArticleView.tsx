@@ -28,7 +28,7 @@ export function HelpArticleView({ article, onBack, onGoToPage, onSelectRelated }
         <p className="text-sm text-muted-foreground">{article.summary}</p>
       </div>
 
-      {article.route && (
+      {article.route && !article.route.includes(":") && (
         <Button size="sm" onClick={() => onGoToPage(article.route!)}>
           Go to this page
           <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
