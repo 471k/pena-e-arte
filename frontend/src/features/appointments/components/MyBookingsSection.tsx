@@ -74,16 +74,21 @@ function RescheduleArea({ appt, activeRule }: { appt: AppointmentResponse; activ
 function CancelArea({ appt, activeRule }: { appt: AppointmentResponse; activeRule?: DepositRuleResponse }) {
   const [confirming, setConfirming] = useState(false);
   const [cancelAppointment, { isLoading }] = useCancelAppointmentMutation();
+  const { data: payment } = useGetPaymentByAppointmentQuery(appt.id, { skip: appt.depositAmount <= 0 });
 
   if (appt.status !== "Pending" && appt.status !== "Confirmed") return null;
 
   const withinNoticeWindow = isWithinNoticeWindow(appt, activeRule);
   const refundPercentOnLateCancel = activeRule?.refundPercentOnLateCancel ?? 0;
 
+  // A deposit is only actually at risk once money has been taken — a card hold
+  // ("Captured") or a completed capture/cash confirmation ("Paid"). A CashPending
+  // intent or an unconfirmed/never-authorized card payment hasn't collected anything
+  // yet, so cancelling it can never be a forfeiture regardless of the notice window —
+  // matches CancelAppointmentHandler's own gate on the backend.
   const hasActiveDeposit =
     appt.depositAmount > 0 &&
-    appt.depositStatus !== DepositStatus.Refunded &&
-    appt.depositStatus !== DepositStatus.Forfeited;
+    (payment?.status === "Captured" || payment?.status === "Paid");
 
   async function handleCancel() {
     const result = await cancelAppointment(appt.id);

@@ -659,6 +659,13 @@ describe("MyBookingsSection", () => {
       http.get("http://localhost/api/v1/appointments/mine", () =>
         HttpResponse.json([{ ...APPT_UPCOMING, depositAmount: 50, depositStatus: "Paid" }]),
       ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
+          stripePaymentIntentId: "pi_1", clientSecret: null, cashNote: null,
+          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null,
+        }),
+      ),
     );
     const user = userEvent.setup();
     renderMyBookings();
@@ -672,11 +679,40 @@ describe("MyBookingsSection", () => {
       http.get("http://localhost/api/v1/appointments/mine", () =>
         HttpResponse.json([{ ...APPT_UPCOMING, date: soon, depositAmount: 50, depositStatus: "Paid" }]),
       ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
+          stripePaymentIntentId: "pi_1", clientSecret: null, cashNote: null,
+          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null,
+        }),
+      ),
     );
     const user = userEvent.setup();
     renderMyBookings();
     await user.click(await screen.findByText("Cancel appointment"));
     expect(screen.getByText(/cancelling now forfeits 100% of your deposit/i)).toBeInTheDocument();
+  });
+
+  it("does not show a forfeiture warning for a CashPending (not-yet-collected) deposit", async () => {
+    const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, date: soon, depositAmount: 50, depositStatus: "Pending" }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, status: "CashPending", method: "Cash",
+          stripePaymentIntentId: null, clientSecret: null, cashNote: null,
+          paidAt: null, clientName: "Marco Cliente", appointmentDate: null,
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(screen.getByText("Cancel this appointment?")).toBeInTheDocument();
+    expect(screen.queryByText(/forfeit/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/full refund/i)).not.toBeInTheDocument();
   });
 
   it("'Keep booking' dismisses the confirmation without cancelling", async () => {

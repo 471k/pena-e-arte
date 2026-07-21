@@ -97,15 +97,18 @@ public class CancelAppointmentHandler(
                 if (refundPercent >= 100)
                 {
                     await stripe.RefundPaymentIntentAsync(payment.StripePaymentIntentId, null, ct);
-                    payment.Status            = PaymentStatus.Refunded;
+                    payment.Status         = PaymentStatus.Refunded;
+                    payment.RefundedAmount = payment.Amount;
                     appointment.DepositStatus = DepositStatus.Refunded;
                 }
                 else if (refundPercent > 0)
                 {
-                    long refundCents = (long)Math.Round(
-                        appointment.DepositAmount * refundPercent / 100m * 100m, MidpointRounding.AwayFromZero);
+                    decimal refundAmount = Math.Round(
+                        appointment.DepositAmount * refundPercent / 100m, 2, MidpointRounding.AwayFromZero);
+                    long refundCents = (long)Math.Round(refundAmount * 100m, MidpointRounding.AwayFromZero);
                     await stripe.RefundPaymentIntentAsync(payment.StripePaymentIntentId, refundCents, ct);
-                    payment.Status            = PaymentStatus.Refunded;
+                    payment.Status         = PaymentStatus.Refunded;
+                    payment.RefundedAmount = refundAmount;
                     appointment.DepositStatus = DepositStatus.Refunded;
                 }
                 else
@@ -119,6 +122,13 @@ public class CancelAppointmentHandler(
             }
             else if (payment.Status == PaymentStatus.CashPending)
             {
+                // Deliberately NOT subject to ClientCancellationPolicy, for both staff and
+                // client cancellations: CashPending means the client only declared an intent
+                // to pay cash (DeclareCashDepositCommand) — no money has actually changed
+                // hands yet (that only happens via ConfirmCashDepositCommand, which moves the
+                // payment to Paid). There is nothing to forfeit or partially refund from an
+                // amount that was never collected, regardless of how much notice was given —
+                // mirrors the no-op behavior for an unauthorized/never-captured card payment.
                 payment.Status    = PaymentStatus.Refunded;
                 payment.UpdatedAt = DateTime.UtcNow;
                 appointment.DepositStatus = DepositStatus.Refunded;

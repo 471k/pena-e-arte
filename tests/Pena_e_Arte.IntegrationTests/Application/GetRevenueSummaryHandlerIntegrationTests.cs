@@ -32,6 +32,21 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
         result.MonthlyTrend.Sum(p => p.Revenue).Should().Be(100m);
     }
 
+    [Fact]
+    public async Task Handle_PartiallyRefundedPayment_RetainsPartialRevenueThroughRealDatabaseRoundTrip()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid artistId, Guid clientId, Guid apptId) = await SeedArtistAndAppointment(tenantId);
+        await SeedPayment(tenantId, apptId, clientId, 100m, refundedAmount: 40m);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        GetRevenueSummaryHandler handler = new(db);
+        RevenueSummaryResponse result = await handler.Handle(new GetRevenueSummaryQuery(), default);
+
+        result.PerArtist.Should().ContainSingle(a => a.ArtistId == artistId && a.Revenue == 60m);
+        result.MonthlyTrend.Sum(p => p.Revenue).Should().Be(60m);
+    }
+
     private async Task<(Guid ArtistId, Guid ClientId, Guid AppointmentId)> SeedArtistAndAppointment(Guid tenantId)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
@@ -67,18 +82,20 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
         return (artist.Id, client.Id, appt.Id);
     }
 
-    private async Task SeedPayment(Guid tenantId, Guid appointmentId, Guid clientId, decimal amount)
+    private async Task SeedPayment(
+        Guid tenantId, Guid appointmentId, Guid clientId, decimal amount, decimal? refundedAmount = null)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         ctx.Payments.Add(new Payment
         {
-            StudioId      = tenantId,
-            AppointmentId = appointmentId,
-            ClientId      = clientId,
-            Amount        = amount,
-            Status        = PaymentStatus.Paid,
-            Method        = ClientPaymentMethod.Card,
-            PaidAt        = DateTime.UtcNow,
+            StudioId       = tenantId,
+            AppointmentId  = appointmentId,
+            ClientId       = clientId,
+            Amount         = amount,
+            Status         = refundedAmount is null ? PaymentStatus.Paid : PaymentStatus.Refunded,
+            Method         = ClientPaymentMethod.Card,
+            PaidAt         = DateTime.UtcNow,
+            RefundedAmount = refundedAmount,
         });
         await ctx.SaveChangesAsync();
     }

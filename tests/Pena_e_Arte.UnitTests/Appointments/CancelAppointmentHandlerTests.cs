@@ -279,6 +279,31 @@ public class CancelAppointmentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ClientCancelsCashPendingDepositInsideNoticeWindow_NeverForfeits()
+    {
+        // CashPending means nothing has actually been collected yet (the client only
+        // declared intent to pay cash) — so even a studio configured for 0% late-cancel
+        // refund has nothing to forfeit here. This is intentional, not a policy bypass:
+        // it mirrors how an unauthorized/never-captured card payment is also a no-op.
+        Guid clientId = SeedClientAsCurrentUser();
+        _db.DepositRules.Add(new DepositRule
+        {
+            StudioId = _studioId, Name = "Strict", AmountFixed = 50m, IsActive = true,
+            CancellationWindowHours = 24, RefundPercentOnLateCancel = 0,
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        Guid id = await SeedAppointmentForClient(AppointmentStatus.Confirmed, clientId, DateTime.UtcNow.AddHours(2));
+        await SeedPayment(id, PaymentStatus.CashPending, ClientPaymentMethod.Cash, null);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+        _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Refunded);
+    }
+
+    [Fact]
     public async Task Handle_ClientCancelsInsideNoticeWindow_PartialRefundPerDepositRule()
     {
         Guid clientId = SeedClientAsCurrentUser();
@@ -297,6 +322,21 @@ public class CancelAppointmentHandlerTests
 
         await _stripe.Received(1).RefundPaymentIntentAsync("pi_client_3", 2500, Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+        // Regression: revenue reporting distinguishes a partial refund from a full one via
+        // RefundedAmount — 50% of a 50 deposit retains 25 for the studio, not 0.
+        _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(25m);
+    }
+
+    [Fact]
+    public async Task Handle_ClientCancelsOutsideNoticeWindow_SetsRefundedAmountToFullPaymentAmount()
+    {
+        Guid clientId = SeedClientAsCurrentUser();
+        Guid id = await SeedAppointmentForClient(AppointmentStatus.Confirmed, clientId, DateTime.UtcNow.AddDays(5), depositAmount: 80m);
+        await SeedPayment(id, PaymentStatus.Paid, ClientPaymentMethod.Card, "pi_client_full", amount: 80m);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(80m);
     }
 
     [Fact]
@@ -311,6 +351,7 @@ public class CancelAppointmentHandlerTests
 
         await _stripe.Received(1).RefundPaymentIntentAsync("pi_staff_1", null, Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+        _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(50m);
     }
 
     private async Task<Guid> SeedAppointment(AppointmentStatus status) =>
@@ -336,14 +377,15 @@ public class CancelAppointmentHandlerTests
     }
 
     private async Task SeedPayment(
-        Guid appointmentId, PaymentStatus status, ClientPaymentMethod method, string? stripeIntentId)
+        Guid appointmentId, PaymentStatus status, ClientPaymentMethod method, string? stripeIntentId,
+        decimal amount = 50m)
     {
         _db.Payments.Add(new Payment
         {
             StudioId              = _studioId,
             AppointmentId         = appointmentId,
             ClientId              = Guid.NewGuid(),
-            Amount                = 50m,
+            Amount                = amount,
             Status                = status,
             Method                = method,
             StripePaymentIntentId = stripeIntentId,

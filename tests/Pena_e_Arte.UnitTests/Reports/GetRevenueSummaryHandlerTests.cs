@@ -99,6 +99,50 @@ public class GetRevenueSummaryHandlerTests
         result.PerArtist.Should().ContainSingle(a => a.ArtistId == artistId && a.Revenue == 100m);
     }
 
+    [Fact]
+    public async Task Handle_PartiallyRefundedPayment_CountsOnlyRetainedAmount()
+    {
+        // Regression: a late self-cancellation with a studio's partial-refund policy leaves
+        // Status == Refunded (there's no PartiallyRefunded status) — the retained portion
+        // must still show up as revenue, not disappear entirely.
+        Guid artistId = await SeedArtist("Luna", "Artista");
+        Guid apptId   = await SeedAppointment(artistId);
+        await SeedPayment(apptId, 100m, PaymentStatus.Refunded, DateTime.UtcNow, refundedAmount: 50m);
+
+        RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
+
+        result.MonthlyTrend.Last().Revenue.Should().Be(50m);
+        result.PerArtist.Should().ContainSingle(a => a.ArtistId == artistId && a.Revenue == 50m);
+    }
+
+    [Fact]
+    public async Task Handle_FullyRefundedPayment_ContributesZeroRevenue()
+    {
+        Guid artistId = await SeedArtist("Luna", "Artista");
+        Guid apptId   = await SeedAppointment(artistId);
+        await SeedPayment(apptId, 100m, PaymentStatus.Refunded, DateTime.UtcNow, refundedAmount: 100m);
+
+        RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
+
+        result.MonthlyTrend.Should().OnlyContain(p => p.Revenue == 0m);
+        result.PerArtist.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_RefundedPaymentWithNoRefundedAmountRecorded_CountsFullAmount()
+    {
+        // Defensive: a Refunded payment with RefundedAmount left null (shouldn't happen for
+        // new cancellations, but guards old/pre-migration rows) must not double-count revenue
+        // by treating null as "nothing refunded" rather than crashing or under-counting.
+        Guid artistId = await SeedArtist("Luna", "Artista");
+        Guid apptId   = await SeedAppointment(artistId);
+        await SeedPayment(apptId, 100m, PaymentStatus.Refunded, DateTime.UtcNow, refundedAmount: null);
+
+        RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
+
+        result.MonthlyTrend.Last().Revenue.Should().Be(100m);
+    }
+
     private async Task<Guid> SeedArtist(string firstName, string lastName)
     {
         Artist artist = new()
@@ -129,17 +173,20 @@ public class GetRevenueSummaryHandlerTests
         return appointment.Id;
     }
 
-    private async Task SeedPayment(Guid appointmentId, decimal amount, PaymentStatus status, DateTime? paidAt)
+    private async Task SeedPayment(
+        Guid appointmentId, decimal amount, PaymentStatus status, DateTime? paidAt,
+        decimal? refundedAmount = null)
     {
         _db.Payments.Add(new Payment
         {
-            StudioId      = _studioId,
-            AppointmentId = appointmentId,
-            ClientId      = Guid.NewGuid(),
-            Amount        = amount,
-            Status        = status,
-            Method        = ClientPaymentMethod.Card,
-            PaidAt        = paidAt,
+            StudioId       = _studioId,
+            AppointmentId  = appointmentId,
+            ClientId       = Guid.NewGuid(),
+            Amount         = amount,
+            Status         = status,
+            Method         = ClientPaymentMethod.Card,
+            PaidAt         = paidAt,
+            RefundedAmount = refundedAmount,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
