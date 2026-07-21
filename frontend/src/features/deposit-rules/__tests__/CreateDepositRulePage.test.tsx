@@ -17,14 +17,16 @@ import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.t
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const CREATED_RULE: DepositRuleResponse = {
-  id:            "dr-new",
-  studioId:      "s-001",
-  name:          "Standard Deposit",
-  amountFixed:   50,
-  amountPercent: null,
-  isActive:      true,
-  createdAt:     "2024-06-01T10:00:00Z",
-  updatedAt:     "2024-06-01T10:00:00Z",
+  id:                        "dr-new",
+  studioId:                  "s-001",
+  name:                      "Standard Deposit",
+  amountFixed:               50,
+  amountPercent:             null,
+  isActive:                  true,
+  createdAt:                 "2024-06-01T10:00:00Z",
+  updatedAt:                 "2024-06-01T10:00:00Z",
+  cancellationWindowHours:   null,
+  refundPercentOnLateCancel: 0,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -90,6 +92,14 @@ describe("CreateDepositRulePage", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
+  it("renders the cancellation window and late-refund fields with defaults", () => {
+    renderPage();
+    const window = screen.getByLabelText(/cancellation notice window/i);
+    const refund = screen.getByLabelText(/refund if cancelled late/i);
+    expect(window).toHaveValue(null);
+    expect(refund).toHaveValue(0);
+  });
+
   it("defaults to fixed amount with the Amount (€) label", () => {
     renderPage();
     expect(screen.getByLabelText("Amount (€)")).toBeInTheDocument();
@@ -118,6 +128,27 @@ describe("CreateDepositRulePage", () => {
     await user.type(screen.getByLabelText("Percentage (%)"), "150");
     await user.click(screen.getByRole("button", { name: /create rule/i }));
     expect(await screen.findByText("Must be between 0.01 and 100")).toBeInTheDocument();
+  });
+
+  it("submits the cancellation policy fields along with the rule", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    server.use(
+      http.post("http://localhost/api/v1/deposit-rules", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(CREATED_RULE, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByLabelText("Rule name"), "Standard Deposit");
+    await user.type(screen.getByLabelText("Amount (€)"), "50");
+    await user.type(screen.getByLabelText(/cancellation notice window/i), "48");
+    await user.clear(screen.getByLabelText(/refund if cancelled late/i));
+    await user.type(screen.getByLabelText(/refund if cancelled late/i), "50");
+    await user.click(screen.getByRole("button", { name: /create rule/i }));
+    await screen.findByTestId("detail-page");
+    expect(capturedBody?.cancellationWindowHours).toBe(48);
+    expect(capturedBody?.refundPercentOnLateCancel).toBe(50);
   });
 
   it("creates a fixed-amount rule and navigates to its detail page", async () => {

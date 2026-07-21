@@ -20,14 +20,16 @@ import { Role } from "@/shared/types/roles";
 const RULE_ID = "dr-001";
 
 const RULE: DepositRuleResponse = {
-  id:            RULE_ID,
-  studioId:      "s-001",
-  name:          "Standard Deposit",
-  amountFixed:   50,
-  amountPercent: null,
-  isActive:      true,
-  createdAt:     "2024-01-15T10:00:00Z",
-  updatedAt:     "2024-01-15T10:00:00Z",
+  id:                        RULE_ID,
+  studioId:                  "s-001",
+  name:                      "Standard Deposit",
+  amountFixed:               50,
+  amountPercent:             null,
+  isActive:                  true,
+  createdAt:                 "2024-01-15T10:00:00Z",
+  updatedAt:                 "2024-01-15T10:00:00Z",
+  cancellationWindowHours:   null,
+  refundPercentOnLateCancel: 0,
 };
 
 const UPDATED_RULE: DepositRuleResponse = {
@@ -128,6 +130,26 @@ describe("DepositRuleDetailPage", () => {
     expect(screen.getByText("Inactive")).toBeInTheDocument();
   });
 
+  it("shows the platform default cancellation window when null", async () => {
+    renderPage();
+    await screen.findByText("Standard Deposit");
+    expect(screen.getByText(/cancellation notice: 24 hours \(platform default\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/late cancellation refund: 0%/i)).toBeInTheDocument();
+  });
+
+  it("shows a configured cancellation window without the default label", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/deposit-rules/:id", () =>
+        HttpResponse.json({ ...RULE, cancellationWindowHours: 48, refundPercentOnLateCancel: 50 }),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Standard Deposit");
+    expect(screen.getByText(/cancellation notice: 48 hours/i)).toBeInTheDocument();
+    expect(screen.queryByText(/platform default/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/late cancellation refund: 50%/i)).toBeInTheDocument();
+  });
+
   // ── Role-gated actions ───────────────────────────────────────────────────────
 
   it("Edit and Delete buttons are visible for the Owner role", async () => {
@@ -152,6 +174,8 @@ describe("DepositRuleDetailPage", () => {
     await user.click(await screen.findByRole("button", { name: /edit/i }));
     expect(screen.getByLabelText("Rule name")).toHaveValue("Standard Deposit");
     expect(screen.getByLabelText("Amount (€)")).toHaveValue(50);
+    expect(screen.getByLabelText(/cancellation notice window/i)).toHaveValue(null);
+    expect(screen.getByLabelText(/refund if cancelled late/i)).toHaveValue(0);
   });
 
   it("Cancel exits the edit form without saving", async () => {

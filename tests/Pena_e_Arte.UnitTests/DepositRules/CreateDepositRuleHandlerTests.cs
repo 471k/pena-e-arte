@@ -91,4 +91,27 @@ public class CreateDepositRuleHandlerTests
 
         result.StudioId.Should().Be(_studioId);
     }
+
+    [Fact]
+    public async Task Handle_OmittingCancellationFields_DefaultsToNullAndZero()
+    {
+        CreateDepositRuleRequest req = new("Standard Deposit", 50m, null, false);
+
+        DepositRuleResponse result = await CreateSut().Handle(new CreateDepositRuleCommand(req), default);
+
+        result.CancellationWindowHours.Should().BeNull();
+        result.RefundPercentOnLateCancel.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_WithCancellationFields_PersistsThem()
+    {
+        CreateDepositRuleRequest req = new("Standard Deposit", 50m, null, false, 48, 50);
+
+        DepositRuleResponse result = await CreateSut().Handle(new CreateDepositRuleCommand(req), default);
+
+        result.CancellationWindowHours.Should().Be(48);
+        result.RefundPercentOnLateCancel.Should().Be(50);
+        _db.DepositRules.Single(r => r.Name == "Standard Deposit").CancellationWindowHours.Should().Be(48);
+    }
 }

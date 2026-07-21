@@ -15,5 +15,6 @@ public class DepositRuleConfiguration : TenantEntityConfiguration<DepositRule>
         builder.Property(d => d.Name).IsRequired().HasMaxLength(100);
         builder.Property(d => d.AmountFixed).HasColumnType("decimal(18,2)");
         builder.Property(d => d.AmountPercent).HasColumnType("decimal(5,2)");
+        builder.Property(d => d.RefundPercentOnLateCancel).HasDefaultValue(0);
     }
 }

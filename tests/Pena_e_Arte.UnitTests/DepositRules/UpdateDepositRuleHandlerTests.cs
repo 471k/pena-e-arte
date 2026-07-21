@@ -104,4 +104,33 @@ public class UpdateDepositRuleHandlerTests
 
         _db.DepositRules.Single(r => r.Id == rule.Id).UpdatedAt.Should().BeAfter(before);
     }
+
+    [Fact]
+    public async Task Handle_OmittingCancellationFields_ResetsToNullAndZero()
+    {
+        DepositRule rule = await SeedRule("Rule", 40m, null, false);
+        rule.CancellationWindowHours = 48;
+        rule.RefundPercentOnLateCancel = 50;
+        await _db.SaveChangesAsync();
+
+        UpdateDepositRuleRequest req = new("Rule", 40m, null, false);
+        await CreateSut().Handle(new UpdateDepositRuleCommand(rule.Id, req), default);
+
+        DepositRule updated = _db.DepositRules.Single(r => r.Id == rule.Id);
+        updated.CancellationWindowHours.Should().BeNull();
+        updated.RefundPercentOnLateCancel.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_WithCancellationFields_PersistsThem()
+    {
+        DepositRule rule = await SeedRule("Rule", 40m, null, false);
+        UpdateDepositRuleRequest req = new("Rule", 40m, null, false, 72, 25);
+
+        await CreateSut().Handle(new UpdateDepositRuleCommand(rule.Id, req), default);
+
+        DepositRule updated = _db.DepositRules.Single(r => r.Id == rule.Id);
+        updated.CancellationWindowHours.Should().Be(72);
+        updated.RefundPercentOnLateCancel.Should().Be(25);
+    }
 }

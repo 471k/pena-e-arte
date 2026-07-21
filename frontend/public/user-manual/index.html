@@ -1932,26 +1932,30 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Create deposit rule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/deposit-rules/new</code>: name a rule, choose fixed-amount or percentage, and set whether it's active.</p>
+<p>At <code>/deposit-rules/new</code>: name a rule, choose fixed-amount or percentage, set your cancellation policy, and set whether it's active.</p>
 <figure class="wireframe">
-<svg viewBox="0 0 760 480" role="img" aria-label="Create deposit rule wireframe">
+<svg viewBox="0 0 760 520" role="img" aria-label="Create deposit rule wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="10" font-weight="700">‹ Deposit Rules</text>
-<rect x="260" y="60" width="240" height="240" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<rect x="260" y="60" width="240" height="320" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="280" y="88" font-size="12" font-weight="700">New Deposit Rule</text>
 <text x="280" y="108" font-size="9" fill-opacity="0.6">Rule name</text><rect x="280" y="114" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="146" font-size="9" fill-opacity="0.6">Deposit type</text><text x="280" y="160" font-size="8">○ Fixed amount &nbsp;&nbsp; ○ Percentage</text>
 <text x="280" y="180" font-size="9" fill-opacity="0.6">Amount (€)</text><rect x="280" y="186" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="220" font-size="8">☑ Active</text>
-<rect x="280" y="232" width="200" height="26" rx="4" fill="#7c3aed"/><text x="325" y="249" font-size="10" fill="#fff">Create Rule</text>
+<text x="280" y="218" font-size="9" fill-opacity="0.6">Cancellation notice window (hours)</text><rect x="280" y="224" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="256" font-size="9" fill-opacity="0.6">Refund if cancelled late (%)</text><rect x="280" y="262" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="298" font-size="8">☑ Active</text>
+<rect x="280" y="312" width="200" height="26" rx="4" fill="#7c3aed"/><text x="325" y="329" font-size="10" fill="#fff">Create Rule</text>
 </svg>
 </figure>
-<figcaption>Create deposit rule — fields in order: name, type, amount, active toggle</figcaption>
+<figcaption>Create deposit rule — fields in order: name, type, amount, cancellation notice window, late-refund percent, active toggle</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li>Enter a <span class="step-title">Rule name</span> (e.g. "Standard Deposit").</li>
 <li>Choose <span class="step-title">Fixed amount</span> or <span class="step-title">Percentage</span>.</li>
 <li>Enter the <span class="step-title">Amount</span> (€ or %, 0.01–100 for percentages).</li>
+<li>Optionally set the <span class="step-title">Cancellation notice window</span> (hours a client must give to self-cancel/reschedule without forfeiting their deposit). Leave blank for the 24-hour platform default.</li>
+<li>Optionally set <span class="step-title">Refund if cancelled late</span> (% of the deposit refunded on a late self-cancel). 0% forfeits it entirely.</li>
 <li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
 <li>Click <span class="step-title">Create Rule</span>.</li>
 </ol>
@@ -1970,15 +1974,17 @@ ol.steps li { margin: 6px 0; }
 <circle cx="300" cy="90" r="24" fill="#3b82f6" fill-opacity="0.15"/><text x="288" y="96" font-size="12">€</text>
 <text x="336" y="86" font-size="13" font-weight="700">Standard Deposit</text>
 <rect x="336" y="96" width="45" height="14" rx="7" fill="#22c55e" fill-opacity="0.5"/><text x="344" y="106" font-size="7">Active</text>
-<rect x="260" y="140" width="240" height="60" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<rect x="260" y="140" width="240" height="90" rx="6" fill="currentColor" fill-opacity="0.05"/>
 <text x="272" y="160" font-size="9">Fixed · €50.00</text>
-<text x="272" y="178" font-size="8" fill-opacity="0.6">Created 3 Mar 2026</text>
+<text x="272" y="178" font-size="8" fill-opacity="0.6">Cancellation notice: 24 hours (platform default)</text>
+<text x="272" y="192" font-size="8" fill-opacity="0.6">Late cancellation refund: 0%</text>
+<text x="272" y="212" font-size="8" fill-opacity="0.6">Created 3 Mar 2026</text>
 </svg>
 </figure>
 <figcaption>Deposit rule detail — view, edit, and confirm-delete modes</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Click <span class="step-title">Edit</span> to change name, type, amount, or active state.</li>
+<li>Click <span class="step-title">Edit</span> to change name, type, amount, cancellation policy, or active state.</li>
 <li>Click <span class="step-title">Delete</span> to remove it (with confirmation).</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> deleting a deposit rule cannot be undone; existing appointments keep their already-calculated deposit.</div>

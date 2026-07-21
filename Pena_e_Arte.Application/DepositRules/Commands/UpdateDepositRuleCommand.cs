@@ -34,11 +34,13 @@ public class UpdateDepositRuleHandler(IAppDbContext db)
             }
         }
 
-        rule.Name          = req.Name;
-        rule.AmountFixed   = req.AmountFixed;
-        rule.AmountPercent = req.AmountPercent;
-        rule.IsActive      = req.IsActive;
-        rule.UpdatedAt     = DateTime.UtcNow;
+        rule.Name                      = req.Name;
+        rule.AmountFixed               = req.AmountFixed;
+        rule.AmountPercent             = req.AmountPercent;
+        rule.IsActive                  = req.IsActive;
+        rule.CancellationWindowHours   = req.CancellationWindowHours;
+        rule.RefundPercentOnLateCancel = req.RefundPercentOnLateCancel;
+        rule.UpdatedAt                 = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 

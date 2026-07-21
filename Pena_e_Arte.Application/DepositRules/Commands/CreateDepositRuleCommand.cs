@@ -22,11 +22,13 @@ public class CreateDepositRuleHandler(IAppDbContext db, ICurrentTenant tenant)
 
         DepositRule rule = new()
         {
-            StudioId      = tenant.StudioId,
-            Name          = req.Name,
-            AmountFixed   = req.AmountFixed,
-            AmountPercent = req.AmountPercent,
-            IsActive      = req.IsActive
+            StudioId                  = tenant.StudioId,
+            Name                      = req.Name,
+            AmountFixed               = req.AmountFixed,
+            AmountPercent             = req.AmountPercent,
+            IsActive                  = req.IsActive,
+            CancellationWindowHours   = req.CancellationWindowHours,
+            RefundPercentOnLateCancel = req.RefundPercentOnLateCancel
         };
 
         db.DepositRules.Add(rule);
@@ -51,5 +53,6 @@ public class CreateDepositRuleHandler(IAppDbContext db, ICurrentTenant tenant)
     internal static DepositRuleResponse Map(DepositRule r) => new(
         r.Id, r.StudioId, r.Name,
         r.AmountFixed, r.AmountPercent,
-        r.IsActive, r.CreatedAt, r.UpdatedAt);
+        r.IsActive, r.CreatedAt, r.UpdatedAt,
+        r.CancellationWindowHours, r.RefundPercentOnLateCancel);
 }

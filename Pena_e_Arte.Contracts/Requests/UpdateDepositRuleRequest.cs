@@ -4,4 +4,6 @@ public record UpdateDepositRuleRequest(
     string   Name,
     decimal? AmountFixed,
     decimal? AmountPercent,
-    bool     IsActive);
+    bool     IsActive,
+    int?     CancellationWindowHours = null,
+    int      RefundPercentOnLateCancel = 0);
