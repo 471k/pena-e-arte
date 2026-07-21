@@ -16,10 +16,11 @@ configure({ asyncUtilTimeout: 3000 });
 vi.mock("@microsoft/signalr", () => {
   const noop = () => {};
   const connection = {
-    on:     noop,
-    start:  () => Promise.resolve(),
-    stop:   () => Promise.resolve(),
-    invoke: () => Promise.resolve(),
+    on:            noop,
+    onreconnected: noop,
+    start:         () => Promise.resolve(),
+    stop:          () => Promise.resolve(),
+    invoke:        () => Promise.resolve(),
   };
   const builder = {
     withUrl:               () => builder,

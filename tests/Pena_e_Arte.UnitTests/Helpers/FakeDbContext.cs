@@ -38,6 +38,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<InstagramConnection>   InstagramConnections => Set<InstagramConnection>();
     public DbSet<InstagramPost>         InstagramPosts       => Set<InstagramPost>();
     public DbSet<FeedbackReport>        FeedbackReports      => Set<FeedbackReport>();
+    public DbSet<FeedbackMessage>       FeedbackMessages     => Set<FeedbackMessage>();
     public DbSet<HelpSearchLog>         HelpSearchLogs       => Set<HelpSearchLog>();
     public DbSet<UserOnboardingState>   UserOnboardingStates => Set<UserOnboardingState>();
 
@@ -101,6 +102,11 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasOne(p => p.Artist)
             .WithMany()
             .HasForeignKey(p => p.ArtistId);
+
+        modelBuilder.Entity<FeedbackReport>()
+            .HasMany(r => r.Messages)
+            .WithOne()
+            .HasForeignKey(m => m.FeedbackReportId);
     }
 
     public static FakeDbContext Create() =>

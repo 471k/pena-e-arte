@@ -15,6 +15,7 @@ import { useOnboardingTour } from "../useOnboardingTour";
 import { HelpSearchInput } from "./HelpSearchInput";
 import { HelpArticleView } from "./HelpArticleView";
 import { FaqAccordion } from "./FaqAccordion";
+import { ContactSupportPanel } from "./ContactSupportPanel";
 import type { HelpArticle, FaqItem, HelpRole, HelpSearchResult } from "../help.types";
 import type { Role } from "@/shared/types/roles";
 
@@ -133,6 +134,7 @@ export function HelpMenu() {
               <TabsList>
                 <TabsTrigger value="guides">Guides</TabsTrigger>
                 <TabsTrigger value="faq">FAQ</TabsTrigger>
+                <TabsTrigger value="support">Contact Support</TabsTrigger>
               </TabsList>
               <TabsContent value="guides" className="flex-1 overflow-y-auto space-y-3">
                 <Button
@@ -150,6 +152,9 @@ export function HelpMenu() {
               </TabsContent>
               <TabsContent value="faq" className="flex-1 overflow-y-auto">
                 <FaqAccordion items={scopedFaqs} />
+              </TabsContent>
+              <TabsContent value="support" className="flex-1 overflow-y-auto">
+                <ContactSupportPanel />
               </TabsContent>
             </Tabs>
           )}

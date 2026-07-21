@@ -126,6 +126,7 @@ DesignUploaded          artist uploaded new draft
 DesignApproved          client approved design
 DesignChangeRequested   client requested changes
 NotificationReceived    generic in-app notification
+SupportMessageReceived  new reply posted on a support ticket
 ```
 
 Always push from Infrastructure (Hangfire jobs or command handlers).
@@ -245,6 +246,7 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 25 | In-App Help Menu | No entity (static content) | None — frontend-only, no backend | All roles |
 | 26 | Help Search Analytics | `HelpSearchLog` | `IgnoreQueryFilters()` — 39th approved usage (issuer insights read) | Per-tenant (write), Issuer-level (aggregate read) |
 | 27 | First-Run Onboarding Tour | `UserOnboardingState` (no tenant filter) | None — no `IgnoreQueryFilters()` needed, no filter registered on this entity | Per-user, cross-tenant |
+| 28 | Support Escalation (Help menu ticket threads) | `FeedbackMessage` (child of `FeedbackReport`, no tenant filter, cascade delete) | `SupportHub` SignalR hub, `IRealtimeNotifier.NotifyTicketAsync` | Per-user (own tickets), Issuer-level (all tickets) |
 
 ### In-App Help Menu — 2026-07-20
 
@@ -352,6 +354,123 @@ mechanics (masonry via CSS columns, lightbox via shadcn Dialog).
   steps resolve and advance in the correct order, Done fires the completion call and closes the
   tour, a completed tour doesn't show on next load, and "Take the tour again" relaunches it
   regardless of completion state.
+
+### Support Escalation — 2026-07-21
+
+Threaded messaging on top of the existing `FeedbackReport` inbox, reached from the Help
+menu's new "Contact Support" tab. Deliberately async (SignalR-pushed when the other party
+is online, no live-chat presence requirement) rather than a parallel ticket system —
+builds on `FeedbackReport`/`FeedbackStatus`/`FeedbackInboxPage`, which were already an
+issuer-facing ticket inbox, just one-shot until now.
+
+- **New `FeedbackType.SupportRequest`** — not selectable in the existing `FeedbackDialog`
+  (Bug Report / Feature Request / General stay artist/owner/issuer-only); only ever created
+  from the Help menu's Contact Support flow.
+- **`POST /api/v1/feedback` widened to `ClientAndAbove`** (see the updated Feedback (2.6)
+  entry above) — `SubmitFeedbackValidator` now takes a constructor-injected `ICurrentUser`
+  and rejects a client submitting anything other than `SupportRequest`.
+- **`FeedbackMessage`** — child of `FeedbackReport`, not tenant-scoped (same reasoning as
+  `FeedbackReport` itself: no EF filter, configured inline in `AppDbContext.OnModelCreating`,
+  not a separate `IEntityTypeConfiguration`), cascade-deletes with its parent. `FeedbackReport`
+  exposes `Messages` as a plain `ICollection<FeedbackMessage>` (matches `Design.Revisions`'s
+  existing idiom, not the stricter private-setter-plus-factory style used for `FeedbackReport`'s
+  own scalar properties — collection navigations need the simpler shape for EF to populate them).
+- **Resource ownership, not just role policy** — `GET/POST /api/v1/feedback/{id}/messages` are
+  both `ClientAndAbove` at the route level, but "can this user see this ticket" isn't
+  expressible as a static policy, so each handler calls a new domain method,
+  `FeedbackReport.IsAccessibleBy(userId, studioId, role)`: issuer sees everything, everyone
+  else only their own submission in their own studio (`ForbiddenException` → 403 otherwise).
+  Centralized on the entity specifically so the two handlers can't drift out of sync on this
+  security-critical check. `GET /api/v1/feedback/mine` is its own route group at
+  `/api/v1/feedback` (`ClientAndAbove`) — deliberately not nested under the `IssuerOnly`
+  `/api/v1/platform/feedback` group.
+- **Reopen-on-reply** — `PostFeedbackMessageHandler` reopens a `Resolved`/`Dismissed` ticket
+  (back to `Open`, preserving the existing `IssuerNote`) when the *studio-side* user replies —
+  issuer replies don't reopen, since issuer is the one closing tickets.
+- **`SupportHub`** — new SignalR hub, ticket-keyed groups (`ticket:{feedbackReportId}`) via
+  `JoinTicket`/`LeaveTicket`, matching `ScheduleHub`'s exact shape. `JoinTicket` does **not**
+  validate ticket ownership before adding the caller to the group — this matches
+  `ScheduleHub.JoinStudio`'s own existing precedent (no membership check there either, verified
+  before building this), so it's a legitimate scoped decision consistent with the codebase's
+  existing risk posture, not a new hole: exposure is bounded by the ticket id being an
+  unguessable Guid, same reasoning as `ScheduleHub`'s studioId groups.
+  `IRealtimeNotifier` gained `NotifyTicketAsync` (Application layer stays SignalR-agnostic,
+  same pattern as the existing `NotifyStudioAsync`); `RealtimeNotifier` picks the hub via a new
+  `IHubContext<SupportHub>` constructor param.
+- **Frontend architecture note**: `SupportTicketThread`, `SupportRequestForm`, and
+  `useSupportHub` live in `features/feedback/`, not `features/help/`, even though they're only
+  ever rendered from the Help menu and `FeedbackInboxPage`. Putting them in `features/help/`
+  first created a circular import (`help` → `feedback` for the API hooks, `feedback` →
+  `help` for the thread component) — moved to keep the dependency one-directional
+  (`help` → `feedback`, never the reverse), matching how `HelpMenu` already depended on
+  `feedbackApi` since Part A/B.
+- `FeedbackInboxPage`'s expanded card view now renders `SupportTicketThread` (replacing the
+  old plain `<p>{report.body}</p>`, since the thread already shows the body as its first
+  bubble) with `canReply` unconditionally true, alongside the existing status-change buttons —
+  this applies to every feedback type, not just `SupportRequest`, since replying is now a
+  generic capability on any ticket, not type-gated.
+- Verified with a route-mocked backend (Playwright, same technique as Parts A/B/D): owner
+  role sees the Contact Support form when they have no open ticket, submits it with
+  `type: SupportRequest`, and — once an open ticket exists — sees the thread instead of the
+  form with existing messages and a working reply box. Issuer's Feedback Inbox expands to the
+  same thread component with a working reply box. Did not attempt the real-backend write path
+  for this feature — Part B's investigation already established that local tenant-scoped
+  writes 500 here due to `SubscriptionAccessService`/Redis being absent in this dev
+  environment, unrelated to this feature's own code.
+
+#### Local `/code-review high` pass — 2026-07-21, before merge
+
+Ran an 8-angle review (correctness, removed-behavior, cross-file, reuse, simplification,
+efficiency, altitude, CLAUDE.md conventions) against this Part C diff specifically, since it
+changes authorization on a production endpoint. 8 candidates survived verification; all 8
+were fixed before merge, not just logged:
+
+- **`SupportHub.JoinTicket` didn't validate ticket ownership** (security) — any authenticated
+  user who learned a ticket GUID could join its SignalR group and read all future reply
+  content in real time, bypassing the REST-layer `IsAccessibleBy` check entirely. The
+  "matches `ScheduleHub`'s precedent" reasoning held for the *mechanism* but not the *risk*:
+  `ScheduleHub` broadcasts studio-wide data any studio member already sees; this hub
+  broadcasts a private two-party conversation. Fixed by validating ownership inside
+  `JoinTicket` itself — reading claims directly from `Context.User` (not `ICurrentUser`/
+  `ICurrentTenant`, which are never populated for hub invocations: `/hubs` paths are in
+  `TenantMiddleware.ExemptPrefixes`) and calling `FeedbackReport.IsAccessibleBy` before
+  adding the caller to the group.
+- **Studio-less client → unhandled 500 from the Contact Support flow meant to help them** —
+  widening `POST /api/v1/feedback` to `ClientAndAbove` newly let a studio-less client
+  (a real, supported state — see `MyStudiosPage`'s empty state) reach `SubmitFeedbackHandler`,
+  which throws `InvalidOperationException` when `tenant.StudioId` doesn't resolve to a real
+  `Studio`. Fixed with a `SubmitFeedbackValidator` rule on `ICurrentTenant.IsSet`, returning a
+  clean 422 instead of a 500.
+- **`ContactSupportPanel` silently fell through to the submission form on a failed ticket
+  lookup** — risked a duplicate ticket submission if `GET /api/v1/feedback/mine` failed
+  transiently. Fixed with an explicit error + retry state.
+- **`useSupportHub` never re-joined the ticket group after SignalR's automatic reconnect** —
+  a brief network drop silently stopped future replies from arriving (mirrors an identical
+  pre-existing gap in `useSignalR.ts`, left as a separate follow-up since it's out of this
+  diff's scope). Fixed with an `onreconnected` handler.
+- **`GetMyFeedbackReportsHandler` duplicated `GetFeedbackReportsHandler`'s entire response
+  projection** verbatim — extracted a shared `internal static readonly Expression<Func<...>>`
+  (not a compiled `Func`, so EF Core still translates it into the SQL projection).
+- **The ownership-check block was duplicated across two handlers** with no structural
+  guarantee a future third handler would remember it, despite `PlanLimitBehavior` already
+  establishing a pipeline-behavior pattern for exactly this kind of cross-cutting check —
+  extracted a shared `FeedbackAccessGuard.LoadAccessibleReportAsync` helper (a full pipeline
+  behavior was judged like overkill for two call sites; revisit if a third handler needs it).
+- **Sending a reply refetched the message list twice** — once from the mutation's own
+  `invalidatesTags`, once from the SignalR echo of the sender's own message (the sender is a
+  member of their own ticket's group). Fixed by having `useSupportHub` skip invalidation when
+  the echoed message's `authorUserId` matches the current user.
+- **Every reply invalidated the unscoped `"Feedback"` tag**, forcing a full report-list
+  refetch (issuer's entire cross-tenant inbox) even when replying to an already-`Open` ticket
+  changes no report-level field. Fixed by threading a `mayReopen` flag through the mutation
+  (computed client-side from the same condition `PostFeedbackMessageHandler` uses server-side:
+  studio-side reply + `Resolved`/`Dismissed` status) so `"Feedback"` is only invalidated when
+  a reopen is actually possible.
+
+All fixes covered by new/updated tests (backend: +1 validator test; frontend: +2
+`useSupportHub` tests) — full suite verified green after: 1225 backend, 1617 frontend.
+Re-verified the Contact Support flow's error/retry state and the happy path in a
+route-mocked browser after these changes.
 
 ```
 OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rate-limited)
@@ -2160,10 +2279,14 @@ pass above.
   `public-read` 120/min) matches `RateLimitingExtensions.cs` exactly; implementation
   uses `AddRedisPolicy` (genuinely Redis-backed via Lua INCR+EXPIRE), not the
   in-memory `AddFixedWindowLimiter`.
-- **Feedback (2.6)** — `POST /api/v1/feedback` is `ArtistAndAbove`,
-  `/platform/feedback` routes are `IssuerOnly`, matching the doc. The feature has no
-  screenshot field at all (only `Type`/`Title`/`Body`, all length-bounded — Title
-  ≤150, Body 10–2000 chars) and nothing in the Application layer logs feedback
+- **Feedback (2.6)** — as of the Support Escalation feature (2026-07-21),
+  `POST /api/v1/feedback` is `ClientAndAbove`, not `ArtistAndAbove` — widened so clients
+  can reach it from the Help menu's Contact Support flow. `SubmitFeedbackValidator`
+  narrows it back down for clients specifically: a client's `Type` must be
+  `SupportRequest`, or validation fails; artist/owner/issuer keep unrestricted access to
+  all four types. `/platform/feedback` routes remain `IssuerOnly`, matching the doc. The
+  feature has no screenshot field at all (only `Type`/`Title`/`Body`, all length-bounded
+  — Title ≤150, Body 10–2000 chars) and nothing in the Application layer logs feedback
   content.
 - **Referral Rewards (2.8)** — `ReferralRewardService.RewardReferrerAsync` is
   idempotency-guarded on `ReferrerRewardApplied`, skips (logs, doesn't throw) on

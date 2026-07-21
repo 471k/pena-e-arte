@@ -2,6 +2,7 @@ export const FEEDBACK_TYPE = {
   BugReport:      "BugReport",
   FeatureRequest: "FeatureRequest",
   General:        "General",
+  SupportRequest: "SupportRequest",
 } as const;
 export type FeedbackType = (typeof FEEDBACK_TYPE)[keyof typeof FEEDBACK_TYPE];
 
@@ -35,4 +36,17 @@ export interface SubmitFeedbackRequest {
 export interface UpdateFeedbackStatusRequest {
   status:     FeedbackStatus;
   issuerNote: string | null;
+}
+
+export interface FeedbackMessageResponse {
+  id:               string;
+  feedbackReportId: string;
+  authorUserId:     string;
+  authorRole:       string;
+  body:             string;
+  createdAt:        string;
+}
+
+export interface PostFeedbackMessageRequest {
+  body: string;
 }
