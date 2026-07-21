@@ -66,7 +66,43 @@ Tests
   [ ] Unit tests for domain logic
   [ ] Integration test for each command handler
   [ ] Integration test for each query handler
+
+Cross-cutting (every feature, no exceptions — CLAUDE.md rules #6/#7)
+  [ ] Benchmarked against the Industry-Standard Benchmark Set below — backend
+      structure AND frontend UI/UX — and against every role/tenant it touches,
+      not just the one it was built for
+  [ ] `frontend/src/features/help/helpContent.ts` updated (or confirmed no
+      user-visible surface exists that needs an entry)
+  [ ] Standalone manual (`frontend/public/user-manual/index.html`) updated to match
+  [ ] Onboarding tour (`frontend/src/features/help/tours/{client,artist,owner,issuer}Tour.ts`)
+      updated if the feature touches a nav item, primary button, or any existing
+      `data-tour="..."` target
 ```
+
+### Industry-Standard Benchmark Set
+
+Reference comparison set for CLAUDE.md rule #6 — use this instead of re-deriving
+a competitor list from memory each time, and refresh it via web search if it's
+been more than a few months since the list was last checked against the live
+market:
+
+```
+Vertical (client/artist/owner UX + booking-SaaS backend structure):
+  Vagaro, Fresha, Boulevard, Mindbody, Zenoti, GlossGenius, Booksy, Mangomint,
+  Schedulicity, Square Appointments
+Tattoo-specific (where a closer analog exists):
+  Tattoo Studio Pro, Porter, Linework, Venue Ink
+General B2B SaaS platform-admin (issuer role only):
+  org/tenant management, plan & seat management, dunning/failed-payment recovery,
+  usage metering, audit logs, support impersonation, status pages, API/webhook
+  access tiers — benchmark against how any mature multi-tenant SaaS admin panel
+  handles these, not against a single named competitor
+```
+
+See `overnight-prompt-industry-feature-parity-audit-2026-07-20.md` for the full
+methodology (Present/Partial/Missing verdicts, P0–P3 priority) — reuse that
+method for any smaller, single-feature benchmark check rather than inventing a
+new rubric each time.
 
 ---
 

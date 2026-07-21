@@ -100,6 +100,25 @@ Infra         Docker · K3s · Nginx · GitHub Actions
 5. **Structured logs only.** Use Serilog. No `Console.WriteLine`, no
    `console.log` in production paths.
 
+6. **Match current industry standards — for every tenant/role.** Every feature or
+   change, backend and frontend alike, must reflect the current standard for this
+   product category: vertical booking/scheduling SaaS (Vagaro, Fresha, Boulevard,
+   Mindbody, Zenoti, GlossGenius-tier UX and architecture) plus general B2B SaaS
+   platform-admin standards for the issuer role (org/tenant management, billing,
+   audit logs, support tooling). This applies to backend architecture/structure/
+   conventions and to frontend UI/UX equally, and must hold for every tenant this
+   touches — client, artist, owner, and issuer — not just the role the feature was
+   built for. See `docs/claude/architecture.md`'s "Industry-Standard Benchmark" note
+   for the concrete comparison set and how to verify against it.
+
+7. **Keep Help in sync — every time.** Every feature added or changed must update,
+   in the same change: the in-app Help Menu content
+   (`frontend/src/features/help/helpContent.ts`), the standalone user manual
+   (`frontend/public/user-manual/index.html`), and any onboarding-tour step it
+   affects (`frontend/src/features/help/tours/*.ts`). A feature is not done until
+   Help describes it correctly. See `docs/claude/architecture.md`'s "In-App Help
+   Menu" section for why these three surfaces exist and must stay aligned.
+
 ---
 
 ## Common Commands
@@ -135,3 +154,8 @@ docker compose down
 - Skip writing a test for business logic in the Application layer
 - Use `var` for non-obvious types in C# — be explicit
 - Use `any` in TypeScript — always type explicitly
+- Ship a user-facing feature/change without updating `helpContent.ts`, the
+  standalone manual, and any affected onboarding-tour step in the same change
+- Introduce a backend pattern or a frontend UI/UX pattern that falls behind the
+  current standard for this SaaS category without flagging the gap explicitly
+  (silently shipping a substandard pattern is worse than flagging it and moving on)

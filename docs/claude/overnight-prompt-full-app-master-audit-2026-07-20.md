@@ -49,8 +49,10 @@ condition below.
 - No business logic in endpoints — endpoints call MediatR only.
 - Every DB query on tenant data through EF Core global query filters. Only `issuer`-scoped handlers may
   call `IgnoreQueryFilters()`, and only if the call site is already listed in `architecture.md`'s
-  "IgnoreQueryFilters() Approved Usages" table (currently 26 entries) — if you find a usage NOT in that
-  table, that is itself a P0 bug (undocumented cross-tenant read).
+  "IgnoreQueryFilters() Approved Usages" table — **read the table fresh; do not assume a specific entry
+  count.** It was 26 entries when this prompt was drafted and is already up to 39 as of the Support
+  Escalation feature (2026-07-21) — it will have grown further by the time you run this. If you find a
+  usage NOT in the table as it exists right now, that is itself a P0 bug (undocumented cross-tenant read).
 - Every endpoint has `.RequireAuthorization()` with the correct policy, OR is listed in the
   "AllowAnonymous Exceptions" table in `architecture.md` with a documented security mechanism. No
   unprotected, undocumented endpoint may exist.
@@ -464,6 +466,50 @@ already existed and was tested before this prompt — it added ONLY the frontend
   authorization and business rules rather than accidentally reusing the artist-only endpoint in a way that
   lets clients reschedule their own appointments without artist review.
 
+## 2.12a — In-App Help System (Help Menu, Search Analytics, Onboarding Tour, Support Escalation —
+2026-07-20/07-21, the newest features in the app; no dedicated prompt file exists, audit directly
+against `architecture.md`'s "In-App Help Menu" / "Help Search Analytics" / "First-Run Onboarding Tour" /
+"Support Escalation" sections and current source)
+
+- `HelpMenu.tsx` content (`helpContent.ts`) and `frontend/public/user-manual/index.html` are two
+  independent delivery mechanisms for the same underlying documentation. Confirm they are actually in
+  sync right now — spot-check at least 5 screens covered by both and diff their descriptions. This is
+  the kind of drift that accumulates silently: every feature prompt since 2026-07-20 that changed a
+  screen had no instruction to touch either file, so treat "these two have already drifted" as the
+  default assumption to disprove, not a remote possibility.
+- `OnboardingTour` steps reference `data-tour="..."` attributes on real nav items/buttons across all
+  four layouts. Any route/nav change made anywhere else in this audit (Phases 1–3) can silently break a
+  tour step's `targetSelector`. After finishing Phases 1–3, re-run the tour for all four roles (real
+  browser or route-mocked Playwright, matching the verification technique already used for this feature)
+  and confirm every step still resolves its target — a step that silently no-ops (per the documented
+  "skipped automatically if the selector never resolves" behavior) is easy to miss because it fails
+  quietly, not loudly.
+- `SupportHub.JoinTicket` — confirm the ownership-validation fix from the 2026-07-21 code-review pass
+  (reading claims from `Context.User` directly, not `ICurrentUser`/`ICurrentTenant`, since `/hubs` paths
+  are `TenantMiddleware`-exempt) is still in place; this was a real security hole once already.
+- `SubmitFeedbackValidator`'s `ICurrentTenant.IsSet` guard (added same pass, fixes a studio-less client
+  500) — confirm it's still there; a studio-less client is a real, supported state (`MyStudiosPage`'s
+  empty state) and must not crash the one flow (Contact Support) meant to help them.
+- Help Search Analytics' write path (`POST /api/v1/help/search-log`) was verified only against a
+  route-mocked backend locally — the real-backend write reportedly 500s in this dev environment due to
+  `SubscriptionAccessService`'s Redis-unavailable fallback path, a pre-existing, unrelated infra gap (no
+  local Redis/Docker). Confirm whether Redis is available in tonight's environment; if it is, verify the
+  real end-to-end write path now actually works rather than continuing to rely on the mocked-backend
+  verification.
+- `GetHelpSearchInsightsHandler` (issuer-only, `IgnoreQueryFilters()` #39) — confirm zero-result queries
+  are surfaced distinctly from low-count queries in `HelpInsightsPage`, since zero-result queries are the
+  highest-signal "documentation is missing this" indicator per the feature's own stated purpose.
+
+## 2.12b — Documentation-sync as a standing rule for the rest of this audit
+
+**Everything you fix or change in Phases 1–3 of this prompt is itself a documentation-sync obligation.**
+For any bug fix or behavior change that alters what a user sees or how a screen/flow works: check whether
+`helpContent.ts`, the standalone manual, or a tour step describes the old behavior, and update it to
+match. This was true before the Help system existed (the manual alone would have gone stale) and is more
+true now that there are three surfaces (in-app menu, standalone manual, tour) instead of one. Do not treat
+this as optional polish — a wrong Help answer is worse than no Help answer, and this audit is exactly the
+kind of session that touches enough surface area to create drift if this isn't enforced deliberately.
+
 ## 2.12 — Issuer Studio Detail, List Audit, Subscription Oversight (the three 2026-07-17 issuer prompts)
 
 Read `overnight-prompt-issuer-studio-detail-2026-07-17.md`,
@@ -541,6 +587,9 @@ Before writing the deliverable, walk through this checklist once as a single pas
 - Grep the whole repo one more time for `window.location.origin` — zero hits outside of the documented
   fallback pattern (`VITE_PUBLIC_URL ?? window.location.origin`).
 - Grep the whole repo for `Plan.PriceMonthly`, `Plan.PriceYearly`, `Plan.PairedPlanId` — zero hits.
+- **Does `helpContent.ts` and the standalone manual (`frontend/public/user-manual/index.html`) still
+  describe every screen accurately after everything fixed in Phases 1–3?** Re-run the onboarding tour for
+  all four roles and confirm every step still resolves its target selector.
 
 ---
 
@@ -559,6 +608,10 @@ When all three phases exit cleanly, append a new section to `docs/claude/archite
 
 ### Phase 3 — Cross-feature bugs found and fixed
 - [matrix row # → scenario → bug → fix]
+
+### Help / documentation sync
+- [helpContent.ts updates → standalone manual updates → tour step fixes, one line each; or "none needed
+  — verified in sync" if genuinely true]
 
 ### New Decisions Log entries added
 - [any new architectural decisions made resolving an ambiguity found during this audit]

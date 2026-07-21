@@ -169,3 +169,10 @@ describe("AppointmentCard", () => {
 - No `console.log` committed to the repo
 - No hardcoded API URLs — always from environment config
 - No role checks in component render logic — use `usePermission` hook
+
+**Every feature, regardless of layer (CLAUDE.md rules #6/#7 — not optional)**
+- No shipping a pattern that falls behind this category's current industry
+  standard (see `architecture.md`'s "Industry-Standard Benchmark Set") without
+  explicitly flagging the gap
+- No shipping a user-facing change without updating `helpContent.ts`, the
+  standalone manual, and any affected onboarding-tour step in the same change
