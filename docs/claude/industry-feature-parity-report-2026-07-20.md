@@ -388,3 +388,93 @@ Add `Timezone` (IANA string) to `Studio.cs`, defaulted at onboarding. Confirm/en
 - **F2/F9/F12/F13 — small UI/UX fixes**: "Session Length" → "Appointment Duration" rename; `HelpInsightsPage.tsx` error message made specific with a retry action; `flex-wrap` added to issuer action-button rows; `dark:` variant added to the one raw amber icon color.
 
 *(See commit for the exact diff; each item above shipped with its corresponding test coverage per the project's existing conventions.)*
+
+---
+
+## Round 2 — 2026-07-21 (P0 remediation)
+
+Branch `fix/p0-remediation-2026-07-21`. Builds the six items from the P0 backlog above that
+were too large for last night's whitelist pass, now fully scoped and shipped. Full design
+rationale lives in `docs/claude/overnight-prompt-p0-remediation-2026-07-21.md`; this section
+records what actually shipped, where it diverged from that prompt's citations, and what it
+unblocks.
+
+### Shipped tonight (moved from P0 backlog)
+
+1. **Cancellation policy configuration** (D20) — `DepositRule.CancellationWindowHours` /
+   `DepositRule.RefundPercentOnLateCancel`, migration `AddCancellationPolicyToDepositRule`,
+   `CreateDepositRulePage.tsx`/`DepositRuleDetailPage.tsx` form fields.
+2. **Client self-cancel** (B3) — `DELETE /api/v1/appointments/{id}` widened to
+   `ClientAndAbove`; role-conditional ownership + refund-percent branch in
+   `CancelAppointmentCommand.cs`; new `ClientCancellationPolicy` domain service; cancel
+   affordance in `MyBookingsSection.tsx`.
+3. **Client self-reschedule** (B2) — `PATCH .../reschedule` widened to `ClientAndAbove`;
+   cutoff-gated (no partial-consequence, unlike cancel) using the same notice window;
+   reuses `RescheduleDialog.tsx` with a client-facing description override.
+4. **Owner revenue & trend reporting** (D8) — `GET /api/v1/reports/revenue-summary`
+   (`OwnerOnly`), 12-month trend + per-artist breakdown; new `frontend/src/features/reports/`
+   module, `/reports` route + owner nav item.
+5. **Structured admin/audit log** (E11 + D24, merged) — new `AuditLogEntry` entity (no
+   query filter, `StudioId` nullable), `IAuditableCommand` marker + `AuditLogBehavior`
+   pipeline behavior (mirrors `PlanLimitBehavior`), wired onto 9 of the originally-scoped
+   commands (see deviations below). `GET /api/v1/platform/audit-log` (issuer, cross-tenant)
+   + `GET /api/v1/studios/me/audit-log` (owner, own-studio only).
+6. **`Plan.AllowApiAccess` verification** (E12) — re-confirmed clean **except** one real
+   regression found: `PlanManagementPage.tsx` still rendered an "API access" badge from
+   `plan.allowApiAccess` that last night's fix missed (only the `PlanEditPage.tsx` toggle
+   was hidden, not this list-page badge). Fixed tonight. Also found `PrioritySupport`
+   (E15) was untouched despite the report flagging the identical risk — it was still a
+   live, issuer-editable toggle plus a `PlanManagementPage.tsx` badge plus documented in
+   both Help surfaces. Given the same treatment as `AllowApiAccess`.
+
+### Deviations from the prompt's citations (live source won this time)
+
+- **No per-appointment `DepositRuleId` exists.** The prompt assumed an "attached"
+  deposit rule per appointment; the actual model is single-active-rule-per-studio
+  (`DepositRule.IsActive`, selected by `OrderByDescending(UpdatedAt)` in
+  `CreateAppointmentHandler`). Cancellation/reschedule policy checks resolve the
+  currently-active rule the same way, rather than an appointment-specific FK.
+- **No "delete client record" command exists in this codebase.** Grepped
+  `ClientEndpoints.cs` and the whole `Application` layer — there is no delete-client
+  command of any name. Not wired into the audit log; nothing to wire.
+- **`MrrChart.tsx` does not use recharts** — it's a hand-rolled inline SVG chart; recharts
+  isn't installed anywhere in the frontend. The revenue trend chart matches `MrrChart.tsx`'s
+  actual hand-rolled-SVG treatment instead, per the "no new npm packages" constraint.
+- **Referral-code commands don't carry `StudioId`.** `DeactivateReferralCodeCommand`/
+  `ReactivateReferralCodeCommand`/`DeleteReferralCodeCommand` only carry `ReferralCodeId`.
+  Rather than adding an async DB lookup to `IAuditableCommand`'s synchronous
+  `AuditStudioId` property, these three audit entries currently log as platform-wide
+  (`StudioId` null) even though a referral code is conceptually studio-scoped — a known,
+  explicitly-accepted limitation, not an oversight.
+- **Phase 2's own text briefly implied cancel might have a hard cutoff** ("the window
+  still gates whether the client can self-cancel at all"), which contradicts its own
+  explicit contrast with Phase 3 ("unlike cancel, reschedule has... a cutoff"). Resolved in
+  favor of the explicit contrast: cancel has no cutoff, only tiered refund consequence;
+  reschedule has a hard cutoff.
+
+### Newly unblocked
+
+- **E10 — Support impersonation** was explicitly waiting on the audit log (#6 above)
+  existing before it could be scoped. That dependency is now satisfied. Still not built —
+  it retains its own open product question (which endpoints belong in the impersonation
+  allow-list) that this round didn't attempt to resolve.
+
+### Connections worth noting for future work
+
+- **E8 (plan usage-limit enforcement completion)** could plausibly reuse the
+  `AuditLogBehavior` pipeline-position precedent once it wires notification/storage/
+  location enforcement — both are "cross-cutting MediatR behavior gated by a marker
+  interface" shaped problems. Not started; noted for whoever picks up E8.
+
+### Do-not-build-blind list — reconfirmed untouched
+
+Gift cards, packages/memberships, POS/inventory, payroll/commission automation,
+multi-location, native mobile, SSO, i18n, tax handling, marketing-campaign sending — none
+of these were touched this round, confirmed by diff review against this list.
+
+### Verification
+
+`dotnet build` (0 errors), `dotnet test` (1301 unit + 21+ integration, all green),
+`pnpm build`/`tsc -b` (0 TypeScript errors), full frontend `vitest` suite green except one
+pre-existing flaky test (`FeedbackInboxPage.test.tsx`, unrelated to this round's changes —
+passes in isolation, fails only under full-suite parallel run; not introduced tonight).
