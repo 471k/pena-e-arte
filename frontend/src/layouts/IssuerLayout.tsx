@@ -9,10 +9,10 @@ import { useGetFeedbackReportsQuery } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",     href: "/platform",               icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "Studios",       href: "/platform/studios",       icon: <Building2       className="h-4 w-4" /> },
-  { label: "Plans",         href: "/platform/plans",         icon: <CreditCard      className="h-4 w-4" /> },
-  { label: "Subscriptions", href: "/platform/subscriptions", icon: <Receipt         className="h-4 w-4" /> },
+  { label: "Dashboard",     href: "/platform",               icon: <LayoutDashboard className="h-4 w-4" />, tourId: "issuer-dashboard-nav" },
+  { label: "Studios",       href: "/platform/studios",       icon: <Building2       className="h-4 w-4" />, tourId: "issuer-studios-nav" },
+  { label: "Plans",         href: "/platform/plans",         icon: <CreditCard      className="h-4 w-4" />, tourId: "issuer-plans-nav" },
+  { label: "Subscriptions", href: "/platform/subscriptions", icon: <Receipt         className="h-4 w-4" />, tourId: "issuer-subscriptions-nav" },
   { label: "Referrals",     href: "/platform/referrals",     icon: <Share2          className="h-4 w-4" /> },
   { label: "Reports",       href: "/platform/reports",       icon: <BarChart3       className="h-4 w-4" /> },
   { label: "Feedback",      href: "/platform/feedback",      icon: <MessageSquare   className="h-4 w-4" /> },
@@ -37,11 +37,12 @@ export function IssuerLayout() {
         <span className="font-semibold tracking-tight">Platform Admin</span>
 
         <nav className="ml-6 flex items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {NAV_ITEMS.map(({ label, href, icon }) => (
+          {NAV_ITEMS.map(({ label, href, icon, tourId }) => (
             <NavLink
               key={href}
               to={href}
               end={href === "/platform"}
+              data-tour={tourId}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors",

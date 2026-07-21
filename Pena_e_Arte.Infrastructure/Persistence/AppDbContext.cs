@@ -58,6 +58,9 @@ public class AppDbContext(
     // --- Help search analytics (tenant-scoped write; issuer aggregate read via IgnoreQueryFilters) ---
     public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();
 
+    // --- Onboarding tour completion (no tenant filter — per-user, cross-tenant) ---
+    public DbSet<UserOnboardingState> UserOnboardingStates => Set<UserOnboardingState>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
@@ -146,6 +149,16 @@ public class AppDbContext(
             entity.HasIndex(r => r.StudioId);
             entity.HasIndex(r => r.Status);
             entity.HasIndex(r => r.CreatedAt);
+        });
+
+        builder.Entity<UserOnboardingState>(entity =>
+        {
+            entity.HasKey(u => u.Id);
+
+            entity.Property(u => u.Role).HasMaxLength(20).IsRequired();
+
+            // No HasQueryFilter — state belongs to the user, not a studio.
+            entity.HasIndex(u => new { u.UserId, u.Role }).IsUnique();
         });
     }
 }

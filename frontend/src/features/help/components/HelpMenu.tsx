@@ -11,10 +11,12 @@ import { useAppSelector } from "@/app/hooks";
 import { HELP_ARTICLES, FAQ_ITEMS } from "../helpContent";
 import { searchHelp } from "../helpSearch";
 import { useLogHelpSearchMutation } from "../helpApi";
+import { useOnboardingTour } from "../useOnboardingTour";
 import { HelpSearchInput } from "./HelpSearchInput";
 import { HelpArticleView } from "./HelpArticleView";
 import { FaqAccordion } from "./FaqAccordion";
 import type { HelpArticle, FaqItem, HelpRole, HelpSearchResult } from "../help.types";
+import type { Role } from "@/shared/types/roles";
 
 const SEARCH_LOG_DEBOUNCE_MS = 800;
 
@@ -27,6 +29,7 @@ export function HelpMenu() {
   const navigate = useNavigate();
   const [logHelpSearch] = useLogHelpSearchMutation();
   const loggedQueriesRef = useRef<Set<string>>(new Set());
+  const { tourElement, restartTour } = useOnboardingTour(role as Role | null);
 
   const scopedArticles = useMemo(() => {
     if (!role) return [];
@@ -94,9 +97,12 @@ export function HelpMenu() {
         variant="ghost" size="icon" className="h-8 w-8"
         onClick={() => setOpen(true)}
         title="Help" aria-label="Open help menu"
+        data-tour={role ? `${role}-help-button` : undefined}
       >
         <HelpCircle className="h-4 w-4" />
       </Button>
+
+      {tourElement}
 
       <Sheet open={open} onOpenChange={handleClose}>
         <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
@@ -129,6 +135,14 @@ export function HelpMenu() {
                 <TabsTrigger value="faq">FAQ</TabsTrigger>
               </TabsList>
               <TabsContent value="guides" className="flex-1 overflow-y-auto space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setOpen(false); restartTour(); }}
+                >
+                  Take the tour again
+                </Button>
                 {role === "issuer" && (
                   <IssuerAllRolesToggle checked={showAllRoles} onChange={setShowAllRoles} />
                 )}

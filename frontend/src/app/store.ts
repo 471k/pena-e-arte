@@ -22,6 +22,7 @@ import { platformApi } from "@/features/platform/platformApi";
 import { feedbackApi } from "@/features/feedback/feedbackApi";
 import { reviewsApi } from "@/features/reviews/reviewsApi";
 import { helpApi } from "@/features/help/helpApi";
+import { onboardingApi } from "@/features/help/onboardingApi";
 
 const appReducer = combineReducers({
   auth:          authReducer,
@@ -46,6 +47,7 @@ const appReducer = combineReducers({
   [feedbackApi.reducerPath]:       feedbackApi.reducer,
   [reviewsApi.reducerPath]:        reviewsApi.reducer,
   [helpApi.reducerPath]:           helpApi.reducer,
+  [onboardingApi.reducerPath]:     onboardingApi.reducer,
 });
 
 type AppState = ReturnType<typeof appReducer>;
@@ -113,6 +115,7 @@ export const store = configureStore({
       feedbackApi.middleware,
       reviewsApi.middleware,
       helpApi.middleware,
+      onboardingApi.middleware,
     ),
 });
 

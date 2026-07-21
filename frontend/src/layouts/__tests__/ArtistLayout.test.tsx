@@ -13,6 +13,8 @@ import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
+import { authApi } from "@/features/auth/authApi";
+import { onboardingApi } from "@/features/help/onboardingApi";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -43,6 +45,10 @@ const server = setupServer(
   http.get("http://localhost/api/v1/artists/me", () =>
     HttpResponse.json(MY_ARTIST),
   ),
+  // Onboarding tour: complete by default so it doesn't interfere with unrelated assertions.
+  http.get("http://localhost/api/v1/onboarding/tour-status", () =>
+    HttpResponse.json({ hasCompletedTour: true }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -64,8 +70,10 @@ function makeStore(overrides: StoreOverrides = {}) {
       notifications:                   notificationsReducer,
       [notificationsApi.reducerPath]:  notificationsApi.reducer,
       [artistsApi.reducerPath]:        artistsApi.reducer,
+      [onboardingApi.reducerPath]:     onboardingApi.reducer,
+      [authApi.reducerPath]:           authApi.reducer,
     },
-    middleware: (gd) => gd().concat(notificationsApi.middleware, artistsApi.middleware),
+    middleware: (gd) => gd().concat(notificationsApi.middleware, artistsApi.middleware, onboardingApi.middleware, authApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u2", email: "artist@ink.test" }, token: "fake", tenantId: "t1", role: "artist", pendingReferralCode: null } as any,

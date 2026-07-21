@@ -51,5 +51,8 @@ public interface IAppDbContext
     // Help search analytics — tenant-scoped write, issuer reads cross-tenant via IgnoreQueryFilters
     DbSet<HelpSearchLog> HelpSearchLogs { get; }
 
+    // Onboarding tour completion — per-user, cross-tenant, no tenant filter needed
+    DbSet<UserOnboardingState> UserOnboardingStates { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -19,8 +19,8 @@ import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 
 const STATIC_NAV = [
-  { label: "Schedule",      href: "/schedule",        icon: <CalendarDays className="h-4 w-4" /> },
-  { label: "Clients",       href: "/clients",         icon: <Users        className="h-4 w-4" /> },
+  { label: "Schedule",      href: "/schedule",        icon: <CalendarDays className="h-4 w-4" />, tourId: "artist-schedule-nav" },
+  { label: "Clients",       href: "/clients",         icon: <Users        className="h-4 w-4" />, tourId: "artist-clients-nav" },
   { label: "Designs",       href: "/designs",         icon: <Palette      className="h-4 w-4" /> },
   { label: "Intake Forms",  href: "/forms/intake",    icon: <FileText     className="h-4 w-4" /> },
   { label: "Consent Forms", href: "/forms/consent",   icon: <ScrollText   className="h-4 w-4" /> },
@@ -52,10 +52,11 @@ export function ArtistLayout() {
         <span className="font-semibold tracking-tight">Pena e Artë</span>
 
         <nav className="ml-6 flex items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {STATIC_NAV.map(({ label, href, icon }) => (
+          {STATIC_NAV.map(({ label, href, icon, tourId }) => (
             <NavLink
               key={href}
               to={href}
+              data-tour={tourId}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors shrink-0",

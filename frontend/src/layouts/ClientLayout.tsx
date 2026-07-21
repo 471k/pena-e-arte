@@ -14,9 +14,9 @@ import { NotificationBell } from "@/features/notifications";
 import { HelpMenu } from "@/features/help";
 
 const NAV_ITEMS = [
-  { label: "Book Appointment", shortLabel: "Book",    href: "/book",         icon: <CalendarDays className="h-4 w-4" /> },
-  { label: "My Studios",       shortLabel: "Studios", href: "/my-studios",   icon: <Building2    className="h-4 w-4" /> },
-  { label: "My Designs",       shortLabel: undefined, href: "/designs",        icon: <Palette      className="h-4 w-4" /> },
+  { label: "Book Appointment", shortLabel: "Book",    href: "/book",         icon: <CalendarDays className="h-4 w-4" />, tourId: "client-book-nav" },
+  { label: "My Studios",       shortLabel: "Studios", href: "/my-studios",   icon: <Building2    className="h-4 w-4" />, tourId: "client-my-studios-nav" },
+  { label: "My Designs",       shortLabel: undefined, href: "/designs",        icon: <Palette      className="h-4 w-4" />, tourId: "client-designs-nav" },
   { label: "Intake Forms",     shortLabel: undefined, href: "/forms/intake",   icon: <FileText     className="h-4 w-4" /> },
   { label: "Consent Forms",    shortLabel: undefined, href: "/forms/consent",  icon: <ScrollText   className="h-4 w-4" /> },
   { label: "My Profile",       shortLabel: undefined, href: "/clients/me",     icon: <User         className="h-4 w-4" /> },
@@ -43,10 +43,11 @@ export function ClientLayout() {
         <span className="font-semibold tracking-tight">Pena e Artë</span>
 
         <nav className="ml-6 flex items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {NAV_ITEMS.map(({ label, shortLabel, href, icon }) => (
+          {NAV_ITEMS.map(({ label, shortLabel, href, icon, tourId }) => (
             <NavLink
               key={href}
               to={href}
+              data-tour={tourId}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-1.5 px-3 py-2.5 sm:py-1.5 rounded-md text-sm transition-colors shrink-0",

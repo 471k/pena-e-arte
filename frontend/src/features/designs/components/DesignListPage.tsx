@@ -77,7 +77,12 @@ export function DesignListPage() {
               </span>
             )}
             {canCreate && (
-              <Button size="sm" onClick={() => navigate("/designs/new")} className="gap-1.5">
+              <Button
+                size="sm"
+                onClick={() => navigate("/designs/new")}
+                className="gap-1.5"
+                data-tour="artist-create-design-button"
+              >
                 <Plus className="h-3.5 w-3.5" />
                 New Design
               </Button>
@@ -134,6 +139,7 @@ export function DesignListPage() {
                   onClick={() => navigate("/designs/new")}
                   className="gap-1.5 mt-1"
                   data-testid="empty-state-new-design"
+                  data-tour="artist-create-design-button"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   New Design
