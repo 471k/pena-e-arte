@@ -288,13 +288,13 @@ describe("BookAppointmentForm", () => {
   it("Duration field is a select not a number input", async () => {
     renderForm();
     await screen.findByText("Luna Artista");
-    expect(screen.getByRole("combobox", { name: /session length/i })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /appointment duration/i })).toBeInTheDocument();
   });
 
   it("Duration select default shows '1 hour'", async () => {
     renderForm();
     await screen.findByText("Luna Artista");
-    const durationSelect = screen.getByRole("combobox", { name: /session length/i });
+    const durationSelect = screen.getByRole("combobox", { name: /appointment duration/i });
     expect(durationSelect).toHaveTextContent(/1 hour/i);
   });
 
@@ -302,7 +302,7 @@ describe("BookAppointmentForm", () => {
     const user = userEvent.setup();
     renderForm();
     await screen.findByText("Luna Artista");
-    await user.click(screen.getByRole("combobox", { name: /session length/i }));
+    await user.click(screen.getByRole("combobox", { name: /appointment duration/i }));
     expect(await screen.findByRole("option", { name: /1 hour/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /30 min/i })).toBeInTheDocument();
   });

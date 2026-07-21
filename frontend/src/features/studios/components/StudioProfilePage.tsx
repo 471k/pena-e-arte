@@ -16,6 +16,7 @@ import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMuta
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
+import { StudioClosuresCard } from "./StudioClosuresCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
 import { EmbedCodeCard } from "./EmbedCodeCard";
 
@@ -303,6 +304,7 @@ export function StudioProfilePage() {
         </Card>
 
         <BrandingSettingsCard />
+        <StudioClosuresCard />
         <QrCodeSection />
         <EmbedCodeCard />
         <ReferralCodeCard />

@@ -55,6 +55,7 @@ import { useGetDesignsQuery } from "@/features/designs/designsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { InstagramTab } from "./InstagramTab";
+import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
 
 const editSchema = z.object({
   firstName:       z.string().min(1, "First name is required"),
@@ -396,7 +397,8 @@ export function ArtistDetailPage() {
             <TabsList className="w-full">
               <TabsTrigger value="profile"    className="flex-1">Profile</TabsTrigger>
               <TabsTrigger value="portfolio"  className="flex-1">Portfolio</TabsTrigger>
-              <TabsTrigger value="schedule"   className="flex-1">Schedule</TabsTrigger>
+              <TabsTrigger value="hours"      className="flex-1">Schedule</TabsTrigger>
+              <TabsTrigger value="bookings"   className="flex-1">Bookings</TabsTrigger>
               <TabsTrigger value="designs"    className="flex-1">Designs</TabsTrigger>
               <TabsTrigger value="instagram"  className="flex-1">Instagram</TabsTrigger>
             </TabsList>
@@ -519,8 +521,13 @@ export function ArtistDetailPage() {
               )}
             </TabsContent>
 
-            {/* Schedule tab */}
-            <TabsContent value="schedule" className="mt-4 space-y-3">
+            {/* Working hours / time off tab */}
+            <TabsContent value="hours" className="mt-4">
+              <ArtistScheduleEditor artistId={id!} canEdit={canManage || isOwnProfile} />
+            </TabsContent>
+
+            {/* Bookings tab */}
+            <TabsContent value="bookings" className="mt-4 space-y-3">
               {appsLoading && (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}

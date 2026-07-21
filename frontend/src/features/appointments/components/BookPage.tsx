@@ -79,7 +79,7 @@ export function BookPage() {
             <CardHeader className="pb-2">
               <h1 className="text-base font-semibold tracking-tight">Book an appointment</h1>
               <p className="text-xs text-muted-foreground">
-                Select an artist, date, and session length. Your booking is a
+                Select an artist, date, and appointment duration. Your booking is a
                 request — the studio will confirm within 24 hours.
               </p>
             </CardHeader>

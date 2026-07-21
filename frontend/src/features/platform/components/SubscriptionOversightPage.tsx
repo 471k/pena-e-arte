@@ -214,7 +214,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
             <Link to={`/platform/studios/${sub.studioId}`}>
               <Button
                 size="sm"

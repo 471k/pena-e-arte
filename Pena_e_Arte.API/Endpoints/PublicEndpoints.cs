@@ -13,8 +13,13 @@ namespace Pena_e_Arte.API.Endpoints;
 
 public static class PublicEndpoints
 {
+    private const string SiteBaseUrl = "https://penaearte.com";
+
     public static void MapPublicEndpoints(this IEndpointRouteBuilder app)
     {
+        // Root-level, not under /api/v1 — search engines expect /sitemap.xml at the site root.
+        app.MapGet("/sitemap.xml", GetSitemap).AllowAnonymous().RequireRateLimiting("public-read");
+
         RouteGroupBuilder group = app.MapGroup("/api/v1/public");
 
         group.MapGet("/studios/{slug}",          GetPublicStudio).AllowAnonymous().RequireRateLimiting("public-read");
@@ -34,6 +39,27 @@ public static class PublicEndpoints
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
         group.MapGet ("/artists/{slug}/instagram-posts", GetArtistInstagramPosts)
              .AllowAnonymous().RequireRateLimiting("public-read");
+    }
+
+    private static async Task<IResult> GetSitemap(
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        List<SitemapUrlEntry> urls = await mediator.Send(new GetSitemapUrlsQuery(), ct);
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        sb.Append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
+        foreach (SitemapUrlEntry url in urls)
+        {
+            sb.Append("<url>");
+            sb.Append($"<loc>{SiteBaseUrl}{url.Path}</loc>");
+            sb.Append($"<lastmod>{url.LastModified:yyyy-MM-dd}</lastmod>");
+            sb.Append("</url>");
+        }
+        sb.Append("</urlset>");
+
+        return Results.Text(sb.ToString(), "application/xml");
     }
 
     private static async Task<IResult> GetPublicStudio(

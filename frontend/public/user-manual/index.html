@@ -453,6 +453,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#issuer-referrals" data-nav-link>Platform referral codes</a></li>
           <li><a href="#issuer-reports" data-nav-link>Industry reports</a></li>
           <li><a href="#issuer-feedback" data-nav-link>Feedback inbox</a></li>
+          <li><a href="#issuer-help-insights" data-nav-link>Help search insights</a></li>
         </ul>
       </div>
     </div>
@@ -2497,21 +2498,22 @@ ol.steps li { margin: 6px 0; }
 <text x="250" y="264" font-size="8">Extend Trial · Activate · Suspend · Cancel Subscription</text>
 </svg>
 </figure>
-<figcaption>Studio detail — Info card followed by an Actions card</figcaption>
+<figcaption>Studio detail — Info card, Actions card, and a Referral codes card</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Review studio info: slug, city, registration date, branding setting, plan, and subscription status.</li>
 <li>Click <span class="step-title">View public portfolio</span> to see what clients see.</li>
 <li>Use the <span class="step-title">Actions</span> card for the same extend/activate/suspend/cancel controls as the list view.</li>
+<li>Use the <span class="step-title">Referral codes</span> card to generate, deactivate, reactivate, or delete this studio's referral code without leaving the page.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#issuer-studios">Studio list</a></div>
+<div class="crosslinks">See also: <a href="#issuer-studios">Studio list</a>, <a href="#issuer-referrals">Manage platform referral codes</a></div>
 </section>
 
 <section id="issuer-plans" data-role="issuer">
 <h2><span class="role-badge role-issuer">Issuer</span> Plan management</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (sees plans read-only when subscribing)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/platform/plans</code>: define the subscription plans studios can choose from — pricing, billing interval, yearly discount, branding-removal eligibility, and the linked Stripe Price IDs.</p>
+<p>At <code>/platform/plans</code>: define the subscription plans studios can choose from — pricing per billing interval (monthly and/or yearly), yearly discount, usage limits (Artists, Appointments/mo, Notifications/mo, Storage, Locations — or "Unlimited"), feature flags (branding removal, priority support), and the linked Stripe Price IDs.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Plan management wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -2529,10 +2531,11 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Plan management — plan cards in a grid, each with inline edit/delete</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Click <span class="step-title">New plan</span> and fill in name, billing interval, monthly/yearly price, yearly discount %, whether it allows branding removal, and Stripe Price IDs.</li>
+<li>Click <span class="step-title">New plan</span> and fill in name, yearly discount %, monthly and/or yearly price with its Stripe Price ID, usage limits, and feature flags.</li>
 <li>Click <span class="step-title">✎</span> on any plan to edit it in place.</li>
 <li>Click <span class="step-title">🗑</span> to delete a plan — deleting a plan with active subscribers is blocked from new signups but doesn't affect existing ones.</li>
 </ol>
+<div class="callout callout-warn"><strong>Warning:</strong> the five default plans (Free, Starter, Growth, and both Premium tiers) are reconciled from seed data on every deploy — edits to their name, price, or limits are overwritten on the next deploy. Create a plan with a different name if you need a permanent custom tier.</div>
 <div class="crosslinks">See also: <a href="#owner-subscribe">Owner: choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
 </section>
 
@@ -2643,6 +2646,19 @@ ol.steps li { margin: 6px 0; }
 <li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#issuer-dashboard">Platform overview</a></div>
+</section>
+
+<section id="issuer-help-insights" data-role="issuer">
+<h2><span class="role-badge role-issuer">Issuer</span> Help search insights</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>At <code>/platform/help-insights</code>: what studio users searched for in the in-app Help menu over the last 30 days, aggregated across every studio — the top queries, and every query that returned zero results.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Review the top queries table to see what users look for most, and which roles ask for it.</li>
+<li>Review the zero-result queries table — each row is a search that found nothing, which is the clearest signal of a documentation gap or confusing UX to fix in the in-app FAQ or this manual.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#issuer-feedback">Feedback inbox</a></div>
 </section>
 
 <section id="ref-design-statuses" data-role="reference">

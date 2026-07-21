@@ -239,7 +239,6 @@ export function PlanEditPage() {
   const watchedMonthlyPrice   = useWatch({ control, name: "monthly.price" });
   const watchedDiscount       = useWatch({ control, name: "yearlyDiscountPercent" });
   const watchedBranding       = useWatch({ control, name: "allowBrandingRemoval" });
-  const watchedApiAccess      = useWatch({ control, name: "allowApiAccess" });
   const watchedPrioritySupport = useWatch({ control, name: "prioritySupport" });
 
   const suggestedYearly =
@@ -441,14 +440,7 @@ export function PlanEditPage() {
                 />
                 <Label>Allow branding removal</Label>
               </div>
-              <div className="flex items-center gap-2">
-                <ToggleSwitch
-                  checked={watchedApiAccess}
-                  onChange={() => setValue("allowApiAccess", !watchedApiAccess, { shouldDirty: true })}
-                  aria-label="Allow API access"
-                />
-                <Label>Allow API access</Label>
-              </div>
+              {/* allowApiAccess toggle intentionally hidden — no API/webhook subsystem exists yet */}
               <div className="flex items-center gap-2">
                 <ToggleSwitch
                   checked={watchedPrioritySupport}
