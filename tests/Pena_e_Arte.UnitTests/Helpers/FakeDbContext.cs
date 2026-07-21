@@ -38,6 +38,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<InstagramConnection>   InstagramConnections => Set<InstagramConnection>();
     public DbSet<InstagramPost>         InstagramPosts       => Set<InstagramPost>();
     public DbSet<FeedbackReport>        FeedbackReports      => Set<FeedbackReport>();
+    public DbSet<HelpSearchLog>         HelpSearchLogs       => Set<HelpSearchLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

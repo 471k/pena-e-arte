@@ -8,6 +8,7 @@ import type {
   IndustryReportSummary,
   IssuerStudioSummaryResponse,
   PlanUsageReportResponse,
+  HelpSearchInsightsResponse,
 } from "./platform.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
@@ -110,6 +111,10 @@ export const platformApi = createApi({
       query: () => "platform/plan-usage-report",
       providesTags: ["PlanUsageReport"],
     }),
+    getHelpSearchInsights: builder.query<HelpSearchInsightsResponse, { days?: number } | void>({
+      query: (args) => `platform/help-search-insights${args?.days ? `?days=${args.days}` : ""}`,
+      providesTags: ["PlatformStats"],
+    }),
   }),
 });
 
@@ -129,4 +134,5 @@ export const {
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
   useGetPlanUsageReportQuery,
+  useGetHelpSearchInsightsQuery,
 } = platformApi;

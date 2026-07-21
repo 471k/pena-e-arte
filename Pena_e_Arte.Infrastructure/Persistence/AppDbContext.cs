@@ -55,6 +55,9 @@ public class AppDbContext(
     // --- Platform feedback (no tenant filter — issuer reads across all studios) ---
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
 
+    // --- Help search analytics (tenant-scoped write; issuer aggregate read via IgnoreQueryFilters) ---
+    public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
@@ -87,6 +90,7 @@ public class AppDbContext(
         builder.Entity<IntakeForm>()     .HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         builder.Entity<ConsentForm>()    .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>()              .HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
+        builder.Entity<HelpSearchLog>()  .HasQueryFilter(h => h.StudioId == tenant.StudioId && h.DeletedAt == null);
         builder.Entity<StudioNotificationPreference>() .HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         // ClientNotificationPreference — NOT filtered, dual-keyed by (UserId, StudioId); see ClientNotificationPreferenceConfiguration.
 

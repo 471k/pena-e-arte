@@ -405,6 +405,13 @@ export function IssuerDashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        <Link
+          to="/platform/help-insights"
+          className="block text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          View Help search insights →
+        </Link>
       </main>
     </div>
   );

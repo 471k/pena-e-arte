@@ -6,3 +6,4 @@ export { SubscriptionOversightPage } from "./components/SubscriptionOversightPag
 export { PlatformReferralPage }     from "./components/PlatformReferralPage";
 export { IndustryReportsPage }      from "./components/IndustryReportsPage";
 export { IssuerDashboardPage }      from "./components/IssuerDashboardPage";
+export { HelpInsightsPage }         from "./components/HelpInsightsPage";

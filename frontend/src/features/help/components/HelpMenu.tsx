@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HelpCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -10,10 +10,13 @@ import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { useAppSelector } from "@/app/hooks";
 import { HELP_ARTICLES, FAQ_ITEMS } from "../helpContent";
 import { searchHelp } from "../helpSearch";
+import { useLogHelpSearchMutation } from "../helpApi";
 import { HelpSearchInput } from "./HelpSearchInput";
 import { HelpArticleView } from "./HelpArticleView";
 import { FaqAccordion } from "./FaqAccordion";
 import type { HelpArticle, FaqItem, HelpRole, HelpSearchResult } from "../help.types";
+
+const SEARCH_LOG_DEBOUNCE_MS = 800;
 
 export function HelpMenu() {
   const [open, setOpen] = useState(false);
@@ -22,6 +25,8 @@ export function HelpMenu() {
   const [showAllRoles, setShowAllRoles] = useState(false);
   const role = useAppSelector((s) => s.auth.role) as HelpRole | null;
   const navigate = useNavigate();
+  const [logHelpSearch] = useLogHelpSearchMutation();
+  const loggedQueriesRef = useRef<Set<string>>(new Set());
 
   const scopedArticles = useMemo(() => {
     if (!role) return [];
@@ -51,8 +56,24 @@ export function HelpMenu() {
     if (!next) {
       setQuery("");
       setSelectedArticleId(null);
+      loggedQueriesRef.current.clear();
     }
   }
+
+  // Debounce the search-analytics log call so it never fires on every keystroke —
+  // the visible search above stays instant, only this side-channel call is delayed.
+  useEffect(() => {
+    if (query.trim().length < 2) return;
+    const timer = setTimeout(() => {
+      const normalized = query.trim().toLowerCase();
+      if (loggedQueriesRef.current.has(normalized)) return;
+      loggedQueriesRef.current.add(normalized);
+      logHelpSearch({ query: normalized, resultCount: results.length })
+        .unwrap()
+        .catch(() => {});
+    }, SEARCH_LOG_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [query, results.length, logHelpSearch]);
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
