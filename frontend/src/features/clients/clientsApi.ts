@@ -111,7 +111,7 @@ export const clientsApi = createApi({
       query: (body) => ({ url: "clients", method: "POST", body }),
       invalidatesTags: ["Client"],
     }),
-    getClientProfile: builder.query<ClientProfileResponse, string>({
+    getClientProfile: builder.query<ClientProfileResponse | null, string>({
       query: (clientId) => `clients/${clientId}/profile`,
       providesTags: (_result, _error, clientId) => [{ type: "ClientProfile", id: clientId }],
     }),

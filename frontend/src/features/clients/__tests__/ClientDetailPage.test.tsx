@@ -250,10 +250,10 @@ describe("ClientDetailPage", () => {
     expect(screen.queryByRole("button", { name: /edit profile/i })).not.toBeInTheDocument();
   });
 
-  it("shows 'Add Profile' instead of 'Edit Profile' when there is no profile yet (404)", async () => {
+  it("shows 'Add Profile' instead of 'Edit Profile' when there is no profile yet", async () => {
     server.use(
       http.get("http://localhost/api/v1/clients/:id/profile", () =>
-        HttpResponse.json({ message: "Not found" }, { status: 404 }),
+        HttpResponse.json(null, { status: 200 }),
       ),
     );
     renderPage(Role.Artist);
@@ -272,10 +272,10 @@ describe("ClientDetailPage", () => {
     expect(screen.getByLabelText("Chest")).not.toHaveAttribute("role", "button");
   });
 
-  it("Profile tab shows 'No profile information yet.' on 404", async () => {
+  it("Profile tab shows 'No profile information yet.' when there is no profile", async () => {
     server.use(
       http.get("http://localhost/api/v1/clients/:id/profile", () =>
-        HttpResponse.json({ message: "Not found" }, { status: 404 }),
+        HttpResponse.json(null, { status: 200 }),
       ),
     );
     renderPage();

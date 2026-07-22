@@ -2,7 +2,6 @@ using FluentAssertions;
 using Pena_e_Arte.Application.Clients.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
-using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.ValueObjects;
 using Pena_e_Arte.UnitTests.Helpers;
 
@@ -30,9 +29,10 @@ public class GetClientProfileHandlerTests
         });
         await _db.SaveChangesAsync();
 
-        ClientProfileResponse result = await CreateSut().Handle(new GetClientProfileQuery(clientId), default);
+        ClientProfileResponse? result = await CreateSut().Handle(new GetClientProfileQuery(clientId), default);
 
-        result.ClientId.Should().Be(clientId);
+        result.Should().NotBeNull();
+        result!.ClientId.Should().Be(clientId);
         result.StudioId.Should().Be(studioId);
         result.DateOfBirth.Should().Be(new DateOnly(1990, 5, 15));
         result.MedicalNotes.Should().Be("None");
@@ -41,10 +41,10 @@ public class GetClientProfileHandlerTests
     }
 
     [Fact]
-    public async Task Handle_MissingProfile_ThrowsNotFoundException()
+    public async Task Handle_MissingProfile_ReturnsNull()
     {
-        Func<Task> act = () => CreateSut().Handle(new GetClientProfileQuery(Guid.NewGuid()), default);
+        ClientProfileResponse? result = await CreateSut().Handle(new GetClientProfileQuery(Guid.NewGuid()), default);
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        result.Should().BeNull();
     }
 }

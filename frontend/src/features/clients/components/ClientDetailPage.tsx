@@ -64,11 +64,10 @@ export function ClientDetailPage() {
     data: profile,
     isLoading: profileLoading,
     isUninitialized: profileUninitialized,
-    error: profileError,
   } = useGetClientProfileQuery(id!, { skip: !id });
 
   const profileNotFound =
-    profileError && "status" in profileError && profileError.status === 404;
+    !profileLoading && !profileUninitialized && !profile;
 
   const [upsertProfile,  { isLoading: isSaving }]    = useUpsertClientProfileMutation();
   const [updateBodyMap, { isLoading: isSavingMap }] = useUpdateBodyMapMutation();

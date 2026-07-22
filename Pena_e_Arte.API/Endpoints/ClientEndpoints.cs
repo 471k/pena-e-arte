@@ -92,7 +92,7 @@ public static class ClientEndpoints
         ISender           mediator,
         CancellationToken ct)
     {
-        ClientProfileResponse result = await mediator.Send(new GetClientProfileQuery(clientId), ct);
+        ClientProfileResponse? result = await mediator.Send(new GetClientProfileQuery(clientId), ct);
         return Results.Ok(result);
     }
 
@@ -190,6 +190,6 @@ public static class ClientEndpoints
         CancellationToken ct)
     {
         PortableClientProfile? result = await mediator.Send(new GetPortableProfileQuery(userId), ct);
-        return result is null ? Results.NotFound() : Results.Ok(result);
+        return Results.Ok(result);
     }
 }
