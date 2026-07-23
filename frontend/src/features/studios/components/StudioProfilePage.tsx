@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMutation } from "../studiosApi";
@@ -21,6 +22,8 @@ import { StudioAuditLogCard } from "./StudioAuditLogCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
 import { EmbedCodeCard } from "./EmbedCodeCard";
 
+const NIPT_HELP = "NIPT format looks wrong — expected a letter, 8 digits, then a letter (e.g. L01234567A)";
+
 const schema = z.object({
   name:            z.string().min(1, "Name is required").max(200),
   city:            z.string().min(1, "City is required").max(200),
@@ -28,6 +31,14 @@ const schema = z.object({
   longitude:       z.number({ message: "Must be a number" }).min(-180).max(180),
   phoneNumber:     z.string().max(30, "Max 30 characters").optional(),
   instagramHandle: z.string().max(60, "Max 60 characters").optional(),
+  nipt: z
+    .string()
+    .trim()
+    .length(10, "NIPT must be exactly 10 characters")
+    .regex(/^[A-Za-z]\d{8}[A-Za-z]$/, NIPT_HELP)
+    .transform((v) => v.toUpperCase())
+    .optional()
+    .or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -74,6 +85,11 @@ export function StudioProfilePage() {
   const [updateStudio, { isLoading: saving, isSuccess }] = useUpdateMyStudioMutation();
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const niptInputRef = useRef<HTMLInputElement | null>(null);
+  const [niptBannerDismissed, setNiptBannerDismissed] = useState(
+    () => sessionStorage.getItem("nipt-banner-dismissed") === "true",
+  );
+
   const [slugEditing, setSlugEditing] = useState(false);
   const [slugInput,   setSlugInput]   = useState("");
   const [slugError,   setSlugError]   = useState<string | null>(null);
@@ -101,6 +117,18 @@ export function StudioProfilePage() {
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({ resolver: zodResolver(schema) });
 
+  const { ref: niptFieldRef, ...niptRegister } = register("nipt");
+
+  function handleAddNiptNow() {
+    niptInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    niptInputRef.current?.focus();
+  }
+
+  function dismissNiptBanner() {
+    sessionStorage.setItem("nipt-banner-dismissed", "true");
+    setNiptBannerDismissed(true);
+  }
+
   const latValue  = watch("latitude");
   const lngValue  = watch("longitude");
   const cityValue = watch("city");
@@ -114,6 +142,7 @@ export function StudioProfilePage() {
         longitude:       studio.longitude,
         phoneNumber:     studio.phoneNumber ?? "",
         instagramHandle: studio.instagramHandle ?? "",
+        nipt:            studio.nipt ?? "",
       });
     }
   }, [studio, reset]);
@@ -145,6 +174,29 @@ export function StudioProfilePage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        {studio && !studio.nipt && !niptBannerDismissed && (
+          <Alert className="flex items-start justify-between gap-3">
+            <AlertDescription className="flex-1">
+              Add your business tax ID (NIPT) to keep your invoices compliant.{" "}
+              <button
+                type="button"
+                onClick={handleAddNiptNow}
+                className="font-medium underline underline-offset-4"
+              >
+                Add now
+              </button>
+            </AlertDescription>
+            <button
+              type="button"
+              onClick={dismissNiptBanner}
+              aria-label="Dismiss"
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Dismiss
+            </button>
+          </Alert>
+        )}
+
         {studio && (
           <Card>
             <CardContent className="py-3 px-4 space-y-2">
@@ -263,6 +315,36 @@ export function StudioProfilePage() {
                 />
                 {errors.instagramHandle && (
                   <p id="instagramHandle-error" className="text-xs text-destructive">{errors.instagramHandle.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="nipt">Business tax ID (NIPT)</Label>
+                {studio?.nipt ? (
+                  <>
+                    <Input id="nipt" value={studio.nipt} readOnly className="bg-muted/40 cursor-default font-mono" />
+                    <p className="text-xs text-muted-foreground">Contact support to change.</p>
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      id="nipt"
+                      placeholder="L01234567A"
+                      {...niptRegister}
+                      ref={(el) => {
+                        niptFieldRef(el);
+                        niptInputRef.current = el;
+                      }}
+                      aria-invalid={!!errors.nipt}
+                      aria-describedby="nipt-help"
+                    />
+                    <p id="nipt-help" className="text-xs text-muted-foreground">
+                      Used for invoicing and business verification. Format: one letter, 8 digits, one letter.
+                    </p>
+                    {errors.nipt && (
+                      <p className="text-xs text-destructive">{errors.nipt.message}</p>
+                    )}
+                  </>
                 )}
               </div>
 

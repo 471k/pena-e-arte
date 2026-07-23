@@ -72,6 +72,7 @@ const STUDIO_RESPONSE = {
   trialExpiresAt:       "2099-01-01T00:00:00Z",
   createdAt:            "2025-01-01T00:00:00Z",
   isActive:             true,
+  nipt:                 "L01234567A",
 };
 
 const server = setupServer(
@@ -123,6 +124,7 @@ function renderPage(initialPath = "/register") {
 
 async function fillStep1(user: ReturnType<typeof userEvent.setup>, studioName = "Ink & Soul Studio") {
   await user.type(screen.getByLabelText(/studio name/i), studioName);
+  await user.type(screen.getByLabelText(/business tax id/i), "L01234567A");
   await user.click(screen.getByTestId("mock-location-picker"));
 }
 
@@ -185,6 +187,32 @@ describe("RegisterStudioPage — step 1", () => {
     // Latitude or city will be required
     expect(await screen.findByTestId("location-error")).toBeInTheDocument();
   });
+
+  it("shows validation error when NIPT is left empty", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+    await user.click(screen.getByTestId("mock-location-picker"));
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    expect(await screen.findByText(/nipt must be exactly 10 characters/i)).toBeInTheDocument();
+  });
+
+  it.each(["L0123456A", "L012345678A", "0101234567A", "L01234567"])(
+    "rejects malformed NIPT %s",
+    async (badNipt) => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+      await user.type(screen.getByLabelText(/business tax id/i), badNipt);
+      await user.click(screen.getByTestId("mock-location-picker"));
+      await user.click(screen.getByRole("button", { name: /next/i }));
+
+      expect(screen.queryByText(/step 2 of 2/i)).not.toBeInTheDocument();
+    },
+  );
 
   it("advances to step 2 when all step-1 fields are valid", async () => {
     const user = userEvent.setup();
@@ -305,6 +333,29 @@ describe("RegisterStudioPage — step 2", () => {
     await screen.findByTestId("dashboard");
 
     expect(store.getState().auth.pendingReferralCode).toBeNull();
+  });
+
+  it("includes the NIPT in the registerStudio mutation payload", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/studios", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(STUDIO_RESPONSE, { status: 201 });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await screen.findByTestId("dashboard");
+
+    expect(capturedBody).toMatchObject({ nipt: "L01234567A" });
   });
 
   it("shows server error when studio registration fails", async () => {

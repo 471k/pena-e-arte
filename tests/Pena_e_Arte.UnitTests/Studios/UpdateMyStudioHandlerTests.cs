@@ -4,6 +4,7 @@ using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
@@ -61,5 +62,75 @@ public class UpdateMyStudioHandlerTests
 
         result.PhoneNumber.Should().BeNull();
         result.InstagramHandle.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_AddNipt_PersistsNormalizedNipt()
+    {
+        await SeedStudio();
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, Nipt: "l01234567a");
+
+        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        result.Nipt.Should().Be("L01234567A");
+        _db.Studios.Single(s => s.Id == _studioId).Nipt.Should().Be("L01234567A");
+    }
+
+    [Fact]
+    public async Task Handle_NullNipt_LeavesExistingNiptUnchanged()
+    {
+        Studio studio = new()
+        {
+            Id = _studioId, Name = "Old Name", Slug = "old-slug", City = "Lisbon", Nipt = "L01234567A",
+        };
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, Nipt: null);
+
+        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        result.Nipt.Should().Be("L01234567A");
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateNiptDifferentOwner_ThrowsDuplicateNiptException()
+    {
+        await SeedStudio();
+        _db.Studios.Add(new Studio
+        {
+            Name = "Other Studio", Slug = "other-studio", City = "Porto",
+            OwnerEmail = "other-owner@example.com", Nipt = "L01234567A", IsActive = true,
+        });
+        await _db.SaveChangesAsync();
+
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, Nipt: "L01234567A");
+
+        Func<Task> act = () => CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        await act.Should().ThrowAsync<DuplicateNiptException>();
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateNiptSameOwnerEmail_Succeeds()
+    {
+        Studio myStudio = new()
+        {
+            Id = _studioId, Name = "Old Name", Slug = "old-slug", City = "Lisbon",
+            OwnerEmail = "owner@example.com", IsActive = true,
+        };
+        _db.Studios.Add(myStudio);
+        _db.Studios.Add(new Studio
+        {
+            Name = "My Other Location", Slug = "other-location", City = "Porto",
+            OwnerEmail = "owner@example.com", Nipt = "L01234567A", IsActive = true,
+        });
+        await _db.SaveChangesAsync();
+
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, Nipt: "L01234567A");
+
+        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        result.Nipt.Should().Be("L01234567A");
     }
 }

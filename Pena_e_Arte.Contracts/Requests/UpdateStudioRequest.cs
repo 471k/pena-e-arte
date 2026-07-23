@@ -6,4 +6,5 @@ public record UpdateStudioRequest(
     double  Latitude,
     double  Longitude,
     string? PhoneNumber     = null,
-    string? InstagramHandle = null);
+    string? InstagramHandle = null,
+    string? Nipt            = null);

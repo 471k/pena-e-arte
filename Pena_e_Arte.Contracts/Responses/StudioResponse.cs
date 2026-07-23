@@ -14,4 +14,5 @@ public record StudioResponse(
     bool      IsActive,
     DateTime? SlugLockedAt,
     string?   PhoneNumber     = null,
-    string?   InstagramHandle = null);
+    string?   InstagramHandle = null,
+    string?   Nipt            = null);

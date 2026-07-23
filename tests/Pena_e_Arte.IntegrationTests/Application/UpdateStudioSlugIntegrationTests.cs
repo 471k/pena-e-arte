@@ -26,7 +26,7 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
         string originalSlug = UniqueSlug();
         string newSlug      = UniqueSlug();
 
-        StudioResponse registered = await RunRegisterHandler(new("Slug Studio", originalSlug, "Lisboa", 38.7, -9.1, "owner@slugstudio.com"));
+        StudioResponse registered = await RunRegisterHandler(new("Slug Studio", originalSlug, "Lisboa", 38.7, -9.1, "owner@slugstudio.com", UniqueTestNipt()));
 
         // Act
         await RunUpdateSlugHandler(registered.Id, newSlug);
@@ -47,7 +47,7 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
         string secondSlug   = UniqueSlug();
         string thirdSlug    = UniqueSlug();
 
-        StudioResponse registered = await RunRegisterHandler(new("Lock Studio", originalSlug, "Porto", 41.1, -8.6, "owner@lockstudio.com"));
+        StudioResponse registered = await RunRegisterHandler(new("Lock Studio", originalSlug, "Porto", 41.1, -8.6, "owner@lockstudio.com", UniqueTestNipt()));
         await RunUpdateSlugHandler(registered.Id, secondSlug);
 
         // Act — second change should be rejected
@@ -63,10 +63,10 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
     {
         // Arrange — seed a second studio that already owns the target slug
         string takenSlug = UniqueSlug();
-        await RunRegisterHandler(new("Taken Studio", takenSlug, "Braga", 41.5, -8.4, "owner@taken.com"));
+        await RunRegisterHandler(new("Taken Studio", takenSlug, "Braga", 41.5, -8.4, "owner@taken.com", UniqueTestNipt()));
 
         string ownSlug  = UniqueSlug();
-        StudioResponse mine = await RunRegisterHandler(new("My Studio", ownSlug, "Faro", 37.0, -7.9, "owner@mine.com"));
+        StudioResponse mine = await RunRegisterHandler(new("My Studio", ownSlug, "Faro", 37.0, -7.9, "owner@mine.com", UniqueTestNipt()));
 
         // Act
         Func<Task> act = () => RunUpdateSlugHandler(mine.Id, takenSlug);
@@ -84,7 +84,7 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
         string second   = UniqueSlug();
         string third    = UniqueSlug();
 
-        StudioResponse studio = await RunRegisterHandler(new("Two-Change", original, "Evora", 38.5, -7.9, "owner@twochange.com"));
+        StudioResponse studio = await RunRegisterHandler(new("Two-Change", original, "Evora", 38.5, -7.9, "owner@twochange.com", UniqueTestNipt()));
         await RunUpdateSlugHandler(studio.Id, second);
 
         // Act
@@ -112,4 +112,6 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
 
     private static string UniqueSlug() =>
         ("slug-" + Guid.NewGuid().ToString("N")).Substring(0, 20);
+
+    private static string UniqueTestNipt() => $"L{(uint)Guid.NewGuid().GetHashCode() % 100000000:D8}A";
 }

@@ -11,6 +11,7 @@ public class Studio
     public string?  CoverImageUrl   { get; set; }
     public string?  PhoneNumber     { get; set; }
     public string?  InstagramHandle { get; set; }
+    public string?  Nipt            { get; set; }
     public double   Latitude        { get; set; }
     public double   Longitude       { get; set; }
     /// <summary>

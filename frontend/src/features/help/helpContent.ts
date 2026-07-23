@@ -569,12 +569,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Edit your studio profile",
     route: "/studios/me",
-    keywords: ["studio settings", "studio name", "address", "description"],
-    summary: "Edit your studio's public details — name, address, phone, Instagram, and description — that clients see when browsing.",
+    keywords: ["studio settings", "studio name", "address", "description", "nipt", "tax id", "business id"],
+    summary: "Edit your studio's public details — name, address, phone, Instagram, description — and your business tax ID (NIPT), which clients don't see but is used for invoicing and verification.",
     steps: [
       "Go to Studio Settings.",
       "Click \"Edit\" and update your studio name, address/city, phone number, Instagram handle, or description.",
+      "If you haven't added your NIPT yet, enter it in the Business tax ID field — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, this field becomes read-only; contact support to change it.",
       "Click \"Save\" to publish the changes.",
+    ],
+    tips: [
+      "Your NIPT is never shown to clients or on your public booking page — it's for invoicing and business verification only.",
     ],
     relatedArticleIds: ["owner-branding", "owner-embed", "owner-qr-code", "owner-referral"],
   },

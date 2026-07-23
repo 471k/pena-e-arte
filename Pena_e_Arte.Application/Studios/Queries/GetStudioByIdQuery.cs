@@ -24,7 +24,7 @@ public class GetStudioByIdHandler(IAppDbContext db)
                 s.ShowPlatformBranding,
                 AllowBrandingRemoval: false,
                 s.TrialExpiresAt, s.CreatedAt, s.IsActive,
-                s.SlugLockedAt))
+                s.SlugLockedAt, s.PhoneNumber, s.InstagramHandle, s.Nipt))
             .FirstOrDefaultAsync(ct);
 
         if (studio is null)

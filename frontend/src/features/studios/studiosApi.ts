@@ -9,6 +9,7 @@ export interface RegisterStudioRequest {
   latitude:      number;
   longitude:     number;
   ownerEmail:    string;
+  nipt:          string;
   referralCode?: string;
 }
 
@@ -27,6 +28,7 @@ export interface StudioResponse {
   slugLockedAt:         string | null;
   phoneNumber:          string | null;
   instagramHandle:      string | null;
+  nipt:                 string | null;
 }
 
 export interface StudioMapItem {
@@ -56,12 +58,13 @@ export interface ReferralStatsResponse {
 }
 
 export interface UpdateStudioRequest {
-  name:            string;
-  city:            string;
-  latitude:        number;
-  longitude:       number;
-  phoneNumber?:    string | null;
+  name:             string;
+  city:             string;
+  latitude:         number;
+  longitude:        number;
+  phoneNumber?:     string | null;
   instagramHandle?: string | null;
+  nipt?:            string | null;
 }
 
 export interface StudioClosureResponse {

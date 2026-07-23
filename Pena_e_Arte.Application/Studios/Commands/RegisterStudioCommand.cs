@@ -28,6 +28,16 @@ public class RegisterStudioHandler(
         while (await db.Studios.AnyAsync(s => s.Slug == slug, ct))
             slug = $"{req.Slug}-{suffix++}";
 
+        string normalizedNipt = req.Nipt.Trim().ToUpperInvariant();
+        Studio? conflictingStudio = await db.Studios.IgnoreQueryFilters()
+            .Where(s => s.Nipt == normalizedNipt && s.IsActive)
+            .FirstOrDefaultAsync(ct);
+        if (conflictingStudio is not null &&
+            !string.Equals(conflictingStudio.OwnerEmail, req.OwnerEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DuplicateNiptException();
+        }
+
         // Validate referral code if provided
         Guid? pendingReferralCodeId = null;
         if (!string.IsNullOrWhiteSpace(req.ReferralCode))
@@ -56,6 +66,7 @@ public class RegisterStudioHandler(
             Slug                  = slug,
             City                  = req.City,
             OwnerEmail            = req.OwnerEmail,
+            Nipt                  = normalizedNipt,
             Latitude              = req.Latitude,
             Longitude             = req.Longitude,
             IsActive              = true,
@@ -80,12 +91,15 @@ public class RegisterStudioHandler(
         jobs.ScheduleTrialExpiry(studio.Id, trialEnd);
         jobs.ScheduleGracePeriodEnd(studio.Id, graceEnd);
 
+        logger.LogInformation("Studio registered {@StudioId} nipt_provided={@NiptProvided}",
+            studio.Id, !string.IsNullOrEmpty(studio.Nipt));
+
         return new StudioResponse(
             studio.Id, studio.Name, studio.Slug, studio.City,
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
             AllowBrandingRemoval: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
-            studio.SlugLockedAt);
+            studio.SlugLockedAt, PhoneNumber: null, InstagramHandle: null, Nipt: studio.Nipt);
     }
 }

@@ -7,4 +7,5 @@ public record RegisterStudioRequest(
     double  Latitude,
     double  Longitude,
     string  OwnerEmail,
+    string  Nipt,
     string? ReferralCode = null);

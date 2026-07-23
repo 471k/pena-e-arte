@@ -72,6 +72,7 @@ const STUDIO = {
   createdAt:            "2025-01-01T00:00:00Z",
   isActive:             true,
   slugLockedAt:         null,
+  nipt:                 null as string | null,
 };
 
 // ── MSW server ────────────────────────────────────────────────────────────────
@@ -265,6 +266,72 @@ describe("StudioProfilePage — location picker", () => {
     await user.click(screen.getByTestId("mock-location-picker"));
 
     expect(screen.getByRole("button", { name: /save changes/i })).not.toBeDisabled();
+  });
+});
+
+describe("StudioProfilePage — NIPT", () => {
+  afterEach(() => sessionStorage.clear());
+
+  it("shows the backfill banner when nipt is null", async () => {
+    renderPage();
+    await waitForForm();
+    expect(screen.getByText(/add your business tax id/i)).toBeInTheDocument();
+  });
+
+  it("does not show the backfill banner when nipt is set", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ ...STUDIO, nipt: "L01234567A" }),
+      ),
+    );
+    renderPage();
+    await waitForForm();
+    expect(screen.queryByText(/add your business tax id/i)).not.toBeInTheDocument();
+  });
+
+  it("renders the NIPT field read-only once a value is set", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ ...STUDIO, nipt: "L01234567A" }),
+      ),
+    );
+    renderPage();
+    await waitForForm();
+
+    const niptInput = screen.getByLabelText<HTMLInputElement>(/business tax id/i);
+    expect(niptInput).toHaveAttribute("readonly");
+    expect(niptInput.value).toBe("L01234567A");
+    expect(screen.getByText(/contact support to change/i)).toBeInTheDocument();
+  });
+
+  it("renders an editable NIPT field when nipt is null", async () => {
+    renderPage();
+    await waitForForm();
+
+    const niptInput = screen.getByLabelText<HTMLInputElement>(/business tax id/i);
+    expect(niptInput).not.toHaveAttribute("readonly");
+  });
+
+  it("shows the server 409 message when a duplicate NIPT is submitted", async () => {
+    server.use(
+      http.put("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json(
+          { message: "This business tax ID is already registered under a different account." },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.type(screen.getByLabelText(/business tax id/i), "L01234567A");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(
+      await screen.findByText(/already registered under a different account/i),
+    ).toBeInTheDocument();
   });
 });
 

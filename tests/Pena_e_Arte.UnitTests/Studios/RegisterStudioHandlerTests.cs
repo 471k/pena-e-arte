@@ -105,6 +105,64 @@ public class RegisterStudioHandlerTests
         _db.Studios.Single().IsActive.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Handle_ValidNipt_PersistsNiptToStudio()
+    {
+        await CreateSut().Handle(new RegisterStudioCommand(ValidRequest()), default);
+
+        _db.Studios.Single().Nipt.Should().Be("L01234567A");
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateNiptDifferentOwner_ThrowsDuplicateNiptException()
+    {
+        _db.Studios.Add(new Studio
+        {
+            Name = "Existing", Slug = "existing", City = "Lisbon",
+            OwnerEmail = "other-owner@example.com", Nipt = "L01234567A", IsActive = true,
+        });
+        await _db.SaveChangesAsync();
+
+        Func<Task> act = () => CreateSut().Handle(
+            new RegisterStudioCommand(ValidRequest() with { Slug = "new-studio" }), default);
+
+        await act.Should().ThrowAsync<DuplicateNiptException>();
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateNiptSameOwnerEmail_Succeeds()
+    {
+        RegisterStudioRequest firstReq = ValidRequest();
+        _db.Studios.Add(new Studio
+        {
+            Name = "Existing", Slug = "existing", City = "Lisbon",
+            OwnerEmail = firstReq.OwnerEmail, Nipt = firstReq.Nipt, IsActive = true,
+        });
+        await _db.SaveChangesAsync();
+
+        StudioResponse result = await CreateSut().Handle(
+            new RegisterStudioCommand(firstReq with { Slug = "second-location" }), default);
+
+        result.Should().NotBeNull();
+        _db.Studios.Should().Contain(s => s.Slug == "second-location" && s.Nipt == firstReq.Nipt);
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateNiptOnInactiveStudio_Succeeds()
+    {
+        _db.Studios.Add(new Studio
+        {
+            Name = "Closed Studio", Slug = "closed-studio", City = "Lisbon",
+            OwnerEmail = "other-owner@example.com", Nipt = "L01234567A", IsActive = false,
+        });
+        await _db.SaveChangesAsync();
+
+        StudioResponse result = await CreateSut().Handle(
+            new RegisterStudioCommand(ValidRequest() with { Slug = "new-studio" }), default);
+
+        result.Should().NotBeNull();
+    }
+
     private static RegisterStudioRequest ValidRequest() =>
-        new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com");
+        new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com", "L01234567A");
 }

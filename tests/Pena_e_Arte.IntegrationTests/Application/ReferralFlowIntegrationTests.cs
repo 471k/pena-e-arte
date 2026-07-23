@@ -101,6 +101,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                 Latitude:     38.7,
                 Longitude:    -9.1,
                 OwnerEmail:   $"{newSlug}@test.com",
+                Nipt:         UniqueTestNipt(),
                 ReferralCode: code)),
             default);
 
@@ -177,6 +178,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                 Latitude:     41.1,
                 Longitude:    -8.6,
                 OwnerEmail:   $"{newSlug}@test.com",
+                Nipt:         UniqueTestNipt(),
                 ReferralCode: "BADCODE1")),
             default);
 
@@ -369,9 +371,11 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
             new RegisterStudioCommand(new RegisterStudioRequest(
                 Name: "Reward Test Studio", Slug: slug, City: "Lisbon",
                 Latitude: 38.7, Longitude: -9.1,
-                OwnerEmail: $"{slug}@test.com", ReferralCode: referralCode)),
+                OwnerEmail: $"{slug}@test.com", Nipt: UniqueTestNipt(), ReferralCode: referralCode)),
             default);
 
         return studio.Id;
     }
+
+    private static string UniqueTestNipt() => $"L{(uint)Guid.NewGuid().GetHashCode() % 100000000:D8}A";
 }

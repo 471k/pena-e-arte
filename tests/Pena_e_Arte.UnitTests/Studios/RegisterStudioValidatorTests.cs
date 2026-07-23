@@ -121,11 +121,37 @@ public class RegisterStudioValidatorTests
         _sut.ShouldFailOn(Command("Studio", "my-studio", "Lisbon", 38.7, -9.1, "not-an-email"), "Request.OwnerEmail");
     }
 
+    [Fact]
+    public void Validate_EmptyNipt_FailsOnNipt()
+    {
+        _sut.ShouldFailOn(
+            Command("Studio", "my-studio", "Lisbon", 38.7, -9.1, "owner@example.com", ""), "Request.Nipt");
+    }
+
+    [Theory]
+    [InlineData("L0123456A")]    // 9 chars
+    [InlineData("L012345678A")]  // 11 chars
+    [InlineData("0101234567A")]  // starts with digit
+    [InlineData("L01234567")]    // missing trailing letter
+    public void Validate_MalformedNipt_FailsOnNipt(string nipt)
+    {
+        _sut.ShouldFailOn(
+            Command("Studio", "my-studio", "Lisbon", 38.7, -9.1, "owner@example.com", nipt), "Request.Nipt");
+    }
+
+    [Fact]
+    public void Validate_ValidNiptLowercase_IsValid()
+    {
+        ValidationResult result = _sut.Validate(
+            Command("Studio", "my-studio", "Lisbon", 38.7, -9.1, "owner@example.com", "l01234567a"));
+        result.Errors.Should().NotContain(e => e.PropertyName == "Request.Nipt");
+    }
+
     private static RegisterStudioCommand ValidCommand() =>
         Command("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com");
 
     private static RegisterStudioCommand Command(
         string name, string slug, string city, double lat, double lon,
-        string ownerEmail = "owner@example.com") =>
-        new(new RegisterStudioRequest(name, slug, city, lat, lon, ownerEmail));
+        string ownerEmail = "owner@example.com", string nipt = "L01234567A") =>
+        new(new RegisterStudioRequest(name, slug, city, lat, lon, ownerEmail, nipt));
 }

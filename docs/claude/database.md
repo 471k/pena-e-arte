@@ -77,6 +77,7 @@ public class Studio  // NOT a TenantEntity — issuer-owned
     public string   Name             { get; set; }
     public string   Slug             { get; set; }  // url-safe unique identifier
     public string   City             { get; set; }
+    public string?  Nipt             { get; set; }  // business tax ID (NUIS) — nullable for backfill, not an auth factor
     public double   Latitude         { get; set; }
     public double   Longitude        { get; set; }
     public bool     IsActive         { get; set; }

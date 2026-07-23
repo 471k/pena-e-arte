@@ -732,7 +732,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Register a studio</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (redirected to dashboard)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>A two-step wizard at <code>/register</code> that creates a brand-new studio and its owner account together. Step 1 collects the studio's identity and location; step 2 creates the owner's login, either by password or by continuing with Google/Apple.</p>
+<p>A two-step wizard at <code>/register</code> that creates a brand-new studio and its owner account together. Step 1 collects the studio's identity, location, and business tax ID (NIPT); step 2 creates the owner's login, either by password or by continuing with Google/Apple.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Register studio wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -752,7 +752,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Studio registration — step 1 shown; step 2 swaps in owner email / password or OAuth</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li><span class="step-title">Step 1 — Studio details:</span> Studio name (auto-generates a URL slug you can still edit), then pick the studio's location on the map picker.</li>
+<li><span class="step-title">Step 1 — Studio details:</span> Studio name (auto-generates a URL slug you can still edit), pick the studio's location on the map picker, and enter your business tax ID (NIPT) — one letter, 8 digits, one letter (e.g. L01234567A). This is used for invoicing and business verification and is never shown publicly.</li>
 <li>Click <span class="step-title">Next</span> to proceed to step 2.</li>
 <li><span class="step-title">Step 2 — Owner account:</span> enter the owner's email, then either set a password + confirm, or click a Google/Apple button to continue with OAuth instead (this replaces the password fields).</li>
 <li>Submit to create the studio, create the owner account, sign in, and land on the Dashboard.</li>
@@ -2209,7 +2209,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The studio settings hub at <code>/studios/me</code>: name, phone, Instagram, location, and URL slug at the top, followed by branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
+<p>The studio settings hub at <code>/studios/me</code>: name, phone, Instagram, business tax ID (NIPT), location, and URL slug at the top, followed by branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2231,6 +2231,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
 <li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span>, <span class="step-title">Instagram handle</span>, and <span class="step-title">Location</span> (drag the map pin), then <span class="step-title">Save changes</span>.</li>
+<li>If you haven't added your <span class="step-title">Business tax ID (NIPT)</span> yet, a banner prompts you to add it — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, the field becomes read-only; contact support to change it. It's never shown to clients.</li>
 <li>Below: <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully.</div>

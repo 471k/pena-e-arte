@@ -43,6 +43,15 @@ const schema = z
         "Slug may only contain lowercase letters, numbers, and hyphens."
       ),
     city: z.string().min(1, "City is required").max(100),
+    nipt: z
+      .string()
+      .trim()
+      .length(10, "NIPT must be exactly 10 characters")
+      .regex(
+        /^[A-Za-z]\d{8}[A-Za-z]$/,
+        "NIPT format looks wrong — expected a letter, 8 digits, then a letter (e.g. L01234567A)"
+      )
+      .transform((v) => v.toUpperCase()),
     latitude: z
       .number({ error: "Latitude is required" })
       .min(-90, "Must be between -90 and 90")
@@ -82,7 +91,7 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-const STEP_1_FIELDS = ["name", "slug", "city", "latitude", "longitude"] as const;
+const STEP_1_FIELDS = ["name", "slug", "city", "nipt", "latitude", "longitude"] as const;
 
 export function RegisterStudioPage() {
   const dispatch = useAppDispatch();
@@ -116,6 +125,7 @@ export function RegisterStudioPage() {
       name: "",
       slug: "",
       city: "",
+      nipt: "",
       latitude: NaN,
       longitude: NaN,
       email: "",
@@ -195,6 +205,7 @@ export function RegisterStudioPage() {
         name:         values.name,
         slug:         values.slug,
         city:         values.city,
+        nipt:         values.nipt,
         latitude:     values.latitude,
         longitude:    values.longitude,
         ownerEmail:   values.email,
@@ -300,6 +311,24 @@ export function RegisterStudioPage() {
                       </p>
                       {errors.slug && (
                         <p className="text-xs text-destructive">{errors.slug.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="nipt">Business tax ID (NIPT)</Label>
+                      <Input
+                        id="nipt"
+                        placeholder="L01234567A"
+                        {...register("nipt")}
+                        aria-invalid={!!errors.nipt}
+                        aria-describedby="nipt-help"
+                      />
+                      <p id="nipt-help" className="text-xs text-muted-foreground">
+                        Your studio&apos;s NIPT, used for invoicing and business verification.
+                        Format: one letter, 8 digits, one letter.
+                      </p>
+                      {errors.nipt && (
+                        <p className="text-xs text-destructive">{errors.nipt.message}</p>
                       )}
                     </div>
 

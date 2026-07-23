@@ -28,6 +28,6 @@ public class GetMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             studio.ShowPlatformBranding,
             allowBrandingRemoval,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
-            studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle);
+            studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt);
     }
 }
