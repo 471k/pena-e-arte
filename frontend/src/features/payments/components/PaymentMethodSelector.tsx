@@ -17,7 +17,14 @@ import {
 const stripeKey: string | undefined = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 // Missing key (e.g. .env.local not set up or dev server started before it existed)
 // must not crash the selector — the card tab explains instead.
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
+// Lazily initialised so Stripe.js (and its iframe) only loads once the card
+// tab actually mounts, not whenever this module is bundled into the app.
+let stripePromise: ReturnType<typeof loadStripe> | null = null;
+function getStripePromise() {
+  if (!stripeKey) return null;
+  stripePromise ??= loadStripe(stripeKey);
+  return stripePromise;
+}
 
 type Tab = "card" | "cash";
 
@@ -82,6 +89,7 @@ function CardTab({
 }: Pick<PaymentMethodSelectorProps, "appointmentId" | "onSuccess" | "onError">) {
   const [createDeposit, { data, isLoading, isError, error }] = useCreateDepositPaymentMutation();
   const requested = useRef(false);
+  const stripePromise = getStripePromise();
 
   // Create (or resume) the deposit intent once when the card tab opens.
   // The backend is idempotent — an unauthorized intent for this appointment is reused.
@@ -89,7 +97,7 @@ function CardTab({
     if (!stripePromise || requested.current) return;
     requested.current = true;
     void createDeposit({ appointmentId });
-  }, [appointmentId, createDeposit]);
+  }, [appointmentId, createDeposit, stripePromise]);
 
   if (!stripePromise) {
     return (

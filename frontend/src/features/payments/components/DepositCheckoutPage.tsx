@@ -8,7 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetPaymentClientSecretQuery } from "../paymentsApi";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "");
+// Lazily initialised so Stripe.js (and its iframe) only loads when this page
+// actually mounts, not whenever this module is bundled into the app.
+let stripePromise: ReturnType<typeof loadStripe> | null = null;
+function getStripePromise() {
+  stripePromise ??= loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "");
+  return stripePromise;
+}
 
 function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: string | null }) {
   const stripe   = useStripe();
@@ -160,7 +166,7 @@ export function DepositCheckoutPage() {
 
             {data?.clientSecret && (
               <Elements
-                stripe={stripePromise}
+                stripe={getStripePromise()}
                 options={{
                   clientSecret: data.clientSecret,
                   appearance:   { theme: isDark ? "night" : "stripe" },
