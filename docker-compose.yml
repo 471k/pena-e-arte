@@ -21,14 +21,6 @@ services:
     volumes:
       - redis_data:/data
 
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: pena_e_arte_mailpit
-    restart: unless-stopped
-    ports:
-      - "1025:1025"   # SMTP — matches appsettings.Development.json
-      - "8025:8025"   # Web UI — open http://localhost:8025 to view emails
-
   minio:
     image: minio/minio
     container_name: pena_e_arte_minio

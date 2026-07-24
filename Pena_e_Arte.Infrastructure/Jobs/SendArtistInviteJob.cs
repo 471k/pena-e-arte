@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
@@ -10,7 +9,7 @@ public class SendArtistInviteJob(
     IIdentityService               identity,
     INotificationService           notifications,
     IEmailRenderer                 emailRenderer,
-    IConfiguration                 configuration,
+    IAppSettings                   appSettings,
     AppDbContext                   db,
     ILogger<SendArtistInviteJob>   logger)
 {
@@ -29,8 +28,7 @@ public class SendArtistInviteJob(
             .Select(s => s.Name)
             .FirstOrDefaultAsync(ct) ?? "your studio";
 
-        string baseUrl        = configuration["App:BaseUrl"] ?? "http://localhost:5173";
-        string setPasswordUrl = $"{baseUrl}/reset-password" +
+        string setPasswordUrl = $"{appSettings.BaseUrl}/reset-password" +
             $"?email={Uri.EscapeDataString(email)}" +
             $"&token={Uri.EscapeDataString(token)}";
 
