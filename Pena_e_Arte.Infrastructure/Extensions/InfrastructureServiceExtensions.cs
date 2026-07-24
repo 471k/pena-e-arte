@@ -12,6 +12,7 @@ using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.Infrastructure.Services.MailKit;
+using Resend;
 using StackExchange.Redis;
 using Twilio;
 
@@ -82,6 +83,11 @@ public static class InfrastructureServiceExtensions
         TwilioClient.Init(
             configuration["Twilio:AccountSid"]!,
             configuration["Twilio:AuthToken"]!);
+
+        // Options-lambda overload, not the string overload — the latter throws eagerly on an
+        // empty API key, which would crash startup in any environment where Resend isn't yet
+        // configured (matches Stripe/Twilio here, which also don't validate at startup).
+        services.AddResend(options => options.ApiToken = configuration["Resend:ApiKey"] ?? "");
 
         services.Configure<R2Options>(configuration.GetSection(R2Options.Section));
         R2Options r2Opts = configuration.GetSection(R2Options.Section).Get<R2Options>()!;

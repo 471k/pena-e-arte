@@ -140,7 +140,7 @@ public class AppointmentReminderJob(INotificationService notifications)
 {
     public async Task SendReminder(Guid appointmentId, string type)
     {
-        // fetch appointment, send via Twilio/MailKit
+        // fetch appointment, send via Twilio/Resend
     }
 }
 
@@ -215,7 +215,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` | Cloudflare R2 (images), SignalR | Per-tenant |
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
 | 05 | Payments & Session Splits | `Payment`, `SessionSplit` | Stripe (aggregator, card) + Cash (manual) | Per-tenant |
-| 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + MailKit | Per-tenant |
+| 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + Resend | Per-tenant |
 | 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth | Platform-wide |
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
