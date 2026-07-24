@@ -34,13 +34,8 @@ public class SendArtistInviteJob(
 
         string html = emailRenderer.RenderArtistInvite(firstName, studioName, setPasswordUrl);
 
-        try
-        {
-            await notifications.SendEmailAsync(email, $"You've been invited to {studioName}", html, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to send artist invite email to {Email}", email);
-        }
+        // Let send failures propagate so Hangfire's automatic-retry policy kicks in —
+        // swallowing them here made every failed invite look "succeeded" in the dashboard.
+        await notifications.SendEmailAsync(email, $"You've been invited to {studioName}", html, ct);
     }
 }

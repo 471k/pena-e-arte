@@ -269,7 +269,7 @@ public class EmailRenderer : IEmailRenderer
             Set your password
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
-            This link expires in 24 hours. If you were not expecting this invitation, you can ignore this email.
+            This link expires in 1 hour. If you were not expecting this invitation, you can ignore this email.
           </p>
         </body>
         </html>

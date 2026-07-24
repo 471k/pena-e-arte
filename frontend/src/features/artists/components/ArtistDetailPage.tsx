@@ -14,6 +14,7 @@ import {
   Loader2,
   Mail,
   Pencil,
+  Send,
   Tag,
   Trash2,
   X,
@@ -49,6 +50,7 @@ import {
   useUpdateArtistMutation,
   useUpdateArtistPortfolioMutation,
   useDeleteArtistMutation,
+  useResendArtistInviteMutation,
 } from "../artistsApi";
 import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { useGetDesignsQuery } from "@/features/designs/designsApi";
@@ -100,6 +102,7 @@ export function ArtistDetailPage() {
   const [updateArtist,    { isLoading: isSaving }]   = useUpdateArtistMutation();
   const [updatePortfolio, { isLoading: isSavingPf }] = useUpdateArtistPortfolioMutation();
   const [deleteArtist,    { isLoading: isDeleting }] = useDeleteArtistMutation();
+  const [resendInvite,    { isLoading: isResending }] = useResendArtistInviteMutation();
 
   const { upload, isUploading } = usePresignedUpload();
 
@@ -173,6 +176,16 @@ export function ArtistDetailPage() {
       return;
     }
     navigate("/artists");
+  }
+
+  async function onResendInvite() {
+    if (!id) return;
+    const result = await resendInvite(id);
+    if ("error" in result) {
+      toast.error("Failed to resend invite email.");
+    } else {
+      toast.success("Invite email resent.");
+    }
   }
 
   function openImagePicker() {
@@ -407,9 +420,27 @@ export function ArtistDetailPage() {
             <TabsContent value="profile" className="mt-4 space-y-4">
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span>{artist.email}</span>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{artist.email}</span>
+                    </div>
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 shrink-0 text-xs h-7"
+                        disabled={isResending}
+                        onClick={() => void onResendInvite()}
+                      >
+                        {isResending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Send className="h-3.5 w-3.5" />
+                        )}
+                        Resend invite
+                      </Button>
+                    )}
                   </div>
 
                   {artist.specializations && (

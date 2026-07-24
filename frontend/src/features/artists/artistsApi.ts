@@ -131,6 +131,9 @@ export const artistsApi = createApi({
       query: (id) => ({ url: `artists/${id}`, method: "DELETE" }),
       invalidatesTags: ["Artist"],
     }),
+    resendArtistInvite: builder.mutation<void, string>({
+      query: (id) => ({ url: `artists/${id}/resend-invite`, method: "POST" }),
+    }),
     getInstagramConnectUrl: builder.query<ConnectInstagramResponse, string>({
       query: (artistId) => `artists/${artistId}/instagram/connect-url`,
     }),
@@ -200,6 +203,7 @@ export const {
   useUpdateArtistMutation,
   useUpdateArtistPortfolioMutation,
   useDeleteArtistMutation,
+  useResendArtistInviteMutation,
   useLazyGetInstagramConnectUrlQuery,
   useGetInstagramStatusQuery,
   useGetInstagramPostsQuery,

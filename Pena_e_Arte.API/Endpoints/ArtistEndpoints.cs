@@ -20,6 +20,7 @@ public static class ArtistEndpoints
         group.MapPut("{id:guid}",                           UpdateArtist).RequireAuthorization("ArtistAndAbove");
         group.MapPut("{id:guid}/portfolio-images",          UpdatePortfolio).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{id:guid}",                        DeleteArtist).RequireAuthorization("OwnerOnly");
+        group.MapPost("{id:guid}/resend-invite",            ResendArtistInvite).RequireAuthorization("OwnerOnly");
         // P-05: Artist Working Hours
         group.MapGet("{id:guid}/schedule",                  GetSchedule).RequireAuthorization("ClientAndAbove");
         group.MapPut("{id:guid}/schedule",                  UpsertSchedule).RequireAuthorization("ArtistAndAbove");
@@ -88,6 +89,15 @@ public static class ArtistEndpoints
         CancellationToken ct)
     {
         await mediator.Send(new DeleteArtistCommand(id), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ResendArtistInvite(
+        Guid              id,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new ResendArtistInviteCommand(id), ct);
         return Results.NoContent();
     }
 
