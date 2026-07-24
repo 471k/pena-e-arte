@@ -58,7 +58,17 @@ try
     }
 
     await SeedRolesAsync(app);
-    await DataSeeder.SeedAsync(app.Services);
+
+    // DataSeeder upserts demo accounts with known passwords (Password123) and, on a
+    // fresh database, whole fake studios/subscriptions/appointments — must never run
+    // against a real production database. Opt-in via config, not IsDevelopment(), so
+    // a staging environment can still enable it without matching "Development".
+    if (builder.Configuration.GetValue<bool>("Seeding:Enabled"))
+        await DataSeeder.SeedAsync(app.Services);
+
+    // Self-guarded: only provisions Stripe objects when Stripe:SecretKey is a
+    // sk_test_ key, so it's inert against a live production key regardless of
+    // Seeding:Enabled.
     await StripeDemoSeeder.SeedAsync(app.Services, app.Configuration);
 
     using (IServiceScope jobScope = app.Services.CreateScope())
