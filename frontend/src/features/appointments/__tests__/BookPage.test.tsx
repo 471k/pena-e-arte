@@ -41,6 +41,7 @@ const STUDIO: StudioResponse = {
   slugLockedAt: null,
   phoneNumber: null,
   instagramHandle: null,
+  nipt: null,
 };
 
 const ARTIST: ArtistResponse = {

@@ -1,0 +1,82 @@
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/xml application/json application/javascript
+        application/xml+rss application/atom+xml image/svg+xml font/ttf font/otf
+        font/woff font/woff2;
+
+    # Hashed build assets (Vite) — safe to cache forever.
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri =404;
+    }
+
+    # SignalR hubs — proxy with WebSocket upgrade support.
+    location /hubs/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # REST API — same-origin proxy to the backend service.
+    location /api/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # /embed/:studioSlug is an intentionally embeddable widget (see
+    # EmbedCodeCard.tsx, which generates <iframe> snippets for studios to paste
+    # into their own sites) — studios embed on arbitrary external origins we
+    # don't control, so no fixed frame-ancestors allowlist is possible and this
+    # route must NOT send X-Frame-Options/frame-ancestors.
+    #
+    # The SPA-fallback target is a *named* location (not a bare /index.html
+    # path) because try_files' plain-path fallback performs an internal
+    # redirect that gets re-matched against location blocks by URI — since
+    # "/index.html" doesn't start with "/embed/", it would otherwise fall
+    # through to the "/" location below and pick up ITS headers (including
+    # X-Frame-Options: DENY), silently defeating this carve-out.
+    location /embed/ {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        try_files $uri $uri/ @embed_index;
+    }
+
+    location @embed_index {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        rewrite ^ /index.html break;
+    }
+
+    # SPA fallback — client-side routes resolve to index.html. Clickjacking
+    # protection applies everywhere except /embed/ above.
+    location / {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        try_files $uri $uri/ /index.html;
+    }
+}

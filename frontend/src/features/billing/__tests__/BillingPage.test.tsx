@@ -73,6 +73,7 @@ const ACTIVE_STUDIO: StudioResponse = {
   slugLockedAt:         null,
   phoneNumber:          null,
   instagramHandle:      null,
+  nipt:                 null,
 };
 
 const SUSPENDED_STUDIO: StudioResponse = { ...ACTIVE_STUDIO, isActive: false };

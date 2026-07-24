@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+.git/
+.vs/
+.vscode/
+*.user
+tests/
+docs/
+*.md
+*.zip
+*.pdf
+*.html
+Seeded Test Accounts.txt

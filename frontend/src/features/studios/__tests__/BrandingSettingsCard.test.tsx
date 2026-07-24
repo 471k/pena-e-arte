@@ -28,6 +28,7 @@ const STUDIO_BRANDING_ON: StudioResponse = {
   slugLockedAt:         null,
   phoneNumber:          null,
   instagramHandle:      null,
+  nipt:                 null,
 };
 
 const STUDIO_BRANDING_REMOVABLE: StudioResponse = {

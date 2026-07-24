@@ -33,6 +33,7 @@ const STUDIO_ACTIVE: StudioResponse = {
   slugLockedAt:         null,
   phoneNumber:          null,
   instagramHandle:      null,
+  nipt:                 null,
 };
 
 const STUDIO_SUSPENDED: StudioResponse = {

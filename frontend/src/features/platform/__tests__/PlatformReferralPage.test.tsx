@@ -68,6 +68,7 @@ const STUDIOS: StudioResponse[] = [
     slugLockedAt:         null,
     phoneNumber:          null,
     instagramHandle:      null,
+    nipt:                 null,
   },
 ];
 
