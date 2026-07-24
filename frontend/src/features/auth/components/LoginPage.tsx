@@ -159,7 +159,7 @@ export function LoginPage() {
                     aria-describedby={errors.email ? "email-error" : undefined}
                   />
                   {errors.email && (
-                    <p id="email-error" className="text-xs text-destructive" role="alert">
+                    <p id="email-error" className="text-xs text-destructive-text" role="alert">
                       {errors.email.message}
                     </p>
                   )}
@@ -177,7 +177,7 @@ export function LoginPage() {
                     aria-describedby={errors.password ? "password-error" : undefined}
                   />
                   {errors.password && (
-                    <p id="password-error" className="text-xs text-destructive" role="alert">
+                    <p id="password-error" className="text-xs text-destructive-text" role="alert">
                       {errors.password.message}
                     </p>
                   )}

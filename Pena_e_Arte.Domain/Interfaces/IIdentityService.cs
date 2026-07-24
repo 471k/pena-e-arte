@@ -10,7 +10,13 @@ public interface IIdentityService
     Task<(bool Success, Guid UserId, string[] Errors)> CreateUserAsync(string email, string password, string role, Guid? studioId, string? firstName = null);
     Task<(bool Success, string? Token, string? Error)> LoginAsync(string email, string password);
     Task<(bool Success, string? Token, string? Error)> GeneratePasswordResetTokenAsync(string email);
-    Task<(bool Success, string[] Errors)> ResetPasswordAsync(string email, string token, string newPassword);
+    /// <summary>
+    /// <paramref name="TokenInvalid"/> is true when the failure is due to the reset
+    /// token itself (missing user, malformed, or expired) rather than the new
+    /// password failing policy — ASP.NET Core Identity's token provider does not
+    /// distinguish "expired" from "malformed", so both surface the same flag.
+    /// </summary>
+    Task<(bool Success, string[] Errors, bool TokenInvalid)> ResetPasswordAsync(string email, string token, string newPassword);
     Task<string> CreateRefreshTokenAsync(string email);
     Task<(bool Success, string? AccessToken, string? RefreshToken, string? Error)> RefreshTokenAsync(string refreshToken);
     Task<(bool Success, string[] Errors)> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken ct);

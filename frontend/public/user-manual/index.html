@@ -799,7 +799,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Forgot password</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A simple two-step password reset flow: request a reset link by email at <code>/forgot-password</code>, then use the token from that email on <code>/reset-password</code> to set a new password.</p>
+<p>A simple two-step password reset flow: request a reset link by email at <code>/forgot-password</code>, then use the token from that email on <code>/reset-password</code> to set a new password. Reset links expire <strong>1 hour</strong> after they're sent.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Forgot password wireframe">
 <rect x="270" y="100" width="220" height="200" rx="10" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
@@ -814,8 +814,9 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Enter your <span class="step-title">Email</span> and click <span class="step-title">Send reset link</span>.</li>
 <li>A confirmation always appears ("if an account exists…") — this is deliberate and doesn't reveal whether the email is registered.</li>
-<li>Open the reset link from your email, which takes you to a page pre-filled with your email and reset token.</li>
-<li>Enter and confirm a <span class="step-title">new password</span>, then submit.</li>
+<li>Open the reset link from your email, which takes you to a page pre-filled with your email and reset token — both shown read-only with a pencil icon to edit them if needed.</li>
+<li>Enter and confirm a <span class="step-title">new password</span> (at least 8 characters, with an uppercase letter, a lowercase letter, and a number) — a live checkmark confirms once the two entries match.</li>
+<li>Submit. If the link has expired or is invalid, the page explains this and offers a <span class="step-title">Request a new reset link</span> button back to <code>/forgot-password</code>.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#guest-login">Sign in</a>, <a href="#client-change-password">Change password</a></div>
 </section>
@@ -1743,7 +1744,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Add artist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/artists/new</code>: create an artist record for your studio (their login account is provisioned separately by your studio's process).</p>
+<p>At <code>/artists/new</code>: create an artist record for your studio. You don't set a password — after creation, the artist gets an automatic email with a link to set their own password (link expires after 1 hour). If it doesn't arrive, use <span class="step-title">Resend invite</span> on their profile page.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Add artist wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1788,6 +1789,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Click <span class="step-title">Edit</span> to change name, email, specializations, rate, or public slug.</li>
+<li>On the Profile tab, click <span class="step-title">Resend invite</span> next to the email address to re-send the "set your password" email if the artist never received it or their link expired.</li>
 <li>Click <span class="step-title">Delete</span> to remove the artist entirely (with confirmation).</li>
 <li>Use the same tabs as the artist's own profile (Profile, Portfolio, Schedule, Designs, Instagram).</li>
 </ol>

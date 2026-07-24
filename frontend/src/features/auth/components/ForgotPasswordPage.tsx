@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle, Loader2, PenLine } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { z } from "zod";
+import { AuthShellFooter } from "@/shared/components/AuthShellFooter";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -68,9 +69,6 @@ export function ForgotPasswordPage() {
                 <p className="text-sm">
                   If an account exists for that email, a reset link has been sent.
                 </p>
-                <Link to="/login" className="text-sm underline underline-offset-4 hover:text-primary">
-                  Back to sign in
-                </Link>
               </div>
             ) : (
               <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
@@ -86,7 +84,7 @@ export function ForgotPasswordPage() {
                     aria-describedby={errors.email ? "email-error" : undefined}
                   />
                   {errors.email && (
-                    <p id="email-error" className="text-xs text-destructive" role="alert">
+                    <p id="email-error" className="text-xs text-destructive-text" role="alert">
                       {errors.email.message}
                     </p>
                   )}
@@ -106,13 +104,11 @@ export function ForgotPasswordPage() {
               </form>
             )}
 
-            {!isSuccess && (
-              <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-muted-foreground">
-                <Link to="/login" className="underline underline-offset-4 hover:text-primary">
-                  Back to sign in
-                </Link>
-              </div>
-            )}
+            <AuthShellFooter>
+              <Link to="/login" className="underline underline-offset-4 hover:text-primary py-2 inline-block">
+                Back to sign in
+              </Link>
+            </AuthShellFooter>
           </CardContent>
         </Card>
       </div>

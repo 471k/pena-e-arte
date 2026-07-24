@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath } from "@/app/router";
+import { AuthShellFooter } from "@/shared/components/AuthShellFooter";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { GuestAuthHeader } from "@/shared/components/GuestAuthHeader";
 import { Button } from "@/shared/components/ui/button";
@@ -14,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { PasswordInput } from "@/shared/components/ui/password-input";
+import { PasswordMatchIndicator } from "@/shared/components/ui/password-match-indicator";
 import { PasswordStrengthMeter } from "@/shared/components/ui/PasswordStrengthMeter";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useLoginMutation, useRegisterUserMutation } from "../authApi";
@@ -23,7 +25,11 @@ const schema = z
   .object({
     firstName:       z.string().min(1, "First name is required").max(100),
     email:           z.string().min(1, "Email is required").email("Enter a valid email"),
-    password:        z.string().min(8, "Password must be at least 8 characters"),
+    password:        z.string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Needs an uppercase letter")
+      .regex(/[a-z]/, "Needs a lowercase letter")
+      .regex(/[0-9]/, "Needs a digit"),
     confirmPassword: z.string().min(1, "Confirm your password"),
   })
   .superRefine((data, ctx) => {
@@ -73,9 +79,10 @@ export function ClientRegisterPage() {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema), mode: "onTouched" });
 
-  const passwordValue = watch("password");
+  const passwordValue        = watch("password");
+  const confirmPasswordValue = watch("confirmPassword");
 
   async function onSubmit(values: FormValues) {
     try {
@@ -161,7 +168,7 @@ export function ClientRegisterPage() {
                     aria-describedby={errors.firstName ? "firstName-error" : undefined}
                   />
                   {errors.firstName && (
-                    <p id="firstName-error" className="text-xs text-destructive" role="alert">
+                    <p id="firstName-error" className="text-xs text-destructive-text" role="alert">
                       {errors.firstName.message}
                     </p>
                   )}
@@ -179,7 +186,7 @@ export function ClientRegisterPage() {
                     aria-describedby={errors.email ? "email-error" : undefined}
                   />
                   {errors.email && (
-                    <p id="email-error" className="text-xs text-destructive" role="alert">
+                    <p id="email-error" className="text-xs text-destructive-text" role="alert">
                       {errors.email.message}
                     </p>
                   )}
@@ -196,7 +203,7 @@ export function ClientRegisterPage() {
                     aria-describedby={errors.password ? "password-error" : undefined}
                   />
                   {errors.password && (
-                    <p id="password-error" className="text-xs text-destructive" role="alert">
+                    <p id="password-error" className="text-xs text-destructive-text" role="alert">
                       {errors.password.message}
                     </p>
                   )}
@@ -213,8 +220,9 @@ export function ClientRegisterPage() {
                     aria-invalid={!!errors.confirmPassword}
                     aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
                   />
+                  <PasswordMatchIndicator password={passwordValue ?? ""} confirm={confirmPasswordValue ?? ""} />
                   {errors.confirmPassword && (
-                    <p id="confirmPassword-error" className="text-xs text-destructive" role="alert">
+                    <p id="confirmPassword-error" className="text-xs text-destructive-text" role="alert">
                       {errors.confirmPassword.message}
                     </p>
                   )}
@@ -237,7 +245,7 @@ export function ClientRegisterPage() {
                 </Button>
               </form>
 
-              <div className="mt-4 pt-4 border-t border-border/50 text-center text-sm text-foreground/65">
+              <AuthShellFooter>
                 Already have an account?{" "}
                 <Link
                   to={`/login${redirectTo !== "/book" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
@@ -245,7 +253,7 @@ export function ClientRegisterPage() {
                 >
                   Sign in
                 </Link>
-              </div>
+              </AuthShellFooter>
             </CardContent>
           </Card>
 

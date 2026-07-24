@@ -5,16 +5,21 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button }   from "@/shared/components/ui/button";
-import { Input }    from "@/shared/components/ui/input";
 import { Label }    from "@/shared/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { FieldHint } from "@/shared/components/ui/field-hint";
 import { PasswordInput } from "@/shared/components/ui/password-input";
+import { PasswordMatchIndicator } from "@/shared/components/ui/password-match-indicator";
 import { useChangePasswordMutation } from "../authApi";
 
 const schema = z
   .object({
     currentPassword: z.string().min(1, "Required"),
-    newPassword:     z.string().min(8, "At least 8 characters").regex(/[A-Z]/, "Needs uppercase").regex(/[0-9]/, "Needs a digit"),
+    newPassword:     z.string()
+      .min(8, "At least 8 characters")
+      .regex(/[A-Z]/, "Needs uppercase")
+      .regex(/[a-z]/, "Needs lowercase")
+      .regex(/[0-9]/, "Needs a digit"),
     confirmPassword: z.string().min(1, "Required"),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
@@ -35,8 +40,12 @@ export function ChangePasswordPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema), mode: "onTouched" });
+
+  const newPassword     = watch("newPassword");
+  const confirmPassword = watch("confirmPassword");
 
   async function onSubmit(values: FormValues) {
     const result = await changePassword({
@@ -75,7 +84,7 @@ export function ChangePasswordPage() {
                   aria-describedby={errors.currentPassword ? "cur-pw-err" : undefined}
                 />
                 {errors.currentPassword && (
-                  <p id="cur-pw-err" className="text-xs text-destructive" role="alert">
+                  <p id="cur-pw-err" className="text-xs text-destructive-text" role="alert">
                     {errors.currentPassword.message}
                   </p>
                 )}
@@ -90,8 +99,9 @@ export function ChangePasswordPage() {
                   aria-invalid={!!errors.newPassword}
                   aria-describedby={errors.newPassword ? "new-pw-err" : undefined}
                 />
+                <FieldHint>At least 8 characters, with an uppercase letter, a lowercase letter, and a number.</FieldHint>
                 {errors.newPassword && (
-                  <p id="new-pw-err" className="text-xs text-destructive" role="alert">
+                  <p id="new-pw-err" className="text-xs text-destructive-text" role="alert">
                     {errors.newPassword.message}
                   </p>
                 )}
@@ -99,16 +109,16 @@ export function ChangePasswordPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="confirmPassword">Confirm new password</Label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   autoComplete="new-password"
                   {...register("confirmPassword")}
                   aria-invalid={!!errors.confirmPassword}
                   aria-describedby={errors.confirmPassword ? "confirm-pw-err" : undefined}
                 />
+                <PasswordMatchIndicator password={newPassword ?? ""} confirm={confirmPassword ?? ""} />
                 {errors.confirmPassword && (
-                  <p id="confirm-pw-err" className="text-xs text-destructive" role="alert">
+                  <p id="confirm-pw-err" className="text-xs text-destructive-text" role="alert">
                     {errors.confirmPassword.message}
                   </p>
                 )}

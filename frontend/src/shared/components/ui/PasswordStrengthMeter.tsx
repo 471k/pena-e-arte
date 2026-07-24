@@ -53,7 +53,7 @@ export function PasswordStrengthMeter({ password }: Props) {
       </div>
       <p className="text-[11px] text-muted-foreground">
         Strength:{" "}
-        <span className={`font-medium ${strength === "weak" ? "text-destructive" : ""}`}>
+        <span className={`font-medium ${strength === "weak" ? "text-destructive-text" : ""}`}>
           {LABELS[strength]}
         </span>
         {strength === "weak" && " — use at least 8 characters"}

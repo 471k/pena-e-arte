@@ -59,17 +59,19 @@ public class IdentityService(
         return (true, token, null);
     }
 
-    public async Task<(bool Success, string[] Errors)> ResetPasswordAsync(
+    public async Task<(bool Success, string[] Errors, bool TokenInvalid)> ResetPasswordAsync(
         string email, string token, string newPassword)
     {
         IdentityUser? user = await userManager.FindByEmailAsync(email);
         if (user is null)
-            return (false, ["Invalid reset request."]);
+            return (false, ["Invalid reset request."], true);
 
         IdentityResult result = await userManager.ResetPasswordAsync(user, token, newPassword);
-        return result.Succeeded
-            ? (true, [])
-            : (false, result.Errors.Select(e => e.Description).ToArray());
+        if (result.Succeeded)
+            return (true, [], false);
+
+        bool tokenInvalid = result.Errors.Any(e => e.Code == "InvalidToken");
+        return (false, result.Errors.Select(e => e.Description).ToArray(), tokenInvalid);
     }
 
     public async Task<string> CreateRefreshTokenAsync(string email)

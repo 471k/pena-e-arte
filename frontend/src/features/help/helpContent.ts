@@ -404,7 +404,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Add an artist to your studio",
     route: "/artists/new",
-    keywords: ["new artist", "hire artist", "hourly rate"],
+    keywords: ["new artist", "hire artist", "hourly rate", "invite", "set password", "resend invite"],
     summary: "Add a new tattoo artist to your studio.",
     steps: [
       "Go to Artists and click \"New Artist\".",
@@ -413,7 +413,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Optionally set an hourly rate — used to calculate percentage-based deposits.",
       "Click \"Create Artist\".",
     ],
-    tips: ["The hourly rate only matters if you use percentage-based deposit rules for this artist."],
+    tips: [
+      "The hourly rate only matters if you use percentage-based deposit rules for this artist.",
+      "You don't set a password for the artist. They get an automatic email with a link to set their own password — it expires after 1 hour.",
+      "If the artist says they never received that email, open their profile and click \"Resend invite\" next to their email address.",
+    ],
   },
   {
     id: "owner-artists-list",
@@ -1041,7 +1045,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-forgot-password",
     roles: [Client, Artist, Owner, Issuer],
     question: "I forgot my password — what do I do?",
-    answer: "Click \"Forgot password?\" on the login screen and enter your email. You'll get a reset link — click it to set a new password.",
+    answer: "Click \"Forgot password?\" on the login screen and enter your email. You'll get a reset link — click it to set a new password. Reset links expire 1 hour after they're sent; if yours has expired, the reset page shows a \"Request a new reset link\" button that takes you straight back to the forgot-password form.",
   },
   {
     id: "faq-issuer-suspend-effect",

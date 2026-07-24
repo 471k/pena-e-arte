@@ -14,12 +14,17 @@ public class ResetPasswordHandler(IIdentityService identity)
     public async Task Handle(ResetPasswordCommand command, CancellationToken ct)
     {
         ResetPasswordRequest req = command.Request;
-        (bool success, string[] errors) =
+        (bool success, string[] errors, bool tokenInvalid) =
             await identity.ResetPasswordAsync(req.Email, req.Token, req.NewPassword);
 
-        if (!success)
-            throw new BusinessRuleViolationException(
-                errors.Length > 0 ? string.Join(" ", errors) : "Password reset failed.");
+        if (success)
+            return;
+
+        if (tokenInvalid)
+            throw new PasswordResetTokenInvalidException();
+
+        throw new BusinessRuleViolationException(
+            errors.Length > 0 ? string.Join(" ", errors) : "Password reset failed.");
     }
 }
 
