@@ -95,14 +95,16 @@ function FieldLabel({
 
 function ArtistAvatar({ artist }: { artist: ArtistResponse }) {
   const initials = `${artist.firstName[0] ?? ""}${artist.lastName[0] ?? ""}`.toUpperCase();
+  const [imageFailed, setImageFailed] = useState(false);
 
-  if (artist.avatarUrl) {
+  if (artist.avatarUrl && !imageFailed) {
     return (
       <img
         src={artist.avatarUrl}
         alt=""
         aria-hidden="true"
         className="h-6 w-6 rounded-full object-cover shrink-0"
+        onError={() => setImageFailed(true)}
       />
     );
   }

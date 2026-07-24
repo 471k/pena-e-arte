@@ -10,7 +10,8 @@ public record HandleSubscriptionUpdatedCommand(
     string   StripeSubscriptionId,
     string   StripeStatus,
     DateTime CurrentPeriodEnd,
-    string?  StripePriceId) : IRequest;
+    string?  StripePriceId,
+    bool     CancelAtPeriodEnd = false) : IRequest;
 
 public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandler<HandleSubscriptionUpdatedCommand>
 {
@@ -30,7 +31,8 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
             _          => subscription.Status
         };
 
-        subscription.CurrentPeriodEnd = command.CurrentPeriodEnd;
+        subscription.CurrentPeriodEnd  = command.CurrentPeriodEnd;
+        subscription.CancelAtPeriodEnd = command.CancelAtPeriodEnd;
 
         // Trial is no longer applicable once the subscription is active on a paid plan.
         if (subscription.Status == SubscriptionStatus.Active)

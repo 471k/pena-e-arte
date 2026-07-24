@@ -30,6 +30,7 @@ export interface PlatformSubscriptionResponse {
   trialExpiresAt:  string | null;
   currentPeriodEnd: string;
   isSuspended:     boolean;
+  cancelAtPeriodEnd: boolean;
 }
 
 export interface PlatformReferralCodeResponse {

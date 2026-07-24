@@ -55,6 +55,7 @@ const BASE_SUB: SubscriptionResponse = {
   currentPeriodEnd:       IN_30_DAYS,
   gracePeriodEnd:         IN_7_DAYS,
   stripeSubscriptionId:   null,
+  cancelAtPeriodEnd:      false,
 };
 
 const SUB_ACTIVE:      SubscriptionResponse = { ...BASE_SUB, status: "Active" };

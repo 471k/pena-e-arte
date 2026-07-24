@@ -146,6 +146,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
     sub.status !== "Trialing" && sub.status !== "NoSubscription" && !sub.planName;
 
   const periodText = (() => {
+    if (sub.status === "Active" && sub.cancelAtPeriodEnd) return `Cancels: ${fmt(sub.currentPeriodEnd)}`;
     if (sub.status === "Active")       return `Renews: ${fmt(sub.currentPeriodEnd)}`;
     if (sub.status === "GracePeriod")  return `Grace ends: ${fmt(sub.currentPeriodEnd)}`;
     if (sub.status === "PastDue")      return `Overdue since: ${fmt(sub.currentPeriodEnd)}`;

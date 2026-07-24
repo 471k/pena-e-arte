@@ -39,6 +39,7 @@ const SUBSCRIPTIONS: PlatformSubscriptionResponse[] = [
     trialExpiresAt:  new Date(Date.now() + 2 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() + 2 * 86_400_000).toISOString(),
     isSuspended:     false,
+    cancelAtPeriodEnd: false,
   },
   {
     studioId:        "s2",
@@ -50,6 +51,7 @@ const SUBSCRIPTIONS: PlatformSubscriptionResponse[] = [
     trialExpiresAt:  new Date(Date.now() - 5 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() - 5 * 86_400_000).toISOString(),
     isSuspended:     false,
+    cancelAtPeriodEnd: false,
   },
   {
     studioId:        "s3",
@@ -61,6 +63,7 @@ const SUBSCRIPTIONS: PlatformSubscriptionResponse[] = [
     trialExpiresAt:  new Date(Date.now() + 30 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
     isSuspended:     false,
+    cancelAtPeriodEnd: false,
   },
 ];
 

@@ -5,6 +5,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { ImageWithFallback } from "@/shared/components/ImageWithFallback";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   useGetMyClientQuery,
@@ -201,7 +202,7 @@ export function MyProfilePage() {
                       </div>
                       <p className="text-sm text-muted-foreground">{record.description}</p>
                       {record.photoUrls.length > 0 && (
-                        <img
+                        <ImageWithFallback
                           src={record.photoUrls[0]}
                           alt="Tattoo"
                           className="w-full rounded-md object-cover max-h-48"

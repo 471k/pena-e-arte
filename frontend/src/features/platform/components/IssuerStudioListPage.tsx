@@ -203,6 +203,9 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
   })();
 
   const periodText = (() => {
+    if (sub?.status === "Active" && sub?.currentPeriodEnd && !isSuspended && sub?.cancelAtPeriodEnd) {
+      return `Cancels: ${fmt(sub.currentPeriodEnd)}`;
+    }
     if (sub?.status === "Active" && sub?.currentPeriodEnd && !isSuspended) {
       return `Renews: ${fmt(sub.currentPeriodEnd)}`;
     }

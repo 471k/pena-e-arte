@@ -21,6 +21,11 @@ public class Subscription
 
     public SubscriptionStatus Status               { get; set; }
 
+    /// <summary>True when Stripe will cancel this subscription at CurrentPeriodEnd instead of
+    /// renewing it — Status stays "Active" until then, so this is the only signal that the
+    /// subscription is actually ending. Mirrors Stripe's subscription.cancel_at_period_end.</summary>
+    public bool                CancelAtPeriodEnd    { get; set; }
+
     /// <summary>Null once the subscription converts to a paid plan — trial is no longer applicable.</summary>
     public DateTime?          TrialExpiresAt       { get; set; }
     public DateTime           CurrentPeriodEnd     { get; set; }

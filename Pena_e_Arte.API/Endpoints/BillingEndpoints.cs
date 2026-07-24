@@ -198,7 +198,8 @@ public static class BillingEndpoints
                     DateTime periodEnd = sub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
                                          ?? DateTime.UtcNow.AddMonths(1);
                     await mediator.Send(
-                        new HandleSubscriptionUpdatedCommand(sub.Id, sub.Status, periodEnd, priceId), ct);
+                        new HandleSubscriptionUpdatedCommand(
+                            sub.Id, sub.Status, periodEnd, priceId, sub.CancelAtPeriodEnd), ct);
                     break;
                 }
 

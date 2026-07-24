@@ -62,6 +62,7 @@ const SUB_ACTIVE: PlatformSubscriptionResponse = {
   trialExpiresAt:  new Date(Date.now() + 30 * 86_400_000).toISOString(),
   currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
   isSuspended:     false,
+  cancelAtPeriodEnd: false,
 };
 
 const SUB_TRIALING: PlatformSubscriptionResponse = {
@@ -509,6 +510,7 @@ describe("IssuerStudioListPage", () => {
       trialExpiresAt:   "",
       currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
       isSuspended:      false,
+      cancelAtPeriodEnd: false,
     };
     server.use(
       http.get("http://localhost/api/v1/studios", () =>
@@ -541,6 +543,7 @@ describe("IssuerStudioListPage", () => {
           status: "Active", planName: null, trialExpiresAt: "",
           currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
           isSuspended: false,
+          cancelAtPeriodEnd: false,
         }]),
       ),
     );

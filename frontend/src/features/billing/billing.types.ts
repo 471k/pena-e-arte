@@ -18,6 +18,7 @@ export interface SubscriptionResponse {
   currentPeriodEnd:       string;
   gracePeriodEnd:         string;
   stripeSubscriptionId:   string | null;
+  cancelAtPeriodEnd:      boolean;
 }
 
 export interface PlanResponse {

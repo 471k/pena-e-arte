@@ -88,6 +88,7 @@ const BASE_SUB: SubscriptionResponse = {
   currentPeriodEnd:       new Date(Date.now() + 30 * 86_400_000).toISOString(),
   gracePeriodEnd:         new Date(Date.now() + 7 * 86_400_000).toISOString(),
   stripeSubscriptionId:   null,
+  cancelAtPeriodEnd:      false,
 };
 
 const SUB_TRIALING: SubscriptionResponse = { ...BASE_SUB, status: "Trialing" };

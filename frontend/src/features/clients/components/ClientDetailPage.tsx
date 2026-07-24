@@ -13,6 +13,7 @@ import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { ImageWithFallback } from "@/shared/components/ImageWithFallback";
 import { cn } from "@/shared/utils/cn";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
@@ -429,7 +430,7 @@ export function ClientDetailPage() {
                           by {record.artistFirstName} · {record.description}
                         </p>
                         {record.photoUrls.length > 0 && (
-                          <img
+                          <ImageWithFallback
                             src={record.photoUrls[0]}
                             alt="Tattoo"
                             className="w-full rounded-md object-cover max-h-48"

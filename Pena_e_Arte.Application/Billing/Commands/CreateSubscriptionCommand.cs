@@ -153,5 +153,6 @@ public class CreateSubscriptionHandler(
     internal static SubscriptionResponse Map(Subscription s) => new(
         s.Id, s.StudioId, s.PlanId, s.BillingInterval.ToString(),
         s.PendingPlanId, s.PendingBillingInterval?.ToString(), s.Status.ToString(),
-        s.TrialExpiresAt, s.CurrentPeriodEnd, s.GracePeriodEnd, s.StripeSubscriptionId);
+        s.TrialExpiresAt, s.CurrentPeriodEnd, s.GracePeriodEnd, s.StripeSubscriptionId,
+        s.CancelAtPeriodEnd);
 }

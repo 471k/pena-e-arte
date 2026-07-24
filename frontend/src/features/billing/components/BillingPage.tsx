@@ -314,11 +314,13 @@ export function BillingPage() {
                 {!isFreePlan && (
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5 shrink-0" />
-                    {isCashBilled
-                      ? <span>Active until {formatDate(sub.currentPeriodEnd)}</span>
-                      : currentPlan
-                        ? <span>Next charge: {formatEur(currentPrice?.price ?? 0)} on {formatDate(sub.currentPeriodEnd)}</span>
-                        : <span>Renews {formatDate(sub.currentPeriodEnd)}</span>
+                    {sub.cancelAtPeriodEnd
+                      ? <span className="text-amber-600 dark:text-amber-400">Cancels on {formatDate(sub.currentPeriodEnd)}</span>
+                      : isCashBilled
+                        ? <span>Active until {formatDate(sub.currentPeriodEnd)}</span>
+                        : currentPlan
+                          ? <span>Next charge: {formatEur(currentPrice?.price ?? 0)} on {formatDate(sub.currentPeriodEnd)}</span>
+                          : <span>Renews {formatDate(sub.currentPeriodEnd)}</span>
                     }
                   </div>
                 )}
@@ -392,6 +394,38 @@ export function BillingPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Subscription scheduled to cancel at period end (set via the Stripe billing
+            portal — there is no in-app "undo", so point back to the same portal). */}
+        {sub.status === "Active" && sub.cancelAtPeriodEnd && (
+          <Card className="border-amber-500/20">
+            <CardContent className="p-5 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                Subscription ending
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Your subscription is set to cancel on{" "}
+                <span className="font-medium text-foreground">{formatDate(sub.currentPeriodEnd)}</span>.
+                You keep access until then.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5"
+                disabled={openingPortal}
+                onClick={() => void handleManageBilling()}
+              >
+                {openingPortal
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Settings className="h-3.5 w-3.5" />
+                }
+                Manage billing
+                {!openingPortal && <ExternalLink className="h-3 w-3 opacity-40" />}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Plan usage — current vs. cap across all five dimensions */}
         {usage && <PlanUsagePanel usage={usage} />}

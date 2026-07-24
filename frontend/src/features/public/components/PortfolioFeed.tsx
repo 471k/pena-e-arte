@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Bookmark, MapPin, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { ImageWithFallback } from "@/shared/components/ImageWithFallback";
 import { StarRating } from "@/shared/components/ui/StarRating";
 import {
   Dialog,
@@ -189,10 +190,11 @@ function PortfolioLightbox({ images, currentIndex, token, onClose, onNavigate }:
         <div className="grid md:grid-cols-2">
           {/* Image panel */}
           <div className="bg-black flex items-center justify-center min-h-[280px] relative">
-            <img
+            <ImageWithFallback
               src={image.imageUrl}
               alt={`Tattoo by ${image.artistName}`}
               className="w-full h-full object-contain max-h-[70vh]"
+              fallbackClassName="w-full min-h-[280px] max-h-[70vh]"
             />
 
             {hasPrev && (

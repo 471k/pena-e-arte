@@ -71,6 +71,11 @@ services:
       CloudflareR2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-}
       CloudflareR2__BucketName: ${R2_BUCKET_NAME:-}
       CloudflareR2__PublicUrl: ${R2_PUBLIC_URL:-}
+      Google__ClientId: ${VITE_GOOGLE_CLIENT_ID:-}
+      App__BaseUrl: ${VITE_PUBLIC_URL:-http://localhost:8081}
+      Cors__AllowedOrigins__0: ${VITE_PUBLIC_URL:-http://localhost:8081}
+      Hangfire__DashboardUsername: ${HANGFIRE_DASHBOARD_USERNAME:-admin}
+      Hangfire__DashboardPassword: ${HANGFIRE_DASHBOARD_PASSWORD:-admin}
     ports:
       - "8080:8080"
     healthcheck:

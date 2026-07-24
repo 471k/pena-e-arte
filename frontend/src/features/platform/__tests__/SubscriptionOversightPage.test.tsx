@@ -27,6 +27,7 @@ const SUBS: PlatformSubscriptionResponse[] = [
     trialExpiresAt:  new Date(Date.now() + 30 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000).toISOString(),
     isSuspended:     false,
+    cancelAtPeriodEnd: false,
   },
   {
     studioId:        "s2",
@@ -38,6 +39,7 @@ const SUBS: PlatformSubscriptionResponse[] = [
     trialExpiresAt:  new Date(Date.now() + 7 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() + 7 * 86_400_000).toISOString(),
     isSuspended:     false,
+    cancelAtPeriodEnd: false,
   },
   {
     studioId:        "s3",
@@ -49,6 +51,7 @@ const SUBS: PlatformSubscriptionResponse[] = [
     trialExpiresAt:  new Date(Date.now() - 30 * 86_400_000).toISOString(),
     currentPeriodEnd: new Date(Date.now() - 30 * 86_400_000).toISOString(),
     isSuspended:     false,
+    cancelAtPeriodEnd: false,
   },
 ];
 
@@ -371,6 +374,7 @@ describe("SubscriptionOversightPage", () => {
             trialExpiresAt:  new Date(Date.now() - 14 * 86_400_000).toISOString(),
             currentPeriodEnd: new Date(Date.now() + 3 * 86_400_000).toISOString(),
             isSuspended:     false,
+            cancelAtPeriodEnd: false,
           },
         ]),
       ),
@@ -406,6 +410,7 @@ describe("SubscriptionOversightPage", () => {
             trialExpiresAt:  new Date(Date.now() - 14 * 86_400_000).toISOString(),
             currentPeriodEnd: new Date(Date.now() + 3 * 86_400_000).toISOString(),
             isSuspended:     false,
+            cancelAtPeriodEnd: false,
           },
         ]),
       ),
