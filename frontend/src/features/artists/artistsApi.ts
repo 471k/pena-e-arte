@@ -1,6 +1,12 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 
+export interface ArtistPortfolioImage {
+  imageId:  string;
+  imageUrl: string;
+  style:    string | null;
+}
+
 export interface ArtistResponse {
   id:              string;
   studioId:        string;
@@ -12,7 +18,7 @@ export interface ArtistResponse {
   hourlyRate:      number | null;
   isActive:        boolean;
   avatarUrl:       string | null;
-  portfolioImages: string[];
+  portfolioImages: ArtistPortfolioImage[];
   slug:            string | null;
   createdAt:       string;
   updatedAt:       string;
@@ -110,11 +116,14 @@ export const artistsApi = createApi({
       query: ({ id, body }) => ({ url: `artists/${id}`, method: "PUT", body }),
       invalidatesTags: (_result, _error, { id }) => [{ type: "Artist", id }, "Artist"],
     }),
-    updateArtistPortfolio: builder.mutation<ArtistResponse, { id: string; imageUrls: string[] }>({
-      query: ({ id, imageUrls }) => ({
+    updateArtistPortfolio: builder.mutation<
+      ArtistResponse,
+      { id: string; images: { imageUrl: string; style: string | null }[] }
+    >({
+      query: ({ id, images }) => ({
         url:    `artists/${id}/portfolio-images`,
         method: "PUT",
-        body:   { imageUrls },
+        body:   { images },
       }),
       async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
         try {

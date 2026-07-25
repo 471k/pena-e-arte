@@ -455,6 +455,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
     warnings: ["Deleting an artist cannot be undone from this screen."],
   },
   {
+    id: "owner-artist-portfolio",
+    roles: [Owner, Artist],
+    title: "Add portfolio images and tag their style",
+    route: "/artists",
+    keywords: ["portfolio", "upload image", "tattoo style", "style tag", "discover filter", "no portfolio work"],
+    summary: "Upload work to an artist's portfolio and tag each image with a tattoo style so it shows up in the public Discover page's style filters.",
+    steps: [
+      "Open an artist's profile and click the \"Portfolio\" tab.",
+      "Click \"Add image\" and upload the photo.",
+      "For each image, use the style dropdown to pick a tattoo style (e.g. Traditional, Realism, Blackwork).",
+      "Click the dropdown again at any time to change or clear an image's style.",
+    ],
+    tips: [
+      "The Discover page's style filters only match an image's own style tag — an artist's \"Specializations\" text on their profile does not make their work appear under a style filter.",
+      "An image left without a style still shows in the artist's portfolio, but it won't appear when a client filters Discover by style.",
+    ],
+    relatedArticleIds: ["owner-artists-list"],
+  },
+  {
     id: "owner-clients-add",
     roles: [Owner],
     title: "Add a client manually",

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -91,6 +92,8 @@ public class CreateArtistHandler(
     internal static ArtistResponse Map(Artist a) =>
         new(a.Id, a.StudioId, a.UserId, a.FirstName, a.LastName, a.Email, a.Specializations, a.HourlyRate,
             a.IsActive, a.AvatarUrl,
-            a.Portfolio.OrderByDescending(p => p.CreatedAt).Select(p => p.ImageUrl).ToList(),
+            a.Portfolio.OrderByDescending(p => p.CreatedAt)
+                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl, p.Style))
+                .ToList(),
             a.Slug, a.CreatedAt, a.UpdatedAt);
 }

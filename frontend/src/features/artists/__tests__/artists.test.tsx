@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -76,6 +76,8 @@ const ARTISTS: ArtistResponse[] = [
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
+let lastPortfolioUpdateBody: { images: { imageUrl: string; style: string | null }[] } | null = null;
+
 const server = setupServer(
   http.get("http://localhost/api/v1/artists", ({ request }) => {
     const search = new URL(request.url).searchParams.get("search");
@@ -111,6 +113,21 @@ const server = setupServer(
     new HttpResponse(null, { status: 204 }),
   ),
 
+  http.put("http://localhost/api/v1/artists/:id/portfolio-images", async ({ request, params }) => {
+    const body = (await request.json()) as { images: { imageUrl: string; style: string | null }[] };
+    const artist = ARTISTS.find((a) => a.id === params.id);
+    if (!artist) return new HttpResponse(null, { status: 404 });
+    lastPortfolioUpdateBody = body;
+    return HttpResponse.json({
+      ...artist,
+      portfolioImages: body.images.map((img, i) => ({
+        imageId:  `img-${i}`,
+        imageUrl: img.imageUrl,
+        style:    img.style,
+      })),
+    });
+  }),
+
   http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/billing/subscription", () =>
@@ -124,7 +141,7 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => { server.resetHandlers(); lastPortfolioUpdateBody = null; cleanup(); });
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -319,5 +336,74 @@ describe("Artists feature", () => {
 
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+  });
+
+  // 8. Portfolio tab — style tagging
+  describe("Portfolio tab style tagging", () => {
+    function seedArtistWithImages() {
+      server.use(
+        http.get("http://localhost/api/v1/artists/:id", ({ params }) => {
+          const artist = ARTISTS.find((a) => a.id === params.id);
+          if (!artist) return new HttpResponse(null, { status: 404 });
+          return HttpResponse.json({
+            ...artist,
+            portfolioImages: [
+              { imageId: "img-1", imageUrl: "https://r2.example.com/tattoo1.jpg", style: null },
+              { imageId: "img-2", imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism" },
+            ],
+          });
+        }),
+      );
+    }
+
+    it("shows 'No style' for an untagged image and the style label for a tagged one", async () => {
+      seedArtistWithImages();
+      renderDetail(ELENA.id);
+
+      await screen.findByText("EM");
+      await userEvent.setup().click(screen.getByRole("tab", { name: /portfolio/i }));
+
+      const selects = await screen.findAllByRole("combobox", { name: /tattoo style/i });
+      expect(selects).toHaveLength(2);
+      expect(within(selects[0]).getByText("No style")).toBeInTheDocument();
+      expect(within(selects[1]).getByText("Realism")).toBeInTheDocument();
+    });
+
+    it("changing an image's style sends the full image list with that style updated", async () => {
+      seedArtistWithImages();
+      const user = userEvent.setup();
+      renderDetail(ELENA.id);
+
+      await screen.findByText("EM");
+      await user.click(screen.getByRole("tab", { name: /portfolio/i }));
+
+      const [firstSelect] = await screen.findAllByRole("combobox", { name: /tattoo style/i });
+      await user.click(firstSelect);
+      await user.click(await screen.findByRole("option", { name: "Traditional" }));
+
+      await waitFor(() => expect(lastPortfolioUpdateBody).not.toBeNull());
+      expect(lastPortfolioUpdateBody!.images).toEqual([
+        { imageUrl: "https://r2.example.com/tattoo1.jpg", style: "traditional" },
+        { imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism" },
+      ]);
+    });
+
+    it("removing an image sends the remaining images without it", async () => {
+      seedArtistWithImages();
+      const user = userEvent.setup();
+      renderDetail(ELENA.id);
+
+      await screen.findByText("EM");
+      await user.click(screen.getByRole("tab", { name: /portfolio/i }));
+
+      await screen.findAllByRole("combobox", { name: /tattoo style/i });
+      const [removeFirst] = screen.getAllByRole("button", { name: /remove image/i });
+      await user.click(removeFirst);
+
+      await waitFor(() => expect(lastPortfolioUpdateBody).not.toBeNull());
+      expect(lastPortfolioUpdateBody!.images).toEqual([
+        { imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism" },
+      ]);
+    });
   });
 });

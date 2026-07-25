@@ -23,28 +23,34 @@ public class UpdateArtistPortfolioHandler(IAppDbContext db, ICurrentUser current
         if (currentUser.Role == "artist" && artist.UserId != currentUser.UserId)
             throw new ForbiddenException();
 
-        // Sync PortfolioImage rows: preserve existing (to keep their reviews), add new, remove stale.
+        // Sync PortfolioImage rows: preserve existing (to keep their reviews and pick
+        // up any style change), add new, remove stale.
         List<PortfolioImage> existing = await db.PortfolioImages
             .Where(p => p.ArtistId == command.Id)
             .ToListAsync(ct);
 
-        HashSet<string> existingUrls = existing.Select(p => p.ImageUrl).ToHashSet();
-        HashSet<string> newUrls      = command.Request.ImageUrls.ToHashSet();
+        Dictionary<string, PortfolioImageInput> incomingByUrl = command.Request.Images
+            .ToDictionary(i => i.ImageUrl, i => i);
 
         // Delete removed images — cascade removes their reviews.
-        List<PortfolioImage> toRemove = existing.Where(p => !newUrls.Contains(p.ImageUrl)).ToList();
+        List<PortfolioImage> toRemove = existing.Where(p => !incomingByUrl.ContainsKey(p.ImageUrl)).ToList();
         db.PortfolioImages.RemoveRange(toRemove);
 
-        // Add genuinely new images.
-        foreach (string url in command.Request.ImageUrls)
+        Dictionary<string, PortfolioImage> existingByUrl = existing.ToDictionary(p => p.ImageUrl);
+        foreach (PortfolioImageInput input in command.Request.Images)
         {
-            if (!existingUrls.Contains(url))
+            if (existingByUrl.TryGetValue(input.ImageUrl, out PortfolioImage? kept))
+            {
+                kept.Style = input.Style;
+            }
+            else
             {
                 db.PortfolioImages.Add(new PortfolioImage
                 {
                     ArtistId = artist.Id,
                     StudioId = artist.StudioId,
-                    ImageUrl = url,
+                    ImageUrl = input.ImageUrl,
+                    Style    = input.Style,
                 });
             }
         }

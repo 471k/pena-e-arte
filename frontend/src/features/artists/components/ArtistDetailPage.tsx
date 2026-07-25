@@ -25,6 +25,13 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import {
   Dialog,
@@ -57,6 +64,18 @@ import { useGetDesignsQuery } from "@/features/designs/designsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
+
+// Keep in sync with TattooStyle.cs constants on the backend.
+const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "blackwork",       label: "Blackwork"       },
+  { value: "realism",         label: "Realism"         },
+  { value: "traditional",     label: "Traditional"     },
+  { value: "geometric",       label: "Geometric"       },
+  { value: "watercolor",      label: "Watercolor"      },
+  { value: "fineline",        label: "Fineline"        },
+  { value: "neo-traditional", label: "Neo-Traditional" },
+  { value: "japanese",        label: "Japanese"        },
+];
 
 const editSchema = z.object({
   firstName:       z.string().min(1, "First name is required"),
@@ -202,25 +221,41 @@ export function ArtistDetailPage() {
         toast.error("Image upload failed.");
         return;
       }
-      const result = await updatePortfolio({ id, imageUrls: [...artist.portfolioImages, publicUrl] });
+      const images = [
+        ...artist.portfolioImages.map((p) => ({ imageUrl: p.imageUrl, style: p.style })),
+        { imageUrl: publicUrl, style: null },
+      ];
+      const result = await updatePortfolio({ id, images });
       if ("error" in result) {
         toast.error("Failed to save portfolio image.");
       } else {
-        toast.success("Image added to portfolio.");
+        toast.success("Image added to portfolio. Pick a style so it shows up under Discover filters.");
       }
     };
     document.body.appendChild(input);
     input.click();
   }
 
-  async function removePortfolioImage(url: string) {
+  async function removePortfolioImage(imageId: string) {
     if (!id || !artist) return;
-    const result = await updatePortfolio({
-      id,
-      imageUrls: artist.portfolioImages.filter((u) => u !== url),
-    });
+    const images = artist.portfolioImages
+      .filter((p) => p.imageId !== imageId)
+      .map((p) => ({ imageUrl: p.imageUrl, style: p.style }));
+    const result = await updatePortfolio({ id, images });
     if ("error" in result) {
       toast.error("Failed to remove image.");
+    }
+  }
+
+  async function updateImageStyle(imageId: string, style: string | null) {
+    if (!id || !artist) return;
+    const images = artist.portfolioImages.map((p) => ({
+      imageUrl: p.imageUrl,
+      style:    p.imageId === imageId ? style : p.style,
+    }));
+    const result = await updatePortfolio({ id, images });
+    if ("error" in result) {
+      toast.error("Failed to update style.");
     }
   }
 
@@ -507,43 +542,68 @@ export function ArtistDetailPage() {
                   <p className="text-sm font-medium">No portfolio images yet</p>
                   {canManagePortfolio && (
                     <p className="text-xs text-muted-foreground">
-                      Upload images to appear on the public discover feed.
+                      Upload images and tag each with a style so they appear on the public discover feed and its style filters.
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="columns-2 md:columns-3 gap-3 space-y-3">
-                  {artist.portfolioImages.map((url) => (
-                    <div key={url} className="relative break-inside-avoid group">
-                      <img
-                        src={url}
-                        alt="Portfolio image"
-                        className="w-full rounded-lg object-cover"
-                        onError={(e) => {
-                          const img = e.currentTarget;
-                          img.style.display = "none";
-                          const placeholder = img.nextElementSibling as HTMLElement | null;
-                          if (placeholder) placeholder.style.display = "flex";
-                        }}
-                      />
-                      <div
-                        style={{ display: "none" }}
-                        className="w-full h-32 rounded-lg bg-muted/60 border border-border/40
-                                   flex-col items-center justify-center gap-1 text-center px-2"
-                      >
-                        <p className="text-xs text-muted-foreground">Image unavailable</p>
-                        <p className="text-[10px] text-muted-foreground/60 break-all line-clamp-2">{url}</p>
-                      </div>
-                      {canManagePortfolio && (
-                        <button
-                          type="button"
-                          aria-label="Remove image"
-                          onClick={() => void removePortfolioImage(url)}
-                          className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {artist.portfolioImages.map(({ imageId, imageUrl, style }) => (
+                    <div key={imageId} className="relative break-inside-avoid group space-y-1.5">
+                      <div className="relative">
+                        <img
+                          src={imageUrl}
+                          alt="Portfolio image"
+                          className="w-full rounded-lg object-cover"
+                          onError={(e) => {
+                            const img = e.currentTarget;
+                            img.style.display = "none";
+                            const placeholder = img.nextElementSibling as HTMLElement | null;
+                            if (placeholder) placeholder.style.display = "flex";
+                          }}
+                        />
+                        <div
+                          style={{ display: "none" }}
+                          className="w-full h-32 rounded-lg bg-muted/60 border border-border/40
+                                     flex-col items-center justify-center gap-1 text-center px-2"
                         >
-                          <X className="h-3.5 w-3.5 text-white" />
-                        </button>
-                      )}
+                          <p className="text-xs text-muted-foreground">Image unavailable</p>
+                          <p className="text-[10px] text-muted-foreground/60 break-all line-clamp-2">{imageUrl}</p>
+                        </div>
+                        {canManagePortfolio && (
+                          <button
+                            type="button"
+                            aria-label="Remove image"
+                            onClick={() => void removePortfolioImage(imageId)}
+                            className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <X className="h-3.5 w-3.5 text-white" />
+                          </button>
+                        )}
+                      </div>
+                      {canManagePortfolio ? (
+                        <Select
+                          value={style ?? "none"}
+                          onValueChange={(v) => void updateImageStyle(imageId, v === "none" ? null : v)}
+                        >
+                          <SelectTrigger
+                            aria-label="Tattoo style"
+                            className={cn("h-7 text-xs", !style && "text-muted-foreground")}
+                          >
+                            <SelectValue placeholder="No style" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No style</SelectItem>
+                            {STYLE_OPTIONS.map(({ value, label }) => (
+                              <SelectItem key={value} value={value}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : style ? (
+                        <p className="text-xs text-muted-foreground px-1">
+                          {STYLE_OPTIONS.find((s) => s.value === style)?.label ?? style}
+                        </p>
+                      ) : null}
                     </div>
                   ))}
                 </div>

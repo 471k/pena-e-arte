@@ -38,7 +38,7 @@ const MARCO: ArtistResponse = {
   hourlyRate:      null,
   isActive:        true,
   avatarUrl:       null,
-  portfolioImages: ["https://r2.example.com/tattoo1.jpg"],
+  portfolioImages: [{ imageId: "img-1", imageUrl: "https://r2.example.com/tattoo1.jpg", style: null }],
   slug:            "marco-santos",
   createdAt:       "2026-01-01T00:00:00Z",
   updatedAt:       "2026-01-01T00:00:00Z",
