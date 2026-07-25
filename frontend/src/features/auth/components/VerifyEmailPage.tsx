@@ -2,11 +2,24 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { decodeToken } from "@/shared/utils/jwt";
+import { useRefreshTokenMutation } from "../authApi";
+import { setCredentials } from "../authSlice";
 
 export function VerifyEmailPage() {
   const [searchParams]          = useSearchParams();
   const navigate                = useNavigate();
   const [status, setStatus]     = useState<"loading" | "success" | "error">("loading");
+
+  const dispatch = useAppDispatch();
+  // If this browser tab already holds a session (e.g. the user was auto-signed-in
+  // right after registering, before verifying), that session's JWT still carries
+  // email_verified=false. Clicking "Sign in" below won't fix it — the user is
+  // already authenticated, so LoginPage just redirects them without requesting a
+  // fresh token. Refresh it here instead, the moment confirmation succeeds.
+  const existingRefreshToken = useAppSelector((s) => s.auth.refreshToken);
+  const [refreshToken] = useRefreshTokenMutation();
 
   useEffect(() => {
     // The backend redirects GET /api/v1/auth/verify-email?userId=&token= to /login?verified=true
@@ -25,11 +38,26 @@ export function VerifyEmailPage() {
       .then((res) => {
         if (res.ok || res.redirected) {
           setStatus("success");
+          if (existingRefreshToken) {
+            refreshToken({ refreshToken: existingRefreshToken })
+              .unwrap()
+              .then(({ accessToken, refreshToken: newRefreshToken }) => {
+                const payload = decodeToken(accessToken);
+                dispatch(setCredentials({ ...payload, refreshToken: newRefreshToken }));
+              })
+              .catch(() => {
+                // Best-effort — if this fails the user still gets a correct token
+                // the next time they actually sign in with credentials.
+              });
+          }
         } else {
           setStatus("error");
         }
       })
       .catch(() => setStatus("error"));
+    // Deliberately excludes existingRefreshToken/refreshToken/dispatch — this must
+    // only run once per confirmation link, not re-fire as the token itself updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   return (
