@@ -78,4 +78,24 @@ public interface IIdentityService
     /// Idempotent — safe to call even if the user no longer holds that claim.
     /// </summary>
     Task RemoveTenantClaimAsync(Guid userId, Guid studioId, CancellationToken ct);
+
+    /// <summary>
+    /// Verifies <paramref name="currentPassword"/> and that <paramref name="newEmail"/> is
+    /// not already in use, then issues a change-email token. The token must only ever be
+    /// delivered to the NEW address — it is the proof that the account owner controls it,
+    /// not just that they were logged in when the request was made.
+    /// </summary>
+    Task<(bool Success, string? Token, string[] Errors, bool EmailTaken)> GenerateChangeEmailTokenAsync(
+        Guid userId, string currentPassword, string newEmail, CancellationToken ct);
+
+    /// <summary>
+    /// <paramref name="TokenInvalid"/> mirrors <see cref="ResetPasswordAsync"/> — true when
+    /// the failure is the token itself (missing user, malformed, expired) rather than the
+    /// new email having been claimed by someone else since the request was made
+    /// (<paramref name="EmailTaken"/>). On success, also updates the username to match the
+    /// new email — this app treats username and email as always identical (see
+    /// <see cref="CreateUserAsync"/>) — so sign-in and every email lookup stays consistent.
+    /// </summary>
+    Task<(bool Success, string[] Errors, bool TokenInvalid, bool EmailTaken)> ConfirmChangeEmailAsync(
+        Guid userId, string newEmail, string token, CancellationToken ct);
 }

@@ -68,4 +68,8 @@ public interface IEmailRenderer
     string RenderArtistInvite(string artistFirstName, string studioName, string setPasswordUrl);
 
     string RenderPasswordReset(string resetUrl);
+
+    string RenderChangeEmailConfirmation(string confirmUrl);
+
+    string RenderEmailChangedNotice(string newEmail);
 }

@@ -266,6 +266,49 @@ public class IdentityService(
             await userManager.RemoveAuthenticationTokenAsync(user, "App", "ActiveTenantId");
     }
 
+    public async Task<(bool Success, string? Token, string[] Errors, bool EmailTaken)> GenerateChangeEmailTokenAsync(
+        Guid userId, string currentPassword, string newEmail, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return (false, null, ["User not found."], false);
+
+        bool passwordValid = await userManager.CheckPasswordAsync(user, currentPassword);
+        if (!passwordValid) return (false, null, ["Incorrect password."], false);
+
+        if (string.Equals(user.Email, newEmail, StringComparison.OrdinalIgnoreCase))
+            return (false, null, ["New email must be different from your current email."], false);
+
+        IdentityUser? existing = await userManager.FindByEmailAsync(newEmail);
+        if (existing is not null) return (false, null, ["That email is already in use."], true);
+
+        string token = await userManager.GenerateChangeEmailTokenAsync(user, newEmail);
+        return (true, token, [], false);
+    }
+
+    public async Task<(bool Success, string[] Errors, bool TokenInvalid, bool EmailTaken)> ConfirmChangeEmailAsync(
+        Guid userId, string newEmail, string token, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return (false, ["Invalid confirmation request."], true, false);
+
+        // Re-checked here (not just at request time) to close the race where someone else
+        // claims the address between the request and this confirmation.
+        IdentityUser? existing = await userManager.FindByEmailAsync(newEmail);
+        if (existing is not null && existing.Id != user.Id)
+            return (false, ["That email is already in use."], false, true);
+
+        IdentityResult result = await userManager.ChangeEmailAsync(user, newEmail, token);
+        if (!result.Succeeded)
+        {
+            bool tokenInvalid = result.Errors.Any(e => e.Code == "InvalidToken");
+            return (false, result.Errors.Select(e => e.Description).ToArray(), tokenInvalid, false);
+        }
+
+        await userManager.SetUserNameAsync(user, newEmail);
+
+        return (true, [], false, false);
+    }
+
     private async Task<Guid?> ReadActiveTenantIdAsync(IdentityUser user)
     {
         string? stored = await userManager.GetAuthenticationTokenAsync(user, "App", "ActiveTenantId");

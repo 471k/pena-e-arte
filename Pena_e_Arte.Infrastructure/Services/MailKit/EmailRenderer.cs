@@ -293,4 +293,39 @@ public class EmailRenderer : IEmailRenderer
         </body>
         </html>
         """;
+
+    public string RenderChangeEmailConfirmation(string confirmUrl) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Confirm your new email</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Confirm your new email address</h1>
+          <p>Someone requested to change the email on a TattooOS account to this address. Click the button below to confirm the switch.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(confirmUrl)}"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+            Confirm new email
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            This link expires in 1 hour. If you did not request this change, you can safely ignore this email — your account email will not change.
+          </p>
+        </body>
+        </html>
+        """;
+
+    public string RenderEmailChangedNotice(string newEmail) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Your email address was changed</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Your account email was changed</h1>
+          <p>The email address on your TattooOS account was just changed to
+          <strong>{System.Net.WebUtility.HtmlEncode(newEmail)}</strong>. You'll need to use that address to sign in from now on.</p>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            If you didn't make this change, contact support immediately — someone else may have access to your account.
+          </p>
+        </body>
+        </html>
+        """;
 }

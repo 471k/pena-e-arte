@@ -213,6 +213,26 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Re-enter the new password to confirm.",
       "Click \"Change password\".",
     ],
+    relatedArticleIds: ["client-change-email"],
+  },
+  {
+    id: "client-change-email",
+    roles: [Client, Artist, Owner, Issuer],
+    title: "Change your email address",
+    route: "/account/change-email",
+    keywords: ["email", "change email", "account security", "sign-in email"],
+    summary: "Switch the email address you use to sign in.",
+    steps: [
+      "Enter your current password.",
+      "Enter your new email address.",
+      "Click \"Send confirmation link\".",
+      "Open the confirmation email sent to your NEW address and click the link — your email doesn't change until you confirm it.",
+    ],
+    tips: [
+      "Your current email stays active until you confirm the new one, so you won't be locked out mid-change.",
+      "A notice is sent to your old email when the change completes, in case it wasn't you.",
+    ],
+    relatedArticleIds: ["client-change-password"],
   },
 
   // ── Artist ──────────────────────────────────────────────────────────────

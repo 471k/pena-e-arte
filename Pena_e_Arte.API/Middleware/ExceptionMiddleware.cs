@@ -44,6 +44,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             SubscriptionRequiredException       => (StatusCodes.Status402PaymentRequired,     ex.Message, null),
             PlanLimitExceededException          => (StatusCodes.Status403Forbidden,           ex.Message, "PLAN_LIMIT_EXCEEDED"),
             PasswordResetTokenInvalidException  => (StatusCodes.Status422UnprocessableEntity, ex.Message, "RESET_TOKEN_INVALID"),
+            ChangeEmailTokenInvalidException     => (StatusCodes.Status422UnprocessableEntity, ex.Message, "CHANGE_EMAIL_TOKEN_INVALID"),
             BusinessRuleViolationException      => (StatusCodes.Status422UnprocessableEntity, ex.Message, null),
             ServiceUnavailableException         => (StatusCodes.Status503ServiceUnavailable,  ex.Message, null),
             UnauthorizedAccessException     => (StatusCodes.Status401Unauthorized,          ex.Message, null),

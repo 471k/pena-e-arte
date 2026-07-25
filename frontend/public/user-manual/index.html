@@ -317,6 +317,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#client-deposit" data-nav-link>Pay a deposit</a></li>
           <li><a href="#client-verify-email" data-nav-link>Verify email</a></li>
           <li><a href="#client-change-password" data-nav-link>Change password</a></li>
+          <li><a href="#client-change-email" data-nav-link>Change email</a></li>
         </ul>
       </div>
     </div>
@@ -1275,7 +1276,33 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Confirm new password</span>.</li>
 <li>Submit — you're taken back to the previous page on success.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#guest-forgot-password">Forgot password</a></div>
+<div class="crosslinks">See also: <a href="#guest-forgot-password">Forgot password</a>, <a href="#client-change-email">Change email</a></div>
+</section>
+
+<section id="client-change-email" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Change email</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>At <code>/account/change-email</code>, shared by every signed-in role — switch the email address used to sign in. Two-step confirmation: a link is emailed to the <strong>new</strong> address, and the switch only takes effect once that link is clicked. A notice is sent to the old address when it completes, in case it wasn't you.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Change email wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Change Email</text>
+<rect x="280" y="70" width="200" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="296" y="98" font-size="9" fill-opacity="0.6">Current password</text><rect x="296" y="104" width="168" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="296" y="140" font-size="9" fill-opacity="0.6">New email address</text><rect x="296" y="146" width="168" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="296" y="184" width="168" height="24" rx="4" fill="#7c3aed"/><text x="308" y="200" font-size="9" fill="#fff">Send confirmation link</text>
+</svg>
+</figure>
+<figcaption>Change email — fields in order: current password, new email</figcaption>
+<h3>Steps (in field order)</h3>
+<ol class="steps">
+<li>Enter your <span class="step-title">Current password</span>.</li>
+<li>Enter your <span class="step-title">New email address</span>.</li>
+<li>Submit — a confirmation link is sent to the new address; your current email stays active until you click it.</li>
+<li>Open the confirmation email at the new address and click the link to complete the change.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#client-change-password">Change password</a></div>
 </section>
 
 <section id="artist-schedule" data-role="artist">

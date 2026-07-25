@@ -47,6 +47,11 @@ interface ChangePasswordRequest {
   newPassword:     string;
 }
 
+interface RequestChangeEmailRequest {
+  currentPassword: string;
+  newEmail:        string;
+}
+
 interface SwitchStudioRequest {
   studioId: string;
 }
@@ -110,6 +115,9 @@ export const authApi = createApi({
     changePassword: builder.mutation<void, ChangePasswordRequest>({
       query: (body) => ({ url: "auth/change-password", method: "PATCH", body }),
     }),
+    requestChangeEmail: builder.mutation<void, RequestChangeEmailRequest>({
+      query: (body) => ({ url: "auth/change-email", method: "POST", body }),
+    }),
     resendVerificationEmail: builder.mutation<void, void>({
       query: () => ({ url: "auth/resend-verification", method: "POST" }),
     }),
@@ -162,6 +170,7 @@ export const {
   useResetPasswordMutation,
   useRefreshTokenMutation,
   useChangePasswordMutation,
+  useRequestChangeEmailMutation,
   useResendVerificationEmailMutation,
   useSwitchStudioMutation,
   useGetMyStudiosQuery,

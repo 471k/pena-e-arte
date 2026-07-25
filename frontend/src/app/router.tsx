@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Navigate, Outlet, createBrowserRouter, useNavigate } from "react-router-dom";
-import { LoginPage, ForgotPasswordPage, ResetPasswordPage, ChangePasswordPage, VerifyEmailPage, ClientRegisterPage, MyStudiosPage } from "@/features/auth";
+import { LoginPage, ForgotPasswordPage, ResetPasswordPage, ChangePasswordPage, RequestChangeEmailPage, ConfirmChangeEmailPage, VerifyEmailPage, ClientRegisterPage, MyStudiosPage } from "@/features/auth";
 import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
 import { DashboardPage } from "@/features/dashboard";
@@ -107,6 +107,7 @@ export const router = createBrowserRouter([
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/reset-password",  element: <ResetPasswordPage /> },
   { path: "/verify-email",    element: <VerifyEmailPage /> },
+  { path: "/confirm-change-email", element: <ConfirmChangeEmailPage /> },
   { path: "/register",         element: <RegisterStudioPage /> },
   { path: "/client-register", element: <ClientRegisterPage /> },
   { path: "/map",             element: <StudioMapPage /> },
@@ -346,6 +347,11 @@ export const router = createBrowserRouter([
                 path: "account/change-password",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
                 children: [{ index: true, element: <ErrorBoundary><ChangePasswordPage /></ErrorBoundary> }],
+              },
+              {
+                path: "account/change-email",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                children: [{ index: true, element: <ErrorBoundary><RequestChangeEmailPage /></ErrorBoundary> }],
               },
             ],
           },

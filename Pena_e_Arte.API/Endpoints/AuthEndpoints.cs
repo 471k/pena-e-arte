@@ -21,6 +21,8 @@ public static class AuthEndpoints
         group.MapPost("/reset-password",       ResetPassword).AllowAnonymous();
         group.MapPost("/refresh",              Refresh).AllowAnonymous();
         group.MapPatch("/change-password",     ChangePassword).RequireAuthorization("ClientAndAbove");
+        group.MapPost("/change-email",         RequestChangeEmail).RequireAuthorization("ClientAndAbove");
+        group.MapGet ("/confirm-change-email", ConfirmChangeEmail).AllowAnonymous();
         group.MapGet ("/verify-email",         VerifyEmail).AllowAnonymous();
         group.MapPost("/resend-verification",  ResendVerification).RequireAuthorization("ClientAndAbove");
         group.MapPost("/switch-studio",        SwitchStudio).RequireAuthorization("ClientOnly").RequireRateLimiting("auth");
@@ -106,6 +108,28 @@ public static class AuthEndpoints
         Guid userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         await mediator.Send(new ChangePasswordCommand(userId, body.CurrentPassword, body.NewPassword), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> RequestChangeEmail(
+        RequestChangeEmailRequest body,
+        ClaimsPrincipal           user,
+        ISender                   mediator,
+        CancellationToken         ct)
+    {
+        Guid userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await mediator.Send(new RequestChangeEmailCommand(userId, body.CurrentPassword, body.NewEmail), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ConfirmChangeEmail(
+        Guid              userId,
+        string            newEmail,
+        string            token,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new ConfirmChangeEmailCommand(userId, newEmail, token), ct);
+        return Results.Redirect("/login?email-changed=true");
     }
 
     private static async Task<IResult> VerifyEmail(

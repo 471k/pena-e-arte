@@ -35,11 +35,13 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         services.AddScoped<Microsoft.AspNetCore.Http.IHttpContextAccessor,
                            Microsoft.AspNetCore.Http.HttpContextAccessor>();
         services.AddScoped<Pena_e_Arte.Domain.Interfaces.ICurrentTenant, CurrentTenantService>();
+        services.AddDataProtection();
 
         services.AddIdentityCore<IdentityUser>(options =>
             options.Password.RequireNonAlphanumeric = false)
             .AddRoles<IdentityRole>()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders();
 
         ServiceProvider sp = services.BuildServiceProvider();
 
@@ -351,6 +353,137 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         IReadOnlyList<Guid> tenantIds = await sut.GetTenantIdsAsync(userId, default);
 
         tenantIds.Should().BeEquivalentTo([studioA, studioB]);
+    }
+
+    [Fact]
+    public async Task GenerateChangeEmailTokenAsync_CorrectPassword_ReturnsToken()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string email  = UniqueEmail();
+        Guid   userId = (await CreateAndFetchUserAsync(sut, um, email)).Item2;
+
+        (bool success, string? token, string[] errors, bool emailTaken) =
+            await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", UniqueEmail(), default);
+
+        success.Should().BeTrue();
+        token.Should().NotBeNullOrEmpty();
+        errors.Should().BeEmpty();
+        emailTaken.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GenerateChangeEmailTokenAsync_WrongPassword_ReturnsFalse()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string email  = UniqueEmail();
+        Guid   userId = (await CreateAndFetchUserAsync(sut, um, email)).Item2;
+
+        (bool success, string? token, string[] errors, bool emailTaken) =
+            await sut.GenerateChangeEmailTokenAsync(userId, "WrongPassword!", UniqueEmail(), default);
+
+        success.Should().BeFalse();
+        token.Should().BeNull();
+        errors.Should().NotBeEmpty();
+        emailTaken.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GenerateChangeEmailTokenAsync_NewEmailAlreadyRegistered_ReturnsEmailTaken()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        string otherEmail = UniqueEmail();
+        await sut.CreateUserAsync(otherEmail, "Password1!", "client", Guid.NewGuid());
+        Guid userId = (await CreateAndFetchUserAsync(sut, um, UniqueEmail())).Item2;
+
+        (bool success, _, _, bool emailTaken) =
+            await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", otherEmail, default);
+
+        success.Should().BeFalse();
+        emailTaken.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ConfirmChangeEmailAsync_ValidToken_UpdatesEmailAndUserName()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        (string _, Guid userId) = await CreateAndFetchUserAsync(sut, um, UniqueEmail());
+        string newEmail = UniqueEmail();
+        (_, string? token, _, _) = await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", newEmail, default);
+
+        (bool success, string[] errors, bool tokenInvalid, bool emailTaken) =
+            await sut.ConfirmChangeEmailAsync(userId, newEmail, token!, default);
+
+        success.Should().BeTrue();
+        errors.Should().BeEmpty();
+        tokenInvalid.Should().BeFalse();
+        emailTaken.Should().BeFalse();
+
+        IdentityUser updated = (await um.FindByIdAsync(userId.ToString()))!;
+        updated.Email.Should().Be(newEmail);
+        updated.UserName.Should().Be(newEmail);
+    }
+
+    [Fact]
+    public async Task ConfirmChangeEmailAsync_ValidToken_AllowsLoginWithNewEmail()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        (string _, Guid userId) = await CreateAndFetchUserAsync(sut, um, UniqueEmail());
+        string newEmail = UniqueEmail();
+        (_, string? token, _, _) = await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", newEmail, default);
+        await sut.ConfirmChangeEmailAsync(userId, newEmail, token!, default);
+
+        (bool success, string? loginToken, string? error) = await sut.LoginAsync(newEmail, "Password1!");
+
+        success.Should().BeTrue();
+        loginToken.Should().NotBeNullOrEmpty();
+        error.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ConfirmChangeEmailAsync_BogusToken_ReturnsTokenInvalid()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        (string _, Guid userId) = await CreateAndFetchUserAsync(sut, um, UniqueEmail());
+
+        (bool success, _, bool tokenInvalid, _) =
+            await sut.ConfirmChangeEmailAsync(userId, UniqueEmail(), "not-a-real-token", default);
+
+        success.Should().BeFalse();
+        tokenInvalid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ConfirmChangeEmailAsync_EmailClaimedByAnotherAccountSinceRequest_ReturnsEmailTaken()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService           sut = CreateSut(um);
+        (string _, Guid userId) = await CreateAndFetchUserAsync(sut, um, UniqueEmail());
+        string contestedEmail = UniqueEmail();
+        (_, string? token, _, _) = await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", contestedEmail, default);
+
+        // Someone else registers the same address after the token was issued but before it's confirmed.
+        await sut.CreateUserAsync(contestedEmail, "Password1!", "client", Guid.NewGuid());
+
+        (bool success, _, bool tokenInvalid, bool emailTaken) =
+            await sut.ConfirmChangeEmailAsync(userId, contestedEmail, token!, default);
+
+        success.Should().BeFalse();
+        tokenInvalid.Should().BeFalse();
+        emailTaken.Should().BeTrue();
+    }
+
+    private static async Task<(string Email, Guid UserId)> CreateAndFetchUserAsync(
+        IdentityService sut, UserManager<IdentityUser> um, string email)
+    {
+        await sut.CreateUserAsync(email, "Password1!", "client", Guid.NewGuid());
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
+        return (email, Guid.Parse(user.Id));
     }
 
     private static string UniqueEmail() => $"user-{Guid.NewGuid():N}@test.com";
