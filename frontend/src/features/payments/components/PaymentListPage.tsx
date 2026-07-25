@@ -69,7 +69,7 @@ function PaymentRowSkeleton() {
 }
 
 export function PaymentListPage() {
-  useDocumentMeta({ title: "Payments — Pena e Artë", canonical: "/payments" });
+  useDocumentMeta({ title: "Payments — TattooOS", canonical: "/payments" });
 
   const navigate = useNavigate();
   const [cursor, setCursor]               = useState<string | undefined>(undefined);

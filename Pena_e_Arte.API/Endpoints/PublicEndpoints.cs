@@ -13,7 +13,7 @@ namespace Pena_e_Arte.API.Endpoints;
 
 public static class PublicEndpoints
 {
-    private const string SiteBaseUrl = "https://penaearte.com";
+    private const string SiteBaseUrl = "https://tattooos.co";
 
     public static void MapPublicEndpoints(this IEndpointRouteBuilder app)
     {

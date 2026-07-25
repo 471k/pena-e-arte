@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Pena e Arte — User Manual</title>
+<title>TattooOS — User Manual</title>
 <style>
   :root {
     --bg: #0f0f10;
@@ -294,7 +294,7 @@
 <div id="main">
   <div id="topbar">
     <button id="menu-btn" onclick="toggleSidebar()">☰</button>
-    <span id="page-title">Pena e Arte — Complete User Manual</span>
+    <span id="page-title">TattooOS — Complete User Manual</span>
   </div>
 
   <!-- Role filter -->
@@ -310,7 +310,7 @@
 
   <div id="content">
     <div class="hero">
-      <h1>Pena e Arte — Complete User Manual</h1>
+      <h1>TattooOS — Complete User Manual</h1>
       <p>Everything you need to know about booking, managing, and administering a tattoo studio on the platform. Use the sidebar to jump to any feature, or use the role filter above to see only what applies to you.</p>
     </div>
 
@@ -326,7 +326,7 @@
         <div class="roles">
           <span class="role-chip rc-all">All roles</span>
         </div>
-        <p>Pena e Arte is a multi-tenant SaaS platform for tattoo studios. Each studio is a completely isolated <strong>tenant</strong> — clients, artists, bookings, designs, and payments are never shared between studios. Four roles exist:</p>
+        <p>TattooOS is a multi-tenant SaaS platform for tattoo studios. Each studio is a completely isolated <strong>tenant</strong> — clients, artists, bookings, designs, and payments are never shared between studios. Four roles exist:</p>
 
         <table>
           <tr><th>Role</th><th>Who</th><th>Default landing page</th><th>Capabilities summary</th></tr>
@@ -712,7 +712,7 @@
 
         <div class="card">
           <h4>What the consent form PDF contains</h4>
-          <p>Client name, appointment date, digital signature (as typed), timestamp of signing, and the studio's consent text. If the studio is on a paid plan with branding removal disabled, the Pena e Arte badge appears in the footer.</p>
+          <p>Client name, appointment date, digital signature (as typed), timestamp of signing, and the studio's consent text. If the studio is on a paid plan with branding removal disabled, the TattooOS badge appears in the footer.</p>
         </div>
 
         <h3>For Owners: Viewing Forms</h3>
@@ -924,7 +924,7 @@
         <ol class="steps">
           <li><p>Go to <strong>Clients</strong> → click <strong>Add Client</strong>.</p></li>
           <li><p>Fill in first name, last name, email (required), phone number (optional).</p></li>
-          <li><p>If the person has an existing Pena e Arte account with Portable Profile enabled at another studio, you can optionally import their body map and tattoo history by entering their user ID.</p></li>
+          <li><p>If the person has an existing TattooOS account with Portable Profile enabled at another studio, you can optionally import their body map and tattoo history by entering their user ID.</p></li>
           <li><p>Click <strong>Create client</strong>.</p></li>
         </ol>
 
@@ -965,11 +965,11 @@
         </ol>
 
         <h3>Artist slug (public portfolio URL)</h3>
-        <p>Each artist gets a unique public URL: <code>https://penaearte.com/artist/{slug}</code>. The slug is auto-generated from the display name on creation. The artist (or owner) can edit it <strong>once</strong> after creation. The URL appears on the artist's public portfolio page and is indexed by search engines.</p>
+        <p>Each artist gets a unique public URL: <code>https://tattooos.co/artist/{slug}</code>. The slug is auto-generated from the display name on creation. The artist (or owner) can edit it <strong>once</strong> after creation. The URL appears on the artist's public portfolio page and is indexed by search engines.</p>
 
         <div class="example">
           <div class="ex-label">Example</div>
-          <p>Owner Margarida adds artist "Tiago Ferreira". His auto-generated slug is <code>tiago-ferreira</code>. His public page is <code>https://penaearte.com/artist/tiago-ferreira</code> and shows his bio and portfolio photos. Tiago can later change it to <code>tiago-tattoo</code> once.</p>
+          <p>Owner Margarida adds artist "Tiago Ferreira". His auto-generated slug is <code>tiago-ferreira</code>. His public page is <code>https://tattooos.co/artist/tiago-ferreira</code> and shows his bio and portfolio photos. Tiago can later change it to <code>tiago-tattoo</code> once.</p>
         </div>
       </div>
     </div>
@@ -1183,10 +1183,10 @@
         </ul>
 
         <h3>Studio Slug (Vanity URL)</h3>
-        <p>Your studio gets a permanent public URL: <code>https://penaearte.com/s/{slug}</code>. The slug is auto-generated from your studio name on registration. You can edit it <strong>once</strong> after creation. Choose carefully — changing it breaks any shared links to your old URL.</p>
+        <p>Your studio gets a permanent public URL: <code>https://tattooos.co/s/{slug}</code>. The slug is auto-generated from your studio name on registration. You can edit it <strong>once</strong> after creation. Choose carefully — changing it breaks any shared links to your old URL.</p>
 
         <h3>Platform Branding</h3>
-        <p>By default, a small "Powered by Pena e Arte" badge appears in booking widget footers, email footers, and PDF consent forms. This is configurable:</p>
+        <p>By default, a small "Powered by TattooOS" badge appears in booking widget footers, email footers, and PDF consent forms. This is configurable:</p>
         <ul>
           <li>If your subscription plan includes branding removal: toggle <strong>Show Platform Branding</strong> off to remove all badges.</li>
           <li>If your plan does not include branding removal: the toggle is disabled. Upgrade to a paid plan that includes this feature.</li>
@@ -1291,7 +1291,7 @@
           <li><p>Click <strong>Download QR Code</strong>. The file downloads immediately.</p></li>
         </ol>
 
-        <p>The QR code encodes your public portfolio URL: <code>https://penaearte.com/s/{your-slug}</code>. No login is required to scan it — anyone can view your portfolio and find your booking link.</p>
+        <p>The QR code encodes your public portfolio URL: <code>https://tattooos.co/s/{your-slug}</code>. No login is required to scan it — anyone can view your portfolio and find your booking link.</p>
 
         <div class="example">
           <div class="ex-label">Example</div>
@@ -1444,7 +1444,7 @@
           <tr><td>Price (monthly)</td><td>Monthly price in EUR</td></tr>
           <tr><td>Price (yearly)</td><td>Yearly price — typically Monthly × 10 (2 months free)</td></tr>
           <tr><td>Yearly discount %</td><td>Displayed to studios on the subscribe page (default: 17%)</td></tr>
-          <tr><td>Allow Branding Removal</td><td>Toggle — if true, studios on this plan can disable the Pena e Arte badge</td></tr>
+          <tr><td>Allow Branding Removal</td><td>Toggle — if true, studios on this plan can disable the TattooOS badge</td></tr>
         </table>
 
         <h3>Creating a plan</h3>
@@ -1569,7 +1569,7 @@
         <p>Every active studio and every artist gets a public portfolio page with a permanent, SEO-friendly URL. No login is needed to view them.</p>
 
         <h3>Studio portfolio</h3>
-        <p>URL: <code>https://penaearte.com/s/{studio-slug}</code></p>
+        <p>URL: <code>https://tattooos.co/s/{studio-slug}</code></p>
         <ul>
           <li>Studio name, bio, city</li>
           <li>List of artists with links to their individual portfolios</li>
@@ -1578,7 +1578,7 @@
         </ul>
 
         <h3>Artist portfolio</h3>
-        <p>URL: <code>https://penaearte.com/artist/{artist-slug}</code></p>
+        <p>URL: <code>https://tattooos.co/artist/{artist-slug}</code></p>
         <ul>
           <li>Artist name, bio, specialties</li>
           <li>Portfolio gallery (approved design images)</li>
@@ -1586,7 +1586,7 @@
         </ul>
 
         <h3>Design share page</h3>
-        <p>URL: <code>https://penaearte.com/share/{token}</code></p>
+        <p>URL: <code>https://tattooos.co/share/{token}</code></p>
         <p>Time-limited, revocable. Shows only the design image and title — no client or studio identifiers. Useful for clients sharing designs for feedback before approving.</p>
 
         <div class="callout callout-info">

@@ -78,7 +78,7 @@ public class GenerateReferralCodeHandler(
     internal static ReferralCodeResponse Map(ReferralCode r) => new(
         r.Id,
         r.Code,
-        $"https://penaearte.com/register?ref={r.Code}",
+        $"https://tattooos.co/register?ref={r.Code}",
         r.IsActive,
         r.IsSingleUse,
         r.CreatedAt,

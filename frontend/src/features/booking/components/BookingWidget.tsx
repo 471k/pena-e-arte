@@ -14,12 +14,12 @@ export function BookingWidget({ children }: BookingWidgetProps) {
       {studio?.showPlatformBranding && (
         <footer className="py-3 text-center text-xs text-muted-foreground border-t">
           <a
-            href="https://penaearte.com"
+            href="https://tattooos.co"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:underline"
           >
-            Powered by Pena e Artë
+            Powered by TattooOS
           </a>
         </footer>
       )}

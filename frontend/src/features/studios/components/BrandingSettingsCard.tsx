@@ -46,7 +46,7 @@ export function BrandingSettingsCard() {
         >
           <div className="space-y-0.5">
             <p className="text-sm font-medium">
-              Show "Powered by Pena e Artë" on booking widget
+              Show "Powered by TattooOS" on booking widget
             </p>
             <p className="text-xs text-muted-foreground">
               Displayed in the booking widget footer for your clients.

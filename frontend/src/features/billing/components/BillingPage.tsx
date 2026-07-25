@@ -138,7 +138,7 @@ function BillingPageSkeleton() {
 }
 
 export function BillingPage() {
-  useDocumentMeta({ title: "Billing — Pena e Artë", canonical: "/billing" });
+  useDocumentMeta({ title: "Billing — TattooOS", canonical: "/billing" });
 
   const navigate = useNavigate();
   // Always refetch on mount — subscription/plan can change out of band (webhooks,
@@ -257,7 +257,7 @@ export function BillingPage() {
                   subscription below remains active, but your studio is not accessible to
                   clients until the suspension is lifted. Contact{" "}
                   <a
-                    href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "support@penaearte.com"}`}
+                    href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "support@tattooos.co"}`}
                     className="font-medium underline underline-offset-4"
                   >
                     support
@@ -483,7 +483,7 @@ export function BillingPage() {
               <p className="text-xs text-muted-foreground">
                 Prefer to keep paying cash?{" "}
                 <a
-                  href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "contact@penaearte.com"}`}
+                  href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "contact@tattooos.co"}`}
                   className="font-medium underline underline-offset-4"
                 >
                   Contact us

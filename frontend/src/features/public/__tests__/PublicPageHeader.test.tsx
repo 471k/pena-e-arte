@@ -43,7 +43,7 @@ describe("PublicPageHeader", () => {
   describe("logged-out state", () => {
     it("renders the brand mark with link to /discover", () => {
       renderHeader(null);
-      const brand = screen.getByRole("link", { name: /pena e artë.*discover/i });
+      const brand = screen.getByRole("link", { name: /tattooos.*discover/i });
       expect(brand).toHaveAttribute("href", "/discover");
     });
 

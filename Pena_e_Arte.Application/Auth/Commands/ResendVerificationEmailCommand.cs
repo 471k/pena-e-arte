@@ -29,7 +29,7 @@ public class ResendVerificationEmailHandler(
             string body            = emailRenderer.RenderEmailVerification(confirmationUrl);
 
             await notifications.SendEmailAsync(
-                email, "Confirm your Pena e Artë account", body, ct);
+                email, "Confirm your TattooOS account", body, ct);
         }
         catch (Exception ex)
         {

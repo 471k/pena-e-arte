@@ -57,7 +57,7 @@ function ConsentFormRow({ form }: { form: ConsentFormResponse }) {
 }
 
 export function ConsentFormListPage() {
-  useDocumentMeta({ title: "Consent Forms — Pena e Artë", canonical: "/forms/consent" });
+  useDocumentMeta({ title: "Consent Forms — TattooOS", canonical: "/forms/consent" });
 
   const navigate = useNavigate();
   const role = useAppSelector((s) => s.auth.role);

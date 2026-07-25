@@ -20,7 +20,7 @@ public class GetAppointmentIcsHandler(IAppDbContext db)
         string dtStart  = appt.Date.ToString("yyyyMMddTHHmmssZ");
         string dtEnd    = appt.EndDate.ToString("yyyyMMddTHHmmssZ");
         string dtStamp  = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ");
-        string uid      = $"{appt.Id}@pena-e-arte";
+        string uid      = $"{appt.Id}@tattooos.co";
         string summary  = $"Tattoo appointment";
         string artist   = appt.Artist is not null
             ? $" with {appt.Artist.FirstName} {appt.Artist.LastName}".Trim()
@@ -29,7 +29,7 @@ public class GetAppointmentIcsHandler(IAppDbContext db)
         return $"""
 BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Pena e Arte//Appointment//EN
+PRODID:-//TattooOS//Appointment//EN
 BEGIN:VEVENT
 UID:{uid}
 DTSTAMP:{dtStamp}

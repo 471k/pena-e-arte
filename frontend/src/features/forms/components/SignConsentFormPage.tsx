@@ -28,7 +28,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function SignConsentFormPage() {
-  useDocumentMeta({ title: "Sign Consent Form — Pena e Artë", canonical: "/forms/consent/new" });
+  useDocumentMeta({ title: "Sign Consent Form — TattooOS", canonical: "/forms/consent/new" });
 
   const navigate = useNavigate();
   const user = useCurrentUser();

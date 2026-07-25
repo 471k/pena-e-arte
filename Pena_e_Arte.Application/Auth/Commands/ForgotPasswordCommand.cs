@@ -33,7 +33,7 @@ public class ForgotPasswordHandler(
                                $"?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
             string body = emailRenderer.RenderPasswordReset(resetUrl);
 
-            await notifications.SendEmailAsync(email, "Reset your Pena e Artë password", body, ct);
+            await notifications.SendEmailAsync(email, "Reset your TattooOS password", body, ct);
         }
         catch (Exception ex)
         {

@@ -97,14 +97,14 @@ public class ConsentFormPdfService : IConsentFormPdfService
 
                     // ── Footer note ──────────────────────────────────────────
                     col.Item().PaddingTop(8).Text(
-                        "This document was generated automatically by Pena e Artë Studio Platform " +
+                        "This document was generated automatically by TattooOS Studio Platform " +
                         "and is a legally binding digital consent record.")
                         .FontSize(8).FontColor("#aaaaaa").Italic();
 
                     // SP-03: show "Generated via" line only when studio has branding enabled.
                     if (d.ShowPlatformBranding)
                     {
-                        col.Item().AlignRight().Text("Generated via Pena e Artë · penaearte.com")
+                        col.Item().AlignRight().Text("Generated via TattooOS · tattooos.co")
                             .FontSize(8).FontColor("#bbbbbb").Italic();
                     }
                 });

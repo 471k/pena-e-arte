@@ -97,7 +97,7 @@ describe("ArtistPortfolioPage", () => {
   it("sets canonical link to /artist/{slug}, matching the router path", () => {
     renderPage();
     const canonical = document.head.querySelector('link[rel="canonical"]');
-    expect(canonical?.getAttribute("href")).toBe("https://penaearte.com/artist/maria-silva");
+    expect(canonical?.getAttribute("href")).toBe("https://tattooos.co/artist/maria-silva");
   });
 
   it("injects JSON-LD structured data with Person schema for the artist", () => {
@@ -107,7 +107,7 @@ describe("ArtistPortfolioPage", () => {
     const json = JSON.parse(script!.textContent ?? "{}");
     expect(json["@type"]).toBe("Person");
     expect(json.name).toBe("Maria Silva");
-    expect(json.url).toBe("https://penaearte.com/artist/maria-silva");
+    expect(json.url).toBe("https://tattooos.co/artist/maria-silva");
   });
 
   it("renders monogram avatar when profileImageUrl is null", () => {
@@ -283,7 +283,7 @@ describe("ArtistPortfolioPage", () => {
 
     it("renders brand mark link to /discover", () => {
       renderPage();
-      expect(screen.getByRole("link", { name: /pena e artë.*discover/i })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /tattooos.*discover/i })).toBeInTheDocument();
     });
 
     it("header is present in the loading skeleton", () => {

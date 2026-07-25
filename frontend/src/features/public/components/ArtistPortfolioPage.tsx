@@ -36,10 +36,10 @@ function ArtistMeta({
   name: string; slug: string; bio: string | null; coverImage?: string;
 }) {
   useDocumentMeta({
-    title:       `${name} — Tattoo Artist on Pena e Artë`,
+    title:       `${name} — Tattoo Artist on TattooOS`,
     description: bio ?? `View the tattoo portfolio of ${name}.`,
     ogImage:     coverImage,
-    canonical:   `https://penaearte.com/artist/${slug}`,
+    canonical:   `https://tattooos.co/artist/${slug}`,
   });
   useStructuredData({
     "@context":  "https://schema.org",
@@ -48,7 +48,7 @@ function ArtistMeta({
     name,
     description: bio ?? undefined,
     image:       coverImage,
-    url:         `https://penaearte.com/artist/${slug}`,
+    url:         `https://tattooos.co/artist/${slug}`,
   });
   return null;
 }
@@ -668,12 +668,12 @@ export function ArtistPortfolioPage() {
 
       <footer className="py-4 text-center text-xs text-foreground/50 border-t mt-auto">
         <a
-          href="https://penaearte.com"
+          href="https://tattooos.co"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-foreground/80 hover:underline transition-colors"
         >
-          Powered by Pena e Artë
+          Powered by TattooOS
         </a>
       </footer>
 

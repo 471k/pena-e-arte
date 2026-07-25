@@ -29,7 +29,7 @@ Read docs/claude/architecture.md and docs/claude/backend.md and docs/claude/fron
 Branch: feat/sp-01-platform-branding
 
 ### What to build
-Add a "Powered by Pena e Artë" branding system that appears on all client-facing
+Add a "Powered by TattooOS" branding system that appears on all client-facing
 touchpoints for studios on the free tier, and can be removed by studios on paid plans.
 
 ### Backend changes
@@ -63,14 +63,14 @@ touchpoints for studios on the free tier, and can be removed by studios on paid 
 
 7. Features — owner settings page:
    In `features/studios/components/`, add `BrandingSettingsCard.tsx`.
-   Shows a toggle "Show 'Powered by Pena e Artë' on booking widget".
+   Shows a toggle "Show 'Powered by TattooOS' on booking widget".
    If `!plan.allowBrandingRemoval`: toggle is disabled with tooltip "Upgrade to remove branding".
    Uses `useUpdateStudioBrandingMutation` from `studiosApi.ts`.
 
 8. Booking widget footer:
    In `features/booking/components/BookingWidget.tsx`, read `studio.showPlatformBranding`
    from the RTK Query studio response. If true, render:
-   `<footer class="..."><a href="https://penaearte.com" target="_blank">Powered by Pena e Artë</a></footer>`
+   `<footer class="..."><a href="https://tattooos.co" target="_blank">Powered by TattooOS</a></footer>`
    Tailwind only. No inline styles.
 
 ### Email template
@@ -157,9 +157,9 @@ No authentication required. No tenant filter.
    `/artist/:slug` → `<ArtistPortfolioPage />` — no RoleGuard, no layout wrapper.
 
 10. SEO meta tags in each page component (React Helmet or equivalent):
-    `<title>{studio.name} — Book a Tattoo on Pena e Artë</title>`
+    `<title>{studio.name} — Book a Tattoo on TattooOS</title>`
     Open Graph: og:title, og:description, og:image (coverImageUrl).
-    Canonical: `https://penaearte.com/s/{slug}`.
+    Canonical: `https://tattooos.co/s/{slug}`.
 
 11. "Book here" CTA button at the top of both pages.
     Links to the studio's booking flow (if client is logged in) or to /login?redirect=...
@@ -190,14 +190,14 @@ Feature 01 (platform branding flag) must be merged before starting this.
 Branch: feat/sp-03-confirmation-branding
 
 ### What to build
-Inject the "Booked via Pena e Artë" badge into appointment confirmation emails
+Inject the "Booked via TattooOS" badge into appointment confirmation emails
 and into the PDF consent/confirmation documents, controlled by Studio.ShowPlatformBranding.
 
 ### Backend changes
 
 1. Email template — `Infrastructure/Services/MailKit/Templates/AppointmentConfirmation.html`:
    At the very bottom of the body, inside a `<table>` footer row, add:
-   `{{#if show_branding}}<tr><td style="text-align:center;padding:16px 0;font-size:12px;color:#999;">Booked via <a href="https://penaearte.com" style="color:#999;">Pena e Artë</a></td></tr>{{/if}}`
+   `{{#if show_branding}}<tr><td style="text-align:center;padding:16px 0;font-size:12px;color:#999;">Booked via <a href="https://tattooos.co" style="color:#999;">TattooOS</a></td></tr>{{/if}}`
    (Use the template engine already in use — do not introduce a new one.)
 
 2. Application — `SendAppointmentConfirmationCommand` handler (or wherever the
@@ -207,7 +207,7 @@ and into the PDF consent/confirmation documents, controlled by Studio.ShowPlatfo
 
 3. PDF generation (if using a PDF service in Infrastructure/Services/):
    In the PDF footer rendering method, check `studio.ShowPlatformBranding`.
-   If true, append a 8px footer line: "Generated via Pena e Artë · penaearte.com"
+   If true, append a 8px footer line: "Generated via TattooOS · tattooos.co"
    in light gray, right-aligned.
    This is the ONLY change to the PDF service — do not touch other templates.
 
@@ -295,7 +295,7 @@ get a discount month. The referring studio gets tracked.
     Shows current code (or "Generate code" button if none).
     Shows redemption stats below.
     Copy-to-clipboard button for the referral signup URL:
-    `https://penaearte.com/register?ref={code}`
+    `https://tattooos.co/register?ref={code}`
 
 11. Registration page: if `?ref=CODE` query param present, store in Redux auth slice
     (`pendingReferralCode: string | null`) so it survives the multi-step registration flow.
@@ -380,7 +380,7 @@ explicit IgnoreQueryFilters() usage — the third documented exception.
 7. In `features/clients/components/`, add `PortableProfileToggle.tsx`:
    Switch component in client's own profile settings.
    Explains what opting in shares (body map locations, tattoo history, no contact info).
-   Shows a warning: "Any artist on Pena e Artë will be able to view your tattoo history."
+   Shows a warning: "Any artist on TattooOS will be able to view your tattoo history."
    Uses `useUpdatePortableProfileOptInMutation`.
 
 8. In `features/clients/components/ClientDetailPanel.tsx` (artist-facing):
@@ -454,7 +454,7 @@ The link works without authentication, expires in 30 days, and is revocable.
    Never include: studioId, artistId, userId, tenantId, clientId.
 
 5. Response DTO `DesignShareTokenResponse`: token, shareUrl, expiresAt.
-   shareUrl = `https://penaearte.com/share/{token}`.
+   shareUrl = `https://tattooos.co/share/{token}`.
 
 ### API changes
 

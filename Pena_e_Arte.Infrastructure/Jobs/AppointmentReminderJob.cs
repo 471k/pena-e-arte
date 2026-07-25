@@ -123,7 +123,7 @@ public class AppointmentReminderJob(
           {(appointment.Notes is not null ? $"<p>Notes: {WebUtility.HtmlEncode(appointment.Notes)}</p>" : string.Empty)}
           <p>If you need to reschedule, please contact us as soon as possible.</p>
           <hr/>
-          <p style="font-size:0.85em;color:#666">Pena e Arte — Your Tattoo Studio</p>
+          <p style="font-size:0.85em;color:#666">TattooOS — Your Tattoo Studio</p>
         </body>
         </html>
         """;

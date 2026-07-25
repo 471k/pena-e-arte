@@ -95,7 +95,7 @@ public class SendAppointmentCancellationHandler(
           <p>has been cancelled.</p>
           <p>If you have any questions or would like to rebook, please contact us.</p>
           <hr/>
-          <p style="font-size:0.85em;color:#666">Pena e Arte &mdash; Your Tattoo Studio</p>
+          <p style="font-size:0.85em;color:#666">TattooOS &mdash; Your Tattoo Studio</p>
         </body>
         </html>
         """;

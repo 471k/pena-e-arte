@@ -71,7 +71,7 @@ public class GetAppointmentIcsHandlerTests
 
         string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(apptId), default);
 
-        ics.Should().Contain($"UID:{apptId}@pena-e-arte");
+        ics.Should().Contain($"UID:{apptId}@tattooos.co");
     }
 
     [Fact]

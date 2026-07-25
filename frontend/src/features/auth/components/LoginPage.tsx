@@ -28,7 +28,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
   useDocumentMeta({
-    title:       "Sign in — Pena e Artë",
+    title:       "Sign in — TattooOS",
     description: "Sign in to manage your tattoo studio appointments, clients, and more.",
     canonical:   `${window.location.origin}/login`,
   });
@@ -125,7 +125,7 @@ export function LoginPage() {
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center gap-2">
               <PenLine className="h-8 w-8" aria-hidden="true" />
-              <span className="text-2xl font-semibold tracking-tight">Pena e Arte</span>
+              <span className="text-2xl font-semibold tracking-tight">TattooOS</span>
             </div>
             <p className="text-sm text-foreground/80">
               Run your studio. Book clients. Manage your team.
@@ -256,7 +256,7 @@ export function LoginPage() {
               Terms of Service
             </a>
             <span aria-hidden="true" className="text-border select-none">·</span>
-            <a href="mailto:support@penaearte.com" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+            <a href="mailto:support@tattooos.co" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
               Contact support
             </a>
           </div>

@@ -16,7 +16,7 @@ public class NotificationService(
     {
         EmailMessage message = new()
         {
-            From     = $"{configuration["Resend:FromName"] ?? "Pena e Arte"} <{configuration["Resend:FromAddress"]}>",
+            From     = $"{configuration["Resend:FromName"] ?? "TattooOS"} <{configuration["Resend:FromAddress"]}>",
             Subject  = subject,
             HtmlBody = body,
         };

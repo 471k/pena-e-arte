@@ -93,7 +93,7 @@ public class RegisterUserHandler(
 
             await notifications.SendEmailAsync(
                 req.Email,
-                "Confirm your Pena e Artë account",
+                "Confirm your TattooOS account",
                 body, ct);
         }
         catch (Exception ex)

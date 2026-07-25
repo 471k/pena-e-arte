@@ -37,7 +37,7 @@ export function CookieConsentBanner() {
         <Cookie className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
         <p className="text-xs text-muted-foreground">
           We use essential cookies to keep you signed in and remember your preferences.
-          By continuing to use Pena e Artë, you agree to this.
+          By continuing to use TattooOS, you agree to this.
         </p>
       </div>
       <Button size="sm" onClick={accept} className="shrink-0 self-end sm:self-auto">

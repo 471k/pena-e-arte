@@ -101,7 +101,7 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
 }
 
 export function DepositCheckoutPage() {
-  useDocumentMeta({ title: "Deposit Payment — Pena e Artë", canonical: "/pay" });
+  useDocumentMeta({ title: "Deposit Payment — TattooOS", canonical: "/pay" });
 
   const { paymentId }  = useParams<{ paymentId: string }>();
   const navigate        = useNavigate();

@@ -127,12 +127,12 @@ export function EmbedPage() {
 
       <footer className="px-4 py-3 border-t text-center">
         <a
-          href="https://penaearte.com"
+          href="https://tattooos.co"
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-muted-foreground hover:underline"
         >
-          Powered by Pena e Artë
+          Powered by TattooOS
         </a>
       </footer>
     </div>

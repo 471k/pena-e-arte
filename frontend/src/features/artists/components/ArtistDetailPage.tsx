@@ -94,8 +94,8 @@ export function ArtistDetailPage() {
 
   useDocumentMeta({
     title: artist
-      ? `${artist.firstName} ${artist.lastName} — Artists — Pena e Artë`
-      : "Artists — Pena e Artë",
+      ? `${artist.firstName} ${artist.lastName} — Artists — TattooOS`
+      : "Artists — TattooOS",
     canonical: `/artists/${id ?? ""}`,
   });
 

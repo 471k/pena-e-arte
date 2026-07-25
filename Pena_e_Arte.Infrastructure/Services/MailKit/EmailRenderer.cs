@@ -208,7 +208,7 @@ public class EmailRenderer : IEmailRenderer
         bool   showBranding)
     {
         string branding = showBranding
-            ? "<p style=\"text-align:center;font-size:12px;color:#9ca3af\">Powered by Pena e Artë</p>"
+            ? "<p style=\"text-align:center;font-size:12px;color:#9ca3af\">Powered by TattooOS</p>"
             : "";
 
         return $"""
@@ -241,7 +241,7 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>Confirm your email</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Confirm your Pena e Artë account</h1>
+          <h1 style="color:#7c3aed">Confirm your TattooOS account</h1>
           <p>Click the button below to verify your email address:</p>
           <a href="{System.Net.WebUtility.HtmlEncode(confirmationUrl)}"
              style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none">
@@ -260,7 +260,7 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>You've been invited to {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Welcome to Pena e Artë</h1>
+          <h1 style="color:#7c3aed">Welcome to TattooOS</h1>
           <p>Hi {System.Net.WebUtility.HtmlEncode(artistFirstName)},</p>
           <p>You've been added as an artist at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>.
           Click the button below to set your password and activate your account.</p>
@@ -282,7 +282,7 @@ public class EmailRenderer : IEmailRenderer
         <head><meta charset="utf-8"><title>Reset your password</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
           <h1 style="color:#7c3aed">Reset your password</h1>
-          <p>We received a request to reset your Pena e Artë password. Click the button below to choose a new one.</p>
+          <p>We received a request to reset your TattooOS password. Click the button below to choose a new one.</p>
           <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}"
              style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Reset password

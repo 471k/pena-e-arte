@@ -280,7 +280,7 @@ export function DesignDetailPage() {
   const { data: client } = useGetClientByIdQuery(design?.clientId ?? "", { skip: !design?.clientId });
 
   useDocumentMeta({
-    title:     design ? `${design.title} — Designs — Pena e Artë` : "Designs — Pena e Artë",
+    title:     design ? `${design.title} — Designs — TattooOS` : "Designs — TattooOS",
     canonical: `/designs/${designId ?? ""}`,
   });
 

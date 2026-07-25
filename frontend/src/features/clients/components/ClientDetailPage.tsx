@@ -408,7 +408,7 @@ export function ClientDetailPage() {
             {portableProfile && (
               <TabsContent value="cross-studio" className="mt-4 space-y-4">
                 <p className="text-xs text-muted-foreground">
-                  Tattoo history shared by this client from other studios on Pena e Artë.
+                  Tattoo history shared by this client from other studios on TattooOS.
                 </p>
                 {portableProfile.tattooHistory.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">

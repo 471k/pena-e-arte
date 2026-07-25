@@ -89,7 +89,7 @@ function IntakeFormRow({ form }: { form: IntakeFormResponse }) {
 }
 
 export function IntakeFormListPage() {
-  useDocumentMeta({ title: "Intake Forms — Pena e Artë", canonical: "/forms/intake" });
+  useDocumentMeta({ title: "Intake Forms — TattooOS", canonical: "/forms/intake" });
 
   const navigate = useNavigate();
   const role = useAppSelector((s) => s.auth.role);

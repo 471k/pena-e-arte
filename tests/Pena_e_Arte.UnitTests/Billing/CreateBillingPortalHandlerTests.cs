@@ -27,7 +27,7 @@ public class CreateBillingPortalHandlerTests
     public async Task Handle_ReturnsPortalUrl_WhenSubscriptionHasStripeCustomerId()
     {
         const string customerId = "cus_test_123";
-        const string returnUrl  = "https://app.penaearte.com/billing";
+        const string returnUrl  = "https://app.tattooos.co/billing";
         const string portalUrl  = "https://billing.stripe.com/session/test_abc";
 
         await SeedSubscription(stripeCustomerId: customerId);

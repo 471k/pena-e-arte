@@ -30,7 +30,7 @@ public class GenerateReferralCodeHandlerTests
         result.Code.Should().MatchRegex("^[A-Z0-9]{8}$");
         result.IsActive.Should().BeTrue();
         result.ShareUrl.Should().Contain(result.Code);
-        result.ShareUrl.Should().StartWith("https://penaearte.com/register?ref=");
+        result.ShareUrl.Should().StartWith("https://tattooos.co/register?ref=");
     }
 
     [Fact]

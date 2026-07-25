@@ -47,7 +47,7 @@ function isSameDay(a: Date, b: Date): boolean {
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function SchedulePage() {
-  useDocumentMeta({ title: "Schedule — Pena e Artë", canonical: "/schedule" });
+  useDocumentMeta({ title: "Schedule — TattooOS", canonical: "/schedule" });
 
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
 

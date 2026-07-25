@@ -11,7 +11,7 @@ export function BrandMark() {
   return (
     <Link
       to="/discover"
-      aria-label="Pena e Artë — Discover studios"
+      aria-label="TattooOS — Discover studios"
       className="flex items-center gap-2 focus-visible:outline-none
                  focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
                  rounded-sm"
@@ -31,7 +31,7 @@ export function BrandMark() {
         <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
         <line x1="8" y1="9" x2="16" y2="9" />
       </svg>
-      <span className="font-semibold tracking-tight text-sm">Pena e Artë</span>
+      <span className="font-semibold tracking-tight text-sm">TattooOS</span>
     </Link>
   );
 }

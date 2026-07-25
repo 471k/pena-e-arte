@@ -148,7 +148,7 @@ function FeedbackCard({ report }: FeedbackCardProps) {
 }
 
 export function FeedbackInboxPage() {
-  useDocumentMeta({ title: "Feedback Inbox — Pena e Artë", canonical: "/platform/feedback" });
+  useDocumentMeta({ title: "Feedback Inbox — TattooOS", canonical: "/platform/feedback" });
 
   const [typeFilter, setTypeFilter]     = useState<(typeof TYPE_FILTERS)[number]>("all");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("all");

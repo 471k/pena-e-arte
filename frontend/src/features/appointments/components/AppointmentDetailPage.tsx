@@ -78,7 +78,7 @@ function AppointmentDetailSkeleton() {
 }
 
 export function AppointmentDetailPage() {
-  useDocumentMeta({ title: "Appointment — Pena e Artë", canonical: "/appointments" });
+  useDocumentMeta({ title: "Appointment — TattooOS", canonical: "/appointments" });
 
   const { id }       = useParams<{ id: string }>();
   const navigate     = useNavigate();

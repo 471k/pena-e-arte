@@ -88,7 +88,7 @@ afterEach(() => { server.resetHandlers(); cleanup(); });
 describe("ClientLayout", () => {
   it("renders the brand name", () => {
     renderLayout();
-    expect(screen.getByText("Pena e Artë")).toBeInTheDocument();
+    expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
   it("renders all five client nav links", () => {

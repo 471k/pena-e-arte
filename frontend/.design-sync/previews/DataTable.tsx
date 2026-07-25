@@ -1,4 +1,4 @@
-import { DataTable } from 'pena-e-arte-ui';
+import { DataTable } from 'tattoos-ui';
 
 type Client = { id: string; name: string; email: string; role: string };
 

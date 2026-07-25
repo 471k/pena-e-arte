@@ -131,7 +131,7 @@ function renderLayout(overrides: StoreOverrides = {}, initialPath = "/dashboard"
 describe("OwnerLayout", () => {
   it("renders the brand name", () => {
     renderLayout();
-    expect(screen.getByText("Pena e Artë")).toBeInTheDocument();
+    expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
   it("renders all eight owner nav links", () => {

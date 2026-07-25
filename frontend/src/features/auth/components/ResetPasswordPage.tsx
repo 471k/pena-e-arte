@@ -96,7 +96,7 @@ export function ResetPasswordPage() {
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-2">
             <PenLine className="h-8 w-8" />
-            <span className="text-2xl font-semibold tracking-tight">Pena e Arte</span>
+            <span className="text-2xl font-semibold tracking-tight">TattooOS</span>
           </div>
         </div>
 

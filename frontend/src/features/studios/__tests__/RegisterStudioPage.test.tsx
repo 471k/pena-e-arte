@@ -164,7 +164,7 @@ describe("RegisterStudioPage — step 1", () => {
 
     await user.type(screen.getByLabelText(/studio name/i), "My Studio");
 
-    expect(screen.getByText(/penaearte\.com\//i)).toBeInTheDocument();
+    expect(screen.getByText(/tattooos\.co\//i)).toBeInTheDocument();
   });
 
   it("shows validation errors when Next is clicked with no data", async () => {

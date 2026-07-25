@@ -44,7 +44,7 @@ public class AppointmentConfirmationBrandingTests
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await CreateSut(db).Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
 
-        capturedBody.Should().Contain("penaearte.com");
+        capturedBody.Should().Contain("tattooos.co");
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class AppointmentConfirmationBrandingTests
         await CreateSut(db).Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
 
         capturedBody.Should().NotBeNullOrEmpty();
-        capturedBody.Should().NotContain("penaearte.com");
+        capturedBody.Should().NotContain("tattooos.co");
     }
 
     [Fact]

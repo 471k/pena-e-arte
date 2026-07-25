@@ -1,11 +1,11 @@
-# Pena e Arte UI — Design Conventions
+# TattooOS UI — Design Conventions
 
 ## Wrapping and setup
 
-No provider or context wrapper is required. Components render standalone with Tailwind CSS v4 utility classes and CSS custom properties defined in `styles.css`. Import everything from `'pena-e-arte-ui'`:
+No provider or context wrapper is required. Components render standalone with Tailwind CSS v4 utility classes and CSS custom properties defined in `styles.css`. Import everything from `'tattoos-ui'`:
 
 ```tsx
-import { Button, Card, CardHeader, CardContent } from 'pena-e-arte-ui';
+import { Button, Card, CardHeader, CardContent } from 'tattoos-ui';
 ```
 
 Dark mode responds automatically to `@media (prefers-color-scheme: dark)` — no class toggle needed.
@@ -48,7 +48,7 @@ Several components are compound and must be composed with their sub-parts:
 ## Idiomatic build snippet
 
 ```tsx
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from 'pena-e-arte-ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from 'tattoos-ui';
 
 export function AppointmentCard() {
   return (

@@ -237,7 +237,7 @@ describe("DiscoverPage", () => {
 
   it("footer renders copyright notice", () => {
     renderPage();
-    expect(screen.getByText(/© \d{4} Pena e Artë/i)).toBeInTheDocument();
+    expect(screen.getByText(/© \d{4} TattooOS/i)).toBeInTheDocument();
   });
 
   it("footer renders Map link for unauthenticated users", () => {

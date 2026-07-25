@@ -589,12 +589,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: "owner-branding",
     roles: [Owner],
-    title: "Turn off \"Powered by Pena e Artë\" branding",
+    title: "Turn off \"Powered by TattooOS\" branding",
     keywords: ["remove branding", "white label"],
-    summary: "This toggle controls whether the \"Powered by Pena e Artë\" credit is shown on your public booking widget.",
+    summary: "This toggle controls whether the \"Powered by TattooOS\" credit is shown on your public booking widget.",
     steps: [
       "Go to Studio Settings and scroll to \"Platform branding\".",
-      "Switch the toggle to turn \"Powered by Pena e Artë\" on or off in your booking widget footer.",
+      "Switch the toggle to turn \"Powered by TattooOS\" on or off in your booking widget footer.",
     ],
     tips: ["Removing the branding may require upgrading your plan — if your plan doesn't allow it, the toggle will be disabled with an upgrade note."],
   },
@@ -1002,7 +1002,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     id: "faq-branding-removal",
     roles: [Owner],
-    question: "Can I remove the \"Powered by Pena e Artë\" footer?",
+    question: "Can I remove the \"Powered by TattooOS\" footer?",
     answer: "Yes, from Studio Settings under \"Platform branding\" — though on some plans this may require upgrading first.",
     relatedArticleIds: ["owner-branding"],
   },

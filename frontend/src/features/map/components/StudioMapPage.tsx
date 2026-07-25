@@ -27,7 +27,7 @@ export function StudioMapPage() {
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background shrink-0 z-[1000]">
         <div className="flex items-center gap-2">
           <PenLine className="h-5 w-5" />
-          <span className="font-semibold tracking-tight">Pena e Arte</span>
+          <span className="font-semibold tracking-tight">TattooOS</span>
         </div>
         <nav className="flex items-center gap-3">
           <Link

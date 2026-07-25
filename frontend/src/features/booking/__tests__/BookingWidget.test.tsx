@@ -54,20 +54,20 @@ describe("BookingWidget", () => {
     expect(screen.getByTestId("booking-form")).toBeInTheDocument();
   });
 
-  it("renders 'Powered by Pena e Artë' footer when showPlatformBranding is true", () => {
+  it("renders 'Powered by TattooOS' footer when showPlatformBranding is true", () => {
     renderWidget(true);
-    expect(screen.getByText(/powered by pena e art/i)).toBeInTheDocument();
+    expect(screen.getByText(/powered by tattooos/i)).toBeInTheDocument();
   });
 
   it("does NOT render branding footer when showPlatformBranding is false", () => {
     renderWidget(false);
-    expect(screen.queryByText(/powered by pena e art/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/powered by tattooos/i)).not.toBeInTheDocument();
   });
 
-  it("branding footer links to https://penaearte.com", () => {
+  it("branding footer links to https://tattooos.co", () => {
     renderWidget(true);
-    const link = screen.getByRole("link", { name: /powered by pena e art/i });
-    expect(link).toHaveAttribute("href", "https://penaearte.com");
+    const link = screen.getByRole("link", { name: /powered by tattooos/i });
+    expect(link).toHaveAttribute("href", "https://tattooos.co");
   });
 
   it("shows loading state while studio data is fetching", () => {
@@ -81,6 +81,6 @@ describe("BookingWidget", () => {
     );
     // children still render; no branding footer since data is undefined
     expect(screen.getByTestId("content")).toBeInTheDocument();
-    expect(screen.queryByText(/powered by pena e art/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/powered by tattooos/i)).not.toBeInTheDocument();
   });
 });

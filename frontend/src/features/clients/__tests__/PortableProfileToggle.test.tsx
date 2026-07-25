@@ -61,12 +61,12 @@ describe("PortableProfileToggle", () => {
 
   it("does not show the warning banner when opted out", () => {
     renderToggle(false);
-    expect(screen.queryByText(/any artist on pena e art.* will be able to view/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/any artist on tattooos.* will be able to view/i)).not.toBeInTheDocument();
   });
 
   it("shows the warning banner when opted in", () => {
     renderToggle(true);
-    expect(screen.getByText(/any artist on pena e art.* will be able to view/i)).toBeInTheDocument();
+    expect(screen.getByText(/any artist on tattooos.* will be able to view/i)).toBeInTheDocument();
   });
 
   it("clicking the toggle when off switches to 'On' and shows the warning banner", async () => {
@@ -74,7 +74,7 @@ describe("PortableProfileToggle", () => {
     renderToggle(false);
     await user.click(screen.getByRole("button", { name: "Off" }));
     expect(await screen.findByRole("button", { name: "On" })).toBeInTheDocument();
-    expect(screen.getByText(/any artist on pena e art.* will be able to view/i)).toBeInTheDocument();
+    expect(screen.getByText(/any artist on tattooos.* will be able to view/i)).toBeInTheDocument();
   });
 
   it("clicking the toggle when on switches to 'Off'", async () => {

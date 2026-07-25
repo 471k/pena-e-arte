@@ -79,7 +79,7 @@ function validateSlug(value: string): string | null {
 }
 
 export function StudioProfilePage() {
-  useDocumentMeta({ title: "Studio Settings — Pena e Artë", canonical: "/studios/me" });
+  useDocumentMeta({ title: "Studio Settings — TattooOS", canonical: "/studios/me" });
 
   const { data: studio, isLoading } = useGetMyStudioQuery();
   const [updateStudio, { isLoading: saving, isSuccess }] = useUpdateMyStudioMutation();

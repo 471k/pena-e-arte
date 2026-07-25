@@ -136,7 +136,7 @@ function RefundSection({ paymentId }: { paymentId: string }) {
 }
 
 export function PaymentDetailPage() {
-  useDocumentMeta({ title: "Payment — Pena e Artë", canonical: "/payments" });
+  useDocumentMeta({ title: "Payment — TattooOS", canonical: "/payments" });
 
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate          = useNavigate();

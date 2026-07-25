@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback } from 'pena-e-arte-ui';
+import { Avatar, AvatarFallback } from 'tattoos-ui';
 
 export function WithFallback() {
   return (

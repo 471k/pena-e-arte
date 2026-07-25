@@ -71,7 +71,7 @@ function NotificationRow({
 }
 
 export function NotificationLogListPage() {
-  useDocumentMeta({ title: "Notifications — Pena e Artë", canonical: "/notifications" });
+  useDocumentMeta({ title: "Notifications — TattooOS", canonical: "/notifications" });
 
   const dispatch = useAppDispatch();
   const [channel, setChannel]       = useState<"Email" | "Sms" | "">("");

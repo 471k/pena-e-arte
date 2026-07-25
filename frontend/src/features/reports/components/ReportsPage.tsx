@@ -10,7 +10,7 @@ function formatCurrency(value: number): string {
 }
 
 export function ReportsPage() {
-  useDocumentMeta({ title: "Reports — Pena e Artë", canonical: "/reports" });
+  useDocumentMeta({ title: "Reports — TattooOS", canonical: "/reports" });
 
   const { data, isLoading, isError, refetch } = useGetRevenueSummaryQuery();
 

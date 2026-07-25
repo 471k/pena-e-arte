@@ -49,7 +49,7 @@ export function ArtistLayout() {
       <PlanLimitBanner />
       <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
         <PenLine className="h-5 w-5" />
-        <span className="font-semibold tracking-tight">Pena e Artë</span>
+        <span className="font-semibold tracking-tight">TattooOS</span>
 
         <nav className="ml-6 flex items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
           {STATIC_NAV.map(({ label, href, icon, tourId }) => (

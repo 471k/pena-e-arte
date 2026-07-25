@@ -34,7 +34,7 @@ public class CreateDesignShareTokenHandlerTests
             .Handle(new CreateDesignShareTokenCommand(revisionId), default);
 
         result.Token.Should().HaveLength(32);
-        result.ShareUrl.Should().StartWith("https://penaearte.com/share/");
+        result.ShareUrl.Should().StartWith("https://tattooos.co/share/");
         result.ExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(30), TimeSpan.FromSeconds(10));
     }
 

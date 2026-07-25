@@ -34,7 +34,7 @@ export function SuspensionBanner({ studio, role = "owner" }: SuspensionBannerPro
           <>
             {" "}
             <a
-              href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "support@penaearte.com"}`}
+              href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "support@tattooos.co"}`}
               className="font-medium underline underline-offset-4"
             >
               Contact support

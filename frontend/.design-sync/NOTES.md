@@ -1,4 +1,4 @@
-# Design Sync Notes — Pena e Arte
+# Design Sync Notes — TattooOS
 
 ## Re-sync command
 

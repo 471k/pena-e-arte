@@ -1093,7 +1093,7 @@ New NuGet dependency: QRCoder (pre-approved — see Decisions Log)
 
 Endpoint (no auth — public download):
   GET /api/v1/studios/{studioId}/qr?format=png|svg
-  Returns QR code pointing to: https://penaearte.com/s/{studio.Slug}
+  Returns QR code pointing to: https://tattooos.co/s/{studio.Slug}
   Content-Type: image/png or image/svg+xml
 
 Frontend:
@@ -1686,7 +1686,7 @@ integration tests green. Frontend: 1260/1260 green (tsc clean, `pnpm build` clea
 
 **Frontend:**
 
-- `ArtistPortfolioPage.tsx` → canonical URL was `https://penaearte.com/a/${slug}`, but
+- `ArtistPortfolioPage.tsx` → canonical URL was `https://tattooos.co/a/${slug}`, but
   the router serves this page at `/artist/:slug` — the canonical tag pointed at a
   route that doesn't exist. Fixed to `/artist/${slug}`; regression test added
 - `SharedDesignPage.tsx` → missing `useDocumentMeta` (document title never set to the

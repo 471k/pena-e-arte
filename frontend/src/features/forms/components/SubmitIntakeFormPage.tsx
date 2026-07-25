@@ -29,7 +29,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function SubmitIntakeFormPage() {
-  useDocumentMeta({ title: "Submit Intake Form — Pena e Artë", canonical: "/forms/intake/new" });
+  useDocumentMeta({ title: "Submit Intake Form — TattooOS", canonical: "/forms/intake/new" });
 
   const navigate = useNavigate();
   const user = useCurrentUser();

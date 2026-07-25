@@ -10,7 +10,7 @@ public class QrCodeServiceTests
     [Fact]
     public void GeneratePng_ValidUrl_ReturnsNonEmptyByteArray()
     {
-        byte[] result = _sut.GeneratePng("https://penaearte.com/s/test-studio");
+        byte[] result = _sut.GeneratePng("https://tattooos.co/s/test-studio");
 
         result.Should().NotBeNullOrEmpty();
     }
@@ -18,7 +18,7 @@ public class QrCodeServiceTests
     [Fact]
     public void GeneratePng_ContainsPngSignature()
     {
-        byte[] result = _sut.GeneratePng("https://penaearte.com/s/test-studio");
+        byte[] result = _sut.GeneratePng("https://tattooos.co/s/test-studio");
 
         // PNG files start with the 8-byte signature: 137 80 78 71 13 10 26 10
         result[0].Should().Be(137);
@@ -30,7 +30,7 @@ public class QrCodeServiceTests
     [Fact]
     public void GenerateSvg_ValidUrl_ReturnsNonEmptyString()
     {
-        string result = _sut.GenerateSvg("https://penaearte.com/s/test-studio");
+        string result = _sut.GenerateSvg("https://tattooos.co/s/test-studio");
 
         result.Should().NotBeNullOrWhiteSpace();
     }
@@ -38,7 +38,7 @@ public class QrCodeServiceTests
     [Fact]
     public void GenerateSvg_ContainsSvgElement()
     {
-        string result = _sut.GenerateSvg("https://penaearte.com/s/test-studio");
+        string result = _sut.GenerateSvg("https://tattooos.co/s/test-studio");
 
         result.Should().Contain("<svg");
     }
@@ -46,8 +46,8 @@ public class QrCodeServiceTests
     [Fact]
     public void GeneratePng_CustomPixelSize_ReturnsDifferentSizeThanDefault()
     {
-        byte[] smallPng  = _sut.GeneratePng("https://penaearte.com/s/test", pixelSize: 5);
-        byte[] largePng  = _sut.GeneratePng("https://penaearte.com/s/test", pixelSize: 40);
+        byte[] smallPng  = _sut.GeneratePng("https://tattooos.co/s/test", pixelSize: 5);
+        byte[] largePng  = _sut.GeneratePng("https://tattooos.co/s/test", pixelSize: 40);
 
         largePng.Length.Should().BeGreaterThan(smallPng.Length);
     }

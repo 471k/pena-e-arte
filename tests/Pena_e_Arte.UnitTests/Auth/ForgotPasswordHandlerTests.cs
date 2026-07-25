@@ -16,7 +16,7 @@ public class ForgotPasswordHandlerTests
 
     public ForgotPasswordHandlerTests()
     {
-        _appSettings.BaseUrl.Returns("https://penaearte.com");
+        _appSettings.BaseUrl.Returns("https://tattooos.co");
         _emailRenderer.RenderPasswordReset(Arg.Any<string>()).Returns("<html>reset</html>");
     }
 

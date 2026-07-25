@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -256,9 +256,10 @@ describe("LoginPage", () => {
     await screen.findByTestId("artist-home");
   });
 
-  it("renders the Pena e Arte brand mark", () => {
+  it("renders the TattooOS brand mark", () => {
     renderPage();
-    expect(screen.getByText("Pena e Arte")).toBeInTheDocument();
+    const heroSection = screen.getByText(/run your studio\. book clients\. manage your team\./i).parentElement!;
+    expect(within(heroSection).getByText("TattooOS")).toBeInTheDocument();
   });
 
   it("does not render the generic credential subtitle", () => {
@@ -402,7 +403,8 @@ describe("LoginPage", () => {
 
   it("PenLine icon has aria-hidden to suppress screen reader announcement", () => {
     renderPage();
-    expect(screen.getByText("Pena e Arte")).toBeInTheDocument();
+    const heroSection = screen.getByText(/run your studio\. book clients\. manage your team\./i).parentElement!;
+    expect(within(heroSection).getByText("TattooOS")).toBeInTheDocument();
   });
 
   it("honours ?redirect= after successful login instead of going to role home", async () => {

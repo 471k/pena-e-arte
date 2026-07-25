@@ -9,7 +9,7 @@ import { useGetDepositRulesQuery } from "../depositRulesApi";
 import { DepositRuleCard } from "./DepositRuleCard";
 
 export function DepositRuleListPage() {
-  useDocumentMeta({ title: "Deposit Rules — Pena e Artë", canonical: "/deposit-rules" });
+  useDocumentMeta({ title: "Deposit Rules — TattooOS", canonical: "/deposit-rules" });
 
   const navigate = useNavigate();
   const canManage = usePermission(Role.Owner);

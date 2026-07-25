@@ -88,7 +88,7 @@ describe("BrandingSettingsCard", () => {
 
   it("shows the branding description text", async () => {
     renderCard();
-    expect(await screen.findByText(/powered by pena e art/i)).toBeInTheDocument();
+    expect(await screen.findByText(/powered by tattooos/i)).toBeInTheDocument();
   });
 
   it("switch is checked when showPlatformBranding is true", async () => {

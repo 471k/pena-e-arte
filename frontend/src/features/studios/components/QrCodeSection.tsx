@@ -49,12 +49,12 @@ export function QrCodeSection() {
         </p>
 
         <a
-          href={`https://penaearte.com/s/${studio.slug}`}
+          href={`https://tattooos.co/s/${studio.slug}`}
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs font-mono text-muted-foreground hover:text-foreground underline underline-offset-2 break-all"
         >
-          penaearte.com/s/{studio.slug}
+          tattooos.co/s/{studio.slug}
         </a>
 
         <div className="flex flex-col items-center gap-4">

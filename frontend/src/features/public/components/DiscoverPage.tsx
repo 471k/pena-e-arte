@@ -151,9 +151,9 @@ function StudioSkeleton() {
 
 function DiscoverMeta() {
   useDocumentMeta({
-    title:       "Discover Tattoo Art Near You — Pena e Artë",
+    title:       "Discover Tattoo Art Near You — TattooOS",
     description: "Browse tattoo portfolios and studios near your location.",
-    canonical:   "https://penaearte.com/discover",
+    canonical:   "https://tattooos.co/discover",
   });
   return null;
 }
@@ -581,7 +581,7 @@ export function DiscoverPage() {
       <footer className="py-5 border-t border-border/40">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center
                         justify-between gap-3 text-xs text-foreground/65">
-          <span>© {new Date().getFullYear()} Pena e Artë. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} TattooOS. All rights reserved.</span>
           <nav aria-label="Footer links" className="flex items-center gap-4">
             <Link to="/map" className="hover:text-foreground/80 transition-colors">
               Map

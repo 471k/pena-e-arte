@@ -10,7 +10,7 @@ import { BookAppointmentForm } from "./BookAppointmentForm";
 import { MyBookingsSection } from "./MyBookingsSection";
 
 export function BookPage() {
-  useDocumentMeta({ title: "Book — Pena e Artë", canonical: "/book" });
+  useDocumentMeta({ title: "Book — TattooOS", canonical: "/book" });
 
   const user        = useAppSelector((s) => s.auth.user);
   const needsVerify = user != null && user.emailVerified === false;

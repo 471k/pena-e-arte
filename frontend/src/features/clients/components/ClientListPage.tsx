@@ -30,7 +30,7 @@ function ClientRowSkeleton() {
 }
 
 export function ClientListPage() {
-  useDocumentMeta({ title: "Clients — Pena e Artë", canonical: "/clients" });
+  useDocumentMeta({ title: "Clients — TattooOS", canonical: "/clients" });
 
   const navigate  = useNavigate();
   const canCreate = usePermission(Role.Artist);

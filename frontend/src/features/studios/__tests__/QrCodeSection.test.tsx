@@ -132,9 +132,9 @@ describe("QrCodeSection — success state", () => {
   it("displays the booking URL link", async () => {
     renderSection();
     await screen.findByTestId("qr-image");
-    const link = screen.getByRole("link", { name: /penaearte\.com\/s\/ink-soul-studio/i });
+    const link = screen.getByRole("link", { name: /tattooos\.co\/s\/ink-soul-studio/i });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "https://penaearte.com/s/ink-soul-studio");
+    expect(link).toHaveAttribute("href", "https://tattooos.co/s/ink-soul-studio");
   });
 });
 

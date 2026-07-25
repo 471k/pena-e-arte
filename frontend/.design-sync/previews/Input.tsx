@@ -1,4 +1,4 @@
-import { Input } from 'pena-e-arte-ui';
+import { Input } from 'tattoos-ui';
 
 export function Default() {
   return (

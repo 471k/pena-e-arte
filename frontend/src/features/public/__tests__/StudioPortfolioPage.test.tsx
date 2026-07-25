@@ -258,7 +258,7 @@ describe("StudioPortfolioPage", () => {
 
     it("renders brand mark link to /discover", () => {
       renderPage();
-      expect(screen.getByRole("link", { name: /pena e artë.*discover/i })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /tattooos.*discover/i })).toBeInTheDocument();
     });
 
     it("header is present in the loading skeleton", () => {

@@ -264,7 +264,7 @@ export function RegisterStudioPage() {
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center gap-2">
               <PenLine className="h-8 w-8" />
-              <span className="text-2xl font-semibold tracking-tight">Pena e Arte</span>
+              <span className="text-2xl font-semibold tracking-tight">TattooOS</span>
             </div>
             <p className="text-sm text-muted-foreground">Tattoo Studio Management</p>
           </div>
@@ -306,7 +306,7 @@ export function RegisterStudioPage() {
                         aria-invalid={!!errors.slug}
                       />
                       <p className="text-xs text-muted-foreground">
-                        penaearte.com/
+                        tattooos.co/
                         <strong>{slugValue || "your-slug"}</strong>
                       </p>
                       {errors.slug && (

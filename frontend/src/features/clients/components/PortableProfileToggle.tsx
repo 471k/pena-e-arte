@@ -34,13 +34,13 @@ export function PortableProfileToggle({ currentOptIn }: Props) {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          When enabled, any certified Pena e Artë artist can view your tattoo history
+          When enabled, any certified TattooOS artist can view your tattoo history
           before booking a session — no need to explain your existing work every time.
         </p>
 
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground leading-snug">
-            Allow any artist on Pena e Artë to view your tattoo history
+            Allow any artist on TattooOS to view your tattoo history
           </p>
           <Button
             variant={enabled ? "default" : "outline"}
@@ -63,7 +63,7 @@ export function PortableProfileToggle({ currentOptIn }: Props) {
           <div className="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
             <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700 dark:text-amber-300">
-              Any artist on Pena e Artë will be able to view your tattoo history
+              Any artist on TattooOS will be able to view your tattoo history
               (body map locations, tattoo photos, and descriptions). Your contact
               information is never shared.
             </p>

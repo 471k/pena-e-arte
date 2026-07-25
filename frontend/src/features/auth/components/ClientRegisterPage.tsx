@@ -142,7 +142,7 @@ export function ClientRegisterPage() {
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center gap-2">
               <PenLine className="h-8 w-8" aria-hidden="true" />
-              <span className="text-2xl font-semibold tracking-tight">Pena e Artë</span>
+              <span className="text-2xl font-semibold tracking-tight">TattooOS</span>
             </div>
             <p className="text-sm text-foreground/65">
               Create a client account to book appointments.

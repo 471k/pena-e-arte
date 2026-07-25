@@ -36,7 +36,7 @@ function ProfileField({ label, value }: { label: string; value: string | null | 
 }
 
 export function MyProfilePage() {
-  useDocumentMeta({ title: "My Profile — Pena e Artë", canonical: "/clients/me" });
+  useDocumentMeta({ title: "My Profile — TattooOS", canonical: "/clients/me" });
 
   const { data: client, isLoading, isError } = useGetMyClientQuery();
   const { data: profile, isLoading: profileLoading, isError: profileError } = useGetMyClientProfileQuery();

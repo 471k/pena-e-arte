@@ -88,9 +88,9 @@ describe("IssuerLayout", () => {
     expect(screen.getAllByText("Platform Admin")).toHaveLength(1);
   });
 
-  it("does not render the studio brand name 'Pena e Artë'", () => {
+  it("does not render the studio brand name 'TattooOS'", () => {
     renderLayout();
-    expect(screen.queryByText("Pena e Artë")).not.toBeInTheDocument();
+    expect(screen.queryByText("TattooOS")).not.toBeInTheDocument();
   });
 
   it("renders all seven issuer nav links (Notifications moved to bell icon)", () => {

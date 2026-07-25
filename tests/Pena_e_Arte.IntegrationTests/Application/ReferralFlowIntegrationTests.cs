@@ -35,7 +35,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
 
         result.Code.Should().HaveLength(8);
         result.IsActive.Should().BeTrue();
-        result.ShareUrl.Should().Be($"https://penaearte.com/register?ref={result.Code}");
+        result.ShareUrl.Should().Be($"https://tattooos.co/register?ref={result.Code}");
 
         ReferralCode? stored = await db.ReferralCodes
             .FirstOrDefaultAsync(r => r.Id == result.Id);

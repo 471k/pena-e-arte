@@ -189,7 +189,7 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch, onLeave, onNotifi
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function MyStudiosPage() {
-  useDocumentMeta({ title: "My Studios — Pena e Artë", canonical: "/my-studios" });
+  useDocumentMeta({ title: "My Studios — TattooOS", canonical: "/my-studios" });
 
   const dispatch        = useAppDispatch();
   const currentTenantId = useAppSelector((s) => s.auth.tenantId);

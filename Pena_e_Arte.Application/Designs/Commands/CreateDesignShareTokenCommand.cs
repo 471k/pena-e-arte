@@ -53,7 +53,7 @@ public class CreateDesignShareTokenHandler(
             await db.SaveChangesAsync(ct);
         }
 
-        string shareUrl = $"https://penaearte.com/share/{active.Token}";
+        string shareUrl = $"https://tattooos.co/share/{active.Token}";
 
         return new DesignShareTokenResponse(active.Id, active.Token, shareUrl, active.ExpiresAt);
     }

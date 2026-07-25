@@ -30,7 +30,7 @@ function DesignCardSkeleton() {
 }
 
 export function DesignListPage() {
-  useDocumentMeta({ title: "Designs — Pena e Artë", canonical: "/designs" });
+  useDocumentMeta({ title: "Designs — TattooOS", canonical: "/designs" });
 
   const navigate = useNavigate();
   const canCreate = usePermission(Role.Artist);

@@ -242,7 +242,7 @@ export function ConsentFormDetailPage() {
   const navigate  = useNavigate();
 
   useDocumentMeta({
-    title:     "Consent Form — Pena e Artë",
+    title:     "Consent Form — TattooOS",
     canonical: id ? `/forms/consent/${id}` : "/forms/consent",
   });
 

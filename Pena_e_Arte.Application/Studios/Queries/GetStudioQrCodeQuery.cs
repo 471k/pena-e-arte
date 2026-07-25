@@ -26,7 +26,7 @@ public class GetStudioQrCodeValidator : AbstractValidator<GetStudioQrCodeQuery>
 public class GetStudioQrCodeHandler(IAppDbContext db, IQrCodeService qrCode)
     : IRequestHandler<GetStudioQrCodeQuery, QrCodeResponse>
 {
-    private const string BaseUrl = "https://penaearte.com/s/";
+    private const string BaseUrl = "https://tattooos.co/s/";
 
     public async Task<QrCodeResponse> Handle(GetStudioQrCodeQuery query, CancellationToken ct)
     {

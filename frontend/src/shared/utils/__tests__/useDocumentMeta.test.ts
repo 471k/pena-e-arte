@@ -55,10 +55,10 @@ describe("useDocumentMeta", () => {
 
   it("creates canonical link tag", () => {
     renderHook(() =>
-      useDocumentMeta({ title: "T", canonical: "https://penaearte.com/s/test" }),
+      useDocumentMeta({ title: "T", canonical: "https://tattooos.co/s/test" }),
     );
     const link = document.head.querySelector('link[rel="canonical"]');
-    expect(link?.getAttribute("href")).toBe("https://penaearte.com/s/test");
+    expect(link?.getAttribute("href")).toBe("https://tattooos.co/s/test");
     cleanup();
   });
 

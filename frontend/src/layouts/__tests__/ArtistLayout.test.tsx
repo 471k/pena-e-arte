@@ -113,7 +113,7 @@ afterEach(() => { server.resetHandlers(); cleanup(); });
 describe("ArtistLayout", () => {
   it("renders the brand name", () => {
     renderLayout();
-    expect(screen.getByText("Pena e Artë")).toBeInTheDocument();
+    expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
   it("renders the seven static artist nav links", () => {

@@ -91,7 +91,7 @@ function PlanCard({
 }
 
 export function SubscribePage() {
-  useDocumentMeta({ title: "Subscribe — Pena e Artë", canonical: "/billing/subscribe" });
+  useDocumentMeta({ title: "Subscribe — TattooOS", canonical: "/billing/subscribe" });
 
   const navigate = useNavigate();
   const { data: plans = [], isLoading: loadingPlans, isError: plansError } =
@@ -353,7 +353,7 @@ export function SubscribePage() {
             Your trial continues until then.
           </p>
           <a
-            href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "contact@penaearte.com"}`}
+            href={`mailto:${import.meta.env.VITE_CONTACT_EMAIL ?? "contact@tattooos.co"}`}
             className="text-sm font-medium underline underline-offset-4"
           >
             Get in touch

@@ -34,17 +34,17 @@ function StudioMeta({
   city: string; averageRating: number | null; reviewCount: number;
 }) {
   useDocumentMeta({
-    title:       `${name} — Book a Tattoo on Pena e Artë`,
+    title:       `${name} — Book a Tattoo on TattooOS`,
     description: description ?? `Book your next tattoo at ${name}.`,
     ogImage:     coverImageUrl ?? undefined,
-    canonical:   `https://penaearte.com/s/${slug}`,
+    canonical:   `https://tattooos.co/s/${slug}`,
   });
   useStructuredData({
     "@context":    "https://schema.org",
     "@type":       "TattooParlor",
     name,
     description:   description ?? undefined,
-    url:           `https://penaearte.com/s/${slug}`,
+    url:           `https://tattooos.co/s/${slug}`,
     image:         coverImageUrl ?? undefined,
     address:       { "@type": "PostalAddress", addressLocality: city },
     ...(reviewCount > 0
@@ -468,12 +468,12 @@ export function StudioPortfolioPage() {
 
       <footer className="py-4 text-center text-xs text-foreground/50 border-t mt-auto">
         <a
-          href="https://penaearte.com"
+          href="https://tattooos.co"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-foreground/80 hover:underline transition-colors"
         >
-          Powered by Pena e Artë
+          Powered by TattooOS
         </a>
       </footer>
     </div>

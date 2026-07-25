@@ -22,7 +22,7 @@ public class TrialExpiryWarningJob(
             return;
         }
 
-        string subject   = "Your Pena e Arte trial expires in 48 hours";
+        string subject   = "Your TattooOS trial expires in 48 hours";
         string emailBody = BuildEmailBody(studio);
 
         bool success = false;
@@ -66,19 +66,19 @@ public class TrialExpiryWarningJob(
         <body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto">
           <h2 style="color:#c0392b">Your free trial ends in 48 hours</h2>
           <p>Hi {studio.Name} team,</p>
-          <p>Your 14-day free trial of <strong>Pena e Arte</strong> expires on
+          <p>Your 14-day free trial of <strong>TattooOS</strong> expires on
              <strong>{studio.TrialExpiresAt:dddd, dd MMMM yyyy 'at' HH:mm} UTC</strong>.</p>
           <p>After your trial ends you'll have a 7-day read-only grace period before your account
              is suspended. Subscribe now to keep full access and avoid any interruption.</p>
           <p style="margin:2em 0">
-            <a href="https://app.pena-e-arte.com/billing"
+            <a href="https://app.tattooos.co/billing"
                style="background:#1a1a1a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px">
               Choose a plan →
             </a>
           </p>
           <p>Yearly plans save you 2 months — that's ~17% off. 🎉</p>
           <hr/>
-          <p style="font-size:0.85em;color:#666">Pena e Arte — Studio Management Platform</p>
+          <p style="font-size:0.85em;color:#666">TattooOS — Studio Management Platform</p>
         </body>
         </html>
         """;
