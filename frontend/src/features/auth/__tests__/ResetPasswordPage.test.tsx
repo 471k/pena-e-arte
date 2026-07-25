@@ -34,7 +34,7 @@ function renderPage(search = "?email=owner%40test.com&token=tok123") {
     middleware: (gd) => gd().concat(authApi.middleware),
   });
 
-  render(
+  const { container } = render(
     <Provider store={store}>
       <MemoryRouter initialEntries={[`/reset-password${search}`]}>
         <Routes>
@@ -45,7 +45,7 @@ function renderPage(search = "?email=owner%40test.com&token=tok123") {
       </MemoryRouter>
     </Provider>,
   );
-  return store;
+  return { store, container };
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -55,33 +55,34 @@ describe("ResetPasswordPage", () => {
     renderPage();
     expect(screen.getByRole("heading", { name: /reset your password/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^reset token$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/new password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /reset password/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to sign in/i })).toBeInTheDocument();
   });
 
-  it("pre-populates email and token from URL query params, read-only by default", () => {
+  it("never shows a token field — it's carried as a hidden input, not a visible one", () => {
+    const { container } = renderPage("?email=owner%40test.com&token=my-reset-token");
+
+    expect(screen.queryByLabelText(/reset token/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/reset token/i)).not.toBeInTheDocument();
+    const hiddenInput = container.querySelector('input[type="hidden"][name="token"]');
+    expect(hiddenInput).toHaveValue("my-reset-token");
+  });
+
+  it("pre-populates email from URL query params, read-only by default", () => {
     renderPage("?email=owner%40test.com&token=my-reset-token");
 
     const emailInput = screen.getByLabelText<HTMLInputElement>(/^email$/i);
-    const tokenInput = screen.getByLabelText<HTMLInputElement>(/^reset token$/i);
     expect(emailInput.value).toBe("owner@test.com");
-    expect(tokenInput.value).toBe("my-reset-token");
     expect(emailInput).toHaveAttribute("readonly");
-    expect(tokenInput).toHaveAttribute("readonly");
   });
 
-  it("email and token are editable when no params are in the URL", () => {
+  it("email is editable when no params are in the URL, but the form is blocked by the missing token", () => {
     renderPage("?");
 
-    const emailInput = screen.getByLabelText<HTMLInputElement>(/^email$/i);
-    const tokenInput = screen.getByLabelText<HTMLInputElement>(/^reset token$/i);
-    expect(emailInput.value).toBe("");
-    expect(tokenInput.value).toBe("");
-    expect(emailInput).not.toHaveAttribute("readonly");
-    expect(tokenInput).not.toHaveAttribute("readonly");
+    expect(screen.queryByLabelText(/^email$/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/needs a valid reset link/i)).toBeInTheDocument();
   });
 
   it("unlocks the email field for editing via the pencil affordance", async () => {
@@ -97,17 +98,13 @@ describe("ResetPasswordPage", () => {
     expect(emailInput.value).toBe("new@test.com");
   });
 
-  it("unlocks the token field for editing via the pencil affordance and shows a character count", async () => {
-    const user = userEvent.setup();
-    renderPage();
+  it("blocks the form and offers a recovery link when the URL has no token", () => {
+    renderPage("?email=owner%40test.com");
 
-    await user.click(screen.getByRole("button", { name: /change reset token/i }));
-
-    const tokenInput = screen.getByLabelText<HTMLInputElement>(/^reset token$/i);
-    expect(tokenInput).not.toHaveAttribute("readonly");
-    await user.clear(tokenInput);
-    await user.type(tokenInput, "abcdef");
-    expect(await screen.findByText(/6 characters entered/i)).toBeInTheDocument();
+    expect(screen.getByText(/needs a valid reset link/i)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /request a new reset link/i });
+    expect(link).toHaveAttribute("href", "/forgot-password");
+    expect(screen.queryByRole("button", { name: /^reset password$/i })).not.toBeInTheDocument();
   });
 
   it("shows password-min-length error when new password is too short", async () => {

@@ -43,7 +43,12 @@ export function ResetPasswordPage() {
   const prefilledEmail = searchParams.get("email") ?? "";
   const prefilledToken = searchParams.get("token") ?? "";
   const [emailEditable, setEmailEditable] = useState(prefilledEmail === "");
-  const [tokenEditable, setTokenEditable] = useState(prefilledToken === "");
+  // The token is a ~200+ char opaque cryptographic string — no user can meaningfully
+  // read, verify, or hand-type it. It rides silently in the URL and is submitted as a
+  // hidden field, same as every other password-reset flow (Gmail, GitHub, Stripe,
+  // etc.). If it's missing, there's no recovery path except requesting a new link, so
+  // we block the form entirely instead of offering an empty field to fill in.
+  const hasToken = prefilledToken !== "";
 
   const {
     register,
@@ -60,7 +65,6 @@ export function ResetPasswordPage() {
   });
 
   const email       = watch("email");
-  const token       = watch("token");
   const newPassword = watch("newPassword");
   const confirm     = watch("confirm");
 
@@ -109,8 +113,23 @@ export function ResetPasswordPage() {
                 <CheckCircle className="h-8 w-8 text-green-500" />
                 <p className="text-sm">Password reset successfully.</p>
               </div>
+            ) : !hasToken ? (
+              <div className="flex flex-col items-center gap-3 py-4 text-center">
+                <AlertCircle className="h-8 w-8 text-destructive-text" />
+                <p className="text-sm">
+                  This page needs a valid reset link. Check your email, or request a new one.
+                </p>
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium underline underline-offset-4"
+                >
+                  Request a new reset link
+                </Link>
+              </div>
             ) : (
               <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+                <input type="hidden" {...register("token")} />
+
                 <div className="space-y-1.5">
                   <Label htmlFor="email">Email</Label>
                   {emailEditable ? (
@@ -134,44 +153,6 @@ export function ResetPasswordPage() {
                     <FieldHint>This is the email your reset link was sent to.</FieldHint>
                   )}
                   {errors.email && <p className="text-xs text-destructive-text">{errors.email.message}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="token">Reset token</Label>
-                  {tokenEditable ? (
-                    <>
-                      <Input
-                        id="token"
-                        type="text"
-                        autoComplete="off"
-                        className="font-mono"
-                        {...register("token")}
-                        aria-invalid={!!errors.token}
-                      />
-                      <FieldHint>{token.length} character{token.length === 1 ? "" : "s"} entered.</FieldHint>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="token"
-                        type="text"
-                        readOnly
-                        className="font-mono bg-muted cursor-default"
-                        {...register("token")}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="min-h-[44px] min-w-[44px]"
-                        aria-label="Change reset token"
-                        onClick={() => setTokenEditable(true)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                  {errors.token && <p className="text-xs text-destructive-text">{errors.token.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.ValueObjects;
@@ -416,6 +417,20 @@ public static class DataSeeder
         s1a3.SetSlug("sofia-alves");
 
         db.Artists.AddRange(s1a1, s1a2, s1a3);
+
+        // ── Portfolio images ─────────────────────────────────────────────────
+        // Real, resolvable placeholder photos (picsum.photos with fixed seeds, so
+        // the same "image" is returned on every reseed) — not r2.example.com like
+        // the rest of this file's asset URLs, since these specifically back the
+        // public Discover feed grid and need to actually render for it to be
+        // demoable rather than showing the broken-image fallback everywhere.
+        db.PortfolioImages.AddRange(
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Traditional,    ImageUrl = "https://picsum.photos/seed/pena-elena-1/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Japanese,       ImageUrl = "https://picsum.photos/seed/pena-elena-2/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism,        ImageUrl = "https://picsum.photos/seed/pena-marco-1/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism,        ImageUrl = "https://picsum.photos/seed/pena-marco-2/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric,      ImageUrl = "https://picsum.photos/seed/pena-sofia-1/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline,       ImageUrl = "https://picsum.photos/seed/pena-sofia-2/800/1000" });
 
         // ── Clients ───────────────────────────────────────────────────────────
 
@@ -1432,6 +1447,11 @@ public static class DataSeeder
         };
         s2a1.SetSlug("luis-rodrigues");
         db.Artists.Add(s2a1);
+
+        // ── Portfolio images ─────────────────────────────────────────────────
+        db.PortfolioImages.AddRange(
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, ImageUrl = "https://picsum.photos/seed/pena-luis-1/800/1000" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, ImageUrl = "https://picsum.photos/seed/pena-luis-2/800/1000" });
 
         // ── Clients ───────────────────────────────────────────────────────────
 
