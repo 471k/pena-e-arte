@@ -20,7 +20,7 @@ public class RespondToReviewHandlerTests
     {
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Studio", Slug = "ink-studio", City = "Porto", IsActive = true });
-        Review review = Review.ForStudio(studioId, Guid.NewGuid(), "Ana Silva", 5, "Great studio!");
+        Review review = Review.ForStudio(studioId, Guid.NewGuid(), Guid.NewGuid(), "Ana Silva", 5, "Great studio!");
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
         _tenant.StudioId.Returns(studioId);
@@ -41,7 +41,7 @@ public class RespondToReviewHandlerTests
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
 
-        Review review = Review.ForArtist(artist.Id, Guid.NewGuid(), "Ana Silva", 5, "Amazing tattoo!");
+        Review review = Review.ForArtist(artist.Id, Guid.NewGuid(), Guid.NewGuid(), "Ana Silva", 5, "Amazing tattoo!");
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
         _tenant.StudioId.Returns(studioId);
@@ -69,7 +69,7 @@ public class RespondToReviewHandlerTests
         Guid studioId       = Guid.NewGuid();
         Guid otherStudioId  = Guid.NewGuid();
         _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Studio", Slug = "ink-studio", City = "Porto", IsActive = true });
-        Review review = Review.ForStudio(studioId, Guid.NewGuid(), "Ana Silva", 5, "Great studio!");
+        Review review = Review.ForStudio(studioId, Guid.NewGuid(), Guid.NewGuid(), "Ana Silva", 5, "Great studio!");
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
         _tenant.StudioId.Returns(otherStudioId);
@@ -85,7 +85,7 @@ public class RespondToReviewHandlerTests
     {
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Studio", Slug = "ink-studio", City = "Porto", IsActive = true });
-        Review review = Review.ForStudio(studioId, Guid.NewGuid(), "Ana Silva", 5, "Great studio!");
+        Review review = Review.ForStudio(studioId, Guid.NewGuid(), Guid.NewGuid(), "Ana Silva", 5, "Great studio!");
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
         _tenant.StudioId.Returns(studioId);

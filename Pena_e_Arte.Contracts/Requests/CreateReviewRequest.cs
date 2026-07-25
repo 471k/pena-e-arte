@@ -1,3 +1,5 @@
 namespace Pena_e_Arte.Contracts.Requests;
 
-public record CreateReviewRequest(int Rating, string Body);
+// AppointmentId is required for studio/artist reviews (which completed visit this
+// review is for) and unused for portfolio-image reviews.
+public record CreateReviewRequest(int Rating, string Body, Guid? AppointmentId = null);

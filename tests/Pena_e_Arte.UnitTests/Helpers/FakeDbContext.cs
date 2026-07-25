@@ -91,6 +91,12 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasForeignKey(r => r.PortfolioImageId)
             .IsRequired(false);
 
+        modelBuilder.Entity<Review>()
+            .HasOne<Appointment>()
+            .WithMany()
+            .HasForeignKey(r => r.AppointmentId)
+            .IsRequired(false);
+
         modelBuilder.Entity<SavedPortfolioImage>()
             .HasOne(s => s.PortfolioImage)
             .WithMany()

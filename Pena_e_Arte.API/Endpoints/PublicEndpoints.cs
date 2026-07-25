@@ -31,6 +31,10 @@ public static class PublicEndpoints
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
         group.MapPost("/artists/{slug}/reviews", CreateArtistReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
+        group.MapGet("/studios/{slug}/reviews/eligible-appointments", GetReviewableStudioAppointments)
+             .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-read");
+        group.MapGet("/artists/{slug}/reviews/eligible-appointments", GetReviewableArtistAppointments)
+             .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-read");
         group.MapPost("/artists/{slug}/view",    RecordArtistView)
              .AllowAnonymous().RequireRateLimiting("public-write");
         group.MapGet ("/portfolio/feed",                GetPortfolioFeed).AllowAnonymous().RequireRateLimiting("public-read");
@@ -134,7 +138,9 @@ public static class PublicEndpoints
                          ?? "Anonymous";
 
         await mediator.Send(
-            new CreateStudioReviewCommand(slug, authorId, authorName, body.Rating, body.Body), ct);
+            new CreateStudioReviewCommand(
+                slug, body.AppointmentId ?? Guid.Empty, authorId, authorName, body.Rating, body.Body),
+            ct);
         return Results.NoContent();
     }
 
@@ -151,8 +157,34 @@ public static class PublicEndpoints
                          ?? "Anonymous";
 
         await mediator.Send(
-            new CreateArtistReviewCommand(slug, authorId, authorName, body.Rating, body.Body), ct);
+            new CreateArtistReviewCommand(
+                slug, body.AppointmentId ?? Guid.Empty, authorId, authorName, body.Rating, body.Body),
+            ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetReviewableStudioAppointments(
+        string            slug,
+        ClaimsPrincipal   user,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        Guid authorId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        List<ReviewableAppointmentResponse> result =
+            await mediator.Send(new GetReviewableStudioAppointmentsQuery(slug, authorId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetReviewableArtistAppointments(
+        string            slug,
+        ClaimsPrincipal   user,
+        ISender           mediator,
+        CancellationToken ct)
+    {
+        Guid authorId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        List<ReviewableAppointmentResponse> result =
+            await mediator.Send(new GetReviewableArtistAppointmentsQuery(slug, authorId), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> RecordArtistView(

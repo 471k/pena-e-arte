@@ -111,9 +111,16 @@ export interface NearbyStudiosArgs {
 }
 
 export interface CreateReviewArgs {
-  slug:   string;
-  rating: number;
-  body:   string;
+  slug:          string;
+  appointmentId: string;
+  rating:        number;
+  body:          string;
+}
+
+export interface ReviewableAppointmentResponse {
+  id:              string;
+  date:            string;
+  durationMinutes: number;
 }
 
 export interface ArtistInstagramPostResponse {
@@ -202,19 +209,30 @@ export const publicApi = createApi({
       query: (slug) => `artists/${slug}/reviews`,
       providesTags: (_result, _err, slug) => [{ type: "ArtistReviews", id: slug }],
     }),
+    // Which of the caller's completed appointments at this studio/artist don't yet
+    // have a review — powers the "which visit are you reviewing?" picker. Shares the
+    // StudioReviews/ArtistReviews tag so submitting a review refreshes both lists.
+    getReviewableStudioAppointments: builder.query<ReviewableAppointmentResponse[], string>({
+      query: (slug) => `studios/${slug}/reviews/eligible-appointments`,
+      providesTags: (_result, _err, slug) => [{ type: "StudioReviews", id: slug }],
+    }),
+    getReviewableArtistAppointments: builder.query<ReviewableAppointmentResponse[], string>({
+      query: (slug) => `artists/${slug}/reviews/eligible-appointments`,
+      providesTags: (_result, _err, slug) => [{ type: "ArtistReviews", id: slug }],
+    }),
     createStudioReview: builder.mutation<void, CreateReviewArgs>({
-      query: ({ slug, rating, body }) => ({
+      query: ({ slug, appointmentId, rating, body }) => ({
         url:    `studios/${slug}/reviews`,
         method: "POST",
-        body:   { rating, body },
+        body:   { appointmentId, rating, body },
       }),
       invalidatesTags: (_result, _err, { slug }) => [{ type: "StudioReviews", id: slug }],
     }),
     createArtistReview: builder.mutation<void, CreateReviewArgs>({
-      query: ({ slug, rating, body }) => ({
+      query: ({ slug, appointmentId, rating, body }) => ({
         url:    `artists/${slug}/reviews`,
         method: "POST",
-        body:   { rating, body },
+        body:   { appointmentId, rating, body },
       }),
       invalidatesTags: (_result, _err, { slug }) => [{ type: "ArtistReviews", id: slug }],
     }),
@@ -245,6 +263,8 @@ export const {
   useRecordArtistViewMutation,
   useGetStudioReviewsQuery,
   useGetArtistReviewsQuery,
+  useGetReviewableStudioAppointmentsQuery,
+  useGetReviewableArtistAppointmentsQuery,
   useCreateStudioReviewMutation,
   useCreateArtistReviewMutation,
   useGetPortfolioImageReviewsQuery,

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
 import { ReviewSection } from "@/features/public/components/ReviewSection";
-import type { ReviewResponse } from "@/features/public/publicApi";
+import type { ReviewResponse, ReviewableAppointmentResponse } from "@/features/public/publicApi";
 import { toast } from "sonner";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
@@ -16,10 +16,19 @@ const mockRespondToReview            = vi.fn();
 
 const mockArtistReviewsResult = { data: [] as ReviewResponse[], isLoading: false };
 
+// Defaults to a single eligible visit so most tests exercise the form directly,
+// without needing to interact with the "which visit?" picker.
+const ELIGIBLE_APPOINTMENT: ReviewableAppointmentResponse =
+  { id: "appt-1", date: "2026-05-01T00:00:00Z", durationMinutes: 60 };
+const mockReviewableAppointmentsResult =
+  { data: [ELIGIBLE_APPOINTMENT] as ReviewableAppointmentResponse[], isLoading: false };
+
 vi.mock("@/features/public/publicApi", () => ({
-  useGetArtistReviewsQuery:               () => mockArtistReviewsResult,
-  useGetStudioReviewsQuery:               () => ({ data: [] as ReviewResponse[], isLoading: false }),
-  useGetPortfolioImageReviewsQuery:       () => ({ data: [] as ReviewResponse[], isLoading: false }),
+  useGetArtistReviewsQuery:                () => mockArtistReviewsResult,
+  useGetStudioReviewsQuery:                () => ({ data: [] as ReviewResponse[], isLoading: false }),
+  useGetPortfolioImageReviewsQuery:        () => ({ data: [] as ReviewResponse[], isLoading: false }),
+  useGetReviewableStudioAppointmentsQuery: () => mockReviewableAppointmentsResult,
+  useGetReviewableArtistAppointmentsQuery: () => mockReviewableAppointmentsResult,
   useCreateArtistReviewMutation:         () => [mockCreateArtistReview,         { isLoading: false }],
   useCreateStudioReviewMutation:         () => [mockCreateStudioReview,         { isLoading: false }],
   useCreatePortfolioImageReviewMutation: () => [mockCreatePortfolioImageReview, { isLoading: false }],
@@ -52,6 +61,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockArtistReviewsResult.data = [];
   mockArtistReviewsResult.isLoading = false;
+  mockReviewableAppointmentsResult.data = [ELIGIBLE_APPOINTMENT];
+  mockReviewableAppointmentsResult.isLoading = false;
 });
 
 describe("ReviewSection — heading", () => {
@@ -240,6 +251,88 @@ describe("ReviewSection — form DOM order", () => {
       el.textContent?.includes("Write a review")
     );
     expect(formIdx).toBeGreaterThan(headingIdx);
+  });
+});
+
+describe("ReviewSection — appointment eligibility gate", () => {
+  it("shows a loading skeleton while eligibility is being fetched", () => {
+    mockReviewableAppointmentsResult.isLoading = true;
+    mockReviewableAppointmentsResult.data = [];
+    renderSection();
+    expect(screen.queryByRole("textbox", { name: /write a review/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a gated message and no form when there are no eligible appointments", () => {
+    mockReviewableAppointmentsResult.data = [];
+    renderSection();
+    expect(screen.getByText(/completed appointment/i)).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /write a review/i })).not.toBeInTheDocument();
+  });
+
+  it("auto-selects the only eligible appointment without showing a picker", () => {
+    renderSection();
+    expect(screen.getByRole("textbox", { name: /write a review/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/which visit are you reviewing/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a picker when there are multiple eligible appointments", () => {
+    mockReviewableAppointmentsResult.data = [
+      { id: "appt-1", date: "2026-05-01T00:00:00Z", durationMinutes: 60 },
+      { id: "appt-2", date: "2026-01-15T00:00:00Z", durationMinutes: 90 },
+    ];
+    renderSection();
+    expect(screen.getByLabelText(/which visit are you reviewing/i)).toBeInTheDocument();
+  });
+
+  it("submits the review with the selected appointmentId", async () => {
+    mockCreateArtistReview.mockReturnValue({ unwrap: () => Promise.resolve() });
+    renderSection();
+
+    const ratingButtons = screen.getAllByRole("radio", { name: /rate \d of 5/i });
+    fireEvent.click(ratingButtons[4]);
+    fireEvent.change(screen.getByRole("textbox", { name: /write a review/i }), {
+      target: { value: "Loved this visit, will come back!" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /post review/i }));
+    });
+
+    expect(mockCreateArtistReview).toHaveBeenCalledWith({
+      slug: "maria-silva",
+      appointmentId: "appt-1",
+      rating: 5,
+      body: "Loved this visit, will come back!",
+    });
+  });
+
+  it("maps a 409 conflict to an already-reviewed message", async () => {
+    mockCreateArtistReview.mockReturnValue({ unwrap: () => Promise.reject({ status: 409 }) });
+    renderSection();
+
+    fireEvent.click(screen.getAllByRole("radio", { name: /rate \d of 5/i })[4]);
+    fireEvent.change(screen.getByRole("textbox", { name: /write a review/i }), {
+      target: { value: "Trying to review twice here" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /post review/i }));
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/already reviewed that visit/i);
+  });
+
+  it("maps a 400 business-rule error to a retry message", async () => {
+    mockCreateArtistReview.mockReturnValue({ unwrap: () => Promise.reject({ status: 400 }) });
+    renderSection();
+
+    fireEvent.click(screen.getAllByRole("radio", { name: /rate \d of 5/i })[4]);
+    fireEvent.change(screen.getByRole("textbox", { name: /write a review/i }), {
+      target: { value: "This visit is somehow no longer valid" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /post review/i }));
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/can no longer be reviewed/i);
   });
 });
 

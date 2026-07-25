@@ -8,6 +8,10 @@ public class Review
     public Guid?    StudioId          { get; private set; }
     public Guid?    ArtistId          { get; private set; }
     public Guid?    PortfolioImageId  { get; private set; }
+    // Which completed appointment earned this review. Required for studio/artist
+    // reviews (eligibility is per-completed-appointment, not a lifetime cap) — null
+    // for portfolio-image reviews, which aren't tied to a specific booking.
+    public Guid?    AppointmentId     { get; private set; }
     public Guid     AuthorUserId      { get; private set; }
     public string   AuthorName        { get; private set; } = "";
     public int      Rating            { get; private set; }
@@ -17,30 +21,32 @@ public class Review
     public DateTime? OwnerResponseAt  { get; private set; }
 
     public static Review ForStudio(
-        Guid studioId, Guid authorUserId, string authorName, int rating, string body)
+        Guid studioId, Guid appointmentId, Guid authorUserId, string authorName, int rating, string body)
     {
         Review review = new()
         {
-            StudioId     = studioId,
-            AuthorUserId = authorUserId,
-            AuthorName   = authorName,
-            Rating       = rating,
-            Body         = body.Trim(),
+            StudioId      = studioId,
+            AppointmentId = appointmentId,
+            AuthorUserId  = authorUserId,
+            AuthorName    = authorName,
+            Rating        = rating,
+            Body          = body.Trim(),
         };
         review.Validate();
         return review;
     }
 
     public static Review ForArtist(
-        Guid artistId, Guid authorUserId, string authorName, int rating, string body)
+        Guid artistId, Guid appointmentId, Guid authorUserId, string authorName, int rating, string body)
     {
         Review review = new()
         {
-            ArtistId     = artistId,
-            AuthorUserId = authorUserId,
-            AuthorName   = authorName,
-            Rating       = rating,
-            Body         = body.Trim(),
+            ArtistId      = artistId,
+            AppointmentId = appointmentId,
+            AuthorUserId  = authorUserId,
+            AuthorName    = authorName,
+            Rating        = rating,
+            Body          = body.Trim(),
         };
         review.Validate();
         return review;

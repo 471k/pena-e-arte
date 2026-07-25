@@ -28,6 +28,8 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     useCreateArtistReviewMutation:         () => [vi.fn(), { isLoading: false }],
     useCreatePortfolioImageReviewMutation: () => [vi.fn(), { isLoading: false }],
     useGetPortfolioImageReviewsQuery:      () => ({ data: [], isLoading: false }),
+    useGetReviewableArtistAppointmentsQuery: () => ({ data: [], isLoading: false }),
+    useGetReviewableStudioAppointmentsQuery: () => ({ data: [], isLoading: false }),
     useRecordArtistViewMutation:           () => [vi.fn(), { isLoading: false }],
     useGetArtistInstagramPostsQuery:       () => ({ data: [], isLoading: false }),
   };

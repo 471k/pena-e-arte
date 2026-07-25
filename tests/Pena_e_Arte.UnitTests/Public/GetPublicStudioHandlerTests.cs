@@ -100,8 +100,8 @@ public class GetPublicStudioHandlerTests
         _db.Studios.Add(studio);
         await _db.SaveChangesAsync();
 
-        _db.Reviews.Add(Review.ForStudio(studio.Id, Guid.NewGuid(), "Alice", 5, "Great!"));
-        _db.Reviews.Add(Review.ForStudio(studio.Id, Guid.NewGuid(), "Bob",   3, "OK."));
+        _db.Reviews.Add(Review.ForStudio(studio.Id, Guid.NewGuid(), Guid.NewGuid(), "Alice", 5, "Great!"));
+        _db.Reviews.Add(Review.ForStudio(studio.Id, Guid.NewGuid(), Guid.NewGuid(), "Bob",   3, "OK."));
         await _db.SaveChangesAsync();
 
         PublicStudioResponse? result =
@@ -122,8 +122,8 @@ public class GetPublicStudioHandlerTests
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
 
-        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), "C", 4, "Nice."));
-        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), "D", 2, "Meh."));
+        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), Guid.NewGuid(), "C", 4, "Nice."));
+        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), Guid.NewGuid(), "D", 2, "Meh."));
         await _db.SaveChangesAsync();
 
         PublicStudioResponse? result =

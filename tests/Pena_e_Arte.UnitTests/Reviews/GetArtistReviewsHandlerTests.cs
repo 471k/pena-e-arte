@@ -28,7 +28,7 @@ public class GetArtistReviewsHandlerTests
     public async Task Projection_includes_owner_response_fields_when_present()
     {
         Artist artist = await SeedArtist();
-        Review review = Review.ForArtist(artist.Id, Guid.NewGuid(), "Ana Silva", 5, "Amazing tattoo!");
+        Review review = Review.ForArtist(artist.Id, Guid.NewGuid(), Guid.NewGuid(), "Ana Silva", 5, "Amazing tattoo!");
         review.Respond("Thanks for coming in!");
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
@@ -44,7 +44,7 @@ public class GetArtistReviewsHandlerTests
     public async Task Projection_has_null_owner_response_when_not_answered()
     {
         Artist artist = await SeedArtist();
-        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), "Ana Silva", 5, "Great session!"));
+        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), Guid.NewGuid(), "Ana Silva", 5, "Great session!"));
         await _db.SaveChangesAsync();
 
         List<ReviewResponse> result = await CreateSut().Handle(

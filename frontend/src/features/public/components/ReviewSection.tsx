@@ -10,6 +10,8 @@ import {
   useGetStudioReviewsQuery,
   useGetArtistReviewsQuery,
   useGetPortfolioImageReviewsQuery,
+  useGetReviewableStudioAppointmentsQuery,
+  useGetReviewableArtistAppointmentsQuery,
   useCreateStudioReviewMutation,
   useCreateArtistReviewMutation,
   useCreatePortfolioImageReviewMutation,
@@ -159,11 +161,29 @@ interface ReviewFormProps {
   imageId?: string;
 }
 
+function formatVisitDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+  });
+}
+
 function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
   const [rating,  setRating]  = useState(0);
   const [body,    setBody]    = useState("");
   const [error,   setError]   = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+
+  // Studio/artist reviews require a completed appointment; portfolio-image reviews don't.
+  const needsAppointment = target === "studio" || target === "artist";
+
+  const { data: studioAppointments, isLoading: loadingStudioEligibility } =
+    useGetReviewableStudioAppointmentsQuery(slug, { skip: !token || target !== "studio" });
+  const { data: artistAppointments, isLoading: loadingArtistEligibility } =
+    useGetReviewableArtistAppointmentsQuery(slug, { skip: !token || target !== "artist" });
+
+  const eligibleAppointments   = target === "studio" ? studioAppointments : artistAppointments;
+  const loadingEligibility     = target === "studio" ? loadingStudioEligibility : loadingArtistEligibility;
 
   const [createStudioReview,         { isLoading: isStudioSubmitting }]  = useCreateStudioReviewMutation();
   const [createArtistReview,         { isLoading: isArtistSubmitting }]  = useCreateArtistReviewMutation();
@@ -181,16 +201,28 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
     return () => window.clearTimeout(id);
   }, [success]);
 
+  // Default to the most recent eligible visit — the list is already ordered
+  // most-recent-first by the backend.
+  useEffect(() => {
+    if (eligibleAppointments && eligibleAppointments.length > 0 && !selectedAppointmentId) {
+      setSelectedAppointmentId(eligibleAppointments[0].id);
+    }
+  }, [eligibleAppointments, selectedAppointmentId]);
+
   function handleSubmit() {
+    if (needsAppointment && !selectedAppointmentId) {
+      setError("Select which visit you're reviewing.");
+      return;
+    }
     if (rating === 0) { setError("Please select a star rating."); return; }
     if (body.trim().length < 10) { setError("Review must be at least 10 characters."); return; }
 
     setError(null);
 
     const promise = target === "studio"
-      ? createStudioReview({ slug, rating, body: body.trim() }).unwrap()
+      ? createStudioReview({ slug, appointmentId: selectedAppointmentId, rating, body: body.trim() }).unwrap()
       : target === "artist"
-      ? createArtistReview({ slug, rating, body: body.trim() }).unwrap()
+      ? createArtistReview({ slug, appointmentId: selectedAppointmentId, rating, body: body.trim() }).unwrap()
       : createPortfolioImageReview({ imageId: imageId ?? "", rating, body: body.trim() }).unwrap();
 
     promise
@@ -198,10 +230,13 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
         setSuccess(true);
         setBody("");
         setRating(0);
+        setSelectedAppointmentId("");
       })
       .catch((err: { status?: number }) => {
         if (err.status === 409) {
-          setError("You have already left a review.");
+          setError("You have already reviewed that visit.");
+        } else if (err.status === 400) {
+          setError("That visit can no longer be reviewed. Please pick another.");
         } else {
           setError("Failed to submit review. Please try again.");
         }
@@ -247,11 +282,48 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
     );
   }
 
+  if (needsAppointment && loadingEligibility) {
+    return <Skeleton className="h-24 w-full rounded-lg" />;
+  }
+
+  if (needsAppointment && (!eligibleAppointments || eligibleAppointments.length === 0)) {
+    return (
+      <div
+        className="rounded-lg border bg-muted/20 px-5 py-6
+                   flex flex-col items-center gap-2 text-center"
+      >
+        <p className="text-sm text-muted-foreground">
+          You can leave a review after a completed appointment
+          {target === "studio" ? " at this studio." : " with this artist."}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
       <label htmlFor="review-body" className="text-sm font-medium">
         Write a review
       </label>
+
+      {needsAppointment && eligibleAppointments && eligibleAppointments.length > 1 && (
+        <div className="space-y-1">
+          <label htmlFor="review-appointment" className="text-xs text-muted-foreground">
+            Which visit are you reviewing?
+          </label>
+          <select
+            id="review-appointment"
+            value={selectedAppointmentId}
+            onChange={(e) => setSelectedAppointmentId(e.target.value)}
+            className="w-full rounded-md border bg-background px-2.5 py-1.5 text-sm
+                       focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {eligibleAppointments.map((a) => (
+              <option key={a.id} value={a.id}>{formatVisitDate(a.date)}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <InteractiveStarRating
         value={rating}
@@ -282,7 +354,7 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
       <Button
         size="sm"
         onClick={handleSubmit}
-        disabled={isSubmitting || rating === 0}
+        disabled={isSubmitting || rating === 0 || (needsAppointment && !selectedAppointmentId)}
         aria-label="Post review"
         className="bg-violet-600 hover:bg-violet-700 text-white
                    disabled:opacity-50 disabled:cursor-not-allowed"

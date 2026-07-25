@@ -142,8 +142,8 @@ public class GetPublicArtistHandlerTests
         (Artist artist, _) = await SeedArtistWithStudioAsync();
         Guid authorId = Guid.NewGuid();
 
-        _db.Reviews.Add(Review.ForArtist(artist.Id, authorId, "Client A", 5, "Great work!"));
-        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), "Client B", 3, "Good session."));
+        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), authorId, "Client A", 5, "Great work!"));
+        _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), Guid.NewGuid(), "Client B", 3, "Good session."));
         await _db.SaveChangesAsync();
 
         PublicArtistResponse? result = await CreateSut().Handle(
