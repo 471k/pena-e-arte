@@ -91,4 +91,28 @@ describe("UserMenu", () => {
     await user.click(screen.getByRole("button", { name: /log out/i }));
     expect(onLogout).toHaveBeenCalledOnce();
   });
+
+  it("links to /account/change-password", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(screen.getByRole("button", { name: /user menu/i }));
+    expect(screen.getByRole("link", { name: /change password/i }))
+      .toHaveAttribute("href", "/account/change-password");
+  });
+
+  it("links to /account/change-email", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(screen.getByRole("button", { name: /user menu/i }));
+    expect(screen.getByRole("link", { name: /change email/i }))
+      .toHaveAttribute("href", "/account/change-email");
+  });
+
+  it("closes menu when Change email is clicked", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(screen.getByRole("button", { name: /user menu/i }));
+    await user.click(screen.getByRole("link", { name: /change email/i }));
+    expect(screen.queryByRole("link", { name: /change email/i })).not.toBeInTheDocument();
+  });
 });
