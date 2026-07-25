@@ -1,15 +1,26 @@
 using FluentAssertions;
 using FluentValidation.Results;
+using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Appointments.Validators;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class CreateAppointmentValidatorTests
 {
-    private readonly CreateAppointmentValidator _sut = new();
+    private const string ValidImageUrl = "https://cdn.example.com/appointments/ref.png";
+
+    private readonly IR2Service               _r2  = Substitute.For<IR2Service>();
+    private readonly CreateAppointmentValidator _sut;
+
+    public CreateAppointmentValidatorTests()
+    {
+        _r2.IsR2Url(ValidImageUrl).Returns(true);
+        _sut = new CreateAppointmentValidator(_r2);
+    }
 
     [Fact]
     public void Validate_ValidCommand_IsValid()
@@ -87,6 +98,41 @@ public class CreateAppointmentValidatorTests
     {
         ValidationResult result = _sut.Validate(ValidCommand() with { Request = ValidRequest() with { Notes = null } });
         result.Errors.Should().NotContain(e => e.PropertyName == "Request.Notes");
+    }
+
+    [Fact]
+    public void Validate_ImageUrlsWithinLimit_IsValid()
+    {
+        ValidationResult result = _sut.Validate(
+            ValidCommand() with { Request = ValidRequest() with { ImageUrls = [ValidImageUrl, ValidImageUrl] } });
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_NullImageUrls_IsValid()
+    {
+        ValidationResult result = _sut.Validate(ValidCommand() with { Request = ValidRequest() with { ImageUrls = null } });
+        result.Errors.Should().NotContain(e => e.PropertyName.StartsWith("Request.ImageUrls"));
+    }
+
+    [Fact]
+    public void Validate_TooManyImageUrls_FailsOnImageUrls()
+    {
+        List<string> urls = Enumerable.Repeat(ValidImageUrl, 7).ToList();
+
+        _sut.ShouldFailOn(
+            ValidCommand() with { Request = ValidRequest() with { ImageUrls = urls } },
+            "Request.ImageUrls");
+    }
+
+    [Fact]
+    public void Validate_ImageUrlNotFromR2_FailsOnImageUrls()
+    {
+        _r2.IsR2Url("https://external.attacker.com/evil.png").Returns(false);
+
+        _sut.ShouldFailOn(
+            ValidCommand() with { Request = ValidRequest() with { ImageUrls = ["https://external.attacker.com/evil.png"] } },
+            "Request.ImageUrls[0]");
     }
 
     private static CreateAppointmentRequest ValidRequest() =>

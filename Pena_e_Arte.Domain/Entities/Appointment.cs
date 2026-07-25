@@ -22,4 +22,8 @@ public class Appointment : TenantEntity
 
     public Artist  Artist  { get; set; } = null!;
     public Client  Client  { get; set; } = null!;
+
+    // Reference images the client attached when requesting the appointment.
+    // Empty (not null) when not eagerly loaded via .Include(a => a.Attachments).
+    public ICollection<AppointmentAttachment> Attachments { get; set; } = new List<AppointmentAttachment>();
 }

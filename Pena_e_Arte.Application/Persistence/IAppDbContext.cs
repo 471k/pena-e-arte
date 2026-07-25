@@ -7,6 +7,7 @@ public interface IAppDbContext
 {
     // Tenant-scoped
     DbSet<Appointment>     Appointments     { get; }
+    DbSet<AppointmentAttachment> AppointmentAttachments { get; }
     DbSet<DepositRule>     DepositRules     { get; }
     DbSet<Client>          Clients          { get; }
     DbSet<ClientProfile>   ClientProfiles   { get; }

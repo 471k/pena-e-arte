@@ -5,4 +5,5 @@ public record CreateAppointmentRequest(
     Guid     ClientId,
     DateTime Date,
     int      DurationMinutes,
-    string?  Notes);
+    string?  Notes,
+    IReadOnlyList<string>? ImageUrls = null);

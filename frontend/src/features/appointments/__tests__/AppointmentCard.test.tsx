@@ -142,4 +142,19 @@ describe("AppointmentCard", () => {
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to confirm appointment."));
     expect(toast.success).not.toHaveBeenCalled();
   });
+
+  it("shows a reference-image count badge when the appointment has attachments", () => {
+    renderCard({ ...APPT_PENDING, imageUrls: ["https://cdn.example.com/1.png", "https://cdn.example.com/2.png"] });
+    expect(screen.getByText("2 reference images")).toBeInTheDocument();
+  });
+
+  it("uses singular 'image' for exactly one attachment", () => {
+    renderCard({ ...APPT_PENDING, imageUrls: ["https://cdn.example.com/1.png"] });
+    expect(screen.getByText("1 reference image")).toBeInTheDocument();
+  });
+
+  it("does NOT show the reference-image badge when there are no attachments", () => {
+    renderCard(APPT_PENDING);
+    expect(screen.queryByText(/reference image/i)).not.toBeInTheDocument();
+  });
 });

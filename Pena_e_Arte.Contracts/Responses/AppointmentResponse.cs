@@ -15,4 +15,5 @@ public record AppointmentResponse(
     DateTime CreatedAt,
     string?  CancellationReason  = null,
     DateTime? AftercareSentAt    = null,
-    string?  ClientName          = null);
+    string?  ClientName          = null,
+    IReadOnlyList<string>? ImageUrls = null);

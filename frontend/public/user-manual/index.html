@@ -896,18 +896,20 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="192" font-size="8" fill-opacity="0.6">✓ Slot available</text>
 <text x="280" y="212" font-size="9" fill-opacity="0.6">Deposit rule</text><rect x="280" y="218" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="250" font-size="9" fill-opacity="0.6">Notes</text><rect x="280" y="256" width="200" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<rect x="280" y="298" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="315" font-size="10" fill="#fff">Request Appointment</text>
+<text x="280" y="298" font-size="9" fill-opacity="0.6">Reference images</text><rect x="280" y="304" width="200" height="40" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3"/><text x="330" y="328" font-size="8" fill-opacity="0.5">Click to add photos (up to 6)</text>
+<rect x="280" y="358" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="375" font-size="10" fill="#fff">Request Appointment</text>
 <text x="280" y="420" font-size="11" font-weight="700">My Bookings</text>
 </svg>
 </figure>
-<figcaption>Book — fields appear in this order: artist, date/time, duration, deposit rule, notes</figcaption>
+<figcaption>Book — fields appear in this order: artist, date/time, duration, deposit rule, notes, reference images</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li>Pick an <span class="step-title">Artist</span> (searchable dropdown).</li>
 <li>Choose a <span class="step-title">Date &amp; time</span> and a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
 <li>If the studio has an active deposit rule, choose it and see the estimated deposit amount.</li>
-<li>Add optional <span class="step-title">Notes</span> (style, size, placement, references).</li>
-<li>Click <span class="step-title">Request Appointment</span>.</li>
+<li>Add optional <span class="step-title">Notes</span> (style, size, placement, skin concerns).</li>
+<li>Optionally attach up to 6 <span class="step-title">Reference images</span> (JPEG, PNG, or WebP) — click the box to pick photos, each uploads immediately and shows a thumbnail with a remove (×) button.</li>
+<li>Click <span class="step-title">Request Appointment</span> (disabled while any image is still uploading).</li>
 <li>If a deposit is required, you're immediately offered <span class="step-title">Card</span> or <span class="step-title">Cash</span> to secure the slot (or you can defer it).</li>
 <li>Your existing bookings are listed below the form.</li>
 <li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it — you'll see whether it's a full refund or a partial/forfeited one before confirming, then click <span class="step-title">Yes, cancel</span>.</li>
@@ -1337,27 +1339,30 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Appointment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, and aftercare status once completed, plus every status-change action.</p>
+<p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, any client-attached reference images, and aftercare status once completed, plus every status-change action.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Appointment detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="11" font-weight="700">‹ Appointment</text>
 <rect x="480" y="12" width="70" height="18" rx="9" fill="#facc15" fill-opacity="0.5"/><text x="490" y="24" font-size="8">Requested</text>
-<rect x="260" y="60" width="240" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<rect x="260" y="60" width="240" height="230" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="272" y="82" font-size="9">Client: Jane Doe</text>
 <text x="272" y="100" font-size="9">Date &amp; time: 12 Jul, 10:00</text>
 <text x="272" y="118" font-size="9">Duration: 60 min</text>
 <text x="272" y="136" font-size="9">Deposit: €50.00</text>
 <text x="272" y="154" font-size="9">Aftercare: pending</text>
-<text x="272" y="200" font-size="8" fill-opacity="0.6">⬇ Add to Calendar (.ics)</text>
-<rect x="260" y="270" width="240" height="26" rx="4" fill="#7c3aed"/><text x="290" y="287" font-size="9" fill="#fff">Confirm appointment</text>
-<rect x="260" y="302" width="240" height="22" rx="4" fill="currentColor" fill-opacity="0.06"/><text x="285" y="317" font-size="9">Cancel appointment</text>
+<text x="272" y="172" font-size="8" fill-opacity="0.6">Reference images:</text>
+<rect x="272" y="178" width="26" height="26" rx="3" fill="currentColor" fill-opacity="0.08"/><rect x="302" y="178" width="26" height="26" rx="3" fill="currentColor" fill-opacity="0.08"/><rect x="332" y="178" width="26" height="26" rx="3" fill="currentColor" fill-opacity="0.08"/>
+<text x="272" y="222" font-size="8" fill-opacity="0.6">⬇ Add to Calendar (.ics)</text>
+<rect x="260" y="300" width="240" height="26" rx="4" fill="#7c3aed"/><text x="290" y="317" font-size="9" fill="#fff">Confirm appointment</text>
+<rect x="260" y="332" width="240" height="22" rx="4" fill="currentColor" fill-opacity="0.06"/><text x="285" y="347" font-size="9">Cancel appointment</text>
 </svg>
 </figure>
 <figcaption>Appointment detail — action buttons change based on current status</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Review client, time, duration, status, and deposit.</li>
+<li>If the client attached reference images when booking, click any thumbnail to open the full-size photo in a new tab.</li>
 <li>Download the <span class="step-title">.ics calendar file</span> if you want it in your own calendar app.</li>
 <li>Depending on status: <span class="step-title">Confirm</span> (from Requested), <span class="step-title">Mark as complete</span> (from Confirmed), <span class="step-title">Charge deposit</span> (owner only, if pending), <span class="step-title">Mark no-show</span>, or <span class="step-title">Cancel</span>.</li>
 </ol>

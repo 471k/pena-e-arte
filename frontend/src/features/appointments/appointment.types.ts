@@ -31,6 +31,7 @@ export interface AppointmentResponse {
   cancellationReason?: string | null;
   aftercareSentAt?:    string | null;
   clientName?:         string | null;
+  imageUrls?:          string[];
 }
 
 export interface CreateAppointmentRequest {
@@ -40,6 +41,7 @@ export interface CreateAppointmentRequest {
   durationMinutes: number;
   depositRuleId:   string | null;
   notes:           string | null;
+  imageUrls?:      string[];
 }
 
 export interface RescheduleAppointmentRequest {

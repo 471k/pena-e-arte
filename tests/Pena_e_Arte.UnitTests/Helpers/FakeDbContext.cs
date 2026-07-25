@@ -8,6 +8,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     : DbContext(options), IAppDbContext
 {
     public DbSet<Appointment>     Appointments     => Set<Appointment>();
+    public DbSet<AppointmentAttachment> AppointmentAttachments => Set<AppointmentAttachment>();
     public DbSet<DepositRule>     DepositRules     => Set<DepositRule>();
     public DbSet<Client>          Clients          => Set<Client>();
     public DbSet<ClientProfile>   ClientProfiles   => Set<ClientProfile>();
@@ -109,6 +110,11 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasMany(r => r.Messages)
             .WithOne()
             .HasForeignKey(m => m.FeedbackReportId);
+
+        modelBuilder.Entity<Appointment>()
+            .HasMany(a => a.Attachments)
+            .WithOne(a => a.Appointment)
+            .HasForeignKey(a => a.AppointmentId);
     }
 
     public static FakeDbContext Create() =>

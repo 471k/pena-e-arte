@@ -26,6 +26,7 @@ public class RescheduleAppointmentHandler(
     public async Task<AppointmentResponse> Handle(RescheduleAppointmentCommand command, CancellationToken ct)
     {
         Domain.Entities.Appointment appointment = await db.Appointments
+            .Include(a => a.Attachments)
             .FirstOrDefaultAsync(a => a.Id == command.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
 

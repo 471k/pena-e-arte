@@ -176,6 +176,29 @@ describe("AppointmentDetailPage", () => {
     expect(await screen.findByText("Full back piece")).toBeInTheDocument();
   });
 
+  it("renders reference images as a thumbnail gallery", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/appt-001", () =>
+        HttpResponse.json({
+          ...APPT_PENDING,
+          imageUrls: ["https://cdn.example.com/1.png", "https://cdn.example.com/2.png"],
+        })),
+    );
+    renderPage("appt-001");
+    expect(await screen.findByText("Reference images")).toBeInTheDocument();
+    const thumbnails = screen.getAllByAltText("Reference image");
+    expect(thumbnails).toHaveLength(2);
+    expect(thumbnails[0]).toHaveAttribute("src", "https://cdn.example.com/1.png");
+    expect(thumbnails[0].closest("a")).toHaveAttribute("href", "https://cdn.example.com/1.png");
+    expect(thumbnails[0].closest("a")).toHaveAttribute("target", "_blank");
+  });
+
+  it("does NOT render the reference images section when there are none", async () => {
+    renderPage("appt-001");
+    await screen.findByText("90 min");
+    expect(screen.queryByText("Reference images")).not.toBeInTheDocument();
+  });
+
   it("renders the appointment status badge", async () => {
     renderPage("appt-001");
     // Badge appears in both the header and the detail row

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -18,6 +18,7 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi } from "@/features/public/publicApi";
 import { authApi } from "@/features/auth/authApi";
+import { filesApi } from "@/shared/api/filesApi";
 
 import { BookPage } from "@/features/appointments/components/BookPage";
 import { BookAppointmentForm } from "@/features/appointments/components/BookAppointmentForm";
@@ -119,6 +120,10 @@ const CREATED_APPT: AppointmentResponse = {
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
+// The presigned upload URL must be resolvable by MSW (i.e., absolute localhost URL).
+const PRESIGN_UPLOAD_URL = "http://localhost/r2-upload";
+const PRESIGN_PUBLIC_URL = "https://cdn.example.com/appointments/pending/ref.png";
+
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me",              () => HttpResponse.json(STUDIO)),
   http.get("http://localhost/api/v1/artists",                 () => HttpResponse.json([ARTIST])),
@@ -131,6 +136,9 @@ const server = setupServer(
   http.delete("http://localhost/api/v1/appointments/:id",     () => new HttpResponse(null, { status: 204 })),
   http.patch("http://localhost/api/v1/appointments/:id/reschedule", () =>
     HttpResponse.json(APPT_UPCOMING)),
+  http.post("http://localhost/api/v1/files/presign", () =>
+    HttpResponse.json({ uploadUrl: PRESIGN_UPLOAD_URL, publicUrl: PRESIGN_PUBLIC_URL })),
+  http.put(PRESIGN_UPLOAD_URL, () => new HttpResponse(null, { status: 200 })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -153,6 +161,7 @@ function makeStore(role: Role = Role.Client) {
       [paymentsApi.reducerPath]:         paymentsApi.reducer,
       [publicApi.reducerPath]:           publicApi.reducer,
       [authApi.reducerPath]:             authApi.reducer,
+      [filesApi.reducerPath]:            filesApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -163,7 +172,8 @@ function makeStore(role: Role = Role.Client) {
         .concat(studiosApi.middleware)
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
-        .concat(authApi.middleware),
+        .concat(authApi.middleware)
+        .concat(filesApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
@@ -207,6 +217,7 @@ function renderFormWithNoTenant() {
       [paymentsApi.reducerPath]:     paymentsApi.reducer,
       [publicApi.reducerPath]:       publicApi.reducer,
       [authApi.reducerPath]:         authApi.reducer,
+      [filesApi.reducerPath]:        filesApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -217,7 +228,8 @@ function renderFormWithNoTenant() {
         .concat(studiosApi.middleware)
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
-        .concat(authApi.middleware),
+        .concat(authApi.middleware)
+        .concat(filesApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null } as any,
@@ -555,6 +567,132 @@ describe("BookAppointmentForm", () => {
     await screen.findByText("Appointment requested!");
     await user.click(screen.getByRole("button", { name: /book another/i }));
     expect(screen.getByRole("button", { name: /request appointment/i })).toBeInTheDocument();
+  });
+});
+
+// ── BookAppointmentForm — reference images ─────────────────────────────────────
+
+function getImageFileInput() {
+  return document.querySelector<HTMLInputElement>("input[type=file]")!;
+}
+
+function makePng(name = "ref.png") {
+  return new File(["img-bytes"], name, { type: "image/png" });
+}
+
+async function fillMinimalValidForm(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByText("Luna Artista");
+  await user.click(screen.getByLabelText("Select artist"));
+  await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+  await user.type(
+    screen.getByLabelText(/date.*time/i),
+    new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
+  );
+}
+
+describe("BookAppointmentForm — reference images", () => {
+  it("renders the reference images dropzone", () => {
+    renderForm();
+    expect(screen.getByText(/reference images/i)).toBeInTheDocument();
+    expect(getImageFileInput()).toBeInTheDocument();
+  });
+
+  it("shows a thumbnail after picking an image", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.upload(getImageFileInput(), makePng());
+    expect(await screen.findByRole("img")).toBeInTheDocument();
+  });
+
+  it("shows an error for an unsupported file type", () => {
+    renderForm();
+    const pdf = new File(["pdf"], "consent.pdf", { type: "application/pdf" });
+    const input = getImageFileInput();
+    Object.defineProperty(input, "files", { value: [pdf], configurable: true });
+    fireEvent.change(input);
+    expect(screen.getByText("Only JPEG, PNG, and WebP images are accepted.")).toBeInTheDocument();
+  });
+
+  it("removes a thumbnail when its remove button is clicked", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.upload(getImageFileInput(), makePng());
+    await screen.findByRole("img");
+    await user.click(screen.getByRole("button", { name: /remove image/i }));
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("rejects a 7th image with a limit error", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    const files = Array.from({ length: 7 }, (_, i) => makePng(`ref-${i}.png`));
+    await user.upload(getImageFileInput(), files);
+    expect(await screen.findByText(/up to 6 reference images/i)).toBeInTheDocument();
+    expect(await screen.findAllByRole("img")).toHaveLength(6);
+  });
+
+  it("submit button shows 'Uploading images…' while an upload is in flight", async () => {
+    let resolvePresign!: (v: Response) => void;
+    server.use(
+      http.post("http://localhost/api/v1/files/presign", () =>
+        new Promise<Response>((r) => { resolvePresign = r; }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await fillMinimalValidForm(user);
+    await user.upload(getImageFileInput(), makePng());
+
+    expect(await screen.findByRole("button", { name: /uploading images/i })).toBeDisabled();
+
+    resolvePresign(
+      HttpResponse.json({ uploadUrl: PRESIGN_UPLOAD_URL, publicUrl: PRESIGN_PUBLIC_URL }) as unknown as Response,
+    );
+  });
+
+  it("includes uploaded image URLs in the create-appointment request", async () => {
+    let capturedBody: { imageUrls?: string[] } | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/appointments", async ({ request }) => {
+        capturedBody = await request.json() as { imageUrls?: string[] };
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await fillMinimalValidForm(user);
+    await user.upload(getImageFileInput(), makePng());
+
+    // Wait for the upload to finish — the button relabels once no image is "uploading".
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /request appointment/i })).not.toBeDisabled();
+    });
+
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Appointment requested!");
+    expect(capturedBody).toEqual(
+      expect.objectContaining({ imageUrls: [PRESIGN_PUBLIC_URL] }),
+    );
+  });
+
+  it("does not include imageUrls when no images were attached", async () => {
+    let capturedBody: { imageUrls?: string[] } | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/appointments", async ({ request }) => {
+        capturedBody = await request.json() as { imageUrls?: string[] };
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await fillMinimalValidForm(user);
+
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Appointment requested!");
+    expect(capturedBody).not.toBeNull();
+    expect(capturedBody!.imageUrls).toBeUndefined();
   });
 });
 

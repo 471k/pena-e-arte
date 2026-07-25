@@ -115,6 +115,16 @@ public class CreateAppointmentHandler(
                 Notes           = req.Notes
             };
 
+            foreach (string imageUrl in req.ImageUrls ?? [])
+            {
+                appointment.Attachments.Add(new AppointmentAttachment
+                {
+                    StudioId   = tenant.StudioId,
+                    ImageUrl   = imageUrl,
+                    UploadedAt = DateTime.UtcNow
+                });
+            }
+
             db.Appointments.Add(appointment);
             await db.SaveChangesAsync(ct);
 
@@ -148,5 +158,8 @@ public class CreateAppointmentHandler(
         a.DepositAmount, a.Notes, a.CreatedAt,
         a.CancellationReason?.ToString(),
         a.AftercareSentAt,
-        clientName);
+        clientName,
+        // Empty (not necessarily accurate) unless the caller eager-loaded
+        // .Include(a => a.Attachments) — see GetAppointmentQuery.
+        a.Attachments.OrderBy(x => x.UploadedAt).Select(x => x.ImageUrl).ToList());
 }

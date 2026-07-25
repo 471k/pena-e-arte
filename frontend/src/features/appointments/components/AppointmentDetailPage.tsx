@@ -194,6 +194,32 @@ export function AppointmentDetailPage() {
                     <Row label="Notes" value={appt.notes} />
                   </>
                 )}
+                {!!appt.imageUrls?.length && (
+                  <>
+                    <Separator />
+                    <div className="py-2 space-y-1.5">
+                      <span className="text-sm text-muted-foreground">Reference images</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {appt.imageUrls.map((url) => (
+                          <a
+                            key={url}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block aspect-square rounded-md overflow-hidden
+                                       border border-border/40 bg-muted/30"
+                          >
+                            <img
+                              src={url}
+                              alt="Reference image"
+                              className="h-full w-full object-cover"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
                 {appt.cancellationReason && (
                   <>
                     <Separator />

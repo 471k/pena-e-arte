@@ -37,6 +37,7 @@ public class GetAppointmentsHandler(IAppDbContext db, ICurrentUser currentUser)
         }
 
         return await q
+            .Include(a => a.Attachments)
             .OrderBy(a => a.Date)
             .Select(a => CreateAppointmentHandler.Map(a, a.Client.FirstName + " " + a.Client.LastName))
             .ToListAsync(ct);

@@ -24,6 +24,7 @@ public class GetMyAppointmentsHandler(IAppDbContext db, ICurrentUser currentUser
 
         return await db.Appointments
             .Where(a => a.ClientId == me.Id)
+            .Include(a => a.Attachments)
             .OrderBy(a => a.Date)
             .Select(a => CreateAppointmentHandler.Map(a))
             .ToListAsync(ct);

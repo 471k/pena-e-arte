@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { CalendarClock, Check, CreditCard, Loader2, Trash2, UserX } from "lucide-react";
+import { CalendarClock, Check, CreditCard, ImageIcon, Loader2, Trash2, UserX } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { usePermission } from "@/shared/hooks/usePermission";
@@ -119,6 +119,15 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
           </div>
           {appointment.notes && (
             <p className="text-xs text-muted-foreground truncate">{appointment.notes}</p>
+          )}
+          {!!appointment.imageUrls?.length && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <ImageIcon className="h-3 w-3" aria-hidden="true" />
+              <span>
+                {appointment.imageUrls.length}{" "}
+                reference {appointment.imageUrls.length === 1 ? "image" : "images"}
+              </span>
+            </div>
           )}
         </div>
 

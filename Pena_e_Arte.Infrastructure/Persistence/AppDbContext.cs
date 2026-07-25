@@ -13,6 +13,7 @@ public class AppDbContext(
 {
     // --- Tenant-scoped ---
     public DbSet<Appointment>     Appointments     => Set<Appointment>();
+    public DbSet<AppointmentAttachment> AppointmentAttachments => Set<AppointmentAttachment>();
     public DbSet<DepositRule>     DepositRules     => Set<DepositRule>();
     public DbSet<Client>          Clients          => Set<Client>();
     public DbSet<ClientProfile>   ClientProfiles   => Set<ClientProfile>();
@@ -81,6 +82,7 @@ public class AppDbContext(
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
         builder.Entity<Appointment>()    .HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
+        builder.Entity<AppointmentAttachment>().HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
         builder.Entity<DepositRule>()    .HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<Client>()         .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<ClientProfile>()  .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);

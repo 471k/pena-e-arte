@@ -9,15 +9,19 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Client],
     title: "Book an appointment",
     route: "/book",
-    keywords: ["booking", "request", "artist", "schedule a tattoo", "new appointment"],
+    keywords: ["booking", "request", "artist", "schedule a tattoo", "new appointment", "reference images", "upload photo"],
     summary: "Request a tattoo appointment by picking an artist, a date, and how long the session should be.",
     steps: [
       "If a banner asks you to verify your email, click \"Resend verification email\" (you must verify before your booking is finalized).",
       "In the \"Book an appointment\" card, choose an artist, a date, and an appointment duration.",
+      "Optionally add notes, and attach up to 6 reference images (JPEG, PNG, or WebP) under \"Reference images\" — click the box to pick photos from your device.",
       "Submit the booking request.",
       "Check \"My Bookings\" below the form to see your pending and upcoming appointments.",
     ],
-    tips: ["Your booking is a request, not a confirmed slot — the studio replies within 24 hours."],
+    tips: [
+      "Your booking is a request, not a confirmed slot — the studio replies within 24 hours.",
+      "Reference images upload as soon as you pick them — wait for each thumbnail to finish before submitting.",
+    ],
     relatedArticleIds: ["client-cancel-booking"],
   },
   {

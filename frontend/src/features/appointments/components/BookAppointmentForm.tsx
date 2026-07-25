@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +6,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import {
-  AlertCircle, Banknote, Check, CheckCircle2, Loader2,
+  AlertCircle, Banknote, Check, CheckCircle2, ImageUp, Loader2, X,
 } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Input }    from "@/shared/components/ui/input";
@@ -18,6 +18,7 @@ import {
 } from "@/shared/components/ui/select";
 import { useAppSelector }  from "@/app/hooks";
 import { useCurrentUser }  from "@/shared/hooks/useCurrentUser";
+import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { cn }              from "@/shared/utils/cn";
 import { Role }            from "@/shared/types/roles";
 import {
@@ -39,6 +40,14 @@ import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.t
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const VALID_DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480] as const;
+
+// Mirrors CreateAppointmentValidator.cs's MaxImageUrls / accepted content types.
+const MAX_REFERENCE_IMAGES = 6;
+const ACCEPTED_IMAGE_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png":  "png",
+  "image/webp": "webp",
+};
 
 const DURATION_OPTIONS: { value: number; label: string }[] = [
   { value: 30,  label: "30 min — Touch-up" },
@@ -187,6 +196,98 @@ function DepositPreview({
   );
 }
 
+interface ReferenceImage {
+  id:         string;
+  previewUrl: string;
+  status:     "uploading" | "done" | "error";
+  publicUrl:  string | null;
+}
+
+function ReferenceImagesField({
+  images,
+  error,
+  onPick,
+  onRemove,
+  disabled,
+}: {
+  images:   ReferenceImage[];
+  error:    string | null;
+  onPick:   (files: FileList | null) => void;
+  onRemove: (id: string) => void;
+  disabled: boolean;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const atLimit = images.length >= MAX_REFERENCE_IMAGES;
+
+  return (
+    <div className="space-y-1.5">
+      <FieldLabel htmlFor="referenceImages">Reference images</FieldLabel>
+      <div
+        role="button"
+        tabIndex={atLimit || disabled ? -1 : 0}
+        onClick={() => fileRef.current?.click()}
+        onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
+        className={cn(
+          "flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed",
+          "border-input bg-background px-4 py-5 text-xs text-muted-foreground text-center",
+          "cursor-pointer hover:border-ring hover:text-foreground transition-colors",
+          (atLimit || disabled) && "pointer-events-none opacity-50"
+        )}
+      >
+        <ImageUp className="h-5 w-5" aria-hidden="true" />
+        <span>Click to add photos — JPEG, PNG, or WebP (up to {MAX_REFERENCE_IMAGES})</span>
+      </div>
+      <input
+        ref={fileRef}
+        id="referenceImages"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="sr-only"
+        onChange={(e) => { onPick(e.target.files); e.target.value = ""; }}
+        disabled={atLimit || disabled}
+      />
+      {error && (
+        <p className="text-xs text-destructive" role="alert">{error}</p>
+      )}
+      {images.length > 0 && (
+        <div className="grid grid-cols-4 gap-2 pt-1">
+          {images.map((img) => (
+            <div
+              key={img.id}
+              className="relative aspect-square rounded-md overflow-hidden border border-border/40 bg-muted/30"
+            >
+              <img src={img.previewUrl} alt="Reference image" className="h-full w-full object-cover" />
+              {img.status === "uploading" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                  <Loader2 className="h-4 w-4 animate-spin text-white" aria-hidden="true" />
+                </div>
+              )}
+              {img.status === "error" && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center bg-destructive/70"
+                  title="Upload failed"
+                >
+                  <AlertCircle className="h-4 w-4 text-white" aria-hidden="true" />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => onRemove(img.id)}
+                aria-label="Remove image"
+                className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5
+                           text-white hover:bg-black/80 transition-colors"
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BookAppointmentForm() {
@@ -243,6 +344,69 @@ export function BookAppointmentForm() {
   const [booked,      setBooked]      = useState<AppointmentResponse | null>(null);
   const [depositDone, setDepositDone] = useState<"paid" | "cash" | "skipped" | null>(null);
   const [artistSearch, setArtistSearch] = useState("");
+
+  // Reference images — uploaded to R2 as they're picked (same presign→PUT flow as
+  // Design revisions), before the appointment itself exists, so objects live under a
+  // per-form-session key rather than an appointment id.
+  const [uploadSessionId] = useState(() => crypto.randomUUID());
+  const { upload: uploadImage } = usePresignedUpload();
+  const [images, setImages] = useState<ReferenceImage[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
+
+  useEffect(() => () => {
+    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    // Only revoke on unmount — not on every `images` change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handlePickImages(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    setImageError(null);
+
+    const room = MAX_REFERENCE_IMAGES - images.length;
+    const picked = Array.from(fileList);
+    if (picked.length > room) {
+      setImageError(`You can attach up to ${MAX_REFERENCE_IMAGES} reference images.`);
+    }
+
+    for (const file of picked.slice(0, Math.max(room, 0))) {
+      const ext = ACCEPTED_IMAGE_TYPES[file.type];
+      if (!ext) {
+        setImageError("Only JPEG, PNG, and WebP images are accepted.");
+        continue;
+      }
+
+      const id = crypto.randomUUID();
+      const previewUrl = URL.createObjectURL(file);
+      setImages((prev) => [...prev, { id, previewUrl, status: "uploading", publicUrl: null }]);
+
+      const objectKey = `appointments/pending/${uploadSessionId}/${Date.now()}-${id}.${ext}`;
+      const publicUrl = await uploadImage(file, objectKey);
+
+      setImages((prev) => prev.map((img) => {
+        if (img.id !== id) return img;
+        return publicUrl
+          ? { ...img, status: "done", publicUrl }
+          : { ...img, status: "error" };
+      }));
+    }
+  }
+
+  function handleRemoveImage(id: string) {
+    setImages((prev) => {
+      const target = prev.find((img) => img.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((img) => img.id !== id);
+    });
+  }
+
+  function clearImages() {
+    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    setImages([]);
+    setImageError(null);
+  }
+
+  const anyImageUploading = images.some((img) => img.status === "uploading");
 
   const {
     register,
@@ -328,6 +492,9 @@ export function BookAppointmentForm() {
 
   async function onSubmit(values: FormValues) {
     const clientId = isClientRole ? (myClient?.id ?? values.clientId) : values.clientId;
+    const imageUrls = images
+      .filter((img) => img.status === "done" && img.publicUrl)
+      .map((img) => img.publicUrl!);
     const result = await createAppointment({
       artistId:        values.artistId,
       clientId,
@@ -335,6 +502,7 @@ export function BookAppointmentForm() {
       durationMinutes: values.durationMinutes,
       depositRuleId:   values.depositRuleId ?? null,
       notes:           values.notes || null,
+      ...(imageUrls.length > 0 ? { imageUrls } : {}),
     });
     if ("data" in result) {
       toast.success("Appointment requested.");
@@ -347,6 +515,7 @@ export function BookAppointmentForm() {
       });
       setArtistSearch("");
       setDebouncedCheck(null);
+      clearImages();
     } else {
       const errMsg =
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
@@ -669,20 +838,31 @@ export function BookAppointmentForm() {
         <Textarea
           id="notes"
           rows={3}
-          placeholder="Style, size, placement, reference images, skin concerns…"
+          placeholder="Style, size, placement, skin concerns…"
           {...register("notes")}
           className="resize-none"
         />
       </div>
 
+      {/* Reference images */}
+      <ReferenceImagesField
+        images={images}
+        error={imageError}
+        onPick={(files) => void handlePickImages(files)}
+        onRemove={handleRemoveImage}
+        disabled={isLoading}
+      />
+
       <Button
         type="submit"
         className="w-full bg-violet-600 hover:bg-violet-700 text-white font-medium
                    disabled:bg-violet-600/50"
-        disabled={isLoading || slotStatus?.available === false}
+        disabled={isLoading || slotStatus?.available === false || anyImageUploading}
       >
         {isLoading ? (
           <><Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden="true" />Booking…</>
+        ) : anyImageUploading ? (
+          <><Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden="true" />Uploading images…</>
         ) : (
           "Request Appointment"
         )}

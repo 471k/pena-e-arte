@@ -333,6 +333,30 @@ public class CreateAppointmentHandlerTests
         result.DepositAmount.Should().Be(75m);
     }
 
+    [Fact]
+    public async Task Handle_WithImageUrls_PersistsAttachmentsAndReturnsThemInOrder()
+    {
+        CreateAppointmentRequest req = ValidRequest() with
+        {
+            ImageUrls = ["https://cdn.example.com/1.png", "https://cdn.example.com/2.png"]
+        };
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.ImageUrls.Should().Equal("https://cdn.example.com/1.png", "https://cdn.example.com/2.png");
+        _db.AppointmentAttachments.Should().HaveCount(2);
+        _db.AppointmentAttachments.Should().OnlyContain(a => a.AppointmentId == result.Id && a.StudioId == _studioId);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutImageUrls_ReturnsEmptyImageUrls()
+    {
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        result.ImageUrls.Should().BeEmpty();
+        _db.AppointmentAttachments.Should().BeEmpty();
+    }
+
     private Guid SeedArtist(decimal? hourlyRate = null)
     {
         Artist artist = new()
