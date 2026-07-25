@@ -609,10 +609,11 @@ ol.steps li { margin: 6px 0; }
 <li>City, star rating and review count, and description.</li>
 <li><span class="step-title">Artists</span> grid — click any artist card to open their own profile page.</li>
 <li><span class="step-title">Portfolio</span> masonry gallery — click a photo to open it full-size in a lightbox.</li>
-<li><span class="step-title">Reviews</span> section at the bottom, with a form to leave your own review (sign-in required).</li>
+<li><span class="step-title">Reviews</span> section at the bottom, with a form to leave your own review (sign-in required, and you need a completed appointment at this studio).</li>
 <li>In the sidebar: <span class="step-title">Book an Appointment</span> button (sends signed-out visitors to sign in first), phone number, Instagram handle, and city.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> the studio owner can reply publicly to any review directly from this same page when signed in.</div>
+<div class="callout callout-tip"><strong>Reviews aren't one-and-done:</strong> you can leave a new review every time you have a completed appointment at a studio — it's not capped to one review per client, ever. Pick which visit you're reviewing if you have more than one eligible one.</div>
 <div class="crosslinks">See also: <a href="#guest-artist-portfolio">Artist profile page</a>, <a href="#client-book">Book an appointment</a></div>
 </section>
 
@@ -656,9 +657,9 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Book an Appointment</span> button (also pinned to the bottom of the screen on mobile).</li>
 <li><span class="step-title">Portfolio</span> grid with style filter chips — click any photo for a lightbox with per-photo reviews.</li>
 <li><span class="step-title">Instagram</span> section (only shown if the artist connected an account and has visible posts).</li>
-<li><span class="step-title">Reviews</span> at the bottom, with a form to leave one.</li>
+<li><span class="step-title">Reviews</span> at the bottom, with a form to leave one (requires a completed appointment with this artist).</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> reviews can be left against the whole artist, a specific tattoo photo, or the whole studio — each has its own review thread.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> reviews can be left against the whole artist, a specific tattoo photo, or the whole studio — each has its own review thread. Studio/artist reviews require a completed appointment and can be repeated each time you visit again; tattoo-photo reviews are a one-time review per photo (photos aren't tied to a specific booking).</div>
 <div class="crosslinks">See also: <a href="#guest-studio-portfolio">Studio profile page</a>, <a href="#artist-profile">Artist: my portfolio profile</a></div>
 </section>
 
@@ -2695,7 +2696,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-issuer">Issuer</span> Feedback inbox</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗ (can submit feedback via the feedback icon)</td></tr><tr><td>Owner</td><td>✗ (can submit feedback)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/platform/feedback</code>: bug reports, feature requests, and general feedback submitted by artists and owners across every studio, filterable by type and status, with an unread-count badge in the issuer navigation.</p>
+<p>At <code>/platform/feedback</code>: bug reports, feature requests, and general feedback submitted by artists and owners across every studio, filterable by type and status, with an unread-count badge in the issuer navigation. Reports may include up to 3 attached screenshots or short video clips the submitter added when reporting the issue.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Feedback inbox wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -2714,7 +2715,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Filter by type (<span class="step-title">Bug Report</span> / <span class="step-title">Feature Request</span> / <span class="step-title">General</span>) and status.</li>
-<li>Click a card to expand it and read the full report.</li>
+<li>Click a card to expand it and read the full report — any attached screenshots or video clips appear as thumbnails below the description; click one to open it full-size in a new tab.</li>
 <li>Write an optional internal <span class="step-title">Issuer note</span>.</li>
 <li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
 </ol>

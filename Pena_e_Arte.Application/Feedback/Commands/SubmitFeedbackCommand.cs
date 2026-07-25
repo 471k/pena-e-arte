@@ -32,7 +32,8 @@ public class SubmitFeedbackHandler(
             studioName:      studio.Name,
             type:            type,
             title:           command.Request.Title,
-            body:            command.Request.Body);
+            body:            command.Request.Body,
+            attachmentUrls:  command.Request.AttachmentUrls);
 
         db.FeedbackReports.Add(report);
         await db.SaveChangesAsync(ct);
@@ -50,5 +51,6 @@ public class SubmitFeedbackHandler(
         r.SubmitterRole,
         r.IssuerNote,
         r.CreatedAt,
-        r.ResolvedAt);
+        r.ResolvedAt,
+        r.AttachmentUrls);
 }

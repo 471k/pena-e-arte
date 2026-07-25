@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Send } from "lucide-react";
+import { FileVideo, Loader2, Send } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -65,8 +65,32 @@ export function SupportTicketThread({ report, canReply = true }: SupportTicketTh
       </div>
 
       <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-        <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+        <div className="rounded-md bg-muted/50 px-3 py-2 text-sm space-y-2">
           <p className="whitespace-pre-wrap">{report.body}</p>
+          {!!report.attachmentUrls?.length && (
+            <div className="flex flex-wrap gap-2">
+              {report.attachmentUrls.map((url) => {
+                const isVideo = /\.(mp4|webm|mov)$/i.test(url);
+                return (
+                  <a
+                    key={url}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block h-16 w-16 rounded-md overflow-hidden border border-border/40 bg-background shrink-0"
+                  >
+                    {isVideo ? (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <FileVideo className="h-6 w-6" aria-hidden="true" />
+                      </div>
+                    ) : (
+                      <img src={url} alt="Feedback attachment" className="h-full w-full object-cover" />
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {isLoading && (

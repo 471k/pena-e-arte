@@ -10,4 +10,5 @@ public record FeedbackReportResponse(
     string    SubmitterRole,
     string?   IssuerNote,
     DateTime  CreatedAt,
-    DateTime? ResolvedAt);
+    DateTime? ResolvedAt,
+    IReadOnlyList<string>? AttachmentUrls = null);

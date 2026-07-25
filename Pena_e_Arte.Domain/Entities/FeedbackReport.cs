@@ -19,16 +19,21 @@ public class FeedbackReport
     public DateTime       CreatedAt       { get; private set; } = DateTime.UtcNow;
     public DateTime?      ResolvedAt      { get; private set; }
 
+    // Optional screenshots/short video clips uploaded via the same R2 presign flow
+    // used elsewhere (Design revisions, appointment reference images).
+    public List<string>   AttachmentUrls  { get; private set; } = [];
+
     public ICollection<FeedbackMessage> Messages { get; private set; } = [];
 
     public static FeedbackReport Create(
-        Guid         studioId,
-        Guid         submitterUserId,
-        string       submitterRole,
-        string       studioName,
-        FeedbackType type,
-        string       title,
-        string       body)
+        Guid            studioId,
+        Guid            submitterUserId,
+        string          submitterRole,
+        string          studioName,
+        FeedbackType    type,
+        string          title,
+        string          body,
+        IReadOnlyList<string>? attachmentUrls = null)
     {
         return new FeedbackReport
         {
@@ -39,6 +44,7 @@ public class FeedbackReport
             Type            = type,
             Title           = title.Trim(),
             Body            = body.Trim(),
+            AttachmentUrls  = attachmentUrls?.ToList() ?? [],
         };
     }
 

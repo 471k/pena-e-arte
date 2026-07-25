@@ -7,7 +7,9 @@ namespace Pena_e_Arte.Application.Feedback.Validators;
 
 public class SubmitFeedbackValidator : AbstractValidator<SubmitFeedbackCommand>
 {
-    public SubmitFeedbackValidator(ICurrentUser currentUser, ICurrentTenant currentTenant)
+    private const int MaxAttachments = 3;
+
+    public SubmitFeedbackValidator(ICurrentUser currentUser, ICurrentTenant currentTenant, IR2Service r2)
     {
         // A studio-less client (registered with no studio, or between studios) has no
         // tenant_id claim, so ICurrentTenant is never set for their request — reaching this
@@ -40,5 +42,15 @@ public class SubmitFeedbackValidator : AbstractValidator<SubmitFeedbackCommand>
             .MinimumLength(10)
             .MaximumLength(2000)
             .WithMessage("Description must be between 10 and 2000 characters.");
+
+        RuleFor(x => x.Request.AttachmentUrls)
+            .Must(urls => urls == null || urls.Count <= MaxAttachments)
+            .WithMessage($"You can attach up to {MaxAttachments} files.");
+        RuleForEach(x => x.Request.AttachmentUrls)
+            .NotEmpty()
+            .MaximumLength(2048)
+            .Must(r2.IsR2Url)
+            .WithMessage("AttachmentUrls must reference a valid storage URL.")
+            .When(x => x.Request.AttachmentUrls is not null);
     }
 }

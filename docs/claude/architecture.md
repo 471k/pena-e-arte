@@ -471,6 +471,33 @@ issuer-facing ticket inbox, just one-shot until now.
   writes 500 here due to `SubscriptionAccessService`/Redis being absent in this dev
   environment, unrelated to this feature's own code.
 
+### Feedback attachments — 2026-07-25
+
+`FeedbackReport` gained `AttachmentUrls (List<string>)`, letting a submitter attach up to 3
+screenshots/short video clips (JPEG/PNG/WebP/MP4/WebM/MOV) to a report, uploaded via the
+same R2 presign flow used everywhere else (Design revisions, appointment reference images).
+
+- Stored as a JSON column with an EF value converter — same pattern as
+  `TattooRecord.PhotoUrls`, not a child entity/table, since attachments here are a small,
+  unordered, non-queried list with no need for their own rows. Not nullable at the entity
+  level (defaults to `[]`); the migration adds it `NOT NULL` on the existing table with no
+  default value or backfill needed — MySQL accepted this against existing rows without error
+  (unlike Review's `AppointmentId` FK addition, this isn't a unique-index concern, just a
+  plain column default).
+- `SubmitFeedbackValidator` (already constructor-injects `ICurrentUser`/`ICurrentTenant` per
+  the Support Escalation section above) also takes `IR2Service` now, validating attachment
+  count (≤3) and that each URL is genuinely R2-hosted — same `RuleForEach(...).Must(r2.IsR2Url)`
+  pattern as `CreateStudioReviewValidator`/`CreateAppointmentValidator`.
+- Scope: only the staff-facing `FeedbackDialog` (Bug Report / Feature Request / General) got
+  attachment upload UI. `SupportRequestForm` (the client-facing Contact Support flow under
+  Help) was deliberately left unchanged — a different audience/surface, not part of what was
+  asked, and the backend field is generic enough to extend to it later without a schema change
+  if that's ever wanted.
+- Attachments render as thumbnails (images) or a video-icon chip (videos, detected by file
+  extension since no client-side video thumbnailing was built) inside `SupportTicketThread`'s
+  existing original-body bubble — the same component already used by both `FeedbackInboxPage`
+  (issuer) and the Help menu's ticket view, so no duplicate rendering logic was needed.
+
 #### Local `/code-review high` pass — 2026-07-21, before merge
 
 Ran an 8-angle review (correctness, removed-behavior, cross-file, reuse, simplification,
@@ -940,8 +967,59 @@ PortfolioImage : TenantEntity  // StudioId, CreatedAt, UpdatedAt, DeletedAt
 - Artist review:  `ArtistId != null, StudioId == null, PortfolioImageId == null`
 - Tattoo review:  `PortfolioImageId != null, StudioId == null, ArtistId == null`
 
-Duplicate guard: one review per `(AuthorUserId, PortfolioImageId)` pair
-(same constraint as per `(AuthorUserId, ArtistId)` and per `(AuthorUserId, StudioId)`).
+Duplicate guard: one review per `(AuthorUserId, PortfolioImageId)` pair for tattoo
+reviews (portfolio images aren't tied to a specific booking, so this stays a
+lifetime-per-image cap). Studio and artist reviews are **not** a lifetime cap —
+see "Review eligibility — per-completed-appointment" below.
+
+### Review eligibility — per-completed-appointment (2026-07-25)
+
+Studio and artist reviews were originally capped at one-per-client-ever
+(`(AuthorUserId, StudioId)` / `(AuthorUserId, ArtistId)` unique indexes). That
+blocked a real, common case: a repeat client who gets tattooed again months
+later has no way to leave a second review. Industry precedent (Fresha, Vagaro,
+Booksy) ties review eligibility to a completed transaction, not a lifetime cap.
+
+`Review` gained a nullable `AppointmentId (Guid?)` FK:
+- Studio/artist reviews now **require** it (set by `Review.ForStudio`/`ForArtist`).
+- Portfolio-image reviews leave it `null` — a portfolio image isn't tied to a
+  specific booking, so that path is unchanged (lifetime-per-image cap, above).
+
+Eligibility, enforced in `CreateStudioReviewCommand`/`CreateArtistReviewCommand`:
+the appointment must belong to the caller (`Client.UserId == AuthorUserId`),
+target the studio/artist being reviewed, and have `Status == Completed`. A
+mismatch on ownership/target throws `NotFoundException` (404 — mirrors
+`RescheduleAppointmentHandler`'s "don't reveal another client's appointment
+exists" convention); a real-but-not-completed appointment throws
+`BusinessRuleViolationException` (400).
+
+Duplicate guard moved from `(AuthorUserId, StudioId/ArtistId)` to
+`(AppointmentId, StudioId)` / `(AppointmentId, ArtistId)` — one review per
+appointment per target, not per client-lifetime. A client can still leave both
+a studio review and an artist review from the same appointment (different
+target column, same `AppointmentId`, no collision). MySQL treats `NULL` as
+distinct per row in composite unique indexes, so artist-review rows
+(`StudioId` null) and portfolio-image rows (`AppointmentId` null) never
+collide with these. Known accepted tradeoff: a multi-session tattoo (sleeve,
+back piece) has no "project" grouping concept in this codebase, so a client
+can technically leave one review per session instead of one per finished
+piece — deliberately not building that grouping now; a nullable `ProjectId` +
+narrower uniqueness scope can be layered in later if it becomes a real problem.
+
+New read endpoints power the "which visit are you reviewing?" picker on the
+write-a-review form: `GET /studios/{slug}/reviews/eligible-appointments` and
+`GET /artists/{slug}/reviews/eligible-appointments` (`GetReviewableStudioAppointmentsQuery`/
+`GetReviewableArtistAppointmentsQuery`), both `ClientAndAbove`-gated, returning
+the caller's completed-and-not-yet-reviewed appointments for that target. Same
+cross-tenant `IgnoreQueryFilters` + explicit `Join` pattern as the
+`IsVerifiedBooking` checks (entries 19-20) — `Client` needs its own
+`IgnoreQueryFilters()` even inside a query already ignoring filters on
+`Appointment`, since `Join` combines two independent `IQueryable` sources.
+
+Migration `AddAppointmentIdToReview` (20260725204502) is safe against existing
+data with no backfill: legacy review rows get `AppointmentId = null`, and MySQL
+allows unlimited `NULL`s in a unique index, so they never collide with each
+other or with new rows.
 
 ### Frontend shape change
 
@@ -1399,7 +1477,7 @@ does not re-litigate them.
 | Portfolio tile attribution strip | Always-visible translucent overlay below each image (artist name + studio + rating) | Hover-only overlays fail WCAG 2.1 criterion 1.4.13 (content on hover/focus); always-visible strip ensures attribution is always accessible |
 | StarRating split into display + interactive | Separate `StarRating` (display) and `InteractiveStarRating` (write form) exports | Touch targets, hover preview, and live readout only needed on interactive variant; display-only component stays lightweight |
 | ReviewSection order: list before form | Aggregate → reviews list → write form (form always last) | Industry trust pattern: users need to read existing reviews before writing one; form at bottom reduces form-before-content anti-pattern |
-| IsVerifiedBooking on ReviewResponse | Computed at query time via Appointments join, not stored | No migration needed; verified status can change if booking is cancelled or added; `IgnoreQueryFilters` approved (entries 19-21) |
+| IsVerifiedBooking on ReviewResponse | Computed at query time via Appointments join, not stored | No migration needed; verified status can change if booking is cancelled or added; `IgnoreQueryFilters` approved (entries 19-21). Unchanged by the per-completed-appointment eligibility model (2026-07-25) — every new studio/artist review is definitionally verified since creation now requires one; this join still matters for legacy pre-migration rows and for portfolio-image reviews |
 | Lightbox prev/next navigation | Index-based navigation through allImages array; keyboard arrows (←/→) also supported | Enables discovery across portfolio without closing/reopening lightbox; position indicator shows context |
 | "Book with artist" CTA in lightbox | Primary violet Link to `/artist/:slug`; secondary "View artist profile" link | Closes lightbox on navigate; converts engaged viewers without requiring an extra click to find the booking CTA |
 | `authSlice` remember-me storage split | `"local"` (remember-me) writes to `localStorage`; `"session"` (default) writes to `sessionStorage` | Session-scoped tokens never survive browser restart; cross-tab sync fires correctly from the right storage type |

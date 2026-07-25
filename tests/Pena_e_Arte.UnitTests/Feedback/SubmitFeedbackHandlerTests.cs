@@ -82,6 +82,34 @@ public class SubmitFeedbackHandlerTests
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
+    [Fact]
+    public async Task Handle_WithAttachmentUrls_PersistsAndReturnsThem()
+    {
+        await SeedStudio();
+        SubmitFeedbackCommand baseCommand = Command("BugReport", "Broken button", "The submit button does nothing on Safari.");
+        SubmitFeedbackCommand command = baseCommand with
+        {
+            Request = baseCommand.Request with { AttachmentUrls = ["https://cdn.example.com/1.png", "https://cdn.example.com/2.mp4"] },
+        };
+
+        FeedbackReportResponse result = await CreateSut().Handle(command, default);
+
+        result.AttachmentUrls.Should().Equal("https://cdn.example.com/1.png", "https://cdn.example.com/2.mp4");
+        FeedbackReport saved = _db.FeedbackReports.Single(r => r.Id == result.Id);
+        saved.AttachmentUrls.Should().Equal("https://cdn.example.com/1.png", "https://cdn.example.com/2.mp4");
+    }
+
+    [Fact]
+    public async Task Handle_WithoutAttachmentUrls_ReturnsEmptyList()
+    {
+        await SeedStudio();
+        SubmitFeedbackCommand command = Command("BugReport", "Broken button", "The submit button does nothing on Safari.");
+
+        FeedbackReportResponse result = await CreateSut().Handle(command, default);
+
+        result.AttachmentUrls.Should().BeEmpty();
+    }
+
     private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio

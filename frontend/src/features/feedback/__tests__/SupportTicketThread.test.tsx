@@ -43,7 +43,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-function renderThread(canReply = true) {
+function renderThread(canReply = true, report: FeedbackReportResponse = REPORT) {
   const store = configureStore({
     reducer: { auth: authReducer, [feedbackApi.reducerPath]: feedbackApi.reducer },
     middleware: (gd) => gd().concat(feedbackApi.middleware),
@@ -54,7 +54,7 @@ function renderThread(canReply = true) {
   });
   render(
     <Provider store={store}>
-      <SupportTicketThread report={REPORT} canReply={canReply} />
+      <SupportTicketThread report={report} canReply={canReply} />
     </Provider>,
   );
 }
@@ -97,5 +97,26 @@ describe("SupportTicketThread", () => {
   it("the send button is disabled when the reply box is empty", () => {
     renderThread();
     expect(screen.getByRole("button", { name: /send reply/i })).toBeDisabled();
+  });
+
+  it("renders attachment thumbnails when the report has them", () => {
+    renderThread(true, { ...REPORT, attachmentUrls: ["https://cdn.example.com/screenshot.png"] });
+    expect(screen.getByAltText("Feedback attachment")).toHaveAttribute(
+      "src", "https://cdn.example.com/screenshot.png",
+    );
+    expect(screen.getByAltText("Feedback attachment").closest("a")).toHaveAttribute(
+      "href", "https://cdn.example.com/screenshot.png",
+    );
+  });
+
+  it("renders a video icon (not an <img>) for video attachments", () => {
+    renderThread(true, { ...REPORT, attachmentUrls: ["https://cdn.example.com/clip.mp4"] });
+    expect(screen.queryByAltText("Feedback attachment")).not.toBeInTheDocument();
+    expect(screen.getByRole("link")).toHaveAttribute("href", "https://cdn.example.com/clip.mp4");
+  });
+
+  it("renders no attachment section when there are none", () => {
+    renderThread();
+    expect(screen.queryByAltText("Feedback attachment")).not.toBeInTheDocument();
   });
 });

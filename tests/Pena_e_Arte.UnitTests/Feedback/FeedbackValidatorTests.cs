@@ -9,14 +9,18 @@ namespace Pena_e_Arte.UnitTests.Feedback;
 
 public class SubmitFeedbackValidatorTests
 {
+    private const string ValidAttachmentUrl = "https://cdn.example.com/feedback/screenshot.png";
+
     private readonly ICurrentUser   _user   = Substitute.For<ICurrentUser>();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
-    private SubmitFeedbackValidator Sut() => new(_user, _tenant);
+    private readonly IR2Service     _r2     = Substitute.For<IR2Service>();
+    private SubmitFeedbackValidator Sut() => new(_user, _tenant, _r2);
 
     public SubmitFeedbackValidatorTests()
     {
         _user.Role.Returns("artist");
         _tenant.IsSet.Returns(true);
+        _r2.IsR2Url(ValidAttachmentUrl).Returns(true);
     }
 
     [Fact]
@@ -108,6 +112,49 @@ public class SubmitFeedbackValidatorTests
         _user.Role.Returns("client");
         _tenant.IsSet.Returns(false);
         Sut().ShouldFailOn(Command("SupportRequest", "Need help", "A description with enough characters."), "Studio");
+    }
+
+    [Fact]
+    public void Validate_ValidRequestWithAttachments_IsValid()
+    {
+        SubmitFeedbackCommand baseCmd = Command("BugReport", "Broken button", "The submit button does nothing on Safari.");
+        SubmitFeedbackCommand command = baseCmd with
+        {
+            Request = baseCmd.Request with { AttachmentUrls = [ValidAttachmentUrl] },
+        };
+        Sut().ShouldBeValid(command);
+    }
+
+    [Fact]
+    public void Validate_NullAttachmentUrls_IsValid()
+    {
+        Sut().ShouldBeValid(Command("BugReport", "Title", "A description with enough characters."));
+    }
+
+    [Fact]
+    public void Validate_TooManyAttachments_FailsOnAttachmentUrls()
+    {
+        SubmitFeedbackCommand baseCmd = Command("BugReport", "Title", "A description with enough characters.");
+        SubmitFeedbackCommand command = baseCmd with
+        {
+            Request = baseCmd.Request with
+            {
+                AttachmentUrls = [ValidAttachmentUrl, ValidAttachmentUrl, ValidAttachmentUrl, ValidAttachmentUrl],
+            },
+        };
+        Sut().ShouldFailOn(command, "Request.AttachmentUrls");
+    }
+
+    [Fact]
+    public void Validate_AttachmentUrlNotFromR2_FailsOnAttachmentUrls()
+    {
+        _r2.IsR2Url("https://external.attacker.com/evil.png").Returns(false);
+        SubmitFeedbackCommand baseCmd = Command("BugReport", "Title", "A description with enough characters.");
+        SubmitFeedbackCommand command = baseCmd with
+        {
+            Request = baseCmd.Request with { AttachmentUrls = ["https://external.attacker.com/evil.png"] },
+        };
+        Sut().ShouldFailOn(command, "Request.AttachmentUrls[0]");
     }
 
     private static SubmitFeedbackCommand Command(string type, string title, string body) =>

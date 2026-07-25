@@ -60,6 +60,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
+    id: "client-leave-review",
+    roles: [Client],
+    title: "Leave a review",
+    keywords: ["review", "rate", "rating", "star rating", "feedback", "leave a review"],
+    summary: "Rate and review a studio or artist after a completed appointment with them — from a studio's or artist's public profile page.",
+    steps: [
+      "Go to the studio's page (/s/{slug}) or the artist's page (/artist/{slug}) and scroll to \"Reviews\".",
+      "If you have a completed appointment there that you haven't reviewed yet, the \"Write a review\" form appears.",
+      "If you have more than one eligible visit, pick which one you're reviewing from the dropdown.",
+      "Pick a star rating and write your review (minimum 10 characters), then click \"Post Review\".",
+    ],
+    tips: [
+      "You can leave a new review each time you have a completed appointment there — it's not a one-time-only thing. You just can't review the same visit twice.",
+      "You can leave both a studio review and an artist review from the same completed appointment — they're independent.",
+      "If you don't see the review form, you don't yet have a completed appointment there — the studio/artist needs to mark your appointment \"Completed\" first.",
+    ],
+    relatedArticleIds: ["client-book-appointment"],
+  },
+  {
     id: "client-my-studios",
     roles: [Client],
     title: "Switch between studios you're a client at",
@@ -951,6 +970,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to Studio Settings and scroll to \"Recent studio activity\".",
       "Each entry shows the action and when it happened.",
     ],
+  },
+  {
+    id: "artist-owner-send-feedback",
+    roles: [Artist, Owner],
+    title: "Send feedback",
+    keywords: ["feedback", "bug report", "feature request", "report a bug", "attachment", "screenshot", "video"],
+    summary: "Report a bug, request a feature, or share general feedback with the team, with an optional screenshot or short video attached.",
+    steps: [
+      "Click the feedback icon to open \"Send Feedback\".",
+      "Choose a Type (Bug Report, Feature Request, or General), add a Title and Description.",
+      "Optionally attach up to 3 screenshots or short video clips under \"Attachments\" — click the box to pick files.",
+      "Click \"Send Feedback\".",
+    ],
+    tips: ["Attachments upload as soon as you pick them — wait for each one to finish before submitting."],
   },
 ];
 

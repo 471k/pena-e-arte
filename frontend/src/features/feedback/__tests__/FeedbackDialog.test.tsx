@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import { feedbackApi } from "@/features/feedback/feedbackApi";
+import { filesApi } from "@/shared/api/filesApi";
 import { FeedbackDialog } from "@/features/feedback/components/FeedbackDialog";
 import type { FeedbackReportResponse } from "@/features/feedback/feedback.types";
 
@@ -27,8 +28,15 @@ const CREATED_REPORT: FeedbackReportResponse = {
   resolvedAt:    null,
 };
 
+// The presigned upload URL must be resolvable by MSW (i.e., absolute localhost URL).
+const PRESIGN_UPLOAD_URL = "http://localhost/r2-upload";
+const PRESIGN_PUBLIC_URL = "https://cdn.example.com/feedback/screenshot.png";
+
 const server = setupServer(
   http.post("http://localhost/api/v1/feedback", () => HttpResponse.json(CREATED_REPORT), ),
+  http.post("http://localhost/api/v1/files/presign", () =>
+    HttpResponse.json({ uploadUrl: PRESIGN_UPLOAD_URL, publicUrl: PRESIGN_PUBLIC_URL })),
+  http.put(PRESIGN_UPLOAD_URL, () => new HttpResponse(null, { status: 200 })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -40,13 +48,22 @@ function makeStore() {
     reducer: {
       auth:                       authReducer,
       [feedbackApi.reducerPath]:  feedbackApi.reducer,
+      [filesApi.reducerPath]:     filesApi.reducer,
     },
-    middleware: (gd) => gd().concat(feedbackApi.middleware),
+    middleware: (gd) => gd().concat(feedbackApi.middleware, filesApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "artist@test.com" }, token: "fake", tenantId: "t1", role: "artist" } as any,
     },
   });
+}
+
+function getFileInput() {
+  return document.querySelector<HTMLInputElement>("input[type=file]")!;
+}
+
+function makePng(name = "screenshot.png") {
+  return new File(["img-bytes"], name, { type: "image/png" });
 }
 
 function renderDialog(onOpenChange = vi.fn()) {
@@ -163,6 +180,79 @@ describe("FeedbackDialog", () => {
     await user.click(screen.getByRole("button", { name: /cancel/i }));
 
     expect(screen.getByLabelText(/title/i)).toHaveValue("");
+  });
+
+  it("renders the attachments dropzone", () => {
+    renderDialog();
+    expect(screen.getByText(/add a screenshot or short video/i)).toBeInTheDocument();
+    expect(getFileInput()).toBeInTheDocument();
+  });
+
+  it("shows a file chip after picking an attachment", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.upload(getFileInput(), makePng());
+    expect(await screen.findByText("screenshot.png")).toBeInTheDocument();
+  });
+
+  it("removes a file chip when its remove button is clicked", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.upload(getFileInput(), makePng());
+    await screen.findByText("screenshot.png");
+    await user.click(screen.getByRole("button", { name: /remove screenshot\.png/i }));
+    expect(screen.queryByText("screenshot.png")).not.toBeInTheDocument();
+  });
+
+  it("shows an error for an unsupported file type", () => {
+    renderDialog();
+    const pdf = new File(["pdf"], "notes.pdf", { type: "application/pdf" });
+    const input = getFileInput();
+    Object.defineProperty(input, "files", { value: [pdf], configurable: true });
+    fireEvent.change(input);
+    expect(screen.getByText(/only jpeg\/png\/webp images or mp4\/webm\/mov videos/i)).toBeInTheDocument();
+  });
+
+  it("includes the uploaded attachment URL in the submit payload", async () => {
+    const user = userEvent.setup();
+    let captured: { attachmentUrls?: string[] } | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/feedback", async ({ request }) => {
+        captured = await request.json() as { attachmentUrls?: string[] };
+        return HttpResponse.json(CREATED_REPORT);
+      }),
+    );
+    renderDialog();
+
+    await user.upload(getFileInput(), makePng());
+    await waitFor(() => expect(screen.getByRole("button", { name: /send feedback/i })).not.toBeDisabled());
+
+    await user.type(screen.getByLabelText(/title/i), "Broken button");
+    await user.type(screen.getByLabelText(/description/i), "The submit button does nothing on Safari.");
+    await user.click(screen.getByRole("button", { name: /send feedback/i }));
+
+    await waitFor(() => expect(captured).toEqual(
+      expect.objectContaining({ attachmentUrls: [PRESIGN_PUBLIC_URL] }),
+    ));
+  });
+
+  it("does not include attachmentUrls when no files were attached", async () => {
+    const user = userEvent.setup();
+    let captured: { attachmentUrls?: string[] } | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/feedback", async ({ request }) => {
+        captured = await request.json() as { attachmentUrls?: string[] };
+        return HttpResponse.json(CREATED_REPORT);
+      }),
+    );
+    renderDialog();
+
+    await user.type(screen.getByLabelText(/title/i), "Broken button");
+    await user.type(screen.getByLabelText(/description/i), "The submit button does nothing on Safari.");
+    await user.click(screen.getByRole("button", { name: /send feedback/i }));
+
+    await waitFor(() => expect(captured).not.toBeNull());
+    expect(captured!.attachmentUrls).toBeUndefined();
   });
 
   it("shows an error toast when the mutation fails", async () => {

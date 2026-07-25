@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -130,14 +131,30 @@ public class AppDbContext(
             entity.HasIndex(r => r.StudioId);
             entity.HasIndex(r => r.ArtistId);
             entity.HasIndex(r => r.PortfolioImageId);
-            entity.HasIndex(r => new { r.AuthorUserId, r.StudioId }).IsUnique();
-            entity.HasIndex(r => new { r.AuthorUserId, r.ArtistId }).IsUnique();
+            entity.HasIndex(r => r.AppointmentId);
+            // Eligibility is per-completed-appointment, not a lifetime cap per author:
+            // one studio review and one artist review per appointment (a client can
+            // leave both from the same visit — they're different rows/targets — but
+            // can't double-submit either one for the same appointment). MySQL treats
+            // NULL as distinct in composite unique indexes, so artist-review rows
+            // (StudioId null) and portfolio-image rows (AppointmentId null) never
+            // collide with these.
+            entity.HasIndex(r => new { r.AppointmentId, r.StudioId }).IsUnique();
+            entity.HasIndex(r => new { r.AppointmentId, r.ArtistId }).IsUnique();
             entity.HasIndex(r => new { r.AuthorUserId, r.PortfolioImageId }).IsUnique();
 
             entity.HasOne<PortfolioImage>()
                   .WithMany()
                   .HasForeignKey(r => r.PortfolioImageId)
                   .OnDelete(DeleteBehavior.Cascade)
+                  .IsRequired(false);
+
+            // SetNull (not Cascade) — a review is a historical record and should
+            // survive even if its appointment is later removed.
+            entity.HasOne<Appointment>()
+                  .WithMany()
+                  .HasForeignKey(r => r.AppointmentId)
+                  .OnDelete(DeleteBehavior.SetNull)
                   .IsRequired(false);
         });
 
@@ -152,6 +169,12 @@ public class AppDbContext(
             entity.Property(r => r.Title).HasMaxLength(150).IsRequired();
             entity.Property(r => r.Body).HasMaxLength(2000).IsRequired();
             entity.Property(r => r.IssuerNote).HasMaxLength(1000);
+
+            entity.Property(r => r.AttachmentUrls)
+                  .HasConversion(
+                      v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                      v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
+                  .HasColumnType("json");
 
             // No HasQueryFilter — issuer reads across all studios.
             entity.HasIndex(r => r.StudioId);

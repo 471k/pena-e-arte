@@ -29,7 +29,8 @@ public class GetFeedbackReportsHandler(IAppDbContext db)
             r.SubmitterRole,
             r.IssuerNote,
             r.CreatedAt,
-            r.ResolvedAt);
+            r.ResolvedAt,
+            r.AttachmentUrls);
 
     public async Task<List<FeedbackReportResponse>> Handle(GetFeedbackReportsQuery query, CancellationToken ct)
     {
