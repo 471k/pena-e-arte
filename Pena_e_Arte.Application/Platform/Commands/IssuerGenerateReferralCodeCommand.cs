@@ -2,10 +2,13 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
@@ -13,6 +16,7 @@ public record IssuerGenerateReferralCodeCommand(Guid StudioId, DateTime? Expires
 
 public class IssuerGenerateReferralCodeHandler(
     IAppDbContext                                  db,
+    IRealtimeNotifier                              realtime,
     ILogger<IssuerGenerateReferralCodeHandler>     logger)
     : IRequestHandler<IssuerGenerateReferralCodeCommand, PlatformReferralCodeResponse>
 {
@@ -47,7 +51,30 @@ public class IssuerGenerateReferralCodeHandler(
         };
 
         db.ReferralCodes.Add(referralCode);
+
+        string shareUrl = $"https://tattooos.co/register?ref={referralCode.Code}";
+
+        // In-app only — no email/SMS equivalent, and not gated behind the studio's
+        // per-event notification preferences (those only cover Email/Sms channels).
+        NotificationLog notice = new()
+        {
+            StudioId      = studio.Id,
+            RecipientId   = studio.Id,
+            RecipientType = NotificationRecipientType.Studio,
+            Channel       = NotificationChannel.InApp,
+            Subject       = "A referral code was generated for your studio",
+            Body          = $"The TattooOS team generated referral code {referralCode.Code} for your studio. " +
+                             $"Share it with other studio owners — new studios that sign up with it get one month free, and so do you: {shareUrl}",
+            SentAt        = DateTime.UtcNow,
+            IsSuccess     = true,
+        };
+        db.NotificationLogs.Add(notice);
+
         await db.SaveChangesAsync(ct);
+
+        await realtime.NotifyStudioAsync(
+            studio.Id, "NotificationReceived",
+            GetNotificationsHandler.Map(notice, studio.Name), ct);
 
         logger.LogInformation(
             "Issuer generated referral code {ReferralCodeId} for studio {StudioId}",
@@ -58,6 +85,7 @@ public class IssuerGenerateReferralCodeHandler(
             referralCode.StudioId,
             studio.Name,
             referralCode.Code,
+            shareUrl,
             referralCode.IsActive,
             referralCode.IsSingleUse,
             referralCode.CreatedAt,

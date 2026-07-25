@@ -29,6 +29,11 @@ public class GetClientStudioNotificationPreferencesHandler(
         NotificationType.PaymentRefunded,
     ];
 
+    // InApp notices (e.g. an issuer generating a referral code) have no email/SMS
+    // equivalent and aren't opted out of — only these two are toggleable.
+    private static readonly NotificationChannel[] PreferenceChannels =
+        [NotificationChannel.Email, NotificationChannel.Sms];
+
     public async Task<ClientNotificationPreferencesResponse> Handle(
         GetClientStudioNotificationPreferencesQuery query, CancellationToken ct)
     {
@@ -43,7 +48,7 @@ public class GetClientStudioNotificationPreferencesHandler(
 
         List<NotificationPreferenceItem> items = [];
         foreach (NotificationType type in ClientTypes)
-        foreach (NotificationChannel channel in Enum.GetValues<NotificationChannel>())
+        foreach (NotificationChannel channel in PreferenceChannels)
         {
             bool isEnabled = saved
                 .FirstOrDefault(p => p.Type == type && p.Channel == channel)

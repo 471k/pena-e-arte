@@ -2,7 +2,7 @@ export interface NotificationLogResponse {
   id:            string;
   recipientId:   string;
   recipientName: string | null;
-  channel:       "Email" | "Sms";
+  channel:       "Email" | "Sms" | "InApp";
   subject:     string | null;
   body:        string;
   sentAt:      string | null;
@@ -12,7 +12,7 @@ export interface NotificationLogResponse {
 
 export interface NotificationsFilter {
   recipientId?: string;
-  channel?:     "Email" | "Sms";
+  channel?:     "Email" | "Sms" | "InApp";
   from?:        string;
   to?:          string;
 }

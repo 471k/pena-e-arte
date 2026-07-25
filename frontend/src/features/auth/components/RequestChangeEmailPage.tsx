@@ -32,7 +32,7 @@ export function RequestChangeEmailPage() {
     if ("error" in result) {
       const err = result.error;
       const message =
-        "status" in err && err.status === 409
+        err && "status" in err && err.status === 409
           ? "That email is already in use."
           : "Failed to start email change. Check your current password.";
       toast.error(message);

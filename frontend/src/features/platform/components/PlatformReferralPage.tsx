@@ -68,7 +68,7 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
   const [deleteFn,   { isLoading: deleting_     }] = useDeleteReferralCodeMutation();
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(code.code);
+    await navigator.clipboard.writeText(code.shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -134,6 +134,7 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
               Generated {fmt(code.createdAt)}
               {code.expiresAt && ` · Expires ${fmt(code.expiresAt)}`}
             </p>
+            <p className="font-mono text-xs text-muted-foreground truncate">{code.shareUrl}</p>
           </div>
 
           {/* ── Action zone ──────────────────────────────────────── */}
@@ -145,8 +146,8 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
                 variant="ghost"
                 className="h-7 w-7 p-0"
                 onClick={handleCopy}
-                aria-label={`Copy referral code ${code.code}`}
-                title={copied ? "Copied!" : "Copy code"}
+                aria-label={`Copy referral link for code ${code.code}`}
+                title={copied ? "Copied!" : "Copy link"}
               >
                 {copied
                   ? <Check className="h-3.5 w-3.5 text-green-500" />

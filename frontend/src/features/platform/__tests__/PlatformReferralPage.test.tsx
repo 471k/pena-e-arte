@@ -22,6 +22,7 @@ const CODES: PlatformReferralCodeResponse[] = [
     studioId:        "s1",
     studioName:      "Ink Soul",
     code:            "INK2026",
+    shareUrl:        "https://tattooos.co/register?ref=INK2026",
     isActive:        true,
     isSingleUse:     false,
     createdAt:       "2026-01-15T00:00:00Z",
@@ -33,6 +34,7 @@ const CODES: PlatformReferralCodeResponse[] = [
     studioId:        "s2",
     studioName:      "Deep Roots Tattoo",
     code:            "ROOTS1X",
+    shareUrl:        "https://tattooos.co/register?ref=ROOTS1X",
     isActive:        true,
     isSingleUse:     true,
     createdAt:       "2026-03-01T00:00:00Z",
@@ -44,6 +46,7 @@ const CODES: PlatformReferralCodeResponse[] = [
     studioId:        "s3",
     studioName:      "Old School Ink",
     code:            "OLD2025",
+    shareUrl:        "https://tattooos.co/register?ref=OLD2025",
     isActive:        false,
     isSingleUse:     false,
     createdAt:       "2025-06-01T00:00:00Z",
@@ -82,8 +85,22 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => { server.resetHandlers(); vi.unstubAllGlobals(); cleanup(); });
 afterAll(() => server.close());
+
+// ── Clipboard mock helper ──────────────────────────────────────────────────────
+// jsdom does not expose navigator.clipboard in non-secure contexts.
+function stubClipboard() {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  const mockNavigator = new Proxy(globalThis.navigator, {
+    get(target, prop, receiver) {
+      if (prop === "clipboard") return { writeText };
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+  vi.stubGlobal("navigator", mockNavigator);
+  return writeText;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -406,6 +423,7 @@ describe("PlatformReferralPage", () => {
         capturedStudioId = params.studioId as string;
         return HttpResponse.json({
           id: "code-new", studioId: "s1", studioName: "Ink Soul", code: "NEWCODE1",
+          shareUrl: "https://tattooos.co/register?ref=NEWCODE1",
           isActive: true, isSingleUse: true, createdAt: "2026-06-01T00:00:00Z",
           expiresAt: null, redemptionCount: 0,
         });
@@ -426,9 +444,22 @@ describe("PlatformReferralPage", () => {
   it("each code has a copy button with aria-label", async () => {
     renderPage();
     await screen.findByText("INK2026");
-    expect(screen.getByRole("button", { name: /copy referral code INK2026/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /copy referral code ROOTS1X/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /copy referral code OLD2025/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copy referral link for code INK2026/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copy referral link for code ROOTS1X/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copy referral link for code OLD2025/i })).toBeInTheDocument();
+  });
+
+  it("displays the share link and copies it (not the bare code) on click", async () => {
+    const writeText = stubClipboard();
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText("INK2026");
+    expect(screen.getByText("https://tattooos.co/register?ref=INK2026")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /copy referral link for code INK2026/i }));
+
+    expect(writeText).toHaveBeenCalledWith("https://tattooos.co/register?ref=INK2026");
   });
 
   it("helper text is present below the header", async () => {

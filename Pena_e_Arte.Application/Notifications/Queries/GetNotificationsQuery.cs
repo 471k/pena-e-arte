@@ -146,8 +146,8 @@ public class GetNotificationsValidator : AbstractValidator<GetNotificationsQuery
     public GetNotificationsValidator()
     {
         RuleFor(x => x.Channel)
-            .Must(c => c is null or "Email" or "Sms")
-            .WithMessage("Channel must be 'Email' or 'Sms'.");
+            .Must(c => c is null or "Email" or "Sms" or "InApp")
+            .WithMessage("Channel must be 'Email', 'Sms', or 'InApp'.");
 
         RuleFor(x => x)
             .Must(x => x.From is null || x.To is null || x.From <= x.To)

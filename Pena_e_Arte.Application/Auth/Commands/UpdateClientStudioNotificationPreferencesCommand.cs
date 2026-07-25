@@ -79,7 +79,11 @@ public class UpdateClientStudioNotificationPreferencesValidator
     : AbstractValidator<UpdateClientStudioNotificationPreferencesCommand>
 {
     private static readonly string[] ValidTypes    = Enum.GetNames<NotificationType>();
-    private static readonly string[] ValidChannels = Enum.GetNames<NotificationChannel>();
+
+    // InApp notices have no email/SMS equivalent and aren't opted out of — only
+    // these two are settable preference channels.
+    private static readonly string[] ValidChannels =
+        [nameof(NotificationChannel.Email), nameof(NotificationChannel.Sms)];
 
     public UpdateClientStudioNotificationPreferencesValidator()
     {

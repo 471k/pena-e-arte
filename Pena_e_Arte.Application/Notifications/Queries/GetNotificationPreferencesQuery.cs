@@ -12,6 +12,11 @@ public record GetNotificationPreferencesQuery : IRequest<NotificationPreferences
 public class GetNotificationPreferencesHandler(IAppDbContext db)
     : IRequestHandler<GetNotificationPreferencesQuery, NotificationPreferencesResponse>
 {
+    // InApp notices (e.g. an issuer generating a referral code) have no email/SMS
+    // equivalent and aren't opted out of — only these two are toggleable.
+    private static readonly NotificationChannel[] PreferenceChannels =
+        [NotificationChannel.Email, NotificationChannel.Sms];
+
     public async Task<NotificationPreferencesResponse> Handle(
         GetNotificationPreferencesQuery query, CancellationToken ct)
     {
@@ -21,7 +26,7 @@ public class GetNotificationPreferencesHandler(IAppDbContext db)
 
         List<NotificationPreferenceItem> items = [];
         foreach (NotificationType type in Enum.GetValues<NotificationType>())
-        foreach (NotificationChannel channel in Enum.GetValues<NotificationChannel>())
+        foreach (NotificationChannel channel in PreferenceChannels)
         {
             StudioNotificationPreference? pref = existing
                 .FirstOrDefault(p => p.Type == type && p.Channel == channel);

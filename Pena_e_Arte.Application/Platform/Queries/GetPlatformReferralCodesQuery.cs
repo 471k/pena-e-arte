@@ -26,6 +26,7 @@ public class GetPlatformReferralCodesHandler(IAppDbContext db)
             r.StudioId,
             r.Studio.Name,
             r.Code,
+            $"https://tattooos.co/register?ref={r.Code}",
             r.IsActive,
             r.IsSingleUse,
             r.CreatedAt,

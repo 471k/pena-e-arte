@@ -76,6 +76,7 @@ const REFERRAL_CODE: PlatformReferralCodeResponse = {
   studioId:        "s1",
   studioName:      "Ink Soul",
   code:            "INKSOUL1",
+  shareUrl:        "https://tattooos.co/register?ref=INKSOUL1",
   isActive:        true,
   isSingleUse:     true,
   createdAt:       "2026-06-01T00:00:00Z",

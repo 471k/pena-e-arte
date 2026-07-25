@@ -5,6 +5,7 @@ public record PlatformReferralCodeResponse(
     Guid      StudioId,
     string    StudioName,
     string    Code,
+    string    ShareUrl,
     bool      IsActive,
     bool      IsSingleUse,
     DateTime  CreatedAt,

@@ -26,6 +26,7 @@ public class PlatformReferralIntegrationTests(DatabaseFixture fixture)
         PlatformReferralCodeResponse? code = result.FirstOrDefault(r => r.StudioId == studioId);
         code.Should().NotBeNull();
         code!.Code.Should().Be("TESTREF1");
+        code.ShareUrl.Should().Be("https://tattooos.co/register?ref=TESTREF1");
         code.IsActive.Should().BeTrue();
         code.RedemptionCount.Should().Be(0);
     }

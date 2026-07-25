@@ -38,6 +38,7 @@ export interface PlatformReferralCodeResponse {
   studioId:         string;
   studioName:       string;
   code:             string;
+  shareUrl:         string;
   isActive:         boolean;
   isSingleUse:      boolean;
   createdAt:        string;

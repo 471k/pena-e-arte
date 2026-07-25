@@ -1,7 +1,10 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Platform.Commands;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -9,10 +12,11 @@ namespace Pena_e_Arte.UnitTests.Platform;
 
 public class IssuerGenerateReferralCodeHandlerTests
 {
-    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly FakeDbContext     _db       = FakeDbContext.Create();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
     private IssuerGenerateReferralCodeHandler CreateSut() =>
-        new(_db, NullLogger<IssuerGenerateReferralCodeHandler>.Instance);
+        new(_db, _realtime, NullLogger<IssuerGenerateReferralCodeHandler>.Instance);
 
     [Fact]
     public async Task Handle_ValidStudio_ReturnsNewActiveCode()
@@ -50,6 +54,44 @@ public class IssuerGenerateReferralCodeHandlerTests
             CreateSut().Handle(new IssuerGenerateReferralCodeCommand(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_ValidStudio_ReturnsShareUrlContainingTheCode()
+    {
+        Guid studioId = await SeedStudio();
+
+        Contracts.Responses.PlatformReferralCodeResponse result =
+            await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+
+        result.ShareUrl.Should().Be($"https://tattooos.co/register?ref={result.Code}");
+    }
+
+    [Fact]
+    public async Task Handle_ValidStudio_CreatesInAppNotificationLogForTheStudio()
+    {
+        Guid studioId = await SeedStudio();
+
+        Contracts.Responses.PlatformReferralCodeResponse result =
+            await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+
+        NotificationLog notice = _db.NotificationLogs.Single(n => n.StudioId == studioId);
+        notice.Channel.Should().Be(NotificationChannel.InApp);
+        notice.RecipientType.Should().Be(NotificationRecipientType.Studio);
+        notice.RecipientId.Should().Be(studioId);
+        notice.IsSuccess.Should().BeTrue();
+        notice.Body.Should().Contain(result.Code);
+    }
+
+    [Fact]
+    public async Task Handle_ValidStudio_PushesRealtimeNotificationToStudioGroup()
+    {
+        Guid studioId = await SeedStudio();
+
+        await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+
+        await _realtime.Received(1).NotifyStudioAsync(
+            studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

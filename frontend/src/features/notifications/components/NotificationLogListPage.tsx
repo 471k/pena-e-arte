@@ -74,7 +74,7 @@ export function NotificationLogListPage() {
   useDocumentMeta({ title: "Notifications — TattooOS", canonical: "/notifications" });
 
   const dispatch = useAppDispatch();
-  const [channel, setChannel]       = useState<"Email" | "Sms" | "">("");
+  const [channel, setChannel]       = useState<"Email" | "Sms" | "InApp" | "">("");
   const [from, setFrom]             = useState("");
   const [to, setTo]                 = useState("");
   const [selectedLog, setSelectedLog] = useState<NotificationLogResponse | null>(null);
@@ -117,12 +117,13 @@ export function NotificationLogListPage() {
             <select
               id="notification-channel-filter"
               value={channel}
-              onChange={(e) => setChannel(e.target.value as "Email" | "Sms" | "")}
+              onChange={(e) => setChannel(e.target.value as "Email" | "Sms" | "InApp" | "")}
               className="h-8 rounded-md border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="">All channels</option>
               <option value="Email">Email</option>
               <option value="Sms">SMS</option>
+              <option value="InApp">Platform</option>
             </select>
           </div>
 
