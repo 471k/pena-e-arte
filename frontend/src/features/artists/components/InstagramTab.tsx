@@ -38,10 +38,20 @@ export function InstagramTab({ artistId, canConnect, canManagePosts }: Instagram
   const [disconnect] = useDisconnectInstagramMutation();
 
   async function handleConnect() {
+    // Open the tab synchronously, in direct response to the click, so browsers
+    // (Firefox especially) still treat it as a trusted user gesture — opening it
+    // only after the awaited fetch below resolves gets silently popup-blocked.
+    const popup = window.open("about:blank", "_blank");
+
     const result = await fetchConnectUrl(artistId);
     if ("data" in result && result.data) {
-      window.open(result.data.authUrl, "_blank", "noopener,noreferrer");
+      if (popup) {
+        popup.location.href = result.data.authUrl;
+      } else {
+        toast.error("Pop-up blocked. Please allow pop-ups for this site and try again.");
+      }
     } else {
+      popup?.close();
       toast.error("Failed to start Instagram connection.");
     }
   }

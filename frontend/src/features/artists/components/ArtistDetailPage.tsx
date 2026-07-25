@@ -56,7 +56,6 @@ import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { useGetDesignsQuery } from "@/features/designs/designsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
-import { InstagramTab } from "./InstagramTab";
 import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
 
 const editSchema = z.object({
@@ -413,7 +412,6 @@ export function ArtistDetailPage() {
               <TabsTrigger value="hours"      className="flex-1">Schedule</TabsTrigger>
               <TabsTrigger value="bookings"   className="flex-1">Bookings</TabsTrigger>
               <TabsTrigger value="designs"    className="flex-1">Designs</TabsTrigger>
-              <TabsTrigger value="instagram"  className="flex-1">Instagram</TabsTrigger>
             </TabsList>
 
             {/* Profile tab */}
@@ -636,11 +634,6 @@ export function ArtistDetailPage() {
                   ))}
                 </div>
               )}
-            </TabsContent>
-
-            {/* Instagram tab */}
-            <TabsContent value="instagram" className="mt-4 space-y-4">
-              <InstagramTab artistId={id!} canConnect={canManage} canManagePosts={canManagePortfolio} />
             </TabsContent>
           </Tabs>
         )}

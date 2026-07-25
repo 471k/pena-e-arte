@@ -715,23 +715,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: ["Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't."],
   },
-  {
-    id: "owner-instagram-sync",
-    roles: [Owner, Artist],
-    title: "Connect Instagram to sync your artists' posts",
-    keywords: ["instagram", "social media sync", "portfolio posts"],
-    summary: "Connect an artist's Instagram account so their posts automatically sync to their public portfolio.",
-    steps: [
-      "Open the artist's profile and go to the Instagram tab.",
-      "Click \"Connect Instagram\" — a new browser tab opens to authorize the connection.",
-      "Once connected, view the Instagram handle, post count, and last synced date.",
-      "Hover over a synced post and click the eye icon to show or hide it from the public portfolio.",
-      "Click \"Disconnect\" if you need to unlink the account.",
-    ],
-    tips: ["New posts sync automatically overnight — there's no manual \"sync now\" button."],
-    warnings: ["Disconnecting keeps already-synced posts but stops any new posts from being fetched going forward."],
-  },
-
   // ── Issuer ──────────────────────────────────────────────────────────────
   {
     id: "issuer-dashboard",
@@ -1046,13 +1029,6 @@ export const FAQ_ITEMS: FaqItem[] = [
     question: "What is the studio QR code for?",
     answer: "It's a scannable code that links straight to your studio's public booking page — handy for business cards, your storefront, or social media. Download it as a PNG or SVG from Studio Settings.",
     relatedArticleIds: ["owner-qr-code"],
-  },
-  {
-    id: "faq-instagram-sync-frequency",
-    roles: [Owner, Artist],
-    question: "How often does Instagram sync run?",
-    answer: "Automatically, once every night, for every connected artist. There's no manual \"sync now\" button — new posts show up in the public portfolio the next day.",
-    relatedArticleIds: ["owner-instagram-sync"],
   },
   {
     id: "faq-notification-channels",

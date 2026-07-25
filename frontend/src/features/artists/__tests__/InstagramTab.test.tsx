@@ -5,6 +5,7 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { toast } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
@@ -15,6 +16,8 @@ import type {
   ConnectInstagramResponse,
 } from "@/features/artists/artistsApi";
 import { InstagramTab } from "@/features/artists/components/InstagramTab";
+
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 const ARTIST_ID = "artist-0001";
 
@@ -70,6 +73,7 @@ afterEach(() => {
   disconnectCalled = false;
   toggledPostId = null;
   toggledVisibility = null;
+  vi.clearAllMocks();
   cleanup();
 });
 afterAll(() => server.close());
@@ -111,6 +115,38 @@ describe("InstagramTab", () => {
     renderTab();
     expect(await screen.findByRole("button", { name: /connect instagram/i })).toBeInTheDocument();
     expect(screen.getByText(/automatically sync their posts/i)).toBeInTheDocument();
+  });
+
+  it("clicking Connect Instagram opens a blank tab synchronously, then navigates it to the authUrl", async () => {
+    const popup = { location: { href: "" }, close: vi.fn() };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    const user = userEvent.setup();
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: /connect instagram/i }));
+
+    // Opened with no args resolved yet — proves it fires before the async fetch,
+    // preserving the user-gesture trust that lets browsers allow the popup.
+    expect(openSpy).toHaveBeenCalledWith("about:blank", "_blank");
+    await waitFor(() => {
+      expect(popup.location.href).toBe("https://api.instagram.com/oauth/authorize?x=1");
+    });
+
+    openSpy.mockRestore();
+  });
+
+  it("shows an error toast when the browser blocks the pop-up", async () => {
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+    const user = userEvent.setup();
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: /connect instagram/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Pop-up blocked. Please allow pop-ups for this site and try again.");
+    });
+
+    openSpy.mockRestore();
   });
 
   it("shows username, post count badge, and Disconnect button when connected", async () => {
