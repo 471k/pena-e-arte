@@ -1512,6 +1512,13 @@ does not re-litigate them.
 | CashPending self-cancel is exempt from `ClientCancellationPolicy` | `CancelAppointmentHandler`'s `CashPending` branch (2026-07-21, `/code-review high` finding) unconditionally waives the deposit regardless of `isClient`/notice window — deliberate, not a policy bypass, per a code comment added at the branch | `CashPending` means the client only declared intent to pay cash (`DeclareCashDepositCommand`); no money has been collected yet (that only happens via `ConfirmCashDepositCommand`, which moves the payment to `Paid`) — there is nothing to forfeit or partially refund from an amount never taken. The actually-fixed bug was on the frontend: `MyBookingsSection.tsx`'s `CancelArea` now gates the forfeiture-warning copy on the real `Payment.status` (`Captured`/`Paid`) via `useGetPaymentByAppointmentQuery`, not `Appointment.depositStatus` alone, so it no longer shows a forfeiture warning for a deposit that was never actually collected |
 | `Payment.RefundedAmount` | New nullable `decimal` column (2026-07-21, `/code-review high` finding) tracking how much of `Payment.Amount` was actually refunded — there is no separate `PartiallyRefunded` status, so `Status == Refunded` alone can't distinguish a full refund from a partial one. Set by both `CancelAppointmentCommand`'s partial/full-refund branches and the pre-existing owner-initiated `RefundPaymentCommand` (which had the identical gap already, now fixed consistently in the same change) | `GetRevenueSummaryQuery` was filtering strictly on `Status == Paid`, so a partially-refunded payment (e.g. a late self-cancel under a 50%-refund policy) disappeared from historical revenue reports entirely, including the retained portion the studio actually kept. Now includes `Status == Paid \|\| Status == Refunded` and sums `Amount - (RefundedAmount ?? 0)` per payment (clamped at 0) instead of `Amount` outright — a fully-refunded payment naturally contributes 0 and is filtered out of the per-artist breakdown rather than shown as a zero-revenue row |
 | NIPT business verification (2026-07-22) | `Studio.Nipt` (`string?`, max 10, non-unique index `ix_studios_nipt`) collected at registration (`RegisterStudioRequest.Nipt`, required, format-validated) and editable once via `UpdateStudioRequest.Nipt` (optional; becomes read-only in the UI once set). Uniqueness rule enforced entirely in the application layer (`RegisterStudioHandler`/`UpdateMyStudioHandler`): a NIPT may not match an existing **active** studio whose `OwnerEmail` differs (case-insensitive) — same owner may reuse their NIPT across multiple locations. Violation throws `DuplicateNiptException` → 409. `/studios/me` shows a dismissible-per-session banner when `Nipt` is null, prompting backfill for pre-existing studios. | This is registration/compliance metadata for operating in Albania — it is **explicitly not an auth factor**; login remains email + password (+ OAuth) only, full stop. See `docs/claude/overnight-prompt-nipt-studio-registration-2026-07-22.md` for the full reasoning trail, including why this was flagged as *not* a benchmark-driven pattern (none of Vagaro/Fresha/Boulevard/Mindbody/Zenoti/GlossGenius collect a national tax ID at signup — this is local-compliance-specific, per CLAUDE.md rule #6's "flag the gap" convention). **Deviation from that prompt's draft migration, found by the integration test it explicitly asked for (§14 checklist item 4):** the prompt originally specified a MySQL *filtered unique* index (`nipt IS NOT NULL AND is_active = 1`) as a defense-in-depth backstop. That index cannot express the same-owner exception — SQL unique constraints have no concept of "unique except when this other column matches" — so it made every legitimate multi-location registration fail with a raw 1062/500 even though the app-layer check correctly allowed it. Caught immediately by `RegisterStudio_DuplicateNiptSameOwnerEmail_SucceedsForMultiLocation`. Fixed by dropping `.IsUnique()` from `ix_studios_nipt`, leaving it as a plain lookup index; the application-layer check is the sole source of truth for this rule, same as several other conditional-uniqueness rules already documented in this log's referral/plan sections. **Also deferred, per the prompt's own fallback guidance:** the NIPT checksum-digit algorithm (format-only regex `^[A-Z]\d{8}[A-Z]$` ships; the check-letter algorithm was never confirmed against an authoritative source) and the issuer-side `NiptVerifiedAt` verification stretch (§9/§10 of the prompt) — both flagged as fast-follow work, not silently dropped. |
+| CI toolchain pin | `global.json` at repo root, `sdk.version` = installed SDK exactly, `rollForward: latestFeature` (2026-07-26) | Single source of truth for local dev, CI (`actions/setup-dotnet` reads it), and the Dockerfile's `sdk:10.0` base image band — repo had no SDK pin before this |
+| CI integration-test DB strategy | Plain `docker run mysql:8.4 ...` step in `ci.yml`, not a GitHub Actions `services:` block (2026-07-26) | The declarative `services:` syntax can't pass `--character-set-server`/`--collation-server`, and `DatabaseFixture.cs` connects to `127.0.0.1:3306` directly rather than a service-network hostname — a `docker run -p 3306:3306` is the closer match to local dev and to `docker-compose.yml` |
+| `dotnet format` gate is non-blocking | `continue-on-error: true` in `ci.yml`'s backend job (2026-07-26) | Baseline run against `main` surfaced ~38,000 pre-existing violations (CRLF/whitespace/charset) across nearly every `.cs` file including all EF migrations — the repo has never been run through `dotnet format`. Far past the "small, mechanical, ≤20" bar for a same-change fix; a full reformat is its own dedicated change, not bundled into CI standup |
+| `pnpm lint` gate is non-blocking | `continue-on-error: true` in `ci.yml`'s frontend job (2026-07-26) | Baseline run surfaced 6 pre-existing ESLint errors: 5 are the `react-hooks/set-state-in-effect` rule flagging real effect bodies in production auth/payment/review components (`ArtistScheduleEditor`, `ConfirmChangeEmailPage`, `StudioNotificationSheet`, `VerifyEmailPage`, `ReviewSection`), 1 is `@typescript-eslint/no-explicit-any` in a test file. The count is small but the effect-based fixes touch real component behavior, not mechanical whitespace — left for a dedicated follow-up rather than rushed into a CI-only change |
+| Frontend coverage provider | Added `@vitest/coverage-v8` devDependency (2026-07-26) | `vitest.config.ts` had no coverage provider configured; this is the CI prompt's explicitly sanctioned one-package exception for coverage visibility |
+| `pnpm test --coverage`, never `pnpm test -- --coverage` | Confirmed by direct local reproduction (2026-07-26) | This repo's pinned pnpm (11.5.1) forwards a literal `--` token through to the underlying script instead of stripping it as a separator, so `pnpm test -- --coverage` actually invokes `vitest run "--" "--coverage"` — vitest silently treats both as inert positional test-file-name filters (matches everything, same as no filter) and coverage never activates. No error, no warning — the full suite still reports "all tests passed," just with zero coverage collected. Confirmed the fix (`pnpm test --coverage`, no `--`) actually enables coverage locally before wiring it into `ci.yml` |
+| Endpoint-authorization guardrail heuristic tracks group-level guards | `guardrails` job's Python heuristic in `ci.yml` also treats a `RouteGroupBuilder` variable as guarded if `.RequireAuthorization()`/`.AllowAnonymous()` is chained on the `app.MapGroup(...)` declaration itself, not just on each individual `Map*` call (2026-07-26) | The naive per-route-window version (checking only 300 chars after each `Map*` call) false-positived on `PlatformEndpoints.cs`, `SavedImagesEndpoints.cs`, and `FeedbackEndpoints.cs`'s `platform/feedback` group — all three guard at the group level by real, existing codebase convention, not an actual RBAC gap. Verified clean against current `main` after the fix |
 
 ---
 
@@ -2846,3 +2853,109 @@ revenue reporting, audit logging, dunning, support impersonation, gift cards,
 packages, multi-location) was intentionally left as a fully-specified backlog item
 rather than built blind, per this project's "consultation and specification, not
 implementation" rule for anything beyond a clearly-scoped fix.
+
+## CI: GitHub Actions Pipeline — 2026-07-26
+
+There was no `.github/` directory in this repo at all before this change — correctness
+depended on someone remembering to run `dotnet test`/`pnpm test`/`pnpm lint` locally
+before pushing. This adds `.github/workflows/ci.yml` (build/format/test/lint/docker-build/
+guardrails, gated on every PR to `main` and every push to `main`), `.github/workflows/codeql.yml`
+(weekly + per-PR security scanning, csharp + javascript-typescript matrix), `.github/dependabot.yml`
+(weekly nuget/npm/github-actions updates, minor/patch grouped), `.github/pull_request_template.md`,
+and a root `global.json` pinning the .NET SDK. **CD/deployment (K3s rollout) is explicitly out of
+scope** — flagged as a follow-up, not built here; it needs registry and cluster secrets this
+change does not provision.
+
+### `ci.yml` jobs
+
+- **`backend`** — restore, `dotnet format --verify-no-changes` (non-blocking, see below), release
+  build, starts a `mysql:8.4` container via a plain `docker run` (not a `services:` block — see
+  Decisions Log), unit tests (no external deps, NSubstitute-mocked), integration tests against
+  the real MySQL container, publishes `.trx` results and coverage artifacts.
+- **`frontend`** — install (frozen lockfile), lint (non-blocking, see below), `pnpm build`
+  (`tsc -b && vite build` — doubles as the TypeScript strict-mode gate and the build-breakage
+  gate), `pnpm test --coverage` (added `@vitest/coverage-v8`, the CI prompt's one sanctioned
+  new-package exception), Playwright e2e (mocked API via route interception, no backend needed).
+- **`docker-build`** — builds both the API and frontend Dockerfiles with placeholder build-args,
+  proves the images still build; does not push anywhere, no registry configured.
+- **`guardrails`** — gitleaks secret scan, a grep-based no-`Console.WriteLine`/`console.log`
+  check (verified clean against `main`), and a Python heuristic for endpoints missing
+  `.RequireAuthorization()`/`.AllowAnonymous()` (see below — had to be extended past the CI
+  prompt's original draft to avoid false positives on this codebase's real group-level-guard
+  convention).
+
+### Two gates shipped non-blocking (`continue-on-error: true`), by design
+
+Both were checked against current `main` before deciding, per the "run it once against `main`
+first" rule this task was given — decisions, exact counts, and reasoning are recorded as their
+own Decisions Log rows above (search "CI toolchain pin" onward). Summary:
+
+- **`dotnet format --verify-no-changes`** — ~38,000 pre-existing violations (CRLF/whitespace/
+  charset) across nearly every `.cs` file, including every EF migration. The repo has never
+  been run through `dotnet format`. Far past the "small, mechanical, ≤20" threshold for a
+  same-change baseline fix — a full reformat is its own dedicated, separately-reviewable change.
+- **`pnpm lint`** — 6 pre-existing errors: 5 are the `react-hooks/set-state-in-effect` rule
+  flagging real effect bodies in 5 different production components (auth, payments, reviews),
+  1 is `@typescript-eslint/no-explicit-any` in a test file. Small count, but the effect-based
+  fixes are behavior changes to production components, not mechanical formatting — left for a
+  dedicated follow-up rather than rushed into a CI-standup change.
+
+Both are clearly marked with `# TODO: remove continue-on-error once ...` comments in `ci.yml` —
+neither is silently unenforced.
+
+### A real bug caught while verifying, not just writing YAML
+
+Per this task's own "actually run every command locally before pushing, don't just write YAML
+that looks right" instruction: verifying `pnpm test --coverage` locally surfaced that this
+repo's pinned pnpm (11.5.1) forwards a literal `--` token through instead of stripping it as
+a separator. The originally-drafted step (`pnpm test -- --coverage`, matching the CI prompt's
+own draft) silently runs `vitest run "--" "--coverage"` — vitest treats both as harmless
+positional test-file-name filters, matches everything, and coverage simply never activates.
+No error, no warning, the full suite still reports "all tests passed." `ci.yml` uses
+`pnpm test --coverage` (no `--`) instead, confirmed locally to actually enable coverage.
+
+### Local verification performed (before any push)
+
+- `dotnet restore`/`dotnet build "Pena e Arte.slnx" --configuration Release` — clean, 0 errors.
+- `dotnet test` unit — 1397 passed.
+- `dotnet test` integration — 311 passed, against a real local `mysql:8.4` container (the same
+  image/charset/collation as `docker-compose.yml`), confirming the CI job's DB strategy actually
+  works end to end, not just in theory.
+- `pnpm lint`, `pnpm build` — build clean (0 TypeScript errors); lint's 6 pre-existing findings
+  described above.
+- `pnpm test --coverage` — full suite (116 files / 1742 tests) passed clean on an isolated run
+  with nothing else competing for CPU. Two earlier runs done concurrently with Docker builds/
+  Playwright/other dotnet processes showed 1–3 flaky timeouts in different tests each time
+  (`HelpMenu.test.tsx`, `RegisterStudioPage.test.tsx`, `FeedbackDialog.test.tsx`) — consistent
+  with `vitest.config.ts`'s own pre-existing comment about `testTimeout` being exceeded under
+  full-suite parallel worker load, not a real regression. Coverage instrumentation itself adds
+  meaningful overhead (isolated run: ~935s vs. ~683s uninstrumented), worth keeping in mind if
+  this job ever looks flaky in Actions.
+- `pnpm exec playwright install --with-deps chromium` — browsers already present, no-op.
+- `pnpm test:e2e` — could not be verified strictly as CI runs it (`CI=true`, fresh dev-server
+  start) locally: port 5173 was already occupied by a pre-existing, user-owned `pnpm dev`
+  session that this change did not start and should not kill. Ran against that existing server
+  instead (`reuseExistingServer` picks it up without `CI=true`) as a functional smoke check —
+  4/6 passed, 2 timed out on form interactions, plausibly explained by that server not
+  reflecting this branch's exact state rather than a real e2e regression. The authoritative
+  signal is the real GitHub Actions run in a clean environment (see Phase 9 verification below).
+- Both Dockerfiles (`Pena_e_Arte.API/Dockerfile`, `frontend/Dockerfile`) built successfully
+  standalone with the same placeholder build-args `ci.yml` uses; images removed after
+  verification (not needed locally). `frontend/Dockerfile` produces one pre-existing,
+  unrelated Docker lint warning (`SecretsUsedInArgOrEnv` on `VITE_STRIPE_PUBLISHABLE_KEY`) —
+  this is a Vite *publishable* key, public-by-design and meant to ship in client bundles, not
+  a secret; not something this change introduced or needs to fix.
+- Both guardrail scripts (no-`console`/`Console.WriteLine`, endpoint-authorization heuristic)
+  run directly against current `main` — both clean, confirmed with the exact heredoc form
+  embedded in `ci.yml`.
+
+### Branch protection (Phase 8 — cannot be done from a file-editing session)
+
+Someone with admin on `471k/pena-e-arte` (Phi) needs to, after these workflow files are merged
+to `main` and have run at least once: **Settings → Branches** → add a protection rule on `main`
+requiring a PR, requiring status checks (`Backend — build, format, test`,
+`Frontend — lint, typecheck, build, unit test, e2e`, `Docker images build (no push)`,
+`Non-negotiable-rules guardrails`, `Analyze (csharp)`, `Analyze (javascript-typescript)`),
+requiring branches up to date, requiring conversation resolution, and enabling GitHub's native
+secret scanning + push protection under **Code security and analysis**. Do not enable force
+pushes or branch deletion on `main`.

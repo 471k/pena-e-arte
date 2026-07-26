@@ -1,0 +1,304 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend — build, format, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore "Pena e Arte.slnx"
+
+      - name: Format check (no changes allowed)
+        run: dotnet format "Pena e Arte.slnx" --verify-no-changes --verbosity diagnostic
+        continue-on-error: true
+        # continue-on-error: current `main` has ~38k pre-existing dotnet-format violations
+        # (mostly CRLF/whitespace/charset — the repo has never been run through
+        # `dotnet format`), spread across nearly every .cs file including EF migrations.
+        # This is far past the "small, mechanical, ≤20" bar for a same-change baseline
+        # fix, and a repo-wide reformat is out of scope for a CI-standup change (it would
+        # bury this diff under an unrelated whitespace rewrite touching every file).
+        # TODO: remove continue-on-error once a dedicated `chore: dotnet format baseline`
+        # pass has been done and reviewed on its own.
+
+      - name: Build (Release)
+        run: dotnet build "Pena e Arte.slnx" --configuration Release --no-restore
+
+      - name: Start MySQL 8.4 (matches docker-compose.yml exactly)
+        run: |
+          docker run -d --name ci-mysql \
+            -e MYSQL_ROOT_PASSWORD=root \
+            -e MYSQL_DATABASE=pena_e_arte_test \
+            -p 3306:3306 \
+            mysql:8.4 \
+            --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+          echo "Waiting for MySQL to accept connections..."
+          for i in $(seq 1 30); do
+            if docker exec ci-mysql mysqladmin ping -uroot -proot --silent; then
+              echo "MySQL is ready."
+              break
+            fi
+            sleep 2
+          done
+          docker exec ci-mysql mysqladmin ping -uroot -proot --silent || {
+            echo "MySQL did not become ready in time"; docker logs ci-mysql; exit 1;
+          }
+        # Deliberately a `docker run` step, not a GitHub Actions `services:` block — the
+        # declarative `services:` syntax cannot pass the `--character-set-server` /
+        # `--collation-server` startup flags docker-compose.yml uses, and DatabaseFixture.cs
+        # connects to 127.0.0.1:3306 directly (not a service-network hostname), so a plain
+        # `docker run` with -p 3306:3306 is the closer match to local dev.
+
+      - name: Unit tests
+        run: >
+          dotnet test tests/Pena_e_Arte.UnitTests/Pena_e_Arte.UnitTests.csproj
+          --configuration Release --no-build
+          --logger "trx;LogFileName=unit-tests.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Integration tests
+        run: >
+          dotnet test tests/Pena_e_Arte.IntegrationTests/Pena_e_Arte.IntegrationTests.csproj
+          --configuration Release --no-build
+          --logger "trx;LogFileName=integration-tests.trx"
+          --collect:"XPlat Code Coverage"
+        # No Stripe/Resend/Twilio/Redis secrets are set here on purpose — every external
+        # service is NSubstitute-mocked at the handler level. Do not pre-provision unused
+        # secrets against rule 4's "secrets never in source" spirit.
+
+      - name: Stop MySQL
+        if: always()
+        run: docker rm -f ci-mysql || true
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Backend test results
+          path: "**/*.trx"
+          reporter: dotnet-trx
+          fail-on-error: true
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: "**/coverage.cobertura.xml"
+          retention-days: 14
+
+  frontend:
+    name: Frontend — lint, typecheck, build, unit test, e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable pnpm (pinned version — must match frontend/Dockerfile)
+        run: corepack enable && corepack prepare pnpm@11.5.1 --activate
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install (frozen lockfile)
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: frontend
+        run: pnpm lint
+        continue-on-error: true
+        # continue-on-error: current `main` has 6 pre-existing ESLint errors — 5 are the
+        # newly-adopted `react-hooks/set-state-in-effect` rule flagging real effect bodies
+        # in production auth/payment/review components (ArtistScheduleEditor,
+        # ConfirmChangeEmailPage, StudioNotificationSheet, VerifyEmailPage, ReviewSection),
+        # 1 is `@typescript-eslint/no-explicit-any` in a test file. Fixing the effect-based
+        # ones means restructuring each component's state/effect logic, not a mechanical
+        # whitespace change — real behavior risk for a CI-only change, so left for a
+        # dedicated follow-up rather than rushed here.
+        # TODO: remove continue-on-error once those 6 findings are fixed and reviewed.
+
+      - name: Typecheck + build
+        working-directory: frontend
+        run: pnpm build
+        # `pnpm build` runs `tsc -b && vite build` — this is both the TypeScript strict-mode
+        # gate (rule 6: no `any`, explicit types) and a build-breakage gate in one step.
+
+      - name: Unit / component tests
+        working-directory: frontend
+        run: pnpm test --coverage
+        # @vitest/coverage-v8 added as a devDependency for this — vitest.config had no
+        # coverage provider configured. This is the one new-package exception explicitly
+        # sanctioned for coverage visibility.
+        # Deliberately `pnpm test --coverage`, NOT `pnpm test -- --coverage`: verified
+        # locally that this pnpm version forwards a literal `--` token through to the
+        # underlying command instead of stripping it as a separator, so `-- --coverage`
+        # actually runs `vitest run "--" "--coverage"` — vitest silently treats both as
+        # inert positional test-file filters and coverage never activates (all tests still
+        # run and pass, just with no coverage report and no error, which is exactly the
+        # kind of "looks fine, isn't" gate this CI setup exists to catch elsewhere).
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E tests
+        working-directory: frontend
+        run: pnpm test:e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 14
+
+  docker-build:
+    name: Docker images build (no push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Pena_e_Arte.API/Dockerfile
+          push: false
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: false
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          build-args: |
+            VITE_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
+            VITE_CONTACT_EMAIL=support@tattooos.co
+            VITE_GOOGLE_CLIENT_ID=placeholder
+            VITE_APPLE_CLIENT_ID=placeholder
+            VITE_PUBLIC_URL=http://localhost:8081
+        # Placeholder build-args only — this job proves the image *builds*, it does not
+        # produce anything that gets pushed or deployed. No registry credentials, no
+        # `push: true` — that's out-of-scope CD work.
+
+  guardrails:
+    name: Non-negotiable-rules guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history — gitleaks needs it to scan past commits, not just HEAD
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Enforces rule 4 ("secrets never in source"). If this fires on a false positive
+        # (e.g. a Stripe test-mode fixture key), add a `.gitleaksignore` entry with a
+        # comment explaining why it's safe — don't disable the whole job.
+
+      - name: No Console.WriteLine / console.log in production code
+        run: |
+          set -e
+          echo "Checking backend for Console.WriteLine outside tests..."
+          if grep -rn "Console\.WriteLine" \
+               --include="*.cs" \
+               Pena_e_Arte.API Pena_e_Arte.Application Pena_e_Arte.Domain \
+               Pena_e_Arte.Infrastructure Pena_e_Arte.Contracts; then
+            echo "::error::Console.WriteLine found in production code — use Serilog (rule 5)."
+            exit 1
+          fi
+          echo "Checking frontend for console.log outside tests..."
+          if grep -rn "console\.log" \
+               --include="*.ts" --include="*.tsx" \
+               frontend/src \
+             | grep -v -E "\.test\.|\.spec\.|/e2e/"; then
+            echo "::error::console.log found in production frontend code (rule 5)."
+            exit 1
+          fi
+          echo "Clean."
+        # Verified clean against current main before wiring this blocking.
+
+      - name: Unprotected-endpoint heuristic
+        run: |
+          set -e
+          echo "Scanning for Map* endpoint registrations missing .RequireAuthorization()/.AllowAnonymous()..."
+          python3 - <<'PYEOF'
+          import re, sys, pathlib
+
+          violations = []
+          map_pattern = re.compile(r'(\w+)\.Map(Get|Post|Put|Patch|Delete)\s*\(')
+          # A route group declaration may chain its own .RequireAuthorization()/
+          # .AllowAnonymous() at the `app.MapGroup(...)` call itself (e.g.
+          # PlatformEndpoints.cs, SavedImagesEndpoints.cs) rather than on every
+          # individual Map call in that group — that's a real, legitimate pattern in
+          # this codebase, not an unprotected endpoint. Track guarded group variables
+          # separately so this heuristic doesn't false-positive on them.
+          group_decl_pattern = re.compile(r'\b(\w+)\s*=\s*app\.MapGroup\s*\([^;]*?;', re.DOTALL)
+
+          for path in pathlib.Path("Pena_e_Arte.API").rglob("*Endpoints.cs"):
+              text = path.read_text()
+
+              guarded_groups = set()
+              for gm in group_decl_pattern.finditer(text):
+                  var_name = gm.group(1)
+                  decl_text = gm.group(0)
+                  if "RequireAuthorization" in decl_text or "AllowAnonymous" in decl_text:
+                      guarded_groups.add(var_name)
+
+              for m in map_pattern.finditer(text):
+                  var_name = m.group(1)
+                  window = text[m.end(): m.end() + 300]
+                  if "RequireAuthorization" in window or "AllowAnonymous" in window:
+                      continue
+                  if var_name in guarded_groups:
+                      continue
+                  line_no = text[:m.start()].count("\n") + 1
+                  violations.append(f"{path}:{line_no}")
+
+          if violations:
+              print("::error::Endpoints missing .RequireAuthorization()/.AllowAnonymous() — rule 2:")
+              for v in violations:
+                  print(f"  {v}")
+              sys.exit(1)
+          print("Clean.")
+          PYEOF
+        # Verified clean against current main (with the group-level-guard tracking above —
+        # the version from the original prompt's draft false-positived on
+        # PlatformEndpoints.cs, SavedImagesEndpoints.cs and FeedbackEndpoints.cs, all of
+        # which guard at the group level by real, existing codebase convention).
