@@ -23,11 +23,11 @@ public class UpdateTattooRecordHandler(IAppDbContext db)
             throw new NotFoundException(nameof(TattooRecord), command.Id);
 
         UpdateTattooRecordRequest req = command.Request;
-        record.Description  = req.Description;
+        record.Description = req.Description;
         record.BodyLocation = req.BodyLocation;
-        record.PhotoUrls    = req.PhotoUrls;
-        record.CompletedAt  = req.CompletedAt;
-        record.UpdatedAt    = DateTime.UtcNow;
+        record.PhotoUrls = req.PhotoUrls;
+        record.CompletedAt = req.CompletedAt;
+        record.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 

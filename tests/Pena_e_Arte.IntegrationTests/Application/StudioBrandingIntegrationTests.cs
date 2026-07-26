@@ -75,9 +75,9 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
         Studio studio = new()
         {
-            Name     = "No Sub Studio",
-            Slug     = UniqueSlug(),
-            City     = "Porto",
+            Name = "No Sub Studio",
+            Slug = UniqueSlug(),
+            City = "Porto",
             IsActive = true,
         };
         seed.Studios.Add(studio);
@@ -100,16 +100,16 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
 
         Plan plan = new()
         {
-            Name                 = "Test Plan",
+            Name = "Test Plan",
             AllowBrandingRemoval = allowBrandingRemoval,
         };
         seed.Plans.Add(plan);
 
         Studio studio = new()
         {
-            Name     = "Branding Test Studio",
-            Slug     = UniqueSlug(),
-            City     = "Lisboa",
+            Name = "Branding Test Studio",
+            Slug = UniqueSlug(),
+            City = "Lisboa",
             IsActive = true,
         };
         seed.Studios.Add(studio);
@@ -117,7 +117,7 @@ public class StudioBrandingIntegrationTests(DatabaseFixture fixture)
         Subscription subscription = new()
         {
             StudioId = studio.Id,
-            PlanId   = plan.Id,
+            PlanId = plan.Id,
         };
         seed.Subscriptions.Add(subscription);
 

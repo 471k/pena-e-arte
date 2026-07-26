@@ -12,12 +12,12 @@ namespace Pena_e_Arte.Application.Designs.Commands;
 public record SendDesignReviewNotificationCommand(Guid DesignRevisionId, bool Approved) : IRequest<Unit>;
 
 public class SendDesignReviewNotificationHandler(
-    IAppDbContext                                         db,
-    IEmailRenderer                                       emailRenderer,
-    INotificationService                                 notifications,
-    INotificationPreferenceService                       prefs,
-    IRealtimeNotifier                                    realtime,
-    ILogger<SendDesignReviewNotificationHandler>         logger)
+    IAppDbContext db,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    INotificationPreferenceService prefs,
+    IRealtimeNotifier realtime,
+    ILogger<SendDesignReviewNotificationHandler> logger)
     : IRequestHandler<SendDesignReviewNotificationCommand, Unit>
 {
     public async Task<Unit> Handle(SendDesignReviewNotificationCommand command, CancellationToken ct)
@@ -45,9 +45,9 @@ public class SendDesignReviewNotificationHandler(
             return Unit.Value;
         }
 
-        Artist artist   = revision.Design.Artist;
+        Artist artist = revision.Design.Artist;
         string? clientNotes = revision.Approval?.ClientNotes;
-        string designTitle  = revision.Design.Title;
+        string designTitle = revision.Design.Title;
 
         string subject = command.Approved
             ? $"Design approved — {designTitle}"
@@ -90,14 +90,14 @@ public class SendDesignReviewNotificationHandler(
 
             studioLog = new()
             {
-                StudioId      = studio.Id,
-                RecipientId   = studio.Id,
+                StudioId = studio.Id,
+                RecipientId = studio.Id,
                 RecipientType = NotificationRecipientType.Studio,
-                Channel       = NotificationChannel.Email,
-                Subject       = subject,
-                Body          = body,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = studioSuccess,
+                Channel = NotificationChannel.Email,
+                Subject = subject,
+                Body = body,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = studioSuccess,
             };
             db.NotificationLogs.Add(studioLog);
             await db.SaveChangesAsync(ct);
@@ -124,14 +124,14 @@ public class SendDesignReviewNotificationHandler(
 
                 db.NotificationLogs.Add(new NotificationLog
                 {
-                    StudioId      = studio.Id,
-                    RecipientId   = artist.Id,
+                    StudioId = studio.Id,
+                    RecipientId = artist.Id,
                     RecipientType = NotificationRecipientType.Artist,
-                    Channel       = NotificationChannel.Email,
-                    Subject       = subject,
-                    Body          = body,
-                    SentAt        = DateTime.UtcNow,
-                    IsSuccess     = artistSuccess,
+                    Channel = NotificationChannel.Email,
+                    Subject = subject,
+                    Body = body,
+                    SentAt = DateTime.UtcNow,
+                    IsSuccess = artistSuccess,
                 });
                 await db.SaveChangesAsync(ct);
             }

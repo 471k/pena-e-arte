@@ -24,7 +24,7 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
     {
         // Arrange
         string originalSlug = UniqueSlug();
-        string newSlug      = UniqueSlug();
+        string newSlug = UniqueSlug();
 
         StudioResponse registered = await RunRegisterHandler(new("Slug Studio", originalSlug, "Lisboa", 38.7, -9.1, "owner@slugstudio.com", UniqueTestNipt()));
 
@@ -44,8 +44,8 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
     {
         // Arrange — register and change slug once
         string originalSlug = UniqueSlug();
-        string secondSlug   = UniqueSlug();
-        string thirdSlug    = UniqueSlug();
+        string secondSlug = UniqueSlug();
+        string thirdSlug = UniqueSlug();
 
         StudioResponse registered = await RunRegisterHandler(new("Lock Studio", originalSlug, "Porto", 41.1, -8.6, "owner@lockstudio.com", UniqueTestNipt()));
         await RunUpdateSlugHandler(registered.Id, secondSlug);
@@ -65,7 +65,7 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
         string takenSlug = UniqueSlug();
         await RunRegisterHandler(new("Taken Studio", takenSlug, "Braga", 41.5, -8.4, "owner@taken.com", UniqueTestNipt()));
 
-        string ownSlug  = UniqueSlug();
+        string ownSlug = UniqueSlug();
         StudioResponse mine = await RunRegisterHandler(new("My Studio", ownSlug, "Faro", 37.0, -7.9, "owner@mine.com", UniqueTestNipt()));
 
         // Act
@@ -81,8 +81,8 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
     {
         // Arrange
         string original = UniqueSlug();
-        string second   = UniqueSlug();
-        string third    = UniqueSlug();
+        string second = UniqueSlug();
+        string third = UniqueSlug();
 
         StudioResponse studio = await RunRegisterHandler(new("Two-Change", original, "Evora", 38.5, -7.9, "owner@twochange.com", UniqueTestNipt()));
         await RunUpdateSlugHandler(studio.Id, second);

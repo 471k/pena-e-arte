@@ -43,7 +43,7 @@ public class GetStudioQrCodeHandler(IAppDbContext db, IQrCodeService qrCode)
         return query.Format.ToLowerInvariant() switch
         {
             "svg" => new QrCodeResponse(System.Text.Encoding.UTF8.GetBytes(qrCode.GenerateSvg(url)), "image/svg+xml", slug),
-            _     => new QrCodeResponse(qrCode.GeneratePng(url), "image/png", slug),
+            _ => new QrCodeResponse(qrCode.GeneratePng(url), "image/png", slug),
         };
     }
 }

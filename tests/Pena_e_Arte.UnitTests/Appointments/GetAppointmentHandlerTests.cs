@@ -22,13 +22,13 @@ public class GetAppointmentHandlerTests
 
         Appointment appt = new()
         {
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(1),
-            EndDate         = DateTime.UtcNow.AddDays(1).AddHours(1),
+            ArtistId = Guid.NewGuid(),
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(1).AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
         };
         _db.Appointments.Add(appt);
         await _db.SaveChangesAsync();

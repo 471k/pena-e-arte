@@ -10,10 +10,10 @@ using Pena_e_Arte.Infrastructure.Persistence;
 namespace Pena_e_Arte.Infrastructure.Jobs;
 
 public class AppointmentReminderJob(
-    INotificationService             notifications,
-    AppDbContext                     db,
-    IRealtimeNotifier                realtime,
-    ILogger<AppointmentReminderJob>  logger)
+    INotificationService notifications,
+    AppDbContext db,
+    IRealtimeNotifier realtime,
+    ILogger<AppointmentReminderJob> logger)
 {
     public async Task SendReminderAsync(Guid appointmentId, string type, CancellationToken ct = default)
     {
@@ -35,7 +35,7 @@ public class AppointmentReminderJob(
         }
 
         string timeLabel = type == "48h" ? "48 hours" : "24 hours";
-        string subject   = $"Appointment Reminder — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
+        string subject = $"Appointment Reminder — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
         string emailBody = BuildEmailBody(appointment, timeLabel);
 
         bool emailSuccess = await TrySendEmailAsync(appointment, subject, emailBody, ct);
@@ -46,8 +46,8 @@ public class AppointmentReminderJob(
 
         if (appointment.Client.Phone is not null)
         {
-            string smsBody    = $"Reminder: Your tattoo session is in {timeLabel} — {appointment.Date:ddd dd MMM 'at' HH:mm}. Reply STOP to opt out.";
-            bool   smsSuccess = await TrySendSmsAsync(appointment, smsBody, ct);
+            string smsBody = $"Reminder: Your tattoo session is in {timeLabel} — {appointment.Date:ddd dd MMM 'at' HH:mm}. Reply STOP to opt out.";
+            bool smsSuccess = await TrySendSmsAsync(appointment, smsBody, ct);
             NotificationLog smsLog = BuildLog(appointment, NotificationChannel.Sms, null, smsBody, smsSuccess);
             db.NotificationLogs.Add(smsLog);
             logs.Add(smsLog);
@@ -94,21 +94,21 @@ public class AppointmentReminderJob(
     }
 
     private static NotificationLog BuildLog(
-        Appointment         appointment,
+        Appointment appointment,
         NotificationChannel channel,
-        string?             subject,
-        string              body,
-        bool                success) => new()
-    {
-        StudioId      = appointment.StudioId,
-        RecipientId   = appointment.ClientId,
-        RecipientType = NotificationRecipientType.Client,
-        Channel       = channel,
-        Subject       = subject,
-        Body          = body,
-        SentAt        = DateTime.UtcNow,
-        IsSuccess     = success
-    };
+        string? subject,
+        string body,
+        bool success) => new()
+        {
+            StudioId = appointment.StudioId,
+            RecipientId = appointment.ClientId,
+            RecipientType = NotificationRecipientType.Client,
+            Channel = channel,
+            Subject = subject,
+            Body = body,
+            SentAt = DateTime.UtcNow,
+            IsSuccess = success
+        };
 
     private static string BuildEmailBody(Appointment appointment, string timeLabel) =>
         $"""

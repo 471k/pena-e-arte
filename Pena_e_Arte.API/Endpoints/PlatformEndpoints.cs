@@ -14,27 +14,27 @@ public static class PlatformEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/platform")
             .RequireAuthorization("IssuerOnly");
 
-        group.MapGet("stats",                            GetStats);
-        group.MapGet("studios/{studioId:guid}/summary",  GetStudioSummary);
-        group.MapGet("mrr-history",                      GetMrrHistory);
-        group.MapGet("subscriptions",                    GetSubscriptions);
+        group.MapGet("stats", GetStats);
+        group.MapGet("studios/{studioId:guid}/summary", GetStudioSummary);
+        group.MapGet("mrr-history", GetMrrHistory);
+        group.MapGet("subscriptions", GetSubscriptions);
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
         group.MapPost("studios/{studioId:guid}/subscription/activate", ActivateSubscriptionManually);
-        group.MapPatch("subscriptions/{studioId:guid}/cancel",         CancelSubscription);
-        group.MapGet("referral-codes",                              GetReferralCodes);
-        group.MapPatch("referral-codes/{id:guid}/deactivate",       DeactivateReferralCode);
-        group.MapPost("studios/{studioId:guid}/referral-codes",     GenerateReferralCodeForStudio);
-        group.MapPatch("referral-codes/{id:guid}/reactivate",       ReactivateReferralCode);
-        group.MapDelete("referral-codes/{id:guid}",                 DeleteReferralCode);
-        group.MapGet("reports/industry",                            GetIndustryReports);
-        group.MapPost("reports/industry/trigger",                   TriggerIndustryReport);
-        group.MapGet("plan-usage-report",                           GetPlanUsageReport);
-        group.MapGet("help-search-insights",                        GetHelpSearchInsights);
-        group.MapGet("audit-log",                                   GetAuditLog);
+        group.MapPatch("subscriptions/{studioId:guid}/cancel", CancelSubscription);
+        group.MapGet("referral-codes", GetReferralCodes);
+        group.MapPatch("referral-codes/{id:guid}/deactivate", DeactivateReferralCode);
+        group.MapPost("studios/{studioId:guid}/referral-codes", GenerateReferralCodeForStudio);
+        group.MapPatch("referral-codes/{id:guid}/reactivate", ReactivateReferralCode);
+        group.MapDelete("referral-codes/{id:guid}", DeleteReferralCode);
+        group.MapGet("reports/industry", GetIndustryReports);
+        group.MapPost("reports/industry/trigger", TriggerIndustryReport);
+        group.MapGet("plan-usage-report", GetPlanUsageReport);
+        group.MapGet("help-search-insights", GetHelpSearchInsights);
+        group.MapGet("audit-log", GetAuditLog);
     }
 
     private static async Task<IResult> GetStats(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         PlatformStatsResponse result = await mediator.Send(new GetPlatformStatsQuery(), ct);
@@ -42,8 +42,8 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GetStudioSummary(
-        Guid              studioId,
-        ISender           mediator,
+        Guid studioId,
+        ISender mediator,
         CancellationToken ct)
     {
         IssuerStudioSummaryResponse result =
@@ -52,8 +52,8 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GetMrrHistory(
-        ISender           mediator,
-        int?              months,
+        ISender mediator,
+        int? months,
         CancellationToken ct)
     {
         List<MrrDataPointResponse> result =
@@ -62,7 +62,7 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GetSubscriptions(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         List<PlatformSubscriptionResponse> result =
@@ -71,9 +71,9 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> ExtendTrial(
-        Guid              studioId,
+        Guid studioId,
         ExtendTrialRequest request,
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new ExtendTrialCommand(studioId, request), ct);
@@ -81,7 +81,7 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GetReferralCodes(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         List<PlatformReferralCodeResponse> result =
@@ -90,8 +90,8 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> DeactivateReferralCode(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new DeactivateReferralCodeCommand(id), ct);
@@ -99,10 +99,10 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> ActivateSubscriptionManually(
-        Guid                                studioId,
+        Guid studioId,
         ActivateSubscriptionManuallyRequest request,
-        ISender                             mediator,
-        CancellationToken                   ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         SubscriptionResponse result = await mediator.Send(
             new ActivateSubscriptionManuallyCommand(studioId, request.PlanId, request.Note), ct);
@@ -110,8 +110,8 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> CancelSubscription(
-        Guid              studioId,
-        ISender           mediator,
+        Guid studioId,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new CancelSubscriptionCommand(studioId), ct);
@@ -119,10 +119,10 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GenerateReferralCodeForStudio(
-        Guid                                 studioId,
+        Guid studioId,
         GenerateReferralCodeForStudioRequest? request,
-        ISender                              mediator,
-        CancellationToken                    ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         PlatformReferralCodeResponse result =
             await mediator.Send(new IssuerGenerateReferralCodeCommand(studioId, request?.ExpiresAt), ct);
@@ -130,8 +130,8 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> ReactivateReferralCode(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new ReactivateReferralCodeCommand(id), ct);
@@ -139,8 +139,8 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> DeleteReferralCode(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new DeleteReferralCodeCommand(id), ct);
@@ -148,7 +148,7 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GetIndustryReports(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         IReadOnlyList<IndustryReportSummaryResponse> result =
@@ -157,7 +157,7 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> TriggerIndustryReport(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new TriggerIndustryReportCommand(), ct);
@@ -165,7 +165,7 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GetPlanUsageReport(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         PlanUsageReportResponse result = await mediator.Send(new GetPlanUsageReportQuery(), ct);
@@ -173,9 +173,9 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GetHelpSearchInsights(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct,
-        int?              days = null)
+        int? days = null)
     {
         HelpSearchInsightsResponse result =
             await mediator.Send(new GetHelpSearchInsightsQuery(Math.Clamp(days ?? 30, 1, 365)), ct);
@@ -183,14 +183,14 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> GetAuditLog(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct,
-        string?           action     = null,
-        string?           targetType = null,
-        DateTime?         from       = null,
-        DateTime?         to         = null,
-        int               page       = 1,
-        int               pageSize   = 20)
+        string? action = null,
+        string? targetType = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        int page = 1,
+        int pageSize = 20)
     {
         AuditLogPageResponse result = await mediator.Send(
             new GetAuditLogQuery(action, targetType, from, to, page, pageSize), ct);

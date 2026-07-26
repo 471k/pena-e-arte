@@ -12,12 +12,12 @@ namespace Pena_e_Arte.Application.Platform.Queries;
 /// plain read across every studio's entries, not an approved-usages-table exception.
 /// </summary>
 public record GetAuditLogQuery(
-    string?   Action     = null,
-    string?   TargetType = null,
-    DateTime? From       = null,
-    DateTime? To         = null,
-    int       Page       = 1,
-    int       PageSize   = 20)
+    string? Action = null,
+    string? TargetType = null,
+    DateTime? From = null,
+    DateTime? To = null,
+    int Page = 1,
+    int PageSize = 20)
     : IRequest<AuditLogPageResponse>;
 
 public class GetAuditLogHandler(IAppDbContext db)
@@ -38,7 +38,7 @@ public class GetAuditLogHandler(IAppDbContext db)
 
         int totalCount = await q.CountAsync(ct);
 
-        int page     = Math.Max(1, query.Page);
+        int page = Math.Max(1, query.Page);
         int pageSize = Math.Clamp(query.PageSize, 1, 100);
 
         List<AuditLogEntryResponse> items = await q

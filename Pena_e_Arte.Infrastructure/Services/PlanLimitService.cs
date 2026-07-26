@@ -17,9 +17,9 @@ namespace Pena_e_Arte.Infrastructure.Services;
 /// FakeDbContext rather than requiring an integration test.
 /// </summary>
 public class PlanLimitService(
-    IAppDbContext             db,
-    ICurrentTenant            tenant,
-    IDistributedCache         cache,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    IDistributedCache cache,
     ILogger<PlanLimitService> logger) : IPlanLimitService
 {
     private const string CacheKeyPrefix = "plan:usage:";
@@ -38,18 +38,18 @@ public class PlanLimitService(
 
         int? max = quotaType switch
         {
-            QuotaType.Artists              => plan.MaxArtists,
-            QuotaType.AppointmentsPerMonth  => plan.MaxAppointmentsPerMonth,
+            QuotaType.Artists => plan.MaxArtists,
+            QuotaType.AppointmentsPerMonth => plan.MaxAppointmentsPerMonth,
             QuotaType.NotificationsPerMonth => plan.MaxNotificationsPerMonth,
-            QuotaType.StorageBytes          => plan.MaxStorageGb,
-            QuotaType.Locations             => plan.MaxLocations,
-            _                               => null
+            QuotaType.StorageBytes => plan.MaxStorageGb,
+            QuotaType.Locations => plan.MaxLocations,
+            _ => null
         };
 
         if (max is null) return; // unlimited on this plan
 
         long current = await GetCurrentUsageAsync(quotaType, ct);
-        long limit   = quotaType == QuotaType.StorageBytes
+        long limit = quotaType == QuotaType.StorageBytes
             ? (long)max.Value * 1024L * 1024L * 1024L
             : max.Value;
 
@@ -63,21 +63,21 @@ public class PlanLimitService(
         Plan? plan = await ResolveCurrentPlanAsync(ct);
         if (plan is null) return null;
 
-        double artists       = await GetCurrentUsageAsync(QuotaType.Artists, ct);
-        double appointments  = await GetCurrentUsageAsync(QuotaType.AppointmentsPerMonth, ct);
+        double artists = await GetCurrentUsageAsync(QuotaType.Artists, ct);
+        double appointments = await GetCurrentUsageAsync(QuotaType.AppointmentsPerMonth, ct);
         double notifications = await GetCurrentUsageAsync(QuotaType.NotificationsPerMonth, ct);
-        double storageBytes  = await GetCurrentUsageAsync(QuotaType.StorageBytes, ct);
-        double locations     = await GetCurrentUsageAsync(QuotaType.Locations, ct);
+        double storageBytes = await GetCurrentUsageAsync(QuotaType.StorageBytes, ct);
+        double locations = await GetCurrentUsageAsync(QuotaType.Locations, ct);
 
         double storageGb = Math.Round(storageBytes / 1024.0 / 1024.0 / 1024.0, 1);
 
         return new PlanUsageSnapshot(
             plan.Name,
-            new PlanUsageDimension(artists,       plan.MaxArtists),
-            new PlanUsageDimension(appointments,  plan.MaxAppointmentsPerMonth),
+            new PlanUsageDimension(artists, plan.MaxArtists),
+            new PlanUsageDimension(appointments, plan.MaxAppointmentsPerMonth),
             new PlanUsageDimension(notifications, plan.MaxNotificationsPerMonth),
-            new PlanUsageDimension(storageGb,     plan.MaxStorageGb),
-            new PlanUsageDimension(locations,     plan.MaxLocations));
+            new PlanUsageDimension(storageGb, plan.MaxStorageGb),
+            new PlanUsageDimension(locations, plan.MaxLocations));
     }
 
     // Write-through invalidation: called by quota-checked command handlers immediately after
@@ -170,11 +170,11 @@ public class PlanLimitService(
 
     private static string Describe(QuotaType quotaType) => quotaType switch
     {
-        QuotaType.Artists              => "artists",
+        QuotaType.Artists => "artists",
         QuotaType.AppointmentsPerMonth => "appointments per month",
         QuotaType.NotificationsPerMonth => "notifications per month",
-        QuotaType.StorageBytes         => "GB of storage",
-        QuotaType.Locations            => "locations",
-        _                              => "items"
+        QuotaType.StorageBytes => "GB of storage",
+        QuotaType.Locations => "locations",
+        _ => "items"
     };
 }

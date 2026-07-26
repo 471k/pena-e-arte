@@ -12,26 +12,26 @@ public record PlainAuditFakeCommand : IRequest<string>;
 
 public record AuditableFakeCommand(Guid TargetId) : IRequest<string>, IAuditableCommand
 {
-    public string AuditAction     => "Fake.Done";
+    public string AuditAction => "Fake.Done";
     public string AuditTargetType => "Fake";
-    public Guid   AuditTargetId   => TargetId;
+    public Guid AuditTargetId => TargetId;
 }
 
 public record AuditableFakeCommandWithStudio(Guid TargetId, Guid StudioId)
     : IRequest<string>, IAuditableCommand
 {
-    public string AuditAction     => "Fake.WithStudio";
+    public string AuditAction => "Fake.WithStudio";
     public string AuditTargetType => "Fake";
-    public Guid   AuditTargetId   => TargetId;
-    public Guid?  AuditStudioId   => StudioId;
+    public Guid AuditTargetId => TargetId;
+    public Guid? AuditStudioId => StudioId;
 }
 
 public class AuditLogBehaviorTests
 {
-    private readonly FakeDbContext  _db          = FakeDbContext.Create();
-    private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
-    private readonly ICurrentTenant _tenant      = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _actorId     = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _actorId = Guid.NewGuid();
 
     public AuditLogBehaviorTests()
     {

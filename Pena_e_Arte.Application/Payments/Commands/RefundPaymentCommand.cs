@@ -12,10 +12,10 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 public record RefundPaymentCommand(Guid PaymentId, decimal? Amount) : IRequest<PaymentResponse>;
 
 public class RefundPaymentHandler(
-    IAppDbContext         db,
+    IAppDbContext db,
     IStripePaymentService stripePayments,
-    IRealtimeNotifier     realtime,
-    ISender               sender)
+    IRealtimeNotifier realtime,
+    ISender sender)
     : IRequestHandler<RefundPaymentCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(RefundPaymentCommand command, CancellationToken ct)
@@ -40,9 +40,9 @@ public class RefundPaymentHandler(
         await stripePayments.RefundPaymentIntentAsync(
             payment.StripePaymentIntentId, amountInCents, ct);
 
-        payment.Status         = PaymentStatus.Refunded;
+        payment.Status = PaymentStatus.Refunded;
         payment.RefundedAmount = refundAmount;
-        payment.UpdatedAt      = DateTime.UtcNow;
+        payment.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 

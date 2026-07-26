@@ -12,14 +12,14 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class CancelAppointmentHandlerTests
 {
-    private readonly FakeDbContext       _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant      _tenant      = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser        _currentUser = Substitute.For<ICurrentUser>();
-    private readonly IRealtimeNotifier   _realtime    = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender             _sender      = Substitute.For<ISender>();
-    private readonly IJobScheduler       _jobs        = Substitute.For<IJobScheduler>();
-    private readonly IStripePaymentService _stripe    = Substitute.For<IStripePaymentService>();
-    private readonly Guid                _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
+    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CancelAppointmentHandlerTests()
     {
@@ -187,15 +187,15 @@ public class CancelAppointmentHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = clientId,
-            Date            = date,
-            EndDate         = date.AddHours(2),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = clientId,
+            Date = date,
+            EndDate = date.AddHours(2),
             DurationMinutes = 120,
-            Status          = status,
-            DepositStatus   = DepositStatus.Pending,
-            DepositAmount   = depositAmount
+            Status = status,
+            DepositStatus = DepositStatus.Pending,
+            DepositAmount = depositAmount
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -288,8 +288,12 @@ public class CancelAppointmentHandlerTests
         Guid clientId = SeedClientAsCurrentUser();
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = _studioId, Name = "Strict", AmountFixed = 50m, IsActive = true,
-            CancellationWindowHours = 24, RefundPercentOnLateCancel = 0,
+            StudioId = _studioId,
+            Name = "Strict",
+            AmountFixed = 50m,
+            IsActive = true,
+            CancellationWindowHours = 24,
+            RefundPercentOnLateCancel = 0,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -309,8 +313,12 @@ public class CancelAppointmentHandlerTests
         Guid clientId = SeedClientAsCurrentUser();
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = _studioId, Name = "Lenient", AmountFixed = 50m, IsActive = true,
-            CancellationWindowHours = 24, RefundPercentOnLateCancel = 50,
+            StudioId = _studioId,
+            Name = "Lenient",
+            AmountFixed = 50m,
+            IsActive = true,
+            CancellationWindowHours = 24,
+            RefundPercentOnLateCancel = 50,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -361,14 +369,14 @@ public class CancelAppointmentHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = Guid.NewGuid(),
-            Date            = date,
-            EndDate         = date.AddHours(2),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = date,
+            EndDate = date.AddHours(2),
             DurationMinutes = 120,
-            Status          = status,
-            DepositStatus   = DepositStatus.Pending
+            Status = status,
+            DepositStatus = DepositStatus.Pending
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -382,12 +390,12 @@ public class CancelAppointmentHandlerTests
     {
         _db.Payments.Add(new Payment
         {
-            StudioId              = _studioId,
-            AppointmentId         = appointmentId,
-            ClientId              = Guid.NewGuid(),
-            Amount                = amount,
-            Status                = status,
-            Method                = method,
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            ClientId = Guid.NewGuid(),
+            Amount = amount,
+            Status = status,
+            Method = method,
             StripePaymentIntentId = stripeIntentId,
         });
         await _db.SaveChangesAsync();

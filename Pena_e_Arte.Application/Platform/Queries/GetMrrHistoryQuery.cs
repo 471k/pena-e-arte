@@ -24,13 +24,13 @@ public class GetMrrHistoryHandler(IAppDbContext db)
             .Where(s => s.Plan != null)
             .ToListAsync(ct);
 
-        DateTime now    = DateTime.UtcNow;
-        var      result = new List<MrrDataPointResponse>(months);
+        DateTime now = DateTime.UtcNow;
+        var result = new List<MrrDataPointResponse>(months);
 
         for (int i = months - 1; i >= 0; i--)
         {
             DateTime monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-i);
-            DateTime monthEnd   = monthStart.AddMonths(1);
+            DateTime monthEnd = monthStart.AddMonths(1);
 
             decimal mrr = subscriptions
                 .Where(s => s.CreatedAt < monthEnd && s.CurrentPeriodEnd >= monthStart)

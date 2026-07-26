@@ -12,17 +12,17 @@ public class AuditLogEntry
 {
     private AuditLogEntry() { }
 
-    public Guid     Id          { get; private set; } = Guid.NewGuid();
-    public Guid     ActorUserId { get; private set; }
-    public string   ActorRole   { get; private set; } = string.Empty;
-    public string   Action      { get; private set; } = string.Empty;
-    public string   TargetType  { get; private set; } = string.Empty;
-    public Guid     TargetId    { get; private set; }
-    public Guid?    StudioId    { get; private set; }
+    public Guid Id { get; private set; } = Guid.NewGuid();
+    public Guid ActorUserId { get; private set; }
+    public string ActorRole { get; private set; } = string.Empty;
+    public string Action { get; private set; } = string.Empty;
+    public string TargetType { get; private set; } = string.Empty;
+    public Guid TargetId { get; private set; }
+    public Guid? StudioId { get; private set; }
 
     /// <summary>Whitelisted, PII-scrubbed JSON — never names/emails/phone numbers/free text. See AuditMetadataBuilder.</summary>
-    public string   Metadata    { get; private set; } = "{}";
-    public DateTime CreatedAt   { get; private set; } = DateTime.UtcNow;
+    public string Metadata { get; private set; } = "{}";
+    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
 
     public static AuditLogEntry Create(
         Guid actorUserId, string actorRole, string action, string targetType,
@@ -30,11 +30,11 @@ public class AuditLogEntry
         new()
         {
             ActorUserId = actorUserId,
-            ActorRole   = actorRole,
-            Action      = action,
-            TargetType  = targetType,
-            TargetId    = targetId,
-            StudioId    = studioId,
-            Metadata    = metadata,
+            ActorRole = actorRole,
+            Action = action,
+            TargetType = targetType,
+            TargetId = targetId,
+            StudioId = studioId,
+            Metadata = metadata,
         };
 }

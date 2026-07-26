@@ -9,11 +9,11 @@ namespace Pena_e_Arte.Application.Auth.Commands;
 public record ForgotPasswordCommand(ForgotPasswordRequest Request) : IRequest;
 
 public class ForgotPasswordHandler(
-    IIdentityService                identity,
-    IEmailRenderer                  emailRenderer,
-    INotificationService             notifications,
-    IAppSettings                     appSettings,
-    ILogger<ForgotPasswordHandler>   logger)
+    IIdentityService identity,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    IAppSettings appSettings,
+    ILogger<ForgotPasswordHandler> logger)
     : IRequestHandler<ForgotPasswordCommand>
 {
     public async Task Handle(ForgotPasswordCommand command, CancellationToken ct)

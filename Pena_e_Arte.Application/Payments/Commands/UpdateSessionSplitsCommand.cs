@@ -15,9 +15,9 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 public record UpdateSessionSplitsCommand(Guid PaymentId, UpdateSessionSplitsRequest Request)
     : IRequest<PaymentResponse>, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.SessionSplitsUpdated;
+    public string AuditAction => AuditActions.SessionSplitsUpdated;
     public string AuditTargetType => AuditTargetTypes.Payment;
-    public Guid   AuditTargetId   => PaymentId;
+    public Guid AuditTargetId => PaymentId;
 }
 
 public class UpdateSessionSplitsHandler(IAppDbContext db)
@@ -47,10 +47,10 @@ public class UpdateSessionSplitsHandler(IAppDbContext db)
         List<SessionSplit> newSplits = command.Request.Splits
             .Select(item => new SessionSplit
             {
-                StudioId  = payment.StudioId,
+                StudioId = payment.StudioId,
                 PaymentId = payment.Id,
-                Label     = item.Label,
-                Amount    = item.Amount
+                Label = item.Label,
+                Amount = item.Amount
             }).ToList();
 
         db.SessionSplits.AddRange(newSplits);

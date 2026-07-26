@@ -16,9 +16,9 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     private static readonly IConfiguration Config = new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Jwt:SecretKey"]               = "test-secret-key-must-be-at-least-32-chars!",
-            ["Jwt:Issuer"]                  = "test-issuer",
-            ["Jwt:Audience"]                = "test-audience",
+            ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-chars!",
+            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Audience"] = "test-audience",
             ["Jwt:AccessTokenExpiryMinutes"] = "15"
         })
         .Build();
@@ -59,7 +59,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task CreateUserAsync_ValidCredentials_ReturnsSuccess()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService sut          = CreateSut(um);
+        IdentityService sut = CreateSut(um);
 
         (bool success, Guid _, string[] errors) = await sut.CreateUserAsync(
             UniqueEmail(), "Password1!", "owner", Guid.NewGuid());
@@ -72,7 +72,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task CreateUserAsync_DuplicateEmail_ReturnsFalseWithErrors()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string email = UniqueEmail();
 
         await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
@@ -86,7 +86,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task CreateUserAsync_WeakPassword_ReturnsFalseWithErrors()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
 
         (bool success, Guid _, string[] errors) = await sut.CreateUserAsync(UniqueEmail(), "123", "owner", Guid.NewGuid());
 
@@ -98,7 +98,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task CreateUserAsync_ValidUser_AssignsRoleCorrectly()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string email = UniqueEmail();
 
         await sut.CreateUserAsync(email, "Password1!", "artist", Guid.NewGuid());
@@ -112,14 +112,14 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task CreateUserAsync_ValidUser_AddsTenantIdClaim()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email    = UniqueEmail();
-        Guid   studioId = Guid.NewGuid();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid studioId = Guid.NewGuid();
 
         await sut.CreateUserAsync(email, "Password1!", "owner", studioId);
 
-        IdentityUser?  user   = await um.FindByEmailAsync(email);
-        IList<Claim>   claims = await um.GetClaimsAsync(user!);
+        IdentityUser? user = await um.FindByEmailAsync(email);
+        IList<Claim> claims = await um.GetClaimsAsync(user!);
         claims.Should().Contain(c => c.Type == "tenant_id" && c.Value == studioId.ToString());
     }
 
@@ -127,7 +127,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task LoginAsync_ValidCredentials_ReturnsToken()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string email = UniqueEmail();
         await sut.CreateUserAsync(email, "Password1!", "client", Guid.NewGuid());
 
@@ -142,7 +142,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task LoginAsync_WrongPassword_ReturnsFalse()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string email = UniqueEmail();
         await sut.CreateUserAsync(email, "Password1!", "client", Guid.NewGuid());
 
@@ -156,7 +156,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task LoginAsync_NonExistentUser_ReturnsFalse()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
 
         (bool success, _, _) = await sut.LoginAsync("nobody@example.com", "Password1!");
 
@@ -167,7 +167,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task LoginAsync_ValidCredentials_TokenContainsSubClaim()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string email = UniqueEmail();
         await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
 
@@ -181,7 +181,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task LoginAsync_ValidCredentials_TokenContainsEmailClaim()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string email = UniqueEmail();
         await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
 
@@ -196,7 +196,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task LoginAsync_ValidCredentials_TokenContainsRoleClaim()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string email = UniqueEmail();
         await sut.CreateUserAsync(email, "Password1!", "artist", Guid.NewGuid());
 
@@ -210,9 +210,9 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task LoginAsync_ValidCredentials_TokenContainsTenantIdClaim()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email    = UniqueEmail();
-        Guid   studioId = Guid.NewGuid();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid studioId = Guid.NewGuid();
         await sut.CreateUserAsync(email, "Password1!", "owner", studioId);
 
         (_, string? token, _) = await sut.LoginAsync(email, "Password1!");
@@ -226,7 +226,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task LoginAsync_ValidCredentials_TokenExpiryIsCorrect()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string email = UniqueEmail();
         await sut.CreateUserAsync(email, "Password1!", "client", Guid.NewGuid());
 
@@ -240,13 +240,13 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task CreateUserAsync_ValidUser_SetsActiveTenantIdToken()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email    = UniqueEmail();
-        Guid   studioId = Guid.NewGuid();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid studioId = Guid.NewGuid();
 
         await sut.CreateUserAsync(email, "Password1!", "client", studioId);
 
-        IdentityUser user   = (await um.FindByEmailAsync(email))!;
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
         string? stored = await um.GetAuthenticationTokenAsync(user, "App", "ActiveTenantId");
         stored.Should().Be(studioId.ToString());
     }
@@ -255,14 +255,14 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task IssueTokensForTenantAsync_UserWithTwoStudioClaims_TokenContainsOnlyActiveOne()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email  = UniqueEmail();
-        Guid   studioA = Guid.NewGuid();
-        Guid   studioB = Guid.NewGuid();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid studioA = Guid.NewGuid();
+        Guid studioB = Guid.NewGuid();
 
         await sut.CreateUserAsync(email, "Password1!", "client", studioA);
-        IdentityUser user   = (await um.FindByEmailAsync(email))!;
-        Guid         userId = Guid.Parse(user.Id);
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
+        Guid userId = Guid.Parse(user.Id);
         await sut.EnsureTenantClaimAsync(userId, studioB, default);
 
         (bool success, string? accessToken, string? refreshToken, string? error) =
@@ -278,14 +278,14 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task RefreshTokenAsync_AfterSwitchingStudio_PreservesActiveStudio()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email  = UniqueEmail();
-        Guid   studioA = Guid.NewGuid();
-        Guid   studioB = Guid.NewGuid();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid studioA = Guid.NewGuid();
+        Guid studioB = Guid.NewGuid();
 
         await sut.CreateUserAsync(email, "Password1!", "client", studioA);
-        IdentityUser user   = (await um.FindByEmailAsync(email))!;
-        Guid         userId = Guid.Parse(user.Id);
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
+        Guid userId = Guid.Parse(user.Id);
         await sut.EnsureTenantClaimAsync(userId, studioB, default);
         (_, _, string? refreshToken, _) = await sut.IssueTokensForTenantAsync(userId, studioB, default);
 
@@ -302,9 +302,9 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         // Regression: accounts created before "ActiveTenantId" tracking existed must be
         // completely unaffected — GenerateJwt falls back to the first stored claim.
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email    = UniqueEmail();
-        Guid   studioId = Guid.NewGuid();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid studioId = Guid.NewGuid();
         IdentityUser user = new() { UserName = email, Email = email };
         await um.CreateAsync(user, "Password1!");
         await um.AddToRoleAsync(user, "owner");
@@ -323,12 +323,12 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task EnsureTenantClaimAsync_CalledTwiceForSameStudio_DoesNotDuplicateClaim()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email    = UniqueEmail();
-        Guid   studioId = Guid.NewGuid();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid studioId = Guid.NewGuid();
         await sut.CreateUserAsync(email, "Password1!", "client", studioId);
-        IdentityUser user   = (await um.FindByEmailAsync(email))!;
-        Guid         userId = Guid.Parse(user.Id);
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
+        Guid userId = Guid.Parse(user.Id);
 
         await sut.EnsureTenantClaimAsync(userId, studioId, default);
         await sut.EnsureTenantClaimAsync(userId, studioId, default);
@@ -341,13 +341,13 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task GetTenantIdsAsync_UserWithTwoStudios_ReturnsBoth()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email  = UniqueEmail();
-        Guid   studioA = Guid.NewGuid();
-        Guid   studioB = Guid.NewGuid();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid studioA = Guid.NewGuid();
+        Guid studioB = Guid.NewGuid();
         await sut.CreateUserAsync(email, "Password1!", "client", studioA);
-        IdentityUser user   = (await um.FindByEmailAsync(email))!;
-        Guid         userId = Guid.Parse(user.Id);
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
+        Guid userId = Guid.Parse(user.Id);
         await sut.EnsureTenantClaimAsync(userId, studioB, default);
 
         IReadOnlyList<Guid> tenantIds = await sut.GetTenantIdsAsync(userId, default);
@@ -359,9 +359,9 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task GenerateChangeEmailTokenAsync_CorrectPassword_ReturnsToken()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email  = UniqueEmail();
-        Guid   userId = (await CreateAndFetchUserAsync(sut, um, email)).Item2;
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid userId = (await CreateAndFetchUserAsync(sut, um, email)).Item2;
 
         (bool success, string? token, string[] errors, bool emailTaken) =
             await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", UniqueEmail(), default);
@@ -376,9 +376,9 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task GenerateChangeEmailTokenAsync_WrongPassword_ReturnsFalse()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
-        string email  = UniqueEmail();
-        Guid   userId = (await CreateAndFetchUserAsync(sut, um, email)).Item2;
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        Guid userId = (await CreateAndFetchUserAsync(sut, um, email)).Item2;
 
         (bool success, string? token, string[] errors, bool emailTaken) =
             await sut.GenerateChangeEmailTokenAsync(userId, "WrongPassword!", UniqueEmail(), default);
@@ -393,7 +393,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task GenerateChangeEmailTokenAsync_NewEmailAlreadyRegistered_ReturnsEmailTaken()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         string otherEmail = UniqueEmail();
         await sut.CreateUserAsync(otherEmail, "Password1!", "client", Guid.NewGuid());
         Guid userId = (await CreateAndFetchUserAsync(sut, um, UniqueEmail())).Item2;
@@ -409,7 +409,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task ConfirmChangeEmailAsync_ValidToken_UpdatesEmailAndUserName()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         (string _, Guid userId) = await CreateAndFetchUserAsync(sut, um, UniqueEmail());
         string newEmail = UniqueEmail();
         (_, string? token, _, _) = await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", newEmail, default);
@@ -431,7 +431,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task ConfirmChangeEmailAsync_ValidToken_AllowsLoginWithNewEmail()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         (string _, Guid userId) = await CreateAndFetchUserAsync(sut, um, UniqueEmail());
         string newEmail = UniqueEmail();
         (_, string? token, _, _) = await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", newEmail, default);
@@ -448,7 +448,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task ConfirmChangeEmailAsync_BogusToken_ReturnsTokenInvalid()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         (string _, Guid userId) = await CreateAndFetchUserAsync(sut, um, UniqueEmail());
 
         (bool success, _, bool tokenInvalid, _) =
@@ -462,7 +462,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     public async Task ConfirmChangeEmailAsync_EmailClaimedByAnotherAccountSinceRequest_ReturnsEmailTaken()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
-        IdentityService           sut = CreateSut(um);
+        IdentityService sut = CreateSut(um);
         (string _, Guid userId) = await CreateAndFetchUserAsync(sut, um, UniqueEmail());
         string contestedEmail = UniqueEmail();
         (_, string? token, _, _) = await sut.GenerateChangeEmailTokenAsync(userId, "Password1!", contestedEmail, default);

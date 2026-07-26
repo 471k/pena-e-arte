@@ -11,7 +11,7 @@ namespace Pena_e_Arte.UnitTests.Platform;
 
 public class GetIssuerStudioSummaryHandlerTests
 {
-    private readonly FakeDbContext    _db       = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
 
     private GetIssuerStudioSummaryHandler CreateSut() => new(_db, _identity);

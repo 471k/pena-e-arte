@@ -13,10 +13,10 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class CancelPlanChangeHandlerTests
 {
-    private readonly FakeDbContext         _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant        _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly IStripeBillingService _billing  = Substitute.For<IStripeBillingService>();
-    private readonly Guid                  _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CancelPlanChangeHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -71,14 +71,14 @@ public class CancelPlanChangeHandlerTests
     {
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId               = _studioId,
-            PendingPlanId          = pendingPlanId,
+            StudioId = _studioId,
+            PendingPlanId = pendingPlanId,
             PendingBillingInterval = pendingBillingInterval,
-            Status                 = SubscriptionStatus.Active,
-            StripeSubscriptionId   = stripeSubId,
-            TrialExpiresAt         = DateTime.UtcNow.AddDays(-20),
-            CurrentPeriodEnd       = DateTime.UtcNow.AddDays(10),
-            GracePeriodEnd         = DateTime.UtcNow.AddDays(-13),
+            Status = SubscriptionStatus.Active,
+            StripeSubscriptionId = stripeSubId,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-20),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(-13),
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

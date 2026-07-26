@@ -31,20 +31,20 @@ public class UpsertClientProfileHandler(IAppDbContext db, ICurrentTenant tenant)
         {
             profile = new ClientProfile
             {
-                StudioId     = tenant.StudioId,
-                ClientId     = command.ClientId,
-                DateOfBirth  = req.DateOfBirth,
+                StudioId = tenant.StudioId,
+                ClientId = command.ClientId,
+                DateOfBirth = req.DateOfBirth,
                 MedicalNotes = req.MedicalNotes,
-                Allergies    = req.Allergies,
+                Allergies = req.Allergies,
             };
             db.ClientProfiles.Add(profile);
         }
         else
         {
-            profile.DateOfBirth  = req.DateOfBirth;
+            profile.DateOfBirth = req.DateOfBirth;
             profile.MedicalNotes = req.MedicalNotes;
-            profile.Allergies    = req.Allergies;
-            profile.UpdatedAt    = DateTime.UtcNow;
+            profile.Allergies = req.Allergies;
+            profile.UpdatedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

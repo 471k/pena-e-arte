@@ -6,4 +6,4 @@ public record ArtistRevenuePoint(Guid ArtistId, string ArtistName, decimal Reven
 
 public record RevenueSummaryResponse(
     List<MonthlyRevenuePoint> MonthlyTrend,
-    List<ArtistRevenuePoint>  PerArtist);
+    List<ArtistRevenuePoint> PerArtist);

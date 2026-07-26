@@ -65,12 +65,12 @@ public class GetDesignsHandler(IAppDbContext db, ICurrentUser currentUser)
 
         return latest.Approval?.Status switch
         {
-            null                                    => "InReview",
-            DesignApprovalStatus.Pending             => "InReview",
-            DesignApprovalStatus.Approved            => "Approved",
-            DesignApprovalStatus.ChangesRequested     => "ChangesRequested",
-            DesignApprovalStatus.Expired              => "ChangesRequested",
-            _                                          => "InReview",
+            null => "InReview",
+            DesignApprovalStatus.Pending => "InReview",
+            DesignApprovalStatus.Approved => "Approved",
+            DesignApprovalStatus.ChangesRequested => "ChangesRequested",
+            DesignApprovalStatus.Expired => "ChangesRequested",
+            _ => "InReview",
         };
     }
 }

@@ -12,12 +12,12 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 public record SendAppointmentConfirmationCommand(Guid AppointmentId) : IRequest<Unit>;
 
 public class SendAppointmentConfirmationHandler(
-    IAppDbContext                                      db,
-    IEmailRenderer                                     emailRenderer,
-    INotificationService                               notifications,
-    INotificationPreferenceService                     prefs,
-    IRealtimeNotifier                                  realtime,
-    ILogger<SendAppointmentConfirmationHandler>        logger)
+    IAppDbContext db,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    INotificationPreferenceService prefs,
+    IRealtimeNotifier realtime,
+    ILogger<SendAppointmentConfirmationHandler> logger)
     : IRequestHandler<SendAppointmentConfirmationCommand, Unit>
 {
     public async Task<Unit> Handle(SendAppointmentConfirmationCommand command, CancellationToken ct)
@@ -79,14 +79,14 @@ public class SendAppointmentConfirmationHandler(
 
             log = new()
             {
-                StudioId      = appointment.StudioId,
-                RecipientId   = appointment.ClientId,
+                StudioId = appointment.StudioId,
+                RecipientId = appointment.ClientId,
                 RecipientType = NotificationRecipientType.Client,
-                Channel       = NotificationChannel.Email,
-                Subject       = subject,
-                Body          = body,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = success,
+                Channel = NotificationChannel.Email,
+                Subject = subject,
+                Body = body,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = success,
             };
             db.NotificationLogs.Add(log);
             await db.SaveChangesAsync(ct);
@@ -121,14 +121,14 @@ public class SendAppointmentConfirmationHandler(
 
             db.NotificationLogs.Add(new NotificationLog
             {
-                StudioId      = studio.Id,
-                RecipientId   = appointment.ClientId,
+                StudioId = studio.Id,
+                RecipientId = appointment.ClientId,
                 RecipientType = NotificationRecipientType.Client,
-                Channel       = NotificationChannel.Sms,
-                Subject       = "Appointment Confirmation",
-                Body          = smsBody,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = smsSent,
+                Channel = NotificationChannel.Sms,
+                Subject = "Appointment Confirmation",
+                Body = smsBody,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = smsSent,
             });
             await db.SaveChangesAsync(ct);
         }

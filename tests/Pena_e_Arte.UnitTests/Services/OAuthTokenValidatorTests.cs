@@ -22,9 +22,9 @@ public class OAuthTokenValidatorTests : IDisposable
     private const string GoogleAudience = "test-google-client-id";
     private const string KeyId = "test-key-1";
 
-    private readonly RSA                _rsa    = RSA.Create(2048);
-    private readonly IHttpClientFactory _http   = Substitute.For<IHttpClientFactory>();
-    private readonly IDistributedCache  _cache  = new MemoryDistributedCache(
+    private readonly RSA _rsa = RSA.Create(2048);
+    private readonly IHttpClientFactory _http = Substitute.For<IHttpClientFactory>();
+    private readonly IDistributedCache _cache = new MemoryDistributedCache(
         Options.Create(new MemoryDistributedCacheOptions()));
 
     public void Dispose() => _rsa.Dispose();
@@ -50,10 +50,10 @@ public class OAuthTokenValidatorTests : IDisposable
         SigningCredentials creds = new(key, SecurityAlgorithms.RsaSha256);
 
         JwtSecurityToken token = new(
-            issuer:             GoogleIssuer,
-            audience:           GoogleAudience,
-            claims:             [new Claim("email", email), new Claim("sub", sub)],
-            expires:            DateTime.UtcNow.AddMinutes(5),
+            issuer: GoogleIssuer,
+            audience: GoogleAudience,
+            claims: [new Claim("email", email), new Claim("sub", sub)],
+            expires: DateTime.UtcNow.AddMinutes(5),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

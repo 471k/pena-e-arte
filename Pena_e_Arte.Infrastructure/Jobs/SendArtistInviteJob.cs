@@ -6,12 +6,12 @@ using Pena_e_Arte.Infrastructure.Persistence;
 namespace Pena_e_Arte.Infrastructure.Jobs;
 
 public class SendArtistInviteJob(
-    IIdentityService               identity,
-    INotificationService           notifications,
-    IEmailRenderer                 emailRenderer,
-    IAppSettings                   appSettings,
-    AppDbContext                   db,
-    ILogger<SendArtistInviteJob>   logger)
+    IIdentityService identity,
+    INotificationService notifications,
+    IEmailRenderer emailRenderer,
+    IAppSettings appSettings,
+    AppDbContext db,
+    ILogger<SendArtistInviteJob> logger)
 {
     public async Task SendAsync(string email, string firstName, Guid studioId, CancellationToken ct = default)
     {

@@ -15,9 +15,9 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 public record IssuerGenerateReferralCodeCommand(Guid StudioId, DateTime? ExpiresAt = null) : IRequest<PlatformReferralCodeResponse>;
 
 public class IssuerGenerateReferralCodeHandler(
-    IAppDbContext                                  db,
-    IRealtimeNotifier                              realtime,
-    ILogger<IssuerGenerateReferralCodeHandler>     logger)
+    IAppDbContext db,
+    IRealtimeNotifier realtime,
+    ILogger<IssuerGenerateReferralCodeHandler> logger)
     : IRequestHandler<IssuerGenerateReferralCodeCommand, PlatformReferralCodeResponse>
 {
     private const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -43,11 +43,11 @@ public class IssuerGenerateReferralCodeHandler(
 
         ReferralCode referralCode = new()
         {
-            StudioId    = command.StudioId,
-            Code        = code,
-            IsActive    = true,
+            StudioId = command.StudioId,
+            Code = code,
+            IsActive = true,
             IsSingleUse = true,
-            ExpiresAt   = command.ExpiresAt,
+            ExpiresAt = command.ExpiresAt,
         };
 
         db.ReferralCodes.Add(referralCode);
@@ -58,15 +58,15 @@ public class IssuerGenerateReferralCodeHandler(
         // per-event notification preferences (those only cover Email/Sms channels).
         NotificationLog notice = new()
         {
-            StudioId      = studio.Id,
-            RecipientId   = studio.Id,
+            StudioId = studio.Id,
+            RecipientId = studio.Id,
             RecipientType = NotificationRecipientType.Studio,
-            Channel       = NotificationChannel.InApp,
-            Subject       = "A referral code was generated for your studio",
-            Body          = $"The TattooOS team generated referral code {referralCode.Code} for your studio. " +
+            Channel = NotificationChannel.InApp,
+            Subject = "A referral code was generated for your studio",
+            Body = $"The TattooOS team generated referral code {referralCode.Code} for your studio. " +
                              $"Share it with other studio owners — new studios that sign up with it get one month free, and so do you: {shareUrl}",
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = true,
+            SentAt = DateTime.UtcNow,
+            IsSuccess = true,
         };
         db.NotificationLogs.Add(notice);
 

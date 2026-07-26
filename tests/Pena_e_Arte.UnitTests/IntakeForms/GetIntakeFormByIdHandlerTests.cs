@@ -9,8 +9,8 @@ namespace Pena_e_Arte.UnitTests.IntakeForms;
 
 public class GetIntakeFormByIdHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetIntakeFormByIdHandler CreateSut() => new(_db, FakeCurrentUser.Artist());
 
@@ -18,9 +18,9 @@ public class GetIntakeFormByIdHandlerTests
     {
         IntakeForm form = new()
         {
-            StudioId    = _studioId,
-            ClientId    = Guid.NewGuid(),
-            FormData    = "{\"allergies\":\"none\"}",
+            StudioId = _studioId,
+            ClientId = Guid.NewGuid(),
+            FormData = "{\"allergies\":\"none\"}",
             SubmittedAt = DateTime.UtcNow
         };
         _db.IntakeForms.Add(form);

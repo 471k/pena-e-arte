@@ -10,10 +10,10 @@ namespace Pena_e_Arte.Application.Studios.Commands;
 
 public record SuspendStudioCommand(Guid StudioId) : IRequest, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.StudioSuspended;
+    public string AuditAction => AuditActions.StudioSuspended;
     public string AuditTargetType => AuditTargetTypes.Studio;
-    public Guid   AuditTargetId   => StudioId;
-    public Guid?  AuditStudioId   => StudioId;
+    public Guid AuditTargetId => StudioId;
+    public Guid? AuditStudioId => StudioId;
 }
 
 public class SuspendStudioHandler(IAppDbContext db, ISubscriptionAccessService subscriptionAccess)

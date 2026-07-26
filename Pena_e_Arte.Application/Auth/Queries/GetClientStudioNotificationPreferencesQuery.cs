@@ -13,9 +13,9 @@ public record GetClientStudioNotificationPreferencesQuery(Guid StudioId)
     : IRequest<ClientNotificationPreferencesResponse>;
 
 public class GetClientStudioNotificationPreferencesHandler(
-    IAppDbContext    db,
+    IAppDbContext db,
     IIdentityService identity,
-    ICurrentUser     currentUser)
+    ICurrentUser currentUser)
     : IRequestHandler<GetClientStudioNotificationPreferencesQuery, ClientNotificationPreferencesResponse>
 {
     // Only the notification types actually sent to clients — excludes owner-facing
@@ -48,14 +48,14 @@ public class GetClientStudioNotificationPreferencesHandler(
 
         List<NotificationPreferenceItem> items = [];
         foreach (NotificationType type in ClientTypes)
-        foreach (NotificationChannel channel in PreferenceChannels)
-        {
-            bool isEnabled = saved
-                .FirstOrDefault(p => p.Type == type && p.Channel == channel)
-                ?.IsEnabled ?? true;
+            foreach (NotificationChannel channel in PreferenceChannels)
+            {
+                bool isEnabled = saved
+                    .FirstOrDefault(p => p.Type == type && p.Channel == channel)
+                    ?.IsEnabled ?? true;
 
-            items.Add(new NotificationPreferenceItem(type.ToString(), channel.ToString(), isEnabled));
-        }
+                items.Add(new NotificationPreferenceItem(type.ToString(), channel.ToString(), isEnabled));
+            }
 
         return new ClientNotificationPreferencesResponse(items);
     }

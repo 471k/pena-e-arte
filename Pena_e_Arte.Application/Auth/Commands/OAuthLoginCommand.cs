@@ -10,15 +10,15 @@ public record OAuthLoginCommand(OAuthLoginRequest Request) : IRequest<AuthRespon
 
 public class OAuthLoginHandler(
     IOAuthTokenValidator validator,
-    IIdentityService     identity) : IRequestHandler<OAuthLoginCommand, AuthResponse>
+    IIdentityService identity) : IRequestHandler<OAuthLoginCommand, AuthResponse>
 {
     public async Task<AuthResponse> Handle(OAuthLoginCommand command, CancellationToken ct)
     {
         OAuthUserInfo info = command.Request.Provider switch
         {
             "google" => await validator.ValidateGoogleTokenAsync(command.Request.IdToken, ct),
-            "apple"  => await validator.ValidateAppleTokenAsync(command.Request.IdToken, ct),
-            _        => throw new BusinessRuleViolationException(
+            "apple" => await validator.ValidateAppleTokenAsync(command.Request.IdToken, ct),
+            _ => throw new BusinessRuleViolationException(
                              $"Unsupported OAuth provider: {command.Request.Provider}"),
         };
 
