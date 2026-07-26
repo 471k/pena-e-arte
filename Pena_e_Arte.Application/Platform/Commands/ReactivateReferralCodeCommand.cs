@@ -11,9 +11,9 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 // See DeactivateReferralCodeCommand's comment — AuditStudioId left at its default (null).
 public record ReactivateReferralCodeCommand(Guid ReferralCodeId) : IRequest, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.ReferralCodeReactivated;
+    public string AuditAction => AuditActions.ReferralCodeReactivated;
     public string AuditTargetType => AuditTargetTypes.ReferralCode;
-    public Guid   AuditTargetId   => ReferralCodeId;
+    public Guid AuditTargetId => ReferralCodeId;
 }
 
 public class ReactivateReferralCodeHandler(IAppDbContext db)

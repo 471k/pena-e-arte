@@ -17,8 +17,8 @@ public static class FileEndpoints
 
     private static async Task<IResult> GetPresignedUrl(
         PresignUploadRequest request,
-        ISender              mediator,
-        CancellationToken    ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         PresignUploadResponse result = await mediator.Send(new GetPresignedUploadUrlQuery(request), ct);
         return Results.Ok(result);

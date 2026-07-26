@@ -15,11 +15,11 @@ namespace Pena_e_Arte.Application.Designs.Commands;
 public record ReviewDesignCommand(ReviewDesignRequest Request) : IRequest<DesignRevisionResponse>;
 
 public class ReviewDesignHandler(
-    IAppDbContext     db,
-    ICurrentTenant    tenant,
-    ICurrentUser      currentUser,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    ICurrentUser currentUser,
     IRealtimeNotifier realtime,
-    ISender           sender)
+    ISender sender)
     : IRequestHandler<ReviewDesignCommand, DesignRevisionResponse>
 {
     public async Task<DesignRevisionResponse> Handle(ReviewDesignCommand command, CancellationToken ct)
@@ -54,20 +54,20 @@ public class ReviewDesignHandler(
         {
             approval = new DesignApproval
             {
-                StudioId         = tenant.StudioId,
+                StudioId = tenant.StudioId,
                 DesignRevisionId = revision.Id,
-                Status           = newStatus,
-                ClientNotes      = req.Notes,
-                ReviewedAt       = DateTime.UtcNow
+                Status = newStatus,
+                ClientNotes = req.Notes,
+                ReviewedAt = DateTime.UtcNow
             };
             db.DesignApprovals.Add(approval);
         }
         else
         {
-            revision.Approval.Status      = newStatus;
+            revision.Approval.Status = newStatus;
             revision.Approval.ClientNotes = req.Notes;
-            revision.Approval.ReviewedAt  = DateTime.UtcNow;
-            revision.Approval.UpdatedAt   = DateTime.UtcNow;
+            revision.Approval.ReviewedAt = DateTime.UtcNow;
+            revision.Approval.UpdatedAt = DateTime.UtcNow;
             approval = revision.Approval;
         }
 

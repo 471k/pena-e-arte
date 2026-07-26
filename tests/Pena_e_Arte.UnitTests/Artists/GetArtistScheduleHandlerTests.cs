@@ -7,8 +7,8 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class GetArtistScheduleHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetArtistScheduleHandler CreateSut() => new(_db);
 
@@ -16,38 +16,38 @@ public class GetArtistScheduleHandlerTests
     {
         var artist = new Domain.Entities.Artist
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "A",
-            LastName  = "B",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "B",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
         _db.ArtistSchedules.AddRange(
             new Domain.Entities.ArtistSchedule
             {
-                ArtistId    = artist.Id,
-                StudioId    = _studioId,
-                DayOfWeek   = DayOfWeek.Monday,
-                StartTime   = TimeSpan.FromHours(9),
-                EndTime     = TimeSpan.FromHours(17),
+                ArtistId = artist.Id,
+                StudioId = _studioId,
+                DayOfWeek = DayOfWeek.Monday,
+                StartTime = TimeSpan.FromHours(9),
+                EndTime = TimeSpan.FromHours(17),
                 IsAvailable = true,
             },
             new Domain.Entities.ArtistSchedule
             {
-                ArtistId    = artist.Id,
-                StudioId    = _studioId,
-                DayOfWeek   = DayOfWeek.Sunday,
-                StartTime   = TimeSpan.Zero,
-                EndTime     = TimeSpan.FromHours(1),
+                ArtistId = artist.Id,
+                StudioId = _studioId,
+                DayOfWeek = DayOfWeek.Sunday,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(1),
                 IsAvailable = false,
             });
         _db.ArtistTimeOffs.Add(new Domain.Entities.ArtistTimeOff
         {
-            ArtistId  = artist.Id,
-            StudioId  = _studioId,
+            ArtistId = artist.Id,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(1),
-            EndDate   = DateTime.UtcNow.Date.AddDays(3),
-            Reason    = "Holiday",
+            EndDate = DateTime.UtcNow.Date.AddDays(3),
+            Reason = "Holiday",
         });
         _db.SaveChanges();
         return artist.Id;
@@ -91,19 +91,19 @@ public class GetArtistScheduleHandlerTests
     {
         var artist = new Domain.Entities.Artist
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "P",
-            LastName  = "Q",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Q",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
         _db.ArtistTimeOffs.Add(new Domain.Entities.ArtistTimeOff
         {
-            ArtistId  = artist.Id,
-            StudioId  = _studioId,
+            ArtistId = artist.Id,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(-10),
-            EndDate   = DateTime.UtcNow.Date.AddDays(-1),
-            Reason    = "Past",
+            EndDate = DateTime.UtcNow.Date.AddDays(-1),
+            Reason = "Past",
         });
         _db.SaveChanges();
 

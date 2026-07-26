@@ -10,7 +10,7 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class MarkPaymentAuthorizedHandlerTests
 {
-    private readonly FakeDbContext     _db       = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
     private MarkPaymentAuthorizedHandler CreateSut() => new(_db, _realtime);
@@ -56,12 +56,12 @@ public class MarkPaymentAuthorizedHandlerTests
     {
         _db.Payments.Add(new Payment
         {
-            StudioId              = Guid.NewGuid(),
-            AppointmentId         = Guid.NewGuid(),
-            ClientId              = Guid.NewGuid(),
-            Amount                = 50m,
-            Method                = ClientPaymentMethod.Card,
-            Status                = status,
+            StudioId = Guid.NewGuid(),
+            AppointmentId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Amount = 50m,
+            Method = ClientPaymentMethod.Card,
+            Status = status,
             StripePaymentIntentId = intentId,
         });
         await _db.SaveChangesAsync();

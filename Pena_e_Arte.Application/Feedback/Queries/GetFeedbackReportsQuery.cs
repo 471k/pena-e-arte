@@ -10,7 +10,7 @@ namespace Pena_e_Arte.Application.Feedback.Queries;
 
 // type and status are optional filters (null/empty = all)
 public record GetFeedbackReportsQuery(
-    string? Type   = null,
+    string? Type = null,
     string? Status = null) : IRequest<List<FeedbackReportResponse>>;
 
 public class GetFeedbackReportsHandler(IAppDbContext db)

@@ -11,8 +11,8 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class LeaveStudioHandlerTests
 {
-    private readonly IIdentityService _identity    = Substitute.For<IIdentityService>();
-    private readonly FakeCurrentUser  _currentUser  = FakeCurrentUser.Client();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Client();
 
     private LeaveStudioHandler CreateSut() => new(
         _identity, _currentUser, NullLogger<LeaveStudioHandler>.Instance);
@@ -24,7 +24,7 @@ public class LeaveStudioHandlerTests
     [Fact]
     public async Task Handle_LeavesNonActiveStudio_ReturnsIsLeavingActiveTenantFalse()
     {
-        Guid studioId       = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
         Guid activeStudioId = Guid.NewGuid();
         UserHasTenantIds(studioId, activeStudioId);
         _identity.GetActiveTenantIdAsync(_currentUser.UserId, Arg.Any<CancellationToken>())

@@ -1,7 +1,7 @@
 namespace Pena_e_Arte.Contracts.Responses;
 
 public record IndustryReportSummaryResponse(
-    string   Period,
+    string Period,
     DateTime GeneratedAt,
-    string   DownloadUrl
+    string DownloadUrl
 );

@@ -40,24 +40,24 @@ public class GetSavedPortfolioImagesHandler(IAppDbContext db)
             .Where(s => studiosById.ContainsKey(s.PortfolioImage.Artist.StudioId))
             .Select(s =>
             {
-                PortfolioImage img    = s.PortfolioImage;
-                Artist         artist = img.Artist;
-                Studio         studio = studiosById[artist.StudioId];
+                PortfolioImage img = s.PortfolioImage;
+                Artist artist = img.Artist;
+                Studio studio = studiosById[artist.StudioId];
 
                 return new PortfolioImageResponse(
-                    ImageId:            img.Id,
-                    ImageUrl:           img.ImageUrl,
-                    Style:              img.Style,
-                    ArtistName:         $"{artist.FirstName} {artist.LastName}".Trim(),
-                    ArtistSlug:         artist.Slug!,
-                    StudioName:         studio.Name,
-                    StudioSlug:         studio.Slug,
-                    AverageRating:      null,
-                    ReviewCount:        0,
+                    ImageId: img.Id,
+                    ImageUrl: img.ImageUrl,
+                    Style: img.Style,
+                    ArtistName: $"{artist.FirstName} {artist.LastName}".Trim(),
+                    ArtistSlug: artist.Slug!,
+                    StudioName: studio.Name,
+                    StudioSlug: studio.Slug,
+                    AverageRating: null,
+                    ReviewCount: 0,
                     ImageAverageRating: null,
-                    ImageReviewCount:   0,
-                    DistanceKm:         null,
-                    ViewCount:          0L);
+                    ImageReviewCount: 0,
+                    DistanceKm: null,
+                    ViewCount: 0L);
             })
             .ToList();
     }

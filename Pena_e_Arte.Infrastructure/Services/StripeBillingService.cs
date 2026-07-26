@@ -25,19 +25,19 @@ public class StripeBillingService(
     {
         SessionCreateOptions options = new()
         {
-            Mode              = "subscription",
-            Customer          = customerId,
+            Mode = "subscription",
+            Customer = customerId,
             ClientReferenceId = clientReferenceId,
-            LineItems         = new List<SessionLineItemOptions> { new() { Price = priceId, Quantity = 1 } },
-            Discounts         = couponId is not null
+            LineItems = new List<SessionLineItemOptions> { new() { Price = priceId, Quantity = 1 } },
+            Discounts = couponId is not null
                 ? new List<SessionDiscountOptions> { new() { Coupon = couponId } }
                 : null,
             // Defer the first charge to the already-paid-through date (cash credit).
-            SubscriptionData  = trialEnd is DateTime end
+            SubscriptionData = trialEnd is DateTime end
                 ? new SessionSubscriptionDataOptions { TrialEnd = end }
                 : null,
-            SuccessUrl        = successUrl,
-            CancelUrl         = cancelUrl,
+            SuccessUrl = successUrl,
+            CancelUrl = cancelUrl,
             // No payment_method_types — Stripe selects eligible methods dynamically.
         };
 
@@ -60,7 +60,7 @@ public class StripeBillingService(
         }
 
         Stripe.Subscription? sub = session.Subscription;
-        string?  priceId   = sub?.Items?.Data?.FirstOrDefault()?.Price?.Id;
+        string? priceId = sub?.Items?.Data?.FirstOrDefault()?.Price?.Id;
         DateTime periodEnd = sub?.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd ?? DateTime.UtcNow.AddMonths(1);
 
         // "paid" covers zero-amount invoices (100% coupon); "no_payment_required" covers setup-mode sessions.
@@ -82,8 +82,8 @@ public class StripeBillingService(
     {
         SubscriptionCreateOptions options = new()
         {
-            Customer  = customerId,
-            Items     = new List<SubscriptionItemOptions> { new() { Price = priceId } },
+            Customer = customerId,
+            Items = new List<SubscriptionItemOptions> { new() { Price = priceId } },
             Discounts = couponId is not null
                 ? new List<SubscriptionDiscountOptions> { new() { Coupon = couponId } }
                 : null,
@@ -169,7 +169,7 @@ public class StripeBillingService(
     {
         Stripe.BillingPortal.SessionCreateOptions options = new()
         {
-            Customer  = stripeCustomerId,
+            Customer = stripeCustomerId,
             ReturnUrl = returnUrl,
         };
 

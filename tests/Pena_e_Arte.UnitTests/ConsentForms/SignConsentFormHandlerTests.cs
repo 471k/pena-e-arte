@@ -14,13 +14,13 @@ namespace Pena_e_Arte.UnitTests.ConsentForms;
 
 public class SignConsentFormHandlerTests
 {
-    private readonly FakeDbContext         _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant        _tenant      = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser          _currentUser = Substitute.For<ICurrentUser>();
-    private readonly IConsentFormPdfService _pdf        = Substitute.For<IConsentFormPdfService>();
-    private readonly IR2Service            _r2          = Substitute.For<IR2Service>();
-    private readonly ISender               _sender      = Substitute.For<ISender>();
-    private readonly Guid                  _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IConsentFormPdfService _pdf = Substitute.For<IConsentFormPdfService>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public SignConsentFormHandlerTests()
     {
@@ -36,7 +36,7 @@ public class SignConsentFormHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_ReturnsConsentFormResponse()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         SignConsentFormRequest req = new(clientId, appointmentId, "data:image/png;base64,abc123");
 
@@ -53,7 +53,7 @@ public class SignConsentFormHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_PersistsFormToDb()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         SignConsentFormRequest req = new(clientId, appointmentId, "data:image/png;base64,abc123");
 
@@ -66,7 +66,7 @@ public class SignConsentFormHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_GeneratesPdfAndPersistsFileUrl()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         SignConsentFormRequest req = new(clientId, appointmentId, "Jane Doe");
 
@@ -86,7 +86,7 @@ public class SignConsentFormHandlerTests
     {
         _pdf.When(p => p.Generate(Arg.Any<ConsentFormPdfData>()))
             .Do(_ => throw new InvalidOperationException("pdf error"));
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         SignConsentFormRequest req = new(clientId, appointmentId, "sig");
 
@@ -99,15 +99,15 @@ public class SignConsentFormHandlerTests
     [Fact]
     public async Task Handle_AppointmentAlreadySigned_ThrowsConsentFormAlreadySignedException()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         _db.ConsentForms.Add(new ConsentForm
         {
-            StudioId      = _studioId,
-            ClientId      = clientId,
+            StudioId = _studioId,
+            ClientId = clientId,
             AppointmentId = appointmentId,
             SignatureData = "existing-sig",
-            SignedAt      = DateTime.UtcNow
+            SignedAt = DateTime.UtcNow
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -122,9 +122,9 @@ public class SignConsentFormHandlerTests
     [Fact]
     public async Task Handle_DifferentAppointments_AllowsMultipleForms()
     {
-        Guid clientId1      = await SeedClient();
+        Guid clientId1 = await SeedClient();
         Guid appointmentId1 = await SeedAppointment(clientId1);
-        Guid clientId2      = await SeedClient();
+        Guid clientId2 = await SeedClient();
         Guid appointmentId2 = await SeedAppointment(clientId2);
 
         await CreateSut().Handle(new SignConsentFormCommand(new(clientId1, appointmentId1, "sig1")), default);
@@ -136,9 +136,9 @@ public class SignConsentFormHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_SetsSignedAtToUtcNow()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
-        DateTime before    = DateTime.UtcNow;
+        DateTime before = DateTime.UtcNow;
 
         ConsentFormResponse result = await CreateSut().Handle(
             new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
@@ -162,7 +162,7 @@ public class SignConsentFormHandlerTests
         Guid userId = Guid.NewGuid();
         _currentUser.UserId.Returns(userId);
         _currentUser.Role.Returns("client");
-        Guid clientId      = await SeedClient(userId);
+        Guid clientId = await SeedClient(userId);
         Guid appointmentId = await SeedAppointment(clientId);
 
         // Request carries a different (spoofed) ClientId — handler must derive it from the appointment instead.
@@ -197,7 +197,7 @@ public class SignConsentFormHandlerTests
             .Do(call => captured = call.Arg<ConsentFormPdfData>());
         _pdf.Generate(Arg.Any<ConsentFormPdfData>()).Returns([0x25, 0x50, 0x44, 0x46]);
 
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         await CreateSut().Handle(new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
 
@@ -214,7 +214,7 @@ public class SignConsentFormHandlerTests
             .Do(call => captured = call.Arg<ConsentFormPdfData>());
         _pdf.Generate(Arg.Any<ConsentFormPdfData>()).Returns([0x25, 0x50, 0x44, 0x46]);
 
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         await CreateSut().Handle(new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
 
@@ -226,10 +226,10 @@ public class SignConsentFormHandlerTests
     {
         Studio studio = new()
         {
-            Id             = _studioId,
-            Name           = "Test Studio",
-            Slug           = "test-studio",
-            City           = "Lisbon",
+            Id = _studioId,
+            Name = "Test Studio",
+            Slug = "test-studio",
+            City = "Lisbon",
             TrialExpiresAt = DateTime.UtcNow.AddDays(30),
         };
         if (!showPlatformBranding) studio.UpdateBranding(false);
@@ -242,11 +242,11 @@ public class SignConsentFormHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -258,15 +258,15 @@ public class SignConsentFormHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = clientId,
-            Date            = DateTime.UtcNow.AddDays(5),
-            EndDate         = DateTime.UtcNow.AddDays(5).AddMinutes(60),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(60),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
-            DepositAmount   = 50m,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
+            DepositAmount = 50m,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();

@@ -8,14 +8,14 @@ namespace Pena_e_Arte.Contracts.Responses;
 /// SuspendedStudios are excluded from TotalStudios — they are deactivated by the issuer.
 /// </summary>
 public record PlatformStatsResponse(
-    int     TotalStudios,
-    int     ActiveSubscriptions,
-    int     TrialStudios,
-    int     GracePeriodStudios,
-    int     PastDueStudios,
-    int     CancelledStudios,
-    int     SuspendedStudios,
+    int TotalStudios,
+    int ActiveSubscriptions,
+    int TrialStudios,
+    int GracePeriodStudios,
+    int PastDueStudios,
+    int CancelledStudios,
+    int SuspendedStudios,
     decimal Mrr,
-    double  MrrGrowthPercent,
-    double  TrialConversionRate,
-    int     NewStudiosThisMonth);
+    double MrrGrowthPercent,
+    double TrialConversionRate,
+    int NewStudiosThisMonth);

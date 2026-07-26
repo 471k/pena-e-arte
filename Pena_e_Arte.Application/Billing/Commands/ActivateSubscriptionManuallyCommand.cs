@@ -16,19 +16,19 @@ namespace Pena_e_Arte.Application.Billing.Commands;
 // the immediate return value — the "no plan" display case is a real data state (Subscription.PlanId
 // pointing at a deleted/missing Plan) handled by GetPlatformSubscriptionsQuery + the list page fallback.
 public record ActivateSubscriptionManuallyCommand(
-    Guid    StudioId,
-    Guid    PlanId,
+    Guid StudioId,
+    Guid PlanId,
     string? Note)
     : IRequest<SubscriptionResponse>, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.SubscriptionActivatedManually;
+    public string AuditAction => AuditActions.SubscriptionActivatedManually;
     public string AuditTargetType => AuditTargetTypes.Subscription;
-    public Guid   AuditTargetId   => StudioId;
-    public Guid?  AuditStudioId   => StudioId;
+    public Guid AuditTargetId => StudioId;
+    public Guid? AuditStudioId => StudioId;
 }
 
 public class ActivateSubscriptionManuallyHandler(
-    IAppDbContext                               db,
+    IAppDbContext db,
     ILogger<ActivateSubscriptionManuallyHandler> logger)
     : IRequestHandler<ActivateSubscriptionManuallyCommand, SubscriptionResponse>
 {
@@ -49,23 +49,23 @@ public class ActivateSubscriptionManuallyHandler(
         {
             studio.Subscription = new Subscription
             {
-                StudioId         = studio.Id,
-                PlanId           = plan.Id,
-                Plan             = plan,
-                Status           = SubscriptionStatus.Active,
-                BillingInterval  = BillingInterval.Monthly, // cash-billed studios are always Monthly-equivalent
+                StudioId = studio.Id,
+                PlanId = plan.Id,
+                Plan = plan,
+                Status = SubscriptionStatus.Active,
+                BillingInterval = BillingInterval.Monthly, // cash-billed studios are always Monthly-equivalent
                 CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1),
             };
             db.Subscriptions.Add(studio.Subscription);
         }
         else
         {
-            studio.Subscription.PlanId           = plan.Id;
-            studio.Subscription.Plan             = plan;
-            studio.Subscription.Status           = SubscriptionStatus.Active;
-            studio.Subscription.BillingInterval  = BillingInterval.Monthly;
+            studio.Subscription.PlanId = plan.Id;
+            studio.Subscription.Plan = plan;
+            studio.Subscription.Status = SubscriptionStatus.Active;
+            studio.Subscription.BillingInterval = BillingInterval.Monthly;
             studio.Subscription.CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1);
-            studio.Subscription.TrialExpiresAt   = null;
+            studio.Subscription.TrialExpiresAt = null;
         }
 
         // Note is deliberately not logged — free text could contain PII (Rule #3).

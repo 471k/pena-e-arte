@@ -8,9 +8,20 @@ import { useRefreshTokenMutation } from "../authApi";
 import { setCredentials } from "../authSlice";
 
 export function VerifyEmailPage() {
-  const [searchParams]          = useSearchParams();
-  const navigate                = useNavigate();
-  const [status, setStatus]     = useState<"loading" | "success" | "error">("loading");
+  const [searchParams] = useSearchParams();
+  const navigate       = useNavigate();
+
+  // The backend redirects GET /api/v1/auth/verify-email?userId=&token= to /login?verified=true
+  // This page handles the /verify-email client-side route shown in confirmation emails.
+  const userId = searchParams.get("userId");
+  const token  = searchParams.get("token");
+
+  // Missing params is knowable synchronously from the URL at render time, so the
+  // initial state reflects it directly instead of starting at "loading" and
+  // setting state from inside the effect.
+  const [status, setStatus] = useState<"loading" | "success" | "error">(
+    userId && token ? "loading" : "error",
+  );
 
   const dispatch = useAppDispatch();
   // If this browser tab already holds a session (e.g. the user was auto-signed-in
@@ -22,15 +33,7 @@ export function VerifyEmailPage() {
   const [refreshToken] = useRefreshTokenMutation();
 
   useEffect(() => {
-    // The backend redirects GET /api/v1/auth/verify-email?userId=&token= to /login?verified=true
-    // This page handles the /verify-email client-side route shown in confirmation emails.
-    const userId = searchParams.get("userId");
-    const token  = searchParams.get("token");
-
-    if (!userId || !token) {
-      setStatus("error");
-      return;
-    }
+    if (!userId || !token) return;
 
     const url = `/api/v1/auth/verify-email?userId=${encodeURIComponent(userId)}&token=${encodeURIComponent(token)}`;
 
@@ -58,7 +61,7 @@ export function VerifyEmailPage() {
     // Deliberately excludes existingRefreshToken/refreshToken/dispatch — this must
     // only run once per confirmation link, not re-fire as the token itself updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [userId, token]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">

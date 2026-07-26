@@ -16,21 +16,21 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 // client self-cancel and staff-cancel paths). The audit entry's ActorRole records which
 // role actually performed the cancellation.
 public record CancelAppointmentCommand(
-    Guid               AppointmentId,
+    Guid AppointmentId,
     CancellationReason Reason = CancellationReason.StudioCancelled) : IRequest, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.AppointmentCancelled;
+    public string AuditAction => AuditActions.AppointmentCancelled;
     public string AuditTargetType => AuditTargetTypes.Appointment;
-    public Guid   AuditTargetId   => AppointmentId;
+    public Guid AuditTargetId => AppointmentId;
 }
 
 public class CancelAppointmentHandler(
-    IAppDbContext        db,
-    ICurrentTenant       tenant,
-    ICurrentUser         currentUser,
-    IRealtimeNotifier    realtime,
-    ISender              sender,
-    IJobScheduler        jobs,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    ICurrentUser currentUser,
+    IRealtimeNotifier realtime,
+    ISender sender,
+    IJobScheduler jobs,
     IStripePaymentService stripe)
     : IRequestHandler<CancelAppointmentCommand>
 {
@@ -71,9 +71,9 @@ public class CancelAppointmentHandler(
         // Cancel scheduled reminder jobs before they fire
         jobs.CancelAppointmentJobs(appointment.ReminderJobId48h, appointment.ReminderJobId24h);
 
-        appointment.Status             = AppointmentStatus.Cancelled;
+        appointment.Status = AppointmentStatus.Cancelled;
         appointment.CancellationReason = isClient ? CancellationReason.ClientCancelled : command.Reason;
-        appointment.UpdatedAt          = DateTime.UtcNow;
+        appointment.UpdatedAt = DateTime.UtcNow;
 
         // Refund deposit. Studio-initiated cancellation always refunds 100% (unchanged).
         // Client self-cancellation refunds per ClientCancellationPolicy — full refund with
@@ -97,7 +97,7 @@ public class CancelAppointmentHandler(
                 if (refundPercent >= 100)
                 {
                     await stripe.RefundPaymentIntentAsync(payment.StripePaymentIntentId, null, ct);
-                    payment.Status         = PaymentStatus.Refunded;
+                    payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = payment.Amount;
                     appointment.DepositStatus = DepositStatus.Refunded;
                 }
@@ -107,7 +107,7 @@ public class CancelAppointmentHandler(
                         appointment.DepositAmount * refundPercent / 100m, 2, MidpointRounding.AwayFromZero);
                     long refundCents = (long)Math.Round(refundAmount * 100m, MidpointRounding.AwayFromZero);
                     await stripe.RefundPaymentIntentAsync(payment.StripePaymentIntentId, refundCents, ct);
-                    payment.Status         = PaymentStatus.Refunded;
+                    payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = refundAmount;
                     appointment.DepositStatus = DepositStatus.Refunded;
                 }
@@ -129,7 +129,7 @@ public class CancelAppointmentHandler(
                 // payment to Paid). There is nothing to forfeit or partially refund from an
                 // amount that was never collected, regardless of how much notice was given —
                 // mirrors the no-op behavior for an unauthorized/never-captured card payment.
-                payment.Status    = PaymentStatus.Refunded;
+                payment.Status = PaymentStatus.Refunded;
                 payment.UpdatedAt = DateTime.UtcNow;
                 appointment.DepositStatus = DepositStatus.Refunded;
             }

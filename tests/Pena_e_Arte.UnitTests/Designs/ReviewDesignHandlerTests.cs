@@ -14,12 +14,12 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class ReviewDesignHandlerTests
 {
-    private readonly FakeDbContext     _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant    _tenant      = Substitute.For<ICurrentTenant>();
-    private readonly IRealtimeNotifier _realtime    = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender           _sender      = Substitute.For<ISender>();
-    private readonly FakeCurrentUser   _currentUser = FakeCurrentUser.Owner();
-    private readonly Guid              _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public ReviewDesignHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -36,7 +36,7 @@ public class ReviewDesignHandlerTests
 
         _db.DesignApprovals.Should().ContainSingle(a =>
             a.DesignRevisionId == revisionId &&
-            a.Status           == DesignApprovalStatus.Approved);
+            a.Status == DesignApprovalStatus.Approved);
     }
 
     [Fact]
@@ -49,8 +49,8 @@ public class ReviewDesignHandlerTests
 
         _db.DesignApprovals.Should().ContainSingle(a =>
             a.DesignRevisionId == revisionId &&
-            a.Status           == DesignApprovalStatus.ChangesRequested &&
-            a.ClientNotes      == "Fix the shading");
+            a.Status == DesignApprovalStatus.ChangesRequested &&
+            a.ClientNotes == "Fix the shading");
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class ReviewDesignHandlerTests
 
         _db.DesignApprovals.Should().ContainSingle(a =>
             a.DesignRevisionId == revisionId &&
-            a.Status           == DesignApprovalStatus.Approved);
+            a.Status == DesignApprovalStatus.Approved);
     }
 
     [Fact]
@@ -158,12 +158,12 @@ public class ReviewDesignHandlerTests
         {
             _db.Clients.Add(new Client
             {
-                Id        = clientId,
-                StudioId  = _studioId,
-                UserId    = clientUserId.Value,
+                Id = clientId,
+                StudioId = _studioId,
+                UserId = clientUserId.Value,
                 FirstName = "Cli",
-                LastName  = "Ent",
-                Email     = $"{Guid.NewGuid()}@test.com",
+                LastName = "Ent",
+                Email = $"{Guid.NewGuid()}@test.com",
             });
         }
 
@@ -172,27 +172,27 @@ public class ReviewDesignHandlerTests
             StudioId = _studioId,
             ClientId = clientId,
             ArtistId = Guid.NewGuid(),
-            Title    = "Rose",
+            Title = "Rose",
         };
         _db.Designs.Add(design);
 
         DesignRevision revision = new()
         {
-            StudioId      = _studioId,
-            DesignId      = design.Id,
+            StudioId = _studioId,
+            DesignId = design.Id,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/v1.png",
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = "https://r2.example.com/v1.png",
+            UploadedAt = DateTime.UtcNow
         };
 
         if (approval.HasValue)
         {
             DesignApproval designApproval = new()
             {
-                StudioId         = _studioId,
+                StudioId = _studioId,
                 DesignRevisionId = revision.Id,
-                Status           = approval.Value,
-                ReviewedAt       = DateTime.UtcNow
+                Status = approval.Value,
+                ReviewedAt = DateTime.UtcNow
             };
             revision.Approval = designApproval;
         }

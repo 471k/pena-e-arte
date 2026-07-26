@@ -24,7 +24,7 @@ public class GetNearbyStudiosHandler(IAppDbContext db)
             .IgnoreQueryFilters()
             .Where(s =>
                 s.IsActive &&
-                s.Latitude  >= query.Lat - latDelta && s.Latitude  <= query.Lat + latDelta &&
+                s.Latitude >= query.Lat - latDelta && s.Latitude <= query.Lat + latDelta &&
                 s.Longitude >= query.Lng - lngDelta && s.Longitude <= query.Lng + lngDelta)
             .ToListAsync(ct);
 
@@ -46,15 +46,15 @@ public class GetNearbyStudiosHandler(IAppDbContext db)
             .Select(g => new
             {
                 StudioId = g.Key,
-                Avg      = g.Average(r => (double)r.Rating),
-                Count    = g.Count(),
+                Avg = g.Average(r => (double)r.Rating),
+                Count = g.Count(),
             })
             .ToDictionaryAsync(x => x.StudioId, x => (x.Avg, x.Count), ct);
 
         return candidates
             .Select(s => new
             {
-                Studio   = s,
+                Studio = s,
                 Distance = Haversine(query.Lat, query.Lng, s.Latitude, s.Longitude),
             })
             .Where(x => x.Distance <= query.RadiusKm)
