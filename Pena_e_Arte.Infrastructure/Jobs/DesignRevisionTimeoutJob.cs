@@ -24,15 +24,15 @@ public class DesignRevisionTimeoutJob(IAppDbContext db, IRealtimeNotifier realti
         {
             db.DesignApprovals.Add(new DesignApproval
             {
-                StudioId         = revision.StudioId,
+                StudioId = revision.StudioId,
                 DesignRevisionId = revision.Id,
-                Status           = DesignApprovalStatus.Expired,
-                ReviewedAt       = DateTime.UtcNow,
+                Status = DesignApprovalStatus.Expired,
+                ReviewedAt = DateTime.UtcNow,
             });
         }
         else
         {
-            revision.Approval.Status     = DesignApprovalStatus.Expired;
+            revision.Approval.Status = DesignApprovalStatus.Expired;
             revision.Approval.ReviewedAt = DateTime.UtcNow;
         }
 

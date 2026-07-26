@@ -13,12 +13,12 @@ namespace Pena_e_Arte.UnitTests.Feedback;
 
 public class PostFeedbackMessageHandlerTests
 {
-    private readonly FakeDbContext    _db       = FakeDbContext.Create();
-    private readonly ICurrentUser     _user     = Substitute.For<ICurrentUser>();
-    private readonly ICurrentTenant   _tenant   = Substitute.For<ICurrentTenant>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly Guid             _ownerUserId = Guid.NewGuid();
-    private readonly Guid             _studioId    = Guid.NewGuid();
+    private readonly Guid _ownerUserId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private PostFeedbackMessageHandler CreateSut() => new(_db, _user, _tenant, _realtime);
 

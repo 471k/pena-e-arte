@@ -19,26 +19,26 @@ public class CreatePlanHandler(IAppDbContext db)
 
         Plan plan = new()
         {
-            Name                     = req.Name,
-            YearlyDiscountPercent    = req.YearlyDiscountPercent,
-            AllowBrandingRemoval     = req.AllowBrandingRemoval,
-            MaxArtists               = req.MaxArtists,
-            MaxAppointmentsPerMonth  = req.MaxAppointmentsPerMonth,
+            Name = req.Name,
+            YearlyDiscountPercent = req.YearlyDiscountPercent,
+            AllowBrandingRemoval = req.AllowBrandingRemoval,
+            MaxArtists = req.MaxArtists,
+            MaxAppointmentsPerMonth = req.MaxAppointmentsPerMonth,
             MaxNotificationsPerMonth = req.MaxNotificationsPerMonth,
-            MaxStorageGb             = req.MaxStorageGb,
-            MaxLocations             = req.MaxLocations,
-            AllowApiAccess           = req.AllowApiAccess,
-            PrioritySupport          = req.PrioritySupport,
+            MaxStorageGb = req.MaxStorageGb,
+            MaxLocations = req.MaxLocations,
+            AllowApiAccess = req.AllowApiAccess,
+            PrioritySupport = req.PrioritySupport,
         };
 
         foreach (PlanPriceRequest pr in req.Prices)
         {
             plan.Prices.Add(new PlanPrice
             {
-                Interval      = Enum.Parse<BillingInterval>(pr.Interval, ignoreCase: true),
-                Price         = pr.Price,
+                Interval = Enum.Parse<BillingInterval>(pr.Interval, ignoreCase: true),
+                Price = pr.Price,
                 StripePriceId = pr.StripePriceId,
-                IsActive      = pr.IsActive,
+                IsActive = pr.IsActive,
             });
         }
 

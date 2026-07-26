@@ -28,8 +28,8 @@ public class HandleInvoicePaidHandlerTests
     [Fact]
     public async Task Handle_KnownSubscription_UpdatesCurrentPeriodEnd()
     {
-        string   stripeSubId = "sub_xyz789";
-        DateTime periodEnd   = DateTime.UtcNow.AddMonths(1);
+        string stripeSubId = "sub_xyz789";
+        DateTime periodEnd = DateTime.UtcNow.AddMonths(1);
         await SeedSubscription(stripeSubId, SubscriptionStatus.Trialing);
 
         await CreateSut().Handle(new HandleInvoicePaidCommand(stripeSubId, periodEnd), default);
@@ -51,12 +51,12 @@ public class HandleInvoicePaidHandlerTests
     {
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId              = Guid.NewGuid(),
-            StripeSubscriptionId  = stripeSubId,
-            Status                = status,
-            TrialExpiresAt        = DateTime.UtcNow.AddDays(14),
-            CurrentPeriodEnd      = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd        = DateTime.UtcNow.AddDays(21)
+            StudioId = Guid.NewGuid(),
+            StripeSubscriptionId = stripeSubId,
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21)
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

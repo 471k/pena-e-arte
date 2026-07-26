@@ -16,7 +16,7 @@ public sealed record PlanUsageDimension(double Current, int? Max);
 /// Mirrors how SubscriptionSnapshot lives alongside ISubscriptionAccessService.
 /// </summary>
 public sealed record PlanUsageSnapshot(
-    string             PlanName,
+    string PlanName,
     PlanUsageDimension Artists,
     PlanUsageDimension AppointmentsPerMonth,
     PlanUsageDimension NotificationsPerMonth,

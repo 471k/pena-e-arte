@@ -30,15 +30,8 @@ jobs:
 
       - name: Format check (no changes allowed)
         run: dotnet format "Pena e Arte.slnx" --verify-no-changes --verbosity diagnostic
-        continue-on-error: true
-        # continue-on-error: current `main` has ~38k pre-existing dotnet-format violations
-        # (mostly CRLF/whitespace/charset — the repo has never been run through
-        # `dotnet format`), spread across nearly every .cs file including EF migrations.
-        # This is far past the "small, mechanical, ≤20" bar for a same-change baseline
-        # fix, and a repo-wide reformat is out of scope for a CI-standup change (it would
-        # bury this diff under an unrelated whitespace rewrite touching every file).
-        # TODO: remove continue-on-error once a dedicated `chore: dotnet format baseline`
-        # pass has been done and reviewed on its own.
+        # Blocking as of the `chore: run dotnet format baseline` commit — the repo-wide
+        # whitespace/CRLF/charset baseline fix that made this gate clean.
 
       - name: Build (Release)
         run: dotnet build "Pena e Arte.slnx" --configuration Release --no-restore
@@ -132,16 +125,9 @@ jobs:
       - name: Lint
         working-directory: frontend
         run: pnpm lint
-        continue-on-error: true
-        # continue-on-error: current `main` has 6 pre-existing ESLint errors — 5 are the
-        # newly-adopted `react-hooks/set-state-in-effect` rule flagging real effect bodies
-        # in production auth/payment/review components (ArtistScheduleEditor,
-        # ConfirmChangeEmailPage, StudioNotificationSheet, VerifyEmailPage, ReviewSection),
-        # 1 is `@typescript-eslint/no-explicit-any` in a test file. Fixing the effect-based
-        # ones means restructuring each component's state/effect logic, not a mechanical
-        # whitespace change — real behavior risk for a CI-only change, so left for a
-        # dedicated follow-up rather than rushed here.
-        # TODO: remove continue-on-error once those 6 findings are fixed and reviewed.
+        # Blocking as of the `fix(frontend): resolve react-hooks/set-state-in-effect
+        # lint errors` commit — the 6 pre-existing findings that made this gate
+        # non-blocking are fixed.
 
       - name: Typecheck + build
         working-directory: frontend

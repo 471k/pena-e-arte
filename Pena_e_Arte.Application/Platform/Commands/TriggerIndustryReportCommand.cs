@@ -8,8 +8,8 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 public record TriggerIndustryReportCommand : IRequest;
 
 public class TriggerIndustryReportHandler(
-    IJobScheduler                          jobs,
-    ILogger<TriggerIndustryReportHandler>  logger)
+    IJobScheduler jobs,
+    ILogger<TriggerIndustryReportHandler> logger)
     : IRequestHandler<TriggerIndustryReportCommand>
 {
     public Task Handle(TriggerIndustryReportCommand command, CancellationToken ct)

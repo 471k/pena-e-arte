@@ -13,15 +13,15 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 
 public record CancelSubscriptionCommand(Guid StudioId) : IRequest, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.SubscriptionCancelledByIssuer;
+    public string AuditAction => AuditActions.SubscriptionCancelledByIssuer;
     public string AuditTargetType => AuditTargetTypes.Subscription;
-    public Guid   AuditTargetId   => StudioId;
-    public Guid?  AuditStudioId   => StudioId;
+    public Guid AuditTargetId => StudioId;
+    public Guid? AuditStudioId => StudioId;
 }
 
 public class CancelSubscriptionHandler(
-    IAppDbContext                      db,
-    IStripeBillingService              stripe,
+    IAppDbContext db,
+    IStripeBillingService stripe,
     ILogger<CancelSubscriptionHandler> logger)
     : IRequestHandler<CancelSubscriptionCommand>
 {
@@ -49,8 +49,8 @@ public class CancelSubscriptionHandler(
             throw new BusinessRuleViolationException(
                 $"A subscription with status '{subscription.Status}' cannot be cancelled.");
 
-        string? stripeId           = subscription.StripeSubscriptionId;
-        subscription.Status        = SubscriptionStatus.Cancelled;
+        string? stripeId = subscription.StripeSubscriptionId;
+        subscription.Status = SubscriptionStatus.Cancelled;
         subscription.PendingPlanId = null;
 
         logger.LogInformation(

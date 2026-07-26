@@ -11,7 +11,7 @@ public class UpdateTattooRecordValidatorTests
 {
     private const string ValidUrl = "https://cdn.example.com/photo.jpg";
 
-    private readonly IR2Service                 _r2  = Substitute.For<IR2Service>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
     private readonly UpdateTattooRecordValidator _sut;
 
     public UpdateTattooRecordValidatorTests()

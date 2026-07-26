@@ -11,7 +11,7 @@ namespace Pena_e_Arte.Infrastructure.Services;
 
 public class IdentityService(
     UserManager<IdentityUser> userManager,
-    IConfiguration            configuration) : IIdentityService
+    IConfiguration configuration) : IIdentityService
 {
     public async Task<(bool Success, Guid UserId, string[] Errors)> CreateUserAsync(
         string email, string password, string role, Guid? studioId, string? firstName = null)
@@ -42,9 +42,9 @@ public class IdentityService(
         bool valid = await userManager.CheckPasswordAsync(user, password);
         if (!valid) return (false, null, "Invalid credentials.");
 
-        IList<string> roles      = await userManager.GetRolesAsync(user);
-        IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
-        Guid?         activeTenantId = await ReadActiveTenantIdAsync(user);
+        IList<string> roles = await userManager.GetRolesAsync(user);
+        IList<Claim> userClaims = await userManager.GetClaimsAsync(user);
+        Guid? activeTenantId = await ReadActiveTenantIdAsync(user);
 
         return (true, GenerateJwt(user, roles, userClaims, activeTenantId), null);
     }
@@ -78,7 +78,7 @@ public class IdentityService(
     {
         IdentityUser user = (await userManager.FindByEmailAsync(email))!;
 
-        string randomPart   = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string randomPart = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         string refreshToken = $"{user.Id}.{randomPart}";
 
         await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", refreshToken);
@@ -98,14 +98,14 @@ public class IdentityService(
         string? stored = await userManager.GetAuthenticationTokenAsync(user, "App", "RefreshToken");
         if (stored != refreshToken) return (false, null, null, "Invalid refresh token.");
 
-        string newRandom       = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string newRandom = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         string newRefreshToken = $"{user.Id}.{newRandom}";
         await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", newRefreshToken);
 
-        IList<string> roles      = await userManager.GetRolesAsync(user);
-        IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
-        Guid?         activeTenantId = await ReadActiveTenantIdAsync(user);
-        string newAccessToken    = GenerateJwt(user, roles, userClaims, activeTenantId);
+        IList<string> roles = await userManager.GetRolesAsync(user);
+        IList<Claim> userClaims = await userManager.GetClaimsAsync(user);
+        Guid? activeTenantId = await ReadActiveTenantIdAsync(user);
+        string newAccessToken = GenerateJwt(user, roles, userClaims, activeTenantId);
 
         return (true, newAccessToken, newRefreshToken, null);
     }
@@ -177,9 +177,9 @@ public class IdentityService(
         if (user is null)
             return (false, null, "No account found with this email. Please register first.");
 
-        IList<string> roles      = await userManager.GetRolesAsync(user);
-        IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
-        Guid?         activeTenantId = await ReadActiveTenantIdAsync(user);
+        IList<string> roles = await userManager.GetRolesAsync(user);
+        IList<Claim> userClaims = await userManager.GetClaimsAsync(user);
+        Guid? activeTenantId = await ReadActiveTenantIdAsync(user);
 
         return (true, GenerateJwt(user, roles, userClaims, activeTenantId), null);
     }
@@ -240,13 +240,13 @@ public class IdentityService(
 
         await userManager.SetAuthenticationTokenAsync(user, "App", "ActiveTenantId", activeStudioId.ToString());
 
-        string newRandom       = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string newRandom = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         string newRefreshToken = $"{user.Id}.{newRandom}";
         await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", newRefreshToken);
 
-        IList<string> roles      = await userManager.GetRolesAsync(user);
-        IList<Claim>  userClaims = await userManager.GetClaimsAsync(user);
-        string accessToken       = GenerateJwt(user, roles, userClaims, activeStudioId);
+        IList<string> roles = await userManager.GetRolesAsync(user);
+        IList<Claim> userClaims = await userManager.GetClaimsAsync(user);
+        string accessToken = GenerateJwt(user, roles, userClaims, activeStudioId);
 
         return (true, accessToken, newRefreshToken, null);
     }
@@ -318,13 +318,13 @@ public class IdentityService(
     private string GenerateJwt(
         IdentityUser user, IList<string> roles, IList<Claim> userClaims, Guid? activeStudioId = null)
     {
-        string secretKey  = configuration["Jwt:SecretKey"]!;
-        string issuer     = configuration["Jwt:Issuer"]!;
-        string audience   = configuration["Jwt:Audience"]!;
-        int    expiryMins = configuration.GetValue<int>("Jwt:AccessTokenExpiryMinutes");
+        string secretKey = configuration["Jwt:SecretKey"]!;
+        string issuer = configuration["Jwt:Issuer"]!;
+        string audience = configuration["Jwt:Audience"]!;
+        int expiryMins = configuration.GetValue<int>("Jwt:AccessTokenExpiryMinutes");
 
-        SymmetricSecurityKey key   = new(Encoding.UTF8.GetBytes(secretKey));
-        SigningCredentials   creds = new(key, SecurityAlgorithms.HmacSha256);
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(secretKey));
+        SigningCredentials creds = new(key, SecurityAlgorithms.HmacSha256);
 
         List<Claim> tokenClaims =
         [
@@ -348,10 +348,10 @@ public class IdentityService(
             tokenClaims.Add(new Claim("tenant_id", activeTenantId));
 
         JwtSecurityToken token = new(
-            issuer:             issuer,
-            audience:           audience,
-            claims:             tokenClaims,
-            expires:            DateTime.UtcNow.AddMinutes(expiryMins),
+            issuer: issuer,
+            audience: audience,
+            claims: tokenClaims,
+            expires: DateTime.UtcNow.AddMinutes(expiryMins),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

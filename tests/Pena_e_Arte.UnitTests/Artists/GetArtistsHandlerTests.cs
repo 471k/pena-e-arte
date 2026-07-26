@@ -8,8 +8,8 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class GetArtistsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetArtistsHandler CreateSut() => new(_db);
 
@@ -17,9 +17,9 @@ public class GetArtistsHandlerTests
     public async Task Handle_NoSearch_ReturnsAllArtistsOrderedByLastNameThenFirstName()
     {
         await SeedArtists(
-            ("Carlos", "Silva",   "carlos@studio.com"),
-            ("Ana",    "Pereira", "ana@studio.com"),
-            ("Beatriz","Silva",   "beatriz@studio.com"));
+            ("Carlos", "Silva", "carlos@studio.com"),
+            ("Ana", "Pereira", "ana@studio.com"),
+            ("Beatriz", "Silva", "beatriz@studio.com"));
 
         List<ArtistResponse> result = await CreateSut().Handle(new GetArtistsQuery(null), default);
 
@@ -33,7 +33,7 @@ public class GetArtistsHandlerTests
     public async Task Handle_SearchMatchesFirstName_ReturnsMatchingArtists()
     {
         await SeedArtists(
-            ("Rui",   "Neves", "rui@studio.com"),
+            ("Rui", "Neves", "rui@studio.com"),
             ("Maria", "Neves", "maria@studio.com"));
 
         List<ArtistResponse> result = await CreateSut().Handle(new GetArtistsQuery("Rui"), default);
@@ -45,8 +45,8 @@ public class GetArtistsHandlerTests
     public async Task Handle_SearchMatchesLastName_ReturnsMatchingArtists()
     {
         await SeedArtists(
-            ("Ana",  "Ferreira", "ana@studio.com"),
-            ("Rui",  "Neves",    "rui@studio.com"));
+            ("Ana", "Ferreira", "ana@studio.com"),
+            ("Rui", "Neves", "rui@studio.com"));
 
         List<ArtistResponse> result = await CreateSut().Handle(new GetArtistsQuery("Ferreira"), default);
 
@@ -57,8 +57,8 @@ public class GetArtistsHandlerTests
     public async Task Handle_SearchMatchesEmail_ReturnsMatchingArtists()
     {
         await SeedArtists(
-            ("Ana", "Costa",  "ana@inkstudio.com"),
-            ("Rui", "Gomes",  "rui@other.com"));
+            ("Ana", "Costa", "ana@inkstudio.com"),
+            ("Rui", "Gomes", "rui@other.com"));
 
         List<ArtistResponse> result = await CreateSut().Handle(new GetArtistsQuery("inkstudio"), default);
 

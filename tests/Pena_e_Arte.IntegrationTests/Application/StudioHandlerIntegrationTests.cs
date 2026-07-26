@@ -107,8 +107,8 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task RegisterStudio_DuplicateNiptSameOwnerEmail_SucceedsForMultiLocation()
     {
-        string nipt        = UniqueTestNipt();
-        string ownerEmail  = "owner@multilocation.com";
+        string nipt = UniqueTestNipt();
+        string ownerEmail = "owner@multilocation.com";
         await RunRegisterHandler(new("Main Location", UniqueSlug(), "Lisboa", 38.7, -9.1, ownerEmail, nipt));
 
         StudioResponse second = await RunRegisterHandler(
@@ -122,12 +122,12 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task GetStudioMap_ReturnsOnlyActiveStudios()
     {
-        string activeSlug   = UniqueSlug();
+        string activeSlug = UniqueSlug();
         string inactiveSlug = UniqueSlug();
 
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
-        seed.Studios.Add(new Studio { Name = "Active",   Slug = activeSlug,   City = "Lisbon", IsActive = true,  Latitude = 38.7, Longitude = -9.1 });
-        seed.Studios.Add(new Studio { Name = "Inactive", Slug = inactiveSlug, City = "Porto",  IsActive = false, Latitude = 41.1, Longitude = -8.6 });
+        seed.Studios.Add(new Studio { Name = "Active", Slug = activeSlug, City = "Lisbon", IsActive = true, Latitude = 38.7, Longitude = -9.1 });
+        seed.Studios.Add(new Studio { Name = "Inactive", Slug = inactiveSlug, City = "Porto", IsActive = false, Latitude = 41.1, Longitude = -8.6 });
         await seed.SaveChangesAsync();
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
@@ -145,11 +145,11 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
         seed.Studios.Add(new Studio
         {
-            Name      = "Coord Studio",
-            Slug      = slug,
-            City      = "Lisboa",
-            IsActive  = true,
-            Latitude  = 38.716667,
+            Name = "Coord Studio",
+            Slug = slug,
+            City = "Lisboa",
+            IsActive = true,
+            Latitude = 38.716667,
             Longitude = -9.133333
         });
         await seed.SaveChangesAsync();

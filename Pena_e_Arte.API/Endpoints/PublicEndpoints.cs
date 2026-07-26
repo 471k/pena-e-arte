@@ -22,11 +22,11 @@ public static class PublicEndpoints
 
         RouteGroupBuilder group = app.MapGroup("/api/v1/public");
 
-        group.MapGet("/studios/{slug}",          GetPublicStudio).AllowAnonymous().RequireRateLimiting("public-read");
-        group.MapGet("/artists/{slug}",          GetPublicArtist).AllowAnonymous().RequireRateLimiting("public-read");
-        group.MapGet("/studios/nearby",          GetNearbyStudios).AllowAnonymous().RequireRateLimiting("public-read");
-        group.MapGet("/studios/{slug}/reviews",  GetStudioReviews).AllowAnonymous().RequireRateLimiting("public-read");
-        group.MapGet("/artists/{slug}/reviews",  GetArtistReviews).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}", GetPublicStudio).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/artists/{slug}", GetPublicArtist).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/nearby", GetNearbyStudios).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/reviews", GetStudioReviews).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/artists/{slug}/reviews", GetArtistReviews).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/studios/{slug}/reviews", CreateStudioReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
         group.MapPost("/artists/{slug}/reviews", CreateArtistReview)
@@ -35,18 +35,18 @@ public static class PublicEndpoints
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-read");
         group.MapGet("/artists/{slug}/reviews/eligible-appointments", GetReviewableArtistAppointments)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-read");
-        group.MapPost("/artists/{slug}/view",    RecordArtistView)
+        group.MapPost("/artists/{slug}/view", RecordArtistView)
              .AllowAnonymous().RequireRateLimiting("public-write");
-        group.MapGet ("/portfolio/feed",                GetPortfolioFeed).AllowAnonymous().RequireRateLimiting("public-read");
-        group.MapGet ("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/portfolio/feed", GetPortfolioFeed).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/portfolio/{imageId:guid}/reviews", CreatePortfolioImageReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
-        group.MapGet ("/artists/{slug}/instagram-posts", GetArtistInstagramPosts)
+        group.MapGet("/artists/{slug}/instagram-posts", GetArtistInstagramPosts)
              .AllowAnonymous().RequireRateLimiting("public-read");
     }
 
     private static async Task<IResult> GetSitemap(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         List<SitemapUrlEntry> urls = await mediator.Send(new GetSitemapUrlsQuery(), ct);
@@ -67,8 +67,8 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetPublicStudio(
-        string            slug,
-        ISender           mediator,
+        string slug,
+        ISender mediator,
         CancellationToken ct)
     {
         PublicStudioResponse? result = await mediator.Send(new GetPublicStudioQuery(slug), ct);
@@ -76,9 +76,9 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetPublicArtist(
-        string            slug,
-        ISender           mediator,
-        ClaimsPrincipal   user,
+        string slug,
+        ISender mediator,
+        ClaimsPrincipal user,
         CancellationToken ct)
     {
         Guid? currentUserId = user.Identity?.IsAuthenticated == true
@@ -91,10 +91,10 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetNearbyStudios(
-        double            lat,
-        double            lng,
-        double            radiusKm,
-        ISender           mediator,
+        double lat,
+        double lng,
+        double radiusKm,
+        ISender mediator,
         CancellationToken ct)
     {
         if (lat is < -90 or > 90 || lng is < -180 or > 180 || radiusKm is <= 0 or > 500)
@@ -106,8 +106,8 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetStudioReviews(
-        string            slug,
-        ISender           mediator,
+        string slug,
+        ISender mediator,
         CancellationToken ct)
     {
         List<ReviewResponse> result =
@@ -116,8 +116,8 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetArtistReviews(
-        string            slug,
-        ISender           mediator,
+        string slug,
+        ISender mediator,
         CancellationToken ct)
     {
         List<ReviewResponse> result =
@@ -126,13 +126,13 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> CreateStudioReview(
-        string              slug,
+        string slug,
         CreateReviewRequest body,
-        ClaimsPrincipal     user,
-        ISender             mediator,
-        CancellationToken   ct)
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
     {
-        Guid   authorId   = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        Guid authorId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         string authorName = user.FindFirstValue(ClaimTypes.Name)
                          ?? user.FindFirstValue(ClaimTypes.GivenName)
                          ?? "Anonymous";
@@ -145,13 +145,13 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> CreateArtistReview(
-        string              slug,
+        string slug,
         CreateReviewRequest body,
-        ClaimsPrincipal     user,
-        ISender             mediator,
-        CancellationToken   ct)
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
     {
-        Guid   authorId   = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        Guid authorId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         string authorName = user.FindFirstValue(ClaimTypes.Name)
                          ?? user.FindFirstValue(ClaimTypes.GivenName)
                          ?? "Anonymous";
@@ -164,9 +164,9 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetReviewableStudioAppointments(
-        string            slug,
-        ClaimsPrincipal   user,
-        ISender           mediator,
+        string slug,
+        ClaimsPrincipal user,
+        ISender mediator,
         CancellationToken ct)
     {
         Guid authorId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -176,9 +176,9 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetReviewableArtistAppointments(
-        string            slug,
-        ClaimsPrincipal   user,
-        ISender           mediator,
+        string slug,
+        ClaimsPrincipal user,
+        ISender mediator,
         CancellationToken ct)
     {
         Guid authorId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -188,10 +188,10 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> RecordArtistView(
-        string                 slug,
-        IAppDbContext          db,
+        string slug,
+        IAppDbContext db,
         IConnectionMultiplexer redis,
-        CancellationToken      ct)
+        CancellationToken ct)
     {
         // Fire-and-forget view counter. No MediatR needed — no domain invariants.
         // Approved: public, anonymous, write-only to Redis — not business data.
@@ -216,14 +216,14 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetPortfolioFeed(
-        double?           lat,
-        double?           lng,
-        ISender           mediator,
+        double? lat,
+        double? lng,
+        ISender mediator,
         CancellationToken ct,
-        double            radiusKm = 50,
-        int               page     = 1,
-        int               pageSize = 24,
-        string?           style    = null)
+        double radiusKm = 50,
+        int page = 1,
+        int pageSize = 24,
+        string? style = null)
     {
         if (pageSize is < 1 or > 100) pageSize = 24;
 
@@ -233,8 +233,8 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetPortfolioImageReviews(
-        Guid              imageId,
-        ISender           mediator,
+        Guid imageId,
+        ISender mediator,
         CancellationToken ct)
     {
         List<ReviewResponse> result =
@@ -243,13 +243,13 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> CreatePortfolioImageReview(
-        Guid                imageId,
+        Guid imageId,
         CreateReviewRequest body,
-        ClaimsPrincipal     user,
-        ISender             mediator,
-        CancellationToken   ct)
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
     {
-        Guid   authorId   = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        Guid authorId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         string authorName = user.FindFirstValue(ClaimTypes.Name)
                          ?? user.FindFirstValue(ClaimTypes.GivenName)
                          ?? "Anonymous";
@@ -261,8 +261,8 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetArtistInstagramPosts(
-        string            slug,
-        ISender           mediator,
+        string slug,
+        ISender mediator,
         CancellationToken ct)
     {
         List<InstagramPostResponse> result =

@@ -11,10 +11,10 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 public record ConfirmAppointmentCommand(Guid AppointmentId) : IRequest<AppointmentResponse>;
 
 public class ConfirmAppointmentHandler(
-    IAppDbContext     db,
-    ICurrentTenant    tenant,
+    IAppDbContext db,
+    ICurrentTenant tenant,
     IRealtimeNotifier realtime,
-    ISender           sender)
+    ISender sender)
     : IRequestHandler<ConfirmAppointmentCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(ConfirmAppointmentCommand command, CancellationToken ct)
@@ -28,7 +28,7 @@ public class ConfirmAppointmentHandler(
             throw new BusinessRuleViolationException(
                 $"Only Pending appointments can be confirmed (current: {appointment.Status}).");
 
-        appointment.Status    = AppointmentStatus.Confirmed;
+        appointment.Status = AppointmentStatus.Confirmed;
         appointment.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Studios;
 
 public class UpdateMyStudioHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public UpdateMyStudioHandlerTests() => _tenant.StudioId.Returns(_studioId);
 
@@ -81,7 +81,11 @@ public class UpdateMyStudioHandlerTests
     {
         Studio studio = new()
         {
-            Id = _studioId, Name = "Old Name", Slug = "old-slug", City = "Lisbon", Nipt = "L01234567A",
+            Id = _studioId,
+            Name = "Old Name",
+            Slug = "old-slug",
+            City = "Lisbon",
+            Nipt = "L01234567A",
         };
         _db.Studios.Add(studio);
         await _db.SaveChangesAsync();
@@ -99,8 +103,12 @@ public class UpdateMyStudioHandlerTests
         await SeedStudio();
         _db.Studios.Add(new Studio
         {
-            Name = "Other Studio", Slug = "other-studio", City = "Porto",
-            OwnerEmail = "other-owner@example.com", Nipt = "L01234567A", IsActive = true,
+            Name = "Other Studio",
+            Slug = "other-studio",
+            City = "Porto",
+            OwnerEmail = "other-owner@example.com",
+            Nipt = "L01234567A",
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
@@ -116,14 +124,22 @@ public class UpdateMyStudioHandlerTests
     {
         Studio myStudio = new()
         {
-            Id = _studioId, Name = "Old Name", Slug = "old-slug", City = "Lisbon",
-            OwnerEmail = "owner@example.com", IsActive = true,
+            Id = _studioId,
+            Name = "Old Name",
+            Slug = "old-slug",
+            City = "Lisbon",
+            OwnerEmail = "owner@example.com",
+            IsActive = true,
         };
         _db.Studios.Add(myStudio);
         _db.Studios.Add(new Studio
         {
-            Name = "My Other Location", Slug = "other-location", City = "Porto",
-            OwnerEmail = "owner@example.com", Nipt = "L01234567A", IsActive = true,
+            Name = "My Other Location",
+            Slug = "other-location",
+            City = "Porto",
+            OwnerEmail = "owner@example.com",
+            Nipt = "L01234567A",
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 

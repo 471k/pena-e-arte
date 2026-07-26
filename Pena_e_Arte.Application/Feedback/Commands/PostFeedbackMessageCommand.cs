@@ -12,9 +12,9 @@ public record PostFeedbackMessageCommand(Guid FeedbackReportId, PostFeedbackMess
     : IRequest<FeedbackMessageResponse>;
 
 public class PostFeedbackMessageHandler(
-    IAppDbContext     db,
-    ICurrentUser      user,
-    ICurrentTenant    tenant,
+    IAppDbContext db,
+    ICurrentUser user,
+    ICurrentTenant tenant,
     IRealtimeNotifier realtime)
     : IRequestHandler<PostFeedbackMessageCommand, FeedbackMessageResponse>
 {

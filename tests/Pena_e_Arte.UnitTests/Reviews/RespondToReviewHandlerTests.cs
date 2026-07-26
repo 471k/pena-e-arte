@@ -10,7 +10,7 @@ namespace Pena_e_Arte.UnitTests.Reviews;
 
 public class RespondToReviewHandlerTests
 {
-    private readonly FakeDbContext  _db     = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
 
     private RespondToReviewHandler CreateSut() => new(_db, _tenant);
@@ -66,8 +66,8 @@ public class RespondToReviewHandlerTests
     [Fact]
     public async Task Throws_ForbiddenException_when_review_belongs_to_a_different_studio()
     {
-        Guid studioId       = Guid.NewGuid();
-        Guid otherStudioId  = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
+        Guid otherStudioId = Guid.NewGuid();
         _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Studio", Slug = "ink-studio", City = "Porto", IsActive = true });
         Review review = Review.ForStudio(studioId, Guid.NewGuid(), Guid.NewGuid(), "Ana Silva", 5, "Great studio!");
         _db.Reviews.Add(review);

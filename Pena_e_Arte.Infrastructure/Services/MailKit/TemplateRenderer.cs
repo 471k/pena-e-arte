@@ -14,7 +14,7 @@ internal static class TemplateRenderer
         template = IfBlockRegex.Replace(template, m =>
         {
             string varName = m.Groups[1].Value;
-            string block   = m.Groups[2].Value;
+            string block = m.Groups[2].Value;
             return variables.TryGetValue(varName, out string? val)
                    && string.Equals(val, "true", StringComparison.OrdinalIgnoreCase)
                 ? block

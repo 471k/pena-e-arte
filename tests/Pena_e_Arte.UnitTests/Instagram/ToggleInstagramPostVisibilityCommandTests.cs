@@ -10,9 +10,9 @@ namespace Pena_e_Arte.UnitTests.Instagram;
 
 public class ToggleInstagramPostVisibilityCommandTests
 {
-    private readonly FakeDbContext _db          = FakeDbContext.Create();
-    private readonly ICurrentUser  _currentUser = Substitute.For<ICurrentUser>();
-    private readonly Guid          _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private ToggleInstagramPostVisibilityHandler CreateSut() => new(_db, _currentUser);
 
@@ -20,23 +20,23 @@ public class ToggleInstagramPostVisibilityCommandTests
     {
         Artist artist = new()
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Rui",
-            LastName  = "Tavares",
-            Email     = "rui@studio.com",
+            LastName = "Tavares",
+            Email = "rui@studio.com",
         };
         _db.Artists.Add(artist);
 
         InstagramPost post = new()
         {
-            StudioId         = _studioId,
-            ArtistId         = artist.Id,
+            StudioId = _studioId,
+            ArtistId = artist.Id,
             InstagramMediaId = "media-1",
-            MediaUrl         = "https://example.com/1.jpg",
-            MediaType        = "IMAGE",
-            PostedAt         = DateTime.UtcNow,
-            IsVisible        = true,
+            MediaUrl = "https://example.com/1.jpg",
+            MediaType = "IMAGE",
+            PostedAt = DateTime.UtcNow,
+            IsVisible = true,
         };
         _db.InstagramPosts.Add(post);
 

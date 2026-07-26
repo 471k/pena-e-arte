@@ -10,12 +10,12 @@ namespace Pena_e_Arte.UnitTests.Jobs;
 
 public class InstagramSyncJobTests
 {
-    private readonly FakeDbContext           _db        = FakeDbContext.Create();
-    private readonly IInstagramService       _instagram = Substitute.For<IInstagramService>();
-    private readonly ITokenEncryptor         _encryptor = Substitute.For<ITokenEncryptor>();
-    private readonly ILogger<InstagramSyncJob> _logger  = Substitute.For<ILogger<InstagramSyncJob>>();
-    private readonly Guid                    _studioId  = Guid.NewGuid();
-    private readonly Guid                    _artistId  = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IInstagramService _instagram = Substitute.For<IInstagramService>();
+    private readonly ITokenEncryptor _encryptor = Substitute.For<ITokenEncryptor>();
+    private readonly ILogger<InstagramSyncJob> _logger = Substitute.For<ILogger<InstagramSyncJob>>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _artistId = Guid.NewGuid();
 
     private InstagramSyncJob CreateSut() => new(_db, _instagram, _encryptor, _logger);
 
@@ -23,12 +23,12 @@ public class InstagramSyncJobTests
     {
         _db.Studios.Add(new Studio
         {
-            Id         = studioId,
-            Name       = "Test Studio",
-            Slug       = "studio-" + studioId.ToString("N")[..8],
-            City       = "Lisboa",
+            Id = studioId,
+            Name = "Test Studio",
+            Slug = "studio-" + studioId.ToString("N")[..8],
+            City = "Lisboa",
             OwnerEmail = "owner@studio.com",
-            IsActive   = isActive,
+            IsActive = isActive,
         });
         await _db.SaveChangesAsync();
     }
@@ -40,13 +40,13 @@ public class InstagramSyncJobTests
 
         InstagramConnection conn = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = _artistId,
+            StudioId = _studioId,
+            ArtistId = _artistId,
             InstagramUserId = "ig-user-1",
-            Username        = "artist_ig",
-            EncryptedToken  = "encrypted-token",
-            TokenExpiresAt  = tokenExpiresAt ?? DateTime.UtcNow.AddDays(30),
-            IsActive        = isActive,
+            Username = "artist_ig",
+            EncryptedToken = "encrypted-token",
+            TokenExpiresAt = tokenExpiresAt ?? DateTime.UtcNow.AddDays(30),
+            IsActive = isActive,
         };
         _db.InstagramConnections.Add(conn);
         await _db.SaveChangesAsync();
@@ -75,12 +75,12 @@ public class InstagramSyncJobTests
         await SeedConnection();
         _db.InstagramPosts.Add(new InstagramPost
         {
-            StudioId         = _studioId,
-            ArtistId         = _artistId,
+            StudioId = _studioId,
+            ArtistId = _artistId,
             InstagramMediaId = "media-1",
-            MediaUrl         = "https://img/old.jpg",
-            MediaType        = "IMAGE",
-            PostedAt         = DateTime.UtcNow.AddDays(-1),
+            MediaUrl = "https://img/old.jpg",
+            MediaType = "IMAGE",
+            PostedAt = DateTime.UtcNow.AddDays(-1),
         });
         await _db.SaveChangesAsync();
 
@@ -156,13 +156,13 @@ public class InstagramSyncJobTests
         await SeedStudio(otherStudioId);
         _db.InstagramConnections.Add(new InstagramConnection
         {
-            StudioId        = otherStudioId,
-            ArtistId        = otherArtistId,
+            StudioId = otherStudioId,
+            ArtistId = otherArtistId,
             InstagramUserId = "ig-user-2",
-            Username        = "other_artist",
-            EncryptedToken  = "encrypted-token-2",
-            TokenExpiresAt  = DateTime.UtcNow.AddDays(30),
-            IsActive        = true,
+            Username = "other_artist",
+            EncryptedToken = "encrypted-token-2",
+            TokenExpiresAt = DateTime.UtcNow.AddDays(30),
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 

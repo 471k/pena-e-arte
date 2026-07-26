@@ -184,6 +184,12 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
 
   const eligibleAppointments   = target === "studio" ? studioAppointments : artistAppointments;
   const loadingEligibility     = target === "studio" ? loadingStudioEligibility : loadingArtistEligibility;
+  // A one-shot boolean, not a reference-equality check against the previous
+  // `eligibleAppointments` value — RTK Query hooks aren't guaranteed to return a
+  // referentially-stable array/object on every render (some test mocks return a
+  // fresh `[]` literal each call), which would make a `!==` comparison true on
+  // every render and infinite-loop.
+  const [hasAppliedDefaultSelection, setHasAppliedDefaultSelection] = useState(false);
 
   const [createStudioReview,         { isLoading: isStudioSubmitting }]  = useCreateStudioReviewMutation();
   const [createArtistReview,         { isLoading: isArtistSubmitting }]  = useCreateArtistReviewMutation();
@@ -202,12 +208,16 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
   }, [success]);
 
   // Default to the most recent eligible visit — the list is already ordered
-  // most-recent-first by the backend.
-  useEffect(() => {
-    if (eligibleAppointments && eligibleAppointments.length > 0 && !selectedAppointmentId) {
+  // most-recent-first by the backend. Adjusting state during render (rather
+  // than in an effect) avoids an extra post-effect render pass — React discards
+  // this in-progress render and immediately restarts with the new state — see
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
+  if (!hasAppliedDefaultSelection && eligibleAppointments && eligibleAppointments.length > 0) {
+    setHasAppliedDefaultSelection(true);
+    if (!selectedAppointmentId) {
       setSelectedAppointmentId(eligibleAppointments[0].id);
     }
-  }, [eligibleAppointments, selectedAppointmentId]);
+  }
 
   function handleSubmit() {
     if (needsAppointment && !selectedAppointmentId) {

@@ -12,12 +12,12 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class CreateArtistHandlerTests
 {
-    private readonly FakeDbContext    _db         = FakeDbContext.Create();
-    private readonly ICurrentTenant   _tenant     = Substitute.For<ICurrentTenant>();
-    private readonly IIdentityService _identity   = Substitute.For<IIdentityService>();
-    private readonly IJobScheduler    _scheduler  = Substitute.For<IJobScheduler>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly IJobScheduler _scheduler = Substitute.For<IJobScheduler>();
     private readonly IPlanLimitService _planLimits = Substitute.For<IPlanLimitService>();
-    private readonly Guid             _studioId   = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateArtistHandlerTests()
     {
@@ -77,10 +77,10 @@ public class CreateArtistHandlerTests
         const string email = "duplicate@studio.com";
         _db.Artists.Add(new Artist
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Existing",
-            LastName  = "Artist",
-            Email     = email
+            LastName = "Artist",
+            Email = email
         });
         await _db.SaveChangesAsync();
 

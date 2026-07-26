@@ -7,6 +7,6 @@ public sealed record FakeCurrentUser(Guid UserId, string Role, string? Email = n
     public bool IsAuthenticated => true;
 
     public static FakeCurrentUser Artist() => new(Guid.NewGuid(), "artist");
-    public static FakeCurrentUser Owner()  => new(Guid.NewGuid(), "owner");
+    public static FakeCurrentUser Owner() => new(Guid.NewGuid(), "owner");
     public static FakeCurrentUser Client() => new(Guid.NewGuid(), "client");
 }
