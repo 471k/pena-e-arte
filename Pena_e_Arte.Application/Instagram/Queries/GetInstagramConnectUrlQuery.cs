@@ -9,8 +9,8 @@ namespace Pena_e_Arte.Application.Instagram.Queries;
 public record GetInstagramConnectUrlQuery(Guid ArtistId) : IRequest<string>;
 
 public class GetInstagramConnectUrlHandler(
-    IAppDbContext         db,
-    IInstagramService     instagram,
+    IAppDbContext db,
+    IInstagramService instagram,
     IInstagramStateSigner stateSigner) : IRequestHandler<GetInstagramConnectUrlQuery, string>
 {
     public async Task<string> Handle(GetInstagramConnectUrlQuery request, CancellationToken ct)

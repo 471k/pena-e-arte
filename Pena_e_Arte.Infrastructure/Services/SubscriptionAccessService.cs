@@ -15,7 +15,7 @@ namespace Pena_e_Arte.Infrastructure.Services;
 // it could equally be a Free-plan studio. IsPassThrough below is status-based only, so
 // this already holds; keep it that way.
 public class SubscriptionAccessService(
-    AppDbContext      db,
+    AppDbContext db,
     IDistributedCache cache,
     ILogger<SubscriptionAccessService> logger) : ISubscriptionAccessService
 {

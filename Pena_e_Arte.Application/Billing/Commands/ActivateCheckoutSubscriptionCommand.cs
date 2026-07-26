@@ -23,10 +23,10 @@ public record ActivateCheckoutSubscriptionCommand(string SessionId, Guid? Expect
     : IRequest<SubscriptionResponse?>;
 
 public class ActivateCheckoutSubscriptionHandler(
-    IAppDbContext                                  db,
-    IStripeBillingService                          billing,
-    IReferralRewardService                         rewardService,
-    ILogger<ActivateCheckoutSubscriptionHandler>   logger)
+    IAppDbContext db,
+    IStripeBillingService billing,
+    IReferralRewardService rewardService,
+    ILogger<ActivateCheckoutSubscriptionHandler> logger)
     : IRequestHandler<ActivateCheckoutSubscriptionCommand, SubscriptionResponse?>
 {
     public async Task<SubscriptionResponse?> Handle(ActivateCheckoutSubscriptionCommand command, CancellationToken ct)
@@ -67,12 +67,12 @@ public class ActivateCheckoutSubscriptionHandler(
         subscription.StripeSubscriptionId = result.StripeSubscriptionId;
         if (price is not null)
         {
-            subscription.PlanId          = price.PlanId;
+            subscription.PlanId = price.PlanId;
             subscription.BillingInterval = price.Interval;
         }
-        subscription.Status               = SubscriptionStatus.Active;
-        subscription.CurrentPeriodEnd     = result.CurrentPeriodEnd;
-        subscription.TrialExpiresAt       = null;
+        subscription.Status = SubscriptionStatus.Active;
+        subscription.CurrentPeriodEnd = result.CurrentPeriodEnd;
+        subscription.TrialExpiresAt = null;
 
         ReferralRedemption? newRedemption =
             await RecordReferralRedemptionAsync(subscription.Studio, result.HasDiscount, ct);
@@ -96,8 +96,8 @@ public class ActivateCheckoutSubscriptionHandler(
 
         ReferralRedemption newRedemption = new()
         {
-            ReferralCodeId  = refCodeId,
-            NewStudioId     = studio.Id,
+            ReferralCodeId = refCodeId,
+            NewStudioId = studio.Id,
             DiscountApplied = hasDiscount,
         };
         db.ReferralRedemptions.Add(newRedemption);

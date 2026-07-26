@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -14,11 +14,11 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class SendAppointmentConfirmationHandlerTests
 {
-    private readonly FakeDbContext       _db            = FakeDbContext.Create();
-    private readonly IEmailRenderer      _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
-    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService _prefs = new AlwaysEnabledNotificationPreferences();
 
     public SendAppointmentConfirmationHandlerTests()
     {
@@ -46,26 +46,26 @@ public class SendAppointmentConfirmationHandlerTests
 
         Client client = new()
         {
-            StudioId  = studio.Id,
+            StudioId = studio.Id,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = "ana@example.com",
-            Phone     = phone,
+            LastName = "Silva",
+            Email = "ana@example.com",
+            Phone = phone,
         };
         _db.Clients.Add(client);
 
         Appointment appointment = new()
         {
-            StudioId        = studio.Id,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = client.Id,
-            Client          = client,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(2),
+            StudioId = studio.Id,
+            ArtistId = Guid.NewGuid(),
+            ClientId = client.Id,
+            Client = client,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Confirmed,
-            DepositStatus   = DepositStatus.Paid,
-            DepositAmount   = 50m,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid,
+            DepositAmount = 50m,
         };
         _db.Appointments.Add(appointment);
 

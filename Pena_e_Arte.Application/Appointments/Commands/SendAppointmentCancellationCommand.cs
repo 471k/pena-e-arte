@@ -13,11 +13,11 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 public record SendAppointmentCancellationCommand(Guid AppointmentId) : IRequest<Unit>;
 
 public class SendAppointmentCancellationHandler(
-    IAppDbContext                                       db,
-    INotificationService                               notifications,
-    INotificationPreferenceService                     prefs,
-    IRealtimeNotifier                                  realtime,
-    ILogger<SendAppointmentCancellationHandler>        logger)
+    IAppDbContext db,
+    INotificationService notifications,
+    INotificationPreferenceService prefs,
+    IRealtimeNotifier realtime,
+    ILogger<SendAppointmentCancellationHandler> logger)
     : IRequestHandler<SendAppointmentCancellationCommand, Unit>
 {
     public async Task<Unit> Handle(SendAppointmentCancellationCommand command, CancellationToken ct)
@@ -34,7 +34,7 @@ public class SendAppointmentCancellationHandler(
         }
 
         string subject = $"Appointment Cancelled — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
-        string body    = BuildEmailBody(appointment);
+        string body = BuildEmailBody(appointment);
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             appointment.StudioId, NotificationType.AppointmentCancelled, NotificationChannel.Email, ct);
@@ -60,14 +60,14 @@ public class SendAppointmentCancellationHandler(
 
             log = new()
             {
-                StudioId      = appointment.StudioId,
-                RecipientId   = appointment.ClientId,
+                StudioId = appointment.StudioId,
+                RecipientId = appointment.ClientId,
                 RecipientType = NotificationRecipientType.Client,
-                Channel       = NotificationChannel.Email,
-                Subject       = subject,
-                Body          = body,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = success,
+                Channel = NotificationChannel.Email,
+                Subject = subject,
+                Body = body,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = success,
             };
             db.NotificationLogs.Add(log);
             await db.SaveChangesAsync(ct);

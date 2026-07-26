@@ -10,8 +10,8 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class DeleteArtistHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private DeleteArtistHandler CreateSut() => new(_db);
 
@@ -59,14 +59,14 @@ public class DeleteArtistHandlerTests
         Artist artist = await SeedArtist("rui@studio.com");
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = artist.Id,
-            ClientId        = Guid.NewGuid(),
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(1),
+            StudioId = _studioId,
+            ArtistId = artist.Id,
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Confirmed,
-            DepositStatus   = DepositStatus.Pending,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Pending,
         });
         await _db.SaveChangesAsync();
 
@@ -81,25 +81,25 @@ public class DeleteArtistHandlerTests
         Artist artist = await SeedArtist("rui@studio.com");
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = artist.Id,
-            ClientId        = Guid.NewGuid(),
-            Date            = DateTime.UtcNow.AddDays(-3),
-            EndDate         = DateTime.UtcNow.AddDays(-3).AddHours(1),
+            StudioId = _studioId,
+            ArtistId = artist.Id,
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow.AddDays(-3),
+            EndDate = DateTime.UtcNow.AddDays(-3).AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Completed,
-            DepositStatus   = DepositStatus.Paid,
+            Status = AppointmentStatus.Completed,
+            DepositStatus = DepositStatus.Paid,
         });
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = artist.Id,
-            ClientId        = Guid.NewGuid(),
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(1),
+            StudioId = _studioId,
+            ArtistId = artist.Id,
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Cancelled,
-            DepositStatus   = DepositStatus.Refunded,
+            Status = AppointmentStatus.Cancelled,
+            DepositStatus = DepositStatus.Refunded,
         });
         await _db.SaveChangesAsync();
 

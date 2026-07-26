@@ -9,8 +9,8 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class GetAppointmentIcsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetAppointmentIcsHandler CreateSut() => new(_db);
 
@@ -24,15 +24,15 @@ public class GetAppointmentIcsHandlerTests
 
         Appointment appt = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = artist?.Id ?? Guid.NewGuid(),
-            ClientId        = Guid.NewGuid(),
-            Date            = new DateTime(2026, 9, 15, 10, 0, 0, DateTimeKind.Utc),
-            EndDate         = new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc),
+            StudioId = _studioId,
+            ArtistId = artist?.Id ?? Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = new DateTime(2026, 9, 15, 10, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Confirmed,
-            DepositStatus   = DepositStatus.Paid,
-            DepositAmount   = 50m,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid,
+            DepositAmount = 50m,
         };
         _db.Appointments.Add(appt);
         if (artist is not null) appt.Artist = artist;

@@ -45,9 +45,9 @@ try
     builder.Services.AddApiRateLimiting();
 
     builder.Services.AddHealthChecks()
-        .AddCheck<RedisHealthCheck>("redis",       tags: ["ready"])
+        .AddCheck<RedisHealthCheck>("redis", tags: ["ready"])
         .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
-        .AddCheck<StripeHealthCheck>("stripe",     tags: ["ready"]);
+        .AddCheck<StripeHealthCheck>("stripe", tags: ["ready"]);
 
     WebApplication app = builder.Build();
 
@@ -119,7 +119,7 @@ try
     app.MapHub<NotificationHub>("/hubs/notification");
     app.MapHub<SupportHub>("/hubs/support");
     app.MapHealthChecks("/health");
-    app.MapHealthChecks("/health/live",  new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+    app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
         Predicate = _ => false
     });

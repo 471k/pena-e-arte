@@ -11,8 +11,8 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Notifications.Queries;
 
 public record GetNotificationsQuery(
-    Guid?     RecipientId,
-    string?   Channel,
+    Guid? RecipientId,
+    string? Channel,
     DateTime? From,
     DateTime? To) : IRequest<List<NotificationLogResponse>>;
 

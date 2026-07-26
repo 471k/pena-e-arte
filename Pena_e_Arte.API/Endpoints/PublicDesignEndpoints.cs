@@ -14,8 +14,8 @@ public static class PublicDesignEndpoints
     }
 
     private static async Task<IResult> GetSharedDesign(
-        string            token,
-        ISender           mediator,
+        string token,
+        ISender mediator,
         CancellationToken ct)
     {
         SharedDesignResponse? result = await mediator.Send(new GetSharedDesignQuery(token), ct);

@@ -11,9 +11,9 @@ namespace Pena_e_Arte.IntegrationTests.Middleware;
 
 public class TenantMiddlewareTests
 {
-    private readonly ICurrentTenant             _tenant        = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ISubscriptionAccessService _subscriptions = Substitute.For<ISubscriptionAccessService>();
-    private readonly Guid                       _studioId      = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public TenantMiddlewareTests()
     {
@@ -459,22 +459,22 @@ public class TenantMiddlewareTests
                 new SubscriptionSnapshot(status, trialExpiresAt, gracePeriodEnd)));
 
     private static DefaultHttpContext ContextWithTenant(
-        Guid   studioId,
-        string path   = "/api/v1/appointments",
+        Guid studioId,
+        string path = "/api/v1/appointments",
         string method = "GET")
     {
         DefaultHttpContext context = new();
         context.User = new ClaimsPrincipal(
             new ClaimsIdentity([new Claim("tenant_id", studioId.ToString())], "test"));
-        context.Request.Path   = path;
+        context.Request.Path = path;
         context.Request.Method = method;
         return context;
     }
 
     private static DefaultHttpContext ContextWithTenantAndRole(
-        Guid   studioId,
+        Guid studioId,
         string role,
-        string path   = "/api/v1/appointments",
+        string path = "/api/v1/appointments",
         string method = "GET")
     {
         DefaultHttpContext context = new();
@@ -482,7 +482,7 @@ public class TenantMiddlewareTests
             new ClaimsIdentity(
                 [new Claim("tenant_id", studioId.ToString()), new Claim(ClaimTypes.Role, role)],
                 "test"));
-        context.Request.Path   = path;
+        context.Request.Path = path;
         context.Request.Method = method;
         return context;
     }

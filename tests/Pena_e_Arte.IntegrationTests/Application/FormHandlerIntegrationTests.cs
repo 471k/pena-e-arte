@@ -21,9 +21,9 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class FormHandlerIntegrationTests(DatabaseFixture fixture)
 {
-    private readonly ISender                _sender = Substitute.For<ISender>();
-    private readonly IConsentFormPdfService _pdf    = Substitute.For<IConsentFormPdfService>();
-    private readonly IR2Service             _r2     = Substitute.For<IR2Service>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly IConsentFormPdfService _pdf = Substitute.For<IConsentFormPdfService>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
 
     // ── SubmitIntakeForm ──────────────────────────────────────────────────────────
 
@@ -67,8 +67,8 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task GetIntakeForms_FilterByClientId_ReturnsOnlyMatchingForms()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid clientA  = await SeedClient(tenantId);
-        Guid clientB  = await SeedClient(tenantId);
+        Guid clientA = await SeedClient(tenantId);
+        Guid clientB = await SeedClient(tenantId);
 
         await SubmitForm(tenantId, clientA, "{\"a\":1}");
         await SubmitForm(tenantId, clientB, "{\"b\":2}");
@@ -113,7 +113,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task SignConsentForm_ValidRequest_PersistsToDatabase()
     {
-        Guid tenantId     = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         (Guid clientId, Guid appointmentId) = await SeedClientAndAppointment(tenantId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
@@ -209,10 +209,10 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         Client client = new()
         {
-            StudioId  = tenantId,
+            StudioId = tenantId,
             FirstName = "Jane",
-            LastName  = "Doe",
-            Email     = $"{Guid.NewGuid()}@test.com"
+            LastName = "Doe",
+            Email = $"{Guid.NewGuid()}@test.com"
         };
         ctx.Clients.Add(client);
         await ctx.SaveChangesAsync();
@@ -224,17 +224,17 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         Client client = new()
         {
-            StudioId  = tenantId,
+            StudioId = tenantId,
             FirstName = "Jane",
-            LastName  = "Doe",
-            Email     = $"{Guid.NewGuid()}@test.com"
+            LastName = "Doe",
+            Email = $"{Guid.NewGuid()}@test.com"
         };
         Artist artist = new()
         {
-            StudioId  = tenantId,
+            StudioId = tenantId,
             FirstName = "Art",
-            LastName  = "ist",
-            Email     = $"{Guid.NewGuid()}@test.com"
+            LastName = "ist",
+            Email = $"{Guid.NewGuid()}@test.com"
         };
         ctx.Clients.Add(client);
         ctx.Artists.Add(artist);
@@ -242,11 +242,11 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
 
         Appointment appointment = new()
         {
-            StudioId        = tenantId,
-            ClientId        = client.Id,
-            ArtistId        = artist.Id,
-            Date            = DateTime.UtcNow.AddDays(7),
-            EndDate         = DateTime.UtcNow.AddDays(7).AddHours(2),
+            StudioId = tenantId,
+            ClientId = client.Id,
+            ArtistId = artist.Id,
+            Date = DateTime.UtcNow.AddDays(7),
+            EndDate = DateTime.UtcNow.AddDays(7).AddHours(2),
             DurationMinutes = 120
         };
         ctx.Appointments.Add(appointment);

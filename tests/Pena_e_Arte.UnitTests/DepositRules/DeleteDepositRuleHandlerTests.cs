@@ -9,8 +9,8 @@ namespace Pena_e_Arte.UnitTests.DepositRules;
 
 public class DeleteDepositRuleHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private DeleteDepositRuleHandler CreateSut() => new(_db);
 

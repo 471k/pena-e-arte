@@ -12,8 +12,8 @@ public record RegisterOAuthUserCommand(RegisterOAuthUserRequest Request) : IRequ
 
 public class RegisterOAuthUserHandler(
     IOAuthTokenValidator validator,
-    IIdentityService     identity,
-    IAppDbContext        db) : IRequestHandler<RegisterOAuthUserCommand>
+    IIdentityService identity,
+    IAppDbContext db) : IRequestHandler<RegisterOAuthUserCommand>
 {
     public async Task Handle(RegisterOAuthUserCommand command, CancellationToken ct)
     {
@@ -22,8 +22,8 @@ public class RegisterOAuthUserHandler(
         OAuthUserInfo info = req.Provider switch
         {
             "google" => await validator.ValidateGoogleTokenAsync(req.IdToken, ct),
-            "apple"  => await validator.ValidateAppleTokenAsync(req.IdToken, ct),
-            _        => throw new BusinessRuleViolationException(
+            "apple" => await validator.ValidateAppleTokenAsync(req.IdToken, ct),
+            _ => throw new BusinessRuleViolationException(
                              $"Unsupported OAuth provider: {req.Provider}"),
         };
 
@@ -60,18 +60,18 @@ public class RegisterOAuthUserHandler(
 
             if (existing is not null)
             {
-                existing.UserId    = userId;
+                existing.UserId = userId;
                 existing.UpdatedAt = DateTime.UtcNow;
             }
             else
             {
                 db.Clients.Add(new Client
                 {
-                    StudioId  = req.StudioId,
-                    UserId    = userId,
+                    StudioId = req.StudioId,
+                    UserId = userId,
                     FirstName = info.FirstName ?? info.Email.Split('@')[0],
-                    LastName  = string.Empty,
-                    Email     = info.Email,
+                    LastName = string.Empty,
+                    Email = info.Email,
                 });
             }
 

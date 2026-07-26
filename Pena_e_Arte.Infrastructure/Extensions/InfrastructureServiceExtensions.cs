@@ -37,8 +37,8 @@ public static class InfrastructureServiceExtensions
 
         services.AddIdentityCore<IdentityUser>(options =>
         {
-            options.Password.RequireDigit           = true;
-            options.Password.RequiredLength         = 8;
+            options.Password.RequireDigit = true;
+            options.Password.RequiredLength = 8;
             options.Password.RequireNonAlphanumeric = false;
             options.Lockout.MaxFailedAccessAttempts = 5;
         })
@@ -95,7 +95,7 @@ public static class InfrastructureServiceExtensions
         {
             AmazonS3Config s3Config = new()
             {
-                ServiceURL     = $"https://{r2Opts.AccountId}.r2.cloudflarestorage.com",
+                ServiceURL = $"https://{r2Opts.AccountId}.r2.cloudflarestorage.com",
                 ForcePathStyle = true
             };
             services.AddSingleton<IAmazonS3>(
@@ -108,33 +108,33 @@ public static class InfrastructureServiceExtensions
         }
 
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentTenant,             CurrentTenantService>();
-        services.AddScoped<ICurrentUser,               CurrentUserService>();
-        services.AddScoped<IIdentityService,           IdentityService>();
-        services.AddScoped<IRealtimeNotifier,          RealtimeNotifier>();
-        services.AddScoped<IJobScheduler,              JobScheduler>();
-        services.AddScoped<ISlotLocker,                SlotLocker>();
-        services.AddScoped<IStripePaymentService,      StripePaymentService>();
-        services.AddScoped<IStripeBillingService,      StripeBillingService>();
-        services.AddScoped<IStripeDiscountService,     StripeDiscountService>();
-        services.AddScoped<IReferralRewardService,     ReferralRewardService>();
+        services.AddScoped<ICurrentTenant, CurrentTenantService>();
+        services.AddScoped<ICurrentUser, CurrentUserService>();
+        services.AddScoped<IIdentityService, IdentityService>();
+        services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
+        services.AddScoped<IJobScheduler, JobScheduler>();
+        services.AddScoped<ISlotLocker, SlotLocker>();
+        services.AddScoped<IStripePaymentService, StripePaymentService>();
+        services.AddScoped<IStripeBillingService, StripeBillingService>();
+        services.AddScoped<IStripeDiscountService, StripeDiscountService>();
+        services.AddScoped<IReferralRewardService, ReferralRewardService>();
 
-        services.AddScoped<IPortableProfileService,    PortableProfileService>();
-        services.AddScoped<IQrCodeService,             QrCodeService>();
+        services.AddScoped<IPortableProfileService, PortableProfileService>();
+        services.AddScoped<IQrCodeService, QrCodeService>();
         services.AddSingleton<IConsentFormPdfService, ConsentFormPdfService>();
         services.AddSingleton<IPaymentInvoiceService, PaymentInvoiceService>();
-        services.AddScoped<INotificationService,           NotificationService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
-        services.AddScoped<IPlanLimitService,          PlanLimitService>();
-        services.AddSingleton<IEmailRenderer,          EmailRenderer>();
-        services.AddSingleton<IAppSettings,            AppSettings>();
+        services.AddScoped<IPlanLimitService, PlanLimitService>();
+        services.AddSingleton<IEmailRenderer, EmailRenderer>();
+        services.AddSingleton<IAppSettings, AppSettings>();
 
         services.Configure<InstagramOptions>(configuration.GetSection(InstagramOptions.Section));
         services.AddHttpClient("Instagram");
-        services.AddSingleton<ITokenEncryptor,       AesTokenEncryptor>();
+        services.AddSingleton<ITokenEncryptor, AesTokenEncryptor>();
         services.AddSingleton<IInstagramStateSigner, InstagramStateSigner>();
-        services.AddScoped<IInstagramService,        InstagramService>();
+        services.AddScoped<IInstagramService, InstagramService>();
         services.AddTransient<InstagramSyncJob>();
 
         services.Configure<GoogleOptions>(configuration.GetSection(GoogleOptions.Section));

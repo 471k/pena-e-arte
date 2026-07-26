@@ -10,9 +10,9 @@ namespace Pena_e_Arte.UnitTests.Jobs;
 
 public class PaymentReconciliationJobTests
 {
-    private readonly FakeDbContext        _db     = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
-    private readonly Guid                  _studioId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private PaymentReconciliationJob CreateSut() => new(_db, _stripe);
 
@@ -120,18 +120,18 @@ public class PaymentReconciliationJobTests
 
     private async Task<Payment> SeedPayment(
         PaymentStatus status,
-        string        intentId,
-        Guid?         appointmentId = null)
+        string intentId,
+        Guid? appointmentId = null)
     {
         Payment payment = new()
         {
-            StudioId               = _studioId,
-            AppointmentId          = appointmentId ?? Guid.NewGuid(),
-            ClientId               = Guid.NewGuid(),
-            Amount                 = 50m,
-            Status                 = status,
-            Method                 = ClientPaymentMethod.Card,
-            StripePaymentIntentId  = intentId,
+            StudioId = _studioId,
+            AppointmentId = appointmentId ?? Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Amount = 50m,
+            Status = status,
+            Method = ClientPaymentMethod.Card,
+            StripePaymentIntentId = intentId,
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
@@ -142,14 +142,14 @@ public class PaymentReconciliationJobTests
     {
         Appointment appt = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = Guid.NewGuid(),
-            Date            = date,
-            EndDate         = date.AddHours(2),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = date,
+            EndDate = date.AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Completed,
-            DepositStatus   = DepositStatus.Paid,
+            Status = AppointmentStatus.Completed,
+            DepositStatus = DepositStatus.Paid,
         };
         _db.Appointments.Add(appt);
         await _db.SaveChangesAsync();

@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Clients;
 
 public class CreateClientHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateClientHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -52,10 +52,10 @@ public class CreateClientHandlerTests
         const string email = "duplicate@example.com";
         _db.Clients.Add(new Client
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Existing",
-            LastName  = "Client",
-            Email     = email
+            LastName = "Client",
+            Email = email
         });
         await _db.SaveChangesAsync();
 

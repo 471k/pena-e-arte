@@ -19,9 +19,9 @@ public record ChangePlanCommand(ChangePlanRequest Request) : IRequest<Subscripti
 /// with proration; downgrades are scheduled for the end of the current billing period.
 /// </summary>
 public class ChangePlanHandler(
-    IAppDbContext              db,
-    ICurrentTenant             tenant,
-    IStripeBillingService      billing,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    IStripeBillingService billing,
     ILogger<ChangePlanHandler> logger)
     : IRequestHandler<ChangePlanCommand, SubscriptionResponse>
 {
@@ -68,8 +68,8 @@ public class ChangePlanHandler(
             DateTime periodEnd = await billing.ChangeSubscriptionPriceAsync(
                 subscription.StripeSubscriptionId, newPrice.StripePriceId, ct);
 
-            subscription.PlanId           = command.Request.PlanId;
-            subscription.BillingInterval  = requestedInterval;
+            subscription.PlanId = command.Request.PlanId;
+            subscription.BillingInterval = requestedInterval;
             subscription.CurrentPeriodEnd = periodEnd;
 
             logger.LogInformation(
@@ -83,8 +83,8 @@ public class ChangePlanHandler(
             await billing.ScheduleSubscriptionPriceChangeAsync(
                 subscription.StripeSubscriptionId, currentPrice.StripePriceId!, newPrice.StripePriceId, newPriceInterval, ct);
 
-            subscription.PendingPlanId           = command.Request.PlanId;
-            subscription.PendingBillingInterval  = requestedInterval;
+            subscription.PendingPlanId = command.Request.PlanId;
+            subscription.PendingBillingInterval = requestedInterval;
 
             logger.LogInformation(
                 "Plan downgrade scheduled at period end for studio {@StudioId} to plan {@PlanId} ({@Interval})",

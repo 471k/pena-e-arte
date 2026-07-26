@@ -8,15 +8,15 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Billing.Commands.CreateBillingPortal;
 
 public sealed class CreateBillingPortalHandler(
-    IAppDbContext                            db,
-    ICurrentTenant                           tenant,
-    IStripeBillingService                    billing,
-    ILogger<CreateBillingPortalHandler>      logger)
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    IStripeBillingService billing,
+    ILogger<CreateBillingPortalHandler> logger)
     : IRequestHandler<CreateBillingPortalCommand, CreateBillingPortalResult>
 {
     public async Task<CreateBillingPortalResult> Handle(
         CreateBillingPortalCommand command,
-        CancellationToken          cancellationToken)
+        CancellationToken cancellationToken)
     {
         // Tenant-scoped — global query filters ensure we only see this studio's subscription.
         Domain.Entities.Subscription? sub = await db.Subscriptions

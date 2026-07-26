@@ -12,9 +12,9 @@ namespace Pena_e_Arte.Application.Feedback.Commands;
 public record SubmitFeedbackCommand(SubmitFeedbackRequest Request) : IRequest<FeedbackReportResponse>;
 
 public class SubmitFeedbackHandler(
-    IAppDbContext  db,
+    IAppDbContext db,
     ICurrentTenant tenant,
-    ICurrentUser   user)
+    ICurrentUser user)
     : IRequestHandler<SubmitFeedbackCommand, FeedbackReportResponse>
 {
     public async Task<FeedbackReportResponse> Handle(SubmitFeedbackCommand command, CancellationToken ct)
@@ -26,14 +26,14 @@ public class SubmitFeedbackHandler(
         FeedbackType type = Enum.Parse<FeedbackType>(command.Request.Type, ignoreCase: true);
 
         FeedbackReport report = FeedbackReport.Create(
-            studioId:        tenant.StudioId,
+            studioId: tenant.StudioId,
             submitterUserId: user.UserId,
-            submitterRole:   user.Role,
-            studioName:      studio.Name,
-            type:            type,
-            title:           command.Request.Title,
-            body:            command.Request.Body,
-            attachmentUrls:  command.Request.AttachmentUrls);
+            submitterRole: user.Role,
+            studioName: studio.Name,
+            type: type,
+            title: command.Request.Title,
+            body: command.Request.Body,
+            attachmentUrls: command.Request.AttachmentUrls);
 
         db.FeedbackReports.Add(report);
         await db.SaveChangesAsync(ct);
