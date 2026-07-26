@@ -21,24 +21,24 @@ public class GetPublicArtistHandlerTests
         Guid studioId = Guid.NewGuid();
         Studio studio = new()
         {
-            Id       = studioId,
-            Name     = "Ink Studio",
-            Slug     = "ink-studio",
-            City     = "Lisbon",
+            Id = studioId,
+            Name = "Ink Studio",
+            Slug = "ink-studio",
+            City = "Lisbon",
             IsActive = true,
         };
         _db.Studios.Add(studio);
 
         Artist artist = new()
         {
-            StudioId        = studioId,
-            UserId          = userId,
-            FirstName       = "Maria",
-            LastName        = "Silva",
-            Email           = "maria@example.com",
+            StudioId = studioId,
+            UserId = userId,
+            FirstName = "Maria",
+            LastName = "Silva",
+            Email = "maria@example.com",
             ProfileImageUrl = profileImageUrl,
             Specializations = specializations,
-            HourlyRate      = hourlyRate,
+            HourlyRate = hourlyRate,
         };
         artist.SetSlug("maria-silva");
         _db.Artists.Add(artist);

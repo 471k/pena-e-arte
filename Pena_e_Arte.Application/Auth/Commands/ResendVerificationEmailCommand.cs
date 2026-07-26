@@ -7,10 +7,10 @@ namespace Pena_e_Arte.Application.Auth.Commands;
 public record ResendVerificationEmailCommand(Guid UserId) : IRequest;
 
 public class ResendVerificationEmailHandler(
-    IIdentityService                        identity,
-    IEmailRenderer                          emailRenderer,
-    INotificationService                    notifications,
-    IAppSettings                            appSettings,
+    IIdentityService identity,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    IAppSettings appSettings,
     ILogger<ResendVerificationEmailHandler> logger)
     : IRequestHandler<ResendVerificationEmailCommand>
 {
@@ -24,9 +24,9 @@ public class ResendVerificationEmailHandler(
 
         try
         {
-            string token           = await identity.GenerateEmailConfirmationTokenAsync(command.UserId);
+            string token = await identity.GenerateEmailConfirmationTokenAsync(command.UserId);
             string confirmationUrl = $"{appSettings.BaseUrl}/verify-email?token={Uri.EscapeDataString(token)}&userId={command.UserId}";
-            string body            = emailRenderer.RenderEmailVerification(confirmationUrl);
+            string body = emailRenderer.RenderEmailVerification(confirmationUrl);
 
             await notifications.SendEmailAsync(
                 email, "Confirm your TattooOS account", body, ct);

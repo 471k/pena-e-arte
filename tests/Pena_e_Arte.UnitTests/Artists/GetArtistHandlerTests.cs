@@ -9,8 +9,8 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class GetArtistHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetArtistHandler CreateSut() => new(_db);
 
@@ -19,10 +19,10 @@ public class GetArtistHandlerTests
     {
         Artist artist = new()
         {
-            StudioId        = _studioId,
-            FirstName       = "Rui",
-            LastName        = "Tavares",
-            Email           = "rui@studio.com",
+            StudioId = _studioId,
+            FirstName = "Rui",
+            LastName = "Tavares",
+            Email = "rui@studio.com",
             Specializations = "Realism"
         };
         _db.Artists.Add(artist);

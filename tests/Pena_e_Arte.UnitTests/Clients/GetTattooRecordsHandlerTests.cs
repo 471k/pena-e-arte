@@ -22,7 +22,7 @@ public class GetTattooRecordsHandlerTests
         DateTime newer = DateTime.UtcNow.AddDays(-5);
 
         _db.TattooRecords.AddRange(
-            new TattooRecord { StudioId = studioId, ClientId = clientId, ArtistId = artistId, Description = "Rose",   BodyLocation = "wrist",    CompletedAt = older },
+            new TattooRecord { StudioId = studioId, ClientId = clientId, ArtistId = artistId, Description = "Rose", BodyLocation = "wrist", CompletedAt = older },
             new TattooRecord { StudioId = studioId, ClientId = clientId, ArtistId = artistId, Description = "Dragon", BodyLocation = "left_arm", CompletedAt = newer });
         await _db.SaveChangesAsync();
 
@@ -44,19 +44,19 @@ public class GetTattooRecordsHandlerTests
     [Fact]
     public async Task Handle_OtherClientRecordsNotReturned()
     {
-        Guid clientId      = Guid.NewGuid();
+        Guid clientId = Guid.NewGuid();
         Guid otherClientId = Guid.NewGuid();
-        Guid studioId      = Guid.NewGuid();
-        Guid artistId      = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
+        Guid artistId = Guid.NewGuid();
 
         _db.TattooRecords.Add(new TattooRecord
         {
-            StudioId     = studioId,
-            ClientId     = otherClientId,
-            ArtistId     = artistId,
-            Description  = "Other client",
+            StudioId = studioId,
+            ClientId = otherClientId,
+            ArtistId = artistId,
+            Description = "Other client",
             BodyLocation = "back",
-            CompletedAt  = DateTime.UtcNow.AddDays(-1),
+            CompletedAt = DateTime.UtcNow.AddDays(-1),
         });
         await _db.SaveChangesAsync();
 

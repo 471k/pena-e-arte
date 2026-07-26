@@ -39,7 +39,7 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
         for (int i = 11; i >= 0; i--)
         {
             DateTime monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-i);
-            DateTime monthEnd   = monthStart.AddMonths(1);
+            DateTime monthEnd = monthStart.AddMonths(1);
 
             decimal revenue = collectedPayments
                 .Where(p => p.PaidAt!.Value >= monthStart && p.PaidAt!.Value < monthEnd)
@@ -49,7 +49,7 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
         }
 
         DateTime periodFrom = query.From ?? now.AddDays(-30);
-        DateTime periodTo   = query.To   ?? now;
+        DateTime periodTo = query.To ?? now;
 
         List<Payment> periodPayments = collectedPayments
             .Where(p => p.PaidAt!.Value >= periodFrom && p.PaidAt!.Value <= periodTo)

@@ -7,6 +7,6 @@ namespace Pena_e_Arte.Domain.Entities;
 public class StudioClosure : TenantEntity
 {
     public DateTime StartDate { get; set; }
-    public DateTime EndDate   { get; set; }
-    public string   Reason    { get; set; } = string.Empty;
+    public DateTime EndDate { get; set; }
+    public string Reason { get; set; } = string.Empty;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2, Save }       from "lucide-react";
 import { toast }               from "sonner";
 import { Button }              from "@/shared/components/ui/button";
@@ -55,13 +55,22 @@ export function StudioNotificationSheet({ studioId, studioName, open, onClose }:
 
   const [local, setLocal] = useState<PreferenceMap>({});
   const [dirty, setDirty] = useState(false);
+  // Seeded with a sentinel distinct from `data`, not with `data` itself —
+  // otherwise data already present on the very first render (e.g. an RTK Query
+  // cache hit) would look "already synced" and never populate `local` below.
+  const [syncedData, setSyncedData] = useState<typeof data | undefined>(undefined);
 
-  useEffect(() => {
+  // Sync the local edit buffer from freshly-fetched data. Adjusting state during
+  // render (rather than in an effect) avoids an extra post-effect render pass —
+  // React discards this in-progress render and immediately restarts with the new
+  // state — see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
+  if (data !== syncedData) {
+    setSyncedData(data);
     if (data) {
       setLocal(buildMap(data.preferences));
       setDirty(false);
     }
-  }, [data]);
+  }
 
   function toggle(type: string, channel: NotificationChannel) {
     const key = prefKey(type, channel);

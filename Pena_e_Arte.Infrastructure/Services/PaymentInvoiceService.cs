@@ -74,9 +74,9 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                                 });
                             }
 
-                            MetaRow("ARTIST",      d.ArtistFullName);
+                            MetaRow("ARTIST", d.ArtistFullName);
                             MetaRow("APPOINTMENT", d.AppointmentDate.ToString("d MMM yyyy, HH:mm") + " UTC");
-                            MetaRow("ISSUED",      d.IssuedAt.ToString("d MMM yyyy") + " UTC");
+                            MetaRow("ISSUED", d.IssuedAt.ToString("d MMM yyyy") + " UTC");
                         });
                     });
 
@@ -143,8 +143,8 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                             table.Cell().PaddingVertical(2).Text(value).FontSize(9);
                         }
 
-                        Row("Method",  d.Method);
-                        Row("Status",  d.Status);
+                        Row("Method", d.Method);
+                        Row("Status", d.Status);
                         if (d.StripePaymentIntentId is not null)
                             Row("Stripe PI", d.StripePaymentIntentId);
                         if (d.CashNote is not null)

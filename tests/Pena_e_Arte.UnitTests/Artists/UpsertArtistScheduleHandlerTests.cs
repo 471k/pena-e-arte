@@ -9,10 +9,10 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class UpsertArtistScheduleHandlerTests
 {
-    private readonly FakeDbContext   _db         = FakeDbContext.Create();
-    private readonly ICurrentTenant  _tenant     = Substitute.For<ICurrentTenant>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
-    private readonly Guid            _studioId   = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public UpsertArtistScheduleHandlerTests()
     {
@@ -25,11 +25,11 @@ public class UpsertArtistScheduleHandlerTests
     {
         var artist = new Domain.Entities.Artist
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Test",
-            LastName  = "Artist",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
         _db.SaveChanges();
@@ -59,11 +59,11 @@ public class UpsertArtistScheduleHandlerTests
         Guid artistId = SeedArtist();
         _db.ArtistSchedules.Add(new Domain.Entities.ArtistSchedule
         {
-            ArtistId    = artistId,
-            StudioId    = _studioId,
-            DayOfWeek   = DayOfWeek.Tuesday,
-            StartTime   = TimeSpan.FromHours(8),
-            EndTime     = TimeSpan.FromHours(16),
+            ArtistId = artistId,
+            StudioId = _studioId,
+            DayOfWeek = DayOfWeek.Tuesday,
+            StartTime = TimeSpan.FromHours(8),
+            EndTime = TimeSpan.FromHours(16),
             IsAvailable = true,
         });
         _db.SaveChanges();
@@ -97,11 +97,11 @@ public class UpsertArtistScheduleHandlerTests
         Guid artistId = SeedArtist();
         _db.ArtistSchedules.Add(new Domain.Entities.ArtistSchedule
         {
-            ArtistId    = artistId,
-            StudioId    = _studioId,
-            DayOfWeek   = DayOfWeek.Wednesday,
-            StartTime   = TimeSpan.FromHours(9),
-            EndTime     = TimeSpan.FromHours(17),
+            ArtistId = artistId,
+            StudioId = _studioId,
+            DayOfWeek = DayOfWeek.Wednesday,
+            StartTime = TimeSpan.FromHours(9),
+            EndTime = TimeSpan.FromHours(17),
             IsAvailable = true,
         });
         _db.SaveChanges();

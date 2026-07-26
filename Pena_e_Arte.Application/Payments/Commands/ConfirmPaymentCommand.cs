@@ -22,8 +22,8 @@ public class ConfirmPaymentHandler(IAppDbContext db)
 
         if (payment is null || payment.Status == PaymentStatus.Paid) return;
 
-        payment.Status    = PaymentStatus.Paid;
-        payment.PaidAt    = DateTime.UtcNow;
+        payment.Status = PaymentStatus.Paid;
+        payment.PaidAt = DateTime.UtcNow;
         payment.UpdatedAt = DateTime.UtcNow;
 
         // Webhook-only path — IgnoreQueryFilters intentional (no tenant JWT in scope).
@@ -34,7 +34,7 @@ public class ConfirmPaymentHandler(IAppDbContext db)
         if (appointment is not null)
         {
             appointment.DepositStatus = DepositStatus.Paid;
-            appointment.UpdatedAt     = DateTime.UtcNow;
+            appointment.UpdatedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

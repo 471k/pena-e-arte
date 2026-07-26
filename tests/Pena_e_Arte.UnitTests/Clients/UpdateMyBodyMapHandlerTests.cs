@@ -13,10 +13,10 @@ namespace Pena_e_Arte.UnitTests.Clients;
 
 public class UpdateMyBodyMapHandlerTests
 {
-    private readonly FakeDbContext _db          = FakeDbContext.Create();
-    private readonly ICurrentUser  _currentUser = Substitute.For<ICurrentUser>();
-    private readonly Guid          _userId      = Guid.NewGuid();
-    private readonly Guid          _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid _userId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public UpdateMyBodyMapHandlerTests() =>
         _currentUser.UserId.Returns(_userId);
@@ -81,11 +81,11 @@ public class UpdateMyBodyMapHandlerTests
         _db.Studios.Add(new Studio { Id = _studioId, Name = "S", Slug = "s" });
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = _userId,
+            StudioId = _studioId,
+            UserId = _userId,
             FirstName = "A",
-            LastName  = "B",
-            Email     = $"{_userId}@test.com",
+            LastName = "B",
+            Email = $"{_userId}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -107,20 +107,20 @@ public class UpdateMyBodyMapHandlerTests
 
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = _userId,
+            StudioId = _studioId,
+            UserId = _userId,
             FirstName = "A",
-            LastName  = "B",
-            Email     = $"{_userId}@test.com",
+            LastName = "B",
+            Email = $"{_userId}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
         ClientProfile profile = new()
         {
-            ClientId  = client.Id,
-            StudioId  = _studioId,
-            BodyMap   = new BodyMap { Locations = initialLocations ?? [] },
+            ClientId = client.Id,
+            StudioId = _studioId,
+            BodyMap = new BodyMap { Locations = initialLocations ?? [] },
         };
         _db.ClientProfiles.Add(profile);
         await _db.SaveChangesAsync();

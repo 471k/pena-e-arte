@@ -15,9 +15,9 @@ public static class ReportEndpoints
     }
 
     private static async Task<IResult> GetRevenueSummary(
-        DateTime?         from,
-        DateTime?         to,
-        ISender           mediator,
+        DateTime? from,
+        DateTime? to,
+        ISender mediator,
         CancellationToken ct)
     {
         RevenueSummaryResponse result = await mediator.Send(new GetRevenueSummaryQuery(from, to), ct);

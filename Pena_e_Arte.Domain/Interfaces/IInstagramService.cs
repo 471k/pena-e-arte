@@ -3,15 +3,15 @@ namespace Pena_e_Arte.Domain.Interfaces;
 public record InstagramTokenResponse(
     string AccessToken,
     string TokenType,
-    long   ExpiresIn,
+    long ExpiresIn,
     string UserId);
 
 public record InstagramMediaItem(
-    string   Id,
-    string   MediaType,
-    string?  MediaUrl,
-    string?  ThumbnailUrl,
-    string?  Caption,
+    string Id,
+    string MediaType,
+    string? MediaUrl,
+    string? ThumbnailUrl,
+    string? Caption,
     DateTime Timestamp);
 
 public interface IInstagramService

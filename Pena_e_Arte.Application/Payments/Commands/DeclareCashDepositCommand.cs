@@ -13,9 +13,9 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 public record DeclareCashDepositCommand(Guid AppointmentId, string? Note) : IRequest<PaymentResponse>;
 
 public class DeclareCashDepositHandler(
-    IAppDbContext         db,
-    ICurrentTenant        tenant,
-    ICurrentUser          currentUser,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    ICurrentUser currentUser,
     IStripePaymentService stripePayments)
     : IRequestHandler<DeclareCashDepositCommand, PaymentResponse>
 {
@@ -52,7 +52,7 @@ public class DeclareCashDepositHandler(
 
                 if (piStatus == "requires_capture")
                 {
-                    existing.Status    = PaymentStatus.Captured;
+                    existing.Status = PaymentStatus.Captured;
                     existing.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
                     throw new BusinessRuleViolationException(
@@ -61,11 +61,11 @@ public class DeclareCashDepositHandler(
 
                 if (piStatus == "succeeded")
                 {
-                    existing.Status    = PaymentStatus.Paid;
-                    existing.PaidAt    = DateTime.UtcNow;
+                    existing.Status = PaymentStatus.Paid;
+                    existing.PaidAt = DateTime.UtcNow;
                     existing.UpdatedAt = DateTime.UtcNow;
                     appointment.DepositStatus = DepositStatus.Paid;
-                    appointment.UpdatedAt     = DateTime.UtcNow;
+                    appointment.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
                     throw new BusinessRuleViolationException("The deposit has already been paid by card.");
                 }
@@ -75,12 +75,12 @@ public class DeclareCashDepositHandler(
                     await stripePayments.CancelPaymentIntentAsync(existing.StripePaymentIntentId, ct);
             }
 
-            existing.Method                = ClientPaymentMethod.Cash;
-            existing.Status                = PaymentStatus.CashPending;
-            existing.CashNote              = command.Note;
+            existing.Method = ClientPaymentMethod.Cash;
+            existing.Status = PaymentStatus.CashPending;
+            existing.CashNote = command.Note;
             existing.StripePaymentIntentId = null;
-            existing.ClientSecret          = null;
-            existing.UpdatedAt             = DateTime.UtcNow;
+            existing.ClientSecret = null;
+            existing.UpdatedAt = DateTime.UtcNow;
 
             await db.SaveChangesAsync(ct);
             return existing.ToResponse();
@@ -91,13 +91,13 @@ public class DeclareCashDepositHandler(
 
         Payment payment = new()
         {
-            StudioId      = tenant.StudioId,
+            StudioId = tenant.StudioId,
             AppointmentId = appointment.Id,
-            ClientId      = appointment.ClientId,
-            Amount        = appointment.DepositAmount,
-            Method        = ClientPaymentMethod.Cash,
-            Status        = PaymentStatus.CashPending,
-            CashNote      = command.Note,
+            ClientId = appointment.ClientId,
+            Amount = appointment.DepositAmount,
+            Method = ClientPaymentMethod.Cash,
+            Status = PaymentStatus.CashPending,
+            CashNote = command.Note,
         };
 
         db.Payments.Add(payment);

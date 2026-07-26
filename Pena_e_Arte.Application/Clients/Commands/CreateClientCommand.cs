@@ -24,11 +24,11 @@ public class CreateClientHandler(IAppDbContext db, ICurrentTenant tenant)
 
         Client client = new()
         {
-            StudioId  = tenant.StudioId,
+            StudioId = tenant.StudioId,
             FirstName = req.FirstName,
-            LastName  = req.LastName,
-            Email     = req.Email,
-            Phone     = req.Phone
+            LastName = req.LastName,
+            Email = req.Email,
+            Phone = req.Phone
         };
 
         db.Clients.Add(client);

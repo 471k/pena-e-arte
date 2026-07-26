@@ -10,9 +10,9 @@ namespace Pena_e_Arte.UnitTests.Studios;
 
 public class DeleteStudioClosureHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public DeleteStudioClosureHandlerTests()
     {
@@ -25,10 +25,10 @@ public class DeleteStudioClosureHandlerTests
     {
         var closure = new StudioClosure
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(1),
-            EndDate   = DateTime.UtcNow.Date.AddDays(5),
-            Reason    = "Holiday",
+            EndDate = DateTime.UtcNow.Date.AddDays(5),
+            Reason = "Holiday",
         };
         _db.StudioClosures.Add(closure);
         _db.SaveChanges();

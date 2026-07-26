@@ -15,15 +15,15 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class CreateAppointmentHandlerTests
 {
-    private readonly FakeDbContext     _db         = FakeDbContext.Create();
-    private readonly ICurrentTenant    _tenant     = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser      _user       = Substitute.For<ICurrentUser>();
-    private readonly ISlotLocker       _locker     = Substitute.For<ISlotLocker>();
-    private readonly IJobScheduler     _jobs       = Substitute.For<IJobScheduler>();
-    private readonly IRealtimeNotifier _realtime   = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender           _sender     = Substitute.For<ISender>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
+    private readonly ISlotLocker _locker = Substitute.For<ISlotLocker>();
+    private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender _sender = Substitute.For<ISender>();
     private readonly IPlanLimitService _planLimits = Substitute.For<IPlanLimitService>();
-    private readonly Guid              _studioId   = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateAppointmentHandlerTests()
     {
@@ -115,9 +115,14 @@ public class CreateAppointmentHandlerTests
         CreateAppointmentRequest req = ValidRequest();
         _db.Appointments.Add(new Appointment
         {
-            StudioId = _studioId, ArtistId = req.ArtistId, ClientId = Guid.NewGuid(),
-            Date = req.Date.AddMinutes(30), EndDate = req.Date.AddMinutes(90),
-            DurationMinutes = 60, Status = AppointmentStatus.Pending, DepositStatus = DepositStatus.Pending,
+            StudioId = _studioId,
+            ArtistId = req.ArtistId,
+            ClientId = Guid.NewGuid(),
+            Date = req.Date.AddMinutes(30),
+            EndDate = req.Date.AddMinutes(90),
+            DurationMinutes = 60,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
         });
         await _db.SaveChangesAsync();
 
@@ -160,18 +165,18 @@ public class CreateAppointmentHandlerTests
     {
         CreateAppointmentRequest req = ValidRequest();
         DateTime existingStart = req.Date.AddMinutes(30);
-        DateTime existingEnd   = req.Date.AddMinutes(90);
+        DateTime existingEnd = req.Date.AddMinutes(90);
 
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = req.ArtistId,
-            ClientId        = Guid.NewGuid(),
-            Date            = existingStart,
-            EndDate         = existingEnd,
+            StudioId = _studioId,
+            ArtistId = req.ArtistId,
+            ClientId = Guid.NewGuid(),
+            Date = existingStart,
+            EndDate = existingEnd,
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending
         });
         await _db.SaveChangesAsync();
 
@@ -187,14 +192,14 @@ public class CreateAppointmentHandlerTests
 
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = req.ArtistId,
-            ClientId        = Guid.NewGuid(),
-            Date            = req.Date.AddMinutes(30),
-            EndDate         = req.Date.AddMinutes(90),
+            StudioId = _studioId,
+            ArtistId = req.ArtistId,
+            ClientId = Guid.NewGuid(),
+            Date = req.Date.AddMinutes(30),
+            EndDate = req.Date.AddMinutes(90),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Cancelled,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Cancelled,
+            DepositStatus = DepositStatus.Pending
         });
         await _db.SaveChangesAsync();
 
@@ -210,14 +215,14 @@ public class CreateAppointmentHandlerTests
 
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = req.ArtistId,
-            ClientId        = Guid.NewGuid(),
-            Date            = req.Date.AddMinutes(30),
-            EndDate         = req.Date.AddMinutes(90),
+            StudioId = _studioId,
+            ArtistId = req.ArtistId,
+            ClientId = Guid.NewGuid(),
+            Date = req.Date.AddMinutes(30),
+            EndDate = req.Date.AddMinutes(90),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending
         });
         await _db.SaveChangesAsync();
 
@@ -238,11 +243,11 @@ public class CreateAppointmentHandlerTests
         // The JWT carries the IdentityUser id; the handler must resolve the Client record
         Client ownClient = new()
         {
-            StudioId  = _studioId,
-            UserId    = jwtUserId,
+            StudioId = _studioId,
+            UserId = jwtUserId,
             FirstName = "Jwt",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(ownClient);
         await _db.SaveChangesAsync();
@@ -318,12 +323,18 @@ public class CreateAppointmentHandlerTests
         // Legacy data can violate the single-active invariant — selection must be deterministic
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = _studioId, Name = "Old", AmountFixed = 10m, IsActive = true,
+            StudioId = _studioId,
+            Name = "Old",
+            AmountFixed = 10m,
+            IsActive = true,
             UpdatedAt = DateTime.UtcNow.AddDays(-10),
         });
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = _studioId, Name = "Newest", AmountFixed = 75m, IsActive = true,
+            StudioId = _studioId,
+            Name = "Newest",
+            AmountFixed = 75m,
+            IsActive = true,
             UpdatedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync();
@@ -361,10 +372,10 @@ public class CreateAppointmentHandlerTests
     {
         Artist artist = new()
         {
-            StudioId   = _studioId,
-            FirstName  = "Seed",
-            LastName   = "Artist",
-            Email      = $"{Guid.NewGuid()}@artist.test",
+            StudioId = _studioId,
+            FirstName = "Seed",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@artist.test",
             HourlyRate = hourlyRate,
         };
         _db.Artists.Add(artist);
@@ -375,11 +386,11 @@ public class CreateAppointmentHandlerTests
         {
             _db.ArtistSchedules.Add(new ArtistSchedule
             {
-                ArtistId    = artist.Id,
-                StudioId    = _studioId,
-                DayOfWeek   = day,
-                StartTime   = TimeSpan.Zero,
-                EndTime     = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                ArtistId = artist.Id,
+                StudioId = _studioId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
         }

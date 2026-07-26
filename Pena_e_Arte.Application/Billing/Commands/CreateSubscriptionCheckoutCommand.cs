@@ -22,10 +22,10 @@ public record CreateSubscriptionCheckoutCommand(CreateCheckoutRequest Request)
 /// endpoint on return). A pending referral coupon is attached to the session if valid.
 /// </summary>
 public class CreateSubscriptionCheckoutHandler(
-    IAppDbContext                              db,
-    ICurrentTenant                             tenant,
-    IStripeBillingService                      billing,
-    IStripeDiscountService                     discounts,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    IStripeBillingService billing,
+    IStripeDiscountService discounts,
     ILogger<CreateSubscriptionCheckoutHandler> logger)
     : IRequestHandler<CreateSubscriptionCheckoutCommand, CheckoutSessionResponse>
 {
