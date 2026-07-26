@@ -1,0 +1,36 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus-uid
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+  - name: Loki
+    type: loki
+    uid: loki-uid
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      derivedFields:
+        # request_id (ASP.NET Core's own connection-based identifier, e.g.
+        # "0HNNB66BL6S1U:00000001") is NOT the same value as the OTel trace ID —
+        # verified empirically (see architecture.md Decisions Log "Local
+        # observability stack" entry). trace_id (added to RequestIdMiddleware.cs
+        # as part of this same change) is the real, Tempo-queryable ID.
+        - datasourceUid: tempo-uid
+          matcherRegex: '"trace_id":"([a-f0-9]+)"'
+          name: TraceID
+          url: '$${__value.raw}'
+
+  - name: Tempo
+    type: tempo
+    uid: tempo-uid
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki-uid
+        filterByTraceID: true

@@ -40,6 +40,90 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local observability stack — Prometheus/Loki/Tempo/Grafana, wired to the
+  # metrics/traces the API already emits (AddApiOpenTelemetry) and the JSON logs
+  # Serilog already writes to Console. Local-only: no K3s manifests, no remote
+  # write, no managed Grafana Cloud (see docs/claude/architecture.md Decisions Log).
+  prometheus:
+    image: prom/prometheus:v3.13.1
+    container_name: pena_e_arte_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./docker/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Linux needs this; no-op on Docker Desktop
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  loki:
+    image: grafana/loki:3.7.4
+    container_name: pena_e_arte_loki
+    restart: unless-stopped
+    volumes:
+      - ./docker/observability/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  tempo:
+    image: grafana/tempo:3.0.2
+    container_name: pena_e_arte_tempo
+    restart: unless-stopped
+    command: [ "-config.file=/etc/tempo/tempo.yaml" ]
+    volumes:
+      - ./docker/observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200"   # Tempo query API (used by Grafana's Tempo datasource)
+      - "4317:4317"   # OTLP gRPC — matches OpenTelemetry:OtlpEndpoint
+      - "4318:4318"   # OTLP HTTP
+    # No healthcheck: grafana/tempo ships a fully distroless image (no shell, no
+    # wget/curl — confirmed via `docker exec`, every command failed with
+    # "executable file not found in $PATH"). Grafana's own single-binary
+    # reference docker-compose.yaml doesn't add one for the same reason.
+    # Confirmed reachable manually instead: `curl http://localhost:3200/ready`.
+
+  alloy:
+    image: grafana/alloy:v1.18.0
+    container_name: pena_e_arte_alloy
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+    volumes:
+      - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "12345:12345"   # Alloy UI — http://localhost:12345/graph, dev-only visibility tool
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:13.1.1
+    container_name: pena_e_arte_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env — do not use admin/admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
   # Container-parity services — build the exact artifacts that would ship to
   # production. Optional for day-to-day dev (dotnet run / pnpm dev against the
   # infra services above is faster); use `docker compose up --build api frontend`
@@ -79,6 +163,7 @@ services:
       Cors__AllowedOrigins__0: ${VITE_PUBLIC_URL:-http://localhost:8081}
       Hangfire__DashboardUsername: ${HANGFIRE_DASHBOARD_USERNAME:?Set HANGFIRE_DASHBOARD_USERNAME in .env — do not default to admin}
       Hangfire__DashboardPassword: ${HANGFIRE_DASHBOARD_PASSWORD:?Set HANGFIRE_DASHBOARD_PASSWORD in .env — do not default to admin}
+      OpenTelemetry__OtlpEndpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
     ports:
       - "8080:8080"
     healthcheck:
@@ -113,3 +198,7 @@ volumes:
   mysql_data:
   redis_data:
   minio_data:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:
