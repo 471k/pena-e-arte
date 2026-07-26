@@ -8,11 +8,11 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class ResendVerificationEmailHandlerTests
 {
-    private readonly IIdentityService     _identity      = Substitute.For<IIdentityService>();
-    private readonly IEmailRenderer       _renderer      = Substitute.For<IEmailRenderer>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly IEmailRenderer _renderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IAppSettings         _appSettings   = Substitute.For<IAppSettings>();
-    private readonly Guid                 _userId        = Guid.NewGuid();
+    private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public ResendVerificationEmailHandlerTests()
     {

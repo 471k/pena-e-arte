@@ -11,9 +11,9 @@ namespace Pena_e_Arte.Application.Payments.Queries;
 public record GetPaymentInvoiceQuery(Guid PaymentId) : IRequest<byte[]>;
 
 public class GetPaymentInvoiceHandler(
-    IAppDbContext          db,
-    ICurrentUser           currentUser,
-    ICurrentTenant         tenant,
+    IAppDbContext db,
+    ICurrentUser currentUser,
+    ICurrentTenant tenant,
     IPaymentInvoiceService invoiceService)
     : IRequestHandler<GetPaymentInvoiceQuery, byte[]>
 {
@@ -56,21 +56,21 @@ public class GetPaymentInvoiceHandler(
             : [new InvoiceLineItem("Tattoo deposit", payment.Amount)];
 
         PaymentInvoiceData data = new(
-            StudioName:            studioName,
-            ClientFullName:        $"{payment.Client?.FirstName} {payment.Client?.LastName}".Trim(),
-            ClientEmail:           payment.Client?.Email ?? string.Empty,
-            ArtistFullName:        artist is not null
+            StudioName: studioName,
+            ClientFullName: $"{payment.Client?.FirstName} {payment.Client?.LastName}".Trim(),
+            ClientEmail: payment.Client?.Email ?? string.Empty,
+            ArtistFullName: artist is not null
                                        ? $"{artist.FirstName} {artist.LastName}".Trim()
                                        : "—",
-            AppointmentDate:       appointment?.Date ?? DateTime.UtcNow,
-            PaymentId:             payment.Id,
-            TotalAmount:           payment.Amount,
-            Method:                payment.Method.ToString(),
-            Status:                payment.Status.ToString(),
+            AppointmentDate: appointment?.Date ?? DateTime.UtcNow,
+            PaymentId: payment.Id,
+            TotalAmount: payment.Amount,
+            Method: payment.Method.ToString(),
+            Status: payment.Status.ToString(),
             StripePaymentIntentId: payment.StripePaymentIntentId,
-            CashNote:              payment.CashNote,
-            IssuedAt:              payment.PaidAt ?? DateTime.UtcNow,
-            LineItems:             lineItems);
+            CashNote: payment.CashNote,
+            IssuedAt: payment.PaidAt ?? DateTime.UtcNow,
+            LineItems: lineItems);
 
         return invoiceService.Generate(data);
     }

@@ -11,8 +11,8 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class UpdateSessionSplitsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private UpdateSessionSplitsHandler CreateSut() => new(_db);
 
@@ -55,10 +55,10 @@ public class UpdateSessionSplitsHandlerTests
         Guid paymentId = await SeedPayment(100m);
         _db.SessionSplits.Add(new SessionSplit
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             PaymentId = paymentId,
-            Label     = "OldSplit",
-            Amount    = 100m
+            Label = "OldSplit",
+            Amount = 100m
         });
         await _db.SaveChangesAsync();
 
@@ -122,11 +122,11 @@ public class UpdateSessionSplitsHandlerTests
     {
         Payment payment = new()
         {
-            StudioId      = _studioId,
+            StudioId = _studioId,
             AppointmentId = Guid.NewGuid(),
-            ClientId      = Guid.NewGuid(),
-            Amount        = amount,
-            Status        = PaymentStatus.Pending
+            ClientId = Guid.NewGuid(),
+            Amount = amount,
+            Status = PaymentStatus.Pending
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

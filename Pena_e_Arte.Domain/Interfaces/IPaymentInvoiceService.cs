@@ -8,12 +8,12 @@ public record PaymentInvoiceData(
     string ClientEmail,
     string ArtistFullName,
     DateTime AppointmentDate,
-    Guid     PaymentId,
-    decimal  TotalAmount,
-    string   Method,
-    string   Status,
-    string?  StripePaymentIntentId,
-    string?  CashNote,
+    Guid PaymentId,
+    decimal TotalAmount,
+    string Method,
+    string Status,
+    string? StripePaymentIntentId,
+    string? CashNote,
     DateTime IssuedAt,
     IReadOnlyList<InvoiceLineItem> LineItems);
 

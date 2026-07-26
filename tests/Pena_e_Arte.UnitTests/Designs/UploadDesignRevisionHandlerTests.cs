@@ -12,12 +12,12 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class UploadDesignRevisionHandlerTests
 {
-    private readonly FakeDbContext     _db           = FakeDbContext.Create();
-    private readonly ICurrentTenant    _tenant       = Substitute.For<ICurrentTenant>();
-    private readonly IRealtimeNotifier _realtime     = Substitute.For<IRealtimeNotifier>();
-    private readonly IJobScheduler     _jobScheduler = Substitute.For<IJobScheduler>();
-    private readonly FakeCurrentUser   _currentUser  = FakeCurrentUser.Owner();
-    private readonly Guid              _studioId     = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly IJobScheduler _jobScheduler = Substitute.For<IJobScheduler>();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public UploadDesignRevisionHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -142,12 +142,12 @@ public class UploadDesignRevisionHandlerTests
         {
             _db.Artists.Add(new Artist
             {
-                Id        = artistId,
-                StudioId  = _studioId,
-                UserId    = artistUserId.Value,
+                Id = artistId,
+                StudioId = _studioId,
+                UserId = artistUserId.Value,
                 FirstName = "Art",
-                LastName  = "Ist",
-                Email     = $"{Guid.NewGuid()}@test.com",
+                LastName = "Ist",
+                Email = $"{Guid.NewGuid()}@test.com",
             });
         }
 
@@ -159,11 +159,11 @@ public class UploadDesignRevisionHandlerTests
     {
         _db.DesignRevisions.Add(new DesignRevision
         {
-            StudioId      = _studioId,
-            DesignId      = designId,
+            StudioId = _studioId,
+            DesignId = designId,
             VersionNumber = version,
-            FileUrl       = $"https://r2.example.com/v{version}.png",
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = $"https://r2.example.com/v{version}.png",
+            UploadedAt = DateTime.UtcNow
         });
         await _db.SaveChangesAsync();
     }

@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Clients;
 
 public class AddTattooRecordHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public AddTattooRecordHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -37,12 +37,12 @@ public class AddTattooRecordHandlerTests
         (Client client, Artist artist) = await AddClientAndArtistAsync();
         DateTime completed = DateTime.UtcNow.AddDays(-10);
         AddTattooRecordRequest req = new(
-            ArtistId:      artist.Id,
+            ArtistId: artist.Id,
             AppointmentId: null,
-            Description:   "Dragon sleeve",
-            BodyLocation:  "left_arm",
-            PhotoUrls:     ["https://r2.example.com/photo1.jpg"],
-            CompletedAt:   completed);
+            Description: "Dragon sleeve",
+            BodyLocation: "left_arm",
+            PhotoUrls: ["https://r2.example.com/photo1.jpg"],
+            CompletedAt: completed);
 
         TattooRecordResponse result = await CreateSut()
             .Handle(new AddTattooRecordCommand(client.Id, req), default);
@@ -61,12 +61,12 @@ public class AddTattooRecordHandlerTests
     {
         (Client client, Artist artist) = await AddClientAndArtistAsync();
         AddTattooRecordRequest req = new(
-            ArtistId:      artist.Id,
+            ArtistId: artist.Id,
             AppointmentId: null,
-            Description:   "Rose",
-            BodyLocation:  "right_wrist",
-            PhotoUrls:     [],
-            CompletedAt:   DateTime.UtcNow.AddDays(-5));
+            Description: "Rose",
+            BodyLocation: "right_wrist",
+            PhotoUrls: [],
+            CompletedAt: DateTime.UtcNow.AddDays(-5));
 
         await CreateSut().Handle(new AddTattooRecordCommand(client.Id, req), default);
 
@@ -81,12 +81,12 @@ public class AddTattooRecordHandlerTests
         await _db.SaveChangesAsync();
 
         AddTattooRecordRequest req = new(
-            ArtistId:      artist.Id,
+            ArtistId: artist.Id,
             AppointmentId: null,
-            Description:   "Rose",
-            BodyLocation:  "right_wrist",
-            PhotoUrls:     [],
-            CompletedAt:   DateTime.UtcNow.AddDays(-1));
+            Description: "Rose",
+            BodyLocation: "right_wrist",
+            PhotoUrls: [],
+            CompletedAt: DateTime.UtcNow.AddDays(-1));
 
         Func<Task> act = () => CreateSut()
             .Handle(new AddTattooRecordCommand(Guid.NewGuid(), req), default);
@@ -102,12 +102,12 @@ public class AddTattooRecordHandlerTests
         await _db.SaveChangesAsync();
 
         AddTattooRecordRequest req = new(
-            ArtistId:      Guid.NewGuid(),
+            ArtistId: Guid.NewGuid(),
             AppointmentId: null,
-            Description:   "Rose",
-            BodyLocation:  "right_wrist",
-            PhotoUrls:     [],
-            CompletedAt:   DateTime.UtcNow.AddDays(-1));
+            Description: "Rose",
+            BodyLocation: "right_wrist",
+            PhotoUrls: [],
+            CompletedAt: DateTime.UtcNow.AddDays(-1));
 
         Func<Task> act = () => CreateSut()
             .Handle(new AddTattooRecordCommand(client.Id, req), default);

@@ -12,7 +12,7 @@ namespace Pena_e_Arte.UnitTests.Platform;
 
 public class IssuerGenerateReferralCodeHandlerTests
 {
-    private readonly FakeDbContext     _db       = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
     private IssuerGenerateReferralCodeHandler CreateSut() =>
@@ -110,12 +110,12 @@ public class IssuerGenerateReferralCodeHandlerTests
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Studio
         {
-            Id             = studioId,
-            Name           = "Test Studio",
-            Slug           = Guid.NewGuid().ToString("N")[..20],
-            City           = "Porto",
-            OwnerEmail     = $"{Guid.NewGuid():N}@test.com",
-            IsActive       = true,
+            Id = studioId,
+            Name = "Test Studio",
+            Slug = Guid.NewGuid().ToString("N")[..20],
+            City = "Porto",
+            OwnerEmail = $"{Guid.NewGuid():N}@test.com",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         });
         await _db.SaveChangesAsync();

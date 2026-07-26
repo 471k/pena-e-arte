@@ -10,9 +10,9 @@ namespace Pena_e_Arte.UnitTests.Jobs;
 
 public class DesignRevisionTimeoutJobTests
 {
-    private readonly FakeDbContext     _db       = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly Guid              _studioId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private DesignRevisionTimeoutJob CreateSut() => new(_db, _realtime);
 
@@ -102,11 +102,11 @@ public class DesignRevisionTimeoutJobTests
 
         DesignRevision revision = new()
         {
-            StudioId      = _studioId,
-            DesignId      = design.Id,
+            StudioId = _studioId,
+            DesignId = design.Id,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/v1.png",
-            UploadedAt    = DateTime.UtcNow.AddDays(-15),
+            FileUrl = "https://r2.example.com/v1.png",
+            UploadedAt = DateTime.UtcNow.AddDays(-15),
         };
         _db.DesignRevisions.Add(revision);
         await _db.SaveChangesAsync();
@@ -117,9 +117,9 @@ public class DesignRevisionTimeoutJobTests
     {
         _db.DesignApprovals.Add(new DesignApproval
         {
-            StudioId         = _studioId,
+            StudioId = _studioId,
             DesignRevisionId = revisionId,
-            Status           = status,
+            Status = status,
         });
         await _db.SaveChangesAsync();
     }

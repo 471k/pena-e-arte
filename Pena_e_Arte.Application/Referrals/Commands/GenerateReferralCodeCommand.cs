@@ -13,9 +13,9 @@ namespace Pena_e_Arte.Application.Referrals.Commands;
 public record GenerateReferralCodeCommand(Guid StudioId) : IRequest<ReferralCodeResponse>;
 
 public class GenerateReferralCodeHandler(
-    IAppDbContext                          db,
-    ICurrentTenant                         tenant,
-    ILogger<GenerateReferralCodeHandler>   logger)
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    ILogger<GenerateReferralCodeHandler> logger)
     : IRequestHandler<GenerateReferralCodeCommand, ReferralCodeResponse>
 {
     private const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -40,9 +40,9 @@ public class GenerateReferralCodeHandler(
 
         ReferralCode referralCode = new()
         {
-            StudioId    = command.StudioId,
-            Code        = code,
-            IsActive    = true,
+            StudioId = command.StudioId,
+            Code = code,
+            IsActive = true,
             IsSingleUse = true,
         };
 

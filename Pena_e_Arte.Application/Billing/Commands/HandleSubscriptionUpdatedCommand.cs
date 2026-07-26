@@ -7,11 +7,11 @@ using Pena_e_Arte.Domain.Enums;
 namespace Pena_e_Arte.Application.Billing.Commands;
 
 public record HandleSubscriptionUpdatedCommand(
-    string   StripeSubscriptionId,
-    string   StripeStatus,
+    string StripeSubscriptionId,
+    string StripeStatus,
     DateTime CurrentPeriodEnd,
-    string?  StripePriceId,
-    bool     CancelAtPeriodEnd = false) : IRequest;
+    string? StripePriceId,
+    bool CancelAtPeriodEnd = false) : IRequest;
 
 public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandler<HandleSubscriptionUpdatedCommand>
 {
@@ -24,14 +24,14 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
 
         subscription.Status = command.StripeStatus switch
         {
-            "active"   => SubscriptionStatus.Active,
+            "active" => SubscriptionStatus.Active,
             "past_due" => SubscriptionStatus.PastDue,
             "trialing" => SubscriptionStatus.Trialing,
             "canceled" => SubscriptionStatus.Cancelled,
-            _          => subscription.Status
+            _ => subscription.Status
         };
 
-        subscription.CurrentPeriodEnd  = command.CurrentPeriodEnd;
+        subscription.CurrentPeriodEnd = command.CurrentPeriodEnd;
         subscription.CancelAtPeriodEnd = command.CancelAtPeriodEnd;
 
         // Trial is no longer applicable once the subscription is active on a paid plan.
@@ -45,14 +45,14 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
 
             if (price is not null)
             {
-                subscription.PlanId          = price.PlanId;
+                subscription.PlanId = price.PlanId;
                 subscription.BillingInterval = price.Interval;
 
                 // A scheduled change has landed — the pending change is no longer pending
                 if (subscription.PendingPlanId == price.PlanId
                     && subscription.PendingBillingInterval == price.Interval)
                 {
-                    subscription.PendingPlanId          = null;
+                    subscription.PendingPlanId = null;
                     subscription.PendingBillingInterval = null;
                 }
             }

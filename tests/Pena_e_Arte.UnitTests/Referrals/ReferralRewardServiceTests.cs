@@ -11,9 +11,9 @@ namespace Pena_e_Arte.UnitTests.Referrals;
 
 public class ReferralRewardServiceTests
 {
-    private readonly FakeDbContext           _db        = FakeDbContext.Create();
-    private readonly IStripeBillingService   _billing   = Substitute.For<IStripeBillingService>();
-    private readonly IStripeDiscountService  _discounts = Substitute.For<IStripeDiscountService>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
+    private readonly IStripeDiscountService _discounts = Substitute.For<IStripeDiscountService>();
 
     public ReferralRewardServiceTests()
     {
@@ -92,37 +92,37 @@ public class ReferralRewardServiceTests
     }
 
     private async Task<(ReferralRedemption, string referrerSubId)> SeedFullReferralScenario(
-        bool   referrerHasStripeSub,
-        string referrerOwnerEmail   = "referrer@studio.com",
-        string newStudioOwnerEmail  = "new@studio.com")
+        bool referrerHasStripeSub,
+        string referrerOwnerEmail = "referrer@studio.com",
+        string newStudioOwnerEmail = "new@studio.com")
     {
         Studio referringStudio = new()
         {
-            Id         = Guid.NewGuid(),
-            Name       = "Referring Studio",
-            Slug       = "ref",
-            City       = "Porto",
+            Id = Guid.NewGuid(),
+            Name = "Referring Studio",
+            Slug = "ref",
+            City = "Porto",
             OwnerEmail = referrerOwnerEmail,
-            IsActive   = true,
+            IsActive = true,
         };
 
         Studio newStudio = new()
         {
-            Id         = Guid.NewGuid(),
-            Name       = "New Studio",
-            Slug       = "new",
-            City       = "Lisbon",
+            Id = Guid.NewGuid(),
+            Name = "New Studio",
+            Slug = "new",
+            City = "Lisbon",
             OwnerEmail = newStudioOwnerEmail,
-            IsActive   = true,
+            IsActive = true,
         };
 
         _db.Studios.AddRange(referringStudio, newStudio);
 
         ReferralCode code = new()
         {
-            StudioId    = referringStudio.Id,
-            Code        = "REFTEST1",
-            IsActive    = true,
+            StudioId = referringStudio.Id,
+            Code = "REFTEST1",
+            IsActive = true,
             IsSingleUse = true,
         };
         _db.ReferralCodes.Add(code);
@@ -132,17 +132,17 @@ public class ReferralRewardServiceTests
         {
             _db.Subscriptions.Add(new Subscription
             {
-                StudioId             = referringStudio.Id,
-                Status               = SubscriptionStatus.Active,
+                StudioId = referringStudio.Id,
+                Status = SubscriptionStatus.Active,
                 StripeSubscriptionId = referrerSubId,
-                CurrentPeriodEnd     = DateTime.UtcNow.AddMonths(1),
+                CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1),
             });
         }
 
         ReferralRedemption redemption = new()
         {
-            ReferralCodeId  = code.Id,
-            NewStudioId     = newStudio.Id,
+            ReferralCodeId = code.Id,
+            NewStudioId = newStudio.Id,
             DiscountApplied = true,
         };
         _db.ReferralRedemptions.Add(redemption);

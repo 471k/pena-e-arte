@@ -15,11 +15,11 @@ namespace Pena_e_Arte.Application.Studios.Queries;
 /// scoping automatically.
 /// </summary>
 public record GetMyStudioAuditLogQuery(
-    string?   Action     = null,
-    DateTime? From       = null,
-    DateTime? To         = null,
-    int       Page       = 1,
-    int       PageSize   = 20)
+    string? Action = null,
+    DateTime? From = null,
+    DateTime? To = null,
+    int Page = 1,
+    int PageSize = 20)
     : IRequest<AuditLogPageResponse>;
 
 public class GetMyStudioAuditLogHandler(IAppDbContext db, ICurrentTenant tenant)
@@ -40,7 +40,7 @@ public class GetMyStudioAuditLogHandler(IAppDbContext db, ICurrentTenant tenant)
 
         int totalCount = await q.CountAsync(ct);
 
-        int page     = Math.Max(1, query.Page);
+        int page = Math.Max(1, query.Page);
         int pageSize = Math.Clamp(query.PageSize, 1, 100);
 
         List<AuditLogEntryResponse> items = await q

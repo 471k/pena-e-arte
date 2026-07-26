@@ -17,22 +17,22 @@ public class GetPlanUsageReportHandlerTests
     {
         Studio studio = new()
         {
-            Name       = $"Studio-{Guid.NewGuid():N}"[..20],
-            Slug       = Guid.NewGuid().ToString("N")[..20],
-            City       = "Porto",
+            Name = $"Studio-{Guid.NewGuid():N}"[..20],
+            Slug = Guid.NewGuid().ToString("N")[..20],
+            City = "Porto",
             OwnerEmail = $"{Guid.NewGuid():N}@test.com",
-            IsActive   = true,
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         };
         _db.Studios.Add(studio);
         _db.Plans.Add(plan);
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            PlanId           = plan.Id,
-            Status           = SubscriptionStatus.Active,
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            Status = SubscriptionStatus.Active,
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(37),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(37),
         });
         return studio;
     }
@@ -50,8 +50,11 @@ public class GetPlanUsageReportHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Name = "No Plan", Slug = "no-plan", City = "Porto",
-            OwnerEmail = "owner@test.com", IsActive = true,
+            Name = "No Plan",
+            Slug = "no-plan",
+            City = "Porto",
+            OwnerEmail = "owner@test.com",
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
@@ -65,8 +68,11 @@ public class GetPlanUsageReportHandlerTests
     {
         Studio studio = SeedStudioWithPlan(new Plan
         {
-            Name = "Starter", MaxArtists = 6, MaxAppointmentsPerMonth = 40,
-            MaxNotificationsPerMonth = 150, MaxStorageGb = 2,
+            Name = "Starter",
+            MaxArtists = 6,
+            MaxAppointmentsPerMonth = 40,
+            MaxNotificationsPerMonth = 150,
+            MaxStorageGb = 2,
         });
         await _db.SaveChangesAsync();
 
@@ -74,9 +80,14 @@ public class GetPlanUsageReportHandlerTests
         _db.Artists.Add(new Artist { StudioId = studio.Id, FirstName = "C", LastName = "D", Email = "c@x.com" });
         _db.Appointments.Add(new Appointment
         {
-            StudioId = studio.Id, ArtistId = Guid.NewGuid(), ClientId = Guid.NewGuid(),
-            Date = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddHours(1), DurationMinutes = 60,
-            Status = AppointmentStatus.Pending, DepositStatus = DepositStatus.Pending,
+            StudioId = studio.Id,
+            ArtistId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow,
+            EndDate = DateTime.UtcNow.AddHours(1),
+            DurationMinutes = 60,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
             CreatedAt = DateTime.UtcNow,
         });
         studio.StorageUsageBytes = (long)(1.5 * 1024 * 1024 * 1024);

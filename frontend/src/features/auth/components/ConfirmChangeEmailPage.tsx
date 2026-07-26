@@ -4,22 +4,25 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 
 export function ConfirmChangeEmailPage() {
-  const [searchParams]          = useSearchParams();
-  const navigate                = useNavigate();
-  const [status, setStatus]     = useState<"loading" | "success" | "error">("loading");
+  const [searchParams] = useSearchParams();
+  const navigate       = useNavigate();
+
+  // The backend redirects GET /api/v1/auth/confirm-change-email?userId=&newEmail=&token=
+  // to /login?email-changed=true — this page handles the /confirm-change-email
+  // client-side route linked from the confirmation email.
+  const userId   = searchParams.get("userId");
+  const newEmail = searchParams.get("newEmail");
+  const token    = searchParams.get("token");
+
+  // Missing params is knowable synchronously from the URL at render time, so the
+  // initial state reflects it directly instead of starting at "loading" and
+  // setting state from inside the effect.
+  const [status, setStatus] = useState<"loading" | "success" | "error">(
+    userId && newEmail && token ? "loading" : "error",
+  );
 
   useEffect(() => {
-    // The backend redirects GET /api/v1/auth/confirm-change-email?userId=&newEmail=&token=
-    // to /login?email-changed=true — this page handles the /confirm-change-email
-    // client-side route linked from the confirmation email.
-    const userId   = searchParams.get("userId");
-    const newEmail = searchParams.get("newEmail");
-    const token    = searchParams.get("token");
-
-    if (!userId || !newEmail || !token) {
-      setStatus("error");
-      return;
-    }
+    if (!userId || !newEmail || !token) return;
 
     const url = `/api/v1/auth/confirm-change-email` +
       `?userId=${encodeURIComponent(userId)}` +
@@ -35,7 +38,7 @@ export function ConfirmChangeEmailPage() {
         }
       })
       .catch(() => setStatus("error"));
-  }, [searchParams]);
+  }, [userId, newEmail, token]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">

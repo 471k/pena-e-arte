@@ -49,16 +49,16 @@ public class GetPlatformStatsHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = s1.Id,
-            Status           = SubscriptionStatus.Active,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+            StudioId = s1.Id,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = s2.Id,
-            Status           = SubscriptionStatus.Trialing,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(7),
+            StudioId = s2.Id,
+            Status = SubscriptionStatus.Trialing,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(7),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(7),
         });
         await _db.SaveChangesAsync();
@@ -72,29 +72,29 @@ public class GetPlatformStatsHandlerTests
     [Fact]
     public async Task Handle_MrrCalculation_SumsOnlyActiveSubscriptionPlanPrices()
     {
-        Studio active   = SeedStudio(isActive: true);
+        Studio active = SeedStudio(isActive: true);
         Studio trialing = SeedStudio(isActive: true);
-        Plan   plan     = new() { Name = "Pro" };
+        Plan plan = new() { Name = "Pro" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = active.Id,
-            PlanId           = plan.Id,
-            BillingInterval  = BillingInterval.Monthly,
-            Status           = SubscriptionStatus.Active,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+            StudioId = active.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = trialing.Id,
-            PlanId           = plan.Id,
-            BillingInterval  = BillingInterval.Monthly,
-            Status           = SubscriptionStatus.Trialing,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(7),
+            StudioId = trialing.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Trialing,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(7),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(7),
         });
         await _db.SaveChangesAsync();
@@ -113,7 +113,7 @@ public class GetPlatformStatsHandlerTests
         // Plan's decorative Monthly reference figure. A €790/yr subscription contributes
         // €65.83/mo to MRR, not the tier's separate €79 Monthly price.
         Studio studio = SeedStudio(isActive: true);
-        Plan   plan   = new() { Name = "Premium" };
+        Plan plan = new() { Name = "Premium" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 79m });
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = 790m });
         _db.Plans.Add(plan);
@@ -121,11 +121,11 @@ public class GetPlatformStatsHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            PlanId           = plan.Id,
-            BillingInterval  = BillingInterval.Yearly,
-            Status           = SubscriptionStatus.Active,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Yearly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
         });
         await _db.SaveChangesAsync();
@@ -140,13 +140,13 @@ public class GetPlatformStatsHandlerTests
     public async Task Handle_TrialConversionRate_IsActiveOverActivePlusTrialPlusGrace()
     {
         Studio active = SeedStudio(isActive: true, trialExpiresAt: DateTime.UtcNow.AddDays(-30));
-        Studio trial  = SeedStudio(isActive: true, trialExpiresAt: DateTime.UtcNow.AddDays(-30));
-        Studio grace  = SeedStudio(isActive: true, trialExpiresAt: DateTime.UtcNow.AddDays(-30));
+        Studio trial = SeedStudio(isActive: true, trialExpiresAt: DateTime.UtcNow.AddDays(-30));
+        Studio grace = SeedStudio(isActive: true, trialExpiresAt: DateTime.UtcNow.AddDays(-30));
         await _db.SaveChangesAsync();
 
-        _db.Subscriptions.Add(new Subscription { StudioId = active.Id, Status = SubscriptionStatus.Active,      CurrentPeriodEnd = DateTime.UtcNow.AddDays(30) });
-        _db.Subscriptions.Add(new Subscription { StudioId = trial.Id,  Status = SubscriptionStatus.Trialing,    CurrentPeriodEnd = DateTime.UtcNow.AddDays(7) });
-        _db.Subscriptions.Add(new Subscription { StudioId = grace.Id,  Status = SubscriptionStatus.GracePeriod, CurrentPeriodEnd = DateTime.UtcNow.AddDays(7) });
+        _db.Subscriptions.Add(new Subscription { StudioId = active.Id, Status = SubscriptionStatus.Active, CurrentPeriodEnd = DateTime.UtcNow.AddDays(30) });
+        _db.Subscriptions.Add(new Subscription { StudioId = trial.Id, Status = SubscriptionStatus.Trialing, CurrentPeriodEnd = DateTime.UtcNow.AddDays(7) });
+        _db.Subscriptions.Add(new Subscription { StudioId = grace.Id, Status = SubscriptionStatus.GracePeriod, CurrentPeriodEnd = DateTime.UtcNow.AddDays(7) });
         await _db.SaveChangesAsync();
 
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
@@ -161,13 +161,13 @@ public class GetPlatformStatsHandlerTests
         SeedStudio(isActive: true); // CreatedAt defaults to now
         _db.Studios.Add(new Studio
         {
-            Name           = "Old Studio",
-            Slug           = Guid.NewGuid().ToString("N")[..20],
-            City           = "Porto",
-            OwnerEmail     = "old@test.com",
-            IsActive       = true,
+            Name = "Old Studio",
+            Slug = Guid.NewGuid().ToString("N")[..20],
+            City = "Porto",
+            OwnerEmail = "old@test.com",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(-60),
-            CreatedAt      = DateTime.UtcNow.AddMonths(-2),
+            CreatedAt = DateTime.UtcNow.AddMonths(-2),
         });
         await _db.SaveChangesAsync();
 
@@ -184,9 +184,9 @@ public class GetPlatformStatsHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            Status           = SubscriptionStatus.PastDue,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(-5),
+            StudioId = studio.Id,
+            Status = SubscriptionStatus.PastDue,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(-5),
         });
         await _db.SaveChangesAsync();
@@ -219,15 +219,15 @@ public class GetPlatformStatsHandlerTests
         Studio s3 = SeedStudio(isActive: true);
         await _db.SaveChangesAsync();
 
-        _db.Subscriptions.Add(new Subscription { StudioId = s1.Id, Status = SubscriptionStatus.Active,    CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),  TrialExpiresAt = DateTime.UtcNow.AddDays(30) });
-        _db.Subscriptions.Add(new Subscription { StudioId = s2.Id, Status = SubscriptionStatus.PastDue,   CurrentPeriodEnd = DateTime.UtcNow.AddDays(-2),  TrialExpiresAt = DateTime.UtcNow.AddDays(-2) });
-        _db.Subscriptions.Add(new Subscription { StudioId = s3.Id, Status = SubscriptionStatus.Cancelled, CurrentPeriodEnd = DateTime.UtcNow.AddDays(-5),  TrialExpiresAt = DateTime.UtcNow.AddDays(-5) });
+        _db.Subscriptions.Add(new Subscription { StudioId = s1.Id, Status = SubscriptionStatus.Active, CurrentPeriodEnd = DateTime.UtcNow.AddDays(30), TrialExpiresAt = DateTime.UtcNow.AddDays(30) });
+        _db.Subscriptions.Add(new Subscription { StudioId = s2.Id, Status = SubscriptionStatus.PastDue, CurrentPeriodEnd = DateTime.UtcNow.AddDays(-2), TrialExpiresAt = DateTime.UtcNow.AddDays(-2) });
+        _db.Subscriptions.Add(new Subscription { StudioId = s3.Id, Status = SubscriptionStatus.Cancelled, CurrentPeriodEnd = DateTime.UtcNow.AddDays(-5), TrialExpiresAt = DateTime.UtcNow.AddDays(-5) });
         await _db.SaveChangesAsync();
 
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
 
         int bucketSum = result.ActiveSubscriptions + result.TrialStudios
-                      + result.GracePeriodStudios  + result.PastDueStudios
+                      + result.GracePeriodStudios + result.PastDueStudios
                       + result.CancelledStudios;
         bucketSum.Should().Be(result.TotalStudios);
     }
@@ -237,7 +237,7 @@ public class GetPlatformStatsHandlerTests
     {
         // Subscription created last month and still active this month → same in both periods → 0 % growth.
         Studio studio = SeedStudio(isActive: true);
-        Plan   plan   = new() { Name = "Pro" };
+        Plan plan = new() { Name = "Pro" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
@@ -246,13 +246,13 @@ public class GetPlatformStatsHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            PlanId           = plan.Id,
-            BillingInterval  = BillingInterval.Monthly,
-            Status           = SubscriptionStatus.Active,
-            CreatedAt        = lastMonthStart.AddDays(5),   // created last month
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            CreatedAt = lastMonthStart.AddDays(5),   // created last month
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30), // still active this month
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -267,11 +267,11 @@ public class GetPlatformStatsHandlerTests
     {
         Studio studio = new()
         {
-            Name       = $"Studio-{Guid.NewGuid():N}"[..20],
-            Slug       = Guid.NewGuid().ToString("N")[..20],
-            City       = "Porto",
+            Name = $"Studio-{Guid.NewGuid():N}"[..20],
+            Slug = Guid.NewGuid().ToString("N")[..20],
+            City = "Porto",
             OwnerEmail = $"{Guid.NewGuid():N}@test.com",
-            IsActive   = isActive,
+            IsActive = isActive,
             TrialExpiresAt = trialExpiresAt ?? DateTime.UtcNow.AddDays(14),
         };
         _db.Studios.Add(studio);

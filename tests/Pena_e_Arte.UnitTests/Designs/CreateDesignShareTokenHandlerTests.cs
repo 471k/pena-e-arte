@@ -11,11 +11,11 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class CreateDesignShareTokenHandlerTests
 {
-    private readonly FakeDbContext _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant     = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
-    private readonly Guid           _studioId   = Guid.NewGuid();
-    private readonly Guid           _userId     = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public CreateDesignShareTokenHandlerTests()
     {
@@ -114,7 +114,7 @@ public class CreateDesignShareTokenHandlerTests
             StudioId = _studioId,
             ClientId = Guid.NewGuid(),
             ArtistId = Guid.NewGuid(),
-            Title    = "Rose"
+            Title = "Rose"
         };
         _db.Designs.Add(design);
 
@@ -122,22 +122,22 @@ public class CreateDesignShareTokenHandlerTests
         {
             _db.Artists.Add(new Artist
             {
-                Id        = design.ArtistId,
-                StudioId  = _studioId,
-                UserId    = artistUserId.Value,
+                Id = design.ArtistId,
+                StudioId = _studioId,
+                UserId = artistUserId.Value,
                 FirstName = "Art",
-                LastName  = "Ist",
-                Email     = $"{Guid.NewGuid()}@test.com",
+                LastName = "Ist",
+                Email = $"{Guid.NewGuid()}@test.com",
             });
         }
 
         DesignRevision revision = new()
         {
-            StudioId      = _studioId,
-            DesignId      = design.Id,
+            StudioId = _studioId,
+            DesignId = design.Id,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/file.png",
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = "https://r2.example.com/file.png",
+            UploadedAt = DateTime.UtcNow
         };
         _db.DesignRevisions.Add(revision);
         await _db.SaveChangesAsync();

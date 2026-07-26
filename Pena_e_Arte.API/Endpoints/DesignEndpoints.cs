@@ -14,21 +14,21 @@ public static class DesignEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/designs")
             .RequireAuthorization();
 
-        group.MapGet("/",                                          GetDesigns).RequireAuthorization("ClientAndAbove");
-        group.MapGet("{id:guid}",                                  GetDesign).RequireAuthorization("ClientAndAbove");
-        group.MapPost("/",                                         CreateDesign).RequireAuthorization("ArtistAndAbove");
-        group.MapGet("{id:guid}/revisions",                        GetRevisions).RequireAuthorization("ClientAndAbove");
-        group.MapPost("{id:guid}/revisions",                       UploadRevision).RequireAuthorization("ArtistAndAbove");
-        group.MapDelete("{id:guid}/revisions/{revisionId:guid}",   DeleteRevision).RequireAuthorization("ArtistAndAbove");
-        group.MapPost("revisions/{revisionId:guid}/review",        ReviewDesign).RequireAuthorization("ClientAndAbove");
-        group.MapPost("revisions/{revisionId:guid}/share-token",   CreateShareToken).RequireAuthorization("ArtistAndAbove");
-        group.MapDelete("share-tokens/{id:guid}",                  RevokeShareToken).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/", GetDesigns).RequireAuthorization("ClientAndAbove");
+        group.MapGet("{id:guid}", GetDesign).RequireAuthorization("ClientAndAbove");
+        group.MapPost("/", CreateDesign).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("{id:guid}/revisions", GetRevisions).RequireAuthorization("ClientAndAbove");
+        group.MapPost("{id:guid}/revisions", UploadRevision).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("{id:guid}/revisions/{revisionId:guid}", DeleteRevision).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("revisions/{revisionId:guid}/review", ReviewDesign).RequireAuthorization("ClientAndAbove");
+        group.MapPost("revisions/{revisionId:guid}/share-token", CreateShareToken).RequireAuthorization("ArtistAndAbove");
+        group.MapDelete("share-tokens/{id:guid}", RevokeShareToken).RequireAuthorization("ArtistAndAbove");
     }
 
     private static async Task<IResult> GetDesigns(
-        Guid?             clientId,
-        Guid?             artistId,
-        ISender           mediator,
+        Guid? clientId,
+        Guid? artistId,
+        ISender mediator,
         CancellationToken ct)
     {
         List<DesignResponse> result = await mediator.Send(new GetDesignsQuery(clientId, artistId), ct);
@@ -36,8 +36,8 @@ public static class DesignEndpoints
     }
 
     private static async Task<IResult> GetDesign(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         DesignResponse result = await mediator.Send(new GetDesignQuery(id), ct);
@@ -45,8 +45,8 @@ public static class DesignEndpoints
     }
 
     private static async Task<IResult> GetRevisions(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         List<DesignRevisionResponse> result = await mediator.Send(new GetDesignRevisionsQuery(id), ct);
@@ -55,18 +55,18 @@ public static class DesignEndpoints
 
     private static async Task<IResult> CreateDesign(
         CreateDesignRequest request,
-        ISender             mediator,
-        CancellationToken   ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         DesignResponse result = await mediator.Send(new CreateDesignCommand(request), ct);
         return Results.Created($"/api/v1/designs/{result.Id}", result);
     }
 
     private static async Task<IResult> UploadRevision(
-        Guid                        id,
+        Guid id,
         UploadDesignRevisionRequest request,
-        ISender                     mediator,
-        CancellationToken           ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         UploadDesignRevisionRequest withDesignId = request with { DesignId = id };
         DesignRevisionResponse result = await mediator.Send(new UploadDesignRevisionCommand(withDesignId), ct);
@@ -74,9 +74,9 @@ public static class DesignEndpoints
     }
 
     private static async Task<IResult> DeleteRevision(
-        Guid              id,
-        Guid              revisionId,
-        ISender           mediator,
+        Guid id,
+        Guid revisionId,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new DeleteDesignRevisionCommand(id, revisionId), ct);
@@ -84,10 +84,10 @@ public static class DesignEndpoints
     }
 
     private static async Task<IResult> ReviewDesign(
-        Guid                revisionId,
+        Guid revisionId,
         ReviewDesignRequest request,
-        ISender             mediator,
-        CancellationToken   ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         ReviewDesignRequest withRevisionId = request with { DesignRevisionId = revisionId };
         DesignRevisionResponse result = await mediator.Send(new ReviewDesignCommand(withRevisionId), ct);
@@ -95,8 +95,8 @@ public static class DesignEndpoints
     }
 
     private static async Task<IResult> CreateShareToken(
-        Guid              revisionId,
-        ISender           mediator,
+        Guid revisionId,
+        ISender mediator,
         CancellationToken ct)
     {
         DesignShareTokenResponse result = await mediator.Send(new CreateDesignShareTokenCommand(revisionId), ct);
@@ -104,8 +104,8 @@ public static class DesignEndpoints
     }
 
     private static async Task<IResult> RevokeShareToken(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new RevokeDesignShareTokenCommand(id), ct);

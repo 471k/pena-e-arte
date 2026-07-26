@@ -13,9 +13,9 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class SwitchStudioHandlerTests
 {
-    private readonly IIdentityService _identity    = Substitute.For<IIdentityService>();
-    private readonly FakeDbContext    _db           = FakeDbContext.Create();
-    private readonly FakeCurrentUser  _currentUser  = FakeCurrentUser.Client();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Client();
 
     private SwitchStudioHandler CreateSut() => new(
         _db, _identity, _currentUser, NullLogger<SwitchStudioHandler>.Instance);
@@ -42,8 +42,11 @@ public class SwitchStudioHandlerTests
         _db.Studios.Add(new Studio { Id = studioId });
         Client existing = new()
         {
-            StudioId = studioId, UserId = _currentUser.UserId,
-            FirstName = "Ana", LastName = "Rossi", Email = "ana@example.com",
+            StudioId = studioId,
+            UserId = _currentUser.UserId,
+            FirstName = "Ana",
+            LastName = "Rossi",
+            Email = "ana@example.com",
         };
         _db.Clients.Add(existing);
         await _db.SaveChangesAsync();
@@ -59,13 +62,17 @@ public class SwitchStudioHandlerTests
     [Fact]
     public async Task Handle_NoExistingMembership_CreatesClientRowFromTemplate()
     {
-        Guid homeStudioId   = Guid.NewGuid();
+        Guid homeStudioId = Guid.NewGuid();
         Guid targetStudioId = Guid.NewGuid();
         _db.Studios.Add(new Studio { Id = targetStudioId });
         Client template = new()
         {
-            StudioId = homeStudioId, UserId = _currentUser.UserId,
-            FirstName = "Ana", LastName = "Rossi", Email = "ana@example.com", Phone = "555-1234",
+            StudioId = homeStudioId,
+            UserId = _currentUser.UserId,
+            FirstName = "Ana",
+            LastName = "Rossi",
+            Email = "ana@example.com",
+            Phone = "555-1234",
         };
         _db.Clients.Add(template);
         await _db.SaveChangesAsync();
@@ -131,8 +138,11 @@ public class SwitchStudioHandlerTests
         _db.Studios.Add(new Studio { Id = studioId });
         _db.Clients.Add(new Client
         {
-            StudioId = studioId, UserId = _currentUser.UserId,
-            FirstName = "Ana", LastName = "Rossi", Email = "ana@example.com",
+            StudioId = studioId,
+            UserId = _currentUser.UserId,
+            FirstName = "Ana",
+            LastName = "Rossi",
+            Email = "ana@example.com",
         });
         await _db.SaveChangesAsync();
         IdentityIssuesTokens();
@@ -150,8 +160,11 @@ public class SwitchStudioHandlerTests
         _db.Studios.Add(new Studio { Id = studioId });
         _db.Clients.Add(new Client
         {
-            StudioId = studioId, UserId = _currentUser.UserId,
-            FirstName = "Ana", LastName = "Rossi", Email = "ana@example.com",
+            StudioId = studioId,
+            UserId = _currentUser.UserId,
+            FirstName = "Ana",
+            LastName = "Rossi",
+            Email = "ana@example.com",
         });
         await _db.SaveChangesAsync();
         _identity.IssueTokensForTenantAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())

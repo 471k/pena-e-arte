@@ -35,7 +35,7 @@ public class UpdateMyBodyMapHandler(IAppDbContext db, ICurrentUser currentUser)
             db.ClientProfiles.Add(profile);
         }
 
-        profile.BodyMap   = new BodyMap { Locations = command.Request.Locations };
+        profile.BodyMap = new BodyMap { Locations = command.Request.Locations };
         profile.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

@@ -54,20 +54,20 @@ public class UpsertArtistScheduleHandler(IAppDbContext db, ICurrentTenant tenant
             {
                 db.ArtistSchedules.Add(new ArtistSchedule
                 {
-                    ArtistId    = command.ArtistId,
-                    StudioId    = tenant.StudioId,
-                    DayOfWeek   = entry.DayOfWeek,
-                    StartTime   = entry.StartTime,
-                    EndTime     = entry.EndTime,
+                    ArtistId = command.ArtistId,
+                    StudioId = tenant.StudioId,
+                    DayOfWeek = entry.DayOfWeek,
+                    StartTime = entry.StartTime,
+                    EndTime = entry.EndTime,
                     IsAvailable = entry.IsAvailable,
                 });
             }
             else
             {
-                row.StartTime   = entry.StartTime;
-                row.EndTime     = entry.EndTime;
+                row.StartTime = entry.StartTime;
+                row.EndTime = entry.EndTime;
                 row.IsAvailable = entry.IsAvailable;
-                row.UpdatedAt   = DateTime.UtcNow;
+                row.UpdatedAt = DateTime.UtcNow;
             }
         }
 

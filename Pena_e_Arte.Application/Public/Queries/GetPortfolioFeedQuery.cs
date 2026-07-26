@@ -10,10 +10,10 @@ namespace Pena_e_Arte.Application.Public.Queries;
 public record GetPortfolioFeedQuery(
     double? Lat,
     double? Lng,
-    double  RadiusKm,
-    int     Page,
-    int     PageSize = 24,
-    string? Style    = null) : IRequest<List<PortfolioImageResponse>>;
+    double RadiusKm,
+    int Page,
+    int PageSize = 24,
+    string? Style = null) : IRequest<List<PortfolioImageResponse>>;
 
 public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer redis)
     : IRequestHandler<GetPortfolioFeedQuery, List<PortfolioImageResponse>>
@@ -73,7 +73,7 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
 
         if (images.Count == 0) return [];
 
-        List<Guid> imageIds  = images.Select(p => p.Id).ToList();
+        List<Guid> imageIds = images.Select(p => p.Id).ToList();
         List<Guid> artistIds = images.Select(p => p.ArtistId).Distinct().ToList();
 
         // 3. Per-image review aggregates.
@@ -94,9 +94,9 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
         Dictionary<Guid, long> viewCounts;
         try
         {
-            IDatabase    redisDb      = redis.GetDatabase();
-            RedisKey[]   redisKeys    = artistIds.Select(id => (RedisKey)$"portfolio:views:{id}").ToArray();
-            RedisValue[] redisValues  = await redisDb.StringGetAsync(redisKeys);
+            IDatabase redisDb = redis.GetDatabase();
+            RedisKey[] redisKeys = artistIds.Select(id => (RedisKey)$"portfolio:views:{id}").ToArray();
+            RedisValue[] redisValues = await redisDb.StringGetAsync(redisKeys);
             viewCounts = artistIds
                 .Zip(redisValues, (id, v) => (id, count: v.HasValue ? (long)v : 0L))
                 .ToDictionary(x => x.id, x => x.count);
@@ -123,18 +123,18 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
                 artistReviews.TryGetValue(img.ArtistId, out (double Sum, int Count) ar);
                 viewCounts.TryGetValue(img.ArtistId, out long views);
 
-                double imageAvg  = ir.Count > 0 ? ir.Sum / ir.Count : 3.5;
+                double imageAvg = ir.Count > 0 ? ir.Sum / ir.Count : 3.5;
                 double artistAvg = ar.Count > 0 ? ar.Sum / ar.Count : 3.5;
-                double blended   = ir.Count > 0 ? imageAvg * 0.6 + artistAvg * 0.4 : artistAvg;
-                double bayesian  = (ir.Count * blended + 5 * 3.5) / (ir.Count + 5);
-                double score     = bayesian * 0.7 + Math.Log10(views + 1) * 0.3;
+                double blended = ir.Count > 0 ? imageAvg * 0.6 + artistAvg * 0.4 : artistAvg;
+                double bayesian = (ir.Count * blended + 5 * 3.5) / (ir.Count + 5);
+                double score = bayesian * 0.7 + Math.Log10(views + 1) * 0.3;
 
                 return (Image: img, Score: score, Ir: ir, Ar: ar, Views: views);
             })
             .OrderByDescending(x => x.Score)
             .Select(x =>
             {
-                Artist a      = x.Image.Artist;
+                Artist a = x.Image.Artist;
                 Studio studio = studiosById[a.StudioId];
 
                 double? distKm = (query.Lat.HasValue && query.Lng.HasValue)
@@ -142,19 +142,19 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
                     : null;
 
                 return new PortfolioImageResponse(
-                    ImageId:            x.Image.Id,
-                    ImageUrl:           x.Image.ImageUrl,
-                    Style:              x.Image.Style,
-                    ArtistName:         $"{a.FirstName} {a.LastName}".Trim(),
-                    ArtistSlug:         a.Slug!,
-                    StudioName:         studio.Name,
-                    StudioSlug:         studio.Slug,
-                    AverageRating:      x.Ar.Count > 0 ? Math.Round(x.Ar.Sum / x.Ar.Count, 1) : null,
-                    ReviewCount:        x.Ar.Count,
+                    ImageId: x.Image.Id,
+                    ImageUrl: x.Image.ImageUrl,
+                    Style: x.Image.Style,
+                    ArtistName: $"{a.FirstName} {a.LastName}".Trim(),
+                    ArtistSlug: a.Slug!,
+                    StudioName: studio.Name,
+                    StudioSlug: studio.Slug,
+                    AverageRating: x.Ar.Count > 0 ? Math.Round(x.Ar.Sum / x.Ar.Count, 1) : null,
+                    ReviewCount: x.Ar.Count,
                     ImageAverageRating: x.Ir.Count > 0 ? Math.Round(x.Ir.Sum / x.Ir.Count, 1) : null,
-                    ImageReviewCount:   x.Ir.Count,
-                    DistanceKm:         distKm,
-                    ViewCount:          x.Views);
+                    ImageReviewCount: x.Ir.Count,
+                    DistanceKm: distKm,
+                    ViewCount: x.Views);
             })
             .ToList();
     }

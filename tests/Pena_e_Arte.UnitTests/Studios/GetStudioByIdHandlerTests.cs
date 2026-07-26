@@ -19,12 +19,12 @@ public class GetStudioByIdHandlerTests
         // Arrange
         Studio studio = new()
         {
-            Id             = Guid.NewGuid(),
-            Name           = "Ink Soul",
-            Slug           = "ink-soul",
-            City           = "Porto",
-            IsActive       = true,
-            CreatedAt      = DateTime.UtcNow.AddDays(-30),
+            Id = Guid.NewGuid(),
+            Name = "Ink Soul",
+            Slug = "ink-soul",
+            City = "Porto",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow.AddDays(-30),
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         };
         _db.Studios.Add(studio);
@@ -54,12 +54,12 @@ public class GetStudioByIdHandlerTests
         // Arrange
         Studio studio = new()
         {
-            Id             = Guid.NewGuid(),
-            Name           = "Closed Studio",
-            Slug           = "closed",
-            City           = "Lisbon",
-            IsActive       = false,
-            CreatedAt      = DateTime.UtcNow.AddDays(-60),
+            Id = Guid.NewGuid(),
+            Name = "Closed Studio",
+            Slug = "closed",
+            City = "Lisbon",
+            IsActive = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-60),
             TrialExpiresAt = DateTime.UtcNow.AddDays(-10),
         };
         _db.Studios.Add(studio);

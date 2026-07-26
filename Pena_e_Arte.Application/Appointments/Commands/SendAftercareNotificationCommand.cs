@@ -11,11 +11,11 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 public record SendAftercareNotificationCommand(Guid AppointmentId) : IRequest;
 
 public class SendAftercareNotificationHandler(
-    IAppDbContext                                         db,
-    IEmailRenderer                                       emailRenderer,
-    INotificationService                                 notifications,
-    INotificationPreferenceService                       prefs,
-    ILogger<SendAftercareNotificationHandler>            logger)
+    IAppDbContext db,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    INotificationPreferenceService prefs,
+    ILogger<SendAftercareNotificationHandler> logger)
     : IRequestHandler<SendAftercareNotificationCommand>
 {
     public async Task Handle(SendAftercareNotificationCommand command, CancellationToken ct)

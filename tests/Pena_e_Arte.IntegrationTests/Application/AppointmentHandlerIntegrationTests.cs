@@ -18,21 +18,21 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class AppointmentHandlerIntegrationTests
 {
-    private readonly DatabaseFixture     _fixture;
-    private readonly ICurrentUser        _user;
-    private readonly ISlotLocker         _locker;
-    private readonly IJobScheduler       _jobs;
-    private readonly IRealtimeNotifier   _realtime;
-    private readonly ISender             _sender = Substitute.For<ISender>();
+    private readonly DatabaseFixture _fixture;
+    private readonly ICurrentUser _user;
+    private readonly ISlotLocker _locker;
+    private readonly IJobScheduler _jobs;
+    private readonly IRealtimeNotifier _realtime;
+    private readonly ISender _sender = Substitute.For<ISender>();
     private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
-    private readonly IPlanLimitService   _planLimits = Substitute.For<IPlanLimitService>();
+    private readonly IPlanLimitService _planLimits = Substitute.For<IPlanLimitService>();
 
     public AppointmentHandlerIntegrationTests(DatabaseFixture fixture)
     {
-        _fixture  = fixture;
-        _user     = Substitute.For<ICurrentUser>();
-        _locker   = Substitute.For<ISlotLocker>();
-        _jobs     = Substitute.For<IJobScheduler>();
+        _fixture = fixture;
+        _user = Substitute.For<ICurrentUser>();
+        _locker = Substitute.For<ISlotLocker>();
+        _jobs = Substitute.For<IJobScheduler>();
         _realtime = Substitute.For<IRealtimeNotifier>();
 
         _user.Role.Returns("artist");
@@ -95,7 +95,7 @@ public class AppointmentHandlerIntegrationTests
     {
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
-        (Guid artistId2, _)            = await SeedArtistAndClient(tenantId);
+        (Guid artistId2, _) = await SeedArtistAndClient(tenantId);
 
         DateTime start = DateTime.UtcNow.AddDays(7);
         await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(120));
@@ -296,11 +296,11 @@ public class AppointmentHandlerIntegrationTests
         {
             ctx.ArtistSchedules.Add(new ArtistSchedule
             {
-                ArtistId    = artist.Id,
-                StudioId    = tenantId,
-                DayOfWeek   = day,
-                StartTime   = TimeSpan.Zero,
-                EndTime     = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                ArtistId = artist.Id,
+                StudioId = tenantId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
         }
@@ -317,14 +317,14 @@ public class AppointmentHandlerIntegrationTests
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
         Appointment appt = new()
         {
-            StudioId        = tenantId,
-            ArtistId        = artistId,
-            ClientId        = clientId,
-            Date            = start,
-            EndDate         = end,
+            StudioId = tenantId,
+            ArtistId = artistId,
+            ClientId = clientId,
+            Date = start,
+            EndDate = end,
             DurationMinutes = (int)(end - start).TotalMinutes,
-            Status          = status,
-            DepositStatus   = DepositStatus.Pending
+            Status = status,
+            DepositStatus = DepositStatus.Pending
         };
         ctx.Appointments.Add(appt);
         await ctx.SaveChangesAsync();

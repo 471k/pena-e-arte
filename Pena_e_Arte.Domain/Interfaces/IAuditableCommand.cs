@@ -10,9 +10,9 @@ namespace Pena_e_Arte.Domain.Interfaces;
 /// </summary>
 public interface IAuditableCommand
 {
-    string AuditAction     { get; }
+    string AuditAction { get; }
     string AuditTargetType { get; }
-    Guid   AuditTargetId   { get; }
+    Guid AuditTargetId { get; }
 
     /// <summary>
     /// Explicit studio target when the command carries one directly (e.g. issuer
