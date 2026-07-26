@@ -219,6 +219,13 @@ jobs:
   guardrails:
     name: Non-negotiable-rules guardrails
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      # gitleaks-action needs `pull-requests: read` to list a PR's commits when
+      # triggered by the `pull_request` event — the workflow-level `contents: read`
+      # alone 403s with "Resource not accessible by integration" (caught by the real
+      # PR run this workflow was verified against, not assumed).
     steps:
       - uses: actions/checkout@v4
         with:
