@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
 
@@ -43,7 +43,7 @@ jobs:
         run: dotnet build "Pena e Arte.slnx" --configuration Release
         # Autobuild is unreliable on multi-project .slnx solutions — build explicitly instead.
 
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
           # Repo went public 2026-07-26, which makes the Security tab's code-scanning
