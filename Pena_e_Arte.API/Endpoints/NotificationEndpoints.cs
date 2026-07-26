@@ -13,17 +13,17 @@ public static class NotificationEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/notifications")
             .RequireAuthorization();
 
-        group.MapGet("/",            GetNotifications).RequireAuthorization("ClientAndAbove");
+        group.MapGet("/", GetNotifications).RequireAuthorization("ClientAndAbove");
         group.MapGet("/preferences", GetPreferences).RequireAuthorization("OwnerOnly");
         group.MapPut("/preferences", UpdatePreferences).RequireAuthorization("OwnerOnly");
     }
 
     private static async Task<IResult> GetNotifications(
-        Guid?             recipientId,
-        string?           channel,
-        DateTime?         from,
-        DateTime?         to,
-        ISender           mediator,
+        Guid? recipientId,
+        string? channel,
+        DateTime? from,
+        DateTime? to,
+        ISender mediator,
         CancellationToken ct)
     {
         List<NotificationLogResponse> result = await mediator.Send(
@@ -32,7 +32,7 @@ public static class NotificationEndpoints
     }
 
     private static async Task<IResult> GetPreferences(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         NotificationPreferencesResponse result =
@@ -42,8 +42,8 @@ public static class NotificationEndpoints
 
     private static async Task<IResult> UpdatePreferences(
         UpdateNotificationPreferencesRequest request,
-        ISender                              mediator,
-        CancellationToken                    ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         await mediator.Send(new UpdateNotificationPreferencesCommand(request), ct);
         return Results.NoContent();

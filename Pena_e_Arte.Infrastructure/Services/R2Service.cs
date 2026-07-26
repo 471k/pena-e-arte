@@ -14,11 +14,11 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
     {
         GetPreSignedUrlRequest request = new()
         {
-            BucketName  = _opts.BucketName,
-            Key         = objectKey,
-            Verb        = HttpVerb.PUT,
+            BucketName = _opts.BucketName,
+            Key = objectKey,
+            Verb = HttpVerb.PUT,
             ContentType = contentType,
-            Expires     = DateTime.UtcNow.AddMinutes(15)
+            Expires = DateTime.UtcNow.AddMinutes(15)
         };
 
         string uploadUrl = s3.GetPreSignedURL(request);
@@ -29,7 +29,7 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
 
     public Task<string> GeneratePresignedReadUrlAsync(string fileUrl, CancellationToken ct)
     {
-        string prefix    = _opts.PublicUrl.TrimEnd('/') + "/";
+        string prefix = _opts.PublicUrl.TrimEnd('/') + "/";
         string objectKey = fileUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
             ? fileUrl[prefix.Length..]
             : fileUrl;
@@ -37,9 +37,9 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         GetPreSignedUrlRequest request = new()
         {
             BucketName = _opts.BucketName,
-            Key        = objectKey,
-            Verb       = HttpVerb.GET,
-            Expires    = DateTime.UtcNow.AddMinutes(15)
+            Key = objectKey,
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.AddMinutes(15)
         };
 
         return Task.FromResult(s3.GetPreSignedURL(request));
@@ -59,9 +59,9 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         GetPreSignedUrlRequest request = new()
         {
             BucketName = _opts.BucketName,
-            Key        = key,
-            Verb       = HttpVerb.GET,
-            Expires    = DateTime.UtcNow.Add(ttl)
+            Key = key,
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.Add(ttl)
         };
 
         return Task.FromResult(s3.GetPreSignedURL(request));
@@ -75,8 +75,8 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         using MemoryStream stream = new(data);
         PutObjectRequest request = new()
         {
-            BucketName  = _opts.BucketName,
-            Key         = objectKey,
+            BucketName = _opts.BucketName,
+            Key = objectKey,
             InputStream = stream,
             ContentType = contentType,
         };
@@ -88,7 +88,7 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         ListObjectsV2Request request = new()
         {
             BucketName = _opts.BucketName,
-            Prefix     = prefix,
+            Prefix = prefix,
         };
 
         ListObjectsV2Response response = await s3.ListObjectsV2Async(request, ct);

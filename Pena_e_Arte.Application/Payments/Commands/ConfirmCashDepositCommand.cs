@@ -37,15 +37,15 @@ public class ConfirmCashDepositHandler(IAppDbContext db, ICurrentUser currentUse
             if (!ownsAppointment) throw new ForbiddenException();
         }
 
-        payment.Status                = PaymentStatus.Paid;
-        payment.PaidAt                = DateTime.UtcNow;
+        payment.Status = PaymentStatus.Paid;
+        payment.PaidAt = DateTime.UtcNow;
         payment.CashConfirmedByUserId = currentUser.UserId;
-        payment.UpdatedAt             = DateTime.UtcNow;
+        payment.UpdatedAt = DateTime.UtcNow;
 
         if (appt is not null)
         {
             appt.DepositStatus = DepositStatus.Paid;
-            appt.UpdatedAt     = DateTime.UtcNow;
+            appt.UpdatedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

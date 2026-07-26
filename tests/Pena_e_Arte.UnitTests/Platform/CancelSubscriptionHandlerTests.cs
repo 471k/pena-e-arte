@@ -13,7 +13,7 @@ namespace Pena_e_Arte.UnitTests.Platform;
 
 public class CancelSubscriptionHandlerTests
 {
-    private readonly FakeDbContext         _db     = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IStripeBillingService _stripe = Substitute.For<IStripeBillingService>();
 
     private CancelSubscriptionHandler CreateSut() =>
@@ -76,7 +76,7 @@ public class CancelSubscriptionHandlerTests
     [Fact]
     public async Task Handle_ClearsPendingPlanId()
     {
-        Guid planId   = Guid.NewGuid();
+        Guid planId = Guid.NewGuid();
         Guid studioId = await SeedStudio(SubscriptionStatus.Active, stripeId: null, pendingPlanId: planId);
 
         await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
@@ -98,9 +98,9 @@ public class CancelSubscriptionHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id             = Guid.NewGuid(),
-            Name           = "No-Sub Studio",
-            Slug           = "no-sub-cancel",
+            Id = Guid.NewGuid(),
+            Name = "No-Sub Studio",
+            Slug = "no-sub-cancel",
             TrialExpiresAt = DateTime.UtcNow.AddDays(7),
         });
         await _db.SaveChangesAsync();
@@ -125,25 +125,25 @@ public class CancelSubscriptionHandlerTests
 
     private async Task<Guid> SeedStudio(
         SubscriptionStatus status,
-        string?            stripeId,
-        Guid?              pendingPlanId = null)
+        string? stripeId,
+        Guid? pendingPlanId = null)
     {
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Studio
         {
-            Id             = studioId,
-            Name           = $"Studio-{studioId:N}"[..20],
-            Slug           = studioId.ToString("N")[..20],
+            Id = studioId,
+            Name = $"Studio-{studioId:N}"[..20],
+            Slug = studioId.ToString("N")[..20],
             TrialExpiresAt = DateTime.UtcNow.AddDays(7),
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId             = studioId,
-            Status               = status,
-            TrialExpiresAt       = DateTime.UtcNow.AddDays(7),
-            CurrentPeriodEnd     = DateTime.UtcNow.AddDays(30),
+            StudioId = studioId,
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(7),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
             StripeSubscriptionId = stripeId,
-            PendingPlanId        = pendingPlanId,
+            PendingPlanId = pendingPlanId,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

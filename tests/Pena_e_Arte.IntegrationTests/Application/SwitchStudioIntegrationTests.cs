@@ -25,9 +25,9 @@ public class SwitchStudioIntegrationTests(DatabaseFixture fixture)
     private static readonly IConfiguration Config = new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Jwt:SecretKey"]                = "test-secret-key-must-be-at-least-32-chars!",
-            ["Jwt:Issuer"]                   = "test-issuer",
-            ["Jwt:Audience"]                 = "test-audience",
+            ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-chars!",
+            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Audience"] = "test-audience",
             ["Jwt:AccessTokenExpiryMinutes"] = "15",
         })
         .Build();
@@ -57,14 +57,14 @@ public class SwitchStudioIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task SwitchStudio_ToNewStudio_CreatesClientRowAndReissuesTokenForTargetStudio()
     {
-        Guid   homeStudioId   = Guid.NewGuid();
-        Guid   targetStudioId = Guid.NewGuid();
-        string email          = UniqueEmail();
+        Guid homeStudioId = Guid.NewGuid();
+        Guid targetStudioId = Guid.NewGuid();
+        string email = UniqueEmail();
 
         (UserManager<IdentityUser> _, IdentityService identity) = await BuildIdentityAsync();
 
         await using AppDbContext seedDb = fixture.CreateDbContext(Guid.Empty);
-        seedDb.Studios.Add(new Studio { Id = homeStudioId,   Name = "Home",   Slug = $"home-{Guid.NewGuid():N}" });
+        seedDb.Studios.Add(new Studio { Id = homeStudioId, Name = "Home", Slug = $"home-{Guid.NewGuid():N}" });
         seedDb.Studios.Add(new Studio { Id = targetStudioId, Name = "Target", Slug = $"target-{Guid.NewGuid():N}" });
         await seedDb.SaveChangesAsync();
 
@@ -75,7 +75,11 @@ public class SwitchStudioIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext handlerDb = fixture.CreateDbContext(homeStudioId);
         handlerDb.Clients.Add(new Client
         {
-            StudioId = homeStudioId, UserId = userId, FirstName = "Ana", LastName = "Rossi", Email = email,
+            StudioId = homeStudioId,
+            UserId = userId,
+            FirstName = "Ana",
+            LastName = "Rossi",
+            Email = email,
         });
         await handlerDb.SaveChangesAsync();
 
@@ -100,9 +104,9 @@ public class SwitchStudioIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task SwitchStudio_BackToOriginalStudio_IsIdempotentAndRefreshPreservesIt()
     {
-        Guid   studioA = Guid.NewGuid();
-        Guid   studioB = Guid.NewGuid();
-        string email   = UniqueEmail();
+        Guid studioA = Guid.NewGuid();
+        Guid studioB = Guid.NewGuid();
+        string email = UniqueEmail();
 
         (UserManager<IdentityUser> _, IdentityService identity) = await BuildIdentityAsync();
 
@@ -116,7 +120,11 @@ public class SwitchStudioIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext handlerDb = fixture.CreateDbContext(studioA);
         handlerDb.Clients.Add(new Client
         {
-            StudioId = studioA, UserId = userId, FirstName = "Ana", LastName = "Rossi", Email = email,
+            StudioId = studioA,
+            UserId = userId,
+            FirstName = "Ana",
+            LastName = "Rossi",
+            Email = email,
         });
         await handlerDb.SaveChangesAsync();
 
@@ -147,8 +155,8 @@ public class SwitchStudioIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task RegisterStudioLess_ThenSwitchStudio_CreatesClientRowFromRegisteredEmail()
     {
-        Guid   targetStudioId = Guid.NewGuid();
-        string email          = UniqueEmail();
+        Guid targetStudioId = Guid.NewGuid();
+        string email = UniqueEmail();
 
         (UserManager<IdentityUser> _, IdentityService identity) = await BuildIdentityAsync();
 

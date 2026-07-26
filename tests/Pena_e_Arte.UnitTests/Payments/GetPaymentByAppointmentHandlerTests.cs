@@ -11,9 +11,9 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class GetPaymentByAppointmentHandlerTests
 {
-    private readonly FakeDbContext _db          = FakeDbContext.Create();
-    private readonly ICurrentUser  _currentUser = Substitute.For<ICurrentUser>();
-    private readonly Guid          _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public GetPaymentByAppointmentHandlerTests() => _currentUser.Role.Returns("owner");
 
@@ -46,14 +46,14 @@ public class GetPaymentByAppointmentHandlerTests
     public async Task Handle_PaymentWithSplits_ReturnsSplitsInResponse()
     {
         Guid appointmentId = Guid.NewGuid();
-        Guid paymentId     = await SeedPayment(300m, appointmentId);
+        Guid paymentId = await SeedPayment(300m, appointmentId);
 
         _db.SessionSplits.Add(new SessionSplit
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             PaymentId = paymentId,
-            Label     = "Deposit",
-            Amount    = 300m
+            Label = "Deposit",
+            Amount = 300m
         });
         await _db.SaveChangesAsync();
 
@@ -81,21 +81,21 @@ public class GetPaymentByAppointmentHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
         Payment payment = new()
         {
-            StudioId      = _studioId,
+            StudioId = _studioId,
             AppointmentId = appointmentId ?? Guid.NewGuid(),
-            ClientId      = client.Id,
-            Amount        = amount,
-            Status        = PaymentStatus.Pending
+            ClientId = client.Id,
+            Amount = amount,
+            Status = PaymentStatus.Pending
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

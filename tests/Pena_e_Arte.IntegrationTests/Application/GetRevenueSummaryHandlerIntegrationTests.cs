@@ -53,12 +53,16 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
 
         Artist artist = new()
         {
-            StudioId = tenantId, FirstName = "A", LastName = "B",
+            StudioId = tenantId,
+            FirstName = "A",
+            LastName = "B",
             Email = $"{Guid.NewGuid():N}@a.com",
         };
         Client client = new()
         {
-            StudioId = tenantId, FirstName = "C", LastName = "D",
+            StudioId = tenantId,
+            FirstName = "C",
+            LastName = "D",
             Email = $"{Guid.NewGuid():N}@c.com",
         };
         ctx.Artists.Add(artist);
@@ -67,14 +71,14 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
 
         Appointment appt = new()
         {
-            StudioId        = tenantId,
-            ArtistId        = artist.Id,
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(1),
-            EndDate         = DateTime.UtcNow.AddDays(1).AddHours(1),
+            StudioId = tenantId,
+            ArtistId = artist.Id,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(1).AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Completed,
-            DepositStatus   = DepositStatus.Paid,
+            Status = AppointmentStatus.Completed,
+            DepositStatus = DepositStatus.Paid,
         };
         ctx.Appointments.Add(appt);
         await ctx.SaveChangesAsync();
@@ -88,13 +92,13 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         ctx.Payments.Add(new Payment
         {
-            StudioId       = tenantId,
-            AppointmentId  = appointmentId,
-            ClientId       = clientId,
-            Amount         = amount,
-            Status         = refundedAmount is null ? PaymentStatus.Paid : PaymentStatus.Refunded,
-            Method         = ClientPaymentMethod.Card,
-            PaidAt         = DateTime.UtcNow,
+            StudioId = tenantId,
+            AppointmentId = appointmentId,
+            ClientId = clientId,
+            Amount = amount,
+            Status = refundedAmount is null ? PaymentStatus.Paid : PaymentStatus.Refunded,
+            Method = ClientPaymentMethod.Card,
+            PaidAt = DateTime.UtcNow,
             RefundedAmount = refundedAmount,
         });
         await ctx.SaveChangesAsync();

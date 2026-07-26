@@ -19,9 +19,9 @@ public class GetDesignHandlerTests
     {
         Design design = new()
         {
-            ClientId    = Guid.NewGuid(),
-            ArtistId    = Guid.NewGuid(),
-            Title       = "Dragon sleeve",
+            ClientId = Guid.NewGuid(),
+            ArtistId = Guid.NewGuid(),
+            Title = "Dragon sleeve",
             Description = "Full arm piece",
         };
         _db.Designs.Add(design);

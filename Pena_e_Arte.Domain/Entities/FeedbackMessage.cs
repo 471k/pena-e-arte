@@ -2,12 +2,12 @@ namespace Pena_e_Arte.Domain.Entities;
 
 public class FeedbackMessage
 {
-    public Guid     Id               { get; private set; } = Guid.NewGuid();
-    public Guid     FeedbackReportId { get; private set; }
-    public Guid     AuthorUserId     { get; private set; }
-    public string   AuthorRole       { get; private set; } = string.Empty;
-    public string   Body             { get; private set; } = string.Empty;
-    public DateTime CreatedAt        { get; private set; } = DateTime.UtcNow;
+    public Guid Id { get; private set; } = Guid.NewGuid();
+    public Guid FeedbackReportId { get; private set; }
+    public Guid AuthorUserId { get; private set; }
+    public string AuthorRole { get; private set; } = string.Empty;
+    public string Body { get; private set; } = string.Empty;
+    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
 
     private FeedbackMessage() { }
 
@@ -15,8 +15,8 @@ public class FeedbackMessage
         new()
         {
             FeedbackReportId = feedbackReportId,
-            AuthorUserId     = authorUserId,
-            AuthorRole       = authorRole,
-            Body             = body.Trim(),
+            AuthorUserId = authorUserId,
+            AuthorRole = authorRole,
+            Body = body.Trim(),
         };
 }

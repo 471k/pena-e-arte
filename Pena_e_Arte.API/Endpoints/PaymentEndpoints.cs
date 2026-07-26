@@ -49,8 +49,8 @@ public static class PaymentEndpoints
 
     private static async Task<IResult> CreatePaymentIntent(
         CreatePaymentIntentRequest request,
-        ISender                    mediator,
-        CancellationToken          ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         PaymentIntentResponse result = await mediator.Send(new CreatePaymentIntentCommand(request), ct);
         return Results.Created($"/api/v1/payments/{result.PaymentId}", result);
@@ -58,8 +58,8 @@ public static class PaymentEndpoints
 
     private static async Task<IResult> DeclareCashDeposit(
         DeclareCashDepositRequest request,
-        ISender                   mediator,
-        CancellationToken         ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         PaymentResponse result = await mediator.Send(
             new DeclareCashDepositCommand(request.AppointmentId, request.Note), ct);
@@ -68,8 +68,8 @@ public static class PaymentEndpoints
 
     private static async Task<IResult> CreateDepositPayment(
         CreateDepositPaymentRequest request,
-        ISender                     mediator,
-        CancellationToken           ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         PaymentIntentResponse result = await mediator.Send(
             new CreateDepositPaymentCommand(request.AppointmentId), ct);
@@ -77,18 +77,18 @@ public static class PaymentEndpoints
     }
 
     private static async Task<IResult> GetPayments(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct,
-        Guid?             lastSeenId = null,
-        int               pageSize   = 20)
+        Guid? lastSeenId = null,
+        int pageSize = 20)
     {
         List<PaymentResponse> result = await mediator.Send(new GetPaymentsQuery(lastSeenId, pageSize), ct);
         return Results.Ok(result);
     }
 
     private static async Task<IResult> GetPaymentByAppointment(
-        Guid              appointmentId,
-        ISender           mediator,
+        Guid appointmentId,
+        ISender mediator,
         CancellationToken ct)
     {
         PaymentResponse? result = await mediator.Send(new GetPaymentByAppointmentQuery(appointmentId), ct);
@@ -96,18 +96,18 @@ public static class PaymentEndpoints
     }
 
     private static async Task<IResult> UpdateSessionSplits(
-        Guid                       id,
+        Guid id,
         UpdateSessionSplitsRequest request,
-        ISender                    mediator,
-        CancellationToken          ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         PaymentResponse result = await mediator.Send(new UpdateSessionSplitsCommand(id, request), ct);
         return Results.Ok(result);
     }
 
     private static async Task<IResult> CaptureDeposit(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         PaymentResponse result = await mediator.Send(new CaptureDepositCommand(id), ct);
@@ -115,8 +115,8 @@ public static class PaymentEndpoints
     }
 
     private static async Task<IResult> ConfirmCashDeposit(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         PaymentResponse result = await mediator.Send(new ConfirmCashDepositCommand(id), ct);
@@ -124,18 +124,18 @@ public static class PaymentEndpoints
     }
 
     private static async Task<IResult> RefundPayment(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct,
-        decimal?          amount = null)
+        decimal? amount = null)
     {
         PaymentResponse result = await mediator.Send(new RefundPaymentCommand(id, amount), ct);
         return Results.Ok(result);
     }
 
     private static async Task<IResult> GetClientSecret(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         PaymentClientSecretResponse result = await mediator.Send(new GetPaymentClientSecretQuery(id), ct);
@@ -143,8 +143,8 @@ public static class PaymentEndpoints
     }
 
     private static async Task<IResult> DownloadInvoice(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         byte[] pdf = await mediator.Send(new GetPaymentInvoiceQuery(id), ct);

@@ -11,9 +11,9 @@ namespace Pena_e_Arte.Application.ConsentForms.Queries;
 public record GetConsentFormByIdQuery(Guid Id) : IRequest<ConsentFormDetailResponse>;
 
 public class GetConsentFormByIdHandler(
-    IAppDbContext                       db,
-    ICurrentUser                        currentUser,
-    ILogger<GetConsentFormByIdHandler>  logger)
+    IAppDbContext db,
+    ICurrentUser currentUser,
+    ILogger<GetConsentFormByIdHandler> logger)
     : IRequestHandler<GetConsentFormByIdQuery, ConsentFormDetailResponse>
 {
     public async Task<ConsentFormDetailResponse> Handle(
@@ -47,17 +47,17 @@ public class GetConsentFormByIdHandler(
         Domain.Entities.Artist? artist = form.Appointment.Artist;
 
         return new ConsentFormDetailResponse(
-            Id:              form.Id,
-            StudioId:        form.StudioId,
-            ClientId:        form.ClientId,
-            AppointmentId:   form.AppointmentId,
-            FileUrl:         form.FileUrl,
-            SignatureData:   form.SignatureData,
-            SignedAt:        form.SignedAt,
-            CreatedAt:       form.CreatedAt,
-            ClientName:      $"{form.Client.FirstName} {form.Client.LastName}".Trim(),
+            Id: form.Id,
+            StudioId: form.StudioId,
+            ClientId: form.ClientId,
+            AppointmentId: form.AppointmentId,
+            FileUrl: form.FileUrl,
+            SignatureData: form.SignatureData,
+            SignedAt: form.SignedAt,
+            CreatedAt: form.CreatedAt,
+            ClientName: $"{form.Client.FirstName} {form.Client.LastName}".Trim(),
             AppointmentDate: form.Appointment.Date,
-            ArtistName:      artist is null ? null : $"{artist.FirstName} {artist.LastName}".Trim(),
-            ArtistId:        artist?.Id);
+            ArtistName: artist is null ? null : $"{artist.FirstName} {artist.LastName}".Trim(),
+            ArtistId: artist?.Id);
     }
 }

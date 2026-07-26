@@ -11,7 +11,7 @@ public class SubmitIntakeFormValidatorTests
 {
     private const string ValidUrl = "https://cdn.example.com/intake.pdf";
 
-    private readonly IR2Service               _r2        = Substitute.For<IR2Service>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
     private readonly SubmitIntakeFormValidator _validator;
 
     public SubmitIntakeFormValidatorTests()

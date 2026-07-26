@@ -10,11 +10,11 @@ namespace Pena_e_Arte.UnitTests.Help;
 
 public class LogHelpSearchHandlerTests
 {
-    private readonly FakeDbContext  _db     = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser   _user   = Substitute.For<ICurrentUser>();
-    private readonly Guid           _studioId = Guid.NewGuid();
-    private readonly Guid           _userId   = Guid.NewGuid();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public LogHelpSearchHandlerTests()
     {

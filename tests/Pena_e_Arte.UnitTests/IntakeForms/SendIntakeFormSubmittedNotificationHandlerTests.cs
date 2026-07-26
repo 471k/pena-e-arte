@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -13,11 +13,11 @@ namespace Pena_e_Arte.UnitTests.IntakeForms;
 
 public class SendIntakeFormSubmittedNotificationHandlerTests
 {
-    private readonly FakeDbContext        _db            = FakeDbContext.Create();
-    private readonly IEmailRenderer       _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
-    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService _prefs = new AlwaysEnabledNotificationPreferences();
 
     public SendIntakeFormSubmittedNotificationHandlerTests() =>
         _emailRenderer
@@ -35,10 +35,10 @@ public class SendIntakeFormSubmittedNotificationHandlerTests
 
         Client client = new()
         {
-            StudioId  = studio.Id,
+            StudioId = studio.Id,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = "ana@test.com",
+            LastName = "Silva",
+            Email = "ana@test.com",
         };
         _db.Clients.Add(client);
 
@@ -47,14 +47,14 @@ public class SendIntakeFormSubmittedNotificationHandlerTests
         {
             Appointment appointment = new()
             {
-                StudioId        = studio.Id,
-                ArtistId        = Guid.NewGuid(),
-                ClientId        = client.Id,
-                Date            = DateTime.UtcNow.AddDays(3),
-                EndDate         = DateTime.UtcNow.AddDays(3).AddHours(2),
+                StudioId = studio.Id,
+                ArtistId = Guid.NewGuid(),
+                ClientId = client.Id,
+                Date = DateTime.UtcNow.AddDays(3),
+                EndDate = DateTime.UtcNow.AddDays(3).AddHours(2),
                 DurationMinutes = 120,
-                Status          = AppointmentStatus.Pending,
-                DepositStatus   = DepositStatus.Pending,
+                Status = AppointmentStatus.Pending,
+                DepositStatus = DepositStatus.Pending,
             };
             _db.Appointments.Add(appointment);
             appointmentId = appointment.Id;
@@ -62,12 +62,12 @@ public class SendIntakeFormSubmittedNotificationHandlerTests
 
         IntakeForm form = new()
         {
-            StudioId      = studio.Id,
-            ClientId      = client.Id,
-            Client        = client,
+            StudioId = studio.Id,
+            ClientId = client.Id,
+            Client = client,
             AppointmentId = appointmentId,
-            FormData      = "{}",
-            SubmittedAt   = DateTime.UtcNow,
+            FormData = "{}",
+            SubmittedAt = DateTime.UtcNow,
         };
         _db.IntakeForms.Add(form);
         await _db.SaveChangesAsync();

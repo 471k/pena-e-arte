@@ -28,7 +28,7 @@ public static class ClientAccountExtensions
 
         if (client is not null)
         {
-            client.UserId    = currentUser.UserId; // heal the missing link
+            client.UserId = currentUser.UserId; // heal the missing link
             client.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
         }

@@ -36,12 +36,12 @@ public class DataSeederPlanReconciliationTests
     {
         _db.Plans.Add(new Plan
         {
-            Id                    = DataSeeder.StarterPlanId,
-            Name                  = "Starter",
+            Id = DataSeeder.StarterPlanId,
+            Name = "Starter",
             YearlyDiscountPercent = 17,
-            MaxArtists            = null,
+            MaxArtists = null,
             MaxAppointmentsPerMonth = null,
-            MaxStorageGb          = null,
+            MaxStorageGb = null,
         });
         await _db.SaveChangesAsync();
 
@@ -61,9 +61,9 @@ public class DataSeederPlanReconciliationTests
         _db.Plans.Add(new Plan { Id = DataSeeder.StarterPlanId, Name = "Starter" });
         _db.PlanPrices.Add(new PlanPrice
         {
-            PlanId   = DataSeeder.StarterPlanId,
+            PlanId = DataSeeder.StarterPlanId,
             Interval = BillingInterval.Monthly,
-            Price    = 19m, // stale/drifted price
+            Price = 19m, // stale/drifted price
         });
         await _db.SaveChangesAsync();
 
@@ -78,9 +78,9 @@ public class DataSeederPlanReconciliationTests
         _db.Plans.Add(new Plan { Id = DataSeeder.StarterPlanId, Name = "Starter" });
         _db.PlanPrices.Add(new PlanPrice
         {
-            PlanId        = DataSeeder.StarterPlanId,
-            Interval      = BillingInterval.Monthly,
-            Price         = 29m,
+            PlanId = DataSeeder.StarterPlanId,
+            Interval = BillingInterval.Monthly,
+            Price = 29m,
             StripePriceId = "price_real_stripe_id",
         });
         await _db.SaveChangesAsync();
@@ -96,8 +96,8 @@ public class DataSeederPlanReconciliationTests
     {
         _db.Plans.Add(new Plan
         {
-            Id                    = DataSeeder.ProPlanId,
-            Name                  = "Pro",
+            Id = DataSeeder.ProPlanId,
+            Name = "Pro",
             YearlyDiscountPercent = 17,
         });
         await _db.SaveChangesAsync();

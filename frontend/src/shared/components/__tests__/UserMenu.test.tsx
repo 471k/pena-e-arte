@@ -11,13 +11,13 @@ function makeStore(role: "issuer" | "owner" = "issuer") {
   return configureStore({
     reducer: { auth: authReducer },
     preloadedState: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: {
         user: { id: "u1", email: "test@test.com", name: "Gabriel" },
         token: "tok",
         tenantId: null,
         role,
         pendingReferralCode: null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
     },
   });

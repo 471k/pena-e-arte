@@ -11,7 +11,7 @@ namespace Pena_e_Arte.UnitTests.Auth;
 public class OAuthLoginCommandTests
 {
     private readonly IOAuthTokenValidator _validator = Substitute.For<IOAuthTokenValidator>();
-    private readonly IIdentityService     _identity  = Substitute.For<IIdentityService>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
 
     private OAuthLoginHandler CreateSut() => new(_validator, _identity);
 

@@ -10,14 +10,11 @@ on:
 
 permissions:
   contents: read
-  # security-events: write is unused while upload: never (see below) — kept so
-  # the single-line revert is all that's needed once GitHub Advanced Security
-  # is enabled for this private repo.
   security-events: write
   # actions: read is required by codeql-action/analyze's own internal call to
   # GET .../actions/runs/{run_id} (used for file-coverage/telemetry bookkeeping,
-  # unrelated to the security-events upload above) — without it that call 403s
-  # and fails the whole analyze step even though the CodeQL scan itself succeeded.
+  # unrelated to the security-events upload) — without it that call 403s and
+  # fails the whole analyze step even though the CodeQL scan itself succeeded.
   actions: read
 
 jobs:
@@ -49,13 +46,7 @@ jobs:
       - uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
-          # This repo is private without GitHub Advanced Security, so the Security
-          # tab's code-scanning API is unavailable here — confirmed via
-          # `GET /repos/471k/pena-e-arte` returning "Secret scanning is not
-          # available for this repository." Uploading results 403s and fails the
-          # job even though the analysis itself succeeds. `upload: never` still
-          # runs the full CodeQL analysis (and fails the step on a tool crash),
-          # it just skips the Security-tab upload that would 403 anyway.
-          # TODO: remove this once GitHub Advanced Security is enabled for this
-          # repo (or it goes public), then this gets full Security-tab integration.
-          upload: never
+          # Repo went public 2026-07-26, which makes the Security tab's code-scanning
+          # upload available for free (it previously 403'd here — GHAS is required for
+          # code scanning on a private repo, and this repo wasn't on a paid plan).
+          # Results now upload normally; no upload: never override needed.

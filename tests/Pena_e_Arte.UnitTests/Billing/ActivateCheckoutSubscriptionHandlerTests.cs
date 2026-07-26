@@ -13,10 +13,10 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class ActivateCheckoutSubscriptionHandlerTests
 {
-    private readonly FakeDbContext         _db       = FakeDbContext.Create();
-    private readonly IStripeBillingService _billing  = Substitute.For<IStripeBillingService>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
     private readonly IReferralRewardService _rewardService = Substitute.For<IReferralRewardService>();
-    private readonly Guid                  _studioId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private ActivateCheckoutSubscriptionHandler CreateSut() =>
         new(_db, _billing, _rewardService, NullLogger<ActivateCheckoutSubscriptionHandler>.Instance);
@@ -98,7 +98,11 @@ public class ActivateCheckoutSubscriptionHandlerTests
         Guid codeId = Guid.NewGuid();
         _db.ReferralCodes.Add(new ReferralCode
         {
-            Id = codeId, StudioId = Guid.NewGuid(), Code = "REF12345", IsActive = true, IsSingleUse = true,
+            Id = codeId,
+            StudioId = Guid.NewGuid(),
+            Code = "REF12345",
+            IsActive = true,
+            IsSingleUse = true,
         });
         await _db.SaveChangesAsync();
         await SeedStudioSubscription(SubscriptionStatus.Trialing, pendingReferralCodeId: codeId);
@@ -120,7 +124,11 @@ public class ActivateCheckoutSubscriptionHandlerTests
         Guid codeId = Guid.NewGuid();
         _db.ReferralCodes.Add(new ReferralCode
         {
-            Id = codeId, StudioId = Guid.NewGuid(), Code = "REF99999", IsActive = true, IsSingleUse = true,
+            Id = codeId,
+            StudioId = Guid.NewGuid(),
+            Code = "REF99999",
+            IsActive = true,
+            IsSingleUse = true,
         });
         await _db.SaveChangesAsync();
         await SeedStudioSubscription(SubscriptionStatus.Trialing, pendingReferralCodeId: codeId);
@@ -141,8 +149,8 @@ public class ActivateCheckoutSubscriptionHandlerTests
         Plan plan = new() { Name = "Growth" };
         plan.Prices.Add(new PlanPrice
         {
-            Interval      = BillingInterval.Monthly,
-            Price         = 59m,
+            Interval = BillingInterval.Monthly,
+            Price = 59m,
             StripePriceId = priceMonthly,
         });
         _db.Plans.Add(plan);
@@ -155,20 +163,20 @@ public class ActivateCheckoutSubscriptionHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id                    = _studioId,
-            Name                  = "Studio",
-            Slug                  = "studio",
-            OwnerEmail            = "owner@test.com",
+            Id = _studioId,
+            Name = "Studio",
+            Slug = "studio",
+            OwnerEmail = "owner@test.com",
             PendingReferralCodeId = pendingReferralCodeId,
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId             = _studioId,
-            Status               = status,
+            StudioId = _studioId,
+            Status = status,
             StripeSubscriptionId = stripeSubId,
-            TrialExpiresAt       = DateTime.UtcNow.AddDays(7),
-            CurrentPeriodEnd     = DateTime.UtcNow.AddDays(7),
-            GracePeriodEnd       = DateTime.UtcNow.AddDays(14),
+            TrialExpiresAt = DateTime.UtcNow.AddDays(7),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(7),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(14),
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

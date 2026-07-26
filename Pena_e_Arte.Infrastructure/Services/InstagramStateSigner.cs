@@ -28,7 +28,7 @@ public sealed class InstagramStateSigner(IOptions<InstagramOptions> options) : I
         int dot = state.IndexOf('.');
         if (dot < 0) return false;
 
-        string payload     = state[..dot];
+        string payload = state[..dot];
         string providedSig = state[(dot + 1)..];
 
         if (!Guid.TryParseExact(payload, "N", out Guid parsed)) return false;

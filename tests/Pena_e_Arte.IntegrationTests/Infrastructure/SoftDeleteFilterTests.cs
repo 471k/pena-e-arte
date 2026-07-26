@@ -60,10 +60,10 @@ public class SoftDeleteFilterTests(DatabaseFixture fixture)
 
         Design design = new()
         {
-            StudioId  = tenantId,
-            ClientId  = client.Id,
-            ArtistId  = artist.Id,
-            Title     = "Deleted Design",
+            StudioId = tenantId,
+            ClientId = client.Id,
+            ArtistId = artist.Id,
+            Title = "Deleted Design",
             DeletedAt = DateTime.UtcNow
         };
         seedCtx.Designs.Add(design);
@@ -83,10 +83,10 @@ public class SoftDeleteFilterTests(DatabaseFixture fixture)
 
         Artist artist = new()
         {
-            StudioId  = tenantId,
+            StudioId = tenantId,
             FirstName = "Deleted",
-            LastName  = "Artist",
-            Email     = $"{Guid.NewGuid()}@artist.com",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@artist.com",
             DeletedAt = DateTime.UtcNow
         };
         seedCtx.Artists.Add(artist);
@@ -104,10 +104,10 @@ public class SoftDeleteFilterTests(DatabaseFixture fixture)
 
         Client client = new()
         {
-            StudioId  = tenantId,
+            StudioId = tenantId,
             FirstName = "Soft",
-            LastName  = "Delete",
-            Email     = $"{Guid.NewGuid()}@example.com",
+            LastName = "Delete",
+            Email = $"{Guid.NewGuid()}@example.com",
             DeletedAt = softDelete ? DateTime.UtcNow : null
         };
         ctx.Clients.Add(client);

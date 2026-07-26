@@ -64,11 +64,11 @@ public class PlatformReferralIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         Studio studio = new()
         {
-            Name           = $"Ref Studio {Guid.NewGuid():N}"[..25],
-            Slug           = Guid.NewGuid().ToString("N")[..20],
-            City           = "Lisbon",
-            OwnerEmail     = $"{Guid.NewGuid():N}@test.com",
-            IsActive       = true,
+            Name = $"Ref Studio {Guid.NewGuid():N}"[..25],
+            Slug = Guid.NewGuid().ToString("N")[..20],
+            City = "Lisbon",
+            OwnerEmail = $"{Guid.NewGuid():N}@test.com",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         };
         db.Studios.Add(studio);
@@ -77,7 +77,7 @@ public class PlatformReferralIntegrationTests(DatabaseFixture fixture)
         db.ReferralCodes.Add(new ReferralCode
         {
             StudioId = studio.Id,
-            Code     = code,
+            Code = code,
             IsActive = true,
         });
         await db.SaveChangesAsync();
@@ -89,11 +89,11 @@ public class PlatformReferralIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         Studio studio = new()
         {
-            Name           = $"Ref Studio {Guid.NewGuid():N}"[..25],
-            Slug           = Guid.NewGuid().ToString("N")[..20],
-            City           = "Lisbon",
-            OwnerEmail     = $"{Guid.NewGuid():N}@test.com",
-            IsActive       = true,
+            Name = $"Ref Studio {Guid.NewGuid():N}"[..25],
+            Slug = Guid.NewGuid().ToString("N")[..20],
+            City = "Lisbon",
+            OwnerEmail = $"{Guid.NewGuid():N}@test.com",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         };
         db.Studios.Add(studio);
@@ -102,7 +102,7 @@ public class PlatformReferralIntegrationTests(DatabaseFixture fixture)
         ReferralCode referralCode = new()
         {
             StudioId = studio.Id,
-            Code     = code,
+            Code = code,
             IsActive = true,
         };
         db.ReferralCodes.Add(referralCode);
