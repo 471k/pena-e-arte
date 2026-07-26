@@ -152,6 +152,15 @@ jobs:
       - name: Unit / component tests
         working-directory: frontend
         run: pnpm test --coverage
+        env:
+          # PaymentMethodSelector reads import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+          # directly and falls back to a "no key configured" UI path when it's unset,
+          # which 3 of its tests don't expect. Locally this is supplied by a
+          # gitignored frontend/.env.local that doesn't exist in CI — reproduced the
+          # failure locally by removing it, confirmed this placeholder (same one
+          # docker-build already uses) fixes it. Caught by this pipeline's first
+          # real run, not assumed.
+          VITE_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
         # @vitest/coverage-v8 added as a devDependency for this — vitest.config had no
         # coverage provider configured. This is the one new-package exception explicitly
         # sanctioned for coverage visibility.
