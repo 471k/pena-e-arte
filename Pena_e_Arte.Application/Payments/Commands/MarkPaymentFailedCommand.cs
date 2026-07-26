@@ -19,7 +19,7 @@ public class MarkPaymentFailedHandler(IAppDbContext db)
 
         if (payment is null || payment.Status == PaymentStatus.Failed) return;
 
-        payment.Status    = PaymentStatus.Failed;
+        payment.Status = PaymentStatus.Failed;
         payment.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

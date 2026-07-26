@@ -20,7 +20,7 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class CashPaymentIntegrationTests
 {
     private readonly DatabaseFixture _fixture;
-    private readonly ISender         _sender = Substitute.For<ISender>();
+    private readonly ISender _sender = Substitute.For<ISender>();
 
     public CashPaymentIntegrationTests(DatabaseFixture fixture) => _fixture = fixture;
 
@@ -67,9 +67,9 @@ public class CashPaymentIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (_, Guid clientId) = await SeedArtistAndClient(tenantId);
         Guid appointmentId = await SeedAppointment(tenantId, clientId);
-        Guid paymentId     = await SeedCashPendingPayment(tenantId, appointmentId, clientId);
+        Guid paymentId = await SeedCashPendingPayment(tenantId, appointmentId, clientId);
 
-        Guid confirmerId  = Guid.NewGuid();
+        Guid confirmerId = Guid.NewGuid();
         PaymentResponse result = await RunConfirmHandler(tenantId, paymentId, confirmerId);
 
         result.Status.Should().Be(PaymentStatus.Paid.ToString());
@@ -90,7 +90,7 @@ public class CashPaymentIntegrationTests
         string intentId = $"pi_{Guid.NewGuid():N}";
         (_, Guid clientId) = await SeedArtistAndClient(tenantId);
         Guid appointmentId = await SeedAppointment(tenantId, clientId);
-        Guid paymentId     = await SeedCardPendingPayment(tenantId, appointmentId, clientId, intentId);
+        Guid paymentId = await SeedCardPendingPayment(tenantId, appointmentId, clientId, intentId);
 
         Func<Task> act = () => RunConfirmHandler(tenantId, paymentId, Guid.NewGuid());
 
@@ -104,7 +104,7 @@ public class CashPaymentIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (_, Guid clientId) = await SeedArtistAndClient(tenantId);
         Guid appointmentId = await SeedAppointment(tenantId, clientId);
-        Guid paymentId     = await SeedCashPendingPayment(
+        Guid paymentId = await SeedCashPendingPayment(
             tenantId, appointmentId, clientId, status: PaymentStatus.Paid);
 
         Func<Task> act = () => RunConfirmHandler(tenantId, paymentId, Guid.NewGuid());
@@ -127,15 +127,15 @@ public class CashPaymentIntegrationTests
 
         Appointment appt = new()
         {
-            StudioId        = tenantId,
-            ArtistId        = artist.Id,
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(5),
-            EndDate         = DateTime.UtcNow.AddDays(5).AddMinutes(90),
+            StudioId = tenantId,
+            ArtistId = artist.Id,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(90),
             DurationMinutes = 90,
-            DepositAmount   = 50m,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
+            DepositAmount = 50m,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
         };
         ctx.Appointments.Add(appt);
         await ctx.SaveChangesAsync();
@@ -159,7 +159,7 @@ public class CashPaymentIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (_, Guid clientId) = await SeedArtistAndClient(tenantId);
         Guid appointmentId = await SeedAppointment(tenantId, clientId);
-        Guid paymentId     = await SeedCashPendingPayment(tenantId, appointmentId, clientId);
+        Guid paymentId = await SeedCashPendingPayment(tenantId, appointmentId, clientId);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         ICurrentUser currentUser = Substitute.For<ICurrentUser>();
@@ -178,7 +178,7 @@ public class CashPaymentIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (_, Guid clientId) = await SeedArtistAndClient(tenantId);
         Guid appointmentId = await SeedAppointment(tenantId, clientId);
-        Guid paymentId     = await SeedCashPendingPayment(
+        Guid paymentId = await SeedCashPendingPayment(
             tenantId, appointmentId, clientId, status: PaymentStatus.Failed);
 
         PaymentResponse result = await RunDeclareHandler(tenantId, appointmentId);
@@ -193,7 +193,7 @@ public class CashPaymentIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (_, Guid clientId) = await SeedArtistAndClient(tenantId);
         Guid appointmentId = await SeedAppointment(tenantId, clientId);
-        Guid paymentId     = await SeedCardPendingPayment(tenantId, appointmentId, clientId, $"pi_{Guid.NewGuid():N}");
+        Guid paymentId = await SeedCardPendingPayment(tenantId, appointmentId, clientId, $"pi_{Guid.NewGuid():N}");
 
         PaymentResponse result = await RunDeclareHandler(tenantId, appointmentId);
 
@@ -209,7 +209,7 @@ public class CashPaymentIntegrationTests
     public async Task ActivateSubscriptionManually_NoExistingSubscription_CreatesActiveSubscription()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid planId   = await SeedPlan();
+        Guid planId = await SeedPlan();
         await SeedStudio(tenantId);
 
         SubscriptionResponse result = await RunActivateHandler(tenantId, planId);
@@ -222,7 +222,7 @@ public class CashPaymentIntegrationTests
     public async Task ActivateSubscriptionManually_GracePeriodSubscription_SetsToActive()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid planId   = await SeedPlan();
+        Guid planId = await SeedPlan();
         await SeedStudio(tenantId);
         await SeedSubscription(tenantId, planId, SubscriptionStatus.GracePeriod);
 
@@ -235,7 +235,7 @@ public class CashPaymentIntegrationTests
     public async Task ActivateSubscriptionManually_GracePeriodSubscription_ClearsTrialExpiresAt()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid planId   = await SeedPlan();
+        Guid planId = await SeedPlan();
         await SeedStudio(tenantId);
         await SeedSubscription(tenantId, planId, SubscriptionStatus.GracePeriod);
 
@@ -248,7 +248,7 @@ public class CashPaymentIntegrationTests
     public async Task ActivateSubscriptionManually_NoExistingSubscription_LeavesTrialExpiresAtNull()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid planId   = await SeedPlan();
+        Guid planId = await SeedPlan();
         await SeedStudio(tenantId);
 
         SubscriptionResponse result = await RunActivateHandler(tenantId, planId);
@@ -289,15 +289,15 @@ public class CashPaymentIntegrationTests
 
         Appointment appt = new()
         {
-            StudioId        = tenantId,
-            ArtistId        = artist.Id,
-            ClientId        = clientId,
-            Date            = DateTime.UtcNow.AddDays(5),
-            EndDate         = DateTime.UtcNow.AddDays(5).AddMinutes(90),
+            StudioId = tenantId,
+            ArtistId = artist.Id,
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(90),
             DurationMinutes = 90,
-            DepositAmount   = depositAmount,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
+            DepositAmount = depositAmount,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
         };
         ctx.Appointments.Add(appt);
         await ctx.SaveChangesAsync();
@@ -311,12 +311,12 @@ public class CashPaymentIntegrationTests
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
         Payment payment = new()
         {
-            StudioId      = tenantId,
+            StudioId = tenantId,
             AppointmentId = appointmentId,
-            ClientId      = clientId,
-            Amount        = 50m,
-            Method        = ClientPaymentMethod.Cash,
-            Status        = status,
+            ClientId = clientId,
+            Amount = 50m,
+            Method = ClientPaymentMethod.Cash,
+            Status = status,
         };
         ctx.Payments.Add(payment);
         await ctx.SaveChangesAsync();
@@ -329,12 +329,12 @@ public class CashPaymentIntegrationTests
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
         Payment payment = new()
         {
-            StudioId              = tenantId,
-            AppointmentId         = appointmentId,
-            ClientId              = clientId,
-            Amount                = 50m,
-            Method                = ClientPaymentMethod.Card,
-            Status                = PaymentStatus.Pending,
+            StudioId = tenantId,
+            AppointmentId = appointmentId,
+            ClientId = clientId,
+            Amount = 50m,
+            Method = ClientPaymentMethod.Card,
+            Status = PaymentStatus.Pending,
             StripePaymentIntentId = intentId,
         };
         ctx.Payments.Add(payment);
@@ -348,7 +348,7 @@ public class CashPaymentIntegrationTests
         if (await ctx.Studios.AnyAsync(s => s.Id == tenantId)) return;
         ctx.Studios.Add(new Studio
         {
-            Id   = tenantId,
+            Id = tenantId,
             Name = "Cash Test Studio",
             Slug = tenantId.ToString("N")[..8],
         });
@@ -371,11 +371,11 @@ public class CashPaymentIntegrationTests
         await using AppDbContext ctx = _fixture.CreateDbContext(Guid.Empty);
         Subscription sub = new()
         {
-            StudioId         = tenantId,
-            PlanId           = planId,
-            Status           = status,
+            StudioId = tenantId,
+            PlanId = planId,
+            Status = status,
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(-1),
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(-10),
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-10),
         };
         ctx.Subscriptions.Add(sub);
         await ctx.SaveChangesAsync();
@@ -398,8 +398,8 @@ public class CashPaymentIntegrationTests
     private async Task<PaymentResponse> RunConfirmHandler(
         Guid tenantId, Guid paymentId, Guid confirmerUserId)
     {
-        await using AppDbContext db  = _fixture.CreateDbContext(tenantId);
-        ICurrentUser currentUser     = Substitute.For<ICurrentUser>();
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        ICurrentUser currentUser = Substitute.For<ICurrentUser>();
         currentUser.UserId.Returns(confirmerUserId);
         ConfirmCashDepositHandler handler = new(db, currentUser, _sender);
         return await handler.Handle(new ConfirmCashDepositCommand(paymentId), default);

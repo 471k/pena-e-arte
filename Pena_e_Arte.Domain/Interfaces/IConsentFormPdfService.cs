@@ -1,13 +1,13 @@
 namespace Pena_e_Arte.Domain.Interfaces;
 
 public record ConsentFormPdfData(
-    string   StudioName,
-    string   ClientFullName,
-    string   ArtistFullName,
+    string StudioName,
+    string ClientFullName,
+    string ArtistFullName,
     DateTime AppointmentDate,
-    string   SignatureText,
+    string SignatureText,
     DateTime SignedAt,
-    bool     ShowPlatformBranding = true);
+    bool ShowPlatformBranding = true);
 
 public interface IConsentFormPdfService
 {

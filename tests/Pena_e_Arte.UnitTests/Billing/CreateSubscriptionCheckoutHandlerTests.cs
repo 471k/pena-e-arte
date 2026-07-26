@@ -14,11 +14,11 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class CreateSubscriptionCheckoutHandlerTests
 {
-    private readonly FakeDbContext          _db        = FakeDbContext.Create();
-    private readonly ICurrentTenant         _tenant    = Substitute.For<ICurrentTenant>();
-    private readonly IStripeBillingService  _billing   = Substitute.For<IStripeBillingService>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
     private readonly IStripeDiscountService _discounts = Substitute.For<IStripeDiscountService>();
-    private readonly Guid                   _studioId  = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateSubscriptionCheckoutHandlerTests()
     {
@@ -111,7 +111,7 @@ public class CreateSubscriptionCheckoutHandlerTests
     [Fact]
     public async Task Handle_PendingValidReferral_AttachesCouponToCheckout()
     {
-        Plan plan   = await SeedPlan("price_growth");
+        Plan plan = await SeedPlan("price_growth");
         Guid codeId = Guid.NewGuid();
         _db.ReferralCodes.Add(new ReferralCode { Id = codeId, StudioId = Guid.NewGuid(), Code = "REF12345", IsActive = true });
         await _db.SaveChangesAsync();
@@ -131,8 +131,8 @@ public class CreateSubscriptionCheckoutHandlerTests
         Plan plan = new() { Name = "Growth" };
         plan.Prices.Add(new PlanPrice
         {
-            Interval      = BillingInterval.Monthly,
-            Price         = 59m,
+            Interval = BillingInterval.Monthly,
+            Price = 59m,
             StripePriceId = stripePriceMonthly,
         });
         _db.Plans.Add(plan);
@@ -146,21 +146,21 @@ public class CreateSubscriptionCheckoutHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id                    = _studioId,
-            Name                  = "Studio",
-            Slug                  = "studio",
-            OwnerEmail            = "owner@test.com",
-            StripeCustomerId      = stripeCustomerId,
+            Id = _studioId,
+            Name = "Studio",
+            Slug = "studio",
+            OwnerEmail = "owner@test.com",
+            StripeCustomerId = stripeCustomerId,
             PendingReferralCodeId = pendingReferralCodeId,
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId             = _studioId,
-            Status               = status,
+            StudioId = _studioId,
+            Status = status,
             StripeSubscriptionId = stripeSubId,
-            TrialExpiresAt       = DateTime.UtcNow.AddDays(7),
-            CurrentPeriodEnd     = currentPeriodEnd ?? DateTime.UtcNow.AddDays(7),
-            GracePeriodEnd       = DateTime.UtcNow.AddDays(14),
+            TrialExpiresAt = DateTime.UtcNow.AddDays(7),
+            CurrentPeriodEnd = currentPeriodEnd ?? DateTime.UtcNow.AddDays(7),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(14),
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

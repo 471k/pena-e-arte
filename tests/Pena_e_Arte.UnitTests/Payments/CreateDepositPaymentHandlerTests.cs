@@ -12,12 +12,12 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class CreateDepositPaymentHandlerTests
 {
-    private readonly FakeDbContext         _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant        _tenant      = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser          _currentUser = Substitute.For<ICurrentUser>();
-    private readonly IStripePaymentService _stripe      = Substitute.For<IStripePaymentService>();
-    private readonly Guid                  _studioId    = Guid.NewGuid();
-    private readonly Guid                  _clientUserId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _clientUserId = Guid.NewGuid();
 
     public CreateDepositPaymentHandlerTests()
     {
@@ -33,7 +33,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_OwnAppointment_CreatesPendingCardPayment()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId, depositAmount: 80m);
 
         PaymentIntentResponse result = await CreateSut()
@@ -50,7 +50,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_ExistingPendingCardPayment_StillAwaitingClient_ResumesExistingSecret()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
             intentId: "pi_old", clientSecret: "secret_old");
@@ -68,7 +68,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_ExistingCardIntentCancelledAtStripe_MintsFreshIntent()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
             intentId: "pi_dead", clientSecret: "secret_dead");
@@ -86,7 +86,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_IntentAuthorizedButWebhookMissed_HealsToCaptured()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
             intentId: "pi_held", clientSecret: "secret_held");
@@ -103,7 +103,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_IntentSucceededButWebhookMissed_HealsToPaidAndUpdatesDeposit()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
             intentId: "pi_done", clientSecret: "secret_done");
@@ -121,7 +121,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_ExistingCashPendingPayment_ConvertsToCard()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Cash, PaymentStatus.CashPending,
             intentId: null, clientSecret: null, cashNote: "will pay at studio");
@@ -164,7 +164,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_NoDepositRequired_ThrowsBusinessRuleViolation()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId, depositAmount: 0m);
 
         Func<Task> act = () => CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
@@ -176,7 +176,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_ExistingFailedPayment_ReusesRowWithFreshIntent()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Failed,
             intentId: "pi_failed", clientSecret: "secret_failed");
@@ -193,7 +193,7 @@ public class CreateDepositPaymentHandlerTests
     [Fact]
     public async Task Handle_PaymentAlreadyAuthorized_ThrowsBusinessRuleViolation()
     {
-        Guid clientId      = await SeedClient(_clientUserId);
+        Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Captured,
             intentId: "pi_held", clientSecret: "secret_held");
@@ -208,11 +208,11 @@ public class CreateDepositPaymentHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -224,15 +224,15 @@ public class CreateDepositPaymentHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = clientId,
-            Date            = DateTime.UtcNow.AddDays(5),
-            EndDate         = DateTime.UtcNow.AddDays(5).AddMinutes(90),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(90),
             DurationMinutes = 90,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
-            DepositAmount   = depositAmount,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
+            DepositAmount = depositAmount,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -246,15 +246,15 @@ public class CreateDepositPaymentHandlerTests
     {
         Payment payment = new()
         {
-            StudioId              = _studioId,
-            AppointmentId         = appointmentId,
-            ClientId              = _clientUserId,
-            Amount                = 50m,
-            Method                = method,
-            Status                = status,
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            ClientId = _clientUserId,
+            Amount = 50m,
+            Method = method,
+            Status = status,
             StripePaymentIntentId = intentId,
-            ClientSecret          = clientSecret,
-            CashNote              = cashNote,
+            ClientSecret = clientSecret,
+            CashNote = cashNote,
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

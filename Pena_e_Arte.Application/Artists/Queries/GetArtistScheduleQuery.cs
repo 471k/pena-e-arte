@@ -7,19 +7,19 @@ namespace Pena_e_Arte.Application.Artists.Queries;
 
 public record ArtistScheduleEntryResponse(
     DayOfWeek DayOfWeek,
-    TimeSpan  StartTime,
-    TimeSpan  EndTime,
-    bool      IsAvailable);
+    TimeSpan StartTime,
+    TimeSpan EndTime,
+    bool IsAvailable);
 
 public record ArtistTimeOffResponse(
-    Guid     Id,
+    Guid Id,
     DateTime StartDate,
     DateTime EndDate,
-    string   Reason);
+    string Reason);
 
 public record ArtistAvailabilityResponse(
     IReadOnlyList<ArtistScheduleEntryResponse> Schedule,
-    IReadOnlyList<ArtistTimeOffResponse>       TimeOff);
+    IReadOnlyList<ArtistTimeOffResponse> TimeOff);
 
 public record GetArtistScheduleQuery(Guid ArtistId) : IRequest<ArtistAvailabilityResponse>;
 

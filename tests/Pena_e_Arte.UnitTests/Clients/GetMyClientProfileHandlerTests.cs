@@ -12,10 +12,10 @@ namespace Pena_e_Arte.UnitTests.Clients;
 
 public class GetMyClientProfileHandlerTests
 {
-    private readonly FakeDbContext _db          = FakeDbContext.Create();
-    private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
-    private readonly Guid           _studioId    = Guid.NewGuid();
-    private readonly Guid           _userId      = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public GetMyClientProfileHandlerTests() =>
         _currentUser.UserId.Returns(_userId);
@@ -26,11 +26,11 @@ public class GetMyClientProfileHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = _userId,
+            StudioId = _studioId,
+            UserId = _userId,
             FirstName = "Ana",
-            LastName  = "Costa",
-            Email     = "ana@example.com",
+            LastName = "Costa",
+            Email = "ana@example.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -43,12 +43,12 @@ public class GetMyClientProfileHandlerTests
         Client client = await SeedClientAsync();
         _db.ClientProfiles.Add(new ClientProfile
         {
-            StudioId     = _studioId,
-            ClientId     = client.Id,
-            DateOfBirth  = new DateOnly(1990, 5, 15),
+            StudioId = _studioId,
+            ClientId = client.Id,
+            DateOfBirth = new DateOnly(1990, 5, 15),
             MedicalNotes = "None",
-            Allergies    = "Latex",
-            BodyMap      = new BodyMap { Locations = ["left_arm"] },
+            Allergies = "Latex",
+            BodyMap = new BodyMap { Locations = ["left_arm"] },
         });
         await _db.SaveChangesAsync();
 

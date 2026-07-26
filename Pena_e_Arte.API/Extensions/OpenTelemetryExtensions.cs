@@ -8,7 +8,7 @@ public static class OpenTelemetryExtensions
 {
     public static IServiceCollection AddApiOpenTelemetry(
         this IServiceCollection services,
-        IConfiguration          configuration)
+        IConfiguration configuration)
     {
         string? otlpEndpoint = configuration["OpenTelemetry:OtlpEndpoint"];
 

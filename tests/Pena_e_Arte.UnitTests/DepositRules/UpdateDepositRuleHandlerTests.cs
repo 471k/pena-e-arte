@@ -10,8 +10,8 @@ namespace Pena_e_Arte.UnitTests.DepositRules;
 
 public class UpdateDepositRuleHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private UpdateDepositRuleHandler CreateSut() => new(_db);
 
@@ -19,11 +19,11 @@ public class UpdateDepositRuleHandlerTests
     {
         DepositRule rule = new()
         {
-            StudioId      = _studioId,
-            Name          = name,
-            AmountFixed   = fixed_,
+            StudioId = _studioId,
+            Name = name,
+            AmountFixed = fixed_,
             AmountPercent = percent,
-            IsActive      = isActive
+            IsActive = isActive
         };
         _db.DepositRules.Add(rule);
         await _db.SaveChangesAsync();

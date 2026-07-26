@@ -18,9 +18,9 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 public record CreateDepositPaymentCommand(Guid AppointmentId) : IRequest<PaymentIntentResponse>;
 
 public class CreateDepositPaymentHandler(
-    IAppDbContext         db,
-    ICurrentTenant        tenant,
-    ICurrentUser          currentUser,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    ICurrentUser currentUser,
     IStripePaymentService stripePayments)
     : IRequestHandler<CreateDepositPaymentCommand, PaymentIntentResponse>
 {
@@ -50,8 +50,11 @@ public class CreateDepositPaymentHandler(
         // An unauthorized card intent may be resumable — but never trust the stored
         // secret blindly: reconcile with Stripe first. This also heals local state
         // when webhooks were missed (e.g. the client authorized but we never heard).
-        if (existing is { Method: ClientPaymentMethod.Card, Status: PaymentStatus.Pending,
-                          ClientSecret: not null, StripePaymentIntentId: not null })
+        if (existing is
+            {
+                Method: ClientPaymentMethod.Card, Status: PaymentStatus.Pending,
+                ClientSecret: not null, StripePaymentIntentId: not null
+            })
         {
             string? piStatus = await stripePayments.GetPaymentIntentStatusAsync(
                 existing.StripePaymentIntentId, ct);
@@ -64,22 +67,22 @@ public class CreateDepositPaymentHandler(
 
                 case "requires_capture":
                     // Authorized but the webhook never arrived — heal and report
-                    existing.Status    = PaymentStatus.Captured;
+                    existing.Status = PaymentStatus.Captured;
                     existing.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
                     return new PaymentIntentResponse(existing.Id, existing.ClientSecret, PaymentStatus.Captured.ToString());
 
                 case "succeeded":
                     // Captured but the webhook never arrived — heal and report
-                    existing.Status    = PaymentStatus.Paid;
-                    existing.PaidAt    = DateTime.UtcNow;
+                    existing.Status = PaymentStatus.Paid;
+                    existing.PaidAt = DateTime.UtcNow;
                     existing.UpdatedAt = DateTime.UtcNow;
                     appointment.DepositStatus = DepositStatus.Paid;
-                    appointment.UpdatedAt     = DateTime.UtcNow;
+                    appointment.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
                     return new PaymentIntentResponse(existing.Id, existing.ClientSecret, PaymentStatus.Paid.ToString());
 
-                // canceled / gone at Stripe — fall through and mint a fresh intent
+                    // canceled / gone at Stripe — fall through and mint a fresh intent
             }
         }
 
@@ -89,7 +92,7 @@ public class CreateDepositPaymentHandler(
         if (existing is not null && !convertible)
             throw new BusinessRuleViolationException("A payment for this appointment is already in progress.");
 
-        Guid paymentId     = existing?.Id ?? Guid.NewGuid();
+        Guid paymentId = existing?.Id ?? Guid.NewGuid();
         long amountInCents = (long)(appointment.DepositAmount * 100);
 
         (string intentId, string clientSecret) = await stripePayments.CreatePaymentIntentAsync(
@@ -99,26 +102,26 @@ public class CreateDepositPaymentHandler(
         {
             db.Payments.Add(new Payment
             {
-                Id                    = paymentId,
-                StudioId              = tenant.StudioId,
-                AppointmentId         = appointment.Id,
-                ClientId              = appointment.ClientId,
-                Amount                = appointment.DepositAmount,
-                Status                = PaymentStatus.Pending,
-                Method                = ClientPaymentMethod.Card,
+                Id = paymentId,
+                StudioId = tenant.StudioId,
+                AppointmentId = appointment.Id,
+                ClientId = appointment.ClientId,
+                Amount = appointment.DepositAmount,
+                Status = PaymentStatus.Pending,
+                Method = ClientPaymentMethod.Card,
                 StripePaymentIntentId = intentId,
-                ClientSecret          = clientSecret,
+                ClientSecret = clientSecret,
             });
         }
         else
         {
             // Convert in place: cash declaration switched to card, or a failed attempt retried
-            existing.Method                = ClientPaymentMethod.Card;
-            existing.Status                = PaymentStatus.Pending;
+            existing.Method = ClientPaymentMethod.Card;
+            existing.Status = PaymentStatus.Pending;
             existing.StripePaymentIntentId = intentId;
-            existing.ClientSecret          = clientSecret;
-            existing.CashNote              = null;
-            existing.UpdatedAt             = DateTime.UtcNow;
+            existing.ClientSecret = clientSecret;
+            existing.CashNote = null;
+            existing.UpdatedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

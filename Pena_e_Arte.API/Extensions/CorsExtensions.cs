@@ -6,7 +6,7 @@ public static class CorsExtensions
 {
     public static IServiceCollection AddApiCors(
         this IServiceCollection services,
-        IConfiguration          config)
+        IConfiguration config)
     {
         string[] allowedOrigins = config.GetSection("Cors:AllowedOrigins")
                                         .Get<string[]>() ?? [];

@@ -47,15 +47,15 @@ public class DeleteReferralCodeHandlerTests
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Studio
         {
-            Id             = studioId,
-            Name           = "Test Studio",
-            Slug           = Guid.NewGuid().ToString("N")[..20],
+            Id = studioId,
+            Name = "Test Studio",
+            Slug = Guid.NewGuid().ToString("N")[..20],
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         });
         ReferralCode code = new()
         {
             StudioId = studioId,
-            Code     = Guid.NewGuid().ToString("N")[..8].ToUpper(),
+            Code = Guid.NewGuid().ToString("N")[..8].ToUpper(),
             IsActive = true,
         };
         _db.ReferralCodes.Add(code);
@@ -65,8 +65,8 @@ public class DeleteReferralCodeHandlerTests
         {
             _db.ReferralRedemptions.Add(new ReferralRedemption
             {
-                ReferralCodeId  = code.Id,
-                NewStudioId     = Guid.NewGuid(),
+                ReferralCodeId = code.Id,
+                NewStudioId = Guid.NewGuid(),
             });
         }
         await _db.SaveChangesAsync();

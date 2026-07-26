@@ -10,9 +10,9 @@ namespace Pena_e_Arte.UnitTests.Studios;
 
 public class AddStudioClosureHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public AddStudioClosureHandlerTests()
     {
@@ -25,7 +25,7 @@ public class AddStudioClosureHandlerTests
     public async Task Handle_ValidCommand_ReturnsNewId()
     {
         DateTime start = DateTime.UtcNow.Date.AddDays(5);
-        DateTime end   = DateTime.UtcNow.Date.AddDays(6);
+        DateTime end = DateTime.UtcNow.Date.AddDays(6);
 
         Guid id = await CreateSut().Handle(
             new AddStudioClosureCommand(_studioId, start, end, "Christmas"), default);
@@ -37,7 +37,7 @@ public class AddStudioClosureHandlerTests
     public async Task Handle_ValidCommand_PersistsClosure()
     {
         DateTime start = DateTime.UtcNow.Date.AddDays(1);
-        DateTime end   = DateTime.UtcNow.Date.AddDays(3);
+        DateTime end = DateTime.UtcNow.Date.AddDays(3);
 
         await CreateSut().Handle(
             new AddStudioClosureCommand(_studioId, start, end, "Renovation"), default);
@@ -49,7 +49,7 @@ public class AddStudioClosureHandlerTests
     public async Task Handle_MismatchedStudioId_ThrowsNotFoundException()
     {
         DateTime start = DateTime.UtcNow.Date;
-        DateTime end   = start.AddDays(1);
+        DateTime end = start.AddDays(1);
 
         Func<Task> act = () => CreateSut().Handle(
             new AddStudioClosureCommand(Guid.NewGuid(), start, end, "Holiday"), default);
@@ -62,15 +62,15 @@ public class AddStudioClosureHandlerTests
     {
         _db.StudioClosures.Add(new StudioClosure
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(5),
-            EndDate   = DateTime.UtcNow.Date.AddDays(10),
-            Reason    = "Existing",
+            EndDate = DateTime.UtcNow.Date.AddDays(10),
+            Reason = "Existing",
         });
         await _db.SaveChangesAsync();
 
         DateTime overlapStart = DateTime.UtcNow.Date.AddDays(8);
-        DateTime overlapEnd   = DateTime.UtcNow.Date.AddDays(12);
+        DateTime overlapEnd = DateTime.UtcNow.Date.AddDays(12);
 
         Func<Task> act = () => CreateSut().Handle(
             new AddStudioClosureCommand(_studioId, overlapStart, overlapEnd, "New request"), default);
@@ -83,15 +83,15 @@ public class AddStudioClosureHandlerTests
     {
         _db.StudioClosures.Add(new StudioClosure
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(5),
-            EndDate   = DateTime.UtcNow.Date.AddDays(10),
-            Reason    = "Existing",
+            EndDate = DateTime.UtcNow.Date.AddDays(10),
+            Reason = "Existing",
         });
         await _db.SaveChangesAsync();
 
         DateTime start = DateTime.UtcNow.Date.AddDays(20);
-        DateTime end   = DateTime.UtcNow.Date.AddDays(22);
+        DateTime end = DateTime.UtcNow.Date.AddDays(22);
 
         Func<Task> act = () => CreateSut().Handle(
             new AddStudioClosureCommand(_studioId, start, end, "New request"), default);

@@ -8,16 +8,16 @@ namespace Pena_e_Arte.Domain.Entities;
 /// </summary>
 public class InstagramConnection : TenantEntity
 {
-    public Guid   ArtistId        { get; set; }
+    public Guid ArtistId { get; set; }
     public string InstagramUserId { get; set; } = "";
-    public string Username        { get; set; } = "";
+    public string Username { get; set; } = "";
 
     /// <summary>AES-256-GCM encrypted long-lived access token.</summary>
-    public string EncryptedToken  { get; set; } = "";
+    public string EncryptedToken { get; set; } = "";
 
-    public DateTime  TokenExpiresAt { get; set; }
-    public DateTime? LastSyncedAt   { get; set; }
-    public bool      IsActive       { get; set; } = true;
+    public DateTime TokenExpiresAt { get; set; }
+    public DateTime? LastSyncedAt { get; set; }
+    public bool IsActive { get; set; } = true;
 
     public Artist Artist { get; set; } = null!;
 }

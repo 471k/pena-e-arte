@@ -9,7 +9,7 @@ namespace Pena_e_Arte.UnitTests.Notifications;
 
 public class GetNotificationsHandlerTests
 {
-    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
 
     private GetNotificationsHandler CreateSut() => new(_db, _currentUser);
@@ -30,12 +30,12 @@ public class GetNotificationsHandlerTests
     [Fact]
     public async Task Handle_RecipientIdFilter_ReturnsOnlyMatchingLogs()
     {
-        Guid studioId     = Guid.NewGuid();
-        Guid recipientId  = Guid.NewGuid();
-        Guid otherId      = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
+        Guid recipientId = Guid.NewGuid();
+        Guid otherId = Guid.NewGuid();
 
-        _db.NotificationLogs.Add(BuildLog(studioId, recipientId,  NotificationChannel.Email));
-        _db.NotificationLogs.Add(BuildLog(studioId, otherId,      NotificationChannel.Email));
+        _db.NotificationLogs.Add(BuildLog(studioId, recipientId, NotificationChannel.Email));
+        _db.NotificationLogs.Add(BuildLog(studioId, otherId, NotificationChannel.Email));
         await _db.SaveChangesAsync();
 
         List<NotificationLogResponse> result = await CreateSut()
@@ -121,19 +121,19 @@ public class GetNotificationsHandlerTests
     [Fact]
     public async Task Handle_MapsAllFields()
     {
-        Guid     studioId    = Guid.NewGuid();
-        Guid     recipientId = Guid.NewGuid();
-        DateTime sentAt      = DateTime.UtcNow;
+        Guid studioId = Guid.NewGuid();
+        Guid recipientId = Guid.NewGuid();
+        DateTime sentAt = DateTime.UtcNow;
 
         _db.NotificationLogs.Add(new NotificationLog
         {
-            StudioId    = studioId,
+            StudioId = studioId,
             RecipientId = recipientId,
-            Channel     = NotificationChannel.Email,
-            Subject     = "Test Subject",
-            Body        = "Test Body",
-            SentAt      = sentAt,
-            IsSuccess   = true
+            Channel = NotificationChannel.Email,
+            Subject = "Test Subject",
+            Body = "Test Body",
+            SentAt = sentAt,
+            IsSuccess = true
         });
         await _db.SaveChangesAsync();
 
@@ -157,8 +157,11 @@ public class GetNotificationsHandlerTests
 
         _db.Clients.Add(new Client
         {
-            Id = clientId, StudioId = studioId,
-            FirstName = "Ana", LastName = "Costa", Email = "ana@test.com"
+            Id = clientId,
+            StudioId = studioId,
+            FirstName = "Ana",
+            LastName = "Costa",
+            Email = "ana@test.com"
         });
         _db.NotificationLogs.Add(BuildLog(
             studioId, clientId, NotificationChannel.Email, recipientType: NotificationRecipientType.Client));
@@ -210,11 +213,11 @@ public class GetNotificationsHandlerTests
         Guid studioId = Guid.NewGuid();
         var artist = new Artist
         {
-            StudioId  = studioId,
-            UserId    = artistUser.UserId,
+            StudioId = studioId,
+            UserId = artistUser.UserId,
             FirstName = "Art",
-            LastName  = "Ist",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
 
@@ -236,11 +239,11 @@ public class GetNotificationsHandlerTests
         Guid studioId = Guid.NewGuid();
         var artist = new Artist
         {
-            StudioId  = studioId,
-            UserId    = artistUser.UserId,
+            StudioId = studioId,
+            UserId = artistUser.UserId,
             FirstName = "Art",
-            LastName  = "Ist",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
 
@@ -263,11 +266,11 @@ public class GetNotificationsHandlerTests
         Guid studioId = Guid.NewGuid();
         var client = new Client
         {
-            StudioId  = studioId,
-            UserId    = clientUser.UserId,
+            StudioId = studioId,
+            UserId = clientUser.UserId,
             FirstName = "Cli",
-            LastName  = "Ent",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Ent",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
 
@@ -289,11 +292,11 @@ public class GetNotificationsHandlerTests
         Guid studioId = Guid.NewGuid();
         var client = new Client
         {
-            StudioId  = studioId,
-            UserId    = clientUser.UserId,
+            StudioId = studioId,
+            UserId = clientUser.UserId,
             FirstName = "Cli",
-            LastName  = "Ent",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Ent",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
 
@@ -319,14 +322,14 @@ public class GetNotificationsHandlerTests
         Guid studioId, Guid recipientId, NotificationChannel channel,
         DateTime? sentAt = null,
         NotificationRecipientType recipientType = NotificationRecipientType.Client) => new()
-    {
-        StudioId      = studioId,
-        RecipientId   = recipientId,
-        RecipientType = recipientType,
-        Channel       = channel,
-        Subject       = "Subject",
-        Body          = "Body",
-        SentAt        = sentAt ?? DateTime.UtcNow,
-        IsSuccess     = true
-    };
+        {
+            StudioId = studioId,
+            RecipientId = recipientId,
+            RecipientType = recipientType,
+            Channel = channel,
+            Subject = "Subject",
+            Body = "Body",
+            SentAt = sentAt ?? DateTime.UtcNow,
+            IsSuccess = true
+        };
 }

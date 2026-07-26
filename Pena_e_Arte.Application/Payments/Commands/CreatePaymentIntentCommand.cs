@@ -13,10 +13,10 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 public record CreatePaymentIntentCommand(CreatePaymentIntentRequest Request) : IRequest<PaymentIntentResponse>;
 
 public class CreatePaymentIntentHandler(
-    IAppDbContext         db,
-    ICurrentTenant        tenant,
+    IAppDbContext db,
+    ICurrentTenant tenant,
     IStripePaymentService stripePayments,
-    IRealtimeNotifier     realtime)
+    IRealtimeNotifier realtime)
     : IRequestHandler<CreatePaymentIntentCommand, PaymentIntentResponse>
 {
     public async Task<PaymentIntentResponse> Handle(CreatePaymentIntentCommand command, CancellationToken ct)
@@ -35,7 +35,7 @@ public class CreatePaymentIntentHandler(
         if (existing is not null && existing.Status != PaymentStatus.Failed)
             throw new BusinessRuleViolationException("A payment already exists for this appointment.");
 
-        Guid paymentId     = existing?.Id ?? Guid.NewGuid();
+        Guid paymentId = existing?.Id ?? Guid.NewGuid();
         long amountInCents = (long)(req.Amount * 100);
 
         (string intentId, string clientSecret) = await stripePayments.CreatePaymentIntentAsync(
@@ -46,15 +46,15 @@ public class CreatePaymentIntentHandler(
         {
             payment = new Payment
             {
-                Id                    = paymentId,
-                StudioId              = tenant.StudioId,
-                AppointmentId         = req.AppointmentId,
-                ClientId              = req.ClientId,
-                Amount                = req.Amount,
-                Status                = PaymentStatus.Pending,
-                Method                = ClientPaymentMethod.Card,
+                Id = paymentId,
+                StudioId = tenant.StudioId,
+                AppointmentId = req.AppointmentId,
+                ClientId = req.ClientId,
+                Amount = req.Amount,
+                Status = PaymentStatus.Pending,
+                Method = ClientPaymentMethod.Card,
                 StripePaymentIntentId = intentId,
-                ClientSecret          = clientSecret
+                ClientSecret = clientSecret
             };
             db.Payments.Add(payment);
         }
@@ -62,12 +62,12 @@ public class CreatePaymentIntentHandler(
         {
             // Retry after a failed attempt — reuse the row with a fresh intent
             payment = existing;
-            payment.Amount                = req.Amount;
-            payment.Status                = PaymentStatus.Pending;
-            payment.Method                = ClientPaymentMethod.Card;
+            payment.Amount = req.Amount;
+            payment.Status = PaymentStatus.Pending;
+            payment.Method = ClientPaymentMethod.Card;
             payment.StripePaymentIntentId = intentId;
-            payment.ClientSecret          = clientSecret;
-            payment.UpdatedAt             = DateTime.UtcNow;
+            payment.ClientSecret = clientSecret;
+            payment.UpdatedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

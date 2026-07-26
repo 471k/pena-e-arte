@@ -14,11 +14,11 @@ public class GetPublicStudioHandlerTests
 
     private static Studio MakeStudio(string slug = "test-studio", bool active = true) => new()
     {
-        Name            = "Test Studio",
-        Slug            = slug,
-        City            = "Porto",
-        IsActive        = active,
-        PhoneNumber     = "+351 912 000 000",
+        Name = "Test Studio",
+        Slug = slug,
+        City = "Porto",
+        IsActive = active,
+        PhoneNumber = "+351 912 000 000",
         InstagramHandle = "teststudio",
     };
 
@@ -26,10 +26,10 @@ public class GetPublicStudioHandlerTests
     {
         Artist artist = new()
         {
-            StudioId        = studioId,
-            FirstName       = "Ana",
-            LastName        = "Sousa",
-            Email           = $"{slug}@test.com",
+            StudioId = studioId,
+            FirstName = "Ana",
+            LastName = "Sousa",
+            Email = $"{slug}@test.com",
             Specializations = "Blackwork, Mandala",
         };
         artist.SetSlug(slug);
@@ -101,7 +101,7 @@ public class GetPublicStudioHandlerTests
         await _db.SaveChangesAsync();
 
         _db.Reviews.Add(Review.ForStudio(studio.Id, Guid.NewGuid(), Guid.NewGuid(), "Alice", 5, "Great!"));
-        _db.Reviews.Add(Review.ForStudio(studio.Id, Guid.NewGuid(), Guid.NewGuid(), "Bob",   3, "OK."));
+        _db.Reviews.Add(Review.ForStudio(studio.Id, Guid.NewGuid(), Guid.NewGuid(), "Bob", 3, "OK."));
         await _db.SaveChangesAsync();
 
         PublicStudioResponse? result =
@@ -241,7 +241,7 @@ public class GetPublicStudioHandlerTests
         _db.Studios.Add(studio);
         await _db.SaveChangesAsync();
 
-        Artist active  = MakeArtist(studio.Id, "active-artist");
+        Artist active = MakeArtist(studio.Id, "active-artist");
         Artist deleted = MakeArtist(studio.Id, "deleted-artist");
         deleted.DeletedAt = DateTime.UtcNow;
 

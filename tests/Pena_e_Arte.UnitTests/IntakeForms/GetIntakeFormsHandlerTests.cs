@@ -8,8 +8,8 @@ namespace Pena_e_Arte.UnitTests.IntakeForms;
 
 public class GetIntakeFormsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetIntakeFormsHandler CreateSut() => new(_db, FakeCurrentUser.Artist());
 
@@ -17,11 +17,11 @@ public class GetIntakeFormsHandlerTests
     {
         _db.IntakeForms.Add(new IntakeForm
         {
-            StudioId      = _studioId,
-            ClientId      = clientId,
+            StudioId = _studioId,
+            ClientId = clientId,
             AppointmentId = appointmentId,
-            FormData      = "{}",
-            SubmittedAt   = DateTime.UtcNow
+            FormData = "{}",
+            SubmittedAt = DateTime.UtcNow
         });
         await _db.SaveChangesAsync();
     }

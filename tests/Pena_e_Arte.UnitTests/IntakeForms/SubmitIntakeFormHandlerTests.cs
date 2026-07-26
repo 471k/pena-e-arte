@@ -14,11 +14,11 @@ namespace Pena_e_Arte.UnitTests.IntakeForms;
 
 public class SubmitIntakeFormHandlerTests
 {
-    private readonly FakeDbContext  _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant      = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
-    private readonly ISender        _sender      = Substitute.For<ISender>();
-    private readonly Guid           _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public SubmitIntakeFormHandlerTests()
     {
@@ -46,7 +46,7 @@ public class SubmitIntakeFormHandlerTests
     [Fact]
     public async Task Handle_WithAppointmentId_PersistsAppointmentId()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         SubmitIntakeFormRequest req = new(clientId, appointmentId, "{\"health\":\"good\"}", null);
 
@@ -100,7 +100,7 @@ public class SubmitIntakeFormHandlerTests
     [Fact]
     public async Task Handle_AppointmentBelongsToDifferentClient_ThrowsNotFoundException()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid otherClientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(otherClientId);
 
@@ -146,7 +146,7 @@ public class SubmitIntakeFormHandlerTests
         Guid userId = Guid.NewGuid();
         _currentUser.UserId.Returns(userId);
         _currentUser.Role.Returns("client");
-        Guid myClientId    = await SeedClient(userId);
+        Guid myClientId = await SeedClient(userId);
         Guid appointmentId = await SeedAppointment(myClientId);
 
         SubmitIntakeFormRequest req = new(myClientId, appointmentId, "{}", null);
@@ -163,7 +163,7 @@ public class SubmitIntakeFormHandlerTests
         Guid userId = Guid.NewGuid();
         _currentUser.UserId.Returns(userId);
         _currentUser.Role.Returns("client");
-        Guid myClientId    = await SeedClient(userId);
+        Guid myClientId = await SeedClient(userId);
         Guid otherClientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(otherClientId);
 
@@ -178,11 +178,11 @@ public class SubmitIntakeFormHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -194,15 +194,15 @@ public class SubmitIntakeFormHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = clientId,
-            Date            = DateTime.UtcNow.AddDays(5),
-            EndDate         = DateTime.UtcNow.AddDays(5).AddMinutes(60),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(60),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
-            DepositAmount   = 50m,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
+            DepositAmount = 50m,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();

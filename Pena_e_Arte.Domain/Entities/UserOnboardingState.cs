@@ -9,11 +9,11 @@ public class UserOnboardingState
 {
     private UserOnboardingState() { }
 
-    public Guid     Id               { get; private set; } = Guid.NewGuid();
-    public Guid     UserId           { get; private set; }
-    public string   Role             { get; private set; } = string.Empty;
-    public bool     HasCompletedTour { get; private set; }
-    public DateTime? CompletedAt     { get; private set; }
+    public Guid Id { get; private set; } = Guid.NewGuid();
+    public Guid UserId { get; private set; }
+    public string Role { get; private set; } = string.Empty;
+    public bool HasCompletedTour { get; private set; }
+    public DateTime? CompletedAt { get; private set; }
 
     public static UserOnboardingState Create(Guid userId, string role) =>
         new() { UserId = userId, Role = role };
@@ -21,6 +21,6 @@ public class UserOnboardingState
     public void MarkComplete()
     {
         HasCompletedTour = true;
-        CompletedAt      = DateTime.UtcNow;
+        CompletedAt = DateTime.UtcNow;
     }
 }

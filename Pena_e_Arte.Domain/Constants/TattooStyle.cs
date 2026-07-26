@@ -6,14 +6,14 @@ namespace Pena_e_Arte.Domain.Constants;
 /// </summary>
 public static class TattooStyle
 {
-    public const string Traditional    = "traditional";
-    public const string Realism        = "realism";
-    public const string Blackwork      = "blackwork";
-    public const string Geometric      = "geometric";
-    public const string Watercolor     = "watercolor";
-    public const string Fineline       = "fineline";
+    public const string Traditional = "traditional";
+    public const string Realism = "realism";
+    public const string Blackwork = "blackwork";
+    public const string Geometric = "geometric";
+    public const string Watercolor = "watercolor";
+    public const string Fineline = "fineline";
     public const string NeoTraditional = "neo-traditional";
-    public const string Japanese       = "japanese";
+    public const string Japanese = "japanese";
 
     public static readonly IReadOnlyList<string> All =
         [Traditional, Realism, Blackwork, Geometric, Watercolor, Fineline, NeoTraditional, Japanese];

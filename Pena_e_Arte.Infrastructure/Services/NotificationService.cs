@@ -8,16 +8,16 @@ using Twilio.Types;
 namespace Pena_e_Arte.Infrastructure.Services;
 
 public class NotificationService(
-    IConfiguration              configuration,
-    IResend                     resend,
+    IConfiguration configuration,
+    IResend resend,
     ILogger<NotificationService> logger) : INotificationService
 {
     public async Task SendEmailAsync(string to, string subject, string body, CancellationToken ct = default)
     {
         EmailMessage message = new()
         {
-            From     = $"{configuration["Resend:FromName"] ?? "TattooOS"} <{configuration["Resend:FromAddress"]}>",
-            Subject  = subject,
+            From = $"{configuration["Resend:FromName"] ?? "TattooOS"} <{configuration["Resend:FromAddress"]}>",
+            Subject = subject,
             HtmlBody = body,
         };
         message.To.Add(to);
@@ -32,7 +32,7 @@ public class NotificationService(
         MessageResource message = await MessageResource.CreateAsync(
             body: body,
             from: new PhoneNumber(configuration["Twilio:FromNumber"]!),
-            to:   new PhoneNumber(to));
+            to: new PhoneNumber(to));
 
         logger.LogInformation("SMS sent SID {@MessageSid}", message.Sid);
     }

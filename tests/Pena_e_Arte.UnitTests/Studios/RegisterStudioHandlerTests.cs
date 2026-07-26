@@ -13,7 +13,7 @@ namespace Pena_e_Arte.UnitTests.Studios;
 
 public class RegisterStudioHandlerTests
 {
-    private readonly FakeDbContext _db   = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
 
     private RegisterStudioHandler CreateSut() =>
@@ -50,7 +50,7 @@ public class RegisterStudioHandlerTests
         Studio studio = _db.Studios.Single();
         _db.Subscriptions.Should().ContainSingle(sub =>
             sub.StudioId == studio.Id &&
-            sub.Status   == SubscriptionStatus.Trialing);
+            sub.Status == SubscriptionStatus.Trialing);
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class RegisterStudioHandlerTests
     public async Task Handle_SlugCollision_AppendsSuffixUntilUnique()
     {
         // Arrange
-        _db.Studios.Add(new Studio { Name = "Existing",   Slug = "my-studio",   City = "Lisbon" });
+        _db.Studios.Add(new Studio { Name = "Existing", Slug = "my-studio", City = "Lisbon" });
         _db.Studios.Add(new Studio { Name = "Existing 2", Slug = "my-studio-2", City = "Lisbon" });
         await _db.SaveChangesAsync();
 
@@ -118,8 +118,12 @@ public class RegisterStudioHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Name = "Existing", Slug = "existing", City = "Lisbon",
-            OwnerEmail = "other-owner@example.com", Nipt = "L01234567A", IsActive = true,
+            Name = "Existing",
+            Slug = "existing",
+            City = "Lisbon",
+            OwnerEmail = "other-owner@example.com",
+            Nipt = "L01234567A",
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
@@ -135,8 +139,12 @@ public class RegisterStudioHandlerTests
         RegisterStudioRequest firstReq = ValidRequest();
         _db.Studios.Add(new Studio
         {
-            Name = "Existing", Slug = "existing", City = "Lisbon",
-            OwnerEmail = firstReq.OwnerEmail, Nipt = firstReq.Nipt, IsActive = true,
+            Name = "Existing",
+            Slug = "existing",
+            City = "Lisbon",
+            OwnerEmail = firstReq.OwnerEmail,
+            Nipt = firstReq.Nipt,
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
@@ -152,8 +160,12 @@ public class RegisterStudioHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Name = "Closed Studio", Slug = "closed-studio", City = "Lisbon",
-            OwnerEmail = "other-owner@example.com", Nipt = "L01234567A", IsActive = false,
+            Name = "Closed Studio",
+            Slug = "closed-studio",
+            City = "Lisbon",
+            OwnerEmail = "other-owner@example.com",
+            Nipt = "L01234567A",
+            IsActive = false,
         });
         await _db.SaveChangesAsync();
 

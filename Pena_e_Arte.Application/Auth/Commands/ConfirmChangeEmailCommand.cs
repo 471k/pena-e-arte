@@ -8,10 +8,10 @@ namespace Pena_e_Arte.Application.Auth.Commands;
 public record ConfirmChangeEmailCommand(Guid UserId, string NewEmail, string Token) : IRequest;
 
 public class ConfirmChangeEmailHandler(
-    IIdentityService                    identity,
-    IEmailRenderer                      emailRenderer,
-    INotificationService                notifications,
-    ILogger<ConfirmChangeEmailHandler>  logger)
+    IIdentityService identity,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    ILogger<ConfirmChangeEmailHandler> logger)
     : IRequestHandler<ConfirmChangeEmailCommand>
 {
     public async Task Handle(ConfirmChangeEmailCommand command, CancellationToken ct)
@@ -26,7 +26,7 @@ public class ConfirmChangeEmailHandler(
         if (!success)
         {
             if (tokenInvalid) throw new ChangeEmailTokenInvalidException();
-            if (emailTaken)   throw new ConflictException(errors.Length > 0 ? errors[0] : "That email is already in use.");
+            if (emailTaken) throw new ConflictException(errors.Length > 0 ? errors[0] : "That email is already in use.");
             throw new BusinessRuleViolationException(
                 errors.Length > 0 ? string.Join("; ", errors) : "Could not change email.");
         }

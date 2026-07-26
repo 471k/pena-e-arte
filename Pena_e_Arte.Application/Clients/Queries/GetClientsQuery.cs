@@ -20,7 +20,7 @@ public class GetClientsHandler(IAppDbContext db)
             string search = query.Search.ToLower();
             q = q.Where(c =>
                 c.FirstName.ToLower().Contains(search) ||
-                c.LastName.ToLower().Contains(search)  ||
+                c.LastName.ToLower().Contains(search) ||
                 c.Email.ToLower().Contains(search));
         }
 

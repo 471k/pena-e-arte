@@ -11,11 +11,11 @@ namespace Pena_e_Arte.UnitTests.Feedback;
 
 public class GetMyFeedbackReportsHandlerTests
 {
-    private readonly FakeDbContext _db     = FakeDbContext.Create();
-    private readonly ICurrentUser  _user   = Substitute.For<ICurrentUser>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
-    private readonly Guid          _userId   = Guid.NewGuid();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public GetMyFeedbackReportsHandlerTests()
     {

@@ -9,9 +9,9 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class GetAppointmentsHandlerTests
 {
-    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
-    private readonly Guid            _studioId    = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetAppointmentsHandler CreateSut() => new(_db, _currentUser);
 
@@ -19,7 +19,7 @@ public class GetAppointmentsHandlerTests
     public async Task Handle_NoFilter_ReturnsAllAppointmentsOrderedByDate()
     {
         DateTime sooner = DateTime.UtcNow.AddDays(1);
-        DateTime later  = DateTime.UtcNow.AddDays(3);
+        DateTime later = DateTime.UtcNow.AddDays(3);
         await SeedAppointment(later);
         await SeedAppointment(sooner);
 
@@ -34,8 +34,8 @@ public class GetAppointmentsHandlerTests
     [Fact]
     public async Task Handle_FromFilter_ExcludesEarlierAppointments()
     {
-        DateTime early  = DateTime.UtcNow.AddDays(2);
-        DateTime late   = DateTime.UtcNow.AddDays(7);
+        DateTime early = DateTime.UtcNow.AddDays(2);
+        DateTime late = DateTime.UtcNow.AddDays(7);
         DateTime cutoff = DateTime.UtcNow.AddDays(5);
         await SeedAppointment(early);
         await SeedAppointment(late);
@@ -50,8 +50,8 @@ public class GetAppointmentsHandlerTests
     [Fact]
     public async Task Handle_ToFilter_ExcludesLaterAppointments()
     {
-        DateTime early  = DateTime.UtcNow.AddDays(2);
-        DateTime late   = DateTime.UtcNow.AddDays(7);
+        DateTime early = DateTime.UtcNow.AddDays(2);
+        DateTime late = DateTime.UtcNow.AddDays(7);
         DateTime cutoff = DateTime.UtcNow.AddDays(5);
         await SeedAppointment(early);
         await SeedAppointment(late);
@@ -67,8 +67,8 @@ public class GetAppointmentsHandlerTests
     public async Task Handle_BothFilters_ReturnsOnlyAppointmentsInRange()
     {
         DateTime tooEarly = DateTime.UtcNow.AddDays(1);
-        DateTime inRange  = DateTime.UtcNow.AddDays(5);
-        DateTime tooLate  = DateTime.UtcNow.AddDays(10);
+        DateTime inRange = DateTime.UtcNow.AddDays(5);
+        DateTime tooLate = DateTime.UtcNow.AddDays(10);
         await SeedAppointment(tooEarly);
         await SeedAppointment(inRange);
         await SeedAppointment(tooLate);
@@ -76,7 +76,7 @@ public class GetAppointmentsHandlerTests
         List<AppointmentResponse> result = await CreateSut()
             .Handle(new GetAppointmentsQuery(
                 From: DateTime.UtcNow.AddDays(3),
-                To:   DateTime.UtcNow.AddDays(7)), default);
+                To: DateTime.UtcNow.AddDays(7)), default);
 
         result.Should().ContainSingle(a => a.Date == inRange);
         result.Should().NotContain(a => a.Date == tooEarly);
@@ -128,7 +128,7 @@ public class GetAppointmentsHandlerTests
     public async Task Handle_OwnerCaller_ArtistIdFilter_ReturnsOnlyThatArtist()
     {
         Guid targetArtistId = Guid.NewGuid();
-        Guid otherArtistId  = Guid.NewGuid();
+        Guid otherArtistId = Guid.NewGuid();
         await SeedAppointment(DateTime.UtcNow.AddDays(1), targetArtistId);
         await SeedAppointment(DateTime.UtcNow.AddDays(2), otherArtistId);
 
@@ -142,11 +142,11 @@ public class GetAppointmentsHandlerTests
     {
         var artist = new Artist
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Art",
-            LastName  = "Ist",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
@@ -160,14 +160,14 @@ public class GetAppointmentsHandlerTests
 
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = artistId ?? Guid.NewGuid(),
-            ClientId        = client.Id,
-            Date            = date,
-            EndDate         = date.AddHours(1),
+            StudioId = _studioId,
+            ArtistId = artistId ?? Guid.NewGuid(),
+            ClientId = client.Id,
+            Date = date,
+            EndDate = date.AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending
         });
         await _db.SaveChangesAsync();
     }
