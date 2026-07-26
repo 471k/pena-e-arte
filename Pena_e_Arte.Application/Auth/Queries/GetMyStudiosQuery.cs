@@ -9,9 +9,9 @@ namespace Pena_e_Arte.Application.Auth.Queries;
 public record GetMyStudiosQuery : IRequest<List<MyStudioResponse>>;
 
 public class GetMyStudiosHandler(
-    IAppDbContext  db,
+    IAppDbContext db,
     IIdentityService identity,
-    ICurrentUser   currentUser)
+    ICurrentUser currentUser)
     : IRequestHandler<GetMyStudiosQuery, List<MyStudioResponse>>
 {
     public async Task<List<MyStudioResponse>> Handle(

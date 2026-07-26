@@ -26,13 +26,13 @@ public class GetNotificationPreferencesHandler(IAppDbContext db)
 
         List<NotificationPreferenceItem> items = [];
         foreach (NotificationType type in Enum.GetValues<NotificationType>())
-        foreach (NotificationChannel channel in PreferenceChannels)
-        {
-            StudioNotificationPreference? pref = existing
-                .FirstOrDefault(p => p.Type == type && p.Channel == channel);
-            items.Add(new NotificationPreferenceItem(
-                type.ToString(), channel.ToString(), pref?.IsEnabled ?? true));
-        }
+            foreach (NotificationChannel channel in PreferenceChannels)
+            {
+                StudioNotificationPreference? pref = existing
+                    .FirstOrDefault(p => p.Type == type && p.Channel == channel);
+                items.Add(new NotificationPreferenceItem(
+                    type.ToString(), channel.ToString(), pref?.IsEnabled ?? true));
+            }
 
         return new NotificationPreferencesResponse(items);
     }

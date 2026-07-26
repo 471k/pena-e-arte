@@ -32,12 +32,12 @@ public class UpdateArtistHandler(IAppDbContext db, ICurrentUser currentUser)
         if (emailTaken)
             throw new BusinessRuleViolationException($"An artist with email '{req.Email}' already exists in this studio.");
 
-        artist.FirstName       = req.FirstName;
-        artist.LastName        = req.LastName;
-        artist.Email           = req.Email;
+        artist.FirstName = req.FirstName;
+        artist.LastName = req.LastName;
+        artist.Email = req.Email;
         artist.Specializations = req.Specializations;
-        artist.HourlyRate      = req.HourlyRate;
-        artist.UpdatedAt       = DateTime.UtcNow;
+        artist.HourlyRate = req.HourlyRate;
+        artist.UpdatedAt = DateTime.UtcNow;
 
         if (!string.IsNullOrWhiteSpace(req.Slug))
         {

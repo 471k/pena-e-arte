@@ -12,11 +12,11 @@ namespace Pena_e_Arte.Application.Auth.Commands;
 public record RegisterUserCommand(RegisterUserRequest Request) : IRequest;
 
 public class RegisterUserHandler(
-    IIdentityService             identity,
-    IAppDbContext                db,
-    IEmailRenderer               emailRenderer,
-    INotificationService         notifications,
-    IAppSettings                 appSettings,
+    IIdentityService identity,
+    IAppDbContext db,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    IAppSettings appSettings,
     ILogger<RegisterUserHandler> logger)
     : IRequestHandler<RegisterUserCommand>
 {
@@ -66,18 +66,18 @@ public class RegisterUserHandler(
 
             if (existing is not null)
             {
-                existing.UserId    = userId;
+                existing.UserId = userId;
                 existing.UpdatedAt = DateTime.UtcNow;
             }
             else
             {
                 db.Clients.Add(new Client
                 {
-                    StudioId  = studioId,
-                    UserId    = userId,
+                    StudioId = studioId,
+                    UserId = userId,
                     FirstName = req.FirstName ?? req.Email.Split('@')[0],
-                    LastName  = string.Empty,
-                    Email     = req.Email,
+                    LastName = string.Empty,
+                    Email = req.Email,
                 });
             }
 
@@ -87,9 +87,9 @@ public class RegisterUserHandler(
         // Send email verification (non-blocking; failure must not abort registration)
         try
         {
-            string token           = await identity.GenerateEmailConfirmationTokenAsync(userId);
+            string token = await identity.GenerateEmailConfirmationTokenAsync(userId);
             string confirmationUrl = $"{appSettings.BaseUrl}/verify-email?token={Uri.EscapeDataString(token)}&userId={userId}";
-            string body            = emailRenderer.RenderEmailVerification(confirmationUrl);
+            string body = emailRenderer.RenderEmailVerification(confirmationUrl);
 
             await notifications.SendEmailAsync(
                 req.Email,

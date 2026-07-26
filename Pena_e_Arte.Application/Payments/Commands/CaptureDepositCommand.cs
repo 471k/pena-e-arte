@@ -12,11 +12,11 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 public record CaptureDepositCommand(Guid PaymentId) : IRequest<PaymentResponse>;
 
 public class CaptureDepositHandler(
-    IAppDbContext         db,
-    ICurrentTenant        tenant,
+    IAppDbContext db,
+    ICurrentTenant tenant,
     IStripePaymentService stripePayments,
-    IRealtimeNotifier     realtime,
-    ISender               sender)
+    IRealtimeNotifier realtime,
+    ISender sender)
     : IRequestHandler<CaptureDepositCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(CaptureDepositCommand command, CancellationToken ct)
@@ -39,8 +39,8 @@ public class CaptureDepositHandler(
 
         await stripePayments.CapturePaymentAsync(payment.StripePaymentIntentId, ct);
 
-        payment.Status    = PaymentStatus.Paid;
-        payment.PaidAt    = DateTime.UtcNow;
+        payment.Status = PaymentStatus.Paid;
+        payment.PaidAt = DateTime.UtcNow;
         payment.UpdatedAt = DateTime.UtcNow;
 
         Appointment? appointment = await db.Appointments
@@ -48,7 +48,7 @@ public class CaptureDepositHandler(
         if (appointment is not null)
         {
             appointment.DepositStatus = DepositStatus.Paid;
-            appointment.UpdatedAt     = DateTime.UtcNow;
+            appointment.UpdatedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

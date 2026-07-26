@@ -5,8 +5,8 @@ namespace Pena_e_Arte.Domain.Interfaces;
 /// The validation has already verified the JWT signature against the provider's JWKS.
 /// </summary>
 public record OAuthUserInfo(
-    string  Email,
-    string  ProviderUserId,
+    string Email,
+    string ProviderUserId,
     string? FirstName);
 
 public interface IOAuthTokenValidator

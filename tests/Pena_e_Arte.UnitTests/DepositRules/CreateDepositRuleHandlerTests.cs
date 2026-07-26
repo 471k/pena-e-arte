@@ -11,9 +11,9 @@ namespace Pena_e_Arte.UnitTests.DepositRules;
 
 public class CreateDepositRuleHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateDepositRuleHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);

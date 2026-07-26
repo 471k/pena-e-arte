@@ -23,8 +23,8 @@ public class TenantMiddleware(RequestDelegate next)
         new(StringComparer.OrdinalIgnoreCase) { "POST", "PUT", "PATCH", "DELETE" };
 
     public async Task InvokeAsync(
-        HttpContext                 context,
-        ICurrentTenant             tenant,
+        HttpContext context,
+        ICurrentTenant tenant,
         ISubscriptionAccessService subscriptions)
     {
         Claim? claim = context.User.FindFirst("tenant_id");
@@ -44,8 +44,8 @@ public class TenantMiddleware(RequestDelegate next)
             path.StartsWithSegments(prefix, StringComparison.OrdinalIgnoreCase));
 
     private static async Task EnforceAsync(
-        HttpContext                 context,
-        Guid                       studioId,
+        HttpContext context,
+        Guid studioId,
         ISubscriptionAccessService subscriptions)
     {
         bool isActive = await subscriptions.IsStudioActiveAsync(studioId, context.RequestAborted);

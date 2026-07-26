@@ -43,9 +43,9 @@ public class GetHelpSearchInsightsHandler(IAppDbContext db)
             .ToList();
 
         return new HelpSearchInsightsResponse(
-            TotalSearches:     logs.Count,
-            Days:              query.Days,
-            TopQueries:        topQueries,
+            TotalSearches: logs.Count,
+            Days: query.Days,
+            TopQueries: topQueries,
             ZeroResultQueries: zeroResultQueries);
     }
 }

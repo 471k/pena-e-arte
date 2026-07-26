@@ -8,8 +8,8 @@ namespace Pena_e_Arte.UnitTests.ConsentForms;
 
 public class GetConsentFormsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetConsentFormsHandler CreateSut() => new(_db, FakeCurrentUser.Artist());
 
@@ -17,10 +17,10 @@ public class GetConsentFormsHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Marco",
-            LastName  = "Cliente",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Cliente",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -32,11 +32,11 @@ public class GetConsentFormsHandlerTests
     {
         _db.ConsentForms.Add(new ConsentForm
         {
-            StudioId      = _studioId,
-            ClientId      = clientId,
+            StudioId = _studioId,
+            ClientId = clientId,
             AppointmentId = appointmentId,
             SignatureData = "sig",
-            SignedAt      = DateTime.UtcNow
+            SignedAt = DateTime.UtcNow
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

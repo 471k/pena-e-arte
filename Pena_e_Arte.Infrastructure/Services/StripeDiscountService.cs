@@ -9,8 +9,8 @@ public class StripeDiscountService(CouponService couponService) : IStripeDiscoun
     {
         CouponCreateOptions options = new()
         {
-            PercentOff       = 100,
-            Duration         = "repeating",
+            PercentOff = 100,
+            Duration = "repeating",
             DurationInMonths = 1,
         };
 

@@ -11,9 +11,9 @@ namespace Pena_e_Arte.UnitTests.Onboarding;
 
 public class GetOnboardingTourStatusHandlerTests
 {
-    private readonly FakeDbContext _db   = FakeDbContext.Create();
-    private readonly ICurrentUser  _user = Substitute.For<ICurrentUser>();
-    private readonly Guid          _userId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public GetOnboardingTourStatusHandlerTests()
     {

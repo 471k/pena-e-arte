@@ -7,9 +7,9 @@ namespace Pena_e_Arte.Domain.Entities;
 /// </summary>
 public class AppointmentAttachment : TenantEntity
 {
-    public Guid   AppointmentId { get; set; }
-    public string ImageUrl      { get; set; } = string.Empty;
-    public DateTime UploadedAt  { get; set; } = DateTime.UtcNow;
+    public Guid AppointmentId { get; set; }
+    public string ImageUrl { get; set; } = string.Empty;
+    public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public Appointment Appointment { get; set; } = null!;

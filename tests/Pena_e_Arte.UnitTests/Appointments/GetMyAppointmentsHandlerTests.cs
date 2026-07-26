@@ -11,10 +11,10 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class GetMyAppointmentsHandlerTests
 {
-    private readonly FakeDbContext _db           = FakeDbContext.Create();
-    private readonly ICurrentUser  _currentUser  = Substitute.For<ICurrentUser>();
-    private readonly Guid          _clientUserId = Guid.NewGuid();
-    private readonly Guid          _studioId     = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid _clientUserId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public GetMyAppointmentsHandlerTests() =>
         _currentUser.UserId.Returns(_clientUserId);
@@ -24,10 +24,10 @@ public class GetMyAppointmentsHandlerTests
     [Fact]
     public async Task Handle_ReturnsOnlyOwnAppointmentsOrderedByDate()
     {
-        Guid ownClientId   = await SeedClient(_clientUserId);
+        Guid ownClientId = await SeedClient(_clientUserId);
         Guid otherClientId = await SeedClient(Guid.NewGuid());
-        await SeedAppointment(ownClientId,   DateTime.UtcNow.AddDays(10));
-        await SeedAppointment(ownClientId,   DateTime.UtcNow.AddDays(2));
+        await SeedAppointment(ownClientId, DateTime.UtcNow.AddDays(10));
+        await SeedAppointment(ownClientId, DateTime.UtcNow.AddDays(2));
         await SeedAppointment(otherClientId, DateTime.UtcNow.AddDays(5));
 
         List<AppointmentResponse> result = await CreateSut().Handle(new GetMyAppointmentsQuery(), default);
@@ -49,11 +49,11 @@ public class GetMyAppointmentsHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -65,14 +65,14 @@ public class GetMyAppointmentsHandlerTests
     {
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = clientId,
-            Date            = date,
-            EndDate         = date.AddMinutes(90),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = clientId,
+            Date = date,
+            EndDate = date.AddMinutes(90),
             DurationMinutes = 90,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

@@ -14,10 +14,10 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class ChangePlanHandlerTests
 {
-    private readonly FakeDbContext         _db      = FakeDbContext.Create();
-    private readonly ICurrentTenant        _tenant  = Substitute.For<ICurrentTenant>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
-    private readonly Guid                  _studioId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private static readonly DateTime _newPeriodEnd = DateTime.UtcNow.AddMonths(1);
 
@@ -37,7 +37,7 @@ public class ChangePlanHandlerTests
     public async Task Handle_UpgradeToHigherPricedPlan_SwitchesImmediately()
     {
         Plan current = await SeedPlan("Basic", 29m, "price_basic");
-        Plan target  = await SeedPlan("Pro",   79m, "price_pro");
+        Plan target = await SeedPlan("Pro", 79m, "price_pro");
         await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
 
         SubscriptionResponse result = await CreateSut()
@@ -55,8 +55,8 @@ public class ChangePlanHandlerTests
     [Fact]
     public async Task Handle_DowngradeToCheaperPlan_SchedulesChangeAtPeriodEnd()
     {
-        Plan current = await SeedPlan("Pro",   79m, "price_pro");
-        Plan target  = await SeedPlan("Basic", 29m, "price_basic");
+        Plan current = await SeedPlan("Pro", 79m, "price_pro");
+        Plan target = await SeedPlan("Basic", 29m, "price_basic");
         await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
 
         SubscriptionResponse result = await CreateSut()
@@ -102,7 +102,7 @@ public class ChangePlanHandlerTests
     public async Task Handle_SubscriptionNotActive_ThrowsBusinessRuleViolation()
     {
         Plan current = await SeedPlan("Basic", 29m, "price_basic");
-        Plan target  = await SeedPlan("Pro",   79m, "price_pro");
+        Plan target = await SeedPlan("Pro", 79m, "price_pro");
         await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Trialing, "sub_123");
 
         Func<Task> act = () => CreateSut()
@@ -116,7 +116,7 @@ public class ChangePlanHandlerTests
     public async Task Handle_CashBilledSubscription_ThrowsBusinessRuleViolation()
     {
         Plan current = await SeedPlan("Basic", 29m, "price_basic");
-        Plan target  = await SeedPlan("Pro",   79m, "price_pro");
+        Plan target = await SeedPlan("Pro", 79m, "price_pro");
         await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, stripeSubId: null);
 
         Func<Task> act = () => CreateSut()
@@ -129,9 +129,9 @@ public class ChangePlanHandlerTests
     [Fact]
     public async Task Handle_PendingChangeAlreadyScheduled_ThrowsBusinessRuleViolation()
     {
-        Plan current = await SeedPlan("Pro",   79m, "price_pro");
+        Plan current = await SeedPlan("Pro", 79m, "price_pro");
         Plan pending = await SeedPlan("Basic", 29m, "price_basic");
-        Plan target  = await SeedPlan("Studio", 129m, "price_studio");
+        Plan target = await SeedPlan("Studio", 129m, "price_studio");
         await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123", pendingPlanId: pending.Id);
 
         Func<Task> act = () => CreateSut()
@@ -171,7 +171,7 @@ public class ChangePlanHandlerTests
     public async Task Handle_TargetPlanWithoutStripePrice_ThrowsBusinessRuleViolation()
     {
         Plan current = await SeedPlan("Basic", 29m, "price_basic");
-        Plan target  = await SeedPlan("Pro",   79m, stripePriceIdMonthly: null);
+        Plan target = await SeedPlan("Pro", 79m, stripePriceIdMonthly: null);
         await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
 
         Func<Task> act = () => CreateSut()
@@ -188,8 +188,8 @@ public class ChangePlanHandlerTests
         Plan plan = new() { Name = name };
         plan.Prices.Add(new PlanPrice
         {
-            Interval      = BillingInterval.Monthly,
-            Price         = priceMonthly,
+            Interval = BillingInterval.Monthly,
+            Price = priceMonthly,
             StripePriceId = stripePriceIdMonthly,
         });
         _db.Plans.Add(plan);
@@ -202,15 +202,15 @@ public class ChangePlanHandlerTests
     {
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId             = _studioId,
-            PlanId               = planId,
-            BillingInterval      = interval,
-            PendingPlanId        = pendingPlanId,
-            Status               = status,
+            StudioId = _studioId,
+            PlanId = planId,
+            BillingInterval = interval,
+            PendingPlanId = pendingPlanId,
+            Status = status,
             StripeSubscriptionId = stripeSubId,
-            TrialExpiresAt       = DateTime.UtcNow.AddDays(-20),
-            CurrentPeriodEnd     = DateTime.UtcNow.AddDays(10),
-            GracePeriodEnd       = DateTime.UtcNow.AddDays(-13),
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-20),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(-13),
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

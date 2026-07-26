@@ -9,10 +9,10 @@ namespace Pena_e_Arte.API.Extensions;
 internal sealed class RedisFixedWindowRateLimiter : RateLimiter
 {
     private readonly IDatabase _redis;
-    private readonly string    _key;
-    private readonly int       _permitLimit;
-    private readonly TimeSpan  _window;
-    private readonly ILogger   _logger;
+    private readonly string _key;
+    private readonly int _permitLimit;
+    private readonly TimeSpan _window;
+    private readonly ILogger _logger;
 
     // Atomic Lua: INCR key; set TTL on first hit; return {count, ttl}
     private const string LuaScript = """
@@ -26,16 +26,16 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
 
     public RedisFixedWindowRateLimiter(
         IDatabase redis,
-        string    key,
-        int       permitLimit,
-        TimeSpan  window,
-        ILogger   logger)
+        string key,
+        int permitLimit,
+        TimeSpan window,
+        ILogger logger)
     {
-        _redis       = redis;
-        _key         = key;
+        _redis = redis;
+        _key = key;
         _permitLimit = permitLimit;
-        _window      = window;
-        _logger      = logger;
+        _window = window;
+        _logger = logger;
     }
 
     // Tell PartitionedRateLimiter to evict idle instances after the window expires,
@@ -85,15 +85,15 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
     {
         try
         {
-            RedisValue val     = _redis.StringGet(_key);
-            long       current = val.HasValue && long.TryParse((string?)val, out long n) ? n : 0;
-            long       available = Math.Max(0, _permitLimit - current);
+            RedisValue val = _redis.StringGet(_key);
+            long current = val.HasValue && long.TryParse((string?)val, out long n) ? n : 0;
+            long available = Math.Max(0, _permitLimit - current);
             return new RateLimiterStatistics
             {
                 CurrentAvailablePermits = available,
-                CurrentQueuedCount      = 0,
-                TotalSuccessfulLeases   = 0,
-                TotalFailedLeases       = 0,
+                CurrentQueuedCount = 0,
+                TotalSuccessfulLeases = 0,
+                TotalFailedLeases = 0,
             };
         }
         catch
@@ -106,9 +106,9 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
 
     private RateLimitLease EvaluateResult(RedisResult result)
     {
-        RedisResult[] arr   = (RedisResult[])result!;
-        long          count = (long)arr[0];
-        long          ttl   = (long)arr[1]; // seconds remaining; -1 means no TTL (shouldn't happen)
+        RedisResult[] arr = (RedisResult[])result!;
+        long count = (long)arr[0];
+        long ttl = (long)arr[1]; // seconds remaining; -1 means no TTL (shouldn't happen)
 
         return count <= _permitLimit
             ? SuccessfulLease.Instance

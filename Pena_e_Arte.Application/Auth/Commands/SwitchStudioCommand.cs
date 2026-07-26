@@ -15,9 +15,9 @@ namespace Pena_e_Arte.Application.Auth.Commands;
 public record SwitchStudioCommand(SwitchStudioRequest Request) : IRequest<SwitchStudioResponse>;
 
 public class SwitchStudioHandler(
-    IAppDbContext                db,
-    IIdentityService             identity,
-    ICurrentUser                 currentUser,
+    IAppDbContext db,
+    IIdentityService identity,
+    ICurrentUser currentUser,
     ILogger<SwitchStudioHandler> logger)
     : IRequestHandler<SwitchStudioCommand, SwitchStudioResponse>
 {
@@ -42,17 +42,17 @@ public class SwitchStudioHandler(
             string email = template?.Email ?? currentUser.Email
                 ?? throw new BusinessRuleViolationException("Could not determine an email for this account.");
             string firstName = template?.FirstName ?? email.Split('@')[0];
-            string lastName  = template?.LastName ?? string.Empty;
-            string? phone    = template?.Phone;
+            string lastName = template?.LastName ?? string.Empty;
+            string? phone = template?.Phone;
 
             client = new Client
             {
-                StudioId  = targetStudioId,
-                UserId    = currentUser.UserId,
+                StudioId = targetStudioId,
+                UserId = currentUser.UserId,
                 FirstName = firstName,
-                LastName  = lastName,
-                Email     = email,
-                Phone     = phone,
+                LastName = lastName,
+                Email = email,
+                Phone = phone,
             };
             db.Clients.Add(client);
 

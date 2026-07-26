@@ -16,7 +16,7 @@ namespace Pena_e_Arte.IntegrationTests.Infrastructure;
 public class AppointmentReminderJobTests(DatabaseFixture fixture)
 {
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
     private AppointmentReminderJob CreateSut(AppDbContext db) =>
         new(_notifications, db, _realtime, NullLogger<AppointmentReminderJob>.Instance);
@@ -176,36 +176,36 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
 
         Client client = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = "ana@example.com",
-            Phone     = withPhone ? "+351910000001" : null
+            LastName = "Silva",
+            Email = "ana@example.com",
+            Phone = withPhone ? "+351910000001" : null
         };
         ctx.Clients.Add(client);
         await ctx.SaveChangesAsync();
 
         Artist artist = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "João",
-            LastName  = "Artista",
-            Email     = "joao@example.com"
+            LastName = "Artista",
+            Email = "joao@example.com"
         };
         ctx.Artists.Add(artist);
         await ctx.SaveChangesAsync();
 
         Appointment appointment = new()
         {
-            StudioId        = studioId,
-            ArtistId        = artist.Id,
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(2),
-            EndDate         = DateTime.UtcNow.AddDays(2).AddHours(2),
+            StudioId = studioId,
+            ArtistId = artist.Id,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(2),
+            EndDate = DateTime.UtcNow.AddDays(2).AddHours(2),
             DurationMinutes = 120,
-            Status          = status,
-            DepositStatus   = DepositStatus.Paid,
-            DepositAmount   = 50m
+            Status = status,
+            DepositStatus = DepositStatus.Paid,
+            DepositAmount = 50m
         };
         ctx.Appointments.Add(appointment);
         await ctx.SaveChangesAsync();

@@ -8,7 +8,7 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class DeleteDesignRevisionHandlerTests
 {
-    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
 
     private DeleteDesignRevisionHandler CreateSut() => new(_db, _currentUser);
@@ -18,9 +18,9 @@ public class DeleteDesignRevisionHandlerTests
         Guid artistId = Guid.NewGuid();
         Design design = new()
         {
-            ClientId    = Guid.NewGuid(),
-            ArtistId    = artistId,
-            Title       = "Dragon sleeve",
+            ClientId = Guid.NewGuid(),
+            ArtistId = artistId,
+            Title = "Dragon sleeve",
         };
         _db.Designs.Add(design);
 
@@ -28,19 +28,19 @@ public class DeleteDesignRevisionHandlerTests
         {
             _db.Artists.Add(new Artist
             {
-                Id        = artistId,
-                UserId    = artistUserId.Value,
+                Id = artistId,
+                UserId = artistUserId.Value,
                 FirstName = "Art",
-                LastName  = "Ist",
-                Email     = $"{Guid.NewGuid()}@test.com",
+                LastName = "Ist",
+                Email = $"{Guid.NewGuid()}@test.com",
             });
         }
 
         DesignRevision revision = new()
         {
-            DesignId      = design.Id,
+            DesignId = design.Id,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/rev1.png",
+            FileUrl = "https://r2.example.com/rev1.png",
         };
         _db.DesignRevisions.Add(revision);
         await _db.SaveChangesAsync();

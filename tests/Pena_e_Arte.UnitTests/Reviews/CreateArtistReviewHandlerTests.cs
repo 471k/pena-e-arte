@@ -30,24 +30,24 @@ public class CreateArtistReviewHandlerTests
     {
         Client client = new()
         {
-            StudioId  = studioId,
-            UserId    = authorUserId,
+            StudioId = studioId,
+            UserId = authorUserId,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Silva",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
 
         Appointment appointment = new()
         {
-            StudioId        = studioId,
-            ArtistId        = artistId,
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(-10),
-            EndDate         = DateTime.UtcNow.AddDays(-10).AddHours(1),
+            StudioId = studioId,
+            ArtistId = artistId,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(-10),
+            EndDate = DateTime.UtcNow.AddDays(-10).AddHours(1),
             DurationMinutes = 60,
-            Status          = status,
-            DepositStatus   = DepositStatus.Paid,
+            Status = status,
+            DepositStatus = DepositStatus.Paid,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -57,8 +57,8 @@ public class CreateArtistReviewHandlerTests
     [Fact]
     public async Task Creates_review_when_appointment_is_completed_and_belongs_to_author()
     {
-        Artist artist   = await SeedArtist();
-        Guid   authorId = Guid.NewGuid();
+        Artist artist = await SeedArtist();
+        Guid authorId = Guid.NewGuid();
         Appointment appt = await SeedAppointment(artist.StudioId, artist.Id, authorId);
 
         CreateArtistReviewCommand command = new(
@@ -67,10 +67,10 @@ public class CreateArtistReviewHandlerTests
         await CreateSut().Handle(command, CancellationToken.None);
 
         _db.Reviews.Should().ContainSingle(r =>
-            r.ArtistId      == artist.Id &&
-            r.AppointmentId == appt.Id   &&
-            r.Rating        == 5         &&
-            r.Body          == "Amazing tattoo, will be back!");
+            r.ArtistId == artist.Id &&
+            r.AppointmentId == appt.Id &&
+            r.Rating == 5 &&
+            r.Body == "Amazing tattoo, will be back!");
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class CreateArtistReviewHandlerTests
     {
         Artist artistA = await SeedArtist("artist-a");
         Artist artistB = await SeedArtist("artist-b");
-        Guid   authorId = Guid.NewGuid();
+        Guid authorId = Guid.NewGuid();
         Appointment appt = await SeedAppointment(artistA.StudioId, artistA.Id, authorId);
 
         CreateArtistReviewCommand command = new(
@@ -130,8 +130,8 @@ public class CreateArtistReviewHandlerTests
     [Fact]
     public async Task Throws_BusinessRuleViolationException_when_appointment_not_completed()
     {
-        Artist artist   = await SeedArtist();
-        Guid   authorId = Guid.NewGuid();
+        Artist artist = await SeedArtist();
+        Guid authorId = Guid.NewGuid();
         Appointment appt = await SeedAppointment(artist.StudioId, artist.Id, authorId, AppointmentStatus.Pending);
 
         CreateArtistReviewCommand command = new(
@@ -145,8 +145,8 @@ public class CreateArtistReviewHandlerTests
     [Fact]
     public async Task Throws_ConflictException_when_appointment_already_reviewed()
     {
-        Artist artist   = await SeedArtist();
-        Guid   authorId = Guid.NewGuid();
+        Artist artist = await SeedArtist();
+        Guid authorId = Guid.NewGuid();
         Appointment appt = await SeedAppointment(artist.StudioId, artist.Id, authorId);
 
         Review existing = Review.ForArtist(artist.Id, appt.Id, authorId, "Ana Silva", 4, "First review text here");
@@ -165,8 +165,8 @@ public class CreateArtistReviewHandlerTests
     [Fact]
     public async Task Allows_both_a_studio_and_an_artist_review_from_the_same_appointment()
     {
-        Artist artist   = await SeedArtist();
-        Guid   authorId = Guid.NewGuid();
+        Artist artist = await SeedArtist();
+        Guid authorId = Guid.NewGuid();
         Appointment appt = await SeedAppointment(artist.StudioId, artist.Id, authorId);
 
         Review studioReview = Review.ForStudio(artist.StudioId, appt.Id, authorId, "Ana Silva", 5, "Loved the studio too!");

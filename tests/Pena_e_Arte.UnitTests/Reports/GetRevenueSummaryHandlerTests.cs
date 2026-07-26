@@ -9,8 +9,8 @@ namespace Pena_e_Arte.UnitTests.Reports;
 
 public class GetRevenueSummaryHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetRevenueSummaryHandler CreateSut() => new(_db);
 
@@ -28,7 +28,7 @@ public class GetRevenueSummaryHandlerTests
     public async Task Handle_PaidPaymentThisMonth_ContributesToTrendAndPerArtist()
     {
         Guid artistId = await SeedArtist("Luna", "Artista");
-        Guid apptId   = await SeedAppointment(artistId);
+        Guid apptId = await SeedAppointment(artistId);
         await SeedPayment(apptId, 50m, PaymentStatus.Paid, DateTime.UtcNow);
 
         RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
@@ -42,7 +42,7 @@ public class GetRevenueSummaryHandlerTests
     public async Task Handle_NonPaidPayment_ExcludedFromTrendAndPerArtist()
     {
         Guid artistId = await SeedArtist("Luna", "Artista");
-        Guid apptId   = await SeedAppointment(artistId);
+        Guid apptId = await SeedAppointment(artistId);
         await SeedPayment(apptId, 50m, PaymentStatus.Pending, null);
 
         RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
@@ -55,7 +55,7 @@ public class GetRevenueSummaryHandlerTests
     public async Task Handle_PaymentOutsideSelectedPeriod_ExcludedFromPerArtistButCountsInTrend()
     {
         Guid artistId = await SeedArtist("Luna", "Artista");
-        Guid apptId   = await SeedAppointment(artistId);
+        Guid apptId = await SeedAppointment(artistId);
         // Paid 6 months ago — still within the 12-month trend, but outside the
         // default 30-day per-artist period.
         DateTime paidAt = DateTime.UtcNow.AddMonths(-6);
@@ -71,10 +71,10 @@ public class GetRevenueSummaryHandlerTests
     public async Task Handle_MultipleArtists_SortedByRevenueDescending()
     {
         Guid highArtist = await SeedArtist("High", "Earner");
-        Guid lowArtist  = await SeedArtist("Low", "Earner");
+        Guid lowArtist = await SeedArtist("Low", "Earner");
 
         Guid apptHigh = await SeedAppointment(highArtist);
-        Guid apptLow  = await SeedAppointment(lowArtist);
+        Guid apptLow = await SeedAppointment(lowArtist);
         await SeedPayment(apptHigh, 200m, PaymentStatus.Paid, DateTime.UtcNow);
         await SeedPayment(apptLow, 30m, PaymentStatus.Paid, DateTime.UtcNow);
 
@@ -106,7 +106,7 @@ public class GetRevenueSummaryHandlerTests
         // Status == Refunded (there's no PartiallyRefunded status) — the retained portion
         // must still show up as revenue, not disappear entirely.
         Guid artistId = await SeedArtist("Luna", "Artista");
-        Guid apptId   = await SeedAppointment(artistId);
+        Guid apptId = await SeedAppointment(artistId);
         await SeedPayment(apptId, 100m, PaymentStatus.Refunded, DateTime.UtcNow, refundedAmount: 50m);
 
         RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
@@ -119,7 +119,7 @@ public class GetRevenueSummaryHandlerTests
     public async Task Handle_FullyRefundedPayment_ContributesZeroRevenue()
     {
         Guid artistId = await SeedArtist("Luna", "Artista");
-        Guid apptId   = await SeedAppointment(artistId);
+        Guid apptId = await SeedAppointment(artistId);
         await SeedPayment(apptId, 100m, PaymentStatus.Refunded, DateTime.UtcNow, refundedAmount: 100m);
 
         RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
@@ -135,7 +135,7 @@ public class GetRevenueSummaryHandlerTests
         // new cancellations, but guards old/pre-migration rows) must not double-count revenue
         // by treating null as "nothing refunded" rather than crashing or under-counting.
         Guid artistId = await SeedArtist("Luna", "Artista");
-        Guid apptId   = await SeedAppointment(artistId);
+        Guid apptId = await SeedAppointment(artistId);
         await SeedPayment(apptId, 100m, PaymentStatus.Refunded, DateTime.UtcNow, refundedAmount: null);
 
         RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
@@ -147,7 +147,9 @@ public class GetRevenueSummaryHandlerTests
     {
         Artist artist = new()
         {
-            StudioId = _studioId, FirstName = firstName, LastName = lastName,
+            StudioId = _studioId,
+            FirstName = firstName,
+            LastName = lastName,
             Email = $"{Guid.NewGuid():N}@test.com",
         };
         _db.Artists.Add(artist);
@@ -159,14 +161,14 @@ public class GetRevenueSummaryHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = artistId,
-            ClientId        = Guid.NewGuid(),
-            Date            = DateTime.UtcNow.AddDays(1),
-            EndDate         = DateTime.UtcNow.AddDays(1).AddHours(1),
+            StudioId = _studioId,
+            ArtistId = artistId,
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(1).AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Completed,
-            DepositStatus   = DepositStatus.Paid,
+            Status = AppointmentStatus.Completed,
+            DepositStatus = DepositStatus.Paid,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -179,13 +181,13 @@ public class GetRevenueSummaryHandlerTests
     {
         _db.Payments.Add(new Payment
         {
-            StudioId       = _studioId,
-            AppointmentId  = appointmentId,
-            ClientId       = Guid.NewGuid(),
-            Amount         = amount,
-            Status         = status,
-            Method         = ClientPaymentMethod.Card,
-            PaidAt         = paidAt,
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            ClientId = Guid.NewGuid(),
+            Amount = amount,
+            Status = status,
+            Method = ClientPaymentMethod.Card,
+            PaidAt = paidAt,
             RefundedAmount = refundedAmount,
         });
         await _db.SaveChangesAsync();

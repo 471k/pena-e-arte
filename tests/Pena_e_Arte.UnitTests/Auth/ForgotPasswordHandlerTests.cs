@@ -9,10 +9,10 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class ForgotPasswordHandlerTests
 {
-    private readonly IIdentityService     _identity      = Substitute.For<IIdentityService>();
-    private readonly IEmailRenderer       _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IAppSettings         _appSettings   = Substitute.For<IAppSettings>();
+    private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
 
     public ForgotPasswordHandlerTests()
     {

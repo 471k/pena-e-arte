@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class UpdateClientStudioNotificationPreferencesHandlerTests
 {
-    private readonly FakeDbContext    _db          = FakeDbContext.Create();
-    private readonly IIdentityService _identity    = Substitute.For<IIdentityService>();
-    private readonly FakeCurrentUser  _currentUser = FakeCurrentUser.Client();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Client();
 
     private UpdateClientStudioNotificationPreferencesHandler CreateSut() => new(_db, _identity, _currentUser);
 
@@ -67,10 +67,10 @@ public class UpdateClientStudioNotificationPreferencesHandlerTests
         UserHasTenantIds(studioId);
         _db.ClientNotificationPreferences.Add(new ClientNotificationPreference
         {
-            UserId    = _currentUser.UserId,
-            StudioId  = studioId,
-            Type      = NotificationType.DepositCaptured,
-            Channel   = NotificationChannel.Sms,
+            UserId = _currentUser.UserId,
+            StudioId = studioId,
+            Type = NotificationType.DepositCaptured,
+            Channel = NotificationChannel.Sms,
             IsEnabled = true,
         });
         await _db.SaveChangesAsync();
@@ -110,10 +110,10 @@ public class UpdateClientStudioNotificationPreferencesHandlerTests
         UserHasTenantIds(studioA, studioB);
         _db.ClientNotificationPreferences.Add(new ClientNotificationPreference
         {
-            UserId    = _currentUser.UserId,
-            StudioId  = studioB,
-            Type      = NotificationType.AppointmentCreated,
-            Channel   = NotificationChannel.Email,
+            UserId = _currentUser.UserId,
+            StudioId = studioB,
+            Type = NotificationType.AppointmentCreated,
+            Channel = NotificationChannel.Email,
             IsEnabled = true,
         });
         await _db.SaveChangesAsync();

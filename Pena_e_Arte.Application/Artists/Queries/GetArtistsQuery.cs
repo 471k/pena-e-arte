@@ -23,7 +23,7 @@ public class GetArtistsHandler(IAppDbContext db)
             string search = query.Search.ToLower();
             q = q.Where(a =>
                 a.FirstName.ToLower().Contains(search) ||
-                a.LastName.ToLower().Contains(search)  ||
+                a.LastName.ToLower().Contains(search) ||
                 a.Email.ToLower().Contains(search));
         }
 

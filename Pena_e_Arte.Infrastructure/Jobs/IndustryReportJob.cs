@@ -9,13 +9,13 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 
 public class IndustryReportJob(AppDbContext db, IR2Service r2)
 {
-    private const string ReportPrefix  = "reports/industry/";
-    private const int    MinCohortSize = 10;
+    private const string ReportPrefix = "reports/industry/";
+    private const int MinCohortSize = 10;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
-        WriteIndented              = false,
-        DefaultIgnoreCondition     = JsonIgnoreCondition.Never,
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
 
     public async Task RunAsync(CancellationToken ct = default)
@@ -24,7 +24,7 @@ public class IndustryReportJob(AppDbContext db, IR2Service r2)
         if (db.Database.IsRelational())
             db.Database.SetCommandTimeout(300);
 
-        DateTime now      = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         DateTime cutoff90 = now.AddDays(-90);
 
         // total_active_studios
@@ -94,15 +94,15 @@ public class IndustryReportJob(AppDbContext db, IR2Service r2)
         }
 
         IndustryAggregates aggregates = new(
-            TotalActiveStudios:              totalActive,
+            TotalActiveStudios: totalActive,
             AvgAppointmentsPerStudioPerMonth: avgAppointmentsPerMonth,
-            PeakBookingHour:                 peakBookingHour,
-            TopSessionDurations:             durationCounts,
-            TrialToPaidConversionRate:       conversionRate,
-            AvgRetentionMonths:              avgRetentionMonths);
+            PeakBookingHour: peakBookingHour,
+            TopSessionDurations: durationCounts,
+            TrialToPaidConversionRate: conversionRate,
+            AvgRetentionMonths: avgRetentionMonths);
 
-        IndustryReportDocument doc  = BuildDocument(aggregates, now);
-        byte[]                 json = JsonSerializer.SerializeToUtf8Bytes(doc, SerializerOptions);
+        IndustryReportDocument doc = BuildDocument(aggregates, now);
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(doc, SerializerOptions);
 
         string key = $"{ReportPrefix}{now.Year}-{now.Month:D2}.json";
         await r2.UploadAsync(key, json, "application/json", ct);
@@ -114,39 +114,39 @@ public class IndustryReportJob(AppDbContext db, IR2Service r2)
 
         return new IndustryReportDocument(
             GeneratedAt: generatedAt.ToString("O"),
-            Period:      $"{generatedAt.Year}-{generatedAt.Month:D2}",
-            CohortSize:  data.TotalActiveStudios,
+            Period: $"{generatedAt.Year}-{generatedAt.Month:D2}",
+            CohortSize: data.TotalActiveStudios,
             Metrics: new IndustryMetrics(
-                AvgAppointmentsPerStudioPerMonth: sufficient ? data.AvgAppointmentsPerStudioPerMonth  : null,
-                PeakBookingHour:                  sufficient ? data.PeakBookingHour                  : null,
-                TopSessionDurationsMinutes:        sufficient ? data.TopSessionDurations              : null,
-                TrialToPaidConversionRate:         sufficient ? data.TrialToPaidConversionRate        : null,
-                AvgRetentionMonths:                sufficient ? data.AvgRetentionMonths               : null),
+                AvgAppointmentsPerStudioPerMonth: sufficient ? data.AvgAppointmentsPerStudioPerMonth : null,
+                PeakBookingHour: sufficient ? data.PeakBookingHour : null,
+                TopSessionDurationsMinutes: sufficient ? data.TopSessionDurations : null,
+                TrialToPaidConversionRate: sufficient ? data.TrialToPaidConversionRate : null,
+                AvgRetentionMonths: sufficient ? data.AvgRetentionMonths : null),
             Note: "Metrics suppressed where cohort < 10.");
     }
 }
 
 internal record IndustryAggregates(
-    int                  TotalActiveStudios,
-    double               AvgAppointmentsPerStudioPerMonth,
-    int?                 PeakBookingHour,
+    int TotalActiveStudios,
+    double AvgAppointmentsPerStudioPerMonth,
+    int? PeakBookingHour,
     Dictionary<string, int> TopSessionDurations,
-    double               TrialToPaidConversionRate,
-    double               AvgRetentionMonths
+    double TrialToPaidConversionRate,
+    double AvgRetentionMonths
 );
 
 internal record IndustryReportDocument(
-    [property: JsonPropertyName("generated_at")] string         GeneratedAt,
-    [property: JsonPropertyName("period")]        string         Period,
-    [property: JsonPropertyName("cohort_size")]   int            CohortSize,
-    [property: JsonPropertyName("metrics")]       IndustryMetrics Metrics,
-    [property: JsonPropertyName("note")]          string         Note
+    [property: JsonPropertyName("generated_at")] string GeneratedAt,
+    [property: JsonPropertyName("period")] string Period,
+    [property: JsonPropertyName("cohort_size")] int CohortSize,
+    [property: JsonPropertyName("metrics")] IndustryMetrics Metrics,
+    [property: JsonPropertyName("note")] string Note
 );
 
 internal record IndustryMetrics(
-    [property: JsonPropertyName("avg_appointments_per_studio_per_month")] double?                  AvgAppointmentsPerStudioPerMonth,
-    [property: JsonPropertyName("peak_booking_hour_utc")]                 int?                     PeakBookingHour,
-    [property: JsonPropertyName("top_session_durations_minutes")]         Dictionary<string, int>? TopSessionDurationsMinutes,
-    [property: JsonPropertyName("trial_to_paid_conversion_rate")]         double?                  TrialToPaidConversionRate,
-    [property: JsonPropertyName("avg_retention_months")]                  double?                  AvgRetentionMonths
+    [property: JsonPropertyName("avg_appointments_per_studio_per_month")] double? AvgAppointmentsPerStudioPerMonth,
+    [property: JsonPropertyName("peak_booking_hour_utc")] int? PeakBookingHour,
+    [property: JsonPropertyName("top_session_durations_minutes")] Dictionary<string, int>? TopSessionDurationsMinutes,
+    [property: JsonPropertyName("trial_to_paid_conversion_rate")] double? TrialToPaidConversionRate,
+    [property: JsonPropertyName("avg_retention_months")] double? AvgRetentionMonths
 );

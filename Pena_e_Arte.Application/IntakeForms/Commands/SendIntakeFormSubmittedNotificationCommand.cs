@@ -13,12 +13,12 @@ namespace Pena_e_Arte.Application.IntakeForms.Commands;
 public record SendIntakeFormSubmittedNotificationCommand(Guid IntakeFormId) : IRequest<Unit>;
 
 public class SendIntakeFormSubmittedNotificationHandler(
-    IAppDbContext                                               db,
-    IEmailRenderer                                             emailRenderer,
-    INotificationService                                       notifications,
-    INotificationPreferenceService                             prefs,
-    IRealtimeNotifier                                          realtime,
-    ILogger<SendIntakeFormSubmittedNotificationHandler>        logger)
+    IAppDbContext db,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    INotificationPreferenceService prefs,
+    IRealtimeNotifier realtime,
+    ILogger<SendIntakeFormSubmittedNotificationHandler> logger)
     : IRequestHandler<SendIntakeFormSubmittedNotificationCommand, Unit>
 {
     public async Task<Unit> Handle(SendIntakeFormSubmittedNotificationCommand command, CancellationToken ct)
@@ -87,14 +87,14 @@ public class SendIntakeFormSubmittedNotificationHandler(
 
             log = new()
             {
-                StudioId      = studio.Id,
-                RecipientId   = studio.Id,
+                StudioId = studio.Id,
+                RecipientId = studio.Id,
                 RecipientType = NotificationRecipientType.Studio,
-                Channel       = NotificationChannel.Email,
-                Subject       = subject,
-                Body          = body,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = success,
+                Channel = NotificationChannel.Email,
+                Subject = subject,
+                Body = body,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = success,
             };
             db.NotificationLogs.Add(log);
             await db.SaveChangesAsync(ct);

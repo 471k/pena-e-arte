@@ -13,13 +13,13 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class CaptureDepositHandlerTests
 {
-    private readonly FakeDbContext        _db        = FakeDbContext.Create();
-    private readonly ICurrentTenant       _tenant    = Substitute.For<ICurrentTenant>();
-    private readonly IStripePaymentService _stripe    = Substitute.For<IStripePaymentService>();
-    private readonly IRealtimeNotifier    _realtime  = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender              _sender    = Substitute.For<ISender>();
-    private readonly Guid                 _studioId  = Guid.NewGuid();
-    private readonly Guid                 _appointmentId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _appointmentId = Guid.NewGuid();
 
     public CaptureDepositHandlerTests()
     {
@@ -150,7 +150,7 @@ public class CaptureDepositHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id   = _studioId,
+            Id = _studioId,
             Name = "Test Studio",
             Slug = "test"
         });
@@ -161,14 +161,14 @@ public class CaptureDepositHandlerTests
     {
         _db.Appointments.Add(new Appointment
         {
-            Id            = _appointmentId,
-            StudioId      = _studioId,
-            ArtistId      = Guid.NewGuid(),
-            ClientId      = Guid.NewGuid(),
-            Date          = DateTime.UtcNow.AddDays(3),
-            EndDate       = DateTime.UtcNow.AddDays(3).AddMinutes(90),
+            Id = _appointmentId,
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddMinutes(90),
             DurationMinutes = 90,
-            Status        = AppointmentStatus.Pending,
+            Status = AppointmentStatus.Pending,
             DepositStatus = DepositStatus.Pending
         });
         await _db.SaveChangesAsync();
@@ -178,21 +178,21 @@ public class CaptureDepositHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
         Payment payment = new()
         {
-            StudioId              = _studioId,
-            AppointmentId         = _appointmentId,
-            ClientId              = client.Id,
-            Amount                = 100m,
-            Status                = status,
+            StudioId = _studioId,
+            AppointmentId = _appointmentId,
+            ClientId = client.Id,
+            Amount = 100m,
+            Status = status,
             StripePaymentIntentId = stripeIntentId
         };
         _db.Payments.Add(payment);

@@ -7,9 +7,9 @@ namespace Pena_e_Arte.Contracts.Responses;
 /// by comparing StudioId against the tenantId in the stored JWT.
 /// </summary>
 public record MyStudioResponse(
-    Guid    StudioId,
-    string  Name,
-    string  Slug,
-    string  City,
+    Guid StudioId,
+    string Name,
+    string Slug,
+    string City,
     string? CoverImageUrl,
-    bool    IsStudioActive);
+    bool IsStudioActive);

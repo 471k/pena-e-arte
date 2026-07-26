@@ -28,7 +28,7 @@ public class SavePortfolioImageHandler(IAppDbContext db)
 
         db.SavedPortfolioImages.Add(new SavedPortfolioImage
         {
-            UserId           = cmd.UserId,
+            UserId = cmd.UserId,
             PortfolioImageId = cmd.ImageId,
         });
         await db.SaveChangesAsync(ct);

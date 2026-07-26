@@ -13,9 +13,9 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// filter by design — see AppDbContext.
 /// </summary>
 public class InstagramSyncJob(
-    IAppDbContext             db,
-    IInstagramService         instagram,
-    ITokenEncryptor           encryptor,
+    IAppDbContext db,
+    IInstagramService instagram,
+    ITokenEncryptor encryptor,
     ILogger<InstagramSyncJob> logger)
 {
     public async Task ExecuteAsync(CancellationToken ct = default)
@@ -57,7 +57,7 @@ public class InstagramSyncJob(
 
                 conn.EncryptedToken = encryptor.Encrypt(newToken);
                 conn.TokenExpiresAt = newExpiry;
-                conn.UpdatedAt      = DateTime.UtcNow;
+                conn.UpdatedAt = DateTime.UtcNow;
                 token = newToken;
 
                 logger.LogInformation(
@@ -66,7 +66,7 @@ public class InstagramSyncJob(
             }
             catch (HttpRequestException ex) when ((int?)ex.StatusCode == 400)
             {
-                conn.IsActive  = false;
+                conn.IsActive = false;
                 conn.UpdatedAt = DateTime.UtcNow;
                 await db.SaveChangesAsync(ct);
 
@@ -90,21 +90,21 @@ public class InstagramSyncJob(
 
             db.InstagramPosts.Add(new InstagramPost
             {
-                StudioId         = conn.StudioId,
-                ArtistId         = conn.ArtistId,
+                StudioId = conn.StudioId,
+                ArtistId = conn.ArtistId,
                 InstagramMediaId = item.Id,
-                MediaUrl         = item.MediaUrl ?? "",
-                ThumbnailUrl     = item.ThumbnailUrl,
-                Caption          = item.Caption,
-                MediaType        = item.MediaType,
-                PostedAt         = item.Timestamp,
-                IsVisible        = true,
+                MediaUrl = item.MediaUrl ?? "",
+                ThumbnailUrl = item.ThumbnailUrl,
+                Caption = item.Caption,
+                MediaType = item.MediaType,
+                PostedAt = item.Timestamp,
+                IsVisible = true,
             });
             added++;
         }
 
         conn.LastSyncedAt = DateTime.UtcNow;
-        conn.UpdatedAt    = DateTime.UtcNow;
+        conn.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 

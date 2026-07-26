@@ -6,7 +6,7 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Auth.Commands;
 
 public record ChangePasswordCommand(
-    Guid   UserId,
+    Guid UserId,
     string CurrentPassword,
     string NewPassword) : IRequest;
 

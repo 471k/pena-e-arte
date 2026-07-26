@@ -83,9 +83,9 @@ public class QrCodeIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
         Studio studio = new()
         {
-            Name     = "QR Test Studio",
-            Slug     = "qr-test-" + Guid.NewGuid().ToString("N")[..8],
-            City     = "Lisboa",
+            Name = "QR Test Studio",
+            Slug = "qr-test-" + Guid.NewGuid().ToString("N")[..8],
+            City = "Lisboa",
             IsActive = isActive,
         };
         seed.Studios.Add(studio);

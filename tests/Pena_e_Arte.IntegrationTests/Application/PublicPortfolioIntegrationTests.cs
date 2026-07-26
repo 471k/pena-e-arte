@@ -66,8 +66,8 @@ public class PublicPortfolioIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task GetPublicStudio_DeletedArtistExcluded()
     {
-        Studio studio  = await SeedStudio(isActive: true);
-        Artist artist  = await SeedArtist(studio.Id, "deleted-artist");
+        Studio studio = await SeedStudio(isActive: true);
+        Artist artist = await SeedArtist(studio.Id, "deleted-artist");
 
         await using AppDbContext deleteSeed = fixture.CreateDbContext(studio.Id);
         Artist? a = await deleteSeed.Artists.FindAsync(artist.Id);
@@ -142,9 +142,9 @@ public class PublicPortfolioIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
         Studio studio = new()
         {
-            Name     = "Portfolio Studio",
-            Slug     = "portfolio-" + Guid.NewGuid().ToString("N")[..8],
-            City     = "Lisboa",
+            Name = "Portfolio Studio",
+            Slug = "portfolio-" + Guid.NewGuid().ToString("N")[..8],
+            City = "Lisboa",
             IsActive = isActive,
         };
         seed.Studios.Add(studio);
@@ -157,10 +157,10 @@ public class PublicPortfolioIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seed = fixture.CreateDbContext(Guid.Empty);
         Artist artist = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "Jane",
-            LastName  = "Doe",
-            Email     = $"{slug}@test.com",
+            LastName = "Doe",
+            Email = $"{slug}@test.com",
         };
         artist.SetSlug(slug);
         seed.Artists.Add(artist);

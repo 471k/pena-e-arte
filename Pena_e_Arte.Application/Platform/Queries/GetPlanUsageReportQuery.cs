@@ -52,10 +52,10 @@ public class GetPlanUsageReportHandler(IAppDbContext db)
 
                 return new StudioPlanUsageRow(
                     s.Id, s.Name, plan.Name,
-                    artistCounts.GetValueOrDefault(s.Id),       plan.MaxArtists,
-                    appointmentCounts.GetValueOrDefault(s.Id),  plan.MaxAppointmentsPerMonth,
+                    artistCounts.GetValueOrDefault(s.Id), plan.MaxArtists,
+                    appointmentCounts.GetValueOrDefault(s.Id), plan.MaxAppointmentsPerMonth,
                     notificationCounts.GetValueOrDefault(s.Id), plan.MaxNotificationsPerMonth,
-                    storageGb,                                  plan.MaxStorageGb);
+                    storageGb, plan.MaxStorageGb);
             })
             // Studios closest to any of their caps first, so the issuer can scan
             // top-to-bottom for "who's about to hit a wall" without manually sorting.

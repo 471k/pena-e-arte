@@ -10,9 +10,9 @@ namespace Pena_e_Arte.Application.Artists.Commands;
 public record ResendArtistInviteCommand(Guid Id) : IRequest;
 
 public class ResendArtistInviteHandler(
-    IAppDbContext  db,
+    IAppDbContext db,
     ICurrentTenant tenant,
-    IJobScheduler  scheduler)
+    IJobScheduler scheduler)
     : IRequestHandler<ResendArtistInviteCommand>
 {
     public async Task Handle(ResendArtistInviteCommand command, CancellationToken ct)

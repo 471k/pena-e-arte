@@ -8,4 +8,4 @@ public record RegisterOAuthUserRequest(
     string Provider,
     string IdToken,
     string Role,
-    Guid   StudioId);
+    Guid StudioId);

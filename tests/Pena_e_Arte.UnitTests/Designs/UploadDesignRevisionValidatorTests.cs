@@ -13,7 +13,7 @@ public class UploadDesignRevisionValidatorTests
 {
     private const string ValidUrl = "https://cdn.example.com/v1.png";
 
-    private readonly IR2Service                  _r2  = Substitute.For<IR2Service>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
     private readonly UploadDesignRevisionValidator _sut;
 
     public UploadDesignRevisionValidatorTests()

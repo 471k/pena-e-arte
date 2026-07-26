@@ -11,7 +11,7 @@ namespace Pena_e_Arte.UnitTests.Designs;
 public class GetSharedDesignHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
-    private readonly IR2Service    _r2 = Substitute.For<IR2Service>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
 
     public GetSharedDesignHandlerTests() =>
         _r2.GeneratePresignedReadUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -80,43 +80,43 @@ public class GetSharedDesignHandlerTests
 
         _db.Studios.Add(new Pena_e_Arte.Domain.Entities.Studio
         {
-            Id           = studioId,
-            Name         = "Test Studio",
-            Slug         = $"test-{studioId:N}",
-            City         = "Lisboa",
-            OwnerEmail   = "test@test.com",
-            IsActive     = true,
+            Id = studioId,
+            Name = "Test Studio",
+            Slug = $"test-{studioId:N}",
+            City = "Lisboa",
+            OwnerEmail = "test@test.com",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         });
 
         Design design = new()
         {
-            StudioId    = studioId,
-            ClientId    = Guid.NewGuid(),
-            ArtistId    = Guid.NewGuid(),
-            Title       = "Rose"
+            StudioId = studioId,
+            ClientId = Guid.NewGuid(),
+            ArtistId = Guid.NewGuid(),
+            Title = "Rose"
         };
         _db.Designs.Add(design);
 
         DesignRevision revision = new()
         {
-            StudioId      = studioId,
-            DesignId      = design.Id,
+            StudioId = studioId,
+            DesignId = design.Id,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/file.png",
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = "https://r2.example.com/file.png",
+            UploadedAt = DateTime.UtcNow
         };
         _db.DesignRevisions.Add(revision);
 
         string token = Guid.NewGuid().ToString("N");
         DesignShareToken shareToken = new()
         {
-            StudioId         = studioId,
-            Token            = token,
+            StudioId = studioId,
+            Token = token,
             DesignRevisionId = revision.Id,
-            CreatedByUserId  = Guid.NewGuid(),
-            ExpiresAt        = DateTime.UtcNow.AddDays(daysOffset),
-            IsRevoked        = isRevoked
+            CreatedByUserId = Guid.NewGuid(),
+            ExpiresAt = DateTime.UtcNow.AddDays(daysOffset),
+            IsRevoked = isRevoked
         };
         _db.DesignShareTokens.Add(shareToken);
         await _db.SaveChangesAsync();
