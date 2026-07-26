@@ -22,16 +22,16 @@ public static class HelpEndpoints
 
     private static async Task<IResult> LogHelpSearch(
         LogHelpSearchRequest request,
-        ISender              mediator,
-        CancellationToken    ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         await mediator.Send(new LogHelpSearchCommand(request), ct);
         return Results.NoContent();
     }
 
     private static async Task<IResult> GetOnboardingTourStatus(
-        string            role,
-        ISender           mediator,
+        string role,
+        ISender mediator,
         CancellationToken ct)
     {
         OnboardingTourStatusResponse result =
@@ -41,8 +41,8 @@ public static class HelpEndpoints
 
     private static async Task<IResult> MarkOnboardingTourComplete(
         MarkOnboardingTourCompleteRequest request,
-        ISender                           mediator,
-        CancellationToken                 ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         await mediator.Send(new MarkOnboardingTourCompleteCommand(request), ct);
         return Results.NoContent();

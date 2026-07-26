@@ -12,9 +12,9 @@ namespace Pena_e_Arte.Infrastructure.Services;
 /// shut down December 4, 2024). No SDK — raw IHttpClientFactory calls.
 /// </summary>
 public sealed class InstagramService(
-    IHttpClientFactory         httpFactory,
+    IHttpClientFactory httpFactory,
     IOptions<InstagramOptions> options,
-    ILogger<InstagramService>  logger) : IInstagramService
+    ILogger<InstagramService> logger) : IInstagramService
 {
     private readonly InstagramOptions _opts = options.Value;
 
@@ -108,8 +108,8 @@ public sealed class InstagramService(
     {
         using HttpClient client = httpFactory.CreateClient("Instagram");
 
-        List<InstagramMediaItem> all     = [];
-        string?                  nextUrl = BuildMediaUrl(accessToken);
+        List<InstagramMediaItem> all = [];
+        string? nextUrl = BuildMediaUrl(accessToken);
 
         while (nextUrl is not null)
         {
@@ -143,27 +143,27 @@ public sealed class InstagramService(
 
     private sealed record ShortTokenDto(
         [property: JsonPropertyName("access_token")] string AccessToken,
-        [property: JsonPropertyName("token_type")]   string TokenType,
-        [property: JsonPropertyName("user_id")]      long   UserId);
+        [property: JsonPropertyName("token_type")] string TokenType,
+        [property: JsonPropertyName("user_id")] long UserId);
 
     private sealed record LongTokenDto(
         [property: JsonPropertyName("access_token")] string AccessToken,
-        [property: JsonPropertyName("token_type")]   string TokenType,
-        [property: JsonPropertyName("expires_in")]   long   ExpiresIn);
+        [property: JsonPropertyName("token_type")] string TokenType,
+        [property: JsonPropertyName("expires_in")] long ExpiresIn);
 
     private sealed record MediaItemDto(
-        [property: JsonPropertyName("id")]            string   Id,
-        [property: JsonPropertyName("media_type")]    string   MediaType,
-        [property: JsonPropertyName("media_url")]     string?  MediaUrl,
-        [property: JsonPropertyName("thumbnail_url")] string?  ThumbnailUrl,
-        [property: JsonPropertyName("caption")]       string?  Caption,
-        [property: JsonPropertyName("timestamp")]     DateTime Timestamp);
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("media_type")] string MediaType,
+        [property: JsonPropertyName("media_url")] string? MediaUrl,
+        [property: JsonPropertyName("thumbnail_url")] string? ThumbnailUrl,
+        [property: JsonPropertyName("caption")] string? Caption,
+        [property: JsonPropertyName("timestamp")] DateTime Timestamp);
 
     private sealed record MediaPageDto(
-        [property: JsonPropertyName("data")]   List<MediaItemDto> Data,
-        [property: JsonPropertyName("paging")] PagingDto?          Paging);
+        [property: JsonPropertyName("data")] List<MediaItemDto> Data,
+        [property: JsonPropertyName("paging")] PagingDto? Paging);
 
     private sealed record PagingDto(
-        [property: JsonPropertyName("next")]     string? Next,
+        [property: JsonPropertyName("next")] string? Next,
         [property: JsonPropertyName("previous")] string? Previous);
 }

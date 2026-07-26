@@ -12,12 +12,12 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class RegisterUserHandlerTests
 {
-    private readonly IIdentityService    _identity      = Substitute.For<IIdentityService>();
-    private readonly FakeDbContext       _db            = FakeDbContext.Create();
-    private readonly IEmailRenderer      _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IAppSettings        _appSettings   = Substitute.For<IAppSettings>();
-    private readonly Guid                _userId        = Guid.NewGuid();
+    private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public RegisterUserHandlerTests()
     {
@@ -90,10 +90,10 @@ public class RegisterUserHandlerTests
         Guid studioId = Guid.NewGuid();
         Client preCreated = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "Pre",
-            LastName  = "Created",
-            Email     = "client@example.com",
+            LastName = "Created",
+            Email = "client@example.com",
         };
         _db.Clients.Add(preCreated);
         await _db.SaveChangesAsync();

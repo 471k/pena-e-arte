@@ -22,9 +22,9 @@ public interface IIdentityService
     Task<(bool Success, string[] Errors)> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken ct);
     Task<string> GenerateEmailConfirmationTokenAsync(Guid userId);
     Task<(bool Success, string[] Errors)> ConfirmEmailAsync(Guid userId, string token, CancellationToken ct);
-    Task<bool>    IsEmailConfirmedAsync(Guid userId, CancellationToken ct);
+    Task<bool> IsEmailConfirmedAsync(Guid userId, CancellationToken ct);
     Task<string?> GetUserEmailAsync(Guid userId, CancellationToken ct);
-    Task<Guid?>   GetUserIdByEmailAsync(string email, CancellationToken ct);
+    Task<Guid?> GetUserIdByEmailAsync(string email, CancellationToken ct);
 
     /// <summary>
     /// Returns the user's given-name Identity claim (set at registration when provided),

@@ -26,7 +26,7 @@ public class MarkPaymentAuthorizedHandler(IAppDbContext db, IRealtimeNotifier re
         // Only the Pending → Captured transition is valid; everything else is a stale event
         if (payment is null || payment.Status != PaymentStatus.Pending) return;
 
-        payment.Status    = PaymentStatus.Captured;
+        payment.Status = PaymentStatus.Captured;
         payment.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

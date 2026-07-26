@@ -13,11 +13,11 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class RefundPaymentHandlerTests
 {
-    private readonly FakeDbContext        _db       = FakeDbContext.Create();
-    private readonly IStripePaymentService _stripe   = Substitute.For<IStripePaymentService>();
-    private readonly IRealtimeNotifier    _realtime = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender               _sender   = Substitute.For<ISender>();
-    private readonly Guid                 _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public RefundPaymentHandlerTests()
     {
@@ -137,7 +137,7 @@ public class RefundPaymentHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id   = _studioId,
+            Id = _studioId,
             Name = "Test",
             Slug = "test"
         });
@@ -148,21 +148,21 @@ public class RefundPaymentHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
         Payment payment = new()
         {
-            StudioId              = _studioId,
-            AppointmentId         = Guid.NewGuid(),
-            ClientId              = client.Id,
-            Amount                = amount,
-            Status                = status,
+            StudioId = _studioId,
+            AppointmentId = Guid.NewGuid(),
+            ClientId = client.Id,
+            Amount = amount,
+            Status = status,
             StripePaymentIntentId = stripeIntentId
         };
         _db.Payments.Add(payment);

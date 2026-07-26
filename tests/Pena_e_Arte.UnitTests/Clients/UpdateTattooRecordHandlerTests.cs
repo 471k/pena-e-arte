@@ -18,13 +18,13 @@ public class UpdateTattooRecordHandlerTests
     {
         TattooRecord record = new()
         {
-            StudioId     = Guid.NewGuid(),
-            ClientId     = clientId,
-            ArtistId     = Guid.NewGuid(),
-            Description  = "Original",
+            StudioId = Guid.NewGuid(),
+            ClientId = clientId,
+            ArtistId = Guid.NewGuid(),
+            Description = "Original",
             BodyLocation = "left_arm",
-            PhotoUrls    = [],
-            CompletedAt  = DateTime.UtcNow.AddDays(-10),
+            PhotoUrls = [],
+            CompletedAt = DateTime.UtcNow.AddDays(-10),
         };
         _db.TattooRecords.Add(record);
         await _db.SaveChangesAsync();

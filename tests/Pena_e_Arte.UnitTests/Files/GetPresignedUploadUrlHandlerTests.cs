@@ -9,9 +9,9 @@ namespace Pena_e_Arte.UnitTests.Files;
 
 public class GetPresignedUploadUrlHandlerTests
 {
-    private readonly IR2Service      _r2     = Substitute.For<IR2Service>();
-    private readonly ICurrentTenant  _tenant = Substitute.For<ICurrentTenant>();
-    private readonly Guid            _studioId = Guid.NewGuid();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public GetPresignedUploadUrlHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);

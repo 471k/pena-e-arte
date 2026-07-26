@@ -9,10 +9,10 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Artists.Commands;
 
 public record AddArtistTimeOffCommand(
-    Guid     ArtistId,
+    Guid ArtistId,
     DateTime StartDate,
     DateTime EndDate,
-    string   Reason) : IRequest<Guid>;
+    string Reason) : IRequest<Guid>;
 
 public class AddArtistTimeOffValidator : AbstractValidator<AddArtistTimeOffCommand>
 {
@@ -40,7 +40,7 @@ public class AddArtistTimeOffHandler(IAppDbContext db, ICurrentTenant tenant, IC
             throw new ForbiddenException();
 
         DateTime startDate = command.StartDate.Date;
-        DateTime endDate   = command.EndDate.Date;
+        DateTime endDate = command.EndDate.Date;
 
         bool overlaps = await db.ArtistTimeOffs.AnyAsync(t =>
             t.ArtistId == command.ArtistId
@@ -53,11 +53,11 @@ public class AddArtistTimeOffHandler(IAppDbContext db, ICurrentTenant tenant, IC
 
         ArtistTimeOff timeOff = new()
         {
-            ArtistId  = command.ArtistId,
-            StudioId  = tenant.StudioId,
+            ArtistId = command.ArtistId,
+            StudioId = tenant.StudioId,
             StartDate = startDate,
-            EndDate   = endDate,
-            Reason    = command.Reason,
+            EndDate = endDate,
+            Reason = command.Reason,
         };
 
         db.ArtistTimeOffs.Add(timeOff);

@@ -90,7 +90,7 @@ public class DepositRuleHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task UpdateDepositRule_ValidRequest_PersistsChanges()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid ruleId   = await SeedRule(tenantId, "Original", 30m, null, false);
+        Guid ruleId = await SeedRule(tenantId, "Original", 30m, null, false);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         UpdateDepositRuleHandler handler = new(db);
@@ -123,7 +123,7 @@ public class DepositRuleHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task DeleteDepositRule_ValidId_SetsDeletedAt()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid ruleId   = await SeedRule(tenantId, "Rule to delete", 50m, null, false);
+        Guid ruleId = await SeedRule(tenantId, "Rule to delete", 50m, null, false);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         DeleteDepositRuleHandler handler = new(db);
@@ -153,7 +153,7 @@ public class DepositRuleHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task GetDepositRules_DeletedRules_NotReturned()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid ruleId   = await SeedRule(tenantId, "To Delete", 30m, null, false);
+        Guid ruleId = await SeedRule(tenantId, "To Delete", 30m, null, false);
 
         await using AppDbContext deleteCtx = fixture.CreateDbContext(tenantId);
         DepositRule? rule = await deleteCtx.DepositRules.FindAsync(ruleId);
@@ -172,7 +172,7 @@ public class DepositRuleHandlerIntegrationTests(DatabaseFixture fixture)
     {
         Guid tenantA = Guid.NewGuid();
         Guid tenantB = Guid.NewGuid();
-        await SeedRule(tenantA, "A Rule",   50m, null, false);
+        await SeedRule(tenantA, "A Rule", 50m, null, false);
         await SeedRule(tenantB, "B Rule 1", 30m, null, false);
         await SeedRule(tenantB, "B Rule 2", null, 10m, true);
 
@@ -191,11 +191,11 @@ public class DepositRuleHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         DepositRule rule = new()
         {
-            StudioId      = tenantId,
-            Name          = name,
-            AmountFixed   = fixed_,
+            StudioId = tenantId,
+            Name = name,
+            AmountFixed = fixed_,
             AmountPercent = percent,
-            IsActive      = isActive
+            IsActive = isActive
         };
         ctx.DepositRules.Add(rule);
         await ctx.SaveChangesAsync();

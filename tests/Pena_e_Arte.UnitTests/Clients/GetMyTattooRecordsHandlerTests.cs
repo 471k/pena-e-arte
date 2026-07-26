@@ -11,10 +11,10 @@ namespace Pena_e_Arte.UnitTests.Clients;
 
 public class GetMyTattooRecordsHandlerTests
 {
-    private readonly FakeDbContext _db          = FakeDbContext.Create();
-    private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
-    private readonly Guid           _studioId    = Guid.NewGuid();
-    private readonly Guid           _userId      = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public GetMyTattooRecordsHandlerTests() =>
         _currentUser.UserId.Returns(_userId);
@@ -25,11 +25,11 @@ public class GetMyTattooRecordsHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = _userId,
+            StudioId = _studioId,
+            UserId = _userId,
             FirstName = "Ana",
-            LastName  = "Costa",
-            Email     = "ana@example.com",
+            LastName = "Costa",
+            Email = "ana@example.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -45,7 +45,7 @@ public class GetMyTattooRecordsHandlerTests
         DateTime newer = DateTime.UtcNow.AddDays(-5);
 
         _db.TattooRecords.AddRange(
-            new TattooRecord { StudioId = _studioId, ClientId = client.Id, ArtistId = artistId, Description = "Rose",   BodyLocation = "wrist",    CompletedAt = older },
+            new TattooRecord { StudioId = _studioId, ClientId = client.Id, ArtistId = artistId, Description = "Rose", BodyLocation = "wrist", CompletedAt = older },
             new TattooRecord { StudioId = _studioId, ClientId = client.Id, ArtistId = artistId, Description = "Dragon", BodyLocation = "left_arm", CompletedAt = newer });
         await _db.SaveChangesAsync();
 
@@ -71,16 +71,16 @@ public class GetMyTattooRecordsHandlerTests
     {
         Client client = await SeedClientAsync();
         Guid otherClientId = Guid.NewGuid();
-        Guid artistId      = Guid.NewGuid();
+        Guid artistId = Guid.NewGuid();
 
         _db.TattooRecords.Add(new TattooRecord
         {
-            StudioId     = _studioId,
-            ClientId     = otherClientId,
-            ArtistId     = artistId,
-            Description  = "Other client",
+            StudioId = _studioId,
+            ClientId = otherClientId,
+            ArtistId = artistId,
+            Description = "Other client",
             BodyLocation = "back",
-            CompletedAt  = DateTime.UtcNow.AddDays(-1),
+            CompletedAt = DateTime.UtcNow.AddDays(-1),
         });
         await _db.SaveChangesAsync();
 

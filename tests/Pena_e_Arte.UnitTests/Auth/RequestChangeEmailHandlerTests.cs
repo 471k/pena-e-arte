@@ -10,12 +10,12 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class RequestChangeEmailHandlerTests
 {
-    private readonly IIdentityService                       _identity      = Substitute.For<IIdentityService>();
-    private readonly IEmailRenderer                          _emailRenderer = Substitute.For<IEmailRenderer>();
-    private readonly INotificationService                    _notifications = Substitute.For<INotificationService>();
-    private readonly IAppSettings                             _appSettings   = Substitute.For<IAppSettings>();
-    private readonly ILogger<RequestChangeEmailHandler>       _logger        = Substitute.For<ILogger<RequestChangeEmailHandler>>();
-    private readonly Guid                                     _userId        = Guid.NewGuid();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
+    private readonly ILogger<RequestChangeEmailHandler> _logger = Substitute.For<ILogger<RequestChangeEmailHandler>>();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public RequestChangeEmailHandlerTests()
     {

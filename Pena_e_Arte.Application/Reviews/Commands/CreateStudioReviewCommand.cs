@@ -10,10 +10,10 @@ namespace Pena_e_Arte.Application.Reviews.Commands;
 
 public record CreateStudioReviewCommand(
     string Slug,
-    Guid   AppointmentId,
-    Guid   AuthorUserId,
+    Guid AppointmentId,
+    Guid AuthorUserId,
     string AuthorName,
-    int    Rating,
+    int Rating,
     string Body) : IRequest;
 
 public class CreateStudioReviewValidator : AbstractValidator<CreateStudioReviewCommand>
@@ -57,7 +57,7 @@ public class CreateStudioReviewHandler(IAppDbContext db)
         // exists" convention — vs. a business-rule error for a real-but-wrong state.
         bool ownedByAuthorAtThisStudio = appointment is not null
             && appointment.Appointment.StudioId == studio.Id
-            && appointment.ClientUserId         == command.AuthorUserId;
+            && appointment.ClientUserId == command.AuthorUserId;
 
         if (!ownedByAuthorAtThisStudio)
             throw new NotFoundException(nameof(Appointment), command.AppointmentId);

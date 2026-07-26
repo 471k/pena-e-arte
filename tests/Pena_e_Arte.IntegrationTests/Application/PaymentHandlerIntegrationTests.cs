@@ -19,15 +19,15 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class PaymentHandlerIntegrationTests
 {
-    private readonly DatabaseFixture      _fixture;
+    private readonly DatabaseFixture _fixture;
     private readonly IStripePaymentService _stripe;
-    private readonly IRealtimeNotifier    _realtime;
-    private readonly ISender              _sender   = Substitute.For<ISender>();
+    private readonly IRealtimeNotifier _realtime;
+    private readonly ISender _sender = Substitute.For<ISender>();
 
     public PaymentHandlerIntegrationTests(DatabaseFixture fixture)
     {
-        _fixture  = fixture;
-        _stripe   = Substitute.For<IStripePaymentService>();
+        _fixture = fixture;
+        _stripe = Substitute.For<IStripePaymentService>();
         _realtime = Substitute.For<IRealtimeNotifier>();
 
         _stripe.CreatePaymentIntentAsync(
@@ -139,9 +139,9 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task ConfirmPayment_ExistingIntent_UpdatesStatusToPaid()
     {
-        Guid tenantId      = Guid.NewGuid();
-        string intentId    = $"pi_{Guid.NewGuid():N}";
-        Guid paymentId     = await SeedPendingPayment(tenantId, intentId);
+        Guid tenantId = Guid.NewGuid();
+        string intentId = $"pi_{Guid.NewGuid():N}";
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId);
 
         await using AppDbContext db = _fixture.CreateDbContext(Guid.Empty);
         ConfirmPaymentHandler handler = new(db);
@@ -157,7 +157,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task ConfirmPayment_AlreadyPaid_IsIdempotent()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
 
@@ -182,9 +182,9 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task MarkPaymentFailed_ExistingIntent_UpdatesStatusToFailed()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
-        Guid paymentId  = await SeedPendingPayment(tenantId, intentId);
+        Guid paymentId = await SeedPendingPayment(tenantId, intentId);
 
         await using AppDbContext db = _fixture.CreateDbContext(Guid.Empty);
         MarkPaymentFailedHandler handler = new(db);
@@ -208,7 +208,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task GetPaymentByAppointment_ExistingPayment_ReturnsPayment()
     {
-        Guid tenantId      = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
         Guid appointmentId = await SeedAppointment(tenantId, artistId, clientId);
         await SeedStudio(tenantId);
@@ -286,7 +286,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task CaptureDeposit_AuthorizedPayment_UpdatesStatusToPaidInDb()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Captured);
@@ -301,7 +301,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task CaptureDeposit_AuthorizedPayment_SetsPaidAtInDb()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Captured);
@@ -316,7 +316,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task CaptureDeposit_AuthorizedPayment_UpdatesAppointmentDepositStatusToPaid()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Captured);
@@ -337,7 +337,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task CaptureDeposit_AuthorizedPayment_CallsStripeCapture()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Captured);
@@ -351,7 +351,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task CaptureDeposit_AlreadyPaidPayment_ThrowsBusinessRuleViolation()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
@@ -364,7 +364,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task CaptureDeposit_PendingNotYetAuthorized_ThrowsBusinessRuleViolation()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Pending);
@@ -380,7 +380,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task Refund_PaidPayment_UpdatesStatusToRefundedInDb()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
@@ -395,7 +395,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task Refund_PaidPayment_CallsStripeRefundWithFullAmount()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
@@ -410,7 +410,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task Refund_PartialRefund_CallsStripeRefundWithCorrectAmount()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
@@ -424,7 +424,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task Refund_PendingPayment_ThrowsBusinessRuleViolation()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId);
@@ -438,7 +438,7 @@ public class PaymentHandlerIntegrationTests
     [Fact]
     public async Task Refund_AmountExceedsOriginal_ThrowsBusinessRuleViolation()
     {
-        Guid tenantId  = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
         string intentId = $"pi_{Guid.NewGuid():N}";
         await SeedStudio(tenantId);
         Guid paymentId = await SeedPendingPayment(tenantId, intentId, PaymentStatus.Paid);
@@ -468,14 +468,14 @@ public class PaymentHandlerIntegrationTests
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
         Appointment appt = new()
         {
-            StudioId        = tenantId,
-            ArtistId        = artistId,
-            ClientId        = clientId,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddMinutes(90),
+            StudioId = tenantId,
+            ArtistId = artistId,
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddMinutes(90),
             DurationMinutes = 90,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending
         };
         ctx.Appointments.Add(appt);
         await ctx.SaveChangesAsync();
@@ -488,7 +488,7 @@ public class PaymentHandlerIntegrationTests
         if (await ctx.Studios.AnyAsync(s => s.Id == tenantId)) return;
         ctx.Studios.Add(new Studio
         {
-            Id   = tenantId,
+            Id = tenantId,
             Name = "Test Studio",
             Slug = tenantId.ToString("N")[..8],
         });
@@ -504,11 +504,11 @@ public class PaymentHandlerIntegrationTests
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
         Payment payment = new()
         {
-            StudioId              = tenantId,
-            AppointmentId         = appointmentId,
-            ClientId              = clientId,
-            Amount                = 100m,
-            Status                = status,
+            StudioId = tenantId,
+            AppointmentId = appointmentId,
+            ClientId = clientId,
+            Amount = 100m,
+            Status = status,
             StripePaymentIntentId = intentId
         };
         ctx.Payments.Add(payment);

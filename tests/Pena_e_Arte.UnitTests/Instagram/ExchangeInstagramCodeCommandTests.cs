@@ -11,9 +11,9 @@ namespace Pena_e_Arte.UnitTests.Instagram;
 
 public class ExchangeInstagramCodeCommandTests
 {
-    private readonly FakeDbContext     _db        = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IInstagramService _instagram = Substitute.For<IInstagramService>();
-    private readonly ITokenEncryptor   _encryptor = Substitute.For<ITokenEncryptor>();
+    private readonly ITokenEncryptor _encryptor = Substitute.For<ITokenEncryptor>();
     private readonly ILogger<ExchangeInstagramCodeHandler> _logger =
         Substitute.For<ILogger<ExchangeInstagramCodeHandler>>();
     private readonly Guid _studioId = Guid.NewGuid();
@@ -24,10 +24,10 @@ public class ExchangeInstagramCodeCommandTests
     {
         Artist artist = new()
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Rui",
-            LastName  = "Tavares",
-            Email     = "rui@studio.com",
+            LastName = "Tavares",
+            Email = "rui@studio.com",
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
@@ -74,13 +74,13 @@ public class ExchangeInstagramCodeCommandTests
         Guid artistId = await SeedArtist();
         _db.InstagramConnections.Add(new InstagramConnection
         {
-            StudioId        = _studioId,
-            ArtistId        = artistId,
+            StudioId = _studioId,
+            ArtistId = artistId,
             InstagramUserId = "old-ig-user",
-            Username        = "old_username",
-            EncryptedToken  = "old-encrypted-token",
-            TokenExpiresAt  = DateTime.UtcNow.AddDays(-1),
-            IsActive        = false,
+            Username = "old_username",
+            EncryptedToken = "old-encrypted-token",
+            TokenExpiresAt = DateTime.UtcNow.AddDays(-1),
+            IsActive = false,
         });
         await _db.SaveChangesAsync();
 

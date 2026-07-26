@@ -13,12 +13,12 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class CreateSubscriptionHandlerTests
 {
-    private readonly FakeDbContext         _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant        _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly IStripeBillingService _billing  = Substitute.For<IStripeBillingService>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
     private readonly IStripeDiscountService _discounts = Substitute.For<IStripeDiscountService>();
     private readonly IReferralRewardService _rewardService = Substitute.For<IReferralRewardService>();
-    private readonly Guid                  _studioId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateSubscriptionHandlerTests()
     {
@@ -190,8 +190,8 @@ public class CreateSubscriptionHandlerTests
         Plan plan = new() { Name = "Pro" };
         plan.Prices.Add(new PlanPrice
         {
-            Interval      = BillingInterval.Monthly,
-            Price         = priceMonthly,
+            Interval = BillingInterval.Monthly,
+            Price = priceMonthly,
             StripePriceId = stripePriceIdMonthly,
         });
         _db.Plans.Add(plan);
@@ -204,7 +204,7 @@ public class CreateSubscriptionHandlerTests
         ReferralCode code = new()
         {
             StudioId = Guid.NewGuid(),
-            Code     = "REFCODE1",
+            Code = "REFCODE1",
             IsActive = true,
         };
         _db.ReferralCodes.Add(code);
@@ -216,23 +216,23 @@ public class CreateSubscriptionHandlerTests
     {
         Studio studio = new()
         {
-            Id                    = _studioId,
-            Name                  = "Test Studio",
-            Slug                  = "test-studio",
-            City                  = "Lisboa",
-            OwnerEmail            = "owner@test.com",
-            IsActive              = true,
-            TrialExpiresAt        = DateTime.UtcNow.AddDays(14),
+            Id = _studioId,
+            Name = "Test Studio",
+            Slug = "test-studio",
+            City = "Lisboa",
+            OwnerEmail = "owner@test.com",
+            IsActive = true,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
             PendingReferralCodeId = pendingReferralCodeId,
         };
         _db.Studios.Add(studio);
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = _studioId,
-            Status           = status,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(21),
+            StudioId = _studioId,
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(14)
         });
         await _db.SaveChangesAsync();

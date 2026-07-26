@@ -38,11 +38,11 @@ public class GetSitemapUrlsHandlerTests
     {
         Artist artist = new()
         {
-            StudioId  = Guid.NewGuid(),
+            StudioId = Guid.NewGuid(),
             FirstName = "Elena",
-            LastName  = "Martins",
-            Email     = "elena@test.com",
-            IsActive  = true,
+            LastName = "Martins",
+            Email = "elena@test.com",
+            IsActive = true,
         };
         artist.SetSlug("elena-martins");
         _db.Artists.Add(artist);
@@ -58,11 +58,11 @@ public class GetSitemapUrlsHandlerTests
     {
         _db.Artists.Add(new Artist
         {
-            StudioId  = Guid.NewGuid(),
+            StudioId = Guid.NewGuid(),
             FirstName = "No",
-            LastName  = "Slug",
-            Email     = "noslug@test.com",
-            IsActive  = true,
+            LastName = "Slug",
+            Email = "noslug@test.com",
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 

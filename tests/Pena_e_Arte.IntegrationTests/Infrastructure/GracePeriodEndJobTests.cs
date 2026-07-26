@@ -65,7 +65,7 @@ public class GracePeriodEndJobTests(DatabaseFixture fixture)
     public async Task ExecuteAsync_OnlyTargetsSpecifiedStudio_OtherGracePeriodSubscriptionsUnchanged()
     {
         Guid targetStudio = await SeedSubscription(SubscriptionStatus.GracePeriod);
-        Guid otherStudio  = await SeedSubscription(SubscriptionStatus.GracePeriod);
+        Guid otherStudio = await SeedSubscription(SubscriptionStatus.GracePeriod);
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         await CreateSut(db).ExecuteAsync(targetStudio);
@@ -81,10 +81,10 @@ public class GracePeriodEndJobTests(DatabaseFixture fixture)
 
         Studio studio = new()
         {
-            Name           = $"Studio {Guid.NewGuid():N}"[..20],
-            Slug           = $"gp-{Guid.NewGuid():N}"[..20],
-            City           = "Lisboa",
-            IsActive       = true,
+            Name = $"Studio {Guid.NewGuid():N}"[..20],
+            Slug = $"gp-{Guid.NewGuid():N}"[..20],
+            City = "Lisboa",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(-7)
         };
         ctx.Studios.Add(studio);
@@ -92,10 +92,10 @@ public class GracePeriodEndJobTests(DatabaseFixture fixture)
 
         ctx.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            Status           = status,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(-7),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(-1),
+            StudioId = studio.Id,
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-7),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(-1),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(-7)
         });
         await ctx.SaveChangesAsync();

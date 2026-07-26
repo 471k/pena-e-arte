@@ -63,20 +63,20 @@ public class GetPlansHandlerTests
         _db.Subscriptions.AddRange(
             new Subscription
             {
-                Id               = Guid.NewGuid(),
-                PlanId           = plan.Id,
-                StudioId         = Guid.NewGuid(),
-                Status           = SubscriptionStatus.Active,
-                TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+                Id = Guid.NewGuid(),
+                PlanId = plan.Id,
+                StudioId = Guid.NewGuid(),
+                Status = SubscriptionStatus.Active,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(30),
                 CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
             },
             new Subscription
             {
-                Id               = Guid.NewGuid(),
-                PlanId           = plan.Id,
-                StudioId         = Guid.NewGuid(),
-                Status           = SubscriptionStatus.Trialing,
-                TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
+                Id = Guid.NewGuid(),
+                PlanId = plan.Id,
+                StudioId = Guid.NewGuid(),
+                Status = SubscriptionStatus.Trialing,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(14),
                 CurrentPeriodEnd = DateTime.UtcNow.AddDays(14),
             });
         await _db.SaveChangesAsync();
@@ -99,30 +99,30 @@ public class GetPlansHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            Id               = Guid.NewGuid(),
-            PlanId           = planA.Id,
-            StudioId         = Guid.NewGuid(),
-            Status           = SubscriptionStatus.Active,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+            Id = Guid.NewGuid(),
+            PlanId = planA.Id,
+            StudioId = Guid.NewGuid(),
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
         });
         _db.Subscriptions.AddRange(
             new Subscription
             {
-                Id               = Guid.NewGuid(),
-                PlanId           = planB.Id,
-                StudioId         = Guid.NewGuid(),
-                Status           = SubscriptionStatus.Active,
-                TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+                Id = Guid.NewGuid(),
+                PlanId = planB.Id,
+                StudioId = Guid.NewGuid(),
+                Status = SubscriptionStatus.Active,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(30),
                 CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
             },
             new Subscription
             {
-                Id               = Guid.NewGuid(),
-                PlanId           = planB.Id,
-                StudioId         = Guid.NewGuid(),
-                Status           = SubscriptionStatus.Active,
-                TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+                Id = Guid.NewGuid(),
+                PlanId = planB.Id,
+                StudioId = Guid.NewGuid(),
+                Status = SubscriptionStatus.Active,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(30),
                 CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
             });
         await _db.SaveChangesAsync();

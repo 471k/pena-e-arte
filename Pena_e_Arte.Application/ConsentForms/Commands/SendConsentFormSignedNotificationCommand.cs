@@ -13,12 +13,12 @@ namespace Pena_e_Arte.Application.ConsentForms.Commands;
 public record SendConsentFormSignedNotificationCommand(Guid ConsentFormId) : IRequest<Unit>;
 
 public class SendConsentFormSignedNotificationHandler(
-    IAppDbContext                                             db,
-    IEmailRenderer                                           emailRenderer,
-    INotificationService                                     notifications,
-    INotificationPreferenceService                           prefs,
-    IRealtimeNotifier                                        realtime,
-    ILogger<SendConsentFormSignedNotificationHandler>        logger)
+    IAppDbContext db,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    INotificationPreferenceService prefs,
+    IRealtimeNotifier realtime,
+    ILogger<SendConsentFormSignedNotificationHandler> logger)
     : IRequestHandler<SendConsentFormSignedNotificationCommand, Unit>
 {
     public async Task<Unit> Handle(SendConsentFormSignedNotificationCommand command, CancellationToken ct)
@@ -81,14 +81,14 @@ public class SendConsentFormSignedNotificationHandler(
 
             log = new()
             {
-                StudioId      = studio.Id,
-                RecipientId   = studio.Id,
+                StudioId = studio.Id,
+                RecipientId = studio.Id,
                 RecipientType = NotificationRecipientType.Studio,
-                Channel       = NotificationChannel.Email,
-                Subject       = subject,
-                Body          = body,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = success,
+                Channel = NotificationChannel.Email,
+                Subject = subject,
+                Body = body,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = success,
             };
             db.NotificationLogs.Add(log);
             await db.SaveChangesAsync(ct);

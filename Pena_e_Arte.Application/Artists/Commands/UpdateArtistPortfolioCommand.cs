@@ -50,7 +50,7 @@ public class UpdateArtistPortfolioHandler(IAppDbContext db, ICurrentUser current
                     ArtistId = artist.Id,
                     StudioId = artist.StudioId,
                     ImageUrl = input.ImageUrl,
-                    Style    = input.Style,
+                    Style = input.Style,
                 });
             }
         }

@@ -61,21 +61,21 @@ public class DeletePlanHandlerTests
 
         Studio studio = new()
         {
-            Id        = studioId,
-            Name      = "Test Studio",
-            Slug      = "test-studio",
+            Id = studioId,
+            Name = "Test Studio",
+            Slug = "test-studio",
             OwnerEmail = "owner@test.com"
         };
         _db.Studios.Add(studio);
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = studioId,
-            PlanId           = plan.Id,
-            Status           = SubscriptionStatus.Active,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
+            StudioId = studioId,
+            PlanId = plan.Id,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(21)
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21)
         });
 
         await _db.SaveChangesAsync();

@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -14,10 +14,10 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class SendAppointmentCancellationHandlerTests
 {
-    private readonly FakeDbContext        _db            = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
-    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService _prefs = new AlwaysEnabledNotificationPreferences();
 
     private SendAppointmentCancellationHandler CreateSut() =>
         new(_db, _notifications, _prefs, _realtime,
@@ -29,25 +29,25 @@ public class SendAppointmentCancellationHandlerTests
 
         Client client = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = "ana@example.com",
+            LastName = "Silva",
+            Email = "ana@example.com",
         };
         _db.Clients.Add(client);
 
         Appointment appointment = new()
         {
-            StudioId        = studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = client.Id,
-            Client          = client,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(2),
+            StudioId = studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = client.Id,
+            Client = client,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Cancelled,
-            DepositStatus   = DepositStatus.Paid,
-            DepositAmount   = 50m,
+            Status = AppointmentStatus.Cancelled,
+            DepositStatus = DepositStatus.Paid,
+            DepositAmount = 50m,
         };
         _db.Appointments.Add(appointment);
 

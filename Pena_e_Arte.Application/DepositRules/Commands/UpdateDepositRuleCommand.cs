@@ -29,18 +29,18 @@ public class UpdateDepositRuleHandler(IAppDbContext db)
 
             foreach (DepositRule other in others)
             {
-                other.IsActive  = false;
+                other.IsActive = false;
                 other.UpdatedAt = DateTime.UtcNow;
             }
         }
 
-        rule.Name                      = req.Name;
-        rule.AmountFixed               = req.AmountFixed;
-        rule.AmountPercent             = req.AmountPercent;
-        rule.IsActive                  = req.IsActive;
-        rule.CancellationWindowHours   = req.CancellationWindowHours;
+        rule.Name = req.Name;
+        rule.AmountFixed = req.AmountFixed;
+        rule.AmountPercent = req.AmountPercent;
+        rule.IsActive = req.IsActive;
+        rule.CancellationWindowHours = req.CancellationWindowHours;
         rule.RefundPercentOnLateCancel = req.RefundPercentOnLateCancel;
-        rule.UpdatedAt                 = DateTime.UtcNow;
+        rule.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 
