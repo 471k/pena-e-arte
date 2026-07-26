@@ -14,13 +14,13 @@ public static class PaymentEndpoints
             .RequireAuthorization();
 
         group.MapPost("/",
-            CreatePaymentIntent).RequireAuthorization("OwnerOnly");
+            CreatePaymentIntent).RequireAuthorization("OwnerOnly").RequireRateLimiting("billing");
 
         group.MapPost("/cash",
             DeclareCashDeposit).RequireAuthorization("ClientAndAbove");
 
         group.MapPost("/deposit",
-            CreateDepositPayment).RequireAuthorization("ClientAndAbove");
+            CreateDepositPayment).RequireAuthorization("ClientAndAbove").RequireRateLimiting("billing");
 
         group.MapGet("/",
             GetPayments).RequireAuthorization("OwnerOnly");
@@ -32,13 +32,13 @@ public static class PaymentEndpoints
             UpdateSessionSplits).RequireAuthorization("OwnerOnly");
 
         group.MapPost("/{id:guid}/capture",
-            CaptureDeposit).RequireAuthorization("OwnerOnly");
+            CaptureDeposit).RequireAuthorization("OwnerOnly").RequireRateLimiting("billing");
 
         group.MapPost("/{id:guid}/cash/confirm",
             ConfirmCashDeposit).RequireAuthorization("ArtistAndAbove");
 
         group.MapPost("/{id:guid}/refund",
-            RefundPayment).RequireAuthorization("OwnerOnly");
+            RefundPayment).RequireAuthorization("OwnerOnly").RequireRateLimiting("billing");
 
         group.MapGet("/{id:guid}/client-secret",
             GetClientSecret).RequireAuthorization("ClientAndAbove");

@@ -12,6 +12,9 @@ public class GetPresignedUploadUrlValidator : AbstractValidator<GetPresignedUplo
 
     public GetPresignedUploadUrlValidator()
     {
+        // ObjectKey is only ever used as a folder/purpose prefix now — the handler discards
+        // any file name portion and generates its own (Finding 6) — but the traversal/length
+        // checks below still apply to whatever prefix the client supplies.
         RuleFor(x => x.Request.ObjectKey)
             .NotEmpty()
             .MaximumLength(500)

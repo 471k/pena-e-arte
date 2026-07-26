@@ -28,8 +28,10 @@ public static class BillingEndpoints
         billingGroup.MapGet("/subscription", GetSubscription).RequireAuthorization("OwnerOnly");
         billingGroup.MapGet("/usage", GetPlanUsage).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/subscription", CreateSubscription).RequireAuthorization("OwnerOnly");
-        billingGroup.MapPost("/subscription/checkout", CreateCheckout).RequireAuthorization("OwnerOnly");
-        billingGroup.MapPost("/subscription/checkout/finalize", FinalizeCheckout).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/subscription/checkout", CreateCheckout)
+            .RequireAuthorization("OwnerOnly").RequireRateLimiting("billing");
+        billingGroup.MapPost("/subscription/checkout/finalize", FinalizeCheckout)
+            .RequireAuthorization("OwnerOnly").RequireRateLimiting("billing");
         billingGroup.MapPut("/subscription/plan", ChangePlan).RequireAuthorization("OwnerOnly");
         billingGroup.MapDelete("/subscription/plan/pending", CancelPlanChange).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/portal", CreateBillingPortalSession).RequireAuthorization("OwnerOnly");

@@ -41,7 +41,7 @@ try
     builder.Services.AddApiAuthentication(builder.Configuration);
     builder.Services.AddApiAuthorization();
     builder.Services.AddApiOpenTelemetry(builder.Configuration);
-    builder.Services.AddApiCors(builder.Configuration);
+    builder.Services.AddApiCors(builder.Configuration, builder.Environment);
     builder.Services.AddApiRateLimiting();
 
     builder.Services.AddHealthChecks()
@@ -90,29 +90,32 @@ try
             Cron.Daily(hour: 3));
     }
 
-    // Without this, the API only sees the K8s/Nginx ingress IP in RemoteIpAddress,
-    // so every client shares one rate-limit bucket. KnownNetworks/KnownProxies are
-    // left empty (trust all proxies) — acceptable on a private cluster network;
-    // tighten to the ingress CIDR in production.
-    app.UseForwardedHeaders(new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
-    {
-        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
-                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto,
-    });
+    // Without a configured TrustedProxyCidr, the .NET runtime's own forwarded-headers hardening
+    // (see ForwardedHeadersOptionsBuilder) ignores X-Forwarded-For entirely, so the API sees only
+    // the K3s/Nginx ingress IP and every client shares one rate-limit bucket. Setting
+    // ForwardedHeaders:TrustedProxyCidr to the ingress CIDR in production fixes that while still
+    // rejecting a spoofed header from any untrusted direct client.
+    app.UseForwardedHeaders(ForwardedHeadersOptionsBuilder.BuildForwardedHeadersOptions(
+        app.Configuration, app.Logger));
 
     app.UseMiddleware<RequestIdMiddleware>();
     app.UseSerilogRequestLogging(options =>
         options.EnrichDiagnosticContext = RequestLoggingEnrichment.Enrich);
     app.UseMiddleware<ExceptionMiddleware>();
     app.UseCors();
-    app.UseRateLimiter();
+    // UseRateLimiter must come after UseAuthentication: the "billing" policy (Phase 7 of the
+    // 2026-07-26 security remediation) partitions by the caller's user-id claim, which isn't
+    // populated on HttpContext.User until authentication middleware runs — verified empirically,
+    // since the "auth"/"public-write"/"public-read" policies (IP-keyed, unaffected by this order)
+    // predate that requirement. Moving it does not change those three policies' behavior.
     app.UseAuthentication();
+    app.UseRateLimiter();
     app.UseMiddleware<TenantMiddleware>();
     app.UseAuthorization();
 
     app.UseHangfireDashboard(
         builder.Configuration["Hangfire:DashboardPath"] ?? "/hangfire",
-        new DashboardOptions { Authorization = [new HangfireDashboardAuthFilter()] });
+        new DashboardOptions { Authorization = [new HangfireDashboardAuthFilter(builder.Configuration)] });
 
     app.MapHub<ScheduleHub>("/hubs/schedule");
     app.MapHub<DesignHub>("/hubs/design");

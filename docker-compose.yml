@@ -167,6 +167,7 @@ services:
       Cors__AllowedOrigins__0: ${VITE_PUBLIC_URL:-http://localhost:8081}
       Hangfire__DashboardUsername: ${HANGFIRE_DASHBOARD_USERNAME:?Set HANGFIRE_DASHBOARD_USERNAME in .env — do not default to admin}
       Hangfire__DashboardPassword: ${HANGFIRE_DASHBOARD_PASSWORD:?Set HANGFIRE_DASHBOARD_PASSWORD in .env — do not default to admin}
+      ForwardedHeaders__TrustedProxyCidr: ${FORWARDED_HEADERS_TRUSTED_PROXY_CIDR:-}
       OpenTelemetry__OtlpEndpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
     ports:
       - "8080:8080"

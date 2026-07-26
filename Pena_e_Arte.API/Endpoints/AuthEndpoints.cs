@@ -18,12 +18,12 @@ public static class AuthEndpoints
         group.MapPost("/oauth/login", OAuthLogin).AllowAnonymous().RequireRateLimiting("auth");
         group.MapPost("/oauth/register", OAuthRegister).AllowAnonymous().RequireRateLimiting("auth");
         group.MapPost("/forgot-password", ForgotPassword).AllowAnonymous().RequireRateLimiting("auth");
-        group.MapPost("/reset-password", ResetPassword).AllowAnonymous();
-        group.MapPost("/refresh", Refresh).AllowAnonymous();
+        group.MapPost("/reset-password", ResetPassword).AllowAnonymous().RequireRateLimiting("auth");
+        group.MapPost("/refresh", Refresh).AllowAnonymous().RequireRateLimiting("auth");
         group.MapPatch("/change-password", ChangePassword).RequireAuthorization("ClientAndAbove");
         group.MapPost("/change-email", RequestChangeEmail).RequireAuthorization("ClientAndAbove");
         group.MapGet("/confirm-change-email", ConfirmChangeEmail).AllowAnonymous();
-        group.MapGet("/verify-email", VerifyEmail).AllowAnonymous();
+        group.MapGet("/verify-email", VerifyEmail).AllowAnonymous().RequireRateLimiting("auth");
         group.MapPost("/resend-verification", ResendVerification).RequireAuthorization("ClientAndAbove");
         group.MapPost("/switch-studio", SwitchStudio).RequireAuthorization("ClientOnly").RequireRateLimiting("auth");
         group.MapGet("/my-studios", GetMyStudios).RequireAuthorization("ClientOnly");
