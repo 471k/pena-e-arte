@@ -12,10 +12,10 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class CreateBillingPortalHandlerTests
 {
-    private readonly FakeDbContext        _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant       _tenant   = Substitute.For<ICurrentTenant>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
-    private readonly Guid                 _studioId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateBillingPortalHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -27,8 +27,8 @@ public class CreateBillingPortalHandlerTests
     public async Task Handle_ReturnsPortalUrl_WhenSubscriptionHasStripeCustomerId()
     {
         const string customerId = "cus_test_123";
-        const string returnUrl  = "https://app.tattooos.co/billing";
-        const string portalUrl  = "https://billing.stripe.com/session/test_abc";
+        const string returnUrl = "https://app.tattooos.co/billing";
+        const string portalUrl = "https://billing.stripe.com/session/test_abc";
 
         await SeedSubscription(stripeCustomerId: customerId);
         _billing.CreatePortalSessionAsync(customerId, returnUrl, Arg.Any<CancellationToken>())
@@ -66,10 +66,10 @@ public class CreateBillingPortalHandlerTests
     {
         Studio studio = new()
         {
-            Id               = _studioId,
-            Name             = "Test Studio",
-            Slug             = "test-studio",
-            OwnerEmail       = "owner@test.com",
+            Id = _studioId,
+            Name = "Test Studio",
+            Slug = "test-studio",
+            OwnerEmail = "owner@test.com",
             StripeCustomerId = stripeCustomerId,
         };
 
@@ -77,12 +77,12 @@ public class CreateBillingPortalHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = _studioId,
-            Studio           = studio,
-            Status           = SubscriptionStatus.Active,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(-20),
+            StudioId = _studioId,
+            Studio = studio,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-20),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(-13),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(-13),
         });
 
         await _db.SaveChangesAsync();

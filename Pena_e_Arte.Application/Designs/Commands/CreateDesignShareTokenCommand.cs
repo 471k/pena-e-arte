@@ -11,9 +11,9 @@ namespace Pena_e_Arte.Application.Designs.Commands;
 public record CreateDesignShareTokenCommand(Guid DesignRevisionId) : IRequest<DesignShareTokenResponse>;
 
 public class CreateDesignShareTokenHandler(
-    IAppDbContext  db,
+    IAppDbContext db,
     ICurrentTenant tenant,
-    ICurrentUser   currentUser)
+    ICurrentUser currentUser)
     : IRequestHandler<CreateDesignShareTokenCommand, DesignShareTokenResponse>
 {
     public async Task<DesignShareTokenResponse> Handle(CreateDesignShareTokenCommand command, CancellationToken ct)
@@ -42,11 +42,11 @@ public class CreateDesignShareTokenHandler(
         {
             active = new DesignShareToken
             {
-                StudioId         = tenant.StudioId,
-                Token            = Guid.NewGuid().ToString("N"),
+                StudioId = tenant.StudioId,
+                Token = Guid.NewGuid().ToString("N"),
                 DesignRevisionId = command.DesignRevisionId,
-                CreatedByUserId  = currentUser.UserId,
-                ExpiresAt        = DateTime.UtcNow.AddDays(30)
+                CreatedByUserId = currentUser.UserId,
+                ExpiresAt = DateTime.UtcNow.AddDays(30)
             };
 
             db.DesignShareTokens.Add(active);

@@ -1,8 +1,8 @@
 namespace Pena_e_Arte.Domain.Models;
 
 public record PortableTattooRecord(
-    string                BodyLocation,
+    string BodyLocation,
     IReadOnlyList<string> PhotoUrls,
-    string                Description,
-    DateTime              CompletedAt,
-    string                ArtistFirstName);
+    string Description,
+    DateTime CompletedAt,
+    string ArtistFirstName);

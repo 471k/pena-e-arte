@@ -11,11 +11,11 @@ namespace Pena_e_Arte.UnitTests.Feedback;
 
 public class SubmitFeedbackHandlerTests
 {
-    private readonly FakeDbContext  _db     = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser   _user   = Substitute.For<ICurrentUser>();
-    private readonly Guid           _studioId = Guid.NewGuid();
-    private readonly Guid           _userId   = Guid.NewGuid();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public SubmitFeedbackHandlerTests()
     {
@@ -114,12 +114,12 @@ public class SubmitFeedbackHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id             = _studioId,
-            Name           = "Test Studio",
-            Slug           = "test-studio",
-            City           = "Porto",
-            OwnerEmail     = "owner@test.com",
-            IsActive       = true,
+            Id = _studioId,
+            Name = "Test Studio",
+            Slug = "test-studio",
+            City = "Porto",
+            OwnerEmail = "owner@test.com",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         });
         await _db.SaveChangesAsync();

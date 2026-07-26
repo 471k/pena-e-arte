@@ -49,7 +49,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
     public async Task GetReferralCode_AfterGenerate_ReturnsActiveCode()
     {
         Guid studioId = await SeedReferringStudio();
-        string code   = await GenerateCode(studioId);
+        string code = await GenerateCode(studioId);
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         GetReferralCodeHandler handler = new(db, MakeTenant(studioId));
@@ -95,13 +95,13 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         string newSlug = ("ref-" + Guid.NewGuid().ToString("N"))[..20];
         StudioResponse newStudio = await registerHandler.Handle(
             new RegisterStudioCommand(new RegisterStudioRequest(
-                Name:         "New Referred Studio",
-                Slug:         newSlug,
-                City:         "Lisboa",
-                Latitude:     38.7,
-                Longitude:    -9.1,
-                OwnerEmail:   $"{newSlug}@test.com",
-                Nipt:         UniqueTestNipt(),
+                Name: "New Referred Studio",
+                Slug: newSlug,
+                City: "Lisboa",
+                Latitude: 38.7,
+                Longitude: -9.1,
+                OwnerEmail: $"{newSlug}@test.com",
+                Nipt: UniqueTestNipt(),
                 ReferralCode: code)),
             default);
 
@@ -172,13 +172,13 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         string newSlug = ("bad-" + Guid.NewGuid().ToString("N"))[..20];
         Func<Task> act = () => handler.Handle(
             new RegisterStudioCommand(new RegisterStudioRequest(
-                Name:         "Bad Code Studio",
-                Slug:         newSlug,
-                City:         "Porto",
-                Latitude:     41.1,
-                Longitude:    -8.6,
-                OwnerEmail:   $"{newSlug}@test.com",
-                Nipt:         UniqueTestNipt(),
+                Name: "Bad Code Studio",
+                Slug: newSlug,
+                City: "Porto",
+                Latitude: 41.1,
+                Longitude: -8.6,
+                OwnerEmail: $"{newSlug}@test.com",
+                Nipt: UniqueTestNipt(),
                 ReferralCode: "BADCODE1")),
             default);
 
@@ -195,7 +195,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         string code = await GenerateCode(referringStudioId);
 
         // 2. New studio registers with the referral code.
-        Guid planId   = await SeedPlan();
+        Guid planId = await SeedPlan();
         Guid newStudioId = await RegisterNewStudio(code);
 
         // 3. Mock Stripe services.
@@ -246,7 +246,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         Guid referringStudioId = await SeedReferringStudio();
         string code = await GenerateCode(referringStudioId);
 
-        Guid planId      = await SeedPlan();
+        Guid planId = await SeedPlan();
         Guid newStudioId = await RegisterNewStudio(code);
 
         IStripeBillingService billing = Substitute.For<IStripeBillingService>();
@@ -290,11 +290,11 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         Studio studio = new()
         {
-            Name           = "Referring Studio",
-            Slug           = ("ref-src-" + Guid.NewGuid().ToString("N"))[..20],
-            City           = "Porto",
-            OwnerEmail     = $"ref{Guid.NewGuid():N}@test.com",
-            IsActive       = true,
+            Name = "Referring Studio",
+            Slug = ("ref-src-" + Guid.NewGuid().ToString("N"))[..20],
+            City = "Porto",
+            OwnerEmail = $"ref{Guid.NewGuid():N}@test.com",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         };
         db.Studios.Add(studio);
@@ -339,20 +339,20 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         Subscription? existing = await db.Subscriptions.FirstOrDefaultAsync(s => s.StudioId == studioId);
         if (existing is not null)
         {
-            existing.PlanId               = plan.Id;
-            existing.Status               = SubscriptionStatus.Active;
+            existing.PlanId = plan.Id;
+            existing.Status = SubscriptionStatus.Active;
             existing.StripeSubscriptionId = stripeSubId;
-            existing.CurrentPeriodEnd     = DateTime.UtcNow.AddMonths(1);
+            existing.CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1);
         }
         else
         {
             db.Subscriptions.Add(new Subscription
             {
-                StudioId             = studioId,
-                PlanId               = plan.Id,
-                Status               = SubscriptionStatus.Active,
+                StudioId = studioId,
+                PlanId = plan.Id,
+                Status = SubscriptionStatus.Active,
                 StripeSubscriptionId = stripeSubId,
-                CurrentPeriodEnd     = DateTime.UtcNow.AddMonths(1),
+                CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1),
             });
         }
         await db.SaveChangesAsync();

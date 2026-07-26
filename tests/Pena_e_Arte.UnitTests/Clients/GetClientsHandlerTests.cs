@@ -8,8 +8,8 @@ namespace Pena_e_Arte.UnitTests.Clients;
 
 public class GetClientsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetClientsHandler CreateSut() => new(_db);
 
@@ -17,9 +17,9 @@ public class GetClientsHandlerTests
     public async Task Handle_NoSearch_ReturnsAllClientsOrderedByLastNameThenFirstName()
     {
         await SeedClients(
-            ("Carlos", "Silva",   "carlos@example.com"),
-            ("Ana",    "Pereira", "ana@example.com"),
-            ("Beatriz","Silva",   "beatriz@example.com"));
+            ("Carlos", "Silva", "carlos@example.com"),
+            ("Ana", "Pereira", "ana@example.com"),
+            ("Beatriz", "Silva", "beatriz@example.com"));
 
         List<ClientResponse> result = await CreateSut().Handle(new GetClientsQuery(null), default);
 
@@ -33,7 +33,7 @@ public class GetClientsHandlerTests
     public async Task Handle_SearchMatchesFirstName_ReturnsMatchingClients()
     {
         await SeedClients(
-            ("Rui",   "Neves", "rui@example.com"),
+            ("Rui", "Neves", "rui@example.com"),
             ("Maria", "Neves", "maria@example.com"));
 
         List<ClientResponse> result = await CreateSut().Handle(new GetClientsQuery("Rui"), default);
@@ -45,8 +45,8 @@ public class GetClientsHandlerTests
     public async Task Handle_SearchMatchesLastName_ReturnsMatchingClients()
     {
         await SeedClients(
-            ("Ana",  "Ferreira", "ana@example.com"),
-            ("Rui",  "Neves",    "rui@example.com"));
+            ("Ana", "Ferreira", "ana@example.com"),
+            ("Rui", "Neves", "rui@example.com"));
 
         List<ClientResponse> result = await CreateSut().Handle(new GetClientsQuery("Ferreira"), default);
 
@@ -57,8 +57,8 @@ public class GetClientsHandlerTests
     public async Task Handle_SearchMatchesEmail_ReturnsMatchingClients()
     {
         await SeedClients(
-            ("Ana", "Costa",  "ana@studio.com"),
-            ("Rui", "Gomes",  "rui@other.com"));
+            ("Ana", "Costa", "ana@studio.com"),
+            ("Rui", "Gomes", "rui@other.com"));
 
         List<ClientResponse> result = await CreateSut().Handle(new GetClientsQuery("studio.com"), default);
 

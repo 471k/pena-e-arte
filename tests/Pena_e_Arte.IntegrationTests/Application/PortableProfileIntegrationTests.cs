@@ -16,7 +16,7 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
     public async Task GetPortableProfile_OptedInClient_ReturnsProfile()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid userId   = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         (Client client, _) = await SeedOptedInClientAsync(db, tenantId, userId);
@@ -37,7 +37,7 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
     public async Task GetPortableProfile_OptedOutClient_ReturnsNull()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid userId   = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         await SeedOptedOutClientAsync(db, tenantId, userId);
@@ -55,29 +55,29 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
     public async Task GetPortableProfile_OptedInClientWithTattoos_ReturnsTattooHistory()
     {
         Guid tenantId = Guid.NewGuid();
-        Guid userId   = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         (Client client, _) = await SeedOptedInClientAsync(db, tenantId, userId);
 
         Artist artist = new()
         {
-            StudioId  = tenantId,
+            StudioId = tenantId,
             FirstName = "Luis",
-            LastName  = "Silva",
-            Email     = $"{Guid.NewGuid()}@test.com"
+            LastName = "Silva",
+            Email = $"{Guid.NewGuid()}@test.com"
         };
         db.Artists.Add(artist);
 
         TattooRecord record = new()
         {
-            StudioId     = tenantId,
-            ClientId     = client.Id,
-            ArtistId     = artist.Id,
-            Description  = "Dragon sleeve",
+            StudioId = tenantId,
+            ClientId = client.Id,
+            ArtistId = artist.Id,
+            Description = "Dragon sleeve",
             BodyLocation = "left_arm",
-            PhotoUrls    = ["https://r2.example.com/photo.jpg"],
-            CompletedAt  = DateTime.UtcNow.AddDays(-10),
+            PhotoUrls = ["https://r2.example.com/photo.jpg"],
+            CompletedAt = DateTime.UtcNow.AddDays(-10),
         };
         db.TattooRecords.Add(record);
         await db.SaveChangesAsync();
@@ -100,7 +100,7 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
     {
         Guid clientTenantId = Guid.NewGuid();
         Guid artistTenantId = Guid.NewGuid();
-        Guid userId         = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
 
         await using AppDbContext clientDb = fixture.CreateDbContext(clientTenantId);
         await SeedOptedInClientAsync(clientDb, clientTenantId, userId);
@@ -124,11 +124,11 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
     {
         Client client = new()
         {
-            StudioId  = tenantId,
-            UserId    = userId,
+            StudioId = tenantId,
+            UserId = userId,
             FirstName = "Ana",
-            LastName  = "Costa",
-            Email     = $"{Guid.NewGuid()}@test.com"
+            LastName = "Costa",
+            Email = $"{Guid.NewGuid()}@test.com"
         };
         db.Clients.Add(client);
         await db.SaveChangesAsync();
@@ -137,7 +137,7 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
         {
             StudioId = tenantId,
             ClientId = client.Id,
-            BodyMap  = new BodyMap { Locations = [] }
+            BodyMap = new BodyMap { Locations = [] }
         };
         profile.OptInToCrossTenant();
         db.ClientProfiles.Add(profile);
@@ -150,11 +150,11 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
     {
         Client client = new()
         {
-            StudioId  = tenantId,
-            UserId    = userId,
+            StudioId = tenantId,
+            UserId = userId,
             FirstName = "Rui",
-            LastName  = "Neves",
-            Email     = $"{Guid.NewGuid()}@test.com"
+            LastName = "Neves",
+            Email = $"{Guid.NewGuid()}@test.com"
         };
         db.Clients.Add(client);
         await db.SaveChangesAsync();
@@ -163,7 +163,7 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
         {
             StudioId = tenantId,
             ClientId = client.Id,
-            BodyMap  = new BodyMap { Locations = [] }
+            BodyMap = new BodyMap { Locations = [] }
         };
         db.ClientProfiles.Add(profile);
         await db.SaveChangesAsync();

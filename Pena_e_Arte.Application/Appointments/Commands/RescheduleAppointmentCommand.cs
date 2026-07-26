@@ -17,9 +17,9 @@ public record RescheduleAppointmentCommand(Guid AppointmentId, RescheduleAppoint
     : IRequest<AppointmentResponse>;
 
 public class RescheduleAppointmentHandler(
-    IAppDbContext     db,
-    ICurrentTenant    tenant,
-    ICurrentUser      currentUser,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    ICurrentUser currentUser,
     IRealtimeNotifier realtime)
     : IRequestHandler<RescheduleAppointmentCommand, AppointmentResponse>
 {
@@ -70,19 +70,19 @@ public class RescheduleAppointmentHandler(
         DateTime newEnd = req.NewDate.AddMinutes(req.NewDurationMinutes);
 
         bool conflict = await db.Appointments.AnyAsync(a =>
-            a.Id       != command.AppointmentId &&
-            a.ArtistId == appointment.ArtistId  &&
-            a.Date     < newEnd                 &&
-            a.EndDate  > req.NewDate            &&
-            a.Status   != AppointmentStatus.Cancelled, ct);
+            a.Id != command.AppointmentId &&
+            a.ArtistId == appointment.ArtistId &&
+            a.Date < newEnd &&
+            a.EndDate > req.NewDate &&
+            a.Status != AppointmentStatus.Cancelled, ct);
 
         if (conflict) throw new SlotAlreadyBookedException();
 
-        appointment.Date            = req.NewDate;
-        appointment.EndDate         = newEnd;
+        appointment.Date = req.NewDate;
+        appointment.EndDate = newEnd;
         appointment.DurationMinutes = req.NewDurationMinutes;
-        appointment.Notes           = req.Notes;
-        appointment.UpdatedAt       = DateTime.UtcNow;
+        appointment.Notes = req.Notes;
+        appointment.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 

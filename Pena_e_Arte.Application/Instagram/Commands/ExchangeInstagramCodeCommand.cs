@@ -17,9 +17,9 @@ namespace Pena_e_Arte.Application.Instagram.Commands;
 public record ExchangeInstagramCodeCommand(Guid ArtistId, string Code) : IRequest<Unit>;
 
 public class ExchangeInstagramCodeHandler(
-    IAppDbContext                         db,
-    IInstagramService                     instagram,
-    ITokenEncryptor                       encryptor,
+    IAppDbContext db,
+    IInstagramService instagram,
+    ITokenEncryptor encryptor,
     ILogger<ExchangeInstagramCodeHandler> logger) : IRequestHandler<ExchangeInstagramCodeCommand, Unit>
 {
     public async Task<Unit> Handle(ExchangeInstagramCodeCommand request, CancellationToken ct)
@@ -46,23 +46,23 @@ public class ExchangeInstagramCodeHandler(
         {
             db.InstagramConnections.Add(new InstagramConnection
             {
-                StudioId        = studioId,
-                ArtistId        = request.ArtistId,
+                StudioId = studioId,
+                ArtistId = request.ArtistId,
                 InstagramUserId = tokenResponse.UserId,
-                Username        = username,
-                EncryptedToken  = encryptedToken,
-                TokenExpiresAt  = expiresAt,
-                IsActive        = true,
+                Username = username,
+                EncryptedToken = encryptedToken,
+                TokenExpiresAt = expiresAt,
+                IsActive = true,
             });
         }
         else
         {
             existing.InstagramUserId = tokenResponse.UserId;
-            existing.Username        = username;
-            existing.EncryptedToken  = encryptedToken;
-            existing.TokenExpiresAt  = expiresAt;
-            existing.IsActive        = true;
-            existing.UpdatedAt       = DateTime.UtcNow;
+            existing.Username = username;
+            existing.EncryptedToken = encryptedToken;
+            existing.TokenExpiresAt = expiresAt;
+            existing.IsActive = true;
+            existing.UpdatedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

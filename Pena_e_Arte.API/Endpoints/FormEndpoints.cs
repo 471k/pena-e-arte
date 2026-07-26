@@ -15,31 +15,31 @@ public static class FormEndpoints
         RouteGroupBuilder intake = app.MapGroup("/api/v1/intake-forms")
             .RequireAuthorization();
 
-        intake.MapPost("/",        SubmitIntakeForm).RequireAuthorization("ClientAndAbove");
-        intake.MapGet("/",         GetIntakeForms).RequireAuthorization("ClientAndAbove");
+        intake.MapPost("/", SubmitIntakeForm).RequireAuthorization("ClientAndAbove");
+        intake.MapGet("/", GetIntakeForms).RequireAuthorization("ClientAndAbove");
         intake.MapGet("{id:guid}", GetIntakeFormById).RequireAuthorization("ClientAndAbove");
 
         RouteGroupBuilder consent = app.MapGroup("/api/v1/consent-forms")
             .RequireAuthorization();
 
-        consent.MapPost("/",        SignConsentForm).RequireAuthorization("ClientAndAbove");
-        consent.MapGet("/",         GetConsentForms).RequireAuthorization("ClientAndAbove");
+        consent.MapPost("/", SignConsentForm).RequireAuthorization("ClientAndAbove");
+        consent.MapGet("/", GetConsentForms).RequireAuthorization("ClientAndAbove");
         consent.MapGet("{id:guid}", GetConsentFormById).RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> SubmitIntakeForm(
         SubmitIntakeFormRequest request,
-        ISender                 mediator,
-        CancellationToken       ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         IntakeFormResponse result = await mediator.Send(new SubmitIntakeFormCommand(request), ct);
         return Results.Created($"/api/v1/intake-forms/{result.Id}", result);
     }
 
     private static async Task<IResult> GetIntakeForms(
-        Guid?             clientId,
-        Guid?             appointmentId,
-        ISender           mediator,
+        Guid? clientId,
+        Guid? appointmentId,
+        ISender mediator,
         CancellationToken ct)
     {
         List<IntakeFormResponse> result = await mediator.Send(new GetIntakeFormsQuery(clientId, appointmentId), ct);
@@ -47,8 +47,8 @@ public static class FormEndpoints
     }
 
     private static async Task<IResult> GetIntakeFormById(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         IntakeFormResponse result = await mediator.Send(new GetIntakeFormByIdQuery(id), ct);
@@ -57,17 +57,17 @@ public static class FormEndpoints
 
     private static async Task<IResult> SignConsentForm(
         SignConsentFormRequest request,
-        ISender                mediator,
-        CancellationToken      ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         ConsentFormResponse result = await mediator.Send(new SignConsentFormCommand(request), ct);
         return Results.Created($"/api/v1/consent-forms/{result.Id}", result);
     }
 
     private static async Task<IResult> GetConsentForms(
-        Guid?             clientId,
-        Guid?             appointmentId,
-        ISender           mediator,
+        Guid? clientId,
+        Guid? appointmentId,
+        ISender mediator,
         CancellationToken ct)
     {
         List<ConsentFormResponse> result = await mediator.Send(new GetConsentFormsQuery(clientId, appointmentId), ct);
@@ -75,8 +75,8 @@ public static class FormEndpoints
     }
 
     private static async Task<IResult> GetConsentFormById(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         ConsentFormDetailResponse result = await mediator.Send(new GetConsentFormByIdQuery(id), ct);

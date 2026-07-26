@@ -16,10 +16,10 @@ public sealed class AesTokenEncryptor(IOptions<InstagramOptions> options) : ITok
 
     public string Encrypt(string plainText)
     {
-        byte[] nonce      = new byte[AesGcm.NonceByteSizes.MaxSize];
+        byte[] nonce = new byte[AesGcm.NonceByteSizes.MaxSize];
         byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
-        byte[] cipher     = new byte[plainBytes.Length];
-        byte[] tag        = new byte[AesGcm.TagByteSizes.MaxSize];
+        byte[] cipher = new byte[plainBytes.Length];
+        byte[] tag = new byte[AesGcm.TagByteSizes.MaxSize];
 
         RandomNumberGenerator.Fill(nonce);
 
@@ -36,15 +36,15 @@ public sealed class AesTokenEncryptor(IOptions<InstagramOptions> options) : ITok
 
     public string Decrypt(string cipherText)
     {
-        byte[] raw    = Convert.FromBase64String(cipherText);
-        int    nLen   = AesGcm.NonceByteSizes.MaxSize;
-        int    tagLen = AesGcm.TagByteSizes.MaxSize;
-        int    cLen   = raw.Length - nLen - tagLen;
+        byte[] raw = Convert.FromBase64String(cipherText);
+        int nLen = AesGcm.NonceByteSizes.MaxSize;
+        int tagLen = AesGcm.TagByteSizes.MaxSize;
+        int cLen = raw.Length - nLen - tagLen;
 
-        byte[] nonce  = raw[..nLen];
+        byte[] nonce = raw[..nLen];
         byte[] cipher = raw[nLen..(nLen + cLen)];
-        byte[] tag    = raw[(nLen + cLen)..];
-        byte[] plain  = new byte[cLen];
+        byte[] tag = raw[(nLen + cLen)..];
+        byte[] plain = new byte[cLen];
 
         using AesGcm aes = new(_key, tagLen);
         aes.Decrypt(nonce, cipher, tag, plain);

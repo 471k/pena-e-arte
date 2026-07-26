@@ -16,7 +16,7 @@ public class HandleInvoicePaidHandler(IAppDbContext db) : IRequestHandler<Handle
 
         if (subscription is null) return;
 
-        subscription.Status          = SubscriptionStatus.Active;
+        subscription.Status = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd = command.PeriodEnd;
 
         await db.SaveChangesAsync(ct);

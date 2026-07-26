@@ -5,10 +5,10 @@ using Pena_e_Arte.Infrastructure.Hubs;
 namespace Pena_e_Arte.Infrastructure.Services;
 
 public class RealtimeNotifier(
-    IHubContext<ScheduleHub>     scheduleHub,
-    IHubContext<DesignHub>       designHub,
+    IHubContext<ScheduleHub> scheduleHub,
+    IHubContext<DesignHub> designHub,
     IHubContext<NotificationHub> notificationHub,
-    IHubContext<SupportHub>      supportHub) : IRealtimeNotifier
+    IHubContext<SupportHub> supportHub) : IRealtimeNotifier
 {
     private static readonly HashSet<string> DesignEvents =
     [

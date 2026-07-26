@@ -9,10 +9,10 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Infrastructure.Services;
 
 public class ReferralRewardService(
-    IAppDbContext                   db,
-    IStripeBillingService           billing,
-    IStripeDiscountService          discounts,
-    ILogger<ReferralRewardService>  logger)
+    IAppDbContext db,
+    IStripeBillingService billing,
+    IStripeDiscountService discounts,
+    ILogger<ReferralRewardService> logger)
     : IReferralRewardService
 {
     public async Task RewardReferrerAsync(Guid referralRedemptionId, CancellationToken ct)
@@ -79,7 +79,7 @@ public class ReferralRewardService(
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s =>
                 s.StudioId == code.StudioId &&
-                s.Status   == SubscriptionStatus.Active &&
+                s.Status == SubscriptionStatus.Active &&
                 s.StripeSubscriptionId != null, ct);
 
         if (referrerSub?.StripeSubscriptionId is null)
@@ -133,7 +133,7 @@ public class ReferralRewardService(
             return;
         }
 
-        redemption.ReferrerRewardApplied  = true;
+        redemption.ReferrerRewardApplied = true;
         redemption.ReferrerRewardCouponId = couponId;
         await db.SaveChangesAsync(ct);
 

@@ -14,12 +14,12 @@ namespace Pena_e_Arte.Application.Billing.Commands;
 public record CreateSubscriptionCommand(CreateSubscriptionRequest Request) : IRequest<SubscriptionResponse>;
 
 public class CreateSubscriptionHandler(
-    IAppDbContext                          db,
-    ICurrentTenant                         tenant,
-    IStripeBillingService                  billing,
-    IStripeDiscountService                 discounts,
-    IReferralRewardService                 rewardService,
-    ILogger<CreateSubscriptionHandler>     logger)
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    IStripeBillingService billing,
+    IStripeDiscountService discounts,
+    IReferralRewardService rewardService,
+    ILogger<CreateSubscriptionHandler> logger)
     : IRequestHandler<CreateSubscriptionCommand, SubscriptionResponse>
 {
     public async Task<SubscriptionResponse> Handle(CreateSubscriptionCommand command, CancellationToken ct)
@@ -47,8 +47,8 @@ public class CreateSubscriptionHandler(
         string? priceId = price.StripePriceId;
 
         // Resolve referral discount — re-validate at subscription time as a safety net
-        string? couponId      = null;
-        bool    discountApplied = false;
+        string? couponId = null;
+        bool discountApplied = false;
         ReferralCode? pendingCode = null;
 
         // A Free plan (price == 0) has nothing to discount — skip coupon creation
@@ -114,11 +114,11 @@ public class CreateSubscriptionHandler(
                 : DateTime.UtcNow.AddMonths(1);
         }
 
-        subscription.PlanId           = command.Request.PlanId;
-        subscription.BillingInterval  = requestedInterval;
-        subscription.Status           = SubscriptionStatus.Active;
+        subscription.PlanId = command.Request.PlanId;
+        subscription.BillingInterval = requestedInterval;
+        subscription.Status = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd = periodEnd;
-        subscription.TrialExpiresAt   = null;
+        subscription.TrialExpiresAt = null;
 
         // Record redemption only when a discount was actually applied
         ReferralRedemption? newRedemption = null;
@@ -126,8 +126,8 @@ public class CreateSubscriptionHandler(
         {
             newRedemption = new ReferralRedemption
             {
-                ReferralCodeId  = pendingCode.Id,
-                NewStudioId     = tenant.StudioId,
+                ReferralCodeId = pendingCode.Id,
+                NewStudioId = tenant.StudioId,
                 DiscountApplied = true,
             };
             db.ReferralRedemptions.Add(newRedemption);

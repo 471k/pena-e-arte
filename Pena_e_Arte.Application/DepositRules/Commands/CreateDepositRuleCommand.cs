@@ -22,12 +22,12 @@ public class CreateDepositRuleHandler(IAppDbContext db, ICurrentTenant tenant)
 
         DepositRule rule = new()
         {
-            StudioId                  = tenant.StudioId,
-            Name                      = req.Name,
-            AmountFixed               = req.AmountFixed,
-            AmountPercent             = req.AmountPercent,
-            IsActive                  = req.IsActive,
-            CancellationWindowHours   = req.CancellationWindowHours,
+            StudioId = tenant.StudioId,
+            Name = req.Name,
+            AmountFixed = req.AmountFixed,
+            AmountPercent = req.AmountPercent,
+            IsActive = req.IsActive,
+            CancellationWindowHours = req.CancellationWindowHours,
             RefundPercentOnLateCancel = req.RefundPercentOnLateCancel
         };
 
@@ -45,7 +45,7 @@ public class CreateDepositRuleHandler(IAppDbContext db, ICurrentTenant tenant)
 
         foreach (DepositRule r in active)
         {
-            r.IsActive  = false;
+            r.IsActive = false;
             r.UpdatedAt = DateTime.UtcNow;
         }
     }

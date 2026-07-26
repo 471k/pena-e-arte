@@ -10,10 +10,10 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class CreateDesignHandlerTests
 {
-    private readonly FakeDbContext   _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant  _tenant      = Substitute.For<ICurrentTenant>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
-    private readonly Guid            _studioId    = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateDesignHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -61,11 +61,11 @@ public class CreateDesignHandlerTests
         FakeCurrentUser artistUser = FakeCurrentUser.Artist();
         var artist = new Domain.Entities.Artist
         {
-            StudioId  = _studioId,
-            UserId    = artistUser.UserId,
+            StudioId = _studioId,
+            UserId = artistUser.UserId,
             FirstName = "Art",
-            LastName  = "Ist",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();

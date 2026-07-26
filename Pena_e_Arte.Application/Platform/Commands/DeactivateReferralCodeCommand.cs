@@ -14,9 +14,9 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 // referral code is conceptually studio-scoped. See architecture.md Decisions Log.
 public record DeactivateReferralCodeCommand(Guid ReferralCodeId) : IRequest, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.ReferralCodeDeactivated;
+    public string AuditAction => AuditActions.ReferralCodeDeactivated;
     public string AuditTargetType => AuditTargetTypes.ReferralCode;
-    public Guid   AuditTargetId   => ReferralCodeId;
+    public Guid AuditTargetId => ReferralCodeId;
 }
 
 public class DeactivateReferralCodeHandler(IAppDbContext db)

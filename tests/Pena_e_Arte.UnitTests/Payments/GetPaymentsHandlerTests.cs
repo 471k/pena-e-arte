@@ -9,8 +9,8 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class GetPaymentsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetPaymentsHandler CreateSut() => new(_db);
 
@@ -98,14 +98,14 @@ public class GetPaymentsHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = clientId,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddMinutes(60),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddMinutes(60),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
         };
         _db.Appointments.Add(appointment);
         _db.SaveChanges();
@@ -116,21 +116,21 @@ public class GetPaymentsHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
         Payment payment = new()
         {
-            StudioId      = _studioId,
+            StudioId = _studioId,
             AppointmentId = SeedAppointment(client.Id),
-            ClientId      = client.Id,
-            Amount        = amount,
-            Status        = PaymentStatus.Pending
+            ClientId = client.Id,
+            Amount = amount,
+            Status = PaymentStatus.Pending
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
@@ -141,23 +141,23 @@ public class GetPaymentsHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
         Payment payment = new()
         {
-            Id            = id,
-            StudioId      = _studioId,
+            Id = id,
+            StudioId = _studioId,
             AppointmentId = SeedAppointment(client.Id),
-            ClientId      = client.Id,
-            Amount        = 100m,
-            Status        = PaymentStatus.Pending,
-            CreatedAt     = createdAt
+            ClientId = client.Id,
+            Amount = 100m,
+            Status = PaymentStatus.Pending,
+            CreatedAt = createdAt
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

@@ -19,10 +19,10 @@ public record CreateArtistCommand(CreateArtistRequest Request)
 }
 
 public class CreateArtistHandler(
-    IAppDbContext     db,
-    ICurrentTenant    tenant,
-    IIdentityService  identity,
-    IJobScheduler     scheduler,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    IIdentityService identity,
+    IJobScheduler scheduler,
     IPlanLimitService planLimits)
     : IRequestHandler<CreateArtistCommand, ArtistResponse>
 {
@@ -35,8 +35,8 @@ public class CreateArtistHandler(
             throw new BusinessRuleViolationException($"An artist with email '{req.Email}' already exists in this studio.");
 
         string baseSlug = SlugHelper.GenerateSlug($"{req.FirstName} {req.LastName}");
-        string slug     = baseSlug;
-        int    counter  = 2;
+        string slug = baseSlug;
+        int counter = 2;
         // IgnoreQueryFilters: slug must be globally unique for public portfolio URLs
         while (await db.Artists.IgnoreQueryFilters().AnyAsync(a => a.Slug == slug && a.DeletedAt == null, ct))
         {
@@ -66,13 +66,13 @@ public class CreateArtistHandler(
 
         Artist artist = new()
         {
-            StudioId        = tenant.StudioId,
-            UserId          = userId,
-            FirstName       = req.FirstName,
-            LastName        = req.LastName,
-            Email           = req.Email,
+            StudioId = tenant.StudioId,
+            UserId = userId,
+            FirstName = req.FirstName,
+            LastName = req.LastName,
+            Email = req.Email,
             Specializations = req.Specializations,
-            HourlyRate      = req.HourlyRate
+            HourlyRate = req.HourlyRate
         };
         artist.SetSlug(slug);
 

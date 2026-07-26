@@ -37,12 +37,12 @@ public class HandleSubscriptionDeletedHandlerTests
     {
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId             = Guid.NewGuid(),
+            StudioId = Guid.NewGuid(),
             StripeSubscriptionId = stripeSubId,
-            Status               = status,
-            TrialExpiresAt       = DateTime.UtcNow.AddDays(14),
-            CurrentPeriodEnd     = DateTime.UtcNow.AddDays(30),
-            GracePeriodEnd       = DateTime.UtcNow.AddDays(21)
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21)
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

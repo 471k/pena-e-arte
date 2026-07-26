@@ -138,14 +138,14 @@ public class TenantQueryFilterTests(DatabaseFixture fixture)
 
         ctx.Appointments.Add(new Appointment
         {
-            StudioId        = tenantId,
-            ArtistId        = artist.Id,
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(2),
+            StudioId = tenantId,
+            ArtistId = artist.Id,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending
         });
         await ctx.SaveChangesAsync();
     }

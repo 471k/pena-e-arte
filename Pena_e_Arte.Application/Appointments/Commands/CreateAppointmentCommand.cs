@@ -19,13 +19,13 @@ public record CreateAppointmentCommand(CreateAppointmentRequest Request)
 }
 
 public class CreateAppointmentHandler(
-    IAppDbContext     db,
-    ICurrentTenant    tenant,
-    ICurrentUser      currentUser,
-    ISlotLocker       slotLocker,
-    IJobScheduler     jobs,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    ICurrentUser currentUser,
+    ISlotLocker slotLocker,
+    IJobScheduler jobs,
     IRealtimeNotifier realtime,
-    ISender           sender,
+    ISender sender,
     IPlanLimitService planLimits)
     : IRequestHandler<CreateAppointmentCommand, AppointmentResponse>
 {
@@ -57,8 +57,8 @@ public class CreateAppointmentHandler(
 
         // Check artist schedule: the day must be a working day and the time within working hours
         DayOfWeek requestDay = req.Date.DayOfWeek;
-        TimeSpan  requestStart = req.Date.TimeOfDay;
-        TimeSpan  requestEndTime = requestEnd.TimeOfDay;
+        TimeSpan requestStart = req.Date.TimeOfDay;
+        TimeSpan requestEndTime = requestEnd.TimeOfDay;
 
         var scheduleEntry = await db.ArtistSchedules
             .Where(s => s.ArtistId == req.ArtistId && s.DayOfWeek == requestDay && s.IsAvailable)
@@ -74,7 +74,7 @@ public class CreateAppointmentHandler(
         bool onTimeOff = await db.ArtistTimeOffs.AnyAsync(
             t => t.ArtistId == req.ArtistId &&
                  t.StartDate <= req.Date.Date &&
-                 t.EndDate   >= req.Date.Date, ct);
+                 t.EndDate >= req.Date.Date, ct);
 
         if (onTimeOff)
             throw new BusinessRuleViolationException("The artist is on leave on the requested date.");
@@ -86,9 +86,9 @@ public class CreateAppointmentHandler(
         {
             bool conflict = await db.Appointments.AnyAsync(a =>
                 a.ArtistId == req.ArtistId &&
-                a.Date     < requestEnd    &&
-                a.EndDate  > req.Date      &&
-                a.Status   != AppointmentStatus.Cancelled, ct);
+                a.Date < requestEnd &&
+                a.EndDate > req.Date &&
+                a.Status != AppointmentStatus.Cancelled, ct);
 
             if (conflict) throw new SlotAlreadyBookedException();
 
@@ -103,24 +103,24 @@ public class CreateAppointmentHandler(
 
             Appointment appointment = new()
             {
-                StudioId        = tenant.StudioId,
-                ArtistId        = req.ArtistId,
-                ClientId        = clientId,
-                Date            = req.Date,
-                EndDate         = requestEnd,
+                StudioId = tenant.StudioId,
+                ArtistId = req.ArtistId,
+                ClientId = clientId,
+                Date = req.Date,
+                EndDate = requestEnd,
                 DurationMinutes = req.DurationMinutes,
-                Status          = AppointmentStatus.Pending,
-                DepositStatus   = DepositStatus.Pending,
-                DepositAmount   = depositAmount,
-                Notes           = req.Notes
+                Status = AppointmentStatus.Pending,
+                DepositStatus = DepositStatus.Pending,
+                DepositAmount = depositAmount,
+                Notes = req.Notes
             };
 
             foreach (string imageUrl in req.ImageUrls ?? [])
             {
                 appointment.Attachments.Add(new AppointmentAttachment
                 {
-                    StudioId   = tenant.StudioId,
-                    ImageUrl   = imageUrl,
+                    StudioId = tenant.StudioId,
+                    ImageUrl = imageUrl,
                     UploadedAt = DateTime.UtcNow
                 });
             }

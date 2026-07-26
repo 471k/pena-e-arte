@@ -10,10 +10,10 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class ResendArtistInviteHandlerTests
 {
-    private readonly FakeDbContext  _db        = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant    = Substitute.For<ICurrentTenant>();
-    private readonly IJobScheduler  _scheduler = Substitute.For<IJobScheduler>();
-    private readonly Guid           _studioId  = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IJobScheduler _scheduler = Substitute.For<IJobScheduler>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public ResendArtistInviteHandlerTests()
     {

@@ -13,8 +13,8 @@ namespace Pena_e_Arte.Application.Common.Behaviors;
 /// in Program.cs, mirroring that behavior's exact shape.
 /// </summary>
 public class AuditLogBehavior<TRequest, TResponse>(
-    IAppDbContext  db,
-    ICurrentUser   currentUser,
+    IAppDbContext db,
+    ICurrentUser currentUser,
     ICurrentTenant tenant)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -32,12 +32,12 @@ public class AuditLogBehavior<TRequest, TResponse>(
 
             AuditLogEntry entry = AuditLogEntry.Create(
                 actorUserId: currentUser.UserId,
-                actorRole:   currentUser.Role,
-                action:      auditable.AuditAction,
-                targetType:  auditable.AuditTargetType,
-                targetId:    auditable.AuditTargetId,
-                studioId:    studioId,
-                metadata:    AuditMetadataBuilder.Build(request));
+                actorRole: currentUser.Role,
+                action: auditable.AuditAction,
+                targetType: auditable.AuditTargetType,
+                targetId: auditable.AuditTargetId,
+                studioId: studioId,
+                metadata: AuditMetadataBuilder.Build(request));
 
             db.AuditLogEntries.Add(entry);
             await db.SaveChangesAsync(ct);

@@ -12,15 +12,15 @@ namespace Pena_e_Arte.Infrastructure.Services;
 // Direct SQL mutations (e.g. emergency console ops) bypass this interceptor; in that
 // case the 60 s TTL on SubscriptionAccessService is the safety net.
 public class SubscriptionCacheInvalidationInterceptor(
-    IDistributedCache                              cache,
+    IDistributedCache cache,
     ILogger<SubscriptionCacheInvalidationInterceptor> logger) : SaveChangesInterceptor
 {
     private List<Guid> _pendingInvalidations = [];
 
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
-        DbContextEventData      eventData,
+        DbContextEventData eventData,
         InterceptionResult<int> result,
-        CancellationToken       cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         _pendingInvalidations = eventData.Context?.ChangeTracker
             .Entries<Subscription>()
@@ -34,8 +34,8 @@ public class SubscriptionCacheInvalidationInterceptor(
 
     public override async ValueTask<int> SavedChangesAsync(
         SaveChangesCompletedEventData eventData,
-        int                           result,
-        CancellationToken             cancellationToken = default)
+        int result,
+        CancellationToken cancellationToken = default)
     {
         foreach (Guid studioId in _pendingInvalidations)
         {

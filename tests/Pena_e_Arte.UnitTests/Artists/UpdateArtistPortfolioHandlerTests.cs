@@ -11,9 +11,9 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class UpdateArtistPortfolioHandlerTests
 {
-    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
-    private readonly Guid            _studioId    = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private UpdateArtistPortfolioHandler CreateSut() => new(_db, _currentUser);
 
@@ -21,11 +21,11 @@ public class UpdateArtistPortfolioHandlerTests
     {
         Artist artist = new()
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Liku",
-            LastName  = "Tatuazhisti",
-            Email     = "liku@protonmail.com",
+            LastName = "Tatuazhisti",
+            Email = "liku@protonmail.com",
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();

@@ -21,7 +21,7 @@ public class UpdateBodyMapHandlerTests
         {
             StudioId = Guid.NewGuid(),
             ClientId = clientId,
-            BodyMap  = new BodyMap { Locations = [] },
+            BodyMap = new BodyMap { Locations = [] },
         };
         _db.ClientProfiles.Add(profile);
         await _db.SaveChangesAsync();

@@ -15,19 +15,19 @@ namespace Pena_e_Arte.Infrastructure.Services;
 /// JwtSecurityTokenHandler is from System.IdentityModel.Tokens.Jwt — already in the project.
 /// </summary>
 public sealed class OAuthTokenValidator(
-    IHttpClientFactory           httpFactory,
-    IDistributedCache            cache,
-    IOptions<GoogleOptions>      googleOpts,
-    IOptions<AppleOptions>       appleOpts,
+    IHttpClientFactory httpFactory,
+    IDistributedCache cache,
+    IOptions<GoogleOptions> googleOpts,
+    IOptions<AppleOptions> appleOpts,
     ILogger<OAuthTokenValidator> logger) : IOAuthTokenValidator
 {
     private const string GoogleJwksUrl = "https://www.googleapis.com/oauth2/v3/certs";
-    private const string GoogleIssuer  = "https://accounts.google.com";
-    private const string AppleJwksUrl  = "https://appleid.apple.com/auth/keys";
-    private const string AppleIssuer   = "https://appleid.apple.com";
+    private const string GoogleIssuer = "https://accounts.google.com";
+    private const string AppleJwksUrl = "https://appleid.apple.com/auth/keys";
+    private const string AppleIssuer = "https://appleid.apple.com";
 
     private readonly string _googleAudience = googleOpts.Value.ClientId;
-    private readonly string _appleAudience  = appleOpts.Value.ClientId;
+    private readonly string _appleAudience = appleOpts.Value.ClientId;
 
     public async Task<OAuthUserInfo> ValidateGoogleTokenAsync(string idToken, CancellationToken ct)
     {
@@ -46,13 +46,13 @@ public sealed class OAuthTokenValidator(
     {
         TokenValidationParameters parameters = new()
         {
-            ValidIssuer       = issuer,
-            ValidAudience     = audience,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
             IssuerSigningKeys = jwks.Keys,
-            ValidateIssuer    = true,
-            ValidateAudience  = true,
-            ValidateLifetime  = true,
-            ClockSkew         = TimeSpan.FromMinutes(5),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5),
         };
 
         JwtSecurityTokenHandler handler = new();

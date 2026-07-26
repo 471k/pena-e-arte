@@ -46,8 +46,8 @@ public class QrCodeServiceTests
     [Fact]
     public void GeneratePng_CustomPixelSize_ReturnsDifferentSizeThanDefault()
     {
-        byte[] smallPng  = _sut.GeneratePng("https://tattooos.co/s/test", pixelSize: 5);
-        byte[] largePng  = _sut.GeneratePng("https://tattooos.co/s/test", pixelSize: 40);
+        byte[] smallPng = _sut.GeneratePng("https://tattooos.co/s/test", pixelSize: 5);
+        byte[] largePng = _sut.GeneratePng("https://tattooos.co/s/test", pixelSize: 40);
 
         largePng.Length.Should().BeGreaterThan(smallPng.Length);
     }

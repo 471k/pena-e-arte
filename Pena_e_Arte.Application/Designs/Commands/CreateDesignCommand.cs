@@ -34,10 +34,10 @@ public class CreateDesignHandler(IAppDbContext db, ICurrentTenant tenant, ICurre
 
         Design design = new()
         {
-            StudioId    = tenant.StudioId,
-            ClientId    = req.ClientId,
-            ArtistId    = artistId,
-            Title       = req.Title,
+            StudioId = tenant.StudioId,
+            ClientId = req.ClientId,
+            ArtistId = artistId,
+            Title = req.Title,
             Description = req.Description
         };
 

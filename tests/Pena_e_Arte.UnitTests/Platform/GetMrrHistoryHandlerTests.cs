@@ -34,18 +34,18 @@ public class GetMrrHistoryHandlerTests
     public async Task Handle_MonthlySubscription_ContributesFullPriceToCurrentMonth()
     {
         Studio studio = SeedStudio();
-        Plan   plan   = new() { Name = "Pro" };
+        Plan plan = new() { Name = "Pro" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            PlanId           = plan.Id,
-            BillingInterval  = BillingInterval.Monthly,
-            Status           = SubscriptionStatus.Active,
-            CreatedAt        = DateTime.UtcNow.AddDays(-5),
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            CreatedAt = DateTime.UtcNow.AddDays(-5),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(25),
         });
         await _db.SaveChangesAsync();
@@ -62,7 +62,7 @@ public class GetMrrHistoryHandlerTests
         // Regression test for the confirmed pre-existing revenue-reporting bug — same
         // fix as GetPlatformStatsHandler's MRR calculation.
         Studio studio = SeedStudio();
-        Plan   plan   = new() { Name = "Premium" };
+        Plan plan = new() { Name = "Premium" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 79m });
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = 790m });
         _db.Plans.Add(plan);
@@ -70,11 +70,11 @@ public class GetMrrHistoryHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            PlanId           = plan.Id,
-            BillingInterval  = BillingInterval.Yearly,
-            Status           = SubscriptionStatus.Active,
-            CreatedAt        = DateTime.UtcNow.AddDays(-5),
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Yearly,
+            Status = SubscriptionStatus.Active,
+            CreatedAt = DateTime.UtcNow.AddDays(-5),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(360),
         });
         await _db.SaveChangesAsync();
@@ -89,11 +89,11 @@ public class GetMrrHistoryHandlerTests
     {
         Studio studio = new()
         {
-            Name           = $"Studio-{Guid.NewGuid():N}"[..20],
-            Slug           = Guid.NewGuid().ToString("N")[..20],
-            City           = "Porto",
-            OwnerEmail     = $"{Guid.NewGuid():N}@test.com",
-            IsActive       = true,
+            Name = $"Studio-{Guid.NewGuid():N}"[..20],
+            Slug = Guid.NewGuid().ToString("N")[..20],
+            City = "Porto",
+            OwnerEmail = $"{Guid.NewGuid():N}@test.com",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         };
         _db.Studios.Add(studio);
