@@ -5,10 +5,10 @@ using Pena_e_Arte.Application.Persistence;
 namespace Pena_e_Arte.Application.Studios.Queries;
 
 public record StudioClosureResponse(
-    Guid     Id,
+    Guid Id,
     DateTime StartDate,
     DateTime EndDate,
-    string   Reason);
+    string Reason);
 
 public record GetStudioClosuresQuery(Guid StudioId) : IRequest<List<StudioClosureResponse>>;
 

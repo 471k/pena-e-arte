@@ -10,9 +10,9 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class GetMyStudiosHandlerTests
 {
-    private readonly IIdentityService _identity   = Substitute.For<IIdentityService>();
-    private readonly FakeDbContext    _db          = FakeDbContext.Create();
-    private readonly FakeCurrentUser  _currentUser = FakeCurrentUser.Client();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Client();
 
     private GetMyStudiosHandler CreateSut() => new(_db, _identity, _currentUser);
 
@@ -33,7 +33,7 @@ public class GetMyStudiosHandlerTests
     [Fact]
     public async Task Handle_MultipleStudios_ReturnsOrderedByName()
     {
-        Studio zeta  = new() { Id = Guid.NewGuid(), Name = "Zeta Ink",  Slug = "zeta-ink",  City = "Tirana" };
+        Studio zeta = new() { Id = Guid.NewGuid(), Name = "Zeta Ink", Slug = "zeta-ink", City = "Tirana" };
         Studio alpha = new() { Id = Guid.NewGuid(), Name = "Alpha Art", Slug = "alpha-art", City = "Durrës" };
         _db.Studios.AddRange(zeta, alpha);
         await _db.SaveChangesAsync();
@@ -51,12 +51,12 @@ public class GetMyStudiosHandlerTests
     {
         Studio studio = new()
         {
-            Id            = Guid.NewGuid(),
-            Name          = "Alpha Art",
-            Slug          = "alpha-art",
-            City          = "Durrës",
+            Id = Guid.NewGuid(),
+            Name = "Alpha Art",
+            Slug = "alpha-art",
+            City = "Durrës",
             CoverImageUrl = "https://cdn.example.com/cover.jpg",
-            IsActive      = true,
+            IsActive = true,
         };
         _db.Studios.Add(studio);
         await _db.SaveChangesAsync();
@@ -102,8 +102,8 @@ public class GetMyStudiosHandlerTests
     [Fact]
     public async Task Handle_UserHasNoClaimForAStudio_DoesNotReturnThatStudio()
     {
-        Studio claimed   = new() { Id = Guid.NewGuid(), Name = "Alpha Art",  Slug = "alpha-art",  City = "Durrës" };
-        Studio unclaimed = new() { Id = Guid.NewGuid(), Name = "Other Ink",  Slug = "other-ink",  City = "Tirana" };
+        Studio claimed = new() { Id = Guid.NewGuid(), Name = "Alpha Art", Slug = "alpha-art", City = "Durrës" };
+        Studio unclaimed = new() { Id = Guid.NewGuid(), Name = "Other Ink", Slug = "other-ink", City = "Tirana" };
         _db.Studios.AddRange(claimed, unclaimed);
         await _db.SaveChangesAsync();
         UserHasTenantIds(claimed.Id);

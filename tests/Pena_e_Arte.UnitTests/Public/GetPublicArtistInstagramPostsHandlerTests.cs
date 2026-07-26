@@ -17,19 +17,19 @@ public class GetPublicArtistInstagramPostsHandlerTests
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Studio
         {
-            Id       = studioId,
-            Name     = "Ink Studio",
-            Slug     = "ink-studio",
-            City     = "Lisbon",
+            Id = studioId,
+            Name = "Ink Studio",
+            Slug = "ink-studio",
+            City = "Lisbon",
             IsActive = studioActive,
         });
 
         Artist artist = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "Maria",
-            LastName  = "Silva",
-            Email     = "maria@example.com",
+            LastName = "Silva",
+            Email = "maria@example.com",
         };
         artist.SetSlug("maria-silva");
         _db.Artists.Add(artist);
@@ -37,13 +37,13 @@ public class GetPublicArtistInstagramPostsHandlerTests
 
         _db.InstagramPosts.Add(new InstagramPost
         {
-            StudioId         = studioId,
-            ArtistId         = artist.Id,
+            StudioId = studioId,
+            ArtistId = artist.Id,
             InstagramMediaId = "media-1",
-            MediaUrl         = "https://cdn.example.com/1.jpg",
-            MediaType        = "IMAGE",
-            PostedAt         = DateTime.UtcNow,
-            IsVisible        = true,
+            MediaUrl = "https://cdn.example.com/1.jpg",
+            MediaType = "IMAGE",
+            PostedAt = DateTime.UtcNow,
+            IsVisible = true,
         });
         await _db.SaveChangesAsync();
 
@@ -87,13 +87,13 @@ public class GetPublicArtistInstagramPostsHandlerTests
         Artist artist = await SeedArtistWithPostAsync();
         _db.InstagramPosts.Add(new InstagramPost
         {
-            StudioId         = artist.StudioId,
-            ArtistId         = artist.Id,
+            StudioId = artist.StudioId,
+            ArtistId = artist.Id,
             InstagramMediaId = "media-hidden",
-            MediaUrl         = "https://cdn.example.com/2.jpg",
-            MediaType        = "IMAGE",
-            PostedAt         = DateTime.UtcNow,
-            IsVisible        = false,
+            MediaUrl = "https://cdn.example.com/2.jpg",
+            MediaType = "IMAGE",
+            PostedAt = DateTime.UtcNow,
+            IsVisible = false,
         });
         await _db.SaveChangesAsync();
 

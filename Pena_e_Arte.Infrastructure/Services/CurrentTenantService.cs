@@ -7,7 +7,7 @@ public class CurrentTenantService : ICurrentTenant
     private Guid _studioId;
 
     public Guid StudioId => _studioId;
-    public bool IsSet    => _studioId != Guid.Empty;
+    public bool IsSet => _studioId != Guid.Empty;
 
     public void SetTenant(Guid studioId) => _studioId = studioId;
 }

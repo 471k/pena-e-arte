@@ -10,11 +10,11 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class ConfirmChangeEmailHandlerTests
 {
-    private readonly IIdentityService                        _identity      = Substitute.For<IIdentityService>();
-    private readonly IEmailRenderer                           _emailRenderer = Substitute.For<IEmailRenderer>();
-    private readonly INotificationService                     _notifications = Substitute.For<INotificationService>();
-    private readonly ILogger<ConfirmChangeEmailHandler>       _logger        = Substitute.For<ILogger<ConfirmChangeEmailHandler>>();
-    private readonly Guid                                      _userId        = Guid.NewGuid();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly ILogger<ConfirmChangeEmailHandler> _logger = Substitute.For<ILogger<ConfirmChangeEmailHandler>>();
+    private readonly Guid _userId = Guid.NewGuid();
 
     private ConfirmChangeEmailHandler CreateSut() => new(_identity, _emailRenderer, _notifications, _logger);
 

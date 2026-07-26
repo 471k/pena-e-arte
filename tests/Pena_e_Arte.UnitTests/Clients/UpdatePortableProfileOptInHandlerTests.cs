@@ -11,11 +11,11 @@ namespace Pena_e_Arte.UnitTests.Clients;
 
 public class UpdatePortableProfileOptInHandlerTests
 {
-    private readonly FakeDbContext _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant     = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser   _currentUser = Substitute.For<ICurrentUser>();
-    private readonly Guid           _studioId   = Guid.NewGuid();
-    private readonly Guid           _userId     = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public UpdatePortableProfileOptInHandlerTests()
     {
@@ -30,11 +30,11 @@ public class UpdatePortableProfileOptInHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = _userId,
+            StudioId = _studioId,
+            UserId = _userId,
             FirstName = "Ana",
-            LastName  = "Costa",
-            Email     = "ana@example.com"
+            LastName = "Costa",
+            Email = "ana@example.com"
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -95,11 +95,11 @@ public class UpdatePortableProfileOptInHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = _userId,
+            StudioId = _studioId,
+            UserId = _userId,
             FirstName = "Rui",
-            LastName  = "Neves",
-            Email     = "rui@example.com"
+            LastName = "Neves",
+            Email = "rui@example.com"
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();

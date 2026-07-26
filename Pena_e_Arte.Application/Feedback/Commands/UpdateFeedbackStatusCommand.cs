@@ -10,7 +10,7 @@ using Pena_e_Arte.Domain.Exceptions;
 namespace Pena_e_Arte.Application.Feedback.Commands;
 
 public record UpdateFeedbackStatusCommand(
-    Guid                        Id,
+    Guid Id,
     UpdateFeedbackStatusRequest Request) : IRequest<FeedbackReportResponse>;
 
 public class UpdateFeedbackStatusHandler(IAppDbContext db)

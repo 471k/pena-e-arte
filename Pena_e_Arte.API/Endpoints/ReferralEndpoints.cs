@@ -22,8 +22,8 @@ public static class ReferralEndpoints
     }
 
     private static async Task<IResult> GenerateReferralCode(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         ReferralCodeResponse result = await mediator.Send(new GenerateReferralCodeCommand(id), ct);
@@ -31,8 +31,8 @@ public static class ReferralEndpoints
     }
 
     private static async Task<IResult> GetReferralCode(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         ReferralCodeResponse? result = await mediator.Send(new GetReferralCodeQuery(id), ct);
@@ -40,8 +40,8 @@ public static class ReferralEndpoints
     }
 
     private static async Task<IResult> GetReferralStats(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         ReferralStatsResponse result = await mediator.Send(new GetReferralStatsQuery(id), ct);

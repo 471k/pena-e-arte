@@ -26,11 +26,11 @@ public class PlatformStatsIntegrationTests(DatabaseFixture fixture)
         db.Plans.Add(plan);
         db.Subscriptions.Add(new Subscription
         {
-            StudioId         = activeStudio.Id,
-            PlanId           = plan.Id,
-            BillingInterval  = BillingInterval.Monthly,
-            Status           = SubscriptionStatus.Active,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(30),
+            StudioId = activeStudio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
         });
         await db.SaveChangesAsync();
@@ -49,11 +49,11 @@ public class PlatformStatsIntegrationTests(DatabaseFixture fixture)
 
     private static Studio SeedStudio(bool isActive) => new()
     {
-        Name           = $"Stats Studio {Guid.NewGuid():N}"[..30],
-        Slug           = Guid.NewGuid().ToString("N")[..20],
-        City           = "Porto",
-        OwnerEmail     = $"{Guid.NewGuid():N}@test.com",
-        IsActive       = isActive,
+        Name = $"Stats Studio {Guid.NewGuid():N}"[..30],
+        Slug = Guid.NewGuid().ToString("N")[..20],
+        City = "Porto",
+        OwnerEmail = $"{Guid.NewGuid():N}@test.com",
+        IsActive = isActive,
         TrialExpiresAt = DateTime.UtcNow.AddDays(14),
     };
 }

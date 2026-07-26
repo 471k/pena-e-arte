@@ -26,24 +26,24 @@ public class GetReviewableStudioAppointmentsHandlerTests
     {
         Client client = new()
         {
-            StudioId  = studioId,
-            UserId    = authorUserId,
+            StudioId = studioId,
+            UserId = authorUserId,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Silva",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
 
         Appointment appointment = new()
         {
-            StudioId        = studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(-5),
-            EndDate         = DateTime.UtcNow.AddDays(-5).AddHours(1),
+            StudioId = studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(-5),
+            EndDate = DateTime.UtcNow.AddDays(-5).AddHours(1),
             DurationMinutes = 60,
-            Status          = status,
-            DepositStatus   = DepositStatus.Paid,
+            Status = status,
+            DepositStatus = DepositStatus.Paid,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -53,8 +53,8 @@ public class GetReviewableStudioAppointmentsHandlerTests
     [Fact]
     public async Task Returns_completed_unreviewed_appointment_for_the_author()
     {
-        Studio studio   = await SeedStudio();
-        Guid   authorId = Guid.NewGuid();
+        Studio studio = await SeedStudio();
+        Guid authorId = Guid.NewGuid();
         Appointment appt = await SeedAppointment(studio.Id, authorId);
 
         List<ReviewableAppointmentResponse> result = await CreateSut().Handle(
@@ -66,8 +66,8 @@ public class GetReviewableStudioAppointmentsHandlerTests
     [Fact]
     public async Task Excludes_appointments_that_are_not_completed()
     {
-        Studio studio   = await SeedStudio();
-        Guid   authorId = Guid.NewGuid();
+        Studio studio = await SeedStudio();
+        Guid authorId = Guid.NewGuid();
         await SeedAppointment(studio.Id, authorId, AppointmentStatus.Confirmed);
 
         List<ReviewableAppointmentResponse> result = await CreateSut().Handle(
@@ -91,8 +91,8 @@ public class GetReviewableStudioAppointmentsHandlerTests
     [Fact]
     public async Task Excludes_appointments_already_reviewed()
     {
-        Studio studio   = await SeedStudio();
-        Guid   authorId = Guid.NewGuid();
+        Studio studio = await SeedStudio();
+        Guid authorId = Guid.NewGuid();
         Appointment appt = await SeedAppointment(studio.Id, authorId);
 
         _db.Reviews.Add(Review.ForStudio(studio.Id, appt.Id, authorId, "Ana Silva", 5, "Already reviewed this one"));
@@ -107,8 +107,8 @@ public class GetReviewableStudioAppointmentsHandlerTests
     [Fact]
     public async Task Returns_multiple_eligible_appointments_ordered_most_recent_first()
     {
-        Studio studio   = await SeedStudio();
-        Guid   authorId = Guid.NewGuid();
+        Studio studio = await SeedStudio();
+        Guid authorId = Guid.NewGuid();
         Appointment older = await SeedAppointment(studio.Id, authorId);
         older.Date = DateTime.UtcNow.AddDays(-30);
         Appointment newer = await SeedAppointment(studio.Id, authorId);

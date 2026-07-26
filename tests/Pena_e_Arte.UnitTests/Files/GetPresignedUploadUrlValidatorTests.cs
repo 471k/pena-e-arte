@@ -10,7 +10,7 @@ public class GetPresignedUploadUrlValidatorTests
     private readonly GetPresignedUploadUrlValidator _sut = new();
 
     private static GetPresignedUploadUrlQuery ValidQuery(
-        string objectKey  = "designs/photo.png",
+        string objectKey = "designs/photo.png",
         string contentType = "image/png") =>
         new(new PresignUploadRequest(objectKey, contentType));
 

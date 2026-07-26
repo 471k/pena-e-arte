@@ -11,14 +11,14 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Auth.Commands;
 
 public record UpdateClientStudioNotificationPreferencesCommand(
-    Guid                                 StudioId,
-    List<NotificationPreferenceItem>     Preferences)
+    Guid StudioId,
+    List<NotificationPreferenceItem> Preferences)
     : IRequest<Unit>;
 
 public class UpdateClientStudioNotificationPreferencesHandler(
-    IAppDbContext    db,
+    IAppDbContext db,
     IIdentityService identity,
-    ICurrentUser     currentUser)
+    ICurrentUser currentUser)
     : IRequestHandler<UpdateClientStudioNotificationPreferencesCommand, Unit>
 {
     private static readonly string[] ClientTypeNames =
@@ -47,7 +47,7 @@ public class UpdateClientStudioNotificationPreferencesHandler(
             // Only persist client-facing types — ignore anything outside the allowed set.
             if (!ClientTypeNames.Contains(item.Type)) continue;
 
-            NotificationType    type    = Enum.Parse<NotificationType>(item.Type);
+            NotificationType type = Enum.Parse<NotificationType>(item.Type);
             NotificationChannel channel = Enum.Parse<NotificationChannel>(item.Channel);
 
             ClientNotificationPreference? pref = existing
@@ -57,10 +57,10 @@ public class UpdateClientStudioNotificationPreferencesHandler(
             {
                 db.ClientNotificationPreferences.Add(new ClientNotificationPreference
                 {
-                    UserId    = currentUser.UserId,
-                    StudioId  = command.StudioId,
-                    Type      = type,
-                    Channel   = channel,
+                    UserId = currentUser.UserId,
+                    StudioId = command.StudioId,
+                    Type = type,
+                    Channel = channel,
                     IsEnabled = item.IsEnabled,
                 });
             }
@@ -78,7 +78,7 @@ public class UpdateClientStudioNotificationPreferencesHandler(
 public class UpdateClientStudioNotificationPreferencesValidator
     : AbstractValidator<UpdateClientStudioNotificationPreferencesCommand>
 {
-    private static readonly string[] ValidTypes    = Enum.GetNames<NotificationType>();
+    private static readonly string[] ValidTypes = Enum.GetNames<NotificationType>();
 
     // InApp notices have no email/SMS equivalent and aren't opted out of — only
     // these two are settable preference channels.

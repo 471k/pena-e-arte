@@ -13,12 +13,12 @@ namespace Pena_e_Arte.Application.ConsentForms.Commands;
 public record SignConsentFormCommand(SignConsentFormRequest Request) : IRequest<ConsentFormResponse>;
 
 public class SignConsentFormHandler(
-    IAppDbContext          db,
-    ICurrentTenant         tenant,
-    ICurrentUser           currentUser,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    ICurrentUser currentUser,
     IConsentFormPdfService pdfService,
-    IR2Service             r2,
-    ISender                sender)
+    IR2Service r2,
+    ISender sender)
     : IRequestHandler<SignConsentFormCommand, ConsentFormResponse>
 {
     public async Task<ConsentFormResponse> Handle(SignConsentFormCommand command, CancellationToken ct)
@@ -45,11 +45,11 @@ public class SignConsentFormHandler(
 
         ConsentForm form = new()
         {
-            StudioId      = tenant.StudioId,
-            ClientId      = appointment.ClientId,
+            StudioId = tenant.StudioId,
+            ClientId = appointment.ClientId,
             AppointmentId = appointment.Id,
             SignatureData = req.SignatureData,
-            SignedAt      = DateTime.UtcNow
+            SignedAt = DateTime.UtcNow
         };
 
         db.ConsentForms.Add(form);
@@ -95,16 +95,16 @@ public class SignConsentFormHandler(
                 .FirstOrDefaultAsync(s => s.Id == form.StudioId, ct);
 
             ConsentFormPdfData data = new(
-                StudioName:           studio?.Name ?? "Studio",
-                ClientFullName:       client is null ? "Client" : $"{client.FirstName} {client.LastName}",
-                ArtistFullName:       artist is null ? "Artist" : $"{artist.FirstName} {artist.LastName}",
-                AppointmentDate:      appointment.Date,
-                SignatureText:        form.SignatureData ?? string.Empty,
-                SignedAt:             form.SignedAt ?? DateTime.UtcNow,
+                StudioName: studio?.Name ?? "Studio",
+                ClientFullName: client is null ? "Client" : $"{client.FirstName} {client.LastName}",
+                ArtistFullName: artist is null ? "Artist" : $"{artist.FirstName} {artist.LastName}",
+                AppointmentDate: appointment.Date,
+                SignatureText: form.SignatureData ?? string.Empty,
+                SignedAt: form.SignedAt ?? DateTime.UtcNow,
                 ShowPlatformBranding: studio?.ShowPlatformBranding ?? true);
 
-            byte[]  pdfBytes  = pdfService.Generate(data);
-            string  objectKey = $"consent/{form.StudioId}/{form.Id}.pdf";
+            byte[] pdfBytes = pdfService.Generate(data);
+            string objectKey = $"consent/{form.StudioId}/{form.Id}.pdf";
 
             await r2.UploadAsync(objectKey, pdfBytes, "application/pdf", ct);
             return r2.GetPublicUrl(objectKey);

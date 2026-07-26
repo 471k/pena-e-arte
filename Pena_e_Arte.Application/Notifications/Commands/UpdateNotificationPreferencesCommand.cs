@@ -25,7 +25,7 @@ public class UpdateNotificationPreferencesHandler(IAppDbContext db, ICurrentTena
 
         foreach (NotificationPreferenceItem item in command.Request.Preferences)
         {
-            NotificationType    type    = Enum.Parse<NotificationType>(item.Type);
+            NotificationType type = Enum.Parse<NotificationType>(item.Type);
             NotificationChannel channel = Enum.Parse<NotificationChannel>(item.Channel);
 
             StudioNotificationPreference? pref = existing
@@ -35,9 +35,9 @@ public class UpdateNotificationPreferencesHandler(IAppDbContext db, ICurrentTena
             {
                 db.StudioNotificationPreferences.Add(new StudioNotificationPreference
                 {
-                    StudioId  = studioId,
-                    Type      = type,
-                    Channel   = channel,
+                    StudioId = studioId,
+                    Type = type,
+                    Channel = channel,
                     IsEnabled = item.IsEnabled,
                 });
             }
@@ -56,7 +56,7 @@ public class UpdateNotificationPreferencesHandler(IAppDbContext db, ICurrentTena
 public class UpdateNotificationPreferencesValidator
     : AbstractValidator<UpdateNotificationPreferencesCommand>
 {
-    private static readonly string[] ValidTypes    = Enum.GetNames<NotificationType>();
+    private static readonly string[] ValidTypes = Enum.GetNames<NotificationType>();
 
     // InApp notices have no email/SMS equivalent and aren't opted out of — only
     // these two are settable preference channels.

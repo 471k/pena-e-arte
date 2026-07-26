@@ -20,12 +20,12 @@ public class GetClientProfileHandlerTests
         Guid studioId = Guid.NewGuid();
         _db.ClientProfiles.Add(new ClientProfile
         {
-            ClientId     = clientId,
-            StudioId     = studioId,
-            DateOfBirth  = new DateOnly(1990, 5, 15),
+            ClientId = clientId,
+            StudioId = studioId,
+            DateOfBirth = new DateOnly(1990, 5, 15),
             MedicalNotes = "None",
-            Allergies    = "Latex",
-            BodyMap      = new BodyMap { Locations = ["left_arm"] },
+            Allergies = "Latex",
+            BodyMap = new BodyMap { Locations = ["left_arm"] },
         });
         await _db.SaveChangesAsync();
 

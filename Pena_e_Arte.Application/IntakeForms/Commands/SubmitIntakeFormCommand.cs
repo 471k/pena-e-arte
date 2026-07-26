@@ -40,12 +40,12 @@ public class SubmitIntakeFormHandler(IAppDbContext db, ICurrentTenant tenant, IC
 
         IntakeForm form = new()
         {
-            StudioId      = tenant.StudioId,
-            ClientId      = clientId,
+            StudioId = tenant.StudioId,
+            ClientId = clientId,
             AppointmentId = req.AppointmentId,
-            FormData      = req.FormData,
-            FileUrl       = req.FileUrl,
-            SubmittedAt   = DateTime.UtcNow
+            FormData = req.FormData,
+            FileUrl = req.FileUrl,
+            SubmittedAt = DateTime.UtcNow
         };
 
         db.IntakeForms.Add(form);

@@ -8,10 +8,10 @@ using Pena_e_Arte.Infrastructure.Persistence;
 namespace Pena_e_Arte.Infrastructure.Jobs;
 
 public class TrialExpiryWarningJob(
-    INotificationService              notifications,
-    AppDbContext                      db,
-    IRealtimeNotifier                 realtime,
-    ILogger<TrialExpiryWarningJob>    logger)
+    INotificationService notifications,
+    AppDbContext db,
+    IRealtimeNotifier realtime,
+    ILogger<TrialExpiryWarningJob> logger)
 {
     public async Task ExecuteAsync(Guid studioId, CancellationToken ct = default)
     {
@@ -22,7 +22,7 @@ public class TrialExpiryWarningJob(
             return;
         }
 
-        string subject   = "Your TattooOS trial expires in 48 hours";
+        string subject = "Your TattooOS trial expires in 48 hours";
         string emailBody = BuildEmailBody(studio);
 
         bool success = false;
@@ -38,14 +38,14 @@ public class TrialExpiryWarningJob(
 
         NotificationLog log = new()
         {
-            StudioId      = studio.Id,
-            RecipientId   = studio.Id,
+            StudioId = studio.Id,
+            RecipientId = studio.Id,
             RecipientType = NotificationRecipientType.Studio,
-            Channel       = NotificationChannel.Email,
-            Subject       = subject,
-            Body          = emailBody,
-            SentAt        = DateTime.UtcNow,
-            IsSuccess     = success
+            Channel = NotificationChannel.Email,
+            Subject = subject,
+            Body = emailBody,
+            SentAt = DateTime.UtcNow,
+            IsSuccess = success
         };
         db.NotificationLogs.Add(log);
 

@@ -93,7 +93,7 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task CreateSubscription_FreePlan_ActivatesWithFarFuturePeriodEndAndNoStripeCall()
     {
-        Guid planId   = await SeedPlan(priceMonthly: 0m);
+        Guid planId = await SeedPlan(priceMonthly: 0m);
         Guid studioId = await SeedStudioWithSubscription(SubscriptionStatus.Trialing, planId);
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
@@ -159,7 +159,7 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
 
     private async Task<(Guid StudioId, Guid PlanId)> SeedStudioWithPlan(SubscriptionStatus status)
     {
-        Guid planId   = await SeedPlan();
+        Guid planId = await SeedPlan();
         Guid studioId = await SeedStudioWithSubscription(status, planId);
         return (studioId, planId);
     }
@@ -185,10 +185,10 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
 
         Studio studio = new()
         {
-            Name           = $"Studio {Guid.NewGuid():N}"[..20],
-            Slug           = $"s-{Guid.NewGuid():N}"[..20],
-            City           = "Lisboa",
-            IsActive       = true,
+            Name = $"Studio {Guid.NewGuid():N}"[..20],
+            Slug = $"s-{Guid.NewGuid():N}"[..20],
+            City = "Lisboa",
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14)
         };
         ctx.Studios.Add(studio);
@@ -196,11 +196,11 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
 
         Subscription sub = new()
         {
-            StudioId         = studio.Id,
-            PlanId           = planId,
-            Status           = status,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(21),
+            StudioId = studio.Id,
+            PlanId = planId,
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(14)
         };
         ctx.Subscriptions.Add(sub);

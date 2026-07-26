@@ -50,9 +50,9 @@ public class ConsentFormPdfService : IConsentFormPdfService
                             table.Cell().PaddingVertical(2).Text(value);
                         }
 
-                        Row("Client",        d.ClientFullName);
-                        Row("Artist",        d.ArtistFullName);
-                        Row("Appointment",   d.AppointmentDate.ToString("dddd d MMMM yyyy, HH:mm") + " UTC");
+                        Row("Client", d.ClientFullName);
+                        Row("Artist", d.ArtistFullName);
+                        Row("Appointment", d.AppointmentDate.ToString("dddd d MMMM yyyy, HH:mm") + " UTC");
                         Row("Document date", d.SignedAt.ToString("d MMMM yyyy, HH:mm:ss") + " UTC");
                     });
 

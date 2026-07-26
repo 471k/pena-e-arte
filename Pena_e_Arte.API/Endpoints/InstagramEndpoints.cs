@@ -15,8 +15,8 @@ public static class InstagramEndpoints
             .RequireAuthorization();
 
         group.MapGet("/connect-url", GetConnectUrl).RequireAuthorization("OwnerOnly");
-        group.MapGet("/status",      GetStatus).RequireAuthorization("ArtistAndAbove");
-        group.MapGet("/posts",       GetPosts).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/status", GetStatus).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/posts", GetPosts).RequireAuthorization("ArtistAndAbove");
         group.MapPut("/posts/{postId:guid}/visibility", ToggleVisibility)
              .RequireAuthorization("ArtistAndAbove");
         group.MapDelete("/disconnect", Disconnect).RequireAuthorization("OwnerOnly");
@@ -57,11 +57,11 @@ public static class InstagramEndpoints
     }
 
     private static async Task<IResult> ToggleVisibility(
-        Guid                        id,
-        Guid                        postId,
+        Guid id,
+        Guid postId,
         TogglePostVisibilityRequest request,
-        ISender                     mediator,
-        CancellationToken           ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         await mediator.Send(new ToggleInstagramPostVisibilityCommand(id, postId, request.IsVisible), ct);
         return Results.NoContent();
@@ -75,13 +75,13 @@ public static class InstagramEndpoints
     }
 
     private static async Task<IResult> HandleCallback(
-        string?               code,
-        string?               state,
-        string?               error,
-        ISender               mediator,
+        string? code,
+        string? state,
+        string? error,
+        ISender mediator,
         IInstagramStateSigner stateSigner,
-        IAppSettings          appSettings,
-        CancellationToken     ct)
+        IAppSettings appSettings,
+        CancellationToken ct)
     {
         if (error is not null || code is null || state is null)
             return Results.Redirect($"{appSettings.BaseUrl}/artists?instagram=denied");

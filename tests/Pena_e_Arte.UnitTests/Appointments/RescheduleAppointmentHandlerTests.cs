@@ -12,12 +12,12 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class RescheduleAppointmentHandlerTests
 {
-    private readonly FakeDbContext     _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant    _tenant      = Substitute.For<ICurrentTenant>();
-    private readonly ICurrentUser      _currentUser = Substitute.For<ICurrentUser>();
-    private readonly IRealtimeNotifier _realtime    = Substitute.For<IRealtimeNotifier>();
-    private readonly Guid              _studioId    = Guid.NewGuid();
-    private readonly Guid              _artistId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _artistId = Guid.NewGuid();
 
     public RescheduleAppointmentHandlerTests()
     {
@@ -30,7 +30,7 @@ public class RescheduleAppointmentHandlerTests
     [Fact]
     public async Task Handle_PendingAppointment_UpdatesDateAndDuration()
     {
-        Guid     id      = await SeedAppointment(AppointmentStatus.Pending);
+        Guid id = await SeedAppointment(AppointmentStatus.Pending);
         DateTime newDate = DateTime.UtcNow.AddDays(5);
 
         var result = await CreateSut().Handle(
@@ -43,7 +43,7 @@ public class RescheduleAppointmentHandlerTests
     [Fact]
     public async Task Handle_ConfirmedAppointment_UpdatesDateAndDuration()
     {
-        Guid     id      = await SeedAppointment(AppointmentStatus.Confirmed);
+        Guid id = await SeedAppointment(AppointmentStatus.Confirmed);
         DateTime newDate = DateTime.UtcNow.AddDays(3);
 
         var result = await CreateSut().Handle(
@@ -104,7 +104,7 @@ public class RescheduleAppointmentHandlerTests
     [Fact]
     public async Task Handle_SlotConflict_ThrowsSlotAlreadyBookedException()
     {
-        Guid     id          = await SeedAppointment(AppointmentStatus.Pending);
+        Guid id = await SeedAppointment(AppointmentStatus.Pending);
         DateTime conflictDate = DateTime.UtcNow.AddDays(10);
         await SeedConflictingAppointment(conflictDate);
 
@@ -133,14 +133,14 @@ public class RescheduleAppointmentHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = _artistId,
-            ClientId        = clientId,
-            Date            = date,
-            EndDate         = date.AddHours(2),
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            ClientId = clientId,
+            Date = date,
+            EndDate = date.AddHours(2),
             DurationMinutes = 120,
-            Status          = status,
-            DepositStatus   = DepositStatus.Pending
+            Status = status,
+            DepositStatus = DepositStatus.Pending
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -182,7 +182,10 @@ public class RescheduleAppointmentHandlerTests
         Guid clientId = SeedClientAsCurrentUser();
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = _studioId, Name = "Strict", AmountFixed = 50m, IsActive = true,
+            StudioId = _studioId,
+            Name = "Strict",
+            AmountFixed = 50m,
+            IsActive = true,
             CancellationWindowHours = 72,
         });
         await _db.SaveChangesAsync();
@@ -233,14 +236,14 @@ public class RescheduleAppointmentHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = _artistId,
-            ClientId        = Guid.NewGuid(),
-            Date            = date,
-            EndDate         = date.AddHours(2),
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            ClientId = Guid.NewGuid(),
+            Date = date,
+            EndDate = date.AddHours(2),
             DurationMinutes = 120,
-            Status          = status,
-            DepositStatus   = DepositStatus.Pending
+            Status = status,
+            DepositStatus = DepositStatus.Pending
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -252,14 +255,14 @@ public class RescheduleAppointmentHandlerTests
     {
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = _artistId,
-            ClientId        = Guid.NewGuid(),
-            Date            = date,
-            EndDate         = date.AddHours(2),
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            ClientId = Guid.NewGuid(),
+            Date = date,
+            EndDate = date.AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Confirmed,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Pending
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

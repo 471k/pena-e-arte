@@ -10,10 +10,10 @@ namespace Pena_e_Arte.Domain.Entities;
 /// </summary>
 public class ClientNotificationPreference
 {
-    public Guid                Id        { get; init; } = Guid.NewGuid();
-    public Guid                UserId    { get; set; }
-    public Guid                StudioId  { get; set; }
-    public NotificationType    Type      { get; set; }
-    public NotificationChannel Channel   { get; set; }
-    public bool                IsEnabled { get; set; } = true;
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public Guid StudioId { get; set; }
+    public NotificationType Type { get; set; }
+    public NotificationChannel Channel { get; set; }
+    public bool IsEnabled { get; set; } = true;
 }

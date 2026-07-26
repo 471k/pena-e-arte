@@ -13,10 +13,10 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 
 public record ExtendTrialCommand(Guid StudioId, ExtendTrialRequest Request) : IRequest, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.StudioTrialExtended;
+    public string AuditAction => AuditActions.StudioTrialExtended;
     public string AuditTargetType => AuditTargetTypes.Studio;
-    public Guid   AuditTargetId   => StudioId;
-    public Guid?  AuditStudioId   => StudioId;
+    public Guid AuditTargetId => StudioId;
+    public Guid? AuditStudioId => StudioId;
 }
 
 public class ExtendTrialHandler(IAppDbContext db)

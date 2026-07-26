@@ -74,7 +74,7 @@ public class UpdateStudioSlugHandlerTests
     {
         // Arrange
         UpdateStudioSlugValidator validator = new();
-        UpdateStudioSlugCommand command     = new(Guid.NewGuid(), "Invalid Slug With Spaces");
+        UpdateStudioSlugCommand command = new(Guid.NewGuid(), "Invalid Slug With Spaces");
 
         // Act
         ValidationResult result = validator.Validate(command);
@@ -89,7 +89,7 @@ public class UpdateStudioSlugHandlerTests
     {
         // Arrange
         UpdateStudioSlugValidator validator = new();
-        UpdateStudioSlugCommand command     = new(Guid.NewGuid(), "UpperCase-Slug");
+        UpdateStudioSlugCommand command = new(Guid.NewGuid(), "UpperCase-Slug");
 
         // Act
         ValidationResult result = validator.Validate(command);
@@ -104,8 +104,8 @@ public class UpdateStudioSlugHandlerTests
     {
         // Arrange
         UpdateStudioSlugValidator validator = new();
-        string tooLong                     = new('a', 61);
-        UpdateStudioSlugCommand command     = new(Guid.NewGuid(), tooLong);
+        string tooLong = new('a', 61);
+        UpdateStudioSlugCommand command = new(Guid.NewGuid(), tooLong);
 
         // Act
         ValidationResult result = validator.Validate(command);

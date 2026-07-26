@@ -15,7 +15,7 @@ public class DeactivateReferralCodeHandlerTests
     [Fact]
     public async Task Handle_ActiveCode_DeactivatesIt()
     {
-        Guid codeId   = await SeedReferralCode(isActive: true);
+        Guid codeId = await SeedReferralCode(isActive: true);
 
         await CreateSut().Handle(new DeactivateReferralCodeCommand(codeId), default);
 
@@ -46,18 +46,18 @@ public class DeactivateReferralCodeHandlerTests
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Domain.Entities.Studio
         {
-            Id         = studioId,
-            Name       = "Test Studio",
-            Slug       = Guid.NewGuid().ToString("N")[..20],
-            City       = "Porto",
+            Id = studioId,
+            Name = "Test Studio",
+            Slug = Guid.NewGuid().ToString("N")[..20],
+            City = "Porto",
             OwnerEmail = $"{Guid.NewGuid():N}@test.com",
-            IsActive   = true,
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         });
         ReferralCode code = new()
         {
             StudioId = studioId,
-            Code     = Guid.NewGuid().ToString("N")[..8].ToUpper(),
+            Code = Guid.NewGuid().ToString("N")[..8].ToUpper(),
             IsActive = isActive,
         };
         _db.ReferralCodes.Add(code);

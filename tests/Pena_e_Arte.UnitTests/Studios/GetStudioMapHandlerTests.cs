@@ -56,12 +56,12 @@ public class GetStudioMapHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Name      = "Tinta Viva",
-            Slug      = "tinta-viva",
-            City      = "Lisboa",
-            Latitude  = 38.72,
+            Name = "Tinta Viva",
+            Slug = "tinta-viva",
+            City = "Lisboa",
+            Latitude = 38.72,
             Longitude = -9.14,
-            IsActive  = true
+            IsActive = true
         });
         await _db.SaveChangesAsync();
 

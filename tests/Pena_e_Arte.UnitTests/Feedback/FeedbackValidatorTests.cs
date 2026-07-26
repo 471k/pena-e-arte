@@ -11,9 +11,9 @@ public class SubmitFeedbackValidatorTests
 {
     private const string ValidAttachmentUrl = "https://cdn.example.com/feedback/screenshot.png";
 
-    private readonly ICurrentUser   _user   = Substitute.For<ICurrentUser>();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
-    private readonly IR2Service     _r2     = Substitute.For<IR2Service>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
     private SubmitFeedbackValidator Sut() => new(_user, _tenant, _r2);
 
     public SubmitFeedbackValidatorTests()

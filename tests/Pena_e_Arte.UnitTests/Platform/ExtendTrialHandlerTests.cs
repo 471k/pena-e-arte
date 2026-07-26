@@ -17,7 +17,7 @@ public class ExtendTrialHandlerTests
     [Fact]
     public async Task Handle_TrialingSubscription_ExtendsTrialExpiresAt()
     {
-        Guid studioId     = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
         DateTime original = DateTime.UtcNow.AddDays(3);
         await SeedStudio(studioId, SubscriptionStatus.Trialing, original);
 
@@ -33,7 +33,7 @@ public class ExtendTrialHandlerTests
     [Fact]
     public async Task Handle_ExpiredTrial_ExtendsFromNow()
     {
-        Guid studioId     = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
         DateTime original = DateTime.UtcNow.AddDays(-10);
         await SeedStudio(studioId, SubscriptionStatus.GracePeriod, original);
 
@@ -61,13 +61,13 @@ public class ExtendTrialHandlerTests
     [Fact]
     public async Task Handle_StudioWithoutSubscription_ExtendsStudioTrial()
     {
-        Guid studioId     = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
         DateTime original = DateTime.UtcNow.AddDays(5);
         _db.Studios.Add(new Studio
         {
-            Id             = studioId,
-            Name           = "No-Sub Studio",
-            Slug           = "no-sub-studio",
+            Id = studioId,
+            Name = "No-Sub Studio",
+            Slug = "no-sub-studio",
             TrialExpiresAt = original,
         });
         await _db.SaveChangesAsync();
@@ -105,17 +105,17 @@ public class ExtendTrialHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id             = studioId,
-            Name           = "Test Studio",
-            Slug           = $"test-{studioId:N}",
+            Id = studioId,
+            Name = "Test Studio",
+            Slug = $"test-{studioId:N}",
             TrialExpiresAt = trialExpiry,
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = studioId,
-            Status           = status,
-            TrialExpiresAt   = trialExpiry,
-            GracePeriodEnd   = trialExpiry.AddDays(7),
+            StudioId = studioId,
+            Status = status,
+            TrialExpiresAt = trialExpiry,
+            GracePeriodEnd = trialExpiry.AddDays(7),
             CurrentPeriodEnd = trialExpiry,
         });
         await _db.SaveChangesAsync();
