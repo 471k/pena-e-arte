@@ -14,7 +14,8 @@ public class UpdateArtistPortfolioValidator : AbstractValidator<UpdateArtistPort
             image.RuleFor(i => i.ImageUrl)
                 .NotEmpty()
                 .MaximumLength(2048)
-                .Must(url => Uri.TryCreate(url, UriKind.Absolute, out _))
+                .Must(url => Uri.TryCreate(url, UriKind.Absolute, out Uri? uri)
+                    && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                 .WithMessage("Each image must be a valid absolute URL.");
             image.RuleFor(i => i.Style)
                 .Must(s => s is null || TattooStyle.All.Contains(s))
