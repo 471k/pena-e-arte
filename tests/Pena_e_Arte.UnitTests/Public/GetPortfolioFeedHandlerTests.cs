@@ -45,7 +45,7 @@ public class GetPortfolioFeedHandlerTests
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
 
-        await SeedArtist(studioId, "ana-lima",  "a@x.com", ["img1.jpg", "img2.jpg"]);
+        await SeedArtist(studioId, "ana-lima", "a@x.com", ["img1.jpg", "img2.jpg"]);
         await SeedArtist(studioId, "rui-costa", "r@x.com", ["img3.jpg", "img4.jpg"]);
 
         List<PortfolioImageResponse> result = await CreateSut().Handle(
@@ -72,13 +72,13 @@ public class GetPortfolioFeedHandlerTests
     [Fact]
     public async Task Excludes_artist_whose_studio_is_inactive()
     {
-        Guid activeStudioId   = Guid.NewGuid();
+        Guid activeStudioId = Guid.NewGuid();
         Guid inactiveStudioId = Guid.NewGuid();
 
-        _db.Studios.Add(new Studio { Id = activeStudioId,   Name = "Active Studio",   Slug = "active",   City = "Lisbon", Latitude = 38.7, Longitude = -9.1, IsActive = true  });
+        _db.Studios.Add(new Studio { Id = activeStudioId, Name = "Active Studio", Slug = "active", City = "Lisbon", Latitude = 38.7, Longitude = -9.1, IsActive = true });
         _db.Studios.Add(new Studio { Id = inactiveStudioId, Name = "Inactive Studio", Slug = "inactive", City = "Lisbon", Latitude = 38.7, Longitude = -9.1, IsActive = false });
 
-        await SeedArtist(activeStudioId,   "joao-silva",  "j@x.com", ["img.jpg"]);
+        await SeedArtist(activeStudioId, "joao-silva", "j@x.com", ["img.jpg"]);
         await SeedArtist(inactiveStudioId, "pedro-lopes", "p@x.com", ["img2.jpg"]);
 
         List<PortfolioImageResponse> result = await CreateSut().Handle(
@@ -139,13 +139,13 @@ public class GetPortfolioFeedHandlerTests
     public async Task Distance_filter_excludes_far_artists_when_location_provided()
     {
         Guid studioNearId = Guid.NewGuid();
-        Guid studioFarId  = Guid.NewGuid();
+        Guid studioFarId = Guid.NewGuid();
 
         _db.Studios.Add(new Studio { Id = studioNearId, Name = "Near Studio", Slug = "near", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
-        _db.Studios.Add(new Studio { Id = studioFarId,  Name = "Far Studio",  Slug = "far",  City = "Berlin", Latitude = 52.5200, Longitude = 13.4050, IsActive = true });
+        _db.Studios.Add(new Studio { Id = studioFarId, Name = "Far Studio", Slug = "far", City = "Berlin", Latitude = 52.5200, Longitude = 13.4050, IsActive = true });
 
         await SeedArtist(studioNearId, "near-artist", "n@x.com", ["n.jpg"]);
-        await SeedArtist(studioFarId,  "far-artist",  "f@x.com", ["f.jpg"]);
+        await SeedArtist(studioFarId, "far-artist", "f@x.com", ["f.jpg"]);
 
         List<PortfolioImageResponse> result = await CreateSut().Handle(
             new GetPortfolioFeedQuery(38.7169, -9.1395, 50, 1), CancellationToken.None);

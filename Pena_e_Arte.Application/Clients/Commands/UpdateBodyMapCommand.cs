@@ -24,7 +24,7 @@ public class UpdateBodyMapHandler(IAppDbContext db)
         if (profile is null)
             throw new NotFoundException(nameof(ClientProfile), command.ClientId);
 
-        profile.BodyMap   = new BodyMap { Locations = command.Request.Locations };
+        profile.BodyMap = new BodyMap { Locations = command.Request.Locations };
         profile.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

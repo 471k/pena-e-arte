@@ -42,11 +42,11 @@ public static class StripeDemoSeeder
         {
             AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            Stripe.ProductService       products       = new();
-            Stripe.PriceService         prices         = new();
-            Stripe.CustomerService      customers      = new();
+            Stripe.ProductService products = new();
+            Stripe.PriceService prices = new();
+            Stripe.CustomerService customers = new();
             Stripe.PaymentMethodService paymentMethods = new();
-            Stripe.SubscriptionService  subscriptions  = new();
+            Stripe.SubscriptionService subscriptions = new();
 
             // 1. Every PlanPrice row gets a real Stripe price, so any plan-change target
             //    resolves to a real price id. Only intervals a tier actually offers get a
@@ -96,7 +96,7 @@ public static class StripeDemoSeeder
                 ?? (await customers.CreateAsync(new Stripe.CustomerCreateOptions
                 {
                     Email = studio.OwnerEmail,
-                    Name  = studio.Name,
+                    Name = studio.Name,
                 })).Id;
 
             Stripe.PaymentMethod pm = await paymentMethods.AttachAsync(
@@ -109,15 +109,15 @@ public static class StripeDemoSeeder
             Stripe.Subscription stripeSub = await subscriptions.CreateAsync(new Stripe.SubscriptionCreateOptions
             {
                 Customer = customerId,
-                Items    = new List<Stripe.SubscriptionItemOptions> { new() { Price = currentPrice.StripePriceId } },
+                Items = new List<Stripe.SubscriptionItemOptions> { new() { Price = currentPrice.StripePriceId } },
             });
 
-            studio.StripeCustomerId  = customerId;
+            studio.StripeCustomerId = customerId;
             sub.StripeSubscriptionId = stripeSub.Id;
-            sub.PlanId               = currentPrice.PlanId;
-            sub.BillingInterval      = BillingInterval.Monthly;
-            sub.Status               = SubscriptionStatus.Active;
-            sub.CurrentPeriodEnd     = stripeSub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
+            sub.PlanId = currentPrice.PlanId;
+            sub.BillingInterval = BillingInterval.Monthly;
+            sub.Status = SubscriptionStatus.Active;
+            sub.CurrentPeriodEnd = stripeSub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
                                        ?? DateTime.UtcNow.AddMonths(1);
             await db.SaveChangesAsync();
 
@@ -150,13 +150,13 @@ public static class StripeDemoSeeder
 
         Stripe.Price price = await prices.CreateAsync(new Stripe.PriceCreateOptions
         {
-            UnitAmount  = (long)(amount * 100),
-            Currency    = "eur",
-            Recurring   = new Stripe.PriceRecurringOptions { Interval = interval },
+            UnitAmount = (long)(amount * 100),
+            Currency = "eur",
+            Recurring = new Stripe.PriceRecurringOptions { Interval = interval },
             ProductData = new Stripe.PriceProductDataOptions { Name = $"{plan.Name} ({interval}ly)" },
-            Metadata    = new Dictionary<string, string>
+            Metadata = new Dictionary<string, string>
             {
-                ["plan_id"]  = plan.Id.ToString(),
+                ["plan_id"] = plan.Id.ToString(),
                 ["interval"] = interval,
             },
         });

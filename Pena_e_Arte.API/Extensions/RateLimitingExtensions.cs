@@ -20,7 +20,7 @@ public static class RateLimitingExtensions
                     ctx.HttpContext.Response.Headers.RetryAfter =
                         ((int)retryAfter.TotalSeconds).ToString();
 
-                ctx.HttpContext.Response.StatusCode  = StatusCodes.Status429TooManyRequests;
+                ctx.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                 ctx.HttpContext.Response.ContentType = "application/json";
                 await ctx.HttpContext.Response.WriteAsync(
                     """{"status":429,"message":"Too many requests. Please slow down."}""", ct);
@@ -33,8 +33,8 @@ public static class RateLimitingExtensions
             .PostConfigure<IConnectionMultiplexer, ILoggerFactory>(
                 (opt, redis, loggerFactory) =>
                 {
-                    IDatabase db     = redis.GetDatabase();
-                    ILogger   logger = loggerFactory.CreateLogger("Pena_e_Arte.RateLimiter");
+                    IDatabase db = redis.GetDatabase();
+                    ILogger logger = loggerFactory.CreateLogger("Pena_e_Arte.RateLimiter");
 
                     //   Policy name    | Requests | Window
                     // ─────────────────────────────────────
@@ -42,9 +42,9 @@ public static class RateLimitingExtensions
                     //   public-write   |    30    | 1 min   ← review submit, artist view tracking
                     //   public-read    |   120    | 1 min   ← portfolio feed, studio/artist pages
 
-                    AddRedisPolicy(opt, db, logger, "auth",         permitLimit: 10,  window: TimeSpan.FromMinutes(1));
-                    AddRedisPolicy(opt, db, logger, "public-write", permitLimit: 30,  window: TimeSpan.FromMinutes(1));
-                    AddRedisPolicy(opt, db, logger, "public-read",  permitLimit: 120, window: TimeSpan.FromMinutes(1));
+                    AddRedisPolicy(opt, db, logger, "auth", permitLimit: 10, window: TimeSpan.FromMinutes(1));
+                    AddRedisPolicy(opt, db, logger, "public-write", permitLimit: 30, window: TimeSpan.FromMinutes(1));
+                    AddRedisPolicy(opt, db, logger, "public-read", permitLimit: 120, window: TimeSpan.FromMinutes(1));
                 });
 
         return services;
@@ -52,11 +52,11 @@ public static class RateLimitingExtensions
 
     private static void AddRedisPolicy(
         RateLimiterOptions opt,
-        IDatabase          redis,
-        ILogger            logger,
-        string             policyName,
-        int                permitLimit,
-        TimeSpan           window)
+        IDatabase redis,
+        ILogger logger,
+        string policyName,
+        int permitLimit,
+        TimeSpan window)
     {
         opt.AddPolicy<string>(policyName, httpContext =>
         {

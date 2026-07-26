@@ -16,9 +16,9 @@ public static class RequestLoggingEnrichment
 
         if (httpContext.User.Identity?.IsAuthenticated != true) return;
 
-        string? userId   = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         string? tenantId = httpContext.User.FindFirst("tenant_id")?.Value;
-        if (userId   is not null) diagnosticContext.Set("user_id",   userId);
+        if (userId is not null) diagnosticContext.Set("user_id", userId);
         if (tenantId is not null) diagnosticContext.Set("tenant_id", tenantId);
     }
 }

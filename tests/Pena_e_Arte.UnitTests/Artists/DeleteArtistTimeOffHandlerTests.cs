@@ -7,9 +7,9 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class DeleteArtistTimeOffHandlerTests
 {
-    private readonly FakeDbContext   _db          = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
-    private readonly Guid            _studioId    = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private DeleteArtistTimeOffHandler CreateSut() => new(_db, _currentUser);
 
@@ -17,21 +17,21 @@ public class DeleteArtistTimeOffHandlerTests
     {
         var artist = new Domain.Entities.Artist
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "T",
-            LastName  = "O",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "O",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
 
         var timeOff = new Domain.Entities.ArtistTimeOff
         {
-            ArtistId  = artist.Id,
-            StudioId  = _studioId,
+            ArtistId = artist.Id,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(1),
-            EndDate   = DateTime.UtcNow.Date.AddDays(5),
-            Reason    = "Holiday",
+            EndDate = DateTime.UtcNow.Date.AddDays(5),
+            Reason = "Holiday",
         };
         _db.ArtistTimeOffs.Add(timeOff);
         _db.SaveChanges();

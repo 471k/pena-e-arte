@@ -15,9 +15,9 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class AppointmentConfirmationBrandingTests
 {
     private readonly DatabaseFixture fixture;
-    private readonly INotificationService           _notifications = Substitute.For<INotificationService>();
-    private readonly INotificationPreferenceService _prefs         = Substitute.For<INotificationPreferenceService>();
-    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly INotificationPreferenceService _prefs = Substitute.For<INotificationPreferenceService>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
     public AppointmentConfirmationBrandingTests(DatabaseFixture fixture)
     {
@@ -86,9 +86,9 @@ public class AppointmentConfirmationBrandingTests
 
         Studio studio = new()
         {
-            Name     = "Branding Test Studio",
-            Slug     = ("cb-" + Guid.NewGuid().ToString("N"))[..20],
-            City     = "Porto",
+            Name = "Branding Test Studio",
+            Slug = ("cb-" + Guid.NewGuid().ToString("N"))[..20],
+            City = "Porto",
             IsActive = true,
         };
         if (!showPlatformBranding) studio.UpdateBranding(false);
@@ -99,35 +99,35 @@ public class AppointmentConfirmationBrandingTests
 
         Client client = new()
         {
-            StudioId  = studio.Id,
+            StudioId = studio.Id,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = "ana@example.com",
+            LastName = "Silva",
+            Email = "ana@example.com",
         };
         tenantCtx.Clients.Add(client);
         await tenantCtx.SaveChangesAsync();
 
         Artist artist = new()
         {
-            StudioId  = studio.Id,
+            StudioId = studio.Id,
             FirstName = "João",
-            LastName  = "Artista",
-            Email     = "joao@example.com",
+            LastName = "Artista",
+            Email = "joao@example.com",
         };
         tenantCtx.Artists.Add(artist);
         await tenantCtx.SaveChangesAsync();
 
         Appointment appointment = new()
         {
-            StudioId        = studio.Id,
-            ArtistId        = artist.Id,
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(2),
+            StudioId = studio.Id,
+            ArtistId = artist.Id,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Confirmed,
-            DepositStatus   = DepositStatus.Paid,
-            DepositAmount   = 50m,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid,
+            DepositAmount = 50m,
         };
         tenantCtx.Appointments.Add(appointment);
         await tenantCtx.SaveChangesAsync();

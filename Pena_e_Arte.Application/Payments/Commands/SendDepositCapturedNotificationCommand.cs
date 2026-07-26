@@ -13,12 +13,12 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 public record SendDepositCapturedNotificationCommand(Guid PaymentId) : IRequest<Unit>;
 
 public class SendDepositCapturedNotificationHandler(
-    IAppDbContext                                             db,
-    IEmailRenderer                                           emailRenderer,
-    INotificationService                                     notifications,
-    INotificationPreferenceService                           prefs,
-    IRealtimeNotifier                                        realtime,
-    ILogger<SendDepositCapturedNotificationHandler>          logger)
+    IAppDbContext db,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    INotificationPreferenceService prefs,
+    IRealtimeNotifier realtime,
+    ILogger<SendDepositCapturedNotificationHandler> logger)
     : IRequestHandler<SendDepositCapturedNotificationCommand, Unit>
 {
     public async Task<Unit> Handle(SendDepositCapturedNotificationCommand command, CancellationToken ct)
@@ -46,8 +46,8 @@ public class SendDepositCapturedNotificationHandler(
             return Unit.Value;
         }
 
-        string amountFormatted  = payment.Amount.ToString("C", new CultureInfo("pt-PT"));
-        string appointmentDate  = payment.Appointment.Date.ToString(
+        string amountFormatted = payment.Amount.ToString("C", new CultureInfo("pt-PT"));
+        string appointmentDate = payment.Appointment.Date.ToString(
             "dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
 
         bool emailEnabled = await prefs.IsEnabledAsync(
@@ -84,14 +84,14 @@ public class SendDepositCapturedNotificationHandler(
 
             emailLog = new()
             {
-                StudioId      = studio.Id,
-                RecipientId   = payment.ClientId,
+                StudioId = studio.Id,
+                RecipientId = payment.ClientId,
                 RecipientType = NotificationRecipientType.Client,
-                Channel       = NotificationChannel.Email,
-                Subject       = emailSubject,
-                Body          = emailBody,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = emailSuccess,
+                Channel = NotificationChannel.Email,
+                Subject = emailSubject,
+                Body = emailBody,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = emailSuccess,
             };
             db.NotificationLogs.Add(emailLog);
             await db.SaveChangesAsync(ct);
@@ -119,14 +119,14 @@ public class SendDepositCapturedNotificationHandler(
 
             db.NotificationLogs.Add(new NotificationLog
             {
-                StudioId      = studio.Id,
-                RecipientId   = payment.ClientId,
+                StudioId = studio.Id,
+                RecipientId = payment.ClientId,
                 RecipientType = NotificationRecipientType.Client,
-                Channel       = NotificationChannel.Sms,
-                Subject       = null,
-                Body          = smsBody,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = smsSuccess,
+                Channel = NotificationChannel.Sms,
+                Subject = null,
+                Body = smsBody,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = smsSuccess,
             });
             await db.SaveChangesAsync(ct);
         }

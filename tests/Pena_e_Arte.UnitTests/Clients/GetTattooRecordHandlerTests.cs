@@ -19,12 +19,12 @@ public class GetTattooRecordHandlerTests
         Guid clientId = Guid.NewGuid();
         TattooRecord record = new()
         {
-            StudioId     = Guid.NewGuid(),
-            ClientId     = clientId,
-            ArtistId     = Guid.NewGuid(),
-            Description  = "Dragon",
+            StudioId = Guid.NewGuid(),
+            ClientId = clientId,
+            ArtistId = Guid.NewGuid(),
+            Description = "Dragon",
             BodyLocation = "left_arm",
-            CompletedAt  = DateTime.UtcNow.AddDays(-5),
+            CompletedAt = DateTime.UtcNow.AddDays(-5),
         };
         _db.TattooRecords.Add(record);
         await _db.SaveChangesAsync();
@@ -52,12 +52,12 @@ public class GetTattooRecordHandlerTests
     {
         TattooRecord record = new()
         {
-            StudioId     = Guid.NewGuid(),
-            ClientId     = Guid.NewGuid(),
-            ArtistId     = Guid.NewGuid(),
-            Description  = "Rose",
+            StudioId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            ArtistId = Guid.NewGuid(),
+            Description = "Rose",
             BodyLocation = "wrist",
-            CompletedAt  = DateTime.UtcNow.AddDays(-3),
+            CompletedAt = DateTime.UtcNow.AddDays(-3),
         };
         _db.TattooRecords.Add(record);
         await _db.SaveChangesAsync();

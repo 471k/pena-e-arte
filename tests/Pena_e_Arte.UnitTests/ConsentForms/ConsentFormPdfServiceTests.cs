@@ -7,12 +7,12 @@ namespace Pena_e_Arte.UnitTests.ConsentForms;
 public class ConsentFormPdfServiceTests
 {
     private static ConsentFormPdfData MakeData(bool showPlatformBranding) => new(
-        StudioName:           "Test Studio",
-        ClientFullName:       "Ana Costa",
-        ArtistFullName:       "João Silva",
-        AppointmentDate:      DateTime.UtcNow,
-        SignatureText:        "Ana Costa",
-        SignedAt:             DateTime.UtcNow,
+        StudioName: "Test Studio",
+        ClientFullName: "Ana Costa",
+        ArtistFullName: "João Silva",
+        AppointmentDate: DateTime.UtcNow,
+        SignatureText: "Ana Costa",
+        SignedAt: DateTime.UtcNow,
         ShowPlatformBranding: showPlatformBranding);
 
     [Fact]

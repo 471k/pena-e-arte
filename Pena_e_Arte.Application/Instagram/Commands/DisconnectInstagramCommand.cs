@@ -21,7 +21,7 @@ public class DisconnectInstagramHandler(IAppDbContext db)
 
         if (connection is not null)
         {
-            connection.IsActive  = false;
+            connection.IsActive = false;
             connection.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
         }

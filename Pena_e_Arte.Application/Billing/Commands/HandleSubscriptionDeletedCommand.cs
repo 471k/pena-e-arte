@@ -16,7 +16,7 @@ public class HandleSubscriptionDeletedHandler(IAppDbContext db) : IRequestHandle
 
         if (subscription is null) return;
 
-        subscription.Status            = SubscriptionStatus.Cancelled;
+        subscription.Status = SubscriptionStatus.Cancelled;
         subscription.CancelAtPeriodEnd = false;
         await db.SaveChangesAsync(ct);
     }

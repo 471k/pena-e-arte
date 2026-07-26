@@ -20,7 +20,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     private sealed class DesignTimeTenant : ICurrentTenant
     {
         public Guid StudioId => Guid.Empty;
-        public bool IsSet    => false;
+        public bool IsSet => false;
         public void SetTenant(Guid studioId) { }
     }
 }

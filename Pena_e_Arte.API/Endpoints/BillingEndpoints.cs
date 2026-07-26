@@ -20,17 +20,17 @@ public static class BillingEndpoints
         RouteGroupBuilder billingGroup = app.MapGroup("/api/v1/billing")
             .RequireAuthorization();
 
-        billingGroup.MapGet("/plans",              GetPlans).RequireAuthorization("OwnerOnly");
-        billingGroup.MapPost("/plans",             CreatePlan).RequireAuthorization("IssuerOnly");
-        billingGroup.MapPut("/plans/{id:guid}",    UpdatePlan).RequireAuthorization("IssuerOnly");
+        billingGroup.MapGet("/plans", GetPlans).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/plans", CreatePlan).RequireAuthorization("IssuerOnly");
+        billingGroup.MapPut("/plans/{id:guid}", UpdatePlan).RequireAuthorization("IssuerOnly");
         billingGroup.MapDelete("/plans/{id:guid}", DeletePlan).RequireAuthorization("IssuerOnly");
 
-        billingGroup.MapGet("/subscription",   GetSubscription).RequireAuthorization("OwnerOnly");
-        billingGroup.MapGet("/usage",          GetPlanUsage).RequireAuthorization("OwnerOnly");
-        billingGroup.MapPost("/subscription",  CreateSubscription).RequireAuthorization("OwnerOnly");
-        billingGroup.MapPost("/subscription/checkout",          CreateCheckout).RequireAuthorization("OwnerOnly");
+        billingGroup.MapGet("/subscription", GetSubscription).RequireAuthorization("OwnerOnly");
+        billingGroup.MapGet("/usage", GetPlanUsage).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/subscription", CreateSubscription).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/subscription/checkout", CreateCheckout).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/subscription/checkout/finalize", FinalizeCheckout).RequireAuthorization("OwnerOnly");
-        billingGroup.MapPut("/subscription/plan",            ChangePlan).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPut("/subscription/plan", ChangePlan).RequireAuthorization("OwnerOnly");
         billingGroup.MapDelete("/subscription/plan/pending", CancelPlanChange).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/portal", CreateBillingPortalSession).RequireAuthorization("OwnerOnly");
 
@@ -41,7 +41,7 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> GetPlans(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         List<PlanResponse> result = await mediator.Send(new GetPlansQuery(), ct);
@@ -50,7 +50,7 @@ public static class BillingEndpoints
 
     private static async Task<IResult> CreatePlan(
         CreatePlanRequest request,
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         PlanResponse result = await mediator.Send(new CreatePlanCommand(request), ct);
@@ -58,9 +58,9 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> UpdatePlan(
-        Guid              id,
+        Guid id,
         UpdatePlanRequest request,
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         PlanResponse result = await mediator.Send(new UpdatePlanCommand(id, request), ct);
@@ -68,8 +68,8 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> DeletePlan(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         await mediator.Send(new DeletePlanCommand(id), ct);
@@ -77,7 +77,7 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> GetSubscription(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         SubscriptionResponse result = await mediator.Send(new GetSubscriptionQuery(), ct);
@@ -85,7 +85,7 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> GetPlanUsage(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         PlanUsageResponse? result = await mediator.Send(new GetPlanUsageQuery(), ct);
@@ -94,8 +94,8 @@ public static class BillingEndpoints
 
     private static async Task<IResult> CreateSubscription(
         CreateSubscriptionRequest request,
-        ISender                   mediator,
-        CancellationToken         ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         SubscriptionResponse result = await mediator.Send(new CreateSubscriptionCommand(request), ct);
         return Results.Ok(result);
@@ -103,8 +103,8 @@ public static class BillingEndpoints
 
     private static async Task<IResult> CreateCheckout(
         CreateCheckoutRequest request,
-        ISender               mediator,
-        CancellationToken     ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         CheckoutSessionResponse result = await mediator.Send(new CreateSubscriptionCheckoutCommand(request), ct);
         return Results.Ok(result);
@@ -112,9 +112,9 @@ public static class BillingEndpoints
 
     private static async Task<IResult> FinalizeCheckout(
         FinalizeCheckoutRequest request,
-        ICurrentTenant          tenant,
-        ISender                 mediator,
-        CancellationToken       ct)
+        ICurrentTenant tenant,
+        ISender mediator,
+        CancellationToken ct)
     {
         SubscriptionResponse? result = await mediator.Send(
             new ActivateCheckoutSubscriptionCommand(request.SessionId, tenant.StudioId), ct);
@@ -125,7 +125,7 @@ public static class BillingEndpoints
 
     private static async Task<IResult> ChangePlan(
         ChangePlanRequest request,
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         SubscriptionResponse result = await mediator.Send(new ChangePlanCommand(request), ct);
@@ -133,7 +133,7 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> CancelPlanChange(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct)
     {
         SubscriptionResponse result = await mediator.Send(new CancelPlanChangeCommand(), ct);
@@ -142,8 +142,8 @@ public static class BillingEndpoints
 
     private static async Task<IResult> CreateBillingPortalSession(
         CreateBillingPortalRequest request,
-        ISender                    mediator,
-        CancellationToken          ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         CreateBillingPortalResult result = await mediator.Send(
             new CreateBillingPortalCommand(request.ReturnUrl), ct);
@@ -151,16 +151,16 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> HandleBillingWebhook(
-        HttpRequest       httpRequest,
-        IConfiguration    configuration,
-        ISender           mediator,
-        ILoggerFactory    loggerFactory,
+        HttpRequest httpRequest,
+        IConfiguration configuration,
+        ISender mediator,
+        ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
-        ILogger logger    = loggerFactory.CreateLogger("Stripe.BillingWebhook");
-        string  payload   = await new StreamReader(httpRequest.Body).ReadToEndAsync(ct);
-        string  signature = httpRequest.Headers["Stripe-Signature"].ToString();
-        string  secret    = configuration["Stripe:WebhookSecretBilling"]!;
+        ILogger logger = loggerFactory.CreateLogger("Stripe.BillingWebhook");
+        string payload = await new StreamReader(httpRequest.Body).ReadToEndAsync(ct);
+        string signature = httpRequest.Headers["Stripe-Signature"].ToString();
+        string secret = configuration["Stripe:WebhookSecretBilling"]!;
 
         Event stripeEvent;
         try
@@ -185,23 +185,23 @@ public static class BillingEndpoints
                     break;
 
                 case "invoice.paid" when stripeEvent.Data.Object is Invoice invoice:
-                {
-                    string? stripeSubId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
-                    if (stripeSubId is not null)
-                        await mediator.Send(new HandleInvoicePaidCommand(stripeSubId, invoice.PeriodEnd), ct);
-                    break;
-                }
+                    {
+                        string? stripeSubId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
+                        if (stripeSubId is not null)
+                            await mediator.Send(new HandleInvoicePaidCommand(stripeSubId, invoice.PeriodEnd), ct);
+                        break;
+                    }
 
                 case "customer.subscription.updated" when stripeEvent.Data.Object is Stripe.Subscription sub:
-                {
-                    string?  priceId   = sub.Items?.Data?.FirstOrDefault()?.Price?.Id;
-                    DateTime periodEnd = sub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
-                                         ?? DateTime.UtcNow.AddMonths(1);
-                    await mediator.Send(
-                        new HandleSubscriptionUpdatedCommand(
-                            sub.Id, sub.Status, periodEnd, priceId, sub.CancelAtPeriodEnd), ct);
-                    break;
-                }
+                    {
+                        string? priceId = sub.Items?.Data?.FirstOrDefault()?.Price?.Id;
+                        DateTime periodEnd = sub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
+                                             ?? DateTime.UtcNow.AddMonths(1);
+                        await mediator.Send(
+                            new HandleSubscriptionUpdatedCommand(
+                                sub.Id, sub.Status, periodEnd, priceId, sub.CancelAtPeriodEnd), ct);
+                        break;
+                    }
 
                 case "customer.subscription.deleted" when stripeEvent.Data.Object is Stripe.Subscription sub:
                     await mediator.Send(new HandleSubscriptionDeletedCommand(sub.Id), ct);
@@ -220,16 +220,16 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> HandleConnectWebhook(
-        HttpRequest       httpRequest,
-        IConfiguration    configuration,
-        ISender           mediator,
-        ILoggerFactory    loggerFactory,
+        HttpRequest httpRequest,
+        IConfiguration configuration,
+        ISender mediator,
+        ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
-        ILogger logger    = loggerFactory.CreateLogger("Stripe.ConnectWebhook");
-        string  payload   = await new StreamReader(httpRequest.Body).ReadToEndAsync(ct);
-        string  signature = httpRequest.Headers["Stripe-Signature"].ToString();
-        string  secret    = configuration["Stripe:WebhookSecretConnect"]!;
+        ILogger logger = loggerFactory.CreateLogger("Stripe.ConnectWebhook");
+        string payload = await new StreamReader(httpRequest.Body).ReadToEndAsync(ct);
+        string signature = httpRequest.Headers["Stripe-Signature"].ToString();
+        string secret = configuration["Stripe:WebhookSecretConnect"]!;
 
         Event stripeEvent;
         try

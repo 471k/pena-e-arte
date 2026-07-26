@@ -19,11 +19,11 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class NotificationDispatchTests
 {
-    private readonly DatabaseFixture               fixture;
-    private readonly IEmailRenderer                 _renderer      = Substitute.For<IEmailRenderer>();
-    private readonly INotificationService           _notifications = Substitute.For<INotificationService>();
-    private readonly INotificationPreferenceService _prefs         = Substitute.For<INotificationPreferenceService>();
-    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly DatabaseFixture fixture;
+    private readonly IEmailRenderer _renderer = Substitute.For<IEmailRenderer>();
+    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly INotificationPreferenceService _prefs = Substitute.For<INotificationPreferenceService>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
     public NotificationDispatchTests(DatabaseFixture fixture)
     {
@@ -40,9 +40,9 @@ public class NotificationDispatchTests
         await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);
         Studio studio = new()
         {
-            Id         = tenantId,
-            Name       = "Integration Studio",
-            Slug       = tenantId.ToString("N")[..8],
+            Id = tenantId,
+            Name = "Integration Studio",
+            Slug = tenantId.ToString("N")[..8],
             OwnerEmail = "owner@integration.test",
         };
         ctx.Studios.Add(studio);
@@ -55,11 +55,11 @@ public class NotificationDispatchTests
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         Client client = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = $"{Guid.NewGuid():N}@test.com",
-            Phone     = phone,
+            LastName = "Silva",
+            Email = $"{Guid.NewGuid():N}@test.com",
+            Phone = phone,
         };
         ctx.Clients.Add(client);
         await ctx.SaveChangesAsync();
@@ -71,10 +71,10 @@ public class NotificationDispatchTests
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         Artist artist = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "Marco",
-            LastName  = "Ink",
-            Email     = email ?? $"{Guid.NewGuid():N}@artist.test",
+            LastName = "Ink",
+            Email = email ?? $"{Guid.NewGuid():N}@artist.test",
         };
         ctx.Artists.Add(artist);
         await ctx.SaveChangesAsync();
@@ -87,14 +87,14 @@ public class NotificationDispatchTests
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         Appointment appointment = new()
         {
-            StudioId        = studioId,
-            ArtistId        = artistId,
-            ClientId        = clientId,
-            Date            = DateTime.UtcNow.AddDays(5),
-            EndDate         = DateTime.UtcNow.AddDays(5).AddHours(2),
+            StudioId = studioId,
+            ArtistId = artistId,
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(5).AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Confirmed,
-            DepositStatus   = DepositStatus.Paid,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid,
         };
         ctx.Appointments.Add(appointment);
         await ctx.SaveChangesAsync();
@@ -111,28 +111,28 @@ public class NotificationDispatchTests
             StudioId = studioId,
             ArtistId = artistId,
             ClientId = clientId,
-            Title    = "Dragon Piece",
+            Title = "Dragon Piece",
         };
         ctx.Designs.Add(design);
         await ctx.SaveChangesAsync();
 
         DesignApproval approval = new()
         {
-            StudioId         = studioId,
+            StudioId = studioId,
             DesignRevisionId = Guid.Empty,
-            Status           = approved ? DesignApprovalStatus.Approved : DesignApprovalStatus.ChangesRequested,
-            ClientNotes      = approved ? "Looks great!" : "Fix the shading",
-            ReviewedAt       = DateTime.UtcNow,
+            Status = approved ? DesignApprovalStatus.Approved : DesignApprovalStatus.ChangesRequested,
+            ClientNotes = approved ? "Looks great!" : "Fix the shading",
+            ReviewedAt = DateTime.UtcNow,
         };
 
         DesignRevision revision = new()
         {
-            StudioId      = studioId,
-            DesignId      = design.Id,
-            Approval      = approval,
+            StudioId = studioId,
+            DesignId = design.Id,
+            Approval = approval,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/v1.png",
-            UploadedAt    = DateTime.UtcNow,
+            FileUrl = "https://r2.example.com/v1.png",
+            UploadedAt = DateTime.UtcNow,
         };
         ctx.DesignRevisions.Add(revision);
         await ctx.SaveChangesAsync();
@@ -144,12 +144,12 @@ public class NotificationDispatchTests
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         Payment payment = new()
         {
-            StudioId      = studioId,
-            ClientId      = clientId,
+            StudioId = studioId,
+            ClientId = clientId,
             AppointmentId = appointmentId,
-            Amount        = 100m,
-            Status        = PaymentStatus.Paid,
-            Method        = ClientPaymentMethod.Card,
+            Amount = 100m,
+            Status = PaymentStatus.Paid,
+            Method = ClientPaymentMethod.Card,
         };
         ctx.Payments.Add(payment);
         await ctx.SaveChangesAsync();
@@ -162,7 +162,7 @@ public class NotificationDispatchTests
     public async Task SendAppointmentCreatedNotification_ValidAppointment_WritesClientAndStudioLogs()
     {
         (Guid studioId, _) = await SeedStudio();
-        Guid clientId      = await SeedClient(studioId);
+        Guid clientId = await SeedClient(studioId);
         Guid appointmentId = await SeedAppointment(studioId, clientId);
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
@@ -186,7 +186,7 @@ public class NotificationDispatchTests
     public async Task SendAppointmentCreatedNotification_ClientWithPhone_WritesSmsLog()
     {
         (Guid studioId, _) = await SeedStudio();
-        Guid clientId      = await SeedClient(studioId, phone: "+351912345678");
+        Guid clientId = await SeedClient(studioId, phone: "+351912345678");
         Guid appointmentId = await SeedAppointment(studioId, clientId);
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
@@ -205,8 +205,8 @@ public class NotificationDispatchTests
     public async Task SendDesignReviewNotification_Approved_WritesStudioAndArtistLogs()
     {
         (Guid studioId, _) = await SeedStudio();
-        Guid clientId      = await SeedClient(studioId);
-        Guid revisionId    = await SeedDesignRevision(studioId, clientId, approved: true);
+        Guid clientId = await SeedClient(studioId);
+        Guid revisionId = await SeedDesignRevision(studioId, clientId, approved: true);
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendDesignReviewNotificationHandler(
@@ -227,14 +227,14 @@ public class NotificationDispatchTests
     public async Task SendIntakeFormSubmittedNotification_ValidForm_WritesStudioLog()
     {
         (Guid studioId, _) = await SeedStudio();
-        Guid clientId      = await SeedClient(studioId);
+        Guid clientId = await SeedClient(studioId);
 
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         IntakeForm form = new()
         {
-            StudioId    = studioId,
-            ClientId    = clientId,
-            FormData    = "{}",
+            StudioId = studioId,
+            ClientId = clientId,
+            FormData = "{}",
             SubmittedAt = DateTime.UtcNow,
         };
         ctx.IntakeForms.Add(form);
@@ -258,17 +258,17 @@ public class NotificationDispatchTests
     public async Task SendConsentFormSignedNotification_ValidForm_WritesStudioLog()
     {
         (Guid studioId, _) = await SeedStudio();
-        Guid clientId      = await SeedClient(studioId);
+        Guid clientId = await SeedClient(studioId);
         Guid appointmentId = await SeedAppointment(studioId, clientId);
 
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         ConsentForm form = new()
         {
-            StudioId      = studioId,
-            ClientId      = clientId,
+            StudioId = studioId,
+            ClientId = clientId,
             AppointmentId = appointmentId,
             SignatureData = "data:image/png;base64,abc",
-            SignedAt      = DateTime.UtcNow,
+            SignedAt = DateTime.UtcNow,
         };
         ctx.ConsentForms.Add(form);
         await ctx.SaveChangesAsync();
@@ -291,9 +291,9 @@ public class NotificationDispatchTests
     public async Task SendDepositCapturedNotification_ValidPayment_WritesClientEmailLog()
     {
         (Guid studioId, _) = await SeedStudio();
-        Guid clientId      = await SeedClient(studioId);
+        Guid clientId = await SeedClient(studioId);
         Guid appointmentId = await SeedAppointment(studioId, clientId);
-        Guid paymentId     = await SeedPayment(studioId, clientId, appointmentId);
+        Guid paymentId = await SeedPayment(studioId, clientId, appointmentId);
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendDepositCapturedNotificationHandler(
@@ -314,9 +314,9 @@ public class NotificationDispatchTests
     public async Task SendPaymentRefundedNotification_ValidPayment_WritesClientEmailLog()
     {
         (Guid studioId, _) = await SeedStudio();
-        Guid clientId      = await SeedClient(studioId);
+        Guid clientId = await SeedClient(studioId);
         Guid appointmentId = await SeedAppointment(studioId, clientId);
-        Guid paymentId     = await SeedPayment(studioId, clientId, appointmentId);
+        Guid paymentId = await SeedPayment(studioId, clientId, appointmentId);
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendPaymentRefundedNotificationHandler(
@@ -337,7 +337,7 @@ public class NotificationDispatchTests
     public async Task NotificationHandler_EntityNotFound_WritesNoLogs()
     {
         (Guid studioId, _) = await SeedStudio();
-        Guid bogusId        = Guid.NewGuid();
+        Guid bogusId = Guid.NewGuid();
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await new SendDepositCapturedNotificationHandler(

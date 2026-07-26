@@ -6,9 +6,9 @@ using Pena_e_Arte.Domain.Enums;
 namespace Pena_e_Arte.Application.Appointments.Queries;
 
 public record CheckSlotAvailabilityQuery(
-    Guid     ArtistId,
+    Guid ArtistId,
     DateTime Date,
-    int      DurationMinutes)
+    int DurationMinutes)
     : IRequest<SlotAvailabilityResult>;
 
 public record SlotAvailabilityResult(bool Available, string? Reason);
@@ -21,13 +21,13 @@ public class CheckSlotAvailabilityHandler(IAppDbContext db)
     {
         DateTime end = query.Date.AddMinutes(query.DurationMinutes);
 
-        DayOfWeek day       = query.Date.DayOfWeek;
-        TimeSpan  startTime = query.Date.TimeOfDay;
-        TimeSpan  endTime   = end.TimeOfDay;
+        DayOfWeek day = query.Date.DayOfWeek;
+        TimeSpan startTime = query.Date.TimeOfDay;
+        TimeSpan endTime = end.TimeOfDay;
 
         bool studioClosed = await db.StudioClosures.AnyAsync(
             c => c.StartDate <= query.Date.Date &&
-                 c.EndDate   >= query.Date.Date, ct);
+                 c.EndDate >= query.Date.Date, ct);
 
         if (studioClosed)
             return new SlotAvailabilityResult(false, "Studio is closed that day.");
@@ -49,16 +49,16 @@ public class CheckSlotAvailabilityHandler(IAppDbContext db)
         bool onLeave = await db.ArtistTimeOffs.AnyAsync(
             t => t.ArtistId == query.ArtistId &&
                  t.StartDate <= query.Date.Date &&
-                 t.EndDate   >= query.Date.Date, ct);
+                 t.EndDate >= query.Date.Date, ct);
 
         if (onLeave)
             return new SlotAvailabilityResult(false, "Artist is on leave that day.");
 
         bool conflict = await db.Appointments.AnyAsync(a =>
             a.ArtistId == query.ArtistId &&
-            a.Date     < end             &&
-            a.EndDate  > query.Date      &&
-            a.Status   != AppointmentStatus.Cancelled, ct);
+            a.Date < end &&
+            a.EndDate > query.Date &&
+            a.Status != AppointmentStatus.Cancelled, ct);
 
         if (conflict)
             return new SlotAvailabilityResult(false, "That slot is already booked.");

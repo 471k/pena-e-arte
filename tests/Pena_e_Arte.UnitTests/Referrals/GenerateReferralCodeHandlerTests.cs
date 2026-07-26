@@ -12,7 +12,7 @@ namespace Pena_e_Arte.UnitTests.Referrals;
 
 public class GenerateReferralCodeHandlerTests
 {
-    private readonly FakeDbContext  _db     = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
 
     private GenerateReferralCodeHandler CreateSut() =>

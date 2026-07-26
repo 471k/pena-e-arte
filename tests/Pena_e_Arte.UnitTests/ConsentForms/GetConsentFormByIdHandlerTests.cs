@@ -18,19 +18,19 @@ internal sealed class CapturingLogger<T> : ILogger<T>
     public bool IsEnabled(LogLevel logLevel) => true;
 
     public void Log<TState>(
-        LogLevel                          logLevel,
-        EventId                            eventId,
-        TState                             state,
-        Exception?                         exception,
-        Func<TState, Exception?, string>   formatter) =>
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter) =>
         Entries.Add((logLevel, formatter(state, exception)));
 }
 
 public class GetConsentFormByIdHandlerTests
 {
-    private readonly FakeDbContext                       _db       = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly CapturingLogger<GetConsentFormByIdHandler> _logger = new();
-    private readonly Guid                                _studioId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetConsentFormByIdHandler CreateSut(FakeCurrentUser? user = null) =>
         new(_db, user ?? FakeCurrentUser.Artist(), _logger);
@@ -39,11 +39,11 @@ public class GetConsentFormByIdHandlerTests
     {
         Client client = new()
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Marco",
-            LastName  = "Cliente",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Cliente",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
@@ -59,15 +59,15 @@ public class GetConsentFormByIdHandlerTests
         Guid resolvedArtistId = artistId ?? await SeedArtist();
         Appointment appointment = new()
         {
-            StudioId        = _studioId,
-            ArtistId        = resolvedArtistId,
-            ClientId        = clientId,
-            Date            = DateTime.UtcNow.AddDays(5),
-            EndDate         = DateTime.UtcNow.AddDays(5).AddMinutes(60),
+            StudioId = _studioId,
+            ArtistId = resolvedArtistId,
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(60),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
-            DepositAmount   = 50m,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
+            DepositAmount = 50m,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -79,10 +79,10 @@ public class GetConsentFormByIdHandlerTests
     {
         Artist artist = new()
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             FirstName = "Luca",
-            LastName  = "Artista",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Artista",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
@@ -94,12 +94,12 @@ public class GetConsentFormByIdHandlerTests
     {
         ConsentForm form = new()
         {
-            StudioId      = _studioId,
-            ClientId      = clientId,
+            StudioId = _studioId,
+            ClientId = clientId,
             AppointmentId = appointmentId,
             SignatureData = "sig",
-            SignedAt      = signedAt ?? DateTime.UtcNow,
-            CreatedAt     = createdAt ?? DateTime.UtcNow,
+            SignedAt = signedAt ?? DateTime.UtcNow,
+            CreatedAt = createdAt ?? DateTime.UtcNow,
         };
         _db.ConsentForms.Add(form);
         await _db.SaveChangesAsync();
@@ -110,9 +110,9 @@ public class GetConsentFormByIdHandlerTests
     [Fact]
     public async Task Handle_ExistingId_ReturnsClientNameFromFirstAndLastName()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
-        Guid id            = await SeedForm(clientId, appointmentId);
+        Guid id = await SeedForm(clientId, appointmentId);
 
         ConsentFormDetailResponse result = await CreateSut().Handle(new GetConsentFormByIdQuery(id), default);
 
@@ -129,7 +129,7 @@ public class GetConsentFormByIdHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
         Guid appointmentId = await SeedAppointment(clientId);
-        Guid id            = await SeedForm(clientId, appointmentId);
+        Guid id = await SeedForm(clientId, appointmentId);
 
         ConsentFormDetailResponse result = await CreateSut().Handle(new GetConsentFormByIdQuery(id), default);
 
@@ -139,10 +139,10 @@ public class GetConsentFormByIdHandlerTests
     [Fact]
     public async Task Handle_AppointmentHasArtist_ReturnsArtistNameAndId()
     {
-        Guid clientId      = await SeedClient();
-        Guid artistId      = await SeedArtist();
+        Guid clientId = await SeedClient();
+        Guid artistId = await SeedArtist();
         Guid appointmentId = await SeedAppointment(clientId, artistId);
-        Guid id            = await SeedForm(clientId, appointmentId);
+        Guid id = await SeedForm(clientId, appointmentId);
 
         ConsentFormDetailResponse result = await CreateSut().Handle(new GetConsentFormByIdQuery(id), default);
 
@@ -161,10 +161,10 @@ public class GetConsentFormByIdHandlerTests
     [Fact]
     public async Task Handle_ClientRole_OwnForm_ReturnsForm()
     {
-        Guid userId        = Guid.NewGuid();
-        Guid clientId      = await SeedClient(userId);
+        Guid userId = Guid.NewGuid();
+        Guid clientId = await SeedClient(userId);
         Guid appointmentId = await SeedAppointment(clientId);
-        Guid id            = await SeedForm(clientId, appointmentId);
+        Guid id = await SeedForm(clientId, appointmentId);
 
         FakeCurrentUser user = FakeCurrentUser.Client() with { UserId = userId };
 
@@ -176,11 +176,11 @@ public class GetConsentFormByIdHandlerTests
     [Fact]
     public async Task Handle_ClientRole_AnotherClientsForm_ThrowsNotFoundException()
     {
-        Guid ownerUserId   = Guid.NewGuid();
+        Guid ownerUserId = Guid.NewGuid();
         await SeedClient(ownerUserId);
         Guid otherClientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(otherClientId);
-        Guid id            = await SeedForm(otherClientId, appointmentId);
+        Guid id = await SeedForm(otherClientId, appointmentId);
 
         FakeCurrentUser user = FakeCurrentUser.Client() with { UserId = ownerUserId };
 
@@ -192,11 +192,11 @@ public class GetConsentFormByIdHandlerTests
     [Fact]
     public async Task Handle_SignedAtBeforeCreatedAt_LogsWarning()
     {
-        Guid clientId      = await SeedClient();
+        Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
         DateTime createdAt = DateTime.UtcNow;
-        DateTime signedAt  = createdAt.AddMinutes(-5);
-        Guid id            = await SeedForm(clientId, appointmentId, signedAt, createdAt);
+        DateTime signedAt = createdAt.AddMinutes(-5);
+        Guid id = await SeedForm(clientId, appointmentId, signedAt, createdAt);
 
         await CreateSut().Handle(new GetConsentFormByIdQuery(id), default);
 

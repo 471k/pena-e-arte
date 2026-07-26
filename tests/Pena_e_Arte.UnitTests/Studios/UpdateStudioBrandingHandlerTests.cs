@@ -11,7 +11,7 @@ namespace Pena_e_Arte.UnitTests.Studios;
 
 public class UpdateStudioBrandingHandlerTests
 {
-    private readonly FakeDbContext _db     = FakeDbContext.Create();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
 
     private UpdateStudioBrandingHandler CreateSut() => new(_db, _tenant);
@@ -20,16 +20,16 @@ public class UpdateStudioBrandingHandlerTests
     {
         Plan plan = new()
         {
-            Name                 = "Test Plan",
+            Name = "Test Plan",
             AllowBrandingRemoval = allowBrandingRemoval,
         };
         _db.Plans.Add(plan);
 
         Studio studio = new()
         {
-            Name     = "Test Studio",
-            Slug     = "test-studio",
-            City     = "Lisboa",
+            Name = "Test Studio",
+            Slug = "test-studio",
+            City = "Lisboa",
             IsActive = true,
         };
         _db.Studios.Add(studio);
@@ -37,8 +37,8 @@ public class UpdateStudioBrandingHandlerTests
         Subscription subscription = new()
         {
             StudioId = studio.Id,
-            PlanId   = plan.Id,
-            Plan     = plan,
+            PlanId = plan.Id,
+            Plan = plan,
         };
         _db.Subscriptions.Add(subscription);
         studio.Subscription = subscription;

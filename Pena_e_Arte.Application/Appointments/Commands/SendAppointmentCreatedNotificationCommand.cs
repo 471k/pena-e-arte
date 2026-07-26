@@ -13,12 +13,12 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 public record SendAppointmentCreatedNotificationCommand(Guid AppointmentId) : IRequest<Unit>;
 
 public class SendAppointmentCreatedNotificationHandler(
-    IAppDbContext                                             db,
-    IEmailRenderer                                           emailRenderer,
-    INotificationService                                     notifications,
-    INotificationPreferenceService                           prefs,
-    IRealtimeNotifier                                        realtime,
-    ILogger<SendAppointmentCreatedNotificationHandler>       logger)
+    IAppDbContext db,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    INotificationPreferenceService prefs,
+    IRealtimeNotifier realtime,
+    ILogger<SendAppointmentCreatedNotificationHandler> logger)
     : IRequestHandler<SendAppointmentCreatedNotificationCommand, Unit>
 {
     public async Task<Unit> Handle(SendAppointmentCreatedNotificationCommand command, CancellationToken ct)
@@ -85,14 +85,14 @@ public class SendAppointmentCreatedNotificationHandler(
 
             clientLog = new()
             {
-                StudioId      = studio.Id,
-                RecipientId   = appointment.ClientId,
+                StudioId = studio.Id,
+                RecipientId = appointment.ClientId,
                 RecipientType = NotificationRecipientType.Client,
-                Channel       = NotificationChannel.Email,
-                Subject       = clientSubject,
-                Body          = clientEmailBody,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = clientEmailSuccess,
+                Channel = NotificationChannel.Email,
+                Subject = clientSubject,
+                Body = clientEmailBody,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = clientEmailSuccess,
             };
             db.NotificationLogs.Add(clientLog);
 
@@ -122,14 +122,14 @@ public class SendAppointmentCreatedNotificationHandler(
 
             db.NotificationLogs.Add(new NotificationLog
             {
-                StudioId      = studio.Id,
-                RecipientId   = studio.Id,
+                StudioId = studio.Id,
+                RecipientId = studio.Id,
                 RecipientType = NotificationRecipientType.Studio,
-                Channel       = NotificationChannel.Email,
-                Subject       = studioSubject,
-                Body          = studioEmailBody,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = studioEmailSuccess,
+                Channel = NotificationChannel.Email,
+                Subject = studioSubject,
+                Body = studioEmailBody,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = studioEmailSuccess,
             });
 
             await db.SaveChangesAsync(ct);
@@ -157,14 +157,14 @@ public class SendAppointmentCreatedNotificationHandler(
 
             db.NotificationLogs.Add(new NotificationLog
             {
-                StudioId      = studio.Id,
-                RecipientId   = appointment.ClientId,
+                StudioId = studio.Id,
+                RecipientId = appointment.ClientId,
                 RecipientType = NotificationRecipientType.Client,
-                Channel       = NotificationChannel.Sms,
-                Subject       = null,
-                Body          = smsBody,
-                SentAt        = DateTime.UtcNow,
-                IsSuccess     = smsSent,
+                Channel = NotificationChannel.Sms,
+                Subject = null,
+                Body = smsBody,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = smsSent,
             });
             await db.SaveChangesAsync(ct);
         }

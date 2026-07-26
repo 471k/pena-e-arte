@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Auth;
 public class RegisterOAuthUserCommandTests
 {
     private readonly IOAuthTokenValidator _validator = Substitute.For<IOAuthTokenValidator>();
-    private readonly IIdentityService     _identity  = Substitute.For<IIdentityService>();
-    private readonly FakeDbContext        _db        = FakeDbContext.Create();
-    private readonly Guid                 _userId    = Guid.NewGuid();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _userId = Guid.NewGuid();
 
     private RegisterOAuthUserHandler CreateSut() => new(_validator, _identity, _db);
 
@@ -71,10 +71,10 @@ public class RegisterOAuthUserCommandTests
         Guid studioId = Guid.NewGuid();
         Client preCreated = new()
         {
-            StudioId  = studioId,
+            StudioId = studioId,
             FirstName = "Pre",
-            LastName  = "Created",
-            Email     = "client@example.com",
+            LastName = "Created",
+            Email = "client@example.com",
         };
         _db.Clients.Add(preCreated);
         await _db.SaveChangesAsync();

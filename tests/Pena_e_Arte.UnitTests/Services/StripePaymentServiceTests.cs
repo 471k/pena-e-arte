@@ -8,7 +8,7 @@ namespace Pena_e_Arte.UnitTests.Services;
 public class StripePaymentServiceTests
 {
     private readonly PaymentIntentService _intentService = Substitute.For<PaymentIntentService>();
-    private readonly RefundService        _refundService = Substitute.For<RefundService>();
+    private readonly RefundService _refundService = Substitute.For<RefundService>();
 
     private StripePaymentService CreateSut() =>
         new(_intentService, _refundService);

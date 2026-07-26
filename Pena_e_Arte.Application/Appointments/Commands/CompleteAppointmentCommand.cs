@@ -11,10 +11,10 @@ namespace Pena_e_Arte.Application.Appointments.Commands;
 public record CompleteAppointmentCommand(Guid AppointmentId) : IRequest<AppointmentResponse>;
 
 public class CompleteAppointmentHandler(
-    IAppDbContext        db,
-    ICurrentTenant       tenant,
-    IRealtimeNotifier    realtime,
-    ISender              sender,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    IRealtimeNotifier realtime,
+    ISender sender,
     IStripePaymentService stripe)
     : IRequestHandler<CompleteAppointmentCommand, AppointmentResponse>
 {
@@ -29,20 +29,20 @@ public class CompleteAppointmentHandler(
             throw new BusinessRuleViolationException(
                 $"Cannot complete an appointment with status {appointment.Status}.");
 
-        appointment.Status    = AppointmentStatus.Completed;
+        appointment.Status = AppointmentStatus.Completed;
         appointment.UpdatedAt = DateTime.UtcNow;
 
         // Capture the Stripe hold that was authorised at booking time
         Domain.Entities.Payment? payment = await db.Payments
             .FirstOrDefaultAsync(p =>
                 p.AppointmentId == appointment.Id &&
-                p.Status        == PaymentStatus.Captured &&
-                p.Method        == ClientPaymentMethod.Card, ct);
+                p.Status == PaymentStatus.Captured &&
+                p.Method == ClientPaymentMethod.Card, ct);
 
         if (payment is not null && !string.IsNullOrEmpty(payment.StripePaymentIntentId))
         {
             await stripe.CapturePaymentAsync(payment.StripePaymentIntentId, ct);
-            payment.Status    = PaymentStatus.Paid;
+            payment.Status = PaymentStatus.Paid;
             payment.UpdatedAt = DateTime.UtcNow;
         }
 

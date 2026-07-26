@@ -8,10 +8,10 @@ using Pena_e_Arte.Domain.Exceptions;
 namespace Pena_e_Arte.Application.Reviews.Commands;
 
 public record CreatePortfolioImageReviewCommand(
-    Guid   ImageId,
-    Guid   AuthorUserId,
+    Guid ImageId,
+    Guid AuthorUserId,
     string AuthorName,
-    int    Rating,
+    int Rating,
     string Body) : IRequest;
 
 public class CreatePortfolioImageReviewValidator
@@ -43,7 +43,7 @@ public class CreatePortfolioImageReviewHandler(IAppDbContext db)
 
         bool alreadyReviewed = await db.Reviews
             .AnyAsync(r => r.PortfolioImageId == command.ImageId
-                        && r.AuthorUserId     == command.AuthorUserId, ct);
+                        && r.AuthorUserId == command.AuthorUserId, ct);
 
         if (alreadyReviewed)
             throw new ConflictException("You have already reviewed this tattoo.");

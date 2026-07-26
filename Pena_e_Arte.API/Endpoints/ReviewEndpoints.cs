@@ -15,10 +15,10 @@ public static class ReviewEndpoints
     }
 
     private static async Task<IResult> RespondToReview(
-        Guid                   reviewId,
+        Guid reviewId,
         RespondToReviewRequest request,
-        ISender                mediator,
-        CancellationToken      ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         await mediator.Send(new RespondToReviewCommand(reviewId, request.Response), ct);
         return Results.NoContent();

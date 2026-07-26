@@ -14,8 +14,8 @@ namespace Pena_e_Arte.Application.Studios.Commands;
 public record RegisterStudioCommand(RegisterStudioRequest Request) : IRequest<StudioResponse>;
 
 public class RegisterStudioHandler(
-    IAppDbContext                db,
-    IJobScheduler                jobs,
+    IAppDbContext db,
+    IJobScheduler jobs,
     ILogger<RegisterStudioHandler> logger)
     : IRequestHandler<RegisterStudioCommand, StudioResponse>
 {
@@ -23,8 +23,8 @@ public class RegisterStudioHandler(
     {
         RegisterStudioRequest req = command.Request;
 
-        string slug   = req.Slug;
-        int    suffix = 2;
+        string slug = req.Slug;
+        int suffix = 2;
         while (await db.Studios.AnyAsync(s => s.Slug == slug, ct))
             slug = $"{req.Slug}-{suffix++}";
 
@@ -56,30 +56,30 @@ public class RegisterStudioHandler(
                 referralCode.Id);
         }
 
-        DateTime now      = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         DateTime trialEnd = now.AddDays(14);
         DateTime graceEnd = trialEnd.AddDays(7);
 
         Studio studio = new()
         {
-            Name                  = req.Name,
-            Slug                  = slug,
-            City                  = req.City,
-            OwnerEmail            = req.OwnerEmail,
-            Nipt                  = normalizedNipt,
-            Latitude              = req.Latitude,
-            Longitude             = req.Longitude,
-            IsActive              = true,
-            TrialExpiresAt        = trialEnd,
+            Name = req.Name,
+            Slug = slug,
+            City = req.City,
+            OwnerEmail = req.OwnerEmail,
+            Nipt = normalizedNipt,
+            Latitude = req.Latitude,
+            Longitude = req.Longitude,
+            IsActive = true,
+            TrialExpiresAt = trialEnd,
             PendingReferralCodeId = pendingReferralCodeId,
         };
 
         Subscription subscription = new()
         {
-            StudioId         = studio.Id,
-            Status           = SubscriptionStatus.Trialing,
-            TrialExpiresAt   = trialEnd,
-            GracePeriodEnd   = graceEnd,
+            StudioId = studio.Id,
+            Status = SubscriptionStatus.Trialing,
+            TrialExpiresAt = trialEnd,
+            GracePeriodEnd = graceEnd,
             CurrentPeriodEnd = trialEnd
         };
 

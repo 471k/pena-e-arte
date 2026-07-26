@@ -14,9 +14,9 @@ public class GetPlatformStatsHandler(IAppDbContext db)
 {
     public async Task<PlatformStatsResponse> Handle(GetPlatformStatsQuery query, CancellationToken ct)
     {
-        DateTime now        = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         DateTime monthStart = new(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        DateTime lastMonth  = monthStart.AddMonths(-1);
+        DateTime lastMonth = monthStart.AddMonths(-1);
 
         // IgnoreQueryFilters approved: usage #4 — platform KPI aggregate, IssuerOnly. See architecture.md.
         List<Studio> studios = await db.Studios
@@ -33,14 +33,14 @@ public class GetPlatformStatsHandler(IAppDbContext db)
         // All subsequent counts operate only on active studios (IsActive = true).
         List<Studio> active = studios.Where(s => s.IsActive).ToList();
 
-        int totalStudios        = studios.Count;
+        int totalStudios = studios.Count;
         int activeSubscriptions = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Active);
-        int trialStudios        = active.Count(s =>
+        int trialStudios = active.Count(s =>
             s.Subscription?.Status == SubscriptionStatus.Trialing
             || (s.Subscription is null && s.TrialExpiresAt > now));
-        int gracePeriodStudios  = active.Count(s => s.Subscription?.Status == SubscriptionStatus.GracePeriod);
-        int pastDueStudios      = active.Count(s => s.Subscription?.Status == SubscriptionStatus.PastDue);
-        int cancelledStudios    = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Cancelled);
+        int gracePeriodStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.GracePeriod);
+        int pastDueStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.PastDue);
+        int cancelledStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Cancelled);
 
         // MRR — active subscriptions only, sum of each subscription's monthly-equivalent price
         // (a Yearly-billed subscription contributes Price / 12, not the Plan's decorative
