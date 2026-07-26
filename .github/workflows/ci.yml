@@ -19,7 +19,7 @@ jobs:
     name: Backend — build, format, test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -103,7 +103,7 @@ jobs:
     name: Frontend — lint, typecheck, build, unit test, e2e
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -180,7 +180,7 @@ jobs:
     name: Docker images build (no push)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v3
 
@@ -222,7 +222,7 @@ jobs:
       # alone 403s with "Resource not accessible by integration" (caught by the real
       # PR run this workflow was verified against, not assumed).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # full history — gitleaks needs it to scan past commits, not just HEAD
 
