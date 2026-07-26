@@ -30,15 +30,8 @@ jobs:
 
       - name: Format check (no changes allowed)
         run: dotnet format "Pena e Arte.slnx" --verify-no-changes --verbosity diagnostic
-        continue-on-error: true
-        # continue-on-error: current `main` has ~38k pre-existing dotnet-format violations
-        # (mostly CRLF/whitespace/charset — the repo has never been run through
-        # `dotnet format`), spread across nearly every .cs file including EF migrations.
-        # This is far past the "small, mechanical, ≤20" bar for a same-change baseline
-        # fix, and a repo-wide reformat is out of scope for a CI-standup change (it would
-        # bury this diff under an unrelated whitespace rewrite touching every file).
-        # TODO: remove continue-on-error once a dedicated `chore: dotnet format baseline`
-        # pass has been done and reviewed on its own.
+        # Blocking as of the `chore: run dotnet format baseline` commit — the repo-wide
+        # whitespace/CRLF/charset baseline fix that made this gate clean.
 
       - name: Build (Release)
         run: dotnet build "Pena e Arte.slnx" --configuration Release --no-restore
