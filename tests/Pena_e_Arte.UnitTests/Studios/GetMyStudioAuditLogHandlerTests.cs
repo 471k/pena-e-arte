@@ -10,9 +10,9 @@ namespace Pena_e_Arte.UnitTests.Studios;
 
 public class GetMyStudioAuditLogHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public GetMyStudioAuditLogHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);

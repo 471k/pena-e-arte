@@ -20,9 +20,9 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
 {
-    private readonly IRealtimeNotifier _realtime     = Substitute.For<IRealtimeNotifier>();
-    private readonly ISender           _sender       = Substitute.For<ISender>();
-    private readonly IJobScheduler     _jobScheduler = Substitute.For<IJobScheduler>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly IJobScheduler _jobScheduler = Substitute.For<IJobScheduler>();
 
     // ── CreateDesign ─────────────────────────────────────────────────────────────
 
@@ -152,8 +152,8 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
     [Fact]
     public async Task GetSharedDesign_ValidToken_ReturnsSharedDesignResponse()
     {
-        Guid tenantId  = Guid.NewGuid();
-        Guid designId  = await SeedDesign(tenantId);
+        Guid tenantId = Guid.NewGuid();
+        Guid designId = await SeedDesign(tenantId);
         DesignRevisionResponse revision = await RunUploadHandler(
             tenantId, new(designId, "https://r2.example.com/v1.png", null));
 
@@ -236,9 +236,9 @@ public class DesignHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         Studio studio = new()
         {
-            Id         = tenantId,
-            Name       = "Test Studio",
-            Slug       = tenantId.ToString("N")[..16],
+            Id = tenantId,
+            Name = "Test Studio",
+            Slug = tenantId.ToString("N")[..16],
             OwnerEmail = "owner@test.studio",
         };
         ctx.Studios.Add(studio);

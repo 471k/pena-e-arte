@@ -19,7 +19,7 @@ public class GetIndustryReportsHandler(IR2Service r2)
         List<IndustryReportSummaryResponse> reports = new();
         foreach (R2ObjectInfo obj in objects.OrderByDescending(o => o.Key))
         {
-            string period      = ExtractPeriod(obj.Key);
+            string period = ExtractPeriod(obj.Key);
             string downloadUrl = await r2.GeneratePresignedReadUrlAsync(obj.Key, TimeSpan.FromHours(24), ct);
             reports.Add(new IndustryReportSummaryResponse(period, obj.LastModified, downloadUrl));
         }

@@ -7,8 +7,8 @@ namespace Pena_e_Arte.UnitTests.Studios;
 
 public class GetStudioClosuresHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetStudioClosuresHandler CreateSut() => new(_db);
 
@@ -17,17 +17,17 @@ public class GetStudioClosuresHandlerTests
     {
         _db.StudioClosures.Add(new StudioClosure
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(10),
-            EndDate   = DateTime.UtcNow.Date.AddDays(12),
-            Reason    = "Later",
+            EndDate = DateTime.UtcNow.Date.AddDays(12),
+            Reason = "Later",
         });
         _db.StudioClosures.Add(new StudioClosure
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(1),
-            EndDate   = DateTime.UtcNow.Date.AddDays(2),
-            Reason    = "Sooner",
+            EndDate = DateTime.UtcNow.Date.AddDays(2),
+            Reason = "Sooner",
         });
         await _db.SaveChangesAsync();
 
@@ -44,10 +44,10 @@ public class GetStudioClosuresHandlerTests
     {
         _db.StudioClosures.Add(new StudioClosure
         {
-            StudioId  = _studioId,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(-10),
-            EndDate   = DateTime.UtcNow.Date.AddDays(-8),
-            Reason    = "Past",
+            EndDate = DateTime.UtcNow.Date.AddDays(-8),
+            Reason = "Past",
         });
         await _db.SaveChangesAsync();
 

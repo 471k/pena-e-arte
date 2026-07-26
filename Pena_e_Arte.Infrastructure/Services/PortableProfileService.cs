@@ -21,9 +21,9 @@ public class PortableProfileService(AppDbContext db) : IPortableProfileService
         if (profile is null) return null;
 
         return new PortableClientProfile(
-            DisplayName:      $"{profile.Client.FirstName} {profile.Client.LastName[..1]}.",
+            DisplayName: $"{profile.Client.FirstName} {profile.Client.LastName[..1]}.",
             BodyMapLocations: profile.BodyMap.Locations,
-            TattooHistory:    []);
+            TattooHistory: []);
     }
 
     public async Task<IReadOnlyList<PortableTattooRecord>> GetHistoryAsync(Guid userId, CancellationToken ct)
@@ -44,10 +44,10 @@ public class PortableProfileService(AppDbContext db) : IPortableProfileService
             .ToListAsync(ct);
 
         return records.Select(r => new PortableTattooRecord(
-            BodyLocation:   r.BodyLocation,
-            PhotoUrls:      r.PhotoUrls,
-            Description:    r.Description,
-            CompletedAt:    r.CompletedAt,
+            BodyLocation: r.BodyLocation,
+            PhotoUrls: r.PhotoUrls,
+            Description: r.Description,
+            CompletedAt: r.CompletedAt,
             ArtistFirstName: r.Artist.FirstName)).ToList();
     }
 }

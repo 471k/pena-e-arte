@@ -5,13 +5,13 @@ namespace Pena_e_Arte.Domain.Interfaces;
 /// <paramref name="ClientReferenceId"/> carries the studio id set at session creation.
 /// </summary>
 public record CheckoutSubscriptionResult(
-    bool      IsComplete,
-    string?   StripeSubscriptionId,
-    string?   StripeCustomerId,
-    string?   ClientReferenceId,
-    string?   PriceId,
-    DateTime  CurrentPeriodEnd,
-    bool      HasDiscount);
+    bool IsComplete,
+    string? StripeSubscriptionId,
+    string? StripeCustomerId,
+    string? ClientReferenceId,
+    string? PriceId,
+    DateTime CurrentPeriodEnd,
+    bool HasDiscount);
 
 public interface IStripeBillingService
 {

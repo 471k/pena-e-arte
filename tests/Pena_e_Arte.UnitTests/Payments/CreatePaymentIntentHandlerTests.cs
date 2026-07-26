@@ -13,14 +13,14 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class CreatePaymentIntentHandlerTests
 {
-    private readonly FakeDbContext        _db           = FakeDbContext.Create();
-    private readonly ICurrentTenant       _tenant       = Substitute.For<ICurrentTenant>();
-    private readonly IStripePaymentService _stripe       = Substitute.For<IStripePaymentService>();
-    private readonly IRealtimeNotifier    _realtime     = Substitute.For<IRealtimeNotifier>();
-    private readonly Guid                 _studioId     = Guid.NewGuid();
-    private readonly Guid                 _artistId     = Guid.NewGuid();
-    private readonly Guid                 _clientId     = Guid.NewGuid();
-    private readonly Guid                 _appointmentId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly Guid _studioId = Guid.NewGuid();
+    private readonly Guid _artistId = Guid.NewGuid();
+    private readonly Guid _clientId = Guid.NewGuid();
+    private readonly Guid _appointmentId = Guid.NewGuid();
 
     public CreatePaymentIntentHandlerTests()
     {
@@ -55,8 +55,8 @@ public class CreatePaymentIntentHandlerTests
 
         _db.Payments.Should().ContainSingle(p =>
             p.AppointmentId == _appointmentId &&
-            p.StudioId      == _studioId      &&
-            p.Status        == PaymentStatus.Pending);
+            p.StudioId == _studioId &&
+            p.Status == PaymentStatus.Pending);
     }
 
     [Fact]
@@ -97,11 +97,11 @@ public class CreatePaymentIntentHandlerTests
         await SeedStudioAndAppointment();
         _db.Payments.Add(new Payment
         {
-            StudioId      = _studioId,
+            StudioId = _studioId,
             AppointmentId = _appointmentId,
-            ClientId      = _clientId,
-            Amount        = 200m,
-            Status        = PaymentStatus.Pending
+            ClientId = _clientId,
+            Amount = 200m,
+            Status = PaymentStatus.Pending
         });
         await _db.SaveChangesAsync();
 
@@ -117,11 +117,11 @@ public class CreatePaymentIntentHandlerTests
         await SeedStudioAndAppointment();
         _db.Payments.Add(new Payment
         {
-            StudioId      = _studioId,
+            StudioId = _studioId,
             AppointmentId = _appointmentId,
-            ClientId      = _clientId,
-            Amount        = 200m,
-            Status        = PaymentStatus.Failed
+            ClientId = _clientId,
+            Amount = 200m,
+            Status = PaymentStatus.Failed
         });
         await _db.SaveChangesAsync();
 
@@ -135,7 +135,7 @@ public class CreatePaymentIntentHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id   = _studioId,
+            Id = _studioId,
             Name = "Test Studio",
             Slug = "test"
         });
@@ -150,15 +150,15 @@ public class CreatePaymentIntentHandlerTests
         _db.Clients.Add(new Client { Id = _clientId, StudioId = _studioId, FirstName = "C", LastName = "D", Email = "c@d.com" });
         _db.Appointments.Add(new Appointment
         {
-            Id              = _appointmentId,
-            StudioId        = _studioId,
-            ArtistId        = _artistId,
-            ClientId        = _clientId,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddMinutes(90),
+            Id = _appointmentId,
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            ClientId = _clientId,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddMinutes(90),
             DurationMinutes = 90,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending
         });
         await _db.SaveChangesAsync();
     }

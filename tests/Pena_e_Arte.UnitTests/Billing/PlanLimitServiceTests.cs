@@ -15,8 +15,8 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class PlanLimitServiceTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly IDistributedCache _cache = new MemoryDistributedCache(
         Options.Create(new MemoryDistributedCacheOptions()));
     private readonly Guid _studioId = Guid.NewGuid();
@@ -31,18 +31,18 @@ public class PlanLimitServiceTests
         _db.Plans.Add(plan);
         _db.Studios.Add(new Studio
         {
-            Id         = _studioId,
-            Name       = "Test Studio",
-            Slug       = "test-studio",
+            Id = _studioId,
+            Name = "Test Studio",
+            Slug = "test-studio",
             OwnerEmail = "owner@test.com",
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = _studioId,
-            PlanId           = plan.Id,
-            Status           = SubscriptionStatus.Active,
+            StudioId = _studioId,
+            PlanId = plan.Id,
+            Status = SubscriptionStatus.Active,
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(37),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(37),
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -106,15 +106,15 @@ public class PlanLimitServiceTests
         // One from last month (should not count) + none this month yet — under limit.
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = Guid.NewGuid(),
-            Date            = DateTime.UtcNow,
-            EndDate         = DateTime.UtcNow.AddHours(1),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow,
+            EndDate = DateTime.UtcNow.AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
-            CreatedAt       = DateTime.UtcNow.AddMonths(-1),
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddMonths(-1),
         });
         await _db.SaveChangesAsync();
 
@@ -130,15 +130,15 @@ public class PlanLimitServiceTests
 
         _db.Appointments.Add(new Appointment
         {
-            StudioId        = _studioId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = Guid.NewGuid(),
-            Date            = DateTime.UtcNow,
-            EndDate         = DateTime.UtcNow.AddHours(1),
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow,
+            EndDate = DateTime.UtcNow.AddHours(1),
             DurationMinutes = 60,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending,
-            CreatedAt       = DateTime.UtcNow,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync();
 
@@ -227,17 +227,26 @@ public class PlanLimitServiceTests
     {
         await SeedPlanAndSubscription(new Plan
         {
-            Name = "Starter", MaxArtists = 6, MaxAppointmentsPerMonth = 40,
-            MaxNotificationsPerMonth = 150, MaxStorageGb = 2, MaxLocations = 1,
+            Name = "Starter",
+            MaxArtists = 6,
+            MaxAppointmentsPerMonth = 40,
+            MaxNotificationsPerMonth = 150,
+            MaxStorageGb = 2,
+            MaxLocations = 1,
         });
 
         _db.Artists.Add(new Artist { StudioId = _studioId, FirstName = "A", LastName = "B", Email = "a@x.com" });
         _db.Artists.Add(new Artist { StudioId = _studioId, FirstName = "C", LastName = "D", Email = "c@x.com" });
         _db.Appointments.Add(new Appointment
         {
-            StudioId = _studioId, ArtistId = Guid.NewGuid(), ClientId = Guid.NewGuid(),
-            Date = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddHours(1), DurationMinutes = 60,
-            Status = AppointmentStatus.Pending, DepositStatus = DepositStatus.Pending,
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = DateTime.UtcNow,
+            EndDate = DateTime.UtcNow.AddHours(1),
+            DurationMinutes = 60,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
             CreatedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync();

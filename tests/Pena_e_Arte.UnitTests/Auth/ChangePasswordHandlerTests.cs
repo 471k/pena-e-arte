@@ -9,7 +9,7 @@ namespace Pena_e_Arte.UnitTests.Auth;
 public class ChangePasswordHandlerTests
 {
     private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
-    private readonly Guid             _userId   = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     private ChangePasswordHandler CreateSut() => new(_identity);
 

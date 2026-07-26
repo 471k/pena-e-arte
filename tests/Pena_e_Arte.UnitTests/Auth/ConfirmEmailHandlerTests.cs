@@ -40,8 +40,8 @@ public class ConfirmEmailHandlerTests
     [Fact]
     public async Task Handle_CallsConfirmWithCorrectArguments()
     {
-        Guid   userId = Guid.NewGuid();
-        string token  = "tok123";
+        Guid userId = Guid.NewGuid();
+        string token = "tok123";
         _identity.ConfirmEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
                  .Returns((true, Array.Empty<string>()));
 

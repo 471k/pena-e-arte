@@ -12,11 +12,11 @@ namespace Pena_e_Arte.UnitTests.Feedback;
 
 public class GetFeedbackMessagesHandlerTests
 {
-    private readonly FakeDbContext   _db     = FakeDbContext.Create();
-    private readonly ICurrentUser    _user   = Substitute.For<ICurrentUser>();
-    private readonly ICurrentTenant  _tenant = Substitute.For<ICurrentTenant>();
-    private readonly Guid            _ownerUserId = Guid.NewGuid();
-    private readonly Guid            _studioId    = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _ownerUserId = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetFeedbackMessagesHandler CreateSut() => new(_db, _user, _tenant);
 
@@ -106,7 +106,7 @@ public class GetFeedbackMessagesHandlerTests
     public async Task Handle_MessagesReturnedInChronologicalOrder()
     {
         FeedbackReport report = SeedReport(_ownerUserId, _studioId);
-        FeedbackMessage first  = FeedbackMessage.Create(report.Id, _ownerUserId, "owner", "First");
+        FeedbackMessage first = FeedbackMessage.Create(report.Id, _ownerUserId, "owner", "First");
         await Task.Delay(5);
         FeedbackMessage second = FeedbackMessage.Create(report.Id, _ownerUserId, "owner", "Second");
         _db.FeedbackMessages.Add(second);

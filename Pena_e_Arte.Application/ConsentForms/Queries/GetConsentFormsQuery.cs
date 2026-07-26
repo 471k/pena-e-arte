@@ -26,7 +26,7 @@ public class GetConsentFormsHandler(IAppDbContext db, ICurrentUser currentUser)
             clientId = myId;
         }
 
-        if (clientId.HasValue)            q = q.Where(f => f.ClientId      == clientId.Value);
+        if (clientId.HasValue) q = q.Where(f => f.ClientId == clientId.Value);
         if (query.AppointmentId.HasValue) q = q.Where(f => f.AppointmentId == query.AppointmentId.Value);
 
         return await q

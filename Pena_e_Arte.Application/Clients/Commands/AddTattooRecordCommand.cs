@@ -29,14 +29,14 @@ public class AddTattooRecordHandler(IAppDbContext db, ICurrentTenant tenant)
 
         TattooRecord record = new()
         {
-            StudioId      = tenant.StudioId,
-            ClientId      = command.ClientId,
-            ArtistId      = req.ArtistId,
+            StudioId = tenant.StudioId,
+            ClientId = command.ClientId,
+            ArtistId = req.ArtistId,
             AppointmentId = req.AppointmentId,
-            Description   = req.Description,
-            BodyLocation  = req.BodyLocation,
-            PhotoUrls     = req.PhotoUrls,
-            CompletedAt   = req.CompletedAt,
+            Description = req.Description,
+            BodyLocation = req.BodyLocation,
+            PhotoUrls = req.PhotoUrls,
+            CompletedAt = req.CompletedAt,
         };
 
         db.TattooRecords.Add(record);

@@ -15,7 +15,7 @@ public class HandleSubscriptionUpdatedHandlerTests
     private static readonly DateTime _nextPeriodEnd = DateTime.UtcNow.AddMonths(1);
 
     [Theory]
-    [InlineData("active",   SubscriptionStatus.Active)]
+    [InlineData("active", SubscriptionStatus.Active)]
     [InlineData("past_due", SubscriptionStatus.PastDue)]
     [InlineData("trialing", SubscriptionStatus.Trialing)]
     [InlineData("canceled", SubscriptionStatus.Cancelled)]
@@ -54,8 +54,8 @@ public class HandleSubscriptionUpdatedHandlerTests
         Plan plan = new() { Name = "Pro" };
         plan.Prices.Add(new PlanPrice
         {
-            Interval      = BillingInterval.Monthly,
-            Price         = 49m,
+            Interval = BillingInterval.Monthly,
+            Price = 49m,
             StripePriceId = "price_monthly123",
         });
         _db.Plans.Add(plan);
@@ -79,8 +79,8 @@ public class HandleSubscriptionUpdatedHandlerTests
         Plan plan = new() { Name = "Premium" };
         plan.Prices.Add(new PlanPrice
         {
-            Interval      = BillingInterval.Yearly,
-            Price         = 790m,
+            Interval = BillingInterval.Yearly,
+            Price = 790m,
             StripePriceId = "price_yearly123",
         });
         _db.Plans.Add(plan);
@@ -102,8 +102,8 @@ public class HandleSubscriptionUpdatedHandlerTests
         Plan plan = new() { Name = "Basic" };
         plan.Prices.Add(new PlanPrice
         {
-            Interval      = BillingInterval.Monthly,
-            Price         = 29m,
+            Interval = BillingInterval.Monthly,
+            Price = 29m,
             StripePriceId = "price_basic_pending",
         });
         _db.Plans.Add(plan);
@@ -112,14 +112,14 @@ public class HandleSubscriptionUpdatedHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId               = Guid.NewGuid(),
-            StripeSubscriptionId   = stripeSubId,
-            Status                 = SubscriptionStatus.Active,
-            PendingPlanId          = plan.Id,
+            StudioId = Guid.NewGuid(),
+            StripeSubscriptionId = stripeSubId,
+            Status = SubscriptionStatus.Active,
+            PendingPlanId = plan.Id,
             PendingBillingInterval = BillingInterval.Monthly,
-            TrialExpiresAt         = DateTime.UtcNow.AddDays(-20),
-            CurrentPeriodEnd       = DateTime.UtcNow.AddDays(1),
-            GracePeriodEnd         = DateTime.UtcNow.AddDays(-13)
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-20),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(1),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(-13)
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -185,12 +185,12 @@ public class HandleSubscriptionUpdatedHandlerTests
     {
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId             = Guid.NewGuid(),
+            StudioId = Guid.NewGuid(),
             StripeSubscriptionId = stripeSubId,
-            Status               = status,
-            TrialExpiresAt       = DateTime.UtcNow.AddDays(14),
-            CurrentPeriodEnd     = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd       = DateTime.UtcNow.AddDays(21)
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21)
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

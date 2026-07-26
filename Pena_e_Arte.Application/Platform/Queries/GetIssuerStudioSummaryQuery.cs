@@ -28,9 +28,9 @@ public class GetIssuerStudioSummaryHandler(IAppDbContext db, IIdentityService id
         // Owner lookup — Approach A: Studio.OwnerEmail stores the owner's email directly,
         // no OwnerId/ApplicationUser join needed. Display name falls back to the
         // GivenName Identity claim set at registration, else the email itself.
-        string  ownerEmail       = string.IsNullOrWhiteSpace(studio.OwnerEmail) ? "—" : studio.OwnerEmail;
-        string? givenName        = ownerEmail == "—" ? null : await identity.GetUserDisplayNameAsync(ownerEmail, ct);
-        string  ownerDisplayName = givenName ?? ownerEmail;
+        string ownerEmail = string.IsNullOrWhiteSpace(studio.OwnerEmail) ? "—" : studio.OwnerEmail;
+        string? givenName = ownerEmail == "—" ? null : await identity.GetUserDisplayNameAsync(ownerEmail, ct);
+        string ownerDisplayName = givenName ?? ownerEmail;
 
         int artistCount = await db.Artists
             .IgnoreQueryFilters()

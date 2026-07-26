@@ -13,9 +13,9 @@ public record CancelPlanChangeCommand : IRequest<SubscriptionResponse>;
 
 /// <summary>Cancels a scheduled downgrade — the studio stays on its current plan.</summary>
 public class CancelPlanChangeHandler(
-    IAppDbContext                    db,
-    ICurrentTenant                   tenant,
-    IStripeBillingService            billing,
+    IAppDbContext db,
+    ICurrentTenant tenant,
+    IStripeBillingService billing,
     ILogger<CancelPlanChangeHandler> logger)
     : IRequestHandler<CancelPlanChangeCommand, SubscriptionResponse>
 {
@@ -31,7 +31,7 @@ public class CancelPlanChangeHandler(
         if (subscription.StripeSubscriptionId is not null)
             await billing.CancelScheduledPriceChangeAsync(subscription.StripeSubscriptionId, ct);
 
-        subscription.PendingPlanId          = null;
+        subscription.PendingPlanId = null;
         subscription.PendingBillingInterval = null;
         await db.SaveChangesAsync(ct);
 

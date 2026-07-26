@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Payments;
 
 public class GetPaymentClientSecretHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly ICurrentUser  _user     = Substitute.For<ICurrentUser>();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetPaymentClientSecretHandler CreateSut() => new(_db, _user);
 
@@ -33,14 +33,14 @@ public class GetPaymentClientSecretHandlerTests
     [Fact]
     public async Task Handle_ClientRole_MatchingClient_ReturnsSecret()
     {
-        Guid userId   = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
         Guid clientId = Guid.NewGuid();
         _db.Clients.Add(new Client
         {
-            Id       = clientId,
+            Id = clientId,
             StudioId = _studioId,
-            UserId   = userId,
-            Email    = "client@test.com"
+            UserId = userId,
+            Email = "client@test.com"
         });
         await _db.SaveChangesAsync();
 
@@ -58,7 +58,7 @@ public class GetPaymentClientSecretHandlerTests
     public async Task Handle_ClientRole_DifferentClient_ThrowsUnauthorized()
     {
         Guid otherClientId = Guid.NewGuid();
-        Guid paymentId     = await SeedPayment("pi_secret_other");
+        Guid paymentId = await SeedPayment("pi_secret_other");
         _user.Role.Returns("client");
         _user.UserId.Returns(Guid.NewGuid()); // not linked to any client
 
@@ -95,12 +95,12 @@ public class GetPaymentClientSecretHandlerTests
     {
         Payment payment = new()
         {
-            StudioId      = _studioId,
+            StudioId = _studioId,
             AppointmentId = Guid.NewGuid(),
-            ClientId      = Guid.NewGuid(),
-            Amount        = 50m,
-            Status        = PaymentStatus.Pending,
-            ClientSecret  = secret
+            ClientId = Guid.NewGuid(),
+            Amount = 50m,
+            Status = PaymentStatus.Pending,
+            ClientSecret = secret
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
@@ -111,12 +111,12 @@ public class GetPaymentClientSecretHandlerTests
     {
         Payment payment = new()
         {
-            StudioId      = _studioId,
+            StudioId = _studioId,
             AppointmentId = Guid.NewGuid(),
-            ClientId      = clientId,
-            Amount        = 50m,
-            Status        = PaymentStatus.Pending,
-            ClientSecret  = secret
+            ClientId = clientId,
+            Amount = 50m,
+            Status = PaymentStatus.Pending,
+            ClientSecret = secret
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

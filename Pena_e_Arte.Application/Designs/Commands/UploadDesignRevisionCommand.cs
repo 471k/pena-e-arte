@@ -12,11 +12,11 @@ namespace Pena_e_Arte.Application.Designs.Commands;
 public record UploadDesignRevisionCommand(UploadDesignRevisionRequest Request) : IRequest<DesignRevisionResponse>;
 
 public class UploadDesignRevisionHandler(
-    IAppDbContext     db,
-    ICurrentTenant    tenant,
+    IAppDbContext db,
+    ICurrentTenant tenant,
     IRealtimeNotifier realtime,
-    IJobScheduler     jobScheduler,
-    ICurrentUser      currentUser)
+    IJobScheduler jobScheduler,
+    ICurrentUser currentUser)
     : IRequestHandler<UploadDesignRevisionCommand, DesignRevisionResponse>
 {
     private const int RevisionTimeoutDays = 14;
@@ -39,12 +39,12 @@ public class UploadDesignRevisionHandler(
 
         DesignRevision revision = new()
         {
-            StudioId      = tenant.StudioId,
-            DesignId      = req.DesignId,
+            StudioId = tenant.StudioId,
+            DesignId = req.DesignId,
             VersionNumber = nextVersion,
-            FileUrl       = req.FileUrl,
-            Notes         = req.Notes,
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = req.FileUrl,
+            Notes = req.Notes,
+            UploadedAt = DateTime.UtcNow
         };
 
         db.DesignRevisions.Add(revision);

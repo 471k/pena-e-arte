@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Billing;
 
 public class GetSubscriptionHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public GetSubscriptionHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -36,10 +36,10 @@ public class GetSubscriptionHandlerTests
     // Contract test: verifies the string values emitted over the wire match
     // the PascalCase cases the frontend switch statement expects.
     [Theory]
-    [InlineData(SubscriptionStatus.Trialing,    "Trialing")]
-    [InlineData(SubscriptionStatus.Active,      "Active")]
-    [InlineData(SubscriptionStatus.PastDue,     "PastDue")]
-    [InlineData(SubscriptionStatus.Cancelled,   "Cancelled")]
+    [InlineData(SubscriptionStatus.Trialing, "Trialing")]
+    [InlineData(SubscriptionStatus.Active, "Active")]
+    [InlineData(SubscriptionStatus.PastDue, "PastDue")]
+    [InlineData(SubscriptionStatus.Cancelled, "Cancelled")]
     [InlineData(SubscriptionStatus.GracePeriod, "GracePeriod")]
     public async Task Handle_Status_SerializesAsPascalCaseString(
         SubscriptionStatus status, string expected)
@@ -47,10 +47,10 @@ public class GetSubscriptionHandlerTests
         _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test" });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = _studioId,
-            Status           = status,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(21),
+            StudioId = _studioId,
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(14),
         });
         await _db.SaveChangesAsync();
@@ -73,10 +73,10 @@ public class GetSubscriptionHandlerTests
     {
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId         = Guid.NewGuid(),
-            Status           = SubscriptionStatus.Active,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(21),
+            StudioId = Guid.NewGuid(),
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21),
             CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1)
         });
         await _db.SaveChangesAsync();
@@ -93,10 +93,10 @@ public class GetSubscriptionHandlerTests
 
         Subscription sub = new()
         {
-            StudioId         = _studioId,
-            Status           = status,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(21),
+            StudioId = _studioId,
+            Status = status,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(14)
         };
         _db.Subscriptions.Add(sub);

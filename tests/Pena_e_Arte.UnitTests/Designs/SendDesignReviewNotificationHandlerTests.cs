@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -13,11 +13,11 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class SendDesignReviewNotificationHandlerTests
 {
-    private readonly FakeDbContext        _db            = FakeDbContext.Create();
-    private readonly IEmailRenderer       _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
-    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService _prefs = new AlwaysEnabledNotificationPreferences();
 
     public SendDesignReviewNotificationHandlerTests()
     {
@@ -41,50 +41,50 @@ public class SendDesignReviewNotificationHandlerTests
 
         Artist artist = new()
         {
-            StudioId  = studio.Id,
+            StudioId = studio.Id,
             FirstName = "Marco",
-            LastName  = "Ink",
-            Email     = artistEmail ?? string.Empty,
+            LastName = "Ink",
+            Email = artistEmail ?? string.Empty,
         };
         _db.Artists.Add(artist);
 
         Design design = new()
         {
-            StudioId  = studio.Id,
-            ArtistId  = artist.Id,
-            ClientId  = Guid.NewGuid(),
-            Title     = "Dragon Back Piece",
-            Artist    = artist,
+            StudioId = studio.Id,
+            ArtistId = artist.Id,
+            ClientId = Guid.NewGuid(),
+            Title = "Dragon Back Piece",
+            Artist = artist,
         };
         _db.Designs.Add(design);
 
         DesignApproval? approval = approved
             ? new DesignApproval
             {
-                StudioId         = studio.Id,
+                StudioId = studio.Id,
                 DesignRevisionId = Guid.Empty,
-                Status           = DesignApprovalStatus.Approved,
-                ClientNotes      = "Looks great!",
-                ReviewedAt       = DateTime.UtcNow,
+                Status = DesignApprovalStatus.Approved,
+                ClientNotes = "Looks great!",
+                ReviewedAt = DateTime.UtcNow,
             }
             : new DesignApproval
             {
-                StudioId         = studio.Id,
+                StudioId = studio.Id,
                 DesignRevisionId = Guid.Empty,
-                Status           = DesignApprovalStatus.ChangesRequested,
-                ClientNotes      = "Fix the shading",
-                ReviewedAt       = DateTime.UtcNow,
+                Status = DesignApprovalStatus.ChangesRequested,
+                ClientNotes = "Fix the shading",
+                ReviewedAt = DateTime.UtcNow,
             };
 
         DesignRevision revision = new()
         {
-            StudioId      = studio.Id,
-            DesignId      = design.Id,
-            Design        = design,
-            Approval      = approval,
+            StudioId = studio.Id,
+            DesignId = design.Id,
+            Design = design,
+            Approval = approval,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/v1.png",
-            UploadedAt    = DateTime.UtcNow,
+            FileUrl = "https://r2.example.com/v1.png",
+            UploadedAt = DateTime.UtcNow,
         };
         _db.DesignRevisions.Add(revision);
         await _db.SaveChangesAsync();

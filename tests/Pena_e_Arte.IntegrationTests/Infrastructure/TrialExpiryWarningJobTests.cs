@@ -16,7 +16,7 @@ namespace Pena_e_Arte.IntegrationTests.Infrastructure;
 public class TrialExpiryWarningJobTests(DatabaseFixture fixture)
 {
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier    _realtime      = Substitute.For<IRealtimeNotifier>();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
     private TrialExpiryWarningJob CreateSut(AppDbContext db) =>
         new(_notifications, db, _realtime, NullLogger<TrialExpiryWarningJob>.Instance);
@@ -144,21 +144,21 @@ public class TrialExpiryWarningJobTests(DatabaseFixture fixture)
 
         Studio studio = new()
         {
-            Name           = name,
-            Slug           = ("s-" + Guid.NewGuid().ToString("N"))[..20],
-            City           = "Porto",
-            OwnerEmail     = ownerEmail,
-            IsActive       = true,
+            Name = name,
+            Slug = ("s-" + Guid.NewGuid().ToString("N"))[..20],
+            City = "Porto",
+            OwnerEmail = ownerEmail,
+            IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(2)
         };
         ctx.Studios.Add(studio);
 
         ctx.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            Status           = SubscriptionStatus.Trialing,
-            TrialExpiresAt   = studio.TrialExpiresAt,
-            GracePeriodEnd   = studio.TrialExpiresAt.AddDays(7),
+            StudioId = studio.Id,
+            Status = SubscriptionStatus.Trialing,
+            TrialExpiresAt = studio.TrialExpiresAt,
+            GracePeriodEnd = studio.TrialExpiresAt.AddDays(7),
             CurrentPeriodEnd = studio.TrialExpiresAt
         });
 

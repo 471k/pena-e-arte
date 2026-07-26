@@ -95,8 +95,8 @@ public class IndustryReportsIntegrationTests(DatabaseFixture fixture)
                 Arg.Any<string>(), Arg.Any<CancellationToken>()))
             .Do(c =>
             {
-                capturedKey  = c.ArgAt<string>(0);
-                captured     = c.ArgAt<byte[]>(1);
+                capturedKey = c.ArgAt<string>(0);
+                captured = c.ArgAt<byte[]>(1);
             });
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
@@ -161,21 +161,21 @@ public class IndustryReportsIntegrationTests(DatabaseFixture fixture)
 
             Studio studio = new()
             {
-                Name     = $"Industry Test Studio {Guid.NewGuid():N}",
-                Slug     = "industry-" + Guid.NewGuid().ToString("N")[..8],
-                City     = "Lisboa",
+                Name = $"Industry Test Studio {Guid.NewGuid():N}",
+                Slug = "industry-" + Guid.NewGuid().ToString("N")[..8],
+                City = "Lisboa",
                 IsActive = true,
             };
             seed.Studios.Add(studio);
 
             Subscription sub = new()
             {
-                StudioId         = studio.Id,
-                PlanId           = plan.Id,
-                Status           = SubscriptionStatus.Active,
-                TrialExpiresAt   = DateTime.UtcNow.AddDays(-7),
+                StudioId = studio.Id,
+                PlanId = plan.Id,
+                Status = SubscriptionStatus.Active,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(-7),
                 CurrentPeriodEnd = DateTime.UtcNow.AddDays(23),
-                GracePeriodEnd   = DateTime.UtcNow.AddDays(30),
+                GracePeriodEnd = DateTime.UtcNow.AddDays(30),
             };
             seed.Subscriptions.Add(sub);
         }
