@@ -271,17 +271,17 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         Client client = new()
         {
-            StudioId  = tenantId,
+            StudioId = tenantId,
             FirstName = "Test",
-            LastName  = "Client",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         Artist artist = new()
         {
-            StudioId  = tenantId,
+            StudioId = tenantId,
             FirstName = "Test",
-            LastName  = "Artist",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         db.Clients.Add(client);
         db.Artists.Add(artist);

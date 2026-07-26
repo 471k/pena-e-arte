@@ -11,7 +11,7 @@ public class AddTattooRecordValidatorTests
 {
     private const string ValidUrl = "https://cdn.example.com/photo.jpg";
 
-    private readonly IR2Service              _r2  = Substitute.For<IR2Service>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
     private readonly AddTattooRecordValidator _sut;
 
     public AddTattooRecordValidatorTests()
@@ -24,12 +24,12 @@ public class AddTattooRecordValidatorTests
         Command(Guid.NewGuid(), Guid.NewGuid(), "Dragon sleeve", "left_arm", [], DateTime.UtcNow.AddDays(-1));
 
     private static AddTattooRecordCommand Command(
-        Guid         clientId,
-        Guid         artistId,
-        string       description,
-        string       bodyLocation,
+        Guid clientId,
+        Guid artistId,
+        string description,
+        string bodyLocation,
         List<string> photoUrls,
-        DateTime     completedAt) =>
+        DateTime completedAt) =>
         new(clientId, new AddTattooRecordRequest(artistId, null, description, bodyLocation, photoUrls, completedAt));
 
     [Fact]

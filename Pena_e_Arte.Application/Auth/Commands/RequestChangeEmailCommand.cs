@@ -7,7 +7,7 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Auth.Commands;
 
 public record RequestChangeEmailCommand(
-    Guid   UserId,
+    Guid UserId,
     string CurrentPassword,
     string NewEmail) : IRequest;
 
@@ -21,11 +21,11 @@ public class RequestChangeEmailValidator : AbstractValidator<RequestChangeEmailC
 }
 
 public class RequestChangeEmailHandler(
-    IIdentityService                    identity,
-    IEmailRenderer                      emailRenderer,
-    INotificationService                notifications,
-    IAppSettings                        appSettings,
-    ILogger<RequestChangeEmailHandler>  logger)
+    IIdentityService identity,
+    IEmailRenderer emailRenderer,
+    INotificationService notifications,
+    IAppSettings appSettings,
+    ILogger<RequestChangeEmailHandler> logger)
     : IRequestHandler<RequestChangeEmailCommand>
 {
     public async Task Handle(RequestChangeEmailCommand command, CancellationToken ct)

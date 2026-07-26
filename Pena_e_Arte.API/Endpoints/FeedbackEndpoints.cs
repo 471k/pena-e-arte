@@ -29,18 +29,18 @@ public static class FeedbackEndpoints
 
     private static async Task<IResult> SubmitFeedback(
         SubmitFeedbackRequest request,
-        ISender               mediator,
-        CancellationToken     ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         FeedbackReportResponse result = await mediator.Send(new SubmitFeedbackCommand(request), ct);
         return Results.Created($"/api/v1/feedback/{result.Id}", result);
     }
 
     private static async Task<IResult> GetFeedbackReports(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct,
-        string?           type   = null,
-        string?           status = null)
+        string? type = null,
+        string? status = null)
     {
         List<FeedbackReportResponse> result =
             await mediator.Send(new GetFeedbackReportsQuery(type, status), ct);
@@ -48,10 +48,10 @@ public static class FeedbackEndpoints
     }
 
     private static async Task<IResult> UpdateFeedbackStatus(
-        Guid                        id,
+        Guid id,
         UpdateFeedbackStatusRequest request,
-        ISender                     mediator,
-        CancellationToken           ct)
+        ISender mediator,
+        CancellationToken ct)
     {
         FeedbackReportResponse result =
             await mediator.Send(new UpdateFeedbackStatusCommand(id, request), ct);
@@ -59,17 +59,17 @@ public static class FeedbackEndpoints
     }
 
     private static async Task<IResult> GetMyFeedbackReports(
-        ISender           mediator,
+        ISender mediator,
         CancellationToken ct,
-        string?           type = null)
+        string? type = null)
     {
         List<FeedbackReportResponse> result = await mediator.Send(new GetMyFeedbackReportsQuery(type), ct);
         return Results.Ok(result);
     }
 
     private static async Task<IResult> GetFeedbackMessages(
-        Guid              id,
-        ISender           mediator,
+        Guid id,
+        ISender mediator,
         CancellationToken ct)
     {
         List<FeedbackMessageResponse> result = await mediator.Send(new GetFeedbackMessagesQuery(id), ct);
@@ -77,10 +77,10 @@ public static class FeedbackEndpoints
     }
 
     private static async Task<IResult> PostFeedbackMessage(
-        Guid                        id,
-        PostFeedbackMessageRequest  request,
-        ISender                     mediator,
-        CancellationToken           ct)
+        Guid id,
+        PostFeedbackMessageRequest request,
+        ISender mediator,
+        CancellationToken ct)
     {
         FeedbackMessageResponse result =
             await mediator.Send(new PostFeedbackMessageCommand(id, request), ct);

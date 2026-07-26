@@ -17,7 +17,7 @@ public class GetAppointmentsHandler(IAppDbContext db, ICurrentUser currentUser)
         IQueryable<Domain.Entities.Appointment> q = db.Appointments;
 
         if (query.From.HasValue) q = q.Where(a => a.Date >= query.From.Value);
-        if (query.To.HasValue)   q = q.Where(a => a.Date <= query.To.Value);
+        if (query.To.HasValue) q = q.Where(a => a.Date <= query.To.Value);
 
         if (currentUser.Role == "artist")
         {

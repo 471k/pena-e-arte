@@ -13,7 +13,7 @@ public class CreateAppointmentValidatorTests
 {
     private const string ValidImageUrl = "https://cdn.example.com/appointments/ref.png";
 
-    private readonly IR2Service               _r2  = Substitute.For<IR2Service>();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
     private readonly CreateAppointmentValidator _sut;
 
     public CreateAppointmentValidatorTests()

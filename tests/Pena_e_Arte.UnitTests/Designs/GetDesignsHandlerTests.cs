@@ -9,8 +9,8 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class GetDesignsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetDesignsHandler CreateSut() => new(_db, FakeCurrentUser.Owner());
 
@@ -41,7 +41,7 @@ public class GetDesignsHandlerTests
     {
         Guid clientA = Guid.NewGuid();
         Guid clientB = Guid.NewGuid();
-        Guid artist  = Guid.NewGuid();
+        Guid artist = Guid.NewGuid();
 
         await SeedDesigns(
             (clientA, artist, "Design A1"),
@@ -58,7 +58,7 @@ public class GetDesignsHandlerTests
     [Fact]
     public async Task Handle_ArtistIdFilter_ReturnsOnlyMatchingArtist()
     {
-        Guid client  = Guid.NewGuid();
+        Guid client = Guid.NewGuid();
         Guid artistA = Guid.NewGuid();
         Guid artistB = Guid.NewGuid();
 
@@ -216,11 +216,11 @@ public class GetDesignsHandlerTests
     {
         var artist = new Artist
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Art",
-            LastName  = "Ist",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();

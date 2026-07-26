@@ -11,9 +11,9 @@ namespace Pena_e_Arte.UnitTests.Designs;
 
 public class GetDesignRevisionsHandlerTests
 {
-    private readonly FakeDbContext _db       = FakeDbContext.Create();
-    private readonly IR2Service    _r2       = Substitute.For<IR2Service>();
-    private readonly Guid          _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IR2Service _r2 = Substitute.For<IR2Service>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     private GetDesignRevisionsHandler CreateSut() => new(_db, _r2);
 
@@ -44,8 +44,8 @@ public class GetDesignRevisionsHandlerTests
     [Fact]
     public async Task Handle_RevisionWithNoApproval_ReturnsNullApprovalStatus()
     {
-        Guid designId    = Guid.NewGuid();
-        Guid revisionId  = await SeedRevision(designId, version: 1, approval: null);
+        Guid designId = Guid.NewGuid();
+        Guid revisionId = await SeedRevision(designId, version: 1, approval: null);
 
         List<DesignRevisionResponse> result = await CreateSut()
             .Handle(new GetDesignRevisionsQuery(designId), default);
@@ -94,29 +94,29 @@ public class GetDesignRevisionsHandlerTests
     }
 
     private async Task<Guid> SeedRevision(
-        Guid                  designId,
-        int                   version,
-        DesignApprovalStatus? approval      = null,
-        string?               approvalNotes = null)
+        Guid designId,
+        int version,
+        DesignApprovalStatus? approval = null,
+        string? approvalNotes = null)
     {
         DesignRevision revision = new()
         {
-            StudioId      = _studioId,
-            DesignId      = designId,
+            StudioId = _studioId,
+            DesignId = designId,
             VersionNumber = version,
-            FileUrl       = $"https://r2.example.com/v{version}.png",
-            UploadedAt    = DateTime.UtcNow,
+            FileUrl = $"https://r2.example.com/v{version}.png",
+            UploadedAt = DateTime.UtcNow,
         };
 
         if (approval.HasValue)
         {
             revision.Approval = new DesignApproval
             {
-                StudioId         = _studioId,
+                StudioId = _studioId,
                 DesignRevisionId = revision.Id,
-                Status           = approval.Value,
-                ClientNotes      = approvalNotes,
-                ReviewedAt       = DateTime.UtcNow,
+                Status = approval.Value,
+                ClientNotes = approvalNotes,
+                ReviewedAt = DateTime.UtcNow,
             };
         }
 

@@ -3,65 +3,65 @@ namespace Pena_e_Arte.Domain.Interfaces;
 public interface IEmailRenderer
 {
     string RenderAppointmentConfirmation(
-        string    clientFirstName,
-        DateTime  date,
-        int       durationMinutes,
-        string?   notes,
-        bool      showBranding);
+        string clientFirstName,
+        DateTime date,
+        int durationMinutes,
+        string? notes,
+        bool showBranding);
 
     string RenderAppointmentCreatedClient(
-        string   clientFirstName,
+        string clientFirstName,
         DateTime date,
-        int      durationMinutes,
-        string   studioName,
-        bool     showBranding);
+        int durationMinutes,
+        string studioName,
+        bool showBranding);
 
     string RenderAppointmentCreatedStudio(
-        string   clientFullName,
+        string clientFullName,
         DateTime date,
-        int      durationMinutes,
-        string?  notes);
+        int durationMinutes,
+        string? notes);
 
     string RenderDesignApproved(
-        string  artistFirstName,
-        string  designTitle,
+        string artistFirstName,
+        string designTitle,
         string? clientNotes,
-        bool    showBranding);
+        bool showBranding);
 
     string RenderDesignChangesRequested(
-        string  artistFirstName,
-        string  designTitle,
+        string artistFirstName,
+        string designTitle,
         string? clientNotes,
-        bool    showBranding);
+        bool showBranding);
 
     string RenderIntakeFormSubmitted(
         string studioName,
         string clientFullName,
         string appointmentDate,
-        bool   showBranding);
+        bool showBranding);
 
     string RenderConsentFormSigned(
         string studioName,
         string clientFullName,
         string appointmentDate,
-        bool   showBranding);
+        bool showBranding);
 
     string RenderDepositCaptured(
         string clientFirstName,
         string amountFormatted,
         string appointmentDate,
-        bool   showBranding);
+        bool showBranding);
 
     string RenderPaymentRefunded(
         string clientFirstName,
         string amountFormatted,
-        bool   showBranding);
+        bool showBranding);
 
     string RenderAftercare(
         string clientFirstName,
         string studioName,
         string artistName,
-        bool   showBranding);
+        bool showBranding);
 
     string RenderEmailVerification(string confirmationUrl);
 

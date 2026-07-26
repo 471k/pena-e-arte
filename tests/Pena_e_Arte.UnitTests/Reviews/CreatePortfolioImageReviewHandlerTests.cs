@@ -36,11 +36,11 @@ public class CreatePortfolioImageReviewHandlerTests
         Guid authorId = Guid.NewGuid();
 
         CreatePortfolioImageReviewCommand command = new(
-            ImageId:    image.Id,
+            ImageId: image.Id,
             AuthorUserId: authorId,
             AuthorName: "Client A",
-            Rating:     5,
-            Body:       "Incredible work, will definitely be back!");
+            Rating: 5,
+            Body: "Incredible work, will definitely be back!");
 
         await CreateSut().Handle(command, CancellationToken.None);
 
@@ -54,11 +54,11 @@ public class CreatePortfolioImageReviewHandlerTests
     public async Task Handle_UnknownImageId_ThrowsNotFoundException()
     {
         CreatePortfolioImageReviewCommand command = new(
-            ImageId:    Guid.NewGuid(),
+            ImageId: Guid.NewGuid(),
             AuthorUserId: Guid.NewGuid(),
             AuthorName: "Client B",
-            Rating:     4,
-            Body:       "Some review body here.");
+            Rating: 4,
+            Body: "Some review body here.");
 
         Func<Task> act = () => CreateSut().Handle(command, CancellationToken.None);
 
@@ -86,11 +86,11 @@ public class CreatePortfolioImageReviewHandlerTests
         PortfolioImage image = await SeedImage();
 
         CreatePortfolioImageReviewCommand command = new(
-            ImageId:    image.Id,
+            ImageId: image.Id,
             AuthorUserId: Guid.NewGuid(),
             AuthorName: "Client D",
-            Rating:     4,
-            Body:       "Really solid technique and clean lines.");
+            Rating: 4,
+            Body: "Really solid technique and clean lines.");
 
         await CreateSut().Handle(command, CancellationToken.None);
 

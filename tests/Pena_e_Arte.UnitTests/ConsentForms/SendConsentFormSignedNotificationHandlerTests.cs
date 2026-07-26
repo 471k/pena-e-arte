@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -13,11 +13,11 @@ namespace Pena_e_Arte.UnitTests.ConsentForms;
 
 public class SendConsentFormSignedNotificationHandlerTests
 {
-    private readonly FakeDbContext        _db            = FakeDbContext.Create();
-    private readonly IEmailRenderer       _emailRenderer = Substitute.For<IEmailRenderer>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
-    private readonly IRealtimeNotifier              _realtime      = Substitute.For<IRealtimeNotifier>();
-    private readonly INotificationPreferenceService  _prefs         = new AlwaysEnabledNotificationPreferences();
+    private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly INotificationPreferenceService _prefs = new AlwaysEnabledNotificationPreferences();
 
     public SendConsentFormSignedNotificationHandlerTests() =>
         _emailRenderer
@@ -35,35 +35,35 @@ public class SendConsentFormSignedNotificationHandlerTests
 
         Client client = new()
         {
-            StudioId  = studio.Id,
+            StudioId = studio.Id,
             FirstName = "Ana",
-            LastName  = "Silva",
-            Email     = "ana@test.com",
+            LastName = "Silva",
+            Email = "ana@test.com",
         };
         _db.Clients.Add(client);
 
         Appointment appointment = new()
         {
-            StudioId        = studio.Id,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(2),
+            StudioId = studio.Id,
+            ArtistId = Guid.NewGuid(),
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Confirmed,
-            DepositStatus   = DepositStatus.Paid,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid,
         };
         _db.Appointments.Add(appointment);
 
         ConsentForm form = new()
         {
-            StudioId      = studio.Id,
-            ClientId      = client.Id,
+            StudioId = studio.Id,
+            ClientId = client.Id,
             AppointmentId = appointment.Id,
-            Client        = client,
-            Appointment   = appointment,
+            Client = client,
+            Appointment = appointment,
             SignatureData = "data:image/png;base64,abc",
-            SignedAt      = DateTime.UtcNow,
+            SignedAt = DateTime.UtcNow,
         };
         _db.ConsentForms.Add(form);
         await _db.SaveChangesAsync();

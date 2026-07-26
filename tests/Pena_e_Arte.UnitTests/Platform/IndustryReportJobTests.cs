@@ -14,12 +14,12 @@ public class IndustryReportJobTests
     };
 
     private static IndustryAggregates FullAggregates(int cohort = 42) => new(
-        TotalActiveStudios:              cohort,
+        TotalActiveStudios: cohort,
         AvgAppointmentsPerStudioPerMonth: 12.5,
-        PeakBookingHour:                 14,
-        TopSessionDurations:             new() { ["30"] = 3, ["60"] = 20, ["90"] = 10, ["120"] = 5, ["180"] = 2 },
-        TrialToPaidConversionRate:       0.65,
-        AvgRetentionMonths:              8.2);
+        PeakBookingHour: 14,
+        TopSessionDurations: new() { ["30"] = 3, ["60"] = 20, ["90"] = 10, ["120"] = 5, ["180"] = 2 },
+        TrialToPaidConversionRate: 0.65,
+        AvgRetentionMonths: 8.2);
 
     // ── Cohort suppression ────────────────────────────────────────────────────────
 
@@ -76,21 +76,21 @@ public class IndustryReportJobTests
     [Fact]
     public void BuildDocument_SerializedOutput_ContainsNoIdentifyingFields()
     {
-        IndustryReportDocument doc  = IndustryReportJob.BuildDocument(FullAggregates(), DateTime.UtcNow);
-        string                 json = JsonSerializer.Serialize(doc, new JsonSerializerOptions
+        IndustryReportDocument doc = IndustryReportJob.BuildDocument(FullAggregates(), DateTime.UtcNow);
+        string json = JsonSerializer.Serialize(doc, new JsonSerializerOptions
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.Never,
         });
 
         // Must not contain any identifying property names
-        json.Should().NotContain("studioId",  because: "output must be identifier-free");
-        json.Should().NotContain("tenantId",  because: "output must be identifier-free");
-        json.Should().NotContain("userId",    because: "output must be identifier-free");
-        json.Should().NotContain("email",     because: "output must be identifier-free");
-        json.Should().NotContain("artistId",  because: "output must be identifier-free");
-        json.Should().NotContain("clientId",  because: "output must be identifier-free");
+        json.Should().NotContain("studioId", because: "output must be identifier-free");
+        json.Should().NotContain("tenantId", because: "output must be identifier-free");
+        json.Should().NotContain("userId", because: "output must be identifier-free");
+        json.Should().NotContain("email", because: "output must be identifier-free");
+        json.Should().NotContain("artistId", because: "output must be identifier-free");
+        json.Should().NotContain("clientId", because: "output must be identifier-free");
         json.Should().NotContain("studio_id", because: "output must be identifier-free");
-        json.Should().NotContain("user_id",   because: "output must be identifier-free");
+        json.Should().NotContain("user_id", because: "output must be identifier-free");
     }
 
     // ── Document structure ────────────────────────────────────────────────────────

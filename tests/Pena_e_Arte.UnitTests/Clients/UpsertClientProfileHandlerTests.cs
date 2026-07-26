@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Clients;
 
 public class UpsertClientProfileHandlerTests
 {
-    private readonly FakeDbContext  _db       = FakeDbContext.Create();
-    private readonly ICurrentTenant _tenant   = Substitute.For<ICurrentTenant>();
-    private readonly Guid           _studioId = Guid.NewGuid();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public UpsertClientProfileHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
@@ -52,8 +52,8 @@ public class UpsertClientProfileHandlerTests
         Client client = await AddClientAsync();
         _db.ClientProfiles.Add(new ClientProfile
         {
-            StudioId     = _studioId,
-            ClientId     = client.Id,
+            StudioId = _studioId,
+            ClientId = client.Id,
             MedicalNotes = "Old notes",
         });
         await _db.SaveChangesAsync();

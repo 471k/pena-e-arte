@@ -69,13 +69,13 @@ public class UpdateFeedbackStatusHandlerTests
     private async Task<Guid> SeedReport()
     {
         FeedbackReport report = FeedbackReport.Create(
-            studioId:        Guid.NewGuid(),
+            studioId: Guid.NewGuid(),
             submitterUserId: Guid.NewGuid(),
-            submitterRole:   "owner",
-            studioName:      "Test Studio",
-            type:            FeedbackType.General,
-            title:           "Title",
-            body:            "Some feedback body here.");
+            submitterRole: "owner",
+            studioName: "Test Studio",
+            type: FeedbackType.General,
+            title: "Title",
+            body: "Some feedback body here.");
 
         _db.FeedbackReports.Add(report);
         await _db.SaveChangesAsync();

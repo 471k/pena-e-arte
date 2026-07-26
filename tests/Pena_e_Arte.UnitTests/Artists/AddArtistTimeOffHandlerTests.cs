@@ -10,10 +10,10 @@ namespace Pena_e_Arte.UnitTests.Artists;
 
 public class AddArtistTimeOffHandlerTests
 {
-    private readonly FakeDbContext   _db          = FakeDbContext.Create();
-    private readonly ICurrentTenant  _tenant      = Substitute.For<ICurrentTenant>();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
-    private readonly Guid            _studioId    = Guid.NewGuid();
+    private readonly Guid _studioId = Guid.NewGuid();
 
     public AddArtistTimeOffHandlerTests()
     {
@@ -26,11 +26,11 @@ public class AddArtistTimeOffHandlerTests
     {
         var artist = new Domain.Entities.Artist
         {
-            StudioId  = _studioId,
-            UserId    = userId,
+            StudioId = _studioId,
+            UserId = userId,
             FirstName = "Art",
-            LastName  = "Ist",
-            Email     = $"{Guid.NewGuid()}@test.com",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Artists.Add(artist);
         _db.SaveChanges();
@@ -42,7 +42,7 @@ public class AddArtistTimeOffHandlerTests
     {
         Guid artistId = SeedArtist();
         DateTime start = DateTime.UtcNow.Date.AddDays(5);
-        DateTime end   = DateTime.UtcNow.Date.AddDays(10);
+        DateTime end = DateTime.UtcNow.Date.AddDays(10);
 
         Guid id = await CreateSut().Handle(
             new AddArtistTimeOffCommand(artistId, start, end, "Holiday"), default);
@@ -55,7 +55,7 @@ public class AddArtistTimeOffHandlerTests
     {
         Guid artistId = SeedArtist();
         DateTime start = DateTime.UtcNow.Date.AddDays(1);
-        DateTime end   = DateTime.UtcNow.Date.AddDays(3);
+        DateTime end = DateTime.UtcNow.Date.AddDays(3);
 
         await CreateSut().Handle(
             new AddArtistTimeOffCommand(artistId, start, end, "Sick leave"), default);
@@ -67,7 +67,7 @@ public class AddArtistTimeOffHandlerTests
     public async Task Handle_UnknownArtist_ThrowsNotFoundException()
     {
         DateTime start = DateTime.UtcNow.Date;
-        DateTime end   = start.AddDays(2);
+        DateTime end = start.AddDays(2);
 
         Func<Task> act = () => CreateSut().Handle(
             new AddArtistTimeOffCommand(Guid.NewGuid(), start, end, "Holiday"), default);
@@ -80,7 +80,7 @@ public class AddArtistTimeOffHandlerTests
     {
         Guid artistId = SeedArtist();
         DateTime start = new(2026, 7, 1, 14, 30, 0, DateTimeKind.Utc);
-        DateTime end   = new(2026, 7, 5, 23, 59, 0, DateTimeKind.Utc);
+        DateTime end = new(2026, 7, 5, 23, 59, 0, DateTimeKind.Utc);
 
         await CreateSut().Handle(
             new AddArtistTimeOffCommand(artistId, start, end, "Vacation"), default);
@@ -97,7 +97,7 @@ public class AddArtistTimeOffHandlerTests
         Guid artistId = SeedArtist(artistUser.UserId);
         AddArtistTimeOffHandler sut = new(_db, _tenant, artistUser);
         DateTime start = DateTime.UtcNow.Date.AddDays(5);
-        DateTime end   = DateTime.UtcNow.Date.AddDays(10);
+        DateTime end = DateTime.UtcNow.Date.AddDays(10);
 
         Func<Task> act = () => sut.Handle(new AddArtistTimeOffCommand(artistId, start, end, "Holiday"), default);
 
@@ -111,7 +111,7 @@ public class AddArtistTimeOffHandlerTests
         FakeCurrentUser otherArtistUser = FakeCurrentUser.Artist();
         AddArtistTimeOffHandler sut = new(_db, _tenant, otherArtistUser);
         DateTime start = DateTime.UtcNow.Date.AddDays(5);
-        DateTime end   = DateTime.UtcNow.Date.AddDays(10);
+        DateTime end = DateTime.UtcNow.Date.AddDays(10);
 
         Func<Task> act = () => sut.Handle(new AddArtistTimeOffCommand(artistId, start, end, "Holiday"), default);
 
@@ -124,16 +124,16 @@ public class AddArtistTimeOffHandlerTests
         Guid artistId = SeedArtist();
         _db.ArtistTimeOffs.Add(new ArtistTimeOff
         {
-            ArtistId  = artistId,
-            StudioId  = _studioId,
+            ArtistId = artistId,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(5),
-            EndDate   = DateTime.UtcNow.Date.AddDays(10),
-            Reason    = "Existing",
+            EndDate = DateTime.UtcNow.Date.AddDays(10),
+            Reason = "Existing",
         });
         await _db.SaveChangesAsync();
 
         DateTime overlapStart = DateTime.UtcNow.Date.AddDays(8);
-        DateTime overlapEnd   = DateTime.UtcNow.Date.AddDays(12);
+        DateTime overlapEnd = DateTime.UtcNow.Date.AddDays(12);
 
         Func<Task> act = () => CreateSut().Handle(
             new AddArtistTimeOffCommand(artistId, overlapStart, overlapEnd, "New request"), default);
@@ -147,16 +147,16 @@ public class AddArtistTimeOffHandlerTests
         Guid artistId = SeedArtist();
         _db.ArtistTimeOffs.Add(new ArtistTimeOff
         {
-            ArtistId  = artistId,
-            StudioId  = _studioId,
+            ArtistId = artistId,
+            StudioId = _studioId,
             StartDate = DateTime.UtcNow.Date.AddDays(5),
-            EndDate   = DateTime.UtcNow.Date.AddDays(10),
-            Reason    = "Existing",
+            EndDate = DateTime.UtcNow.Date.AddDays(10),
+            Reason = "Existing",
         });
         await _db.SaveChangesAsync();
 
         DateTime start = DateTime.UtcNow.Date.AddDays(20);
-        DateTime end   = DateTime.UtcNow.Date.AddDays(22);
+        DateTime end = DateTime.UtcNow.Date.AddDays(22);
 
         Func<Task> act = () => CreateSut().Handle(
             new AddArtistTimeOffCommand(artistId, start, end, "New request"), default);

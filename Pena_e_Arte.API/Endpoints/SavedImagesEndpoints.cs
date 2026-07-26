@@ -14,17 +14,17 @@ public static class SavedImagesEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/saved-images")
             .RequireAuthorization("ClientAndAbove");
 
-        group.MapGet("/",                    GetSavedImages);
-        group.MapGet("/ids",                 GetSavedImageIds);
-        group.MapPost("/{imageId:guid}",     SaveImage);
-        group.MapDelete("/{imageId:guid}",   UnsaveImage);
+        group.MapGet("/", GetSavedImages);
+        group.MapGet("/ids", GetSavedImageIds);
+        group.MapPost("/{imageId:guid}", SaveImage);
+        group.MapDelete("/{imageId:guid}", UnsaveImage);
     }
 
     private static async Task<IResult> GetSavedImages(
-        ClaimsPrincipal   user,
-        ISender           mediator,
-        [FromQuery] int   page = 1,
-        CancellationToken ct   = default)
+        ClaimsPrincipal user,
+        ISender mediator,
+        [FromQuery] int page = 1,
+        CancellationToken ct = default)
     {
         Guid userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         List<PortfolioImageResponse> result =
@@ -33,8 +33,8 @@ public static class SavedImagesEndpoints
     }
 
     private static async Task<IResult> GetSavedImageIds(
-        ClaimsPrincipal   user,
-        ISender           mediator,
+        ClaimsPrincipal user,
+        ISender mediator,
         CancellationToken ct = default)
     {
         Guid userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -43,9 +43,9 @@ public static class SavedImagesEndpoints
     }
 
     private static async Task<IResult> SaveImage(
-        Guid              imageId,
-        ClaimsPrincipal   user,
-        ISender           mediator,
+        Guid imageId,
+        ClaimsPrincipal user,
+        ISender mediator,
         CancellationToken ct = default)
     {
         Guid userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -54,9 +54,9 @@ public static class SavedImagesEndpoints
     }
 
     private static async Task<IResult> UnsaveImage(
-        Guid              imageId,
-        ClaimsPrincipal   user,
-        ISender           mediator,
+        Guid imageId,
+        ClaimsPrincipal user,
+        ISender mediator,
         CancellationToken ct = default)
     {
         Guid userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);

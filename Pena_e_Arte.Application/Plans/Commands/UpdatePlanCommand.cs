@@ -16,9 +16,9 @@ namespace Pena_e_Arte.Application.Plans.Commands;
 // with no single studio target, so AuditStudioId is left at its default (null).
 public record UpdatePlanCommand(Guid PlanId, UpdatePlanRequest Request) : IRequest<PlanResponse>, IAuditableCommand
 {
-    public string AuditAction     => AuditActions.PlanUpdated;
+    public string AuditAction => AuditActions.PlanUpdated;
     public string AuditTargetType => AuditTargetTypes.Plan;
-    public Guid   AuditTargetId   => PlanId;
+    public Guid AuditTargetId => PlanId;
 }
 
 public class UpdatePlanHandler(IAppDbContext db)
@@ -33,16 +33,16 @@ public class UpdatePlanHandler(IAppDbContext db)
 
         UpdatePlanRequest req = command.Request;
 
-        plan.Name                     = req.Name;
-        plan.YearlyDiscountPercent    = req.YearlyDiscountPercent;
-        plan.AllowBrandingRemoval     = req.AllowBrandingRemoval;
-        plan.MaxArtists               = req.MaxArtists;
-        plan.MaxAppointmentsPerMonth  = req.MaxAppointmentsPerMonth;
+        plan.Name = req.Name;
+        plan.YearlyDiscountPercent = req.YearlyDiscountPercent;
+        plan.AllowBrandingRemoval = req.AllowBrandingRemoval;
+        plan.MaxArtists = req.MaxArtists;
+        plan.MaxAppointmentsPerMonth = req.MaxAppointmentsPerMonth;
         plan.MaxNotificationsPerMonth = req.MaxNotificationsPerMonth;
-        plan.MaxStorageGb             = req.MaxStorageGb;
-        plan.MaxLocations             = req.MaxLocations;
-        plan.AllowApiAccess           = req.AllowApiAccess;
-        plan.PrioritySupport          = req.PrioritySupport;
+        plan.MaxStorageGb = req.MaxStorageGb;
+        plan.MaxLocations = req.MaxLocations;
+        plan.AllowApiAccess = req.AllowApiAccess;
+        plan.PrioritySupport = req.PrioritySupport;
 
         List<PlanPrice> existingPrices = plan.Prices.ToList();
         List<BillingInterval> requestedIntervals = req.Prices
@@ -55,16 +55,19 @@ public class UpdatePlanHandler(IAppDbContext db)
             PlanPrice? existing = existingPrices.FirstOrDefault(pp => pp.Interval == interval);
             if (existing is not null)
             {
-                existing.Price         = pr.Price;
+                existing.Price = pr.Price;
                 existing.StripePriceId = pr.StripePriceId;
-                existing.IsActive      = pr.IsActive;
+                existing.IsActive = pr.IsActive;
             }
             else
             {
                 db.PlanPrices.Add(new PlanPrice
                 {
-                    PlanId = plan.Id, Interval = interval, Price = pr.Price,
-                    StripePriceId = pr.StripePriceId, IsActive = pr.IsActive,
+                    PlanId = plan.Id,
+                    Interval = interval,
+                    Price = pr.Price,
+                    StripePriceId = pr.StripePriceId,
+                    IsActive = pr.IsActive,
                 });
             }
         }

@@ -94,22 +94,22 @@ public class SchemaConstraintTests(DatabaseFixture fixture)
         await using AppDbContext ctx1 = fixture.CreateDbContext(tenantId);
         ctx1.DesignRevisions.Add(new Domain.Entities.DesignRevision
         {
-            StudioId      = tenantId,
-            DesignId      = designId,
+            StudioId = tenantId,
+            DesignId = designId,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/v1.png",
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = "https://r2.example.com/v1.png",
+            UploadedAt = DateTime.UtcNow
         });
         await ctx1.SaveChangesAsync();
 
         await using AppDbContext ctx2 = fixture.CreateDbContext(tenantId);
         ctx2.DesignRevisions.Add(new Domain.Entities.DesignRevision
         {
-            StudioId      = tenantId,
-            DesignId      = designId,
+            StudioId = tenantId,
+            DesignId = designId,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/v1-dupe.png",
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = "https://r2.example.com/v1-dupe.png",
+            UploadedAt = DateTime.UtcNow
         });
 
         Func<Task> act = () => ctx2.SaveChangesAsync();
@@ -126,19 +126,19 @@ public class SchemaConstraintTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         ctx.DesignRevisions.Add(new Domain.Entities.DesignRevision
         {
-            StudioId      = tenantId,
-            DesignId      = designId,
+            StudioId = tenantId,
+            DesignId = designId,
             VersionNumber = 1,
-            FileUrl       = "https://r2.example.com/v1.png",
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = "https://r2.example.com/v1.png",
+            UploadedAt = DateTime.UtcNow
         });
         ctx.DesignRevisions.Add(new Domain.Entities.DesignRevision
         {
-            StudioId      = tenantId,
-            DesignId      = designId,
+            StudioId = tenantId,
+            DesignId = designId,
             VersionNumber = 2,
-            FileUrl       = "https://r2.example.com/v2.png",
-            UploadedAt    = DateTime.UtcNow
+            FileUrl = "https://r2.example.com/v2.png",
+            UploadedAt = DateTime.UtcNow
         });
 
         Func<Task> act = () => ctx.SaveChangesAsync();
@@ -159,10 +159,10 @@ public class SchemaConstraintTests(DatabaseFixture fixture)
 
         ctx.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            Status           = SubscriptionStatus.Trialing,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(21),
+            StudioId = studio.Id,
+            Status = SubscriptionStatus.Trialing,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(14)
         });
         await ctx.SaveChangesAsync();
@@ -170,10 +170,10 @@ public class SchemaConstraintTests(DatabaseFixture fixture)
         await using AppDbContext ctx2 = fixture.CreateDbContext(Guid.Empty);
         ctx2.Subscriptions.Add(new Subscription
         {
-            StudioId         = studio.Id,
-            Status           = SubscriptionStatus.Trialing,
-            TrialExpiresAt   = DateTime.UtcNow.AddDays(14),
-            GracePeriodEnd   = DateTime.UtcNow.AddDays(21),
+            StudioId = studio.Id,
+            Status = SubscriptionStatus.Trialing,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            GracePeriodEnd = DateTime.UtcNow.AddDays(21),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(14)
         });
 
@@ -196,14 +196,14 @@ public class SchemaConstraintTests(DatabaseFixture fixture)
 
         ctx.Appointments.Add(new Appointment
         {
-            StudioId        = tenantId,
-            ArtistId        = Guid.NewGuid(),
-            ClientId        = client.Id,
-            Date            = DateTime.UtcNow.AddDays(3),
-            EndDate         = DateTime.UtcNow.AddDays(3).AddHours(2),
+            StudioId = tenantId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(2),
             DurationMinutes = 120,
-            Status          = AppointmentStatus.Pending,
-            DepositStatus   = DepositStatus.Pending
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending
         });
 
         Func<Task> act = () => ctx.SaveChangesAsync();

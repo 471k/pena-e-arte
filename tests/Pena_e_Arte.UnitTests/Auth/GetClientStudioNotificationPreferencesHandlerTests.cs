@@ -12,9 +12,9 @@ namespace Pena_e_Arte.UnitTests.Auth;
 
 public class GetClientStudioNotificationPreferencesHandlerTests
 {
-    private readonly FakeDbContext    _db          = FakeDbContext.Create();
-    private readonly IIdentityService _identity    = Substitute.For<IIdentityService>();
-    private readonly FakeCurrentUser  _currentUser = FakeCurrentUser.Client();
+    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Client();
 
     private GetClientStudioNotificationPreferencesHandler CreateSut() => new(_db, _identity, _currentUser);
 
@@ -73,10 +73,10 @@ public class GetClientStudioNotificationPreferencesHandlerTests
         UserHasTenantIds(studioId);
         _db.ClientNotificationPreferences.Add(new ClientNotificationPreference
         {
-            UserId    = _currentUser.UserId,
-            StudioId  = studioId,
-            Type      = NotificationType.AppointmentCreated,
-            Channel   = NotificationChannel.Sms,
+            UserId = _currentUser.UserId,
+            StudioId = studioId,
+            Type = NotificationType.AppointmentCreated,
+            Channel = NotificationChannel.Sms,
             IsEnabled = false,
         });
         await _db.SaveChangesAsync();
@@ -92,15 +92,15 @@ public class GetClientStudioNotificationPreferencesHandlerTests
     [Fact]
     public async Task Handle_PreferenceSavedForDifferentStudio_DoesNotAffectResult()
     {
-        Guid studioId      = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
         Guid otherStudioId = Guid.NewGuid();
         UserHasTenantIds(studioId, otherStudioId);
         _db.ClientNotificationPreferences.Add(new ClientNotificationPreference
         {
-            UserId    = _currentUser.UserId,
-            StudioId  = otherStudioId,
-            Type      = NotificationType.AppointmentCreated,
-            Channel   = NotificationChannel.Email,
+            UserId = _currentUser.UserId,
+            StudioId = otherStudioId,
+            Type = NotificationType.AppointmentCreated,
+            Channel = NotificationChannel.Email,
             IsEnabled = false,
         });
         await _db.SaveChangesAsync();
