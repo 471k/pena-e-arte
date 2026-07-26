@@ -7,7 +7,11 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: pena_e_arte_dev
     ports:
-      - "3306:3306"
+      # Host-side port only — override if something else on the host (e.g. a
+      # native MySQL install/service) already holds 3306. Container-to-container
+      # traffic (api -> mysql:3306) is on the internal Docker network and is
+      # unaffected by this either way.
+      - "${MYSQL_HOST_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
