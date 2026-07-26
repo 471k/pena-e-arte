@@ -96,8 +96,10 @@ describe("FeedbackInboxPage", () => {
   it("shows the correct status badge per entry", async () => {
     renderPage();
 
-    expect(await screen.findByText("Open")).toBeInTheDocument();
-    expect(screen.getByText("Resolved")).toBeInTheDocument();
+    // Scoped to <span> — the status *filter chip* bar also renders a "Resolved"
+    // button, so an unscoped query is ambiguous once both are on screen.
+    expect(await screen.findByText("Open", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Resolved", { selector: "span" })).toBeInTheDocument();
   });
 
   it("filtering by type chip updates the RTK Query params", async () => {

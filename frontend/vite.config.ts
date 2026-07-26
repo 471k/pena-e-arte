@@ -33,5 +33,10 @@ export default defineConfig({
     // sequential findBy*/waitFor calls, each individually within its own budget,
     // can still add up past the outer per-test timeout under CPU contention.
     testTimeout: 10000,
+    // GitHub Actions runners are weaker (2-core) than typical local dev hardware,
+    // so the contention above is more consistently hit in CI — mirrors
+    // playwright.config.ts's existing `retries: process.env.CI ? 2 : 0` for the
+    // identical reason.
+    retry: process.env.CI ? 2 : 0,
   },
 });
