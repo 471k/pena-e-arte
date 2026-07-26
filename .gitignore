@@ -40,6 +40,7 @@ nuget.config
 .env
 .env.*
 *.env
+!.env.example
 secrets.json
 **/secrets.json
 Seeded Test Accounts.txt
