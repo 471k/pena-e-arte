@@ -180,5 +180,3 @@ static async Task SeedRolesAsync(WebApplication app)
 }
 
 public partial class Program { }
-// CI-VERIFICATION-DELIBERATE-BREAKAGE-DO-NOT-MERGE
-public static class __CiGuardrailVerification { public static void Trigger() => Console.WriteLine("deliberate guardrail test"); }
