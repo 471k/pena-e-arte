@@ -184,6 +184,10 @@ test.describe("Critical path — register, login, create appointment", () => {
     await page.getByLabel("Studio name").fill("Tinta & Alma");
     // Slug auto-fills from name; leave as-is
 
+    // NIPT (business tax ID) is required as of the 2026-07-22 NIPT feature —
+    // format is a letter, 8 digits, then a letter (see UpdateStudioNiptValidator).
+    await page.getByLabel("Business tax ID (NIPT)").fill("L01234567A");
+
     // LocationPicker renders a Leaflet map. Click the map centre to place a pin.
     // The reverse-geocode call is mocked to return "Porto, Portugal".
     const mapContainer = page.locator(".leaflet-container");
@@ -256,8 +260,12 @@ test.describe("Critical path — register, login, create appointment", () => {
       `T${pad(future.getHours())}:${pad(future.getMinutes())}`;
     await page.getByLabel("Date & Time").fill(dateStr);
 
-    // Duration: number input, Label "Duration (min)" (htmlFor="durationMinutes")
-    await page.getByLabel("Duration (min)").fill("120");
+    // Duration: Radix Select (no longer a free-text number input), id="durationMinutes",
+    // Label "Appointment Duration". 120 minutes is the "2 hours" option.
+    await page.getByLabel("Appointment Duration").click();
+    await page.getByRole("option", { name: "2 hours" })
+      .waitFor({ state: "visible", timeout: 5_000 });
+    await page.getByRole("option", { name: "2 hours" }).click();
 
     // Submit — button text is "Request Appointment"
     await page.getByRole("button", { name: "Request Appointment" }).click();
