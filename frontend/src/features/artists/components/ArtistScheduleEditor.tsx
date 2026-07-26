@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
@@ -65,10 +65,19 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
   const [deleteTimeOff, { isLoading: deletingTimeOff }] = useDeleteArtistTimeOffMutation();
 
   const [rows, setRows] = useState<DayRow[]>([]);
+  // Seeded with a sentinel distinct from `data`, not with `data` itself —
+  // otherwise data already present on the very first render (e.g. an RTK Query
+  // cache hit) would look "already synced" and never populate `rows` below.
+  const [syncedData, setSyncedData] = useState<typeof data | undefined>(undefined);
 
-  useEffect(() => {
+  // Sync rows from freshly-fetched data. Adjusting state during render (rather
+  // than in an effect) avoids an extra post-effect render pass — React discards
+  // this in-progress render and immediately restarts with the new state — see
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
+  if (data !== syncedData) {
+    setSyncedData(data);
     if (data) setRows(buildInitialRows(data.schedule));
-  }, [data]);
+  }
 
   const [timeOffFormOpen, setTimeOffFormOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
