@@ -36,6 +36,16 @@ jobs:
       - name: Build (Release)
         run: dotnet build "Pena e Arte.slnx" --configuration Release --no-restore
 
+      - name: Architecture fitness tests (fail fast, visible)
+        run: >
+          dotnet test tests/Pena_e_Arte.UnitTests/Pena_e_Arte.UnitTests.csproj
+          --configuration Release --no-build
+          --filter "FullyQualifiedName~ArchitectureTests"
+        # ADR-0001 Consequence 3 (PENA-106): fails the build if a platform-balance-ledger /
+        # payout-queue-shaped type is introduced (Law 55/2020 Art. 4(g) no-commingling posture).
+        # These also run inside the full Unit tests step below; broken out here as a distinct,
+        # fast, visible check so a reviewer sees the fitness gate without scanning the full run.
+
       - name: Start MySQL 8.4 (matches docker-compose.yml exactly)
         run: |
           docker run -d --name ci-mysql \
@@ -304,3 +314,59 @@ jobs:
         # the version from the original prompt's draft false-positived on
         # PlatformEndpoints.cs, SavedImagesEndpoints.cs and FeedbackEndpoints.cs, all of
         # which guard at the group level by real, existing codebase convention).
+
+  help-sync:
+    name: Help stays in sync (CLAUDE.md rule 7)
+    runs-on: ubuntu-latest
+    # Separate job from `guardrails` on purpose: this is a heuristic did-you-update-the-docs
+    # gate (biased to false positives, reviewer-overridable), not a hard security guardrail.
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # need the merge base to diff the PR's changed files
+
+      - name: Check user-facing changes updated Help
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -e
+
+          if [ -n "$BASE_SHA" ]; then
+            RANGE="$BASE_SHA...HEAD"
+          else
+            RANGE="HEAD~1...HEAD"   # push event: compare against the previous commit
+          fi
+
+          CHANGED=$(git diff --name-only "$RANGE")
+          echo "Changed files in $RANGE:"
+          echo "$CHANGED"
+
+          # Paths whose changes are user-facing enough that Help should usually change with them.
+          # Bias toward false positives (per PENA-107) — a reviewer overrides with [skip-help-sync].
+          GATED='^(frontend/src/features/(payments|forms|billing|studios|clients)/|Pena_e_Arte\.Application/(Payments|ConsentForms|Billing|Clients)/|Pena_e_Arte\.Domain/Entities/(ConsentForm|ConsentTemplate|ClientProfile|Payment)\.cs)'
+          # The three Help surfaces that must stay aligned (rule 7).
+          HELP='^(frontend/src/features/help/helpContent\.ts|frontend/public/user-manual/index\.html|frontend/src/features/help/tours/)'
+
+          if ! echo "$CHANGED" | grep -qE "$GATED"; then
+            echo "No gated user-facing paths changed — nothing to check."
+            exit 0
+          fi
+
+          if echo "$CHANGED" | grep -qE "$HELP"; then
+            echo "Gated paths changed AND a Help surface was updated. OK."
+            exit 0
+          fi
+
+          if git log -1 --format='%B' HEAD | grep -q '\[skip-help-sync\]'; then
+            echo "Gated paths changed without a Help update, but [skip-help-sync] override is"
+            echo "present in the latest commit message. Allowing (reviewer's call)."
+            exit 0
+          fi
+
+          echo "::error::A user-facing path changed but no Help surface (helpContent.ts /"
+          echo "::error::user-manual/index.html / tours) was updated (CLAUDE.md rule 7)."
+          echo "Fix one of:"
+          echo "  1. update the relevant Help surface(s) in the same change, or"
+          echo "  2. if the change genuinely has no user-visible surface, add [skip-help-sync]"
+          echo "     to the latest commit message with a one-line justification."
+          exit 1
