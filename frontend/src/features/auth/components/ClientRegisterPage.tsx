@@ -243,6 +243,18 @@ export function ClientRegisterPage() {
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Create account
                 </Button>
+
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  By creating an account you agree to our{" "}
+                  <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
+                    Privacy Policy
+                  </Link>
+                  .
+                </p>
               </form>
 
               <AuthShellFooter>
