@@ -41,7 +41,7 @@ const server = setupServer(
       amount:        100,
       status:        "Pending",
       method:        "Card",
-      stripePaymentIntentId: null,
+      providerReferenceId: null,
       clientSecret:  null,
       cashNote:      null,
       paidAt:        null,
@@ -202,7 +202,7 @@ describe("SessionSplitsEditor", () => {
         return HttpResponse.json({
           id: "pay-001", appointmentId: "appt-001", amount: 100,
           status: "Pending", method: "Card",
-          stripePaymentIntentId: null, clientSecret: null,
+          providerReferenceId: null, clientSecret: null,
           cashNote: null, paidAt: null, clientName: "", appointmentDate: null,
         });
       }),

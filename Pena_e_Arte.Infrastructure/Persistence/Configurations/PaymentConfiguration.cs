@@ -19,7 +19,10 @@ public class PaymentConfiguration : TenantEntityConfiguration<Payment>
                .HasConversion<string>().HasMaxLength(32).IsRequired();
 
         builder.Property(p => p.Method).HasConversion<string>().HasMaxLength(10).IsRequired();
-        builder.Property(p => p.StripePaymentIntentId).HasMaxLength(255);
+        builder.Property(p => p.ProviderReferenceId).HasMaxLength(255);
+        builder.Property(p => p.Provider).HasMaxLength(32).IsRequired();
+        builder.Property(p => p.Currency).HasMaxLength(3).IsRequired();
+        builder.Property(p => p.PlatformFeeAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(p => p.ClientSecret).HasMaxLength(500);
         builder.Property(p => p.CashNote).HasMaxLength(500);
         builder.Property(p => p.CashConfirmedByUserId).IsRequired(false);

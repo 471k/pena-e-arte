@@ -893,7 +893,7 @@ public static class DataSeeder
             ClientId = S1Client1Id,
             Amount = 300m,
             Status = PaymentStatus.Paid,
-            StripePaymentIntentId = "pi_seed_s1_6",
+            ProviderReferenceId = "pi_seed_s1_6",
             PaidAt = now.AddDays(-30),
             UpdatedAt = now.AddDays(-30)
         };
@@ -907,7 +907,7 @@ public static class DataSeeder
             ClientId = S1Client2Id,
             Amount = 250m,
             Status = PaymentStatus.Paid,
-            StripePaymentIntentId = "pi_seed_s1_7",
+            ProviderReferenceId = "pi_seed_s1_7",
             PaidAt = now.AddDays(-60),
             UpdatedAt = now.AddDays(-60)
         };
@@ -921,7 +921,7 @@ public static class DataSeeder
             ClientId = S1Client3Id,
             Amount = 450m,
             Status = PaymentStatus.Paid,
-            StripePaymentIntentId = "pi_seed_s1_8",
+            ProviderReferenceId = "pi_seed_s1_8",
             PaidAt = now.AddDays(-20),
             UpdatedAt = now.AddDays(-20)
         };
@@ -935,7 +935,7 @@ public static class DataSeeder
             ClientId = S1Client5Id,
             Amount = 180m,
             Status = PaymentStatus.Paid,
-            StripePaymentIntentId = "pi_seed_s1_9",
+            ProviderReferenceId = "pi_seed_s1_9",
             PaidAt = now.AddDays(-45),
             UpdatedAt = now.AddDays(-45)
         };
@@ -949,7 +949,7 @@ public static class DataSeeder
             ClientId = S1Client4Id,
             Amount = 50m,
             Status = PaymentStatus.Refunded,
-            StripePaymentIntentId = "pi_seed_s1_10",
+            ProviderReferenceId = "pi_seed_s1_10",
             PaidAt = now.AddDays(-20),
             UpdatedAt = now.AddDays(-15)
         };
@@ -963,7 +963,7 @@ public static class DataSeeder
             ClientId = S1Client5Id,
             Amount = 50m,
             Status = PaymentStatus.Refunded,
-            StripePaymentIntentId = "pi_seed_s1_11",
+            ProviderReferenceId = "pi_seed_s1_11",
             PaidAt = now.AddDays(-15),
             UpdatedAt = now.AddDays(-10)
         };
@@ -1675,7 +1675,7 @@ public static class DataSeeder
                 ClientId = S2Client1Id,
                 Amount = 100m,
                 Status = PaymentStatus.Paid,
-                StripePaymentIntentId = "pi_seed_s2_3",
+                ProviderReferenceId = "pi_seed_s2_3",
                 PaidAt = now.AddDays(-14),
                 UpdatedAt = now.AddDays(-14)
             },
@@ -1687,7 +1687,7 @@ public static class DataSeeder
                 ClientId = S2Client2Id,
                 Amount = 30m,
                 Status = PaymentStatus.Refunded,
-                StripePaymentIntentId = "pi_seed_s2_4",
+                ProviderReferenceId = "pi_seed_s2_4",
                 PaidAt = now.AddDays(-10),
                 UpdatedAt = now.AddDays(-7)
             }

@@ -69,9 +69,9 @@ public static class InfrastructureServiceExtensions
 
         services.AddSignalR();
 
+        // Stripe.net stays for Flow B (billing/subscriptions) only. The Flow-A payment-intent /
+        // refund services were removed with the deleted Stripe aggregator payment service.
         Stripe.StripeConfiguration.ApiKey = configuration["Stripe:SecretKey"]!;
-        services.AddSingleton<Stripe.PaymentIntentService>();
-        services.AddSingleton<Stripe.RefundService>();
         services.AddSingleton<Stripe.CustomerService>();
         services.AddSingleton<Stripe.SubscriptionService>();
         services.AddSingleton<Stripe.SubscriptionScheduleService>();
@@ -124,7 +124,9 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
         services.AddScoped<IJobScheduler, JobScheduler>();
         services.AddScoped<ISlotLocker, SlotLocker>();
-        services.AddScoped<IStripePaymentService, StripePaymentService>();
+        // Flow A card provider: NullPaymentProvider (fails closed) until POK is wired in — the
+        // Stripe aggregator IStripePaymentService/StripePaymentService were deleted (Amendment A).
+        services.AddScoped<IPaymentProvider, NullPaymentProvider>();
         services.AddScoped<IStripeBillingService, StripeBillingService>();
         services.AddScoped<IStripeDiscountService, StripeDiscountService>();
         services.AddScoped<IReferralRewardService, ReferralRewardService>();

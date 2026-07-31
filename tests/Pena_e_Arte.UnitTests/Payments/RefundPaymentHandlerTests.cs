@@ -14,14 +14,14 @@ namespace Pena_e_Arte.UnitTests.Payments;
 public class RefundPaymentHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
-    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
     private readonly ISender _sender = Substitute.For<ISender>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public RefundPaymentHandlerTests()
     {
-        _stripe.RefundPaymentIntentAsync(
+        _stripe.RefundAsync(
                 Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Returns("re_test_123");
     }
@@ -59,7 +59,7 @@ public class RefundPaymentHandlerTests
 
         await CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
 
-        await _stripe.Received(1).RefundPaymentIntentAsync(
+        await _stripe.Received(1).RefundAsync(
             "pi_test", 20000L, Arg.Any<CancellationToken>());
     }
 
@@ -71,7 +71,7 @@ public class RefundPaymentHandlerTests
 
         await CreateSut().Handle(new RefundPaymentCommand(paymentId, 50m), default);
 
-        await _stripe.Received(1).RefundPaymentIntentAsync(
+        await _stripe.Received(1).RefundAsync(
             "pi_test", 5000L, Arg.Any<CancellationToken>());
     }
 
@@ -163,7 +163,7 @@ public class RefundPaymentHandlerTests
             ClientId = client.Id,
             Amount = amount,
             Status = status,
-            StripePaymentIntentId = stripeIntentId
+            ProviderReferenceId = stripeIntentId
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

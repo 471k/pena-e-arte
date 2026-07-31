@@ -208,7 +208,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Enter your card details in the payment box.",
       "Click \"Authorise deposit\".",
     ],
-    tips: ["Your card isn't charged immediately — it's authorised, and the studio captures the payment closer to your appointment. Payment is by card through Stripe, or by cash arranged with the studio."],
+    tips: ["Your card isn't charged immediately — it's authorised, and the studio captures the payment closer to your appointment. Payment is by card, or by cash arranged with the studio."],
   },
   {
     id: "client-verify-email",
@@ -608,7 +608,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Create a payment request manually",
     route: "/payments/new",
     keywords: ["new payment", "record payment", "checkout link"],
-    summary: "Record a new deposit payment for an appointment, either by card (via Stripe) or cash.",
+    summary: "Record a new deposit payment for an appointment, either by card or cash.",
     steps: [
       "Go to Payments and click \"New payment\".",
       "Search and select an appointment that has a pending deposit.",
@@ -1008,7 +1008,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-cash-vs-card",
     roles: [Owner, Client],
     question: "What's the difference between paying by card and paying by cash?",
-    answer: "Card payments go through Stripe: the client's card is authorised at booking and the studio captures the payment later. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method.",
+    answer: "Card payments are authorised at booking and the studio captures the payment later. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method.",
     relatedArticleIds: ["client-deposit-pay", "owner-payment-create"],
   },
   {

@@ -8,7 +8,7 @@ internal static class PaymentExtensions
     internal static PaymentResponse ToResponse(this Payment p, IEnumerable<SessionSplit>? splits = null) => new(
         p.Id, p.AppointmentId, p.Amount,
         p.Status.ToString(), p.Method.ToString(),
-        p.StripePaymentIntentId, p.ClientSecret, p.CashNote, p.PaidAt,
+        p.ProviderReferenceId, p.ClientSecret, p.CashNote, p.PaidAt,
         $"{p.Client?.FirstName} {p.Client?.LastName}".Trim(),
         p.Appointment?.Date, // null when the navigation wasn't loaded
         (splits ?? p.SessionSplits).Select(s =>

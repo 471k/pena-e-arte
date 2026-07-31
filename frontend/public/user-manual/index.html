@@ -1207,7 +1207,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using Stripe's embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment.</p>
+<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1219,14 +1219,14 @@ ol.steps li { margin: 6px 0; }
 <rect x="280" y="140" width="200" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="300" y="172" font-size="8" fill-opacity="0.5">card number / expiry / CVC</text>
 <rect x="280" y="212" width="200" height="26" rx="4" fill="#7c3aed"/><text x="310" y="229" font-size="10" fill="#fff">Authorise deposit</text>
-<text x="290" y="256" font-size="7" fill-opacity="0.5">Secured by Stripe</text>
+<text x="290" y="256" font-size="7" fill-opacity="0.5">Secured payment</text>
 </svg>
 </figure>
-<figcaption>Deposit checkout — Stripe Payment Element embedded directly in the page</figcaption>
+<figcaption>Deposit checkout — card payment form embedded directly in the page</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Review the deposit amount shown above the card form.</li>
-<li>Enter your card details into the Stripe payment form.</li>
+<li>Enter your card details into the payment form.</li>
 <li>Click <span class="step-title">Authorise deposit</span>.</li>
 <li>A confirmation screen appears once authorised — you can return to booking from there.</li>
 </ol>
@@ -2205,7 +2205,7 @@ ol.steps li { margin: 6px 0; }
 <li>Once paid or refunded, <span class="step-title">Download receipt</span> generates a PDF invoice.</li>
 <li>Use the <span class="step-title">Session Splits</span> editor below to divide the payment across artists/roles for payout tracking.</li>
 </ol>
-<div class="callout callout-warn"><strong>Warning:</strong> refunds are irreversible once processed by Stripe.</div>
+<div class="callout callout-warn"><strong>Warning:</strong> refunds are irreversible once processed by the payment provider.</div>
 <div class="crosslinks">See also: <a href="#owner-payments">Payment list</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
 </section>
 

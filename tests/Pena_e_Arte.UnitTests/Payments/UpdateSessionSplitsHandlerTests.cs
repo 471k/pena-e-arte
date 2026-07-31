@@ -118,6 +118,62 @@ public class UpdateSessionSplitsHandlerTests
             .WithMessage("*250.00*300.00*");
     }
 
+    // ── PlatformFeeAmount is OUTSIDE the split invariant (PENA-106) ────────────────
+    // Regression test for Amendment A Finding 4: session splits must sum to Payment.Amount,
+    // NEVER to Amount + PlatformFeeAmount. The platform fee is disbursement accounting, not a
+    // split row.
+
+    [Fact]
+    public async Task Handle_SplitsSummingToAmount_SucceedEvenWithNonZeroPlatformFee()
+    {
+        Guid paymentId = await SeedPaymentWithFee(amount: 100m, platformFee: 15m);
+
+        // Splits sum to Amount (100), NOT Amount + fee (115).
+        await CreateSut().Handle(
+            new UpdateSessionSplitsCommand(paymentId, new UpdateSessionSplitsRequest(
+            [
+                new SessionSplitItem("Deposit", 40m),
+                new SessionSplitItem("Final",   60m),
+            ])), default);
+
+        _db.SessionSplits.Count(ss => ss.PaymentId == paymentId && ss.DeletedAt == null)
+            .Should().Be(2);
+        // The fee is untouched by splitting.
+        _db.Payments.Find(paymentId)!.PlatformFeeAmount.Should().Be(15m);
+    }
+
+    [Fact]
+    public async Task Handle_SplitsSummingToAmountPlusPlatformFee_Throws()
+    {
+        Guid paymentId = await SeedPaymentWithFee(amount: 100m, platformFee: 15m);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new UpdateSessionSplitsCommand(paymentId, new UpdateSessionSplitsRequest(
+            [
+                new SessionSplitItem("Deposit", 55m),
+                new SessionSplitItem("Final",   60m), // sums to 115 = Amount + fee
+            ])), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>(
+            because: "the invariant is sum == Amount; the platform fee must not be folded in");
+    }
+
+    private async Task<Guid> SeedPaymentWithFee(decimal amount, decimal platformFee)
+    {
+        Payment payment = new()
+        {
+            StudioId = _studioId,
+            AppointmentId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Amount = amount,
+            PlatformFeeAmount = platformFee,
+            Status = PaymentStatus.Pending,
+        };
+        _db.Payments.Add(payment);
+        await _db.SaveChangesAsync();
+        return payment.Id;
+    }
+
     private async Task<Guid> SeedPayment(decimal amount)
     {
         Payment payment = new()

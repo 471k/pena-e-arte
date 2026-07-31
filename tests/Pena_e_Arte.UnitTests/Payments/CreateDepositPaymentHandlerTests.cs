@@ -15,7 +15,7 @@ public class CreateDepositPaymentHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
-    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _clientUserId = Guid.NewGuid();
 
@@ -24,7 +24,7 @@ public class CreateDepositPaymentHandlerTests
         _tenant.StudioId.Returns(_studioId);
         _currentUser.UserId.Returns(_clientUserId);
         _currentUser.Role.Returns("client");
-        _stripe.CreatePaymentIntentAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _stripe.CreatePaymentHoldAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                .Returns(("pi_new", "secret_new"));
     }
 
@@ -44,7 +44,7 @@ public class CreateDepositPaymentHandlerTests
         stored.Method.Should().Be(ClientPaymentMethod.Card);
         stored.Status.Should().Be(PaymentStatus.Pending);
         stored.Amount.Should().Be(80m);
-        await _stripe.Received(1).CreatePaymentIntentAsync(8000, "EUR", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _stripe.Received(1).CreatePaymentHoldAsync(8000, "EUR", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -54,14 +54,14 @@ public class CreateDepositPaymentHandlerTests
         Guid appointmentId = await SeedAppointment(clientId);
         await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
             intentId: "pi_old", clientSecret: "secret_old");
-        _stripe.GetPaymentIntentStatusAsync("pi_old", Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync("pi_old", Arg.Any<CancellationToken>())
                .Returns("requires_payment_method");
 
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
 
         result.ClientSecret.Should().Be("secret_old");
-        await _stripe.DidNotReceive().CreatePaymentIntentAsync(
+        await _stripe.DidNotReceive().CreatePaymentHoldAsync(
             Arg.Any<long>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -72,7 +72,7 @@ public class CreateDepositPaymentHandlerTests
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
             intentId: "pi_dead", clientSecret: "secret_dead");
-        _stripe.GetPaymentIntentStatusAsync("pi_dead", Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync("pi_dead", Arg.Any<CancellationToken>())
                .Returns("canceled");
 
         PaymentIntentResponse result = await CreateSut()
@@ -80,7 +80,7 @@ public class CreateDepositPaymentHandlerTests
 
         result.PaymentId.Should().Be(paymentId); // same row, fresh intent
         result.ClientSecret.Should().Be("secret_new");
-        _db.Payments.Single(p => p.Id == paymentId).StripePaymentIntentId.Should().Be("pi_new");
+        _db.Payments.Single(p => p.Id == paymentId).ProviderReferenceId.Should().Be("pi_new");
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class CreateDepositPaymentHandlerTests
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
             intentId: "pi_held", clientSecret: "secret_held");
-        _stripe.GetPaymentIntentStatusAsync("pi_held", Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync("pi_held", Arg.Any<CancellationToken>())
                .Returns("requires_capture");
 
         PaymentIntentResponse result = await CreateSut()
@@ -107,7 +107,7 @@ public class CreateDepositPaymentHandlerTests
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
             intentId: "pi_done", clientSecret: "secret_done");
-        _stripe.GetPaymentIntentStatusAsync("pi_done", Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync("pi_done", Arg.Any<CancellationToken>())
                .Returns("succeeded");
 
         PaymentIntentResponse result = await CreateSut()
@@ -134,7 +134,7 @@ public class CreateDepositPaymentHandlerTests
         stored.Method.Should().Be(ClientPaymentMethod.Card);
         stored.Status.Should().Be(PaymentStatus.Pending);
         stored.CashNote.Should().BeNull();
-        stored.StripePaymentIntentId.Should().Be("pi_new");
+        stored.ProviderReferenceId.Should().Be("pi_new");
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public class CreateDepositPaymentHandlerTests
         result.PaymentId.Should().Be(paymentId); // same row, not a duplicate
         Payment stored = _db.Payments.Single(p => p.Id == paymentId);
         stored.Status.Should().Be(PaymentStatus.Pending);
-        stored.StripePaymentIntentId.Should().Be("pi_new");
+        stored.ProviderReferenceId.Should().Be("pi_new");
     }
 
     [Fact]
@@ -252,7 +252,7 @@ public class CreateDepositPaymentHandlerTests
             Amount = 50m,
             Method = method,
             Status = status,
-            StripePaymentIntentId = intentId,
+            ProviderReferenceId = intentId,
             ClientSecret = clientSecret,
             CashNote = cashNote,
         };

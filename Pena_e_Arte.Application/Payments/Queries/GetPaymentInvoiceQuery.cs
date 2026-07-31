@@ -67,7 +67,7 @@ public class GetPaymentInvoiceHandler(
             TotalAmount: payment.Amount,
             Method: payment.Method.ToString(),
             Status: payment.Status.ToString(),
-            StripePaymentIntentId: payment.StripePaymentIntentId,
+            ProviderReferenceId: payment.ProviderReferenceId,
             CashNote: payment.CashNote,
             IssuedAt: payment.PaidAt ?? DateTime.UtcNow,
             LineItems: lineItems);

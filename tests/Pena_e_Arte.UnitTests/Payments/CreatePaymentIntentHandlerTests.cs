@@ -15,7 +15,7 @@ public class CreatePaymentIntentHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
-    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _artistId = Guid.NewGuid();
@@ -25,7 +25,7 @@ public class CreatePaymentIntentHandlerTests
     public CreatePaymentIntentHandlerTests()
     {
         _tenant.StudioId.Returns(_studioId);
-        _stripe.CreatePaymentIntentAsync(
+        _stripe.CreatePaymentHoldAsync(
                 Arg.Any<long>(), Arg.Any<string>(),
                 Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(("pi_test_123", "pi_test_123_secret"));
@@ -66,7 +66,7 @@ public class CreatePaymentIntentHandlerTests
 
         await CreateSut().Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
 
-        _db.Payments.Single().StripePaymentIntentId.Should().Be("pi_test_123");
+        _db.Payments.Single().ProviderReferenceId.Should().Be("pi_test_123");
     }
 
     [Fact]

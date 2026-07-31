@@ -7,6 +7,6 @@ public class MarkPaymentAuthorizedValidator : AbstractValidator<MarkPaymentAutho
 {
     public MarkPaymentAuthorizedValidator()
     {
-        RuleFor(x => x.StripePaymentIntentId).NotEmpty();
+        RuleFor(x => x.ProviderReferenceId).NotEmpty();
     }
 }

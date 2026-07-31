@@ -46,7 +46,7 @@ const CASH_PAYMENT: PaymentResponse = {
   amount:                AMOUNT,
   status:                "CashPending",
   method:                "Cash",
-  stripePaymentIntentId: null,
+  providerReferenceId: null,
   clientSecret:          null,
   cashNote:              null,
   paidAt:                null,

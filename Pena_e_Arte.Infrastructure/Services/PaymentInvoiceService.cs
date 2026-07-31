@@ -145,8 +145,8 @@ public class PaymentInvoiceService : IPaymentInvoiceService
 
                         Row("Method", d.Method);
                         Row("Status", d.Status);
-                        if (d.StripePaymentIntentId is not null)
-                            Row("Stripe PI", d.StripePaymentIntentId);
+                        if (d.ProviderReferenceId is not null)
+                            Row("Stripe PI", d.ProviderReferenceId);
                         if (d.CashNote is not null)
                             Row("Note", d.CashNote);
                     });

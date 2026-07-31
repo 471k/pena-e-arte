@@ -12,7 +12,7 @@ public record PaymentInvoiceData(
     decimal TotalAmount,
     string Method,
     string Status,
-    string? StripePaymentIntentId,
+    string? ProviderReferenceId,
     string? CashNote,
     DateTime IssuedAt,
     IReadOnlyList<InvoiceLineItem> LineItems);

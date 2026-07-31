@@ -15,7 +15,7 @@ public class CompleteAppointmentHandler(
     ICurrentTenant tenant,
     IRealtimeNotifier realtime,
     ISender sender,
-    IStripePaymentService stripe)
+    IPaymentProvider paymentProvider)
     : IRequestHandler<CompleteAppointmentCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(CompleteAppointmentCommand command, CancellationToken ct)
@@ -39,9 +39,9 @@ public class CompleteAppointmentHandler(
                 p.Status == PaymentStatus.Captured &&
                 p.Method == ClientPaymentMethod.Card, ct);
 
-        if (payment is not null && !string.IsNullOrEmpty(payment.StripePaymentIntentId))
+        if (payment is not null && !string.IsNullOrEmpty(payment.ProviderReferenceId))
         {
-            await stripe.CapturePaymentAsync(payment.StripePaymentIntentId, ct);
+            await paymentProvider.CaptureAsync(payment.ProviderReferenceId, ct);
             payment.Status = PaymentStatus.Paid;
             payment.UpdatedAt = DateTime.UtcNow;
         }

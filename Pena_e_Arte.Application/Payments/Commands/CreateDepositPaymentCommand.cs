@@ -21,7 +21,7 @@ public class CreateDepositPaymentHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ICurrentUser currentUser,
-    IStripePaymentService stripePayments)
+    IPaymentProvider stripePayments)
     : IRequestHandler<CreateDepositPaymentCommand, PaymentIntentResponse>
 {
     public async Task<PaymentIntentResponse> Handle(CreateDepositPaymentCommand command, CancellationToken ct)
@@ -53,11 +53,11 @@ public class CreateDepositPaymentHandler(
         if (existing is
             {
                 Method: ClientPaymentMethod.Card, Status: PaymentStatus.Pending,
-                ClientSecret: not null, StripePaymentIntentId: not null
+                ClientSecret: not null, ProviderReferenceId: not null
             })
         {
-            string? piStatus = await stripePayments.GetPaymentIntentStatusAsync(
-                existing.StripePaymentIntentId, ct);
+            string? piStatus = await stripePayments.GetStatusAsync(
+                existing.ProviderReferenceId, ct);
 
             switch (piStatus)
             {
@@ -95,7 +95,7 @@ public class CreateDepositPaymentHandler(
         Guid paymentId = existing?.Id ?? Guid.NewGuid();
         long amountInCents = (long)(appointment.DepositAmount * 100);
 
-        (string intentId, string clientSecret) = await stripePayments.CreatePaymentIntentAsync(
+        (string intentId, string clientSecret) = await stripePayments.CreatePaymentHoldAsync(
             amountInCents, "EUR", paymentId, ct);
 
         if (existing is null)
@@ -109,7 +109,7 @@ public class CreateDepositPaymentHandler(
                 Amount = appointment.DepositAmount,
                 Status = PaymentStatus.Pending,
                 Method = ClientPaymentMethod.Card,
-                StripePaymentIntentId = intentId,
+                ProviderReferenceId = intentId,
                 ClientSecret = clientSecret,
             });
         }
@@ -118,7 +118,7 @@ public class CreateDepositPaymentHandler(
             // Convert in place: cash declaration switched to card, or a failed attempt retried
             existing.Method = ClientPaymentMethod.Card;
             existing.Status = PaymentStatus.Pending;
-            existing.StripePaymentIntentId = intentId;
+            existing.ProviderReferenceId = intentId;
             existing.ClientSecret = clientSecret;
             existing.CashNote = null;
             existing.UpdatedAt = DateTime.UtcNow;
