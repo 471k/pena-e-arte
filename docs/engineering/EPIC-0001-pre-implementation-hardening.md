@@ -1,5 +1,105 @@
 # EPIC-0001 — Pre-implementation hardening (steps 0–6)
 
+## Execution status — 31 July 2026
+
+Autonomous overnight run on branch `epic-0001/pre-implementation-hardening`
+(branched off `f3bf5d3`; note this worktree was one docs-only commit behind
+`main`'s `7e4196c` — the missing commit is `docs: log K3s production-deployment
+spec`, immaterial to every code phase here).
+
+**Landed (verified: `pnpm lint` 0 errors, `pnpm build` = `tsc -b` + vite clean,
+affected `pnpm test` green):**
+
+- **Phase 1 — PENA-100/101** (commit `6f1491f`): legal-entity disclosure
+  (`legalEntity.ts` single source of truth, `SiteFooter.tsx`), index.html
+  title/description/OG meta, `appsettings.json` LegalEntityName/Nipt, cookie
+  banner `/privacy` link, and the dead `/privacy` `/terms` link fix via real
+  `/privacy` `/terms` `/refund-policy` `/contact` routes + a public Home surface.
+- **Phase 2 — PENA-102** (commit `1b26e7e`): the four policy pages + Home fleshed
+  out — Privacy (structural + `[LAWYER REVIEW REQUIRED]` banner, health-data +
+  sub-processors + Law 124/2024 rights), Terms (structural + banner), Refund
+  (REAL copy from `DepositRule`/`DepositCalculator`/`ClientCancellationPolicy`/
+  `MarkNoShowCommand` — 24h window, forfeit rules), Contact (inbox placeholder),
+  Home; plus signup Terms/Privacy consent lines on both register pages.
+
+**NOT started — remaining at this phase boundary:**
+
+- **Phase 3 — PENA-103** consent-template versioning + immutable snapshot +
+  audited health-data consent.
+- **Phase 4 — PENA-104** retention/hard-purge job + `IR2Service.DeleteAsync` +
+  erasure-request command.
+- **Phase 5 — PENA-105** `ISecretsProvider` + local Vault dev service +
+  per-tenant credential-pointer schema + pre-commit gitleaks hook +
+  Twilio/Instagram docker-compose fix + ADR-0002 + rotation runbook.
+- **Phase 6 — PENA-106** delete `IStripePaymentService`, add `IPaymentProvider` +
+  `Payment.PlatformFeeAmount`/`Currency`/`HoldExpiresAt`/`Provider` + NetArchTest
+  architecture fitness test.
+- **Phase 7 — PENA-107** architecture-test CI visibility + Help-sync CI check +
+  `CONTRIBUTING.md`.
+
+**Why the stop:** the run was executed by a single autonomous session with a
+bounded budget. Phases 3–6 each require a full `dotnet build` of the solution,
+`dotnet test` including the integration suite (which needs a MySQL container), EF
+Core migrations run against a live DB, and — for Phase 5/6 — a Vault container and
+a ~22-reference-site payments refactor with migration data-preservation
+verification. None of those could be completed AND verified to this epic's
+Definition of Done within the session, and the master prompt is explicit: stop at
+a phase boundary, never mid-phase, rather than commit unverified payments/secrets/
+consent code onto a branch a human will review for exactly those areas.
+Last good commit: `1b26e7e` (Phase 2).
+
+The docker-compose Twilio/Instagram env-wiring gap (Phase 5a) is real and still
+open — it is the fastest, highest-value item remaining and a good first pickup for
+the next session; it is deliberately NOT done here because it belongs to Phase 5
+and partial phases are forbidden.
+
+---
+
+## Open questions for the founder
+
+These require a decision from Phi (and, for the legal items, the Albanian
+data-protection lawyer) — engineering deliberately did not guess them. Numbering
+matches the master prompt's §3.
+
+1. **(Phase 1)** Final tagline / meta-description copy for `<title>` /
+   `og:description`. Currently wired to the placeholder `SITE_TAGLINE` =
+   "TattooOS — booking & studio management for tattoo shops" in
+   `frontend/src/shared/constants/legalEntity.ts` (source of truth) and mirrored
+   literally in `frontend/index.html`.
+2. **(Phase 1)** Is `tattooos.co` the domain that will go on PSP/MoR
+   applications, and is `support@tattooos.co` a monitored inbox? (The Contact
+   page currently points there.)
+3. **(Phase 1)** Registered legal address for `LEGAL_ENTITY_ADDRESS` — left blank
+   and wired in `legalEntity.ts`.
+4. **(Phase 2)** Final Privacy Policy / Terms of Service legal text from the
+   Albanian data-protection lawyer. Structural placeholders shipped with a
+   visible `[LAWYER REVIEW REQUIRED]` banner gated on `HAS_FINAL_LEGAL_COPY`
+   (flip one constant to remove the banner).
+5. **(Phase 2)** `/contact`: monitored inbox vs. contact form? Shipped as a
+   monitored-inbox placeholder. If a form is chosen, collect name/email/message
+   only and add it to the Privacy sub-processor/retention inventory.
+6. **(Phase 4 — not yet built)** Retention periods for consent forms / body maps /
+   medical notes after last appointment or account closure. To ship as
+   `App:RetentionDays:*` config defaulting to a clearly-commented placeholder
+   (730 days / 2 years) — NOT final numbers.
+7. **(Phase 5 — not yet built)** Vault vs. Infisical/Doppler for the eventual
+   production deployment. Default to build is Vault dev-mode locally; ADR-0002
+   must present both with the tradeoff.
+8. **(Phase 4 — not yet built)** Should a client-facing "delete my account" UI be
+   built? Confirmed absent today. Scope is the backend retention/purge + audited
+   erasure-request path; a self-service UI is a separate follow-up ticket unless
+   the erasure path proves unusable without one.
+
+### Additional finding flagged during Phase 2 (business decision, not a bug)
+
+The `/refund-policy` copy is descriptive of the *current implemented* behavior:
+a no-show forfeits the deposit in full, and the default late-cancellation refund
+is 0% (deposit forfeited) unless a studio configures otherwise, with a 24-hour
+default notice window. Whether that is the *intended* commercial policy is a
+founder decision — it was documented truthfully, not silently rewritten.
+
+---
+
 **Status:** Ready for engineering · **Date:** 31 July 2026 · **Owner:** Phi
 **Blocks:** ADR-0001 provider integrations (POK, easyPos, Polar)
 **Source documents:** `docs/payments/ADR-0001-payment-providers.md`,
