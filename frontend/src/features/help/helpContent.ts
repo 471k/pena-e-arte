@@ -159,13 +159,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Sign a consent form",
     route: "/forms/consent/new",
     keywords: ["digital signature", "sign consent", "agreement"],
-    summary: "Digitally sign the consent agreement for an upcoming appointment before your tattoo session.",
+    summary: "Digitally sign the consent agreement for an upcoming appointment before your tattoo session. The full consent text is shown on the page so you can read exactly what you're agreeing to before you sign.",
     steps: [
+      "Read the consent agreement shown at the top of the page in full.",
       "Select the appointment you're signing consent for from the dropdown.",
       "Type your full legal name in the \"Digital signature\" box to sign.",
       "Click \"Sign Consent Form\".",
     ],
-    warnings: ["You can only sign one consent form per appointment — a PDF copy is generated and attached automatically once you sign."],
+    warnings: ["You can only sign one consent form per appointment — a PDF copy is generated and attached automatically once you sign.", "The exact wording you agreed to is saved with your signature, so a past consent always shows what you actually agreed to even if the studio later updates its consent text."],
     relatedArticleIds: ["client-consent-list"],
   },
   {
@@ -178,7 +179,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Browse the list — each row shows the appointment and a \"Signed\" or \"Pending\" badge with the date.",
       "Click \"Sign consent form\" (top right) to sign a new one.",
-      "Click any row to view that form's details.",
+      "Click any row to view that form's details, including the exact consent text you agreed to at the time you signed.",
     ],
     relatedArticleIds: ["client-consent-sign"],
   },
@@ -408,6 +409,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click the consent form you want to review.",
       "Check the \"Signed\" or \"Pending\" status, client, and linked appointment.",
       "View the digital signature and, if attached, open or download the consent document.",
+      "The \"Consent agreement (as signed)\" section shows the exact text the client agreed to at the time — the stored snapshot, not the studio's current wording — so a past consent is always an accurate record.",
     ],
   },
   {
@@ -1055,7 +1057,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-portable-profile",
     roles: [Client],
     question: "Can a new studio see my tattoo history from another studio?",
-    answer: "Only if you turn on sharing for your profile. By default your history stays private to each studio. You control this from the Sharing tab on your profile page, and studios can only ever see non-sensitive details — never your payment history or consent form data.",
+    answer: "Only if you turn on sharing for your profile. By default your history stays private to each studio. You control this from the Sharing tab on your profile page. When you opt in, other studios can see your tattoo history — your body-map locations, tattoo photos, and descriptions. They can never see your medical notes, allergies, contact details, payment history, or consent forms, and you can turn sharing off again at any time.",
     relatedArticleIds: ["client-profile"],
   },
   {

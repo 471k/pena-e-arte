@@ -3,6 +3,7 @@ import { baseQuery } from "@/shared/api/baseQuery";
 import type {
   ConsentFormResponse,
   ConsentFormDetailResponse,
+  ConsentTemplateResponse,
   SignConsentFormRequest,
   GetConsentFormsParams,
 } from "./form.types";
@@ -26,6 +27,9 @@ export const consentFormsApi = createApi({
       query: (id) => `consent-forms/${id}`,
       providesTags: (_result, _error, id) => [{ type: "ConsentForm", id }],
     }),
+    getActiveConsentTemplate: builder.query<ConsentTemplateResponse, void>({
+      query: () => "consent-forms/active-template",
+    }),
     signConsentForm: builder.mutation<ConsentFormResponse, SignConsentFormRequest>({
       query: (body) => ({ url: "consent-forms", method: "POST", body }),
       invalidatesTags: ["ConsentForm"],
@@ -36,5 +40,6 @@ export const consentFormsApi = createApi({
 export const {
   useGetConsentFormsQuery,
   useGetConsentFormByIdQuery,
+  useGetActiveConsentTemplateQuery,
   useSignConsentFormMutation,
 } = consentFormsApi;

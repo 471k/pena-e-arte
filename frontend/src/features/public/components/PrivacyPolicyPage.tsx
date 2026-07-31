@@ -40,9 +40,15 @@ export function PrivacyPolicyPage() {
         <p>
           <strong>Special-category (health) data.</strong> If you complete a client
           profile, we may process medical notes and allergies you provide. This is
-          special-category data under Art. 9 GDPR / Law 124/2024 and is only ever shared
-          with a second, unrelated studio after your explicit, separate consent — see the
-          cross-studio sharing consent step described in your profile settings.
+          special-category data under Art. 9 GDPR / Law 124/2024. It is used only by the
+          studio you provide it to and is <strong>not</strong> shared with other studios.
+        </p>
+        <p>
+          <strong>Portable profile (optional).</strong> You may opt in to share your tattoo
+          history — body-map locations, tattoo photos, and descriptions — with other studios
+          on TattooOS, via a separate, explicit consent you can withdraw at any time. This
+          sharing never includes your medical notes, allergies, contact details, or payment
+          history.
         </p>
       </Section>
 

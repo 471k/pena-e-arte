@@ -5,8 +5,10 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.ConsentForms.Commands;
 
@@ -43,13 +45,29 @@ public class SignConsentFormHandler(
 
         if (alreadySigned) throw new ConsentFormAlreadySignedException();
 
+        // Resolve the active consent template for THIS studio server-side, in the same
+        // transaction as the insert — never trust a template id or body text from the
+        // client. Snapshot the exact text so the record is immutable even if the studio
+        // later edits or supersedes the template. Candidates are narrowed to the studio's
+        // own templates plus platform defaults (StudioId == null); the resolver picks.
+        List<ConsentTemplate> candidates = await db.ConsentTemplates
+            .Where(t => t.Kind == ConsentTemplateKind.AppointmentConsent
+                        && t.IsActive
+                        && (t.StudioId == tenant.StudioId || t.StudioId == null))
+            .ToListAsync(ct);
+
+        ConsentTemplate? template = ConsentTemplateResolver.ResolveActive(
+            candidates, tenant.StudioId, ConsentTemplateKind.AppointmentConsent, DateTime.UtcNow);
+
         ConsentForm form = new()
         {
             StudioId = tenant.StudioId,
             ClientId = appointment.ClientId,
             AppointmentId = appointment.Id,
             SignatureData = req.SignatureData,
-            SignedAt = DateTime.UtcNow
+            SignedAt = DateTime.UtcNow,
+            ConsentTemplateId = template?.Id,
+            ConsentTextSnapshot = template?.BodyText,
         };
 
         db.ConsentForms.Add(form);

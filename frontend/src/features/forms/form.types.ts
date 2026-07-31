@@ -47,6 +47,16 @@ export interface ConsentFormDetailResponse {
   appointmentDate: string;
   artistName:      string | null;
   artistId:        string | null;
+  // The exact consent text the client agreed to at signing time (immutable snapshot).
+  // Null for forms signed before consent versioning existed.
+  consentTextSnapshot: string | null;
+}
+
+export interface ConsentTemplateResponse {
+  id:       string | null;
+  kind:     string;
+  version:  string;
+  bodyText: string;
 }
 
 export interface SignConsentFormRequest {

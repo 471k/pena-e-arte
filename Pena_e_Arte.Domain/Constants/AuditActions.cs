@@ -17,6 +17,8 @@ public static class AuditActions
     public const string ReferralCodeDeleted = "ReferralCode.Deleted";
     public const string AppointmentCancelled = "Appointment.Cancelled";
     public const string SessionSplitsUpdated = "SessionSplits.Updated";
+    public const string ClientProfileCrossTenantOptedIn = "ClientProfile.CrossTenantOptedIn";
+    public const string ClientProfileCrossTenantOptedOut = "ClientProfile.CrossTenantOptedOut";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -28,4 +30,5 @@ public static class AuditTargetTypes
     public const string ReferralCode = "ReferralCode";
     public const string Appointment = "Appointment";
     public const string Payment = "Payment";
+    public const string ClientProfile = "ClientProfile";
 }

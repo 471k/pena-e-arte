@@ -1098,7 +1098,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Sign consent form</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>At <code>/forms/consent/new</code>, digitally sign a consent form for a specific appointment by typing your full legal name. A PDF copy is generated and attached to the appointment automatically.</p>
+<p>At <code>/forms/consent/new</code>, digitally sign a consent form for a specific appointment by typing your full legal name. The full consent agreement text is shown on the page so you can read exactly what you're agreeing to before you sign, and the exact wording is saved with your signature. A PDF copy is generated and attached to the appointment automatically.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Sign consent form wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1114,6 +1114,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Sign consent form — fields in order: appointment, signature</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
+<li>Read the <span class="step-title">Consent agreement</span> shown at the top of the page in full.</li>
 <li>Select the <span class="step-title">Appointment</span> this consent applies to (only pending/confirmed appointments show up).</li>
 <li>Type your full legal name into <span class="step-title">Digital signature</span>.</li>
 <li>Click <span class="step-title">Sign Consent Form</span>.</li>
@@ -1149,7 +1150,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Consent form detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own, read-only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A read-only view showing the signature, client/appointment IDs, dates, and a link to the generated PDF document.</p>
+<p>A read-only view showing the signature, client/appointment IDs, dates, the exact consent text agreed to at signing time (the "Consent agreement (as signed)" snapshot — not the studio's current wording, so a past consent is always an accurate record), and a link to the generated PDF document.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Consent form detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1197,7 +1198,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>The <span class="step-title">Profile</span> tab shows your contact info and body map — click <span class="step-title">Edit</span> to toggle zones on/off, then <span class="step-title">Save</span>.</li>
 <li>The <span class="step-title">Tattoo History</span> tab lists completed tattoos recorded by your artists.</li>
-<li>The <span class="step-title">Sharing</span> tab lets you opt your tattoo history in or out of cross-studio visibility.</li>
+<li>The <span class="step-title">Sharing</span> tab lets you opt your tattoo history (body-map locations, tattoo photos, and descriptions) in or out of cross-studio visibility. Your medical notes, allergies, contact details, and payment history are never shared, and you can turn sharing off again at any time.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-client-detail">Artist: client detail</a>, <a href="#artist-tattoo-record">Tattoo record detail</a></div>
 </section>

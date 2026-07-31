@@ -10,6 +10,7 @@ using Pena_e_Arte.Application.IntakeForms.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
@@ -151,6 +152,81 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext dbB = fixture.CreateDbContext(tenantB);
         bool visible = await dbB.ConsentForms.AnyAsync(f => f.Id == result.Id);
         visible.Should().BeFalse(because: "the query filter prevents tenantB from seeing tenantA's consent forms");
+    }
+
+    [Fact]
+    public async Task SignConsentForm_SnapshotsActiveTemplate_AndSnapshotIsImmutableAfterTemplateEdit()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid clientId, Guid appointmentId) = await SeedClientAndAppointment(tenantId);
+
+        // Seed an active appointment-consent template for this studio.
+        Guid templateId;
+        await using (AppDbContext seed = fixture.CreateDbContext(tenantId))
+        {
+            ConsentTemplate template = new()
+            {
+                StudioId = tenantId,
+                Kind = ConsentTemplateKind.AppointmentConsent,
+                Version = "1.0",
+                BodyText = "Original consent text V1",
+                EffectiveFrom = DateTime.UtcNow.AddDays(-1),
+                IsActive = true,
+            };
+            seed.ConsentTemplates.Add(template);
+            await seed.SaveChangesAsync();
+            templateId = template.Id;
+        }
+
+        ConsentFormResponse signed = await SignConsent(tenantId, clientId, appointmentId, "sig");
+
+        // Edit the template's body AFTER signing — the signed form's snapshot must not change.
+        await using (AppDbContext edit = fixture.CreateDbContext(tenantId))
+        {
+            ConsentTemplate t = await edit.ConsentTemplates.FirstAsync(x => x.Id == templateId);
+            t.BodyText = "Rewritten consent text V2";
+            await edit.SaveChangesAsync();
+        }
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        ConsentForm form = await verify.ConsentForms.FirstAsync(f => f.Id == signed.Id);
+        form.ConsentTemplateId.Should().Be(templateId);
+        form.ConsentTextSnapshot.Should().Be("Original consent text V1");
+    }
+
+    [Fact]
+    public async Task GetActiveConsentTemplate_PrefersStudioTemplateOverPlatformDefault()
+    {
+        Guid tenantId = Guid.NewGuid();
+
+        await using (AppDbContext seed = fixture.CreateDbContext(tenantId))
+        {
+            seed.ConsentTemplates.Add(new ConsentTemplate
+            {
+                StudioId = null, // platform default
+                Kind = ConsentTemplateKind.AppointmentConsent,
+                Version = "default",
+                BodyText = "Platform default text",
+                EffectiveFrom = DateTime.UtcNow.AddDays(-2),
+                IsActive = true,
+            });
+            seed.ConsentTemplates.Add(new ConsentTemplate
+            {
+                StudioId = tenantId, // studio-specific
+                Kind = ConsentTemplateKind.AppointmentConsent,
+                Version = "studio-1",
+                BodyText = "Studio-specific text",
+                EffectiveFrom = DateTime.UtcNow.AddDays(-1),
+                IsActive = true,
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        ConsentTemplateResponse result = await new GetActiveConsentTemplateHandler(db, TenantFor(tenantId))
+            .Handle(new GetActiveConsentTemplateQuery(), default);
+
+        result.BodyText.Should().Be("Studio-specific text");
     }
 
     // ── GetConsentForms ───────────────────────────────────────────────────────────

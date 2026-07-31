@@ -127,6 +127,10 @@ public static class DataSeeder
         await EnsureSeedUsersAsync(userManager);
         await EnsureArtistSlugsAsync(db);
 
+        // Always run: platform-default consent templates are system-defined (like the core
+        // plan tiers), not demo data — a studio with no custom template falls back to these.
+        await EnsurePlatformConsentTemplatesAsync(db);
+
         // Snapshot BEFORE reconciling. ReconcileCoreTiersAsync will insert StarterPlanId
         // if it's missing, which would make a post-reconcile check always true and
         // silently skip demo-entity seeding on a genuinely fresh database.
@@ -148,6 +152,59 @@ public static class DataSeeder
         await SeedStudiosAndSubscriptionsAsync(db);
         await SeedStudio1EntitiesAsync(db);
         await SeedStudio2EntitiesAsync(db);
+    }
+
+    // ─── Consent templates ──────────────────────────────────────────────────────
+
+    private static async Task EnsurePlatformConsentTemplatesAsync(AppDbContext db)
+    {
+        bool hasAppointment = await db.ConsentTemplates.AnyAsync(t =>
+            t.StudioId == null
+            && t.Kind == ConsentTemplateKind.AppointmentConsent
+            && t.IsActive);
+
+        if (!hasAppointment)
+        {
+            db.ConsentTemplates.Add(new ConsentTemplate
+            {
+                StudioId = null,
+                Kind = ConsentTemplateKind.AppointmentConsent,
+                Version = "1.0",
+                IsActive = true,
+                EffectiveFrom = DateTime.UtcNow,
+                BodyText =
+                    "I confirm that I am of legal age and freely consent to being tattooed. "
+                    + "I understand that tattooing involves breaking the skin and carries risks "
+                    + "including infection, allergic reaction, and scarring. I confirm the "
+                    + "information I have provided about my health, medication, and allergies is "
+                    + "accurate. I understand a tattoo is permanent and aftercare is my "
+                    + "responsibility.",
+            });
+        }
+
+        bool hasSharing = await db.ConsentTemplates.AnyAsync(t =>
+            t.StudioId == null
+            && t.Kind == ConsentTemplateKind.CrossTenantProfileSharing
+            && t.IsActive);
+
+        if (!hasSharing)
+        {
+            db.ConsentTemplates.Add(new ConsentTemplate
+            {
+                StudioId = null,
+                Kind = ConsentTemplateKind.CrossTenantProfileSharing,
+                Version = "1.0",
+                IsActive = true,
+                EffectiveFrom = DateTime.UtcNow,
+                BodyText =
+                    "I consent to sharing my tattoo history — body-map locations, tattoo photos, "
+                    + "and descriptions — with other studios on TattooOS so any artist can view it "
+                    + "before a session. My medical notes, allergies, contact details, and payment "
+                    + "history are not shared. I can withdraw this consent at any time.",
+            });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     // ─── Plans ────────────────────────────────────────────────────────────────

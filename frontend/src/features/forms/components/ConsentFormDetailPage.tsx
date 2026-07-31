@@ -168,6 +168,22 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
             </>
           )}
 
+          {/* ── What was agreed (immutable snapshot) ── */}
+          {form.consentTextSnapshot && (
+            <>
+              <Separator />
+              <DetailRow label="Consent agreement (as signed)">
+                {/* The exact text agreed to at signing time — deliberately the stored
+                    snapshot, not a live re-render of the template, so anyone reviewing a
+                    past consent sees exactly what was agreed even if the studio's wording
+                    has since changed. */}
+                <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/20 p-3 text-sm text-foreground/90">
+                  {form.consentTextSnapshot}
+                </div>
+              </DetailRow>
+            </>
+          )}
+
           {/* ── Document link + download ── */}
           {form.fileUrl && (
             <>

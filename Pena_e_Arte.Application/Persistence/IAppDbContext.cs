@@ -25,6 +25,7 @@ public interface IAppDbContext
     DbSet<SessionSplit> SessionSplits { get; }
     DbSet<IntakeForm> IntakeForms { get; }
     DbSet<ConsentForm> ConsentForms { get; }
+    DbSet<ConsentTemplate> ConsentTemplates { get; }
     DbSet<NotificationLog> NotificationLogs { get; }
     DbSet<StudioNotificationPreference> StudioNotificationPreferences { get; }
     DbSet<ClientNotificationPreference> ClientNotificationPreferences { get; }
