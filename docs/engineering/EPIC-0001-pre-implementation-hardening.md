@@ -1,57 +1,65 @@
 # EPIC-0001 — Pre-implementation hardening (steps 0–6)
 
-## Execution status — 31 July 2026
+## Execution status — 31 July 2026 (updated: Phases 1–5 landed)
 
-Autonomous overnight run on branch `epic-0001/pre-implementation-hardening`
-(branched off `f3bf5d3`; note this worktree was one docs-only commit behind
-`main`'s `7e4196c` — the missing commit is `docs: log K3s production-deployment
-spec`, immaterial to every code phase here).
+Autonomous run on branch `epic-0001/pre-implementation-hardening` (branched off
+`f3bf5d3`; this worktree was one docs-only commit behind `main`'s `7e4196c` — the
+missing commit is `docs: log K3s production-deployment spec`, immaterial to every
+code phase here). Executed across two sessions: Phases 1–2 first, then Phases 3–5.
 
-**Landed (verified: `pnpm lint` 0 errors, `pnpm build` = `tsc -b` + vite clean,
-affected `pnpm test` green):**
+**Landed — each verified to the full Definition of Done for its layer** (backend:
+`dotnet build` clean, `dotnet format --verify-no-changes` clean, `dotnet test`
+green; frontend: `pnpm lint` 0 errors, `pnpm build` clean, `pnpm test` green):
 
-- **Phase 1 — PENA-100/101** (commit `6f1491f`): legal-entity disclosure
-  (`legalEntity.ts` single source of truth, `SiteFooter.tsx`), index.html
-  title/description/OG meta, `appsettings.json` LegalEntityName/Nipt, cookie
-  banner `/privacy` link, and the dead `/privacy` `/terms` link fix via real
-  `/privacy` `/terms` `/refund-policy` `/contact` routes + a public Home surface.
-- **Phase 2 — PENA-102** (commit `1b26e7e`): the four policy pages + Home fleshed
-  out — Privacy (structural + `[LAWYER REVIEW REQUIRED]` banner, health-data +
-  sub-processors + Law 124/2024 rights), Terms (structural + banner), Refund
-  (REAL copy from `DepositRule`/`DepositCalculator`/`ClientCancellationPolicy`/
-  `MarkNoShowCommand` — 24h window, forfeit rules), Contact (inbox placeholder),
-  Home; plus signup Terms/Privacy consent lines on both register pages.
+- **Phase 1 — PENA-100/101** (`6f1491f`): legal-entity disclosure
+  (`legalEntity.ts`, `SiteFooter.tsx`), index.html title/description/OG meta,
+  `appsettings.json` LegalEntityName/Nipt, cookie-banner `/privacy` link, dead
+  `/privacy` `/terms` link fix via real policy routes + public Home surface.
+- **Phase 2 — PENA-102** (`1b26e7e`): the four policy pages + Home fleshed out
+  (Privacy with `[LAWYER REVIEW REQUIRED]` banner, Terms, Refund from live deposit
+  code, Contact, Home) + signup Terms/Privacy consent lines on both register pages.
+- **Phase 3 — PENA-103** (`0b7bc45`): `ConsentTemplate` (versioned, nullable-studio,
+  Kind discriminator) + immutable `ConsentTextSnapshot` resolved server-side at
+  signing; migration `AddConsentTemplateAndSnapshot`; audited cross-tenant
+  profile-sharing opt-in/opt-out (`UpdatePortableProfileOptInCommand` now
+  `IAuditableCommand`); active-template query + endpoint; frontend renders template
+  before signing and the snapshot on the detail page. **FINDING corrected:** the
+  epic's premise that the portable profile shares Art. 9 medical notes/allergies is
+  false — `PortableClientProfile` shares only tattoo history + body map; enum named
+  `CrossTenantProfileSharing`, and Help/Privacy copy states this truthfully. Tests:
+  resolver unit tests + snapshot-immutability + opt-in/opt-out audit integration.
+- **Phase 4 — PENA-104** (`4f7a666`): `IR2Service.DeleteAsync` (new); two-stage
+  `RetentionPurgeJob` (soft-delete → grace → hard-purge + R2 delete), registered in
+  `Program.cs` via `AddOrUpdate` (NOT `IJobScheduler`); `App:RetentionDays` config
+  (placeholders); `RequestDataErasureCommand` (owner/support endpoint, audited,
+  distinct from automatic purge). No self-service erasure UI (open question §3.8).
+- **Phase 5 — PENA-105** (`59f7926`): docker-compose Twilio/Instagram env fix +
+  `.env.example`; `ISecretsProvider` (fail-closed) + `VaultSecretsProvider`
+  (VaultSharp) + local Vault dev-mode compose service; `StudioCredentialRef`
+  pointer schema + migration; `.githooks/pre-commit` gitleaks hook (proven to block
+  a staged secret); `docs/infra/ADR-0002-secrets-management.md` + rotation runbook.
 
-**NOT started — remaining at this phase boundary:**
+**NOT started — remaining at this phase boundary (last good commit `59f7926`):**
 
-- **Phase 3 — PENA-103** consent-template versioning + immutable snapshot +
-  audited health-data consent.
-- **Phase 4 — PENA-104** retention/hard-purge job + `IR2Service.DeleteAsync` +
-  erasure-request command.
-- **Phase 5 — PENA-105** `ISecretsProvider` + local Vault dev service +
-  per-tenant credential-pointer schema + pre-commit gitleaks hook +
-  Twilio/Instagram docker-compose fix + ADR-0002 + rotation runbook.
-- **Phase 6 — PENA-106** delete `IStripePaymentService`, add `IPaymentProvider` +
-  `Payment.PlatformFeeAmount`/`Currency`/`HoldExpiresAt`/`Provider` + NetArchTest
-  architecture fitness test.
-- **Phase 7 — PENA-107** architecture-test CI visibility + Help-sync CI check +
+- **Phase 6 — PENA-106** delete `IStripePaymentService`/`StripePaymentService`, add
+  provider-neutral `IPaymentProvider` (+ `PaymentProviderCapabilities`), rename
+  `Payment.StripePaymentIntentId` → `ProviderReferenceId` and add `Provider`,
+  `Currency`, `HoldExpiresAt`, `PlatformFeeAmount`; migration (RenameColumn, no data
+  loss); update all ~22 reference sites + `PaymentReconciliationJob`; add
+  `NetArchTest.Rules` architecture fitness test; provider-neutralise Stripe wording
+  in `helpContent.ts` + tours.
+- **Phase 7 — PENA-107** architecture-test CI visibility, Help-sync diff CI check,
   `CONTRIBUTING.md`.
 
-**Why the stop:** the run was executed by a single autonomous session with a
-bounded budget. Phases 3–6 each require a full `dotnet build` of the solution,
-`dotnet test` including the integration suite (which needs a MySQL container), EF
-Core migrations run against a live DB, and — for Phase 5/6 — a Vault container and
-a ~22-reference-site payments refactor with migration data-preservation
-verification. None of those could be completed AND verified to this epic's
-Definition of Done within the session, and the master prompt is explicit: stop at
-a phase boundary, never mid-phase, rather than commit unverified payments/secrets/
-consent code onto a branch a human will review for exactly those areas.
-Last good commit: `1b26e7e` (Phase 2).
-
-The docker-compose Twilio/Instagram env-wiring gap (Phase 5a) is real and still
-open — it is the fastest, highest-value item remaining and a good first pickup for
-the next session; it is deliberately NOT done here because it belongs to Phase 5
-and partial phases are forbidden.
+**Why the stop after Phase 5:** Phase 6 is the single largest and highest-risk
+phase — deleting the aggregator interface, a field rename cascading across 22 files
+and ~74 call sites, a data-preserving migration, a new architecture test, and
+provider-neutral naming — on payment code a human will review specifically for
+correctness. It could not be completed AND verified to a green build + green test
+suite within the remaining session budget, and the master prompt is explicit: stop
+at a phase boundary, never mid-phase, rather than push a half-done payments refactor
+that breaks the build. Phases 6–7 are a clean next pickup; Phase 6's reference
+inventory is already enumerated above.
 
 ---
 
