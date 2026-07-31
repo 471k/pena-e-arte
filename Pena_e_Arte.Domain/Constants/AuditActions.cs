@@ -19,6 +19,10 @@ public static class AuditActions
     public const string SessionSplitsUpdated = "SessionSplits.Updated";
     public const string ClientProfileCrossTenantOptedIn = "ClientProfile.CrossTenantOptedIn";
     public const string ClientProfileCrossTenantOptedOut = "ClientProfile.CrossTenantOptedOut";
+
+    /// <summary>Client-initiated (or support-initiated) right-to-erasure request. Distinct
+    /// from the policy-driven automatic retention purge, which is not an audited command.</summary>
+    public const string ClientDataErasureRequested = "Client.DataErasureRequested";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -31,4 +35,5 @@ public static class AuditTargetTypes
     public const string Appointment = "Appointment";
     public const string Payment = "Payment";
     public const string ClientProfile = "ClientProfile";
+    public const string Client = "Client";
 }

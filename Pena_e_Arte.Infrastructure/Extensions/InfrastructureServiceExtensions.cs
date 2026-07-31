@@ -107,6 +107,9 @@ public static class InfrastructureServiceExtensions
             services.AddSingleton<IR2Service, NullR2Service>();
         }
 
+        services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
+        services.AddTransient<RetentionPurgeJob>();
+
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenant, CurrentTenantService>();
         services.AddScoped<ICurrentUser, CurrentUserService>();

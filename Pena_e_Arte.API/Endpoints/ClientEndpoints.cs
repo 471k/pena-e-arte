@@ -34,6 +34,20 @@ public static class ClientEndpoints
         group.MapGet("me/tattoos", GetMyTattooRecords).RequireAuthorization("ClientAndAbove");
         group.MapPatch("me/portable-profile", UpdatePortableProfileOptIn).RequireAuthorization("ClientAndAbove");
         group.MapGet("{userId:guid}/portable-profile", GetPortableProfile).RequireAuthorization("ArtistAndAbove");
+
+        // Right-to-erasure (GDPR Art. 17). Owner/support action; no client-facing self-service
+        // UI yet (open question §3.8). Immediately soft-deletes the client's consent forms +
+        // profile — the RetentionPurgeJob hard-purges them after the grace window.
+        group.MapPost("{clientId:guid}/erase-data", RequestDataErasure).RequireAuthorization("OwnerOnly");
+    }
+
+    private static async Task<IResult> RequestDataErasure(
+        Guid clientId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new RequestDataErasureCommand(clientId), ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> GetMyClient(

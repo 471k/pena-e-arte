@@ -88,6 +88,11 @@ try
             "instagram-nightly-sync",
             j => j.ExecuteAsync(CancellationToken.None),
             Cron.Daily(hour: 3));
+
+        recurringJobs.AddOrUpdate<RetentionPurgeJob>(
+            "retention-purge",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 4)); // staggered away from reconciliation (2am) and instagram-sync (3am)
     }
 
     // Without a configured TrustedProxyCidr, the .NET runtime's own forwarded-headers hardening

@@ -67,6 +67,15 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         return Task.FromResult(s3.GetPreSignedURL(request));
     }
 
+    public async Task DeleteAsync(string objectKey, CancellationToken ct)
+    {
+        await s3.DeleteObjectAsync(new DeleteObjectRequest
+        {
+            BucketName = _opts.BucketName,
+            Key = objectKey,
+        }, ct);
+    }
+
     public string GetPublicUrl(string objectKey) =>
         $"{_opts.PublicUrl.TrimEnd('/')}/{objectKey}";
 
