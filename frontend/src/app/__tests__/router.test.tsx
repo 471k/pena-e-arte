@@ -7,7 +7,8 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { setSessionExpired } from "@/features/ui/uiSlice";
-import { RoleGuard, AppRoot, getRoleRedirectPath } from "@/app/router";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { RoleGuard, AppRoot, getRoleRedirectPath, routes } from "@/app/router";
 import { Role } from "@/shared/types/roles";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -228,5 +229,52 @@ describe("AppRoot", () => {
     const store = renderAppRoot(true, "artist");
     await screen.findByTestId("login-page");
     expect(store.getState().auth.role).toBeNull();
+  });
+});
+
+// ── Public policy routes (PENA-101/102) ─────────────────────────────────────────
+// These paths used to have no route, so CatchAllRedirect silently bounced them to
+// /discover. Assert they now resolve to their real pages.
+
+describe("public policy routes", () => {
+  function renderAt(path: string) {
+    const store = makeAuthStore(null);
+    const testRouter = createMemoryRouter(routes, { initialEntries: [path] });
+    render(
+      <Provider store={store}>
+        <RouterProvider router={testRouter} />
+      </Provider>,
+    );
+    return testRouter;
+  }
+
+  it("renders the real Privacy Policy page at /privacy (not CatchAllRedirect → /discover)", async () => {
+    const testRouter = renderAt("/privacy");
+    expect(
+      await screen.findByRole("heading", { name: /privacy policy/i }),
+    ).toBeInTheDocument();
+    expect(testRouter.state.location.pathname).toBe("/privacy");
+  });
+
+  it("renders the real Terms of Service page at /terms", async () => {
+    const testRouter = renderAt("/terms");
+    expect(
+      await screen.findByRole("heading", { name: /terms of service/i }),
+    ).toBeInTheDocument();
+    expect(testRouter.state.location.pathname).toBe("/terms");
+  });
+
+  it("renders Refund Policy at /refund-policy and Contact at /contact", async () => {
+    const refundRouter = renderAt("/refund-policy");
+    expect(
+      await screen.findByRole("heading", { name: /refund policy/i }),
+    ).toBeInTheDocument();
+    expect(refundRouter.state.location.pathname).toBe("/refund-policy");
+
+    cleanup();
+
+    const contactRouter = renderAt("/contact");
+    expect(await screen.findByRole("heading", { name: /^contact$/i })).toBeInTheDocument();
+    expect(contactRouter.state.location.pathname).toBe("/contact");
   });
 });

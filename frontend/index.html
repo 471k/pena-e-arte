@@ -4,7 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <!--
+      Source of truth for this copy is src/shared/constants/legalEntity.ts (SITE_TAGLINE).
+      A static HTML file cannot import a TS constant without a Vite templating plugin this
+      repo does not have, so the literal default below is duplicated here deliberately. If
+      this copy and legalEntity.ts ever diverge, legalEntity.ts wins — update this to match.
+    -->
+    <title>TattooOS — booking & studio management for tattoo shops</title>
+    <meta name="description" content="TattooOS — booking & studio management for tattoo shops" />
+    <meta property="og:title" content="TattooOS" />
+    <meta property="og:description" content="TattooOS — booking & studio management for tattoo shops" />
+    <meta property="og:image" content="/og-image.png" />
   </head>
   <body>
     <div id="root"></div>
