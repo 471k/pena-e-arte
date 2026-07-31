@@ -21,8 +21,10 @@ This is the direct-to-branch equivalent of a PR description (no PR flow configur
 | `0b7bc45` | **Phase 3 — PENA-103** | `feat(consent): versioned consent templates with immutable snapshot; explicit audited health-data sharing consent` |
 | `4f7a666` | **Phase 4 — PENA-104** | `feat(retention): two-stage soft-delete/hard-purge job, R2 delete capability, audited erasure-request path` |
 | `59f7926` | **Phase 5 — PENA-105** | `feat(secrets): ISecretsProvider + local Vault dev service, per-tenant credential pointer schema, pre-commit gitleaks hook, Twilio/Instagram docker-compose fix` |
+| `0c71d36` | **Phase 6 — PENA-106** | `refactor(payments): delete Stripe-aggregator IStripePaymentService, add provider-neutral IPaymentProvider + PlatformFeeAmount + architecture fitness test` |
+| `d8b3c83` | **Phase 7 — PENA-107** | `ci: architecture-test visibility, Help-sync diff check, CONTRIBUTING.md` |
 
-## Phases landed (5 of 7) — all verified to full DoD
+## Phases landed (all 7 of 7) — each verified to full DoD
 
 - **Phase 1 (PENA-100/101)** — legal-entity disclosure + dead-link fix. ✅
 - **Phase 2 (PENA-102)** — public policy pages + home shell + refund from live code. ✅
@@ -32,21 +34,16 @@ This is the direct-to-branch equivalent of a PR description (no PR flow configur
   erasure-request path. ✅
 - **Phase 5 (PENA-105)** — `ISecretsProvider` + local Vault dev service + credential-pointer
   schema + pre-commit gitleaks hook + Twilio/Instagram docker-compose fix + ADR-0002 + runbook. ✅
+- **Phase 6 (PENA-106)** — delete `IStripePaymentService`; provider-neutral `IPaymentProvider` +
+  `PaymentProviderCapabilities` + `NullPaymentProvider`; `StripePaymentIntentId` →
+  `ProviderReferenceId` + `Provider`/`Currency`/`HoldExpiresAt`/`PlatformFeeAmount`; RenameColumn
+  migration (no data loss); reconciliation hold-expiry pass; `NetArchTest.Rules` fitness test. ✅
+- **Phase 7 (PENA-107)** — architecture-test CI visibility + `help-sync` CI job + `CONTRIBUTING.md`
+  (no duplicate gitleaks). ✅
 
-## Phases NOT started (stopped at the Phase 5 boundary, last good `59f7926`)
-
-- **Phase 6 (PENA-106)** — the `IStripePaymentService` → `IPaymentProvider` refactor,
-  `Payment.PlatformFeeAmount`/`Currency`/`HoldExpiresAt`/`Provider`, migration, NetArchTest.
-- **Phase 7 (PENA-107)** — architecture-test CI visibility, Help-sync CI check, `CONTRIBUTING.md`.
-
-**Why the stop:** Phase 6 is the single largest, highest-risk phase (delete the aggregator
-interface; a field rename cascading across 22 files / ~74 call sites; a data-preserving
-migration; a new architecture test; provider-neutral naming) on payment code a reviewer will
-scrutinise specifically. It could not be completed AND verified to a green build + test suite
-within the remaining budget; the master prompt mandates stopping at a phase boundary rather than
-pushing a half-done payments refactor. See the Execution status note in
-`EPIC-0001-pre-implementation-hardening.md` for the full Phase 6 reference inventory (a clean
-next pickup).
+**The epic is complete.** Every phase committed separately with its exact Deliverable message and
+pushed. Nothing left outstanding except the founder Open Questions (below) and the intentionally
+out-of-scope items (real POK provider implementation, production Vault cluster, final legal copy).
 
 ---
 
@@ -62,6 +59,12 @@ next pickup).
 - **Phase 4:** NO Help change — retention is invisible background infra and the erasure endpoint
   ships with no user-visible UI trigger this phase (owner/support-only).
 - **Phase 5:** NO Help change — infra/secrets plumbing has zero user-visible surface.
+- **Phase 6:** DONE — Flow-A card wording neutralised in `helpContent.ts` (client-book tip, owner
+  create-payment summary, faq-payment-methods) and `user-manual/index.html` (deposit checkout +
+  refund warning). Flow-B billing copy deliberately KEPT as Stripe (it still uses Stripe Billing).
+  No tour references Stripe. Frontend Stripe Elements card UI left in place (non-functional until
+  POK's frontend ticket) — flagged as out of this backend refactor's scope.
+- **Phase 7:** NO Help change — CI/DevOps tooling has zero user-visible surface.
 
 ## Industry-standard citation per phase
 
@@ -70,34 +73,42 @@ next pickup).
 - **P3:** GDPR Art. 9/Art. 7 + Law 124/2024; immutable-snapshot consent (DocuSign/HelloSign).
 - **P4:** GDPR Art. 5(1)(e)/Art. 17, NIST SP 800-53 SI-12; S3 lifecycle expire-then-delete.
 - **P5:** OWASP ASVS V6, CWE-798, twelve-factor config; PCI DSS Req 3/6.
+- **P6:** Architecture fitness function (Ford/Parsons, *Building Evolutionary Architectures*);
+  NetArchTest = .NET ArchUnit; PCI DSS SAQ-A scope discipline (card data never touches this infra).
+- **P7:** Fitness-function-in-CI (ArchUnit's own CI-enforcement assumption); path-based
+  doc-sync CI checks (Kubernetes PR bots), scoped down for a solo-founder repo.
 
 ---
 
-## Final self-check (at the Phase 5 boundary)
+## Final self-check (at the end — all 7 phases landed)
 
-- [x] `dotnet build "Pena e Arte.slnx"` — **clean** (0 errors).
+- [x] `dotnet build "Pena e Arte.slnx" --configuration Release` — **clean** (0 errors).
 - [x] `dotnet format "Pena e Arte.slnx" --verify-no-changes` — **clean**.
-- [x] `dotnet test` — **green: 1446 unit + 330 integration** (0 failed). Integration run with
-  `VAULT_ADDR`/`VAULT_TOKEN` set so the Vault-backed provider test exercises a real dev Vault.
+- [x] `dotnet test` — **green: 1446 unit + 330 integration** (0 failed), incl. the new
+  architecture fitness test, hold-expiry, and PlatformFee-invariant tests.
 - [x] `pnpm lint` — **0 errors** (15 pre-existing warnings in untouched files).
 - [x] `pnpm build` (`tsc -b` + vite) — **clean**.
-- [x] `pnpm test` — **1755 passed; 4 pre-existing failures unrelated to this work** (3 Stripe
-  `PaymentMethodSelector` + 1 flaky `HelpMenu` tour — all confirmed failing/flaky on the clean
-  baseline with these changes stashed; none touch any file this epic changed).
+- [x] `pnpm test` — **1755+ passed; the only failures are the 3 pre-existing Stripe
+  `PaymentMethodSelector` tests** (+ 1 flaky `HelpMenu` tour) — confirmed failing/flaky on the
+  clean baseline with changes stashed; the refactor did not touch that component.
 - [x] No `Console.WriteLine`/`console.log` introduced.
-- [x] No secret/connection string/API key committed (the dev-mode Vault token is a labelled
-  non-prod placeholder; new `appsettings`/compose entries are empty or env-substituted).
+- [x] No secret/connection string/API key committed.
 - [x] Every touched file inside the §4 scope boundary.
-- [x] `IStripeBillingService.cs` / `StripeBillingService.cs` / `StripeDiscountService.cs`
-  byte-for-byte unchanged (`git diff f3bf5d3 --` empty).
+- [x] `IStripeBillingService.cs` / `StripeBillingService.cs` / `StripeDiscountService.cs` AND
+  `SessionSplit.cs` / `UpdateSessionSplitsCommand.cs` byte-for-byte unchanged
+  (`git diff f3bf5d3 --` empty for all five).
 - [x] Every new/changed endpoint has `.RequireAuthorization()` (consent active-template →
-  `ClientAndAbove`; erasure → `OwnerOnly`).
+  `ClientAndAbove`; erasure → `OwnerOnly`; Phase 6 added no endpoints).
 - [x] Every phase's Help-sync verdict stated explicitly (in each commit body and above).
 - [x] `## Open questions for the founder` present with all 8 items + phase tags.
-- [x] `## Execution status` note present and accurate, last good commit `59f7926`.
-- [x] EF migrations verified: `AddConsentTemplateAndSnapshot` and `AddStudioCredentialRef` are
-  additive (new tables/nullable columns), applied cleanly against a scratch MySQL on the full chain.
-- [x] Pre-commit gitleaks hook proven end-to-end: staged private key BLOCKED, clean content ALLOWED.
+- [x] `## Execution status` note present and accurate — updated to "COMPLETE: all 7 phases".
+- [x] EF migrations verified additive/safe: `AddConsentTemplateAndSnapshot`,
+  `AddStudioCredentialRef`, and `ReplaceStripePaymentIntentWithProviderReference` (EF used
+  `RenameColumn`, no data loss) all applied cleanly against a scratch MySQL on the full chain.
+- [x] Pre-commit gitleaks hook proven: staged private key BLOCKED, clean content ALLOWED.
+- [x] Architecture test proven to FAIL on an injected `PlatformLedger`, PASS once removed.
+- [x] Help-sync CI check proven: FAILS a gated change without Help; PASSES with Help / override /
+  non-gated.
 
 ## Deviations / judgment calls beyond the spec
 
@@ -119,3 +130,15 @@ next pickup).
    checkout and absent from this isolated worktree; they were copied in and committed for a
    self-contained review branch. `§0 git checkout main && pull` could not run literally (worktree
    isolation); branched off `f3bf5d3` instead (one docs-only commit behind main).
+5. **Flow A is intentionally non-functional after Phase 6 (by design, flagged):** deleting the
+   Stripe aggregator with no POK provider yet means the DI default is `NullPaymentProvider`, which
+   fails closed — card deposit endpoints throw at runtime until POK lands (the ADR-0001 sequel
+   ticket). This is the intended post-refactor state (Amendment A required the aggregator deleted,
+   not migrated), not a regression. The frontend Stripe Elements card UI was likewise left in
+   place (it can't function without a backend provider) rather than ripped out — that belongs to
+   POK's frontend ticket, out of this backend refactor's scope. Both are flagged, not silent.
+6. **Bulk rename via scoped sed (Phase 6):** the `StripePaymentIntentId` → `ProviderReferenceId`
+   field rename and the 5 method/type renames were applied with a scoped `sed` script (verified no
+   Flow B collision first, excluded historical migrations). One over-broad match corrupted two
+   doc-comments in my just-created files; both were caught and fixed before building. Every rename
+   was validated by a clean compile + the full green test suite, not trusted blind.

@@ -1,11 +1,12 @@
 # EPIC-0001 — Pre-implementation hardening (steps 0–6)
 
-## Execution status — 31 July 2026 (updated: Phases 1–5 landed)
+## Execution status — 31 July 2026 (COMPLETE: all 7 phases landed)
 
 Autonomous run on branch `epic-0001/pre-implementation-hardening` (branched off
 `f3bf5d3`; this worktree was one docs-only commit behind `main`'s `7e4196c` — the
 missing commit is `docs: log K3s production-deployment spec`, immaterial to every
-code phase here). Executed across two sessions: Phases 1–2 first, then Phases 3–5.
+code phase here). Executed across three sessions: Phases 1–2, then 3–5, then 6–7.
+**All seven phases (PENA-100 → PENA-107) are landed and verified.**
 
 **Landed — each verified to the full Definition of Done for its layer** (backend:
 `dotnet build` clean, `dotnet format --verify-no-changes` clean, `dotnet test`
@@ -39,27 +40,27 @@ green; frontend: `pnpm lint` 0 errors, `pnpm build` clean, `pnpm test` green):
   pointer schema + migration; `.githooks/pre-commit` gitleaks hook (proven to block
   a staged secret); `docs/infra/ADR-0002-secrets-management.md` + rotation runbook.
 
-**NOT started — remaining at this phase boundary (last good commit `59f7926`):**
+- **Phase 6 — PENA-106** (`0c71d36`): deleted `IStripePaymentService`/
+  `StripePaymentService` outright; provider-neutral `IPaymentProvider` +
+  `PaymentProviderCapabilities`; `NullPaymentProvider` (fail-closed DI default);
+  `Payment.StripePaymentIntentId` → `ProviderReferenceId` (renamed across ~22 files/
+  ~74 call sites) + new `Provider`/`Currency`/`HoldExpiresAt`/`PlatformFeeAmount`;
+  migration `ReplaceStripePaymentIntentWithProviderReference` (EF auto-detected the
+  rename as `RenameColumn` — no data loss; verified on a scratch DB);
+  `PaymentReconciliationJob` gains a third hold-expiry auto-release pass;
+  `NetArchTest.Rules` architecture fitness test (no platform-balance-ledger type);
+  Flow-A Stripe wording neutralised in Help/manual (Flow-B billing kept). SessionSplit
+  and Flow B untouched.
+- **Phase 7 — PENA-107** (`d8b3c83`): architecture-test visibility step in the
+  backend CI job; new `help-sync` CI job (did-you-update-the-docs, `[skip-help-sync]`
+  override); `CONTRIBUTING.md` at repo root. No duplicate gitleaks step. Both checks
+  proven locally (arch test fails on an injected `PlatformLedger`; help-sync fails on
+  a gated change without Help).
 
-- **Phase 6 — PENA-106** delete `IStripePaymentService`/`StripePaymentService`, add
-  provider-neutral `IPaymentProvider` (+ `PaymentProviderCapabilities`), rename
-  `Payment.StripePaymentIntentId` → `ProviderReferenceId` and add `Provider`,
-  `Currency`, `HoldExpiresAt`, `PlatformFeeAmount`; migration (RenameColumn, no data
-  loss); update all ~22 reference sites + `PaymentReconciliationJob`; add
-  `NetArchTest.Rules` architecture fitness test; provider-neutralise Stripe wording
-  in `helpContent.ts` + tours.
-- **Phase 7 — PENA-107** architecture-test CI visibility, Help-sync diff CI check,
-  `CONTRIBUTING.md`.
-
-**Why the stop after Phase 5:** Phase 6 is the single largest and highest-risk
-phase — deleting the aggregator interface, a field rename cascading across 22 files
-and ~74 call sites, a data-preserving migration, a new architecture test, and
-provider-neutral naming — on payment code a human will review specifically for
-correctness. It could not be completed AND verified to a green build + green test
-suite within the remaining session budget, and the master prompt is explicit: stop
-at a phase boundary, never mid-phase, rather than push a half-done payments refactor
-that breaks the build. Phases 6–7 are a clean next pickup; Phase 6's reference
-inventory is already enumerated above.
+**Outcome:** all seven phases landed, each committed separately with the exact
+Deliverable message, and pushed. Final self-check green — see
+`docs/engineering/EPIC-0001-completion-summary-2026-07-31.md`. Branch is for human
+review; NOT merged, no PR (touches payments, secrets, consent/GDPR).
 
 ---
 
