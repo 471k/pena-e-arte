@@ -45,6 +45,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();
     public DbSet<UserOnboardingState> UserOnboardingStates => Set<UserOnboardingState>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+    public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

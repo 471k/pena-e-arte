@@ -110,6 +110,13 @@ public static class InfrastructureServiceExtensions
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
         services.AddTransient<RetentionPurgeJob>();
 
+        // Secrets backend (Vault by default — see docs/infra/ADR-0002-secrets-management.md).
+        // Construction does not connect; a call resolves against Vault:Address at use time and
+        // fails closed if it can't. Registered always — nothing consumes it yet (per-tenant
+        // provider credentials are ADR-0001 follow-up work; this is the mechanism only).
+        services.Configure<VaultOptions>(configuration.GetSection(VaultOptions.Section));
+        services.AddSingleton<ISecretsProvider, VaultSecretsProvider>();
+
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenant, CurrentTenantService>();
         services.AddScoped<ICurrentUser, CurrentUserService>();

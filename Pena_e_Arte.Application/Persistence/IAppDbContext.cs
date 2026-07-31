@@ -60,6 +60,7 @@ public interface IAppDbContext
 
     // Structured audit log — no tenant filter (StudioId nullable, platform-wide actions allowed)
     DbSet<AuditLogEntry> AuditLogEntries { get; }
+    DbSet<StudioCredentialRef> StudioCredentialRefs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

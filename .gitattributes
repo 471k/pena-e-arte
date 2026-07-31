@@ -13,6 +13,9 @@
 *.yml  text eol=lf
 *.sh   text eol=lf
 
+# Git hooks are shell scripts with no extension — a CRLF shebang breaks them on Linux/macOS
+.githooks/** text eol=lf
+
 # Windows-native files keep CRLF
 *.cs      text eol=crlf
 *.csproj  text eol=crlf

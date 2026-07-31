@@ -68,6 +68,7 @@ public class AppDbContext(
 
     // --- Structured audit log (no tenant filter — StudioId nullable, platform-wide actions allowed) ---
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+    public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -226,6 +227,16 @@ public class AppDbContext(
             entity.HasIndex(a => a.CreatedAt);
             entity.HasIndex(a => a.StudioId);
         });
+
+        builder.Entity<StudioCredentialRef>(entity =>
+        {
+            entity.Property(c => c.Provider).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(c => c.SecretPath).HasMaxLength(400).IsRequired();
+            // Tenant-scoped config: one pointer per (studio, provider).
+            entity.HasIndex(c => new { c.StudioId, c.Provider }).IsUnique();
+        });
+        builder.Entity<StudioCredentialRef>()
+            .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
 
         builder.Entity<ConsentTemplate>(entity =>
         {
