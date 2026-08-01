@@ -207,6 +207,11 @@ export const clientsApi = createApi({
       query: (userId) => `clients/${userId}/portable-profile`,
       providesTags: (_result, _error, userId) => [{ type: "PortableProfile", id: userId }],
     }),
+    // Client self-service "delete my account" (GDPR Art. 17). No id in the URL — the backend
+    // resolves the caller's own client from the JWT, so only the caller's data can be erased.
+    requestMyDataErasure: builder.mutation<void, void>({
+      query: () => ({ url: "clients/me/erase-data", method: "POST" }),
+    }),
   }),
 });
 
@@ -228,4 +233,5 @@ export const {
   useDeleteTattooRecordMutation,
   useUpdatePortableProfileOptInMutation,
   useGetPortableProfileQuery,
+  useRequestMyDataErasureMutation,
 } = clientsApi;

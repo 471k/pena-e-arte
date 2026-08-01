@@ -104,6 +104,83 @@ public class RetentionPurgeJobIntegrationTests(DatabaseFixture fixture)
         entry.Action.Should().NotBe("Retention.Purged");
     }
 
+    [Fact]
+    public async Task RequestMyDataErasure_ClientSelfService_SoftDeletesOwnData_AndAuditRecordsClientActor()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+
+        Guid clientId;
+        Guid formId;
+        await using (AppDbContext seed = fixture.CreateDbContext(tenantId))
+        {
+            Client client = new()
+            {
+                StudioId = tenantId,
+                UserId = userId,
+                FirstName = "Ana",
+                LastName = "Costa",
+                Email = $"{Guid.NewGuid()}@test.com",
+            };
+            Artist artist = new()
+            {
+                StudioId = tenantId,
+                FirstName = "Art",
+                LastName = "ist",
+                Email = $"{Guid.NewGuid()}@test.com",
+            };
+            seed.Clients.Add(client);
+            seed.Artists.Add(artist);
+            await seed.SaveChangesAsync();
+
+            Appointment appointment = new()
+            {
+                StudioId = tenantId,
+                ClientId = client.Id,
+                ArtistId = artist.Id,
+                Date = DateTime.UtcNow.AddDays(-1),
+                EndDate = DateTime.UtcNow.AddDays(-1).AddHours(2),
+                DurationMinutes = 120,
+            };
+            seed.Appointments.Add(appointment);
+            await seed.SaveChangesAsync();
+
+            ConsentForm form = new()
+            {
+                StudioId = tenantId,
+                ClientId = client.Id,
+                AppointmentId = appointment.Id,
+                SignedAt = DateTime.UtcNow,
+            };
+            seed.ConsentForms.Add(form);
+            seed.ClientProfiles.Add(new ClientProfile { StudioId = tenantId, ClientId = client.Id });
+            await seed.SaveChangesAsync();
+            clientId = client.Id;
+            formId = form.Id;
+        }
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(tenantId);
+        StubCurrentUser user = new(userId, "client");
+
+        RequestMyDataErasureHandler handler = new(db, user);
+        AuditLogBehavior<RequestMyDataErasureCommand, Unit> behavior = new(db, user, tenant);
+        RequestMyDataErasureCommand command = new();
+        await behavior.Handle(command, ct => handler.Handle(command, ct), default);
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        ConsentForm erased = await verify.ConsentForms.IgnoreQueryFilters().FirstAsync(f => f.Id == formId);
+        erased.DeletedAt.Should().NotBeNull();
+
+        AuditLogEntry entry = await verify.AuditLogEntries
+            .FirstAsync(a => a.TargetId == clientId && a.StudioId == tenantId);
+        entry.Action.Should().Be(AuditActions.ClientDataErasureRequested);
+        entry.TargetType.Should().Be(AuditTargetTypes.Client);
+        // Actor role distinguishes a client self-service erasure from an owner-initiated one.
+        entry.ActorRole.Should().Be("client");
+    }
+
     private async Task RunJobAsync(Guid tenantId, IR2Service r2, RetentionOptions opts)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);

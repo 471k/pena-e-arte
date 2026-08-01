@@ -195,6 +195,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Switch to the \"Tattoo History\" tab to see your completed tattoos with photos and descriptions.",
       "Switch to the \"Sharing\" tab to turn on or off letting other studios reuse your profile information.",
     ],
+    relatedArticleIds: ["client-delete-account"],
+  },
+  {
+    id: "client-delete-account",
+    roles: [Client],
+    title: "Delete my account",
+    route: "/clients/me",
+    keywords: ["delete account", "erase data", "right to erasure", "gdpr", "remove my data"],
+    summary: "Permanently delete your account and personal data (profile, body map, and consent records) yourself — your right to erasure.",
+    steps: [
+      "Open your profile at Profile, then the \"Sharing\" tab.",
+      "In the \"Delete my account\" section, click \"Delete my account\".",
+      "Read the warning, type DELETE to confirm, and click \"Delete my account\" in the dialog.",
+    ],
+    warnings: [
+      "This deletes your data immediately and it becomes permanently unrecoverable after a 30-day grace period. It cannot be undone.",
+      "You only ever delete your own account — it can never affect anyone else's data.",
+    ],
+    relatedArticleIds: ["client-profile"],
   },
   {
     id: "client-deposit-pay",

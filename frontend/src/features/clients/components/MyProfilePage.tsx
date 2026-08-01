@@ -15,6 +15,7 @@ import {
 } from "../clientsApi";
 import { BodyMap } from "./BodyMap";
 import { PortableProfileToggle } from "./PortableProfileToggle";
+import { DeleteAccountSection } from "./DeleteAccountSection";
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
@@ -213,7 +214,7 @@ export function MyProfilePage() {
                 ))}
               </TabsContent>
 
-              <TabsContent value="sharing" className="mt-4">
+              <TabsContent value="sharing" className="mt-4 space-y-4">
                 {profileLoading && <Skeleton className="h-24 w-full rounded-lg" />}
                 {!profileLoading && profile && (
                   <PortableProfileToggle currentOptIn={profile.allowCrossTenantRead} />
@@ -223,6 +224,8 @@ export function MyProfilePage() {
                     Profile sharing settings are unavailable until a profile is created.
                   </p>
                 )}
+
+                <DeleteAccountSection />
               </TabsContent>
             </Tabs>
           </div>
