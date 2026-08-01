@@ -18,6 +18,7 @@ import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi }          from "@/features/public";
 import { savedImagesApi }     from "@/features/public/savedImagesApi";
+import { contactApi }         from "@/features/public/contactApi";
 import { platformApi } from "@/features/platform/platformApi";
 import { feedbackApi } from "@/features/feedback/feedbackApi";
 import { reviewsApi } from "@/features/reviews/reviewsApi";
@@ -44,6 +45,7 @@ const appReducer = combineReducers({
   [paymentsApi.reducerPath]:       paymentsApi.reducer,
   [publicApi.reducerPath]:         publicApi.reducer,
   [savedImagesApi.reducerPath]:    savedImagesApi.reducer,
+  [contactApi.reducerPath]:        contactApi.reducer,
   [platformApi.reducerPath]:       platformApi.reducer,
   [feedbackApi.reducerPath]:       feedbackApi.reducer,
   [reviewsApi.reducerPath]:        reviewsApi.reducer,
@@ -113,6 +115,7 @@ export const store = configureStore({
       paymentsApi.middleware,
       publicApi.middleware,
       savedImagesApi.middleware,
+      contactApi.middleware,
       platformApi.middleware,
       feedbackApi.middleware,
       reviewsApi.middleware,

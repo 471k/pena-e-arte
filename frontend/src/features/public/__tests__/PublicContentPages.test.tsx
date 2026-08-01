@@ -6,6 +6,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import type { ReactElement } from "react";
 
 import authReducer from "@/features/auth/authSlice";
+import { contactApi } from "@/features/public/contactApi";
 import {
   HomePage,
   PrivacyPolicyPage,
@@ -16,7 +17,8 @@ import {
 
 function renderPublic(ui: ReactElement) {
   const store = configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, [contactApi.reducerPath]: contactApi.reducer },
+    middleware: (getDefault) => getDefault().concat(contactApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null } as any,

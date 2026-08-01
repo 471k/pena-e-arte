@@ -140,6 +140,7 @@ try
     app.MapPrometheusScrapingEndpoint();
 
     app.MapPublicEndpoints();
+    app.MapContactEndpoints();
     app.MapSavedImagesEndpoints();
     app.MapPublicDesignEndpoints();
     app.MapAuthEndpoints();

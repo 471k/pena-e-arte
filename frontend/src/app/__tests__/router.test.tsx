@@ -9,6 +9,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { setSessionExpired } from "@/features/ui/uiSlice";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { RoleGuard, AppRoot, getRoleRedirectPath, routes } from "@/app/router";
+import { contactApi } from "@/features/public/contactApi";
 import { Role } from "@/shared/types/roles";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -238,7 +239,15 @@ describe("AppRoot", () => {
 
 describe("public policy routes", () => {
   function renderAt(path: string) {
-    const store = makeAuthStore(null);
+    // ContactPage uses RTK Query (contactApi), so the store needs it registered.
+    const store = configureStore({
+      reducer: { auth: authReducer, [contactApi.reducerPath]: contactApi.reducer },
+      middleware: (getDefault) => getDefault().concat(contactApi.middleware),
+      preloadedState: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null } as any,
+      },
+    });
     const testRouter = createMemoryRouter(routes, { initialEntries: [path] });
     render(
       <Provider store={store}>

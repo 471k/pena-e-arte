@@ -78,7 +78,7 @@ export function PrivacyPolicyPage() {
       <Section heading="4. Sub-processors">
         <ul className="list-disc space-y-1 pl-5">
           <li>Cloudflare R2 — file/image storage and CDN</li>
-          <li>Resend — transactional email</li>
+          <li>Resend — transactional email (including relaying contact-form messages)</li>
           <li>Twilio — SMS notifications</li>
           <li>Our hosting provider — application and database hosting</li>
           <li>
@@ -86,6 +86,11 @@ export function PrivacyPolicyPage() {
             listed here for transparency ahead of launch
           </li>
         </ul>
+        <p>
+          <strong>Contact form.</strong> When you use our contact form, your name, email, and
+          message are relayed to our support inbox by email (via Resend) so we can reply. Contact
+          submissions are <strong>not stored in our database</strong> beyond that email delivery.
+        </p>
       </Section>
 
       <Section heading="5. Your rights">
