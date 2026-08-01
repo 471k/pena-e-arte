@@ -148,7 +148,9 @@ out-of-scope items (real POK provider implementation, production Vault cluster, 
 ## Founder resolutions — 1 Aug 2026 (follow-up pass, same branch)
 
 The founder answered the 8 open questions + the refund finding; all wired into this branch in
-three commits (config/docs; contact form; delete-account). Every item verified to the same DoD.
+three commits — `3564235` (config/docs: Q1/2/3/4/6/7/9/10), `60614e4` (contact form: Q5),
+`b66a1e8` (delete-account: Q8). Every item verified to the same DoD (dotnet build/format/test
+green — 1458 unit + 331 integration; pnpm lint/build/test green; Flow B byte-for-byte unchanged).
 
 - **Q1 tagline/SEO** — kept `SITE_TAGLINE`; added distinct `SITE_META_DESCRIPTION` for
   description/og:description (legalEntity.ts + index.html).
