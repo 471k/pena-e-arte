@@ -1,0 +1,38 @@
+#!/bin/sh
+# Pre-commit secret scan (gitleaks).
+#
+# This is the one secret-scanning layer neither the CI gitleaks step nor GitHub push
+# protection can provide: it catches a secret in your STAGED changes BEFORE the commit
+# exists locally. CI gitleaks and push protection only ever see a commit after it is made.
+#
+# Enable once per clone:
+#   git config core.hooksPath .githooks
+#
+# Resolution order (smallest footprint for a solo-founder repo):
+#   1. a local `gitleaks` binary if installed;
+#   2. otherwise the official gitleaks Docker image (Docker is already required here).
+# If neither is available the hook FAILS CLOSED — it does not wave the commit through.
+set -e
+
+SCAN="git --staged --redact"
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks $SCAN
+elif command -v docker >/dev/null 2>&1; then
+    # MSYS_NO_PATHCONV stops Git-Bash-on-Windows mangling the container path (/repo ->
+    # C:/Program Files/Git/repo); harmless on Linux/macOS. GIT_CONFIG_* injects
+    # safe.directory so the container's git trusts the bind-mounted repo (root vs host uid).
+    MSYS_NO_PATHCONV=1 docker run --rm \
+        -e GIT_CONFIG_COUNT=1 \
+        -e GIT_CONFIG_KEY_0=safe.directory \
+        -e GIT_CONFIG_VALUE_0=/repo \
+        -v "$REPO_ROOT:/repo" -w /repo \
+        ghcr.io/gitleaks/gitleaks:latest $SCAN
+else
+    echo "pre-commit: neither 'gitleaks' nor 'docker' is available — cannot scan staged" >&2
+    echo "changes for secrets. Install gitleaks (https://github.com/gitleaks/gitleaks) or" >&2
+    echo "Docker, then retry. See CONTRIBUTING.md. (Refusing to skip the secret scan.)" >&2
+    exit 1
+fi

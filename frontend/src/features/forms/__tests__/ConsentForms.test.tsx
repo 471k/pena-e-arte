@@ -56,16 +56,18 @@ const PENDING_FORM: ConsentFormResponse = {
 
 const SIGNED_FORM_DETAIL: ConsentFormDetailResponse = {
   ...SIGNED_FORM,
-  appointmentDate: APPOINTMENT.date,
-  artistName:      "Luca Artista",
-  artistId:        "artist-001",
+  appointmentDate:     APPOINTMENT.date,
+  artistName:          "Luca Artista",
+  artistId:            "artist-001",
+  consentTextSnapshot: "You acknowledge the risks and procedures of your tattoo session.",
 };
 
 const PENDING_FORM_DETAIL: ConsentFormDetailResponse = {
   ...PENDING_FORM,
-  appointmentDate: FUTURE,
-  artistName:      null,
-  artistId:        null,
+  appointmentDate:     FUTURE,
+  artistName:          null,
+  artistId:            null,
+  consentTextSnapshot: null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

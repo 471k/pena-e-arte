@@ -16,7 +16,7 @@ public class DeclareCashDepositHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ICurrentUser currentUser,
-    IStripePaymentService stripePayments)
+    IPaymentProvider stripePayments)
     : IRequestHandler<DeclareCashDepositCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(DeclareCashDepositCommand command, CancellationToken ct)
@@ -45,10 +45,10 @@ public class DeclareCashDepositHandler(
             // Client changed their mind before authorizing, or retries after a failure.
             // Reconcile with Stripe first — if the card was already authorized/captured
             // (webhook missed), heal the local state instead of discarding the hold.
-            if (existing.StripePaymentIntentId is not null && existing.Status == PaymentStatus.Pending)
+            if (existing.ProviderReferenceId is not null && existing.Status == PaymentStatus.Pending)
             {
-                string? piStatus = await stripePayments.GetPaymentIntentStatusAsync(
-                    existing.StripePaymentIntentId, ct);
+                string? piStatus = await stripePayments.GetStatusAsync(
+                    existing.ProviderReferenceId, ct);
 
                 if (piStatus == "requires_capture")
                 {
@@ -72,13 +72,13 @@ public class DeclareCashDepositHandler(
 
                 // Cancel only intents that can still be cancelled; canceled/missing need no call
                 if (piStatus is "requires_payment_method" or "requires_confirmation" or "requires_action" or "processing")
-                    await stripePayments.CancelPaymentIntentAsync(existing.StripePaymentIntentId, ct);
+                    await stripePayments.CancelAsync(existing.ProviderReferenceId, ct);
             }
 
             existing.Method = ClientPaymentMethod.Cash;
             existing.Status = PaymentStatus.CashPending;
             existing.CashNote = command.Note;
-            existing.StripePaymentIntentId = null;
+            existing.ProviderReferenceId = null;
             existing.ClientSecret = null;
             existing.UpdatedAt = DateTime.UtcNow;
 

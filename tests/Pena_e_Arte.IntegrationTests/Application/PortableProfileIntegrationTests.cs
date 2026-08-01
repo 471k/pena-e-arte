@@ -1,6 +1,13 @@
 using FluentAssertions;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Clients.Commands;
 using Pena_e_Arte.Application.Clients.Queries;
+using Pena_e_Arte.Application.Common.Behaviors;
+using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Domain.Models;
 using Pena_e_Arte.Domain.ValueObjects;
 using Pena_e_Arte.Infrastructure.Persistence;
@@ -115,6 +122,61 @@ public class PortableProfileIntegrationTests(DatabaseFixture fixture)
 
         result.Should().NotBeNull(
             because: "IgnoreQueryFilters allows cross-tenant read for opted-in profiles");
+    }
+
+    [Fact]
+    public async Task UpdatePortableProfileOptIn_OptInThenOptOut_WritesDistinctAuditEntries()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        Client client = new()
+        {
+            StudioId = tenantId,
+            UserId = userId,
+            FirstName = "Ivo",
+            LastName = "Marques",
+            Email = $"{Guid.NewGuid()}@test.com"
+        };
+        db.Clients.Add(client);
+        await db.SaveChangesAsync();
+
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(tenantId);
+        StubCurrentUser user = new(userId, "client");
+
+        await RunAudited(db, user, tenant,
+            new UpdatePortableProfileOptInCommand(new UpdatePortableProfileOptInRequest(true)));
+        await RunAudited(db, user, tenant,
+            new UpdatePortableProfileOptInCommand(new UpdatePortableProfileOptInRequest(false)));
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        List<AuditLogEntry> entries = await verify.AuditLogEntries
+            .Where(a => a.StudioId == tenantId && a.TargetType == AuditTargetTypes.ClientProfile)
+            .ToListAsync();
+
+        entries.Should().HaveCount(2);
+        entries.Select(e => e.Action).Should().BeEquivalentTo(
+        [
+            AuditActions.ClientProfileCrossTenantOptedIn,
+            AuditActions.ClientProfileCrossTenantOptedOut,
+        ]);
+        entries.Should().OnlyContain(e => e.TargetId != Guid.Empty);
+    }
+
+    private static async Task RunAudited(
+        AppDbContext db, ICurrentUser user, ICurrentTenant tenant,
+        UpdatePortableProfileOptInCommand command)
+    {
+        UpdatePortableProfileOptInHandler handler = new(db, user);
+        AuditLogBehavior<UpdatePortableProfileOptInCommand, Unit> behavior = new(db, user, tenant);
+        await behavior.Handle(command, ct => handler.Handle(command, ct), default);
+    }
+
+    private sealed record StubCurrentUser(Guid UserId, string Role, string? Email = null) : ICurrentUser
+    {
+        public bool IsAuthenticated => true;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────

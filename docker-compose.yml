@@ -25,6 +25,23 @@ services:
     volumes:
       - redis_data:/data
 
+  # Local dev-mode Vault for the ISecretsProvider path — in-memory, auto-unsealed,
+  # data lost on restart. This is DELIBERATELY NOT the production posture: there is
+  # no K3s cluster to run a real Raft-backed Vault on yet (see
+  # docs/payments/implementation-readiness-status-2026-07-31.md §1 and
+  # docs/infra/ADR-0002-secrets-management.md). Standing up a production Vault
+  # cluster is out of scope here — that's the K3s deploy prompt's job.
+  vault:
+    image: hashicorp/vault:1.18
+    container_name: pena_e_arte_vault
+    restart: unless-stopped
+    cap_add: [IPC_LOCK]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN:-dev-only-not-for-prod}
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    ports:
+      - "8200:8200"
+
   minio:
     image: minio/minio
     container_name: pena_e_arte_minio
@@ -162,6 +179,20 @@ services:
       Resend__ApiKey: ${RESEND_API_KEY:-}
       Resend__FromAddress: ${RESEND_FROM_ADDRESS:-}
       Resend__FromName: ${RESEND_FROM_NAME:-TattooOS}
+      # Twilio (SMS via NotificationService) — previously NOT wired here, so any
+      # docker-composed deployment ran with permanently empty Twilio credentials.
+      Twilio__AccountSid: ${TWILIO_ACCOUNT_SID:-}
+      Twilio__AuthToken: ${TWILIO_AUTH_TOKEN:-}
+      Twilio__FromNumber: ${TWILIO_FROM_NUMBER:-}
+      # Instagram (InstagramService + nightly InstagramSyncJob) — same prior gap.
+      Instagram__AppId: ${INSTAGRAM_APP_ID:-}
+      Instagram__AppSecret: ${INSTAGRAM_APP_SECRET:-}
+      Instagram__RedirectUri: ${INSTAGRAM_REDIRECT_URI:-}
+      Instagram__TokenEncryptionKey: ${INSTAGRAM_TOKEN_ENCRYPTION_KEY:-}
+      # Secrets backend (Vault). Empty by default; point at the local vault service
+      # for container-parity testing of the ISecretsProvider path.
+      Vault__Address: ${VAULT_ADDR:-}
+      Vault__Token: ${VAULT_TOKEN:-}
       Google__ClientId: ${VITE_GOOGLE_CLIENT_ID:-}
       App__BaseUrl: ${VITE_PUBLIC_URL:-http://localhost:8081}
       Cors__AllowedOrigins__0: ${VITE_PUBLIC_URL:-http://localhost:8081}

@@ -14,7 +14,7 @@ public class MarkNoShowHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     IRealtimeNotifier realtime,
-    IStripePaymentService stripe)
+    IPaymentProvider paymentProvider)
     : IRequestHandler<MarkNoShowCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(MarkNoShowCommand command, CancellationToken ct)
@@ -40,10 +40,10 @@ public class MarkNoShowHandler(
         if (payment is not null)
         {
             if (payment.Method == ClientPaymentMethod.Card
-                && !string.IsNullOrEmpty(payment.StripePaymentIntentId)
+                && !string.IsNullOrEmpty(payment.ProviderReferenceId)
                 && payment.Status == PaymentStatus.Captured)
             {
-                await stripe.CapturePaymentAsync(payment.StripePaymentIntentId, ct);
+                await paymentProvider.CaptureAsync(payment.ProviderReferenceId, ct);
                 payment.Status = PaymentStatus.Paid;
                 payment.UpdatedAt = DateTime.UtcNow;
             }

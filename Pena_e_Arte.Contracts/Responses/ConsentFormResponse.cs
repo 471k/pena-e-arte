@@ -28,4 +28,5 @@ public record ConsentFormDetailResponse(
     string ClientName,
     DateTime AppointmentDate,
     string? ArtistName,
-    Guid? ArtistId);
+    Guid? ArtistId,
+    string? ConsentTextSnapshot);

@@ -917,7 +917,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Reschedule</span> to move the same booking to a new date, time, or duration (only enabled with enough notice — otherwise contact the studio directly).</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first.</div>
-<div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 24 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled.</div>
+<div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled.</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
 </section>
 
@@ -1098,7 +1098,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Sign consent form</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>At <code>/forms/consent/new</code>, digitally sign a consent form for a specific appointment by typing your full legal name. A PDF copy is generated and attached to the appointment automatically.</p>
+<p>At <code>/forms/consent/new</code>, digitally sign a consent form for a specific appointment by typing your full legal name. The full consent agreement text is shown on the page so you can read exactly what you're agreeing to before you sign, and the exact wording is saved with your signature. A PDF copy is generated and attached to the appointment automatically.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Sign consent form wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1114,6 +1114,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Sign consent form — fields in order: appointment, signature</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
+<li>Read the <span class="step-title">Consent agreement</span> shown at the top of the page in full.</li>
 <li>Select the <span class="step-title">Appointment</span> this consent applies to (only pending/confirmed appointments show up).</li>
 <li>Type your full legal name into <span class="step-title">Digital signature</span>.</li>
 <li>Click <span class="step-title">Sign Consent Form</span>.</li>
@@ -1149,7 +1150,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Consent form detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own, read-only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A read-only view showing the signature, client/appointment IDs, dates, and a link to the generated PDF document.</p>
+<p>A read-only view showing the signature, client/appointment IDs, dates, the exact consent text agreed to at signing time (the "Consent agreement (as signed)" snapshot — not the studio's current wording, so a past consent is always an accurate record), and a link to the generated PDF document.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Consent form detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1197,7 +1198,8 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>The <span class="step-title">Profile</span> tab shows your contact info and body map — click <span class="step-title">Edit</span> to toggle zones on/off, then <span class="step-title">Save</span>.</li>
 <li>The <span class="step-title">Tattoo History</span> tab lists completed tattoos recorded by your artists.</li>
-<li>The <span class="step-title">Sharing</span> tab lets you opt your tattoo history in or out of cross-studio visibility.</li>
+<li>The <span class="step-title">Sharing</span> tab lets you opt your tattoo history (body-map locations, tattoo photos, and descriptions) in or out of cross-studio visibility. Your medical notes, allergies, contact details, and payment history are never shared, and you can turn sharing off again at any time.</li>
+<li>The <span class="step-title">Sharing</span> tab also has a <span class="step-title">Delete my account</span> section — permanently delete your own account and personal data (profile, body map, consent records). You type <code>DELETE</code> to confirm; you're signed out immediately and can't log back in, and your data is then permanently deleted after a 30-day grace period (unrecoverable thereafter). You can only ever delete your own account, never anyone else's.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-client-detail">Artist: client detail</a>, <a href="#artist-tattoo-record">Tattoo record detail</a></div>
 </section>
@@ -1206,7 +1208,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using Stripe's embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment.</p>
+<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1218,14 +1220,14 @@ ol.steps li { margin: 6px 0; }
 <rect x="280" y="140" width="200" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="300" y="172" font-size="8" fill-opacity="0.5">card number / expiry / CVC</text>
 <rect x="280" y="212" width="200" height="26" rx="4" fill="#7c3aed"/><text x="310" y="229" font-size="10" fill="#fff">Authorise deposit</text>
-<text x="290" y="256" font-size="7" fill-opacity="0.5">Secured by Stripe</text>
+<text x="290" y="256" font-size="7" fill-opacity="0.5">Secured payment</text>
 </svg>
 </figure>
-<figcaption>Deposit checkout — Stripe Payment Element embedded directly in the page</figcaption>
+<figcaption>Deposit checkout — card payment form embedded directly in the page</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Review the deposit amount shown above the card form.</li>
-<li>Enter your card details into the Stripe payment form.</li>
+<li>Enter your card details into the payment form.</li>
 <li>Click <span class="step-title">Authorise deposit</span>.</li>
 <li>A confirmation screen appears once authorised — you can return to booking from there.</li>
 </ol>
@@ -1994,7 +1996,7 @@ ol.steps li { margin: 6px 0; }
 <li>Enter a <span class="step-title">Rule name</span> (e.g. "Standard Deposit").</li>
 <li>Choose <span class="step-title">Fixed amount</span> or <span class="step-title">Percentage</span>.</li>
 <li>Enter the <span class="step-title">Amount</span> (€ or %, 0.01–100 for percentages).</li>
-<li>Optionally set the <span class="step-title">Cancellation notice window</span> (hours a client must give to self-cancel/reschedule without forfeiting their deposit). Leave blank for the 24-hour platform default.</li>
+<li>Optionally set the <span class="step-title">Cancellation notice window</span> (hours a client must give to self-cancel/reschedule without forfeiting their deposit). Leave blank for the 48-hour platform default.</li>
 <li>Optionally set <span class="step-title">Refund if cancelled late</span> (% of the deposit refunded on a late self-cancel). 0% forfeits it entirely.</li>
 <li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
 <li>Click <span class="step-title">Create Rule</span>.</li>
@@ -2016,7 +2018,7 @@ ol.steps li { margin: 6px 0; }
 <rect x="336" y="96" width="45" height="14" rx="7" fill="#22c55e" fill-opacity="0.5"/><text x="344" y="106" font-size="7">Active</text>
 <rect x="260" y="140" width="240" height="90" rx="6" fill="currentColor" fill-opacity="0.05"/>
 <text x="272" y="160" font-size="9">Fixed · €50.00</text>
-<text x="272" y="178" font-size="8" fill-opacity="0.6">Cancellation notice: 24 hours (platform default)</text>
+<text x="272" y="178" font-size="8" fill-opacity="0.6">Cancellation notice: 48 hours (platform default)</text>
 <text x="272" y="192" font-size="8" fill-opacity="0.6">Late cancellation refund: 0%</text>
 <text x="272" y="212" font-size="8" fill-opacity="0.6">Created 3 Mar 2026</text>
 </svg>
@@ -2204,7 +2206,7 @@ ol.steps li { margin: 6px 0; }
 <li>Once paid or refunded, <span class="step-title">Download receipt</span> generates a PDF invoice.</li>
 <li>Use the <span class="step-title">Session Splits</span> editor below to divide the payment across artists/roles for payout tracking.</li>
 </ol>
-<div class="callout callout-warn"><strong>Warning:</strong> refunds are irreversible once processed by Stripe.</div>
+<div class="callout callout-warn"><strong>Warning:</strong> refunds are irreversible once processed by the payment provider.</div>
 <div class="crosslinks">See also: <a href="#owner-payments">Payment list</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
 </section>
 

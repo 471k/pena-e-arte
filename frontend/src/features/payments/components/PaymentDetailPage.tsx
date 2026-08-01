@@ -341,8 +341,8 @@ export function PaymentDetailPage() {
             {payment.cashNote && (
               <Row label="Note" value={payment.cashNote} />
             )}
-            {payment.stripePaymentIntentId && (
-              <Row label="Stripe PI" value={payment.stripePaymentIntentId} mono />
+            {payment.providerReferenceId && (
+              <Row label="Stripe PI" value={payment.providerReferenceId} mono />
             )}
           </CardContent>
         </Card>

@@ -459,6 +459,18 @@ export function RegisterStudioPage() {
                         Register
                       </Button>
                     </div>
+
+                    <p className="mt-3 text-center text-xs text-muted-foreground">
+                      By registering your studio you agree to our{" "}
+                      <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </p>
                   </>
                 )}
               </form>

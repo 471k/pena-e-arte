@@ -7,6 +7,6 @@ public class ConfirmPaymentValidator : AbstractValidator<ConfirmPaymentCommand>
 {
     public ConfirmPaymentValidator()
     {
-        RuleFor(x => x.StripePaymentIntentId).NotEmpty();
+        RuleFor(x => x.ProviderReferenceId).NotEmpty();
     }
 }

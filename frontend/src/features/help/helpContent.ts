@@ -55,7 +55,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Confirm reschedule\".",
     ],
     tips: [
-      "Reschedule is only available with enough notice (the studio's configured window, 24 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly.",
+      "Reschedule is only available with enough notice (the studio's configured window, 48 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly.",
       "Rescheduling doesn't change the appointment's status — a Confirmed appointment stays Confirmed.",
     ],
   },
@@ -159,13 +159,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Sign a consent form",
     route: "/forms/consent/new",
     keywords: ["digital signature", "sign consent", "agreement"],
-    summary: "Digitally sign the consent agreement for an upcoming appointment before your tattoo session.",
+    summary: "Digitally sign the consent agreement for an upcoming appointment before your tattoo session. The full consent text is shown on the page so you can read exactly what you're agreeing to before you sign.",
     steps: [
+      "Read the consent agreement shown at the top of the page in full.",
       "Select the appointment you're signing consent for from the dropdown.",
       "Type your full legal name in the \"Digital signature\" box to sign.",
       "Click \"Sign Consent Form\".",
     ],
-    warnings: ["You can only sign one consent form per appointment — a PDF copy is generated and attached automatically once you sign."],
+    warnings: ["You can only sign one consent form per appointment — a PDF copy is generated and attached automatically once you sign.", "The exact wording you agreed to is saved with your signature, so a past consent always shows what you actually agreed to even if the studio later updates its consent text."],
     relatedArticleIds: ["client-consent-list"],
   },
   {
@@ -178,7 +179,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Browse the list — each row shows the appointment and a \"Signed\" or \"Pending\" badge with the date.",
       "Click \"Sign consent form\" (top right) to sign a new one.",
-      "Click any row to view that form's details.",
+      "Click any row to view that form's details, including the exact consent text you agreed to at the time you signed.",
     ],
     relatedArticleIds: ["client-consent-sign"],
   },
@@ -194,6 +195,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Switch to the \"Tattoo History\" tab to see your completed tattoos with photos and descriptions.",
       "Switch to the \"Sharing\" tab to turn on or off letting other studios reuse your profile information.",
     ],
+    relatedArticleIds: ["client-delete-account"],
+  },
+  {
+    id: "client-delete-account",
+    roles: [Client],
+    title: "Delete my account",
+    route: "/clients/me",
+    keywords: ["delete account", "erase data", "right to erasure", "gdpr", "remove my data"],
+    summary: "Permanently delete your account and personal data (profile, body map, and consent records) yourself — your right to erasure.",
+    steps: [
+      "Open your profile at Profile, then the \"Sharing\" tab.",
+      "In the \"Delete my account\" section, click \"Delete my account\".",
+      "Read the warning, type DELETE to confirm, and click \"Delete my account\" in the dialog.",
+    ],
+    warnings: [
+      "You're signed out immediately and can't log back in. Your data is then permanently deleted after a 30-day grace period, after which it's unrecoverable. It cannot be undone.",
+      "You only ever delete your own account — it can never affect anyone else's data.",
+    ],
+    relatedArticleIds: ["client-profile"],
   },
   {
     id: "client-deposit-pay",
@@ -207,7 +227,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Enter your card details in the payment box.",
       "Click \"Authorise deposit\".",
     ],
-    tips: ["Your card isn't charged immediately — it's authorised, and the studio captures the payment closer to your appointment. Payment is by card through Stripe, or by cash arranged with the studio."],
+    tips: ["Your card isn't charged immediately — it's authorised, and the studio captures the payment closer to your appointment. Payment is by card, or by cash arranged with the studio."],
   },
   {
     id: "client-verify-email",
@@ -408,6 +428,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click the consent form you want to review.",
       "Check the \"Signed\" or \"Pending\" status, client, and linked appointment.",
       "View the digital signature and, if attached, open or download the consent document.",
+      "The \"Consent agreement (as signed)\" section shows the exact text the client agreed to at the time — the stored snapshot, not the studio's current wording — so a past consent is always an accurate record.",
     ],
   },
   {
@@ -564,7 +585,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Enter a name for the rule (e.g. \"Standard Deposit\").",
       "Choose \"Fixed amount\" (a set euro amount) or \"Percentage\" (a % of the session cost).",
       "Enter the amount or percentage.",
-      "Optionally set a \"Cancellation notice window\" — how many hours' notice a client must give to self-cancel without forfeiting their deposit. Leave blank to use the 24-hour platform default.",
+      "Optionally set a \"Cancellation notice window\" — how many hours' notice a client must give to self-cancel without forfeiting their deposit. Leave blank to use the 48-hour platform default.",
       "Optionally set \"Refund if cancelled late\" — the percentage of the deposit refunded if a client cancels within that window. 0% (the default) forfeits the deposit entirely.",
       "Leave \"Active\" checked if you want the rule to apply immediately, then click \"Create Rule\".",
     ],
@@ -606,7 +627,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Create a payment request manually",
     route: "/payments/new",
     keywords: ["new payment", "record payment", "checkout link"],
-    summary: "Record a new deposit payment for an appointment, either by card (via Stripe) or cash.",
+    summary: "Record a new deposit payment for an appointment, either by card or cash.",
     steps: [
       "Go to Payments and click \"New payment\".",
       "Search and select an appointment that has a pending deposit.",
@@ -1006,7 +1027,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-cash-vs-card",
     roles: [Owner, Client],
     question: "What's the difference between paying by card and paying by cash?",
-    answer: "Card payments go through Stripe: the client's card is authorised at booking and the studio captures the payment later. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method.",
+    answer: "Card payments are authorised at booking and the studio captures the payment later. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method.",
     relatedArticleIds: ["client-deposit-pay", "owner-payment-create"],
   },
   {
@@ -1027,7 +1048,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-client-cancel-refund",
     roles: [Client],
     question: "Do I get my deposit back if I cancel my appointment?",
-    answer: "It depends on the studio's cancellation policy. Cancel with enough notice (the studio's configured notice window, 24 hours by default) and you get a full refund. Cancel later than that and you may only get a partial refund, or none at all, depending on the studio's settings.",
+    answer: "It depends on the studio's cancellation policy. Cancel with enough notice (the studio's configured notice window, 48 hours by default) and you get a full refund. Cancel later than that and you may only get a partial refund, or none at all, depending on the studio's settings.",
     relatedArticleIds: ["client-cancel-booking"],
   },
   {
@@ -1055,7 +1076,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-portable-profile",
     roles: [Client],
     question: "Can a new studio see my tattoo history from another studio?",
-    answer: "Only if you turn on sharing for your profile. By default your history stays private to each studio. You control this from the Sharing tab on your profile page, and studios can only ever see non-sensitive details — never your payment history or consent form data.",
+    answer: "Only if you turn on sharing for your profile. By default your history stays private to each studio. You control this from the Sharing tab on your profile page. When you opt in, other studios can see your tattoo history — your body-map locations, tattoo photos, and descriptions. They can never see your medical notes, allergies, contact details, payment history, or consent forms, and you can turn sharing off again at any time.",
     relatedArticleIds: ["client-profile"],
   },
   {

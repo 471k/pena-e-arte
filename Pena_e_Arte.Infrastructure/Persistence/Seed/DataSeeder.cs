@@ -127,6 +127,10 @@ public static class DataSeeder
         await EnsureSeedUsersAsync(userManager);
         await EnsureArtistSlugsAsync(db);
 
+        // Always run: platform-default consent templates are system-defined (like the core
+        // plan tiers), not demo data — a studio with no custom template falls back to these.
+        await EnsurePlatformConsentTemplatesAsync(db);
+
         // Snapshot BEFORE reconciling. ReconcileCoreTiersAsync will insert StarterPlanId
         // if it's missing, which would make a post-reconcile check always true and
         // silently skip demo-entity seeding on a genuinely fresh database.
@@ -148,6 +152,59 @@ public static class DataSeeder
         await SeedStudiosAndSubscriptionsAsync(db);
         await SeedStudio1EntitiesAsync(db);
         await SeedStudio2EntitiesAsync(db);
+    }
+
+    // ─── Consent templates ──────────────────────────────────────────────────────
+
+    private static async Task EnsurePlatformConsentTemplatesAsync(AppDbContext db)
+    {
+        bool hasAppointment = await db.ConsentTemplates.AnyAsync(t =>
+            t.StudioId == null
+            && t.Kind == ConsentTemplateKind.AppointmentConsent
+            && t.IsActive);
+
+        if (!hasAppointment)
+        {
+            db.ConsentTemplates.Add(new ConsentTemplate
+            {
+                StudioId = null,
+                Kind = ConsentTemplateKind.AppointmentConsent,
+                Version = "1.0",
+                IsActive = true,
+                EffectiveFrom = DateTime.UtcNow,
+                BodyText =
+                    "I confirm that I am of legal age and freely consent to being tattooed. "
+                    + "I understand that tattooing involves breaking the skin and carries risks "
+                    + "including infection, allergic reaction, and scarring. I confirm the "
+                    + "information I have provided about my health, medication, and allergies is "
+                    + "accurate. I understand a tattoo is permanent and aftercare is my "
+                    + "responsibility.",
+            });
+        }
+
+        bool hasSharing = await db.ConsentTemplates.AnyAsync(t =>
+            t.StudioId == null
+            && t.Kind == ConsentTemplateKind.CrossTenantProfileSharing
+            && t.IsActive);
+
+        if (!hasSharing)
+        {
+            db.ConsentTemplates.Add(new ConsentTemplate
+            {
+                StudioId = null,
+                Kind = ConsentTemplateKind.CrossTenantProfileSharing,
+                Version = "1.0",
+                IsActive = true,
+                EffectiveFrom = DateTime.UtcNow,
+                BodyText =
+                    "I consent to sharing my tattoo history — body-map locations, tattoo photos, "
+                    + "and descriptions — with other studios on TattooOS so any artist can view it "
+                    + "before a session. My medical notes, allergies, contact details, and payment "
+                    + "history are not shared. I can withdraw this consent at any time.",
+            });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     // ─── Plans ────────────────────────────────────────────────────────────────
@@ -836,7 +893,7 @@ public static class DataSeeder
             ClientId = S1Client1Id,
             Amount = 300m,
             Status = PaymentStatus.Paid,
-            StripePaymentIntentId = "pi_seed_s1_6",
+            ProviderReferenceId = "pi_seed_s1_6",
             PaidAt = now.AddDays(-30),
             UpdatedAt = now.AddDays(-30)
         };
@@ -850,7 +907,7 @@ public static class DataSeeder
             ClientId = S1Client2Id,
             Amount = 250m,
             Status = PaymentStatus.Paid,
-            StripePaymentIntentId = "pi_seed_s1_7",
+            ProviderReferenceId = "pi_seed_s1_7",
             PaidAt = now.AddDays(-60),
             UpdatedAt = now.AddDays(-60)
         };
@@ -864,7 +921,7 @@ public static class DataSeeder
             ClientId = S1Client3Id,
             Amount = 450m,
             Status = PaymentStatus.Paid,
-            StripePaymentIntentId = "pi_seed_s1_8",
+            ProviderReferenceId = "pi_seed_s1_8",
             PaidAt = now.AddDays(-20),
             UpdatedAt = now.AddDays(-20)
         };
@@ -878,7 +935,7 @@ public static class DataSeeder
             ClientId = S1Client5Id,
             Amount = 180m,
             Status = PaymentStatus.Paid,
-            StripePaymentIntentId = "pi_seed_s1_9",
+            ProviderReferenceId = "pi_seed_s1_9",
             PaidAt = now.AddDays(-45),
             UpdatedAt = now.AddDays(-45)
         };
@@ -892,7 +949,7 @@ public static class DataSeeder
             ClientId = S1Client4Id,
             Amount = 50m,
             Status = PaymentStatus.Refunded,
-            StripePaymentIntentId = "pi_seed_s1_10",
+            ProviderReferenceId = "pi_seed_s1_10",
             PaidAt = now.AddDays(-20),
             UpdatedAt = now.AddDays(-15)
         };
@@ -906,7 +963,7 @@ public static class DataSeeder
             ClientId = S1Client5Id,
             Amount = 50m,
             Status = PaymentStatus.Refunded,
-            StripePaymentIntentId = "pi_seed_s1_11",
+            ProviderReferenceId = "pi_seed_s1_11",
             PaidAt = now.AddDays(-15),
             UpdatedAt = now.AddDays(-10)
         };
@@ -1618,7 +1675,7 @@ public static class DataSeeder
                 ClientId = S2Client1Id,
                 Amount = 100m,
                 Status = PaymentStatus.Paid,
-                StripePaymentIntentId = "pi_seed_s2_3",
+                ProviderReferenceId = "pi_seed_s2_3",
                 PaidAt = now.AddDays(-14),
                 UpdatedAt = now.AddDays(-14)
             },
@@ -1630,7 +1687,7 @@ public static class DataSeeder
                 ClientId = S2Client2Id,
                 Amount = 30m,
                 Status = PaymentStatus.Refunded,
-                StripePaymentIntentId = "pi_seed_s2_4",
+                ProviderReferenceId = "pi_seed_s2_4",
                 PaidAt = now.AddDays(-10),
                 UpdatedAt = now.AddDays(-7)
             }

@@ -6,7 +6,7 @@ public record PaymentResponse(
     decimal Amount,
     string Status,
     string Method,
-    string? StripePaymentIntentId,
+    string? ProviderReferenceId,
     string? ClientSecret,
     string? CashNote,
     DateTime? PaidAt,

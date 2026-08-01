@@ -23,8 +23,17 @@ public static class FormEndpoints
             .RequireAuthorization();
 
         consent.MapPost("/", SignConsentForm).RequireAuthorization("ClientAndAbove");
+        consent.MapGet("/active-template", GetActiveConsentTemplate).RequireAuthorization("ClientAndAbove");
         consent.MapGet("/", GetConsentForms).RequireAuthorization("ClientAndAbove");
         consent.MapGet("{id:guid}", GetConsentFormById).RequireAuthorization("ClientAndAbove");
+    }
+
+    private static async Task<IResult> GetActiveConsentTemplate(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ConsentTemplateResponse result = await mediator.Send(new GetActiveConsentTemplateQuery(), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> SubmitIntakeForm(

@@ -69,9 +69,9 @@ public static class InfrastructureServiceExtensions
 
         services.AddSignalR();
 
+        // Stripe.net stays for Flow B (billing/subscriptions) only. The Flow-A payment-intent /
+        // refund services were removed with the deleted Stripe aggregator payment service.
         Stripe.StripeConfiguration.ApiKey = configuration["Stripe:SecretKey"]!;
-        services.AddSingleton<Stripe.PaymentIntentService>();
-        services.AddSingleton<Stripe.RefundService>();
         services.AddSingleton<Stripe.CustomerService>();
         services.AddSingleton<Stripe.SubscriptionService>();
         services.AddSingleton<Stripe.SubscriptionScheduleService>();
@@ -107,6 +107,16 @@ public static class InfrastructureServiceExtensions
             services.AddSingleton<IR2Service, NullR2Service>();
         }
 
+        services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
+        services.AddTransient<RetentionPurgeJob>();
+
+        // Secrets backend (Vault by default — see docs/infra/ADR-0002-secrets-management.md).
+        // Construction does not connect; a call resolves against Vault:Address at use time and
+        // fails closed if it can't. Registered always — nothing consumes it yet (per-tenant
+        // provider credentials are ADR-0001 follow-up work; this is the mechanism only).
+        services.Configure<VaultOptions>(configuration.GetSection(VaultOptions.Section));
+        services.AddSingleton<ISecretsProvider, VaultSecretsProvider>();
+
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenant, CurrentTenantService>();
         services.AddScoped<ICurrentUser, CurrentUserService>();
@@ -114,7 +124,9 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
         services.AddScoped<IJobScheduler, JobScheduler>();
         services.AddScoped<ISlotLocker, SlotLocker>();
-        services.AddScoped<IStripePaymentService, StripePaymentService>();
+        // Flow A card provider: NullPaymentProvider (fails closed) until POK is wired in — the
+        // Stripe aggregator IStripePaymentService/StripePaymentService were deleted (Amendment A).
+        services.AddScoped<IPaymentProvider, NullPaymentProvider>();
         services.AddScoped<IStripeBillingService, StripeBillingService>();
         services.AddScoped<IStripeDiscountService, StripeDiscountService>();
         services.AddScoped<IReferralRewardService, ReferralRewardService>();

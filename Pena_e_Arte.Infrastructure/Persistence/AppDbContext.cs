@@ -32,6 +32,7 @@ public class AppDbContext(
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
+    public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     public DbSet<StudioNotificationPreference> StudioNotificationPreferences => Set<StudioNotificationPreference>();
     public DbSet<ClientNotificationPreference> ClientNotificationPreferences => Set<ClientNotificationPreference>();
@@ -67,6 +68,7 @@ public class AppDbContext(
 
     // --- Structured audit log (no tenant filter — StudioId nullable, platform-wide actions allowed) ---
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+    public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -224,6 +226,30 @@ public class AppDbContext(
             entity.HasIndex(a => a.Action);
             entity.HasIndex(a => a.CreatedAt);
             entity.HasIndex(a => a.StudioId);
+        });
+
+        builder.Entity<StudioCredentialRef>(entity =>
+        {
+            entity.Property(c => c.Provider).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(c => c.SecretPath).HasMaxLength(400).IsRequired();
+            // Tenant-scoped config: one pointer per (studio, provider).
+            entity.HasIndex(c => new { c.StudioId, c.Provider }).IsUnique();
+        });
+        builder.Entity<StudioCredentialRef>()
+            .HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
+
+        builder.Entity<ConsentTemplate>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Kind).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(t => t.Version).HasMaxLength(50).IsRequired();
+            entity.Property(t => t.BodyText).IsRequired();
+
+            // No HasQueryFilter — deliberate, same rationale as AuditLogEntry above.
+            // StudioId is nullable (null = platform-default template); the active template
+            // for a studio is resolved explicitly in the handlers via ConsentTemplateResolver,
+            // narrowing to `StudioId == tenant.StudioId || StudioId == null`, never a filter.
+            entity.HasIndex(t => new { t.StudioId, t.Kind, t.IsActive });
         });
     }
 }

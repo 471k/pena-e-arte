@@ -34,13 +34,16 @@ export function PortableProfileToggle({ currentOptIn }: Props) {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          When enabled, any certified TattooOS artist can view your tattoo history
-          before booking a session — no need to explain your existing work every time.
+          When enabled, any artist on TattooOS can view your tattoo history — your body-map
+          locations, tattoo photos, and descriptions — before booking a session, so you
+          don&apos;t have to explain your existing work every time. Your medical notes,
+          allergies, contact details, and payment history are never shared.
         </p>
 
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground leading-snug">
-            Allow any artist on TattooOS to view your tattoo history
+            Allow any artist on TattooOS to view your tattoo history (body-map locations,
+            tattoo photos, and descriptions)
           </p>
           <Button
             variant={enabled ? "default" : "outline"}
@@ -64,8 +67,9 @@ export function PortableProfileToggle({ currentOptIn }: Props) {
             <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700 dark:text-amber-300">
               Any artist on TattooOS will be able to view your tattoo history
-              (body map locations, tattoo photos, and descriptions). Your contact
-              information is never shared.
+              (body-map locations, tattoo photos, and descriptions). Your medical
+              notes, allergies, contact information, and payment history are never
+              shared. You can turn this off at any time — it takes effect immediately.
             </p>
           </div>
         )}

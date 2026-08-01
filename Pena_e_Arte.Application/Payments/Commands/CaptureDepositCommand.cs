@@ -14,7 +14,7 @@ public record CaptureDepositCommand(Guid PaymentId) : IRequest<PaymentResponse>;
 public class CaptureDepositHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
-    IStripePaymentService stripePayments,
+    IPaymentProvider stripePayments,
     IRealtimeNotifier realtime,
     ISender sender)
     : IRequestHandler<CaptureDepositCommand, PaymentResponse>
@@ -34,10 +34,10 @@ public class CaptureDepositHandler(
         if (payment.Status != PaymentStatus.Captured)
             throw new BusinessRuleViolationException("Only authorized (held) deposits can be captured.");
 
-        if (payment.StripePaymentIntentId is null)
+        if (payment.ProviderReferenceId is null)
             throw new BusinessRuleViolationException("Payment has no associated Stripe intent.");
 
-        await stripePayments.CapturePaymentAsync(payment.StripePaymentIntentId, ct);
+        await stripePayments.CaptureAsync(payment.ProviderReferenceId, ct);
 
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;

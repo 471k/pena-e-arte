@@ -18,7 +18,7 @@ public class CancelAppointmentHandlerTests
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
     private readonly ISender _sender = Substitute.For<ISender>();
     private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
-    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public CancelAppointmentHandlerTests()
@@ -124,7 +124,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundPaymentIntentAsync("pi_123", null, Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync("pi_123", null, Arg.Any<CancellationToken>());
         _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Refunded);
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
     }
@@ -137,7 +137,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundPaymentIntentAsync("pi_456", null, Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync("pi_456", null, Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
     }
 
@@ -149,7 +149,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.DidNotReceive().RefundPaymentIntentAsync(
+        await _stripe.DidNotReceive().RefundAsync(
             Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Pending);
     }
@@ -162,7 +162,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.DidNotReceive().RefundPaymentIntentAsync(
+        await _stripe.DidNotReceive().RefundAsync(
             Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>());
         _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Refunded);
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
@@ -258,7 +258,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundPaymentIntentAsync("pi_client_1", null, Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync("pi_client_1", null, Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
     }
 
@@ -272,7 +272,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.DidNotReceive().RefundPaymentIntentAsync(
+        await _stripe.DidNotReceive().RefundAsync(
             Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Forfeited);
         _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Paid);
@@ -328,7 +328,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundPaymentIntentAsync("pi_client_3", 2500, Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync("pi_client_3", 2500, Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
         // Regression: revenue reporting distinguishes a partial refund from a full one via
         // RefundedAmount — 50% of a 50 deposit retains 25 for the studio, not 0.
@@ -357,7 +357,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundPaymentIntentAsync("pi_staff_1", null, Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync("pi_staff_1", null, Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
         _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(50m);
     }
@@ -396,7 +396,7 @@ public class CancelAppointmentHandlerTests
             Amount = amount,
             Status = status,
             Method = method,
-            StripePaymentIntentId = stripeIntentId,
+            ProviderReferenceId = stripeIntentId,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
