@@ -19,8 +19,12 @@ namespace Pena_e_Arte.IntegrationTests.Infrastructure;
 [Collection("Database")]
 public class RetentionPurgeJobIntegrationTests(DatabaseFixture fixture)
 {
-    private static RetentionOptions Opts(int consentDays = 730, int grace = 30) =>
-        new() { ConsentForms = consentDays, BodyMaps = 730, GracePeriodBeforeHardPurge = grace };
+    // BodyMaps defaults very high so profile-retention doesn't interfere with the consent-form /
+    // erasure tests; the dedicated body-map-retention test passes a small value explicitly.
+    private static RetentionOptions Opts(int consentDays = 730, int grace = 30, int bodyMapDays = 100_000) =>
+        new() { ConsentForms = consentDays, BodyMaps = bodyMapDays, GracePeriodBeforeHardPurge = grace };
+
+    private static readonly IIdentityService NoOpIdentity = Substitute.For<IIdentityService>();
 
     [Fact]
     public async Task RetentionPurgeJob_SoftDeletesPastWindow_ThenHardPurgesWithR2Delete()
@@ -84,7 +88,7 @@ public class RetentionPurgeJobIntegrationTests(DatabaseFixture fixture)
         tenant.SetTenant(tenantId);
         StubCurrentUser user = new(Guid.NewGuid(), "owner");
 
-        RequestDataErasureHandler handler = new(db);
+        RequestDataErasureHandler handler = new(db, NoOpIdentity);
         AuditLogBehavior<RequestDataErasureCommand, Unit> behavior = new(db, user, tenant);
         RequestDataErasureCommand command = new(clientId);
         await behavior.Handle(command, ct => handler.Handle(command, ct), default);
@@ -164,7 +168,7 @@ public class RetentionPurgeJobIntegrationTests(DatabaseFixture fixture)
         tenant.SetTenant(tenantId);
         StubCurrentUser user = new(userId, "client");
 
-        RequestMyDataErasureHandler handler = new(db, user);
+        RequestMyDataErasureHandler handler = new(db, user, NoOpIdentity);
         AuditLogBehavior<RequestMyDataErasureCommand, Unit> behavior = new(db, user, tenant);
         RequestMyDataErasureCommand command = new();
         await behavior.Handle(command, ct => handler.Handle(command, ct), default);
@@ -181,10 +185,41 @@ public class RetentionPurgeJobIntegrationTests(DatabaseFixture fixture)
         entry.ActorRole.Should().Be("client");
     }
 
+    [Fact]
+    public async Task RetentionPurgeJob_SoftDeletesClientProfilePastBodyMapWindow_ThenHardPurges()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid clientId, _) = await SeedSignedConsentFormAsync(tenantId, signedDaysAgo: 3000);
+        IR2Service r2 = Substitute.For<IR2Service>();
+        RetentionOptions opts = new() { ConsentForms = 730, BodyMaps = 2555, GracePeriodBeforeHardPurge = 30 };
+
+        // Run 1: the client's last appointment (3000 days ago) is past the 2555-day body-map
+        // window, so the profile is soft-deleted (consuming the BodyMaps retention config).
+        await RunJobAsync(tenantId, r2, opts);
+        await using (AppDbContext v1 = fixture.CreateDbContext(tenantId))
+        {
+            ClientProfile p = await v1.ClientProfiles.IgnoreQueryFilters().FirstAsync(x => x.ClientId == clientId);
+            p.DeletedAt.Should().NotBeNull(because: "the profile is past the body-map retention window");
+        }
+
+        // Backdate past the grace window and run again → hard-purged.
+        await using (AppDbContext bd = fixture.CreateDbContext(tenantId))
+        {
+            ClientProfile p = await bd.ClientProfiles.IgnoreQueryFilters().FirstAsync(x => x.ClientId == clientId);
+            p.DeletedAt = DateTime.UtcNow.AddDays(-40);
+            await bd.SaveChangesAsync();
+        }
+        await RunJobAsync(tenantId, r2, opts);
+
+        await using AppDbContext v2 = fixture.CreateDbContext(tenantId);
+        bool exists = await v2.ClientProfiles.IgnoreQueryFilters().AnyAsync(x => x.ClientId == clientId);
+        exists.Should().BeFalse(because: "the profile is past the grace window");
+    }
+
     private async Task RunJobAsync(Guid tenantId, IR2Service r2, RetentionOptions opts)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        RetentionPurgeJob job = new(db, r2, Options.Create(opts), NullLogger<RetentionPurgeJob>.Instance);
+        RetentionPurgeJob job = new(db, r2, NoOpIdentity, Options.Create(opts), NullLogger<RetentionPurgeJob>.Instance);
         await job.RunAsync();
     }
 

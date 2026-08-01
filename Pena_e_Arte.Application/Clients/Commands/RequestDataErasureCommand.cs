@@ -10,29 +10,41 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Clients.Commands;
 
 /// <summary>
-/// Shared right-to-erasure logic (GDPR Art. 17): soft-deletes a client's consent forms and
-/// profile immediately; the two-stage RetentionPurgeJob then permanently purges them after the
-/// grace window. Both the owner/support command and the client self-service command below use
-/// this, so the erasure behaviour is defined once.
+/// Shared right-to-erasure logic (GDPR Art. 17). Immediately: soft-deletes the client's consent
+/// forms and profile (health data — hidden by the query filters), marks the Client row for
+/// anonymization (ErasureRequestedAt), and disables the account's login so it can't be used during
+/// the grace window. The two-stage RetentionPurgeJob then, after the grace window, physically
+/// removes the consent forms + profile and anonymizes the Client PII + deletes the Identity user.
+/// Both the owner/support command and the client self-service command below use this.
 /// </summary>
 internal static class ClientDataErasure
 {
-    public static async Task SoftDeleteAsync(IAppDbContext db, Guid clientId, CancellationToken ct)
+    public static async Task ExecuteAsync(
+        IAppDbContext db, IIdentityService identity, Client client, CancellationToken ct)
     {
         DateTime now = DateTime.UtcNow;
 
         List<ConsentForm> forms = await db.ConsentForms
-            .Where(f => f.ClientId == clientId && f.DeletedAt == null)
+            .Where(f => f.ClientId == client.Id && f.DeletedAt == null)
             .ToListAsync(ct);
         foreach (ConsentForm form in forms)
             form.DeletedAt = now;
 
         ClientProfile? profile = await db.ClientProfiles
-            .FirstOrDefaultAsync(p => p.ClientId == clientId, ct);
+            .FirstOrDefaultAsync(p => p.ClientId == client.Id, ct);
         if (profile is not null)
             profile.DeletedAt = now;
 
+        // The Client row can't be deleted (appointments/payments FK-reference it); mark it so the
+        // retention hard-purge anonymizes its PII after the grace window.
+        client.ErasureRequestedAt = now;
+
         await db.SaveChangesAsync(ct);
+
+        // Disable login immediately — the user asked to delete their account and must not keep
+        // signing in during the grace window.
+        if (client.UserId is Guid userId)
+            await identity.DisableLoginAsync(userId, ct);
     }
 }
 
@@ -49,7 +61,7 @@ public record RequestDataErasureCommand(Guid ClientId) : IRequest<Unit>, IAudita
     public Guid AuditTargetId => ClientId;
 }
 
-public class RequestDataErasureHandler(IAppDbContext db)
+public class RequestDataErasureHandler(IAppDbContext db, IIdentityService identity)
     : IRequestHandler<RequestDataErasureCommand, Unit>
 {
     public async Task<Unit> Handle(RequestDataErasureCommand command, CancellationToken ct)
@@ -58,7 +70,7 @@ public class RequestDataErasureHandler(IAppDbContext db)
             .FirstOrDefaultAsync(c => c.Id == command.ClientId, ct)
             ?? throw new NotFoundException(nameof(Client), command.ClientId);
 
-        await ClientDataErasure.SoftDeleteAsync(db, client.Id, ct);
+        await ClientDataErasure.ExecuteAsync(db, identity, client, ct);
         return Unit.Value;
     }
 }
@@ -89,7 +101,7 @@ public record RequestMyDataErasureCommand() : IRequest<Unit>, IAuditableCommand
     public Guid AuditTargetId => ResolvedClientId;
 }
 
-public class RequestMyDataErasureHandler(IAppDbContext db, ICurrentUser currentUser)
+public class RequestMyDataErasureHandler(IAppDbContext db, ICurrentUser currentUser, IIdentityService identity)
     : IRequestHandler<RequestMyDataErasureCommand, Unit>
 {
     public async Task<Unit> Handle(RequestMyDataErasureCommand command, CancellationToken ct)
@@ -100,7 +112,7 @@ public class RequestMyDataErasureHandler(IAppDbContext db, ICurrentUser currentU
             ?? throw new NotFoundException(nameof(Client), currentUser.UserId);
 
         command.ResolvedClientId = client.Id;
-        await ClientDataErasure.SoftDeleteAsync(db, client.Id, ct);
+        await ClientDataErasure.ExecuteAsync(db, identity, client, ct);
         return Unit.Value;
     }
 }

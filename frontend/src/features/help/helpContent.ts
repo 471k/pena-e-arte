@@ -210,7 +210,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Read the warning, type DELETE to confirm, and click \"Delete my account\" in the dialog.",
     ],
     warnings: [
-      "This deletes your data immediately and it becomes permanently unrecoverable after a 30-day grace period. It cannot be undone.",
+      "You're signed out immediately and can't log back in. Your data is then permanently deleted after a 30-day grace period, after which it's unrecoverable. It cannot be undone.",
       "You only ever delete your own account — it can never affect anyone else's data.",
     ],
     relatedArticleIds: ["client-profile"],

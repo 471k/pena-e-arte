@@ -12,9 +12,10 @@ public class RequestMyDataErasureHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    private RequestMyDataErasureHandler CreateSut() => new(_db, _currentUser);
+    private RequestMyDataErasureHandler CreateSut() => new(_db, _currentUser, _identity);
 
     [Fact]
     public async Task Handle_ErasesOnlyTheCallersOwnData_NeverAnotherClients()
@@ -27,13 +28,16 @@ public class RequestMyDataErasureHandlerTests
 
         await CreateSut().Handle(new RequestMyDataErasureCommand(), default);
 
-        // My data soft-deleted.
+        // My data soft-deleted and the account marked for anonymization + login disabled.
         _db.ConsentForms.Single(f => f.Id == myFormId).DeletedAt.Should().NotBeNull();
         _db.ClientProfiles.Single(p => p.ClientId == myClientId).DeletedAt.Should().NotBeNull();
+        _db.Clients.Single(c => c.Id == myClientId).ErasureRequestedAt.Should().NotBeNull();
+        await _identity.Received(1).DisableLoginAsync(myUserId, Arg.Any<CancellationToken>());
 
         // The OTHER client's data is completely untouched (IDOR-proof: no id from the request).
         _db.ConsentForms.Single(f => f.Id == otherFormId).DeletedAt.Should().BeNull();
         _db.ClientProfiles.Single(p => p.ClientId == otherClientId).DeletedAt.Should().BeNull();
+        _db.Clients.Single(c => c.Id == otherClientId).ErasureRequestedAt.Should().BeNull();
     }
 
     [Fact]

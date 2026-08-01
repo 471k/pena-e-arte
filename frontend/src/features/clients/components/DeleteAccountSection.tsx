@@ -50,8 +50,8 @@ export function DeleteAccountSection() {
         </div>
         <p className="text-xs text-muted-foreground">
           Permanently delete your account and personal data (your profile, body map, and consent
-          records). Your data is deleted immediately and cannot be recovered after a 30-day grace
-          period. This cannot be undone.
+          records). You&apos;re signed out immediately and can&apos;t log back in; your data is then
+          permanently deleted after a 30-day grace period. This cannot be undone.
         </p>
         <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
           Delete my account
@@ -69,8 +69,9 @@ export function DeleteAccountSection() {
           <DialogHeader>
             <DialogTitle>Delete your account?</DialogTitle>
             <DialogDescription>
-              This immediately deletes your profile, body map, and consent records, and
-              permanently removes them after a 30-day grace period. This cannot be undone.
+              You&apos;ll be signed out immediately and won&apos;t be able to log back in. Your
+              profile, body map, and consent records are permanently deleted after a 30-day grace
+              period. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
 

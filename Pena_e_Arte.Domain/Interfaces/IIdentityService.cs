@@ -8,6 +8,16 @@ public interface IIdentityService
     /// case, and the caller must not create a linked Client row either.
     /// </summary>
     Task<(bool Success, Guid UserId, string[] Errors)> CreateUserAsync(string email, string password, string role, Guid? studioId, string? firstName = null);
+
+    /// <summary>
+    /// Disables login for a user (account-erasure): locks the account out indefinitely and revokes
+    /// its refresh token so no existing or new session can authenticate. Idempotent; a no-op if no
+    /// such user exists.
+    /// </summary>
+    Task DisableLoginAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>Permanently deletes the Identity user (used by the retention hard-purge). No-op if absent.</summary>
+    Task DeleteUserAsync(Guid userId, CancellationToken ct);
     Task<(bool Success, string? Token, string? Error)> LoginAsync(string email, string password);
     Task<(bool Success, string? Token, string? Error)> GeneratePasswordResetTokenAsync(string email);
     /// <summary>
