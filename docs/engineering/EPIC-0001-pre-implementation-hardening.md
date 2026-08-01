@@ -64,48 +64,54 @@ review; NOT merged, no PR (touches payments, secrets, consent/GDPR).
 
 ---
 
-## Open questions for the founder
+## Open questions for the founder — RESOLVED 1 Aug 2026 (except #4)
 
-These require a decision from Phi (and, for the legal items, the Albanian
-data-protection lawyer) — engineering deliberately did not guess them. Numbering
-matches the master prompt's §3.
+The founder answered these on 1 Aug 2026; resolutions are wired into the branch.
+Numbering matches the master prompt's §3.
 
-1. **(Phase 1)** Final tagline / meta-description copy for `<title>` /
-   `og:description`. Currently wired to the placeholder `SITE_TAGLINE` =
-   "TattooOS — booking & studio management for tattoo shops" in
-   `frontend/src/shared/constants/legalEntity.ts` (source of truth) and mirrored
-   literally in `frontend/index.html`.
-2. **(Phase 1)** Is `tattooos.co` the domain that will go on PSP/MoR
-   applications, and is `support@tattooos.co` a monitored inbox? (The Contact
-   page currently points there.)
-3. **(Phase 1)** Registered legal address for `LEGAL_ENTITY_ADDRESS` — left blank
-   and wired in `legalEntity.ts`.
-4. **(Phase 2)** Final Privacy Policy / Terms of Service legal text from the
-   Albanian data-protection lawyer. Structural placeholders shipped with a
-   visible `[LAWYER REVIEW REQUIRED]` banner gated on `HAS_FINAL_LEGAL_COPY`
-   (flip one constant to remove the banner).
-5. **(Phase 2)** `/contact`: monitored inbox vs. contact form? Shipped as a
-   monitored-inbox placeholder. If a form is chosen, collect name/email/message
-   only and add it to the Privacy sub-processor/retention inventory.
-6. **(Phase 4 — not yet built)** Retention periods for consent forms / body maps /
-   medical notes after last appointment or account closure. To ship as
-   `App:RetentionDays:*` config defaulting to a clearly-commented placeholder
-   (730 days / 2 years) — NOT final numbers.
-7. **(Phase 5 — not yet built)** Vault vs. Infisical/Doppler for the eventual
-   production deployment. Default to build is Vault dev-mode locally; ADR-0002
-   must present both with the tradeoff.
-8. **(Phase 4 — not yet built)** Should a client-facing "delete my account" UI be
-   built? Confirmed absent today. Scope is the backend retention/purge + audited
-   erasure-request path; a self-service UI is a separate follow-up ticket unless
-   the erasure path proves unusable without one.
+1. **(Phase 1) — RESOLVED.** `SITE_TAGLINE` stays "TattooOS — booking & studio
+   management for tattoo shops" (title/og:title). A distinct SEO
+   `SITE_META_DESCRIPTION` was added — "TattooOS — booking, deposits, consent
+   forms, and client records for tattoo studios. Ditch the DMs and paper forms." —
+   used for `<meta name="description">`/`og:description` (in `legalEntity.ts`,
+   mirrored in `index.html`).
+2. **(Phase 1) — RESOLVED.** `tattooos.co` and `support@tattooos.co` are confirmed
+   real and monitored. The contact form (see #5) routes to `support@tattooos.co`.
+3. **(Phase 1) — RESOLVED.** `LEGAL_ENTITY_ADDRESS = "Rruga Pirro Goda, Tiranë,
+   Albania"`; rendered on the Privacy and Terms pages.
+4. **(Phase 2) — STILL OPEN (not ready).** Final lawyer-reviewed Privacy/Terms text
+   is pending; `HAS_FINAL_LEGAL_COPY = false` and the `[LAWYER REVIEW REQUIRED]`
+   banner stay exactly as shipped until the Albanian data-protection lawyer
+   delivers copy.
+5. **(Phase 2) — RESOLVED: contact form, built.** `/contact` is now a real
+   name/email/message form → `SubmitContactRequestCommand` (AllowAnonymous,
+   rate-limited) → Resend email to `support@tattooos.co` with the submitter as
+   ReplyTo. Deliberately **not persisted** (send-only — no new PII-retention
+   surface); the Privacy Policy sub-processor list records this.
+6. **(Phase 4) — RESOLVED.** Consent forms + body maps retained **7 years / 2555
+   days** (body-art record-retention convention), 30-day hard-purge grace. Wired in
+   `App:RetentionDays` + `RetentionOptions.cs`.
+7. **(Phase 5) — RESOLVED: HCP Vault** (HashiCorp-managed) for production — not a
+   self-hosted Raft cluster, not Infisical/Doppler. Same `VaultSharp` client, no
+   code change; local dev stays dev-mode Vault. See ADR-0002.
+8. **(Phase 4) — RESOLVED: build it.** A client-facing self-service "Delete my
+   account" flow was added on `MyProfilePage` (confirmation flow, warns of the
+   30-day-then-irreversible consequence) calling the erasure path scoped to the
+   caller's own account (id resolved from `currentUser`, never trusted from the
+   request — IDOR-proof). Audited, distinguishing self-service from owner-initiated.
 
-### Additional finding flagged during Phase 2 (business decision, not a bug)
+### Finding (refund commercial terms) — RESOLVED 1 Aug 2026
 
-The `/refund-policy` copy is descriptive of the *current implemented* behavior:
-a no-show forfeits the deposit in full, and the default late-cancellation refund
-is 0% (deposit forfeited) unless a studio configures otherwise, with a 24-hour
-default notice window. Whether that is the *intended* commercial policy is a
-founder decision — it was documented truthfully, not silently rewritten.
+No-show stays 100% forfeiture (unchanged). The **default** late-cancellation notice
+window changed from 24h to **48h** (`AppointmentSelfServiceDefaults.CancellationWindowHours`);
+`/refund-policy` and Help copy updated. See #10 for the deferred "transferable
+deposit" idea.
+
+10. **(New — deferred, tracked)** Deposit-transferable-to-a-rebooked-appointment as
+    an alternative to late-cancellation forfeiture — founder flagged it as worth
+    exploring. It needs a **credit-ledger concept** (a real feature, not a config
+    tweak), so it is **out of scope for this pass**, recorded here so it is not
+    silently dropped.
 
 ---
 

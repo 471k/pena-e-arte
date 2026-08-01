@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { PublicContentLayout } from "./PublicContentLayout";
-import { SITE_TAGLINE } from "@/shared/constants/legalEntity";
+import { SITE_TAGLINE, SITE_META_DESCRIPTION } from "@/shared/constants/legalEntity";
 
 // First-touch public landing surface for unauthenticated root visits. Replaces the
 // previous behaviour of bouncing every guest at "/" straight into /discover.
 export function HomePage() {
   return (
-    <PublicContentLayout title="TattooOS — booking & studio management for tattoo shops" description={SITE_TAGLINE} canonicalPath="/">
+    <PublicContentLayout title={SITE_TAGLINE} description={SITE_META_DESCRIPTION} canonicalPath="/">
       <h1 className="text-3xl font-semibold tracking-tight">TattooOS</h1>
       <p className="mt-3 text-muted-foreground">
         Booking, deposits, digital consent forms, design approvals, and studio management

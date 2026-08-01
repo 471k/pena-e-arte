@@ -57,7 +57,7 @@ describe("public content pages", () => {
 
   it("Refund Policy states the 24-hour default window and deposit forfeiture facts from the live code", () => {
     renderPublic(<RefundPolicyPage />);
-    expect(screen.getByText(/24 hours/i)).toBeInTheDocument();
+    expect(screen.getByText(/48 hours/i)).toBeInTheDocument();
     expect(screen.getByText(/refunded in full \(100%\)/i)).toBeInTheDocument();
     expect(screen.getAllByText(/the deposit is forfeited/i).length).toBeGreaterThan(0);
     // Refund policy is REAL copy, so it must NOT carry the lawyer-review banner.

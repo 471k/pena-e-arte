@@ -55,7 +55,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Confirm reschedule\".",
     ],
     tips: [
-      "Reschedule is only available with enough notice (the studio's configured window, 24 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly.",
+      "Reschedule is only available with enough notice (the studio's configured window, 48 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly.",
       "Rescheduling doesn't change the appointment's status — a Confirmed appointment stays Confirmed.",
     ],
   },
@@ -566,7 +566,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Enter a name for the rule (e.g. \"Standard Deposit\").",
       "Choose \"Fixed amount\" (a set euro amount) or \"Percentage\" (a % of the session cost).",
       "Enter the amount or percentage.",
-      "Optionally set a \"Cancellation notice window\" — how many hours' notice a client must give to self-cancel without forfeiting their deposit. Leave blank to use the 24-hour platform default.",
+      "Optionally set a \"Cancellation notice window\" — how many hours' notice a client must give to self-cancel without forfeiting their deposit. Leave blank to use the 48-hour platform default.",
       "Optionally set \"Refund if cancelled late\" — the percentage of the deposit refunded if a client cancels within that window. 0% (the default) forfeits the deposit entirely.",
       "Leave \"Active\" checked if you want the rule to apply immediately, then click \"Create Rule\".",
     ],
@@ -1029,7 +1029,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-client-cancel-refund",
     roles: [Client],
     question: "Do I get my deposit back if I cancel my appointment?",
-    answer: "It depends on the studio's cancellation policy. Cancel with enough notice (the studio's configured notice window, 24 hours by default) and you get a full refund. Cancel later than that and you may only get a partial refund, or none at all, depending on the studio's settings.",
+    answer: "It depends on the studio's cancellation policy. Cancel with enough notice (the studio's configured notice window, 48 hours by default) and you get a full refund. Cancel later than that and you may only get a partial refund, or none at all, depending on the studio's settings.",
     relatedArticleIds: ["client-cancel-booking"],
   },
   {

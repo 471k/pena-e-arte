@@ -41,7 +41,7 @@ export function RefundPolicyPage() {
       <Section heading="Cancelling or rescheduling">
         <p>
           If you cancel or reschedule with at least the required notice, your deposit is
-          refunded in full (100%). The default notice window is 24 hours before the
+          refunded in full (100%). The default notice window is 48 hours before the
           appointment; an individual studio may set a different window.
         </p>
         <p>

@@ -142,3 +142,30 @@ out-of-scope items (real POK provider implementation, production Vault cluster, 
    Flow B collision first, excluded historical migrations). One over-broad match corrupted two
    doc-comments in my just-created files; both were caught and fixed before building. Every rename
    was validated by a clean compile + the full green test suite, not trusted blind.
+
+---
+
+## Founder resolutions — 1 Aug 2026 (follow-up pass, same branch)
+
+The founder answered the 8 open questions + the refund finding; all wired into this branch in
+three commits (config/docs; contact form; delete-account). Every item verified to the same DoD.
+
+- **Q1 tagline/SEO** — kept `SITE_TAGLINE`; added distinct `SITE_META_DESCRIPTION` for
+  description/og:description (legalEntity.ts + index.html).
+- **Q2 domain/inbox** — `tattooos.co` / `support@tattooos.co` confirmed real; contact form routes
+  there.
+- **Q3 legal address** — `LEGAL_ENTITY_ADDRESS = "Rruga Pirro Goda, Tiranë, Albania"`, rendered on
+  Privacy + Terms.
+- **Q4 lawyer legal text** — STILL OPEN (not ready); `HAS_FINAL_LEGAL_COPY = false` + banner
+  unchanged.
+- **Q5 contact form** — built for real (anonymous, rate-limited, Resend send-only, ReplyTo,
+  NOT persisted; Privacy sub-processor list updated). Help verdict stated in the commit.
+- **Q6 retention** — 7 years / 2555 days for consent forms + body maps; 30-day grace; founder-
+  confirmed comments replace the placeholders.
+- **Q7 production secrets backend** — **HCP Vault** (managed); ADR-0002 + Decisions Log updated;
+  no code change (same VaultSharp client).
+- **Q8 delete-my-account UI** — client self-service flow on `MyProfilePage` (IDOR-proof, audited,
+  confirmation flow); new Help article.
+- **Refund finding** — no-show stays 100% forfeit; default notice window 24h → **48h**
+  (`AppointmentSelfServiceDefaults`), refund/Help copy updated. Transferable-deposit idea deferred
+  as new open question #10 (needs a credit-ledger feature).

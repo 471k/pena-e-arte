@@ -6,5 +6,7 @@ namespace Pena_e_Arte.Domain.Constants;
 /// </summary>
 public static class AppointmentSelfServiceDefaults
 {
-    public const int CancellationWindowHours = 24;
+    // 48 hours — founder-confirmed default (2026-08-01). A studio's active DepositRule can still
+    // set its own CancellationWindowHours to override this.
+    public const int CancellationWindowHours = 48;
 }

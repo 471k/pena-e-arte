@@ -1,6 +1,6 @@
 import { PublicContentLayout } from "./PublicContentLayout";
 import { LawyerReviewBanner } from "./LawyerReviewBanner";
-import { LEGAL_ENTITY_NAME } from "@/shared/constants/legalEntity";
+import { LEGAL_ENTITY_NAME, LEGAL_ENTITY_ADDRESS } from "@/shared/constants/legalEntity";
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
@@ -21,7 +21,8 @@ export function TermsOfServicePage() {
     >
       <h1 className="text-2xl font-semibold tracking-tight">Terms of Service</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        These terms govern use of the TattooOS platform, operated by {LEGAL_ENTITY_NAME}.
+        These terms govern use of the TattooOS platform, operated by {LEGAL_ENTITY_NAME},
+        {" "}{LEGAL_ENTITY_ADDRESS}.
       </p>
 
       <div className="mt-6">

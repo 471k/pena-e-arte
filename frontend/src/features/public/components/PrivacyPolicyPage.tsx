@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
 import { PublicContentLayout } from "./PublicContentLayout";
 import { LawyerReviewBanner } from "./LawyerReviewBanner";
-import { LEGAL_ENTITY_NAME, LEGAL_ENTITY_NIPT } from "@/shared/constants/legalEntity";
+import {
+  LEGAL_ENTITY_NAME,
+  LEGAL_ENTITY_NIPT,
+  LEGAL_ENTITY_ADDRESS,
+} from "@/shared/constants/legalEntity";
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
@@ -24,8 +28,9 @@ export function PrivacyPolicyPage() {
     >
       <h1 className="text-2xl font-semibold tracking-tight">Privacy Policy</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        TattooOS is operated by {LEGAL_ENTITY_NAME} (NIPT {LEGAL_ENTITY_NIPT}), the data
-        controller for the personal data described below.
+        TattooOS is operated by {LEGAL_ENTITY_NAME} (NIPT {LEGAL_ENTITY_NIPT}),
+        {" "}{LEGAL_ENTITY_ADDRESS} — the data controller for the personal data described
+        below.
       </p>
 
       <div className="mt-6">
@@ -64,10 +69,9 @@ export function PrivacyPolicyPage() {
       <Section heading="3. Data retention">
         <p>
           We keep records only as long as necessary for the purposes above and applicable
-          law. Consent forms and body-map data are retained for a configurable period
-          after your last appointment or account closure, then soft-deleted and, after a
-          grace window, permanently purged. Exact periods are being finalised with our
-          data-protection adviser.
+          law. Consent forms and body-map data are retained for 7 years after your last
+          appointment or account closure — the standard body-art record-retention period —
+          then soft-deleted and, after a 30-day grace window, permanently purged.
         </p>
       </Section>
 
@@ -99,8 +103,9 @@ export function PrivacyPolicyPage() {
 
       <Section heading="6. Controller and contact">
         <p>
-          Data controller: {LEGAL_ENTITY_NAME} (NIPT {LEGAL_ENTITY_NIPT}). For any privacy
-          request or to reach our data-protection contact, see the{" "}
+          Data controller: {LEGAL_ENTITY_NAME} (NIPT {LEGAL_ENTITY_NIPT}),
+          {" "}{LEGAL_ENTITY_ADDRESS}. For any privacy request or to reach our
+          data-protection contact, see the{" "}
           <Link to="/contact" className="underline underline-offset-2 hover:text-foreground">
             Contact
           </Link>{" "}
