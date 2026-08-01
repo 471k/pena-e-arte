@@ -122,7 +122,7 @@ jobs:
       - name: Enable pnpm (pinned version — must match frontend/Dockerfile)
         run: corepack enable && corepack prepare pnpm@11.5.1 --activate
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
