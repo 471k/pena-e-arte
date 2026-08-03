@@ -104,6 +104,17 @@ that document's as-of date and should be re-verified against live POK docs and P
 answers before building — see § Open questions.** Where a claim is the assessment's own "verify
 with POK" flag, it is marked ⚠️.
 
+> **Update (3 Aug 2026) — a materially more complete official-docs source is now on file.** The full,
+> verbatim official POK documentation set (JS / React / Vanilla-JS / CDN / React-Native / Flutter /
+> PHP-SDK / WooCommerce / PrestaShop / REST-API pages) has been captured at
+> `docs/payments/pok-official-docs-2026-08-03.md` and is the **authoritative technical reference for
+> the implementation tickets (PENA-202/203/206).** It is more complete than what `pok-assessment.md`
+> was written against, and it **corrects several claims** carried into this plan — those corrections
+> are folded in below and flagged **[corrected 3 Aug 2026]**. The official `docs.pokpay.io` REST API
+> page carries `lastUpdated: 2026-04-10` — roughly four months old as of this epic's writing, i.e.
+> current enough to treat as reliable, but not so recent that a quick re-check of `docs.pokpay.io` /
+> `payments.doc.pokpay.io` before PENA-202 implementation is unwarranted.
+
 ### 1.1 Who POK is (the legal linchpin)
 
 POK is the trading name of **RPAY SH.P.K.**, a Tirana fintech **licensed by the Bank of Albania as
@@ -142,14 +153,38 @@ assessment flags two gotchas the client must handle:
 | Refund | `POST …/refund` | `RefundAsync` (full or partial) → `Refunded` |
 | Retrieve order | `GET /sdk-orders/{id}` | `GetStatusAsync` — **and the source of truth after any webhook** |
 
-Key order-creation fields the assessment confirmed present:
+**[corrected 3 Aug 2026] How the hold/capture mapping works mechanically is now confirmed from the
+official REST API page.** Order creation is `POST /merchants/{merchantId}/sdk-orders` and takes an
+**`autoCapture` boolean**: `autoCapture:true` captures in one step; **`autoCapture:false` gives the
+authorise-then-`capture` flow** that `IPaymentProvider` already assumes (this is the concrete
+mechanism behind the hold/capture semantics, not an inference). Completion then happens through **one
+of three distinct calls depending on the flow**, all confirmed in the official docs:
+
+| Completion call | HTTP | When |
+|---|---|---|
+| `guest-confirm` | `POST /sdk-orders/{id}/guest-confirm` | Customer **not** authenticated on our system (the Flow-A deposit case) |
+| `confirm` | `POST /sdk-orders/{id}/confirm` | Customer authenticated on our system |
+| `capture` | `POST /merchants/{merchantId}/sdk-orders/{id}/capture` | Merchant-led / server-side capture of an authorised order |
+
+For a cardholder-present deposit paid via POK's own checkout surface, `guest-confirm` (or the
+server-led `capture` after an `autoCapture:false` authorise) is the finishing call; PENA-203 picks
+the exact one against observed sandbox behaviour.
+
+Key order-creation fields:
 
 - **`autoCapture: false`** — authorise now, capture later. Maps exactly onto our documented
   `PaymentStatus.Captured` = "Card deposit authorised (held), not yet captured"
-  (`Pena_e_Arte.Domain/Enums/PaymentStatus.cs:11`). **No new state machine needed.**
-- **`expiresAfterMinutes`** — the order self-expires server-side and can no longer be paid. This is
-  what `Payment.HoldExpiresAt` (added in EPIC-0001) is for — but see the **HoldExpiresAt finding**
-  in §1.6, because POK enforcing this itself changes what our own reconciliation pass should do.
+  (`Pena_e_Arte.Domain/Enums/PaymentStatus.cs:11`). **No new state machine needed.** **[confirmed
+  3 Aug 2026]** — `autoCapture` is shown on the official create-order payload.
+- **Hold self-expiry — mechanism assumed, field name NOT confirmed. ⚠️** The earlier assessment
+  named an **`expiresAfterMinutes`** field that would self-expire the order server-side; this is what
+  `Payment.HoldExpiresAt` (added in EPIC-0001) is for, and the **HoldExpiresAt finding** in §1.6
+  turns on it. **But `pok-official-docs-2026-08-03.md` does not show any such field.** The only
+  create-order fields the official docs actually display are **`amount`, `currencyCode`,
+  `autoCapture`, `shippingCost`, `webhookUrl`, `redirectUrl`, and `deeplink`** — no auto-cancel/hold
+  timer of any name appears. So what remains genuinely open is narrowed to: *does a POK-side
+  auto-cancel timer exist at all, under what field name, and what is its default/whether it is
+  configurable?* (Open Q9.) Do not build against `expiresAfterMinutes` as a confirmed field name.
 - **`currencyCode: "ALL"`** native, with `originalCurrencyCode`/`appliedExchangeRate`/`finalAmount`
   FX fields returned. `Payment.Currency` (added in EPIC-0001, defaults `"ALL"`) exists for exactly
   this. No other reviewed provider bills in lek.
@@ -157,21 +192,48 @@ Key order-creation fields the assessment confirmed present:
   payment time**, settled by POK directly to Pena e Artë's own POK merchant account, without the
   principal ever touching Pena e Artë. This is the field `Payment.PlatformFeeAmount` shadows. Build
   it now at a **0% fee** per ADR-0001 monetization; retrofitting a split later is painful.
+  **[confirmed 3 Aug 2026] The split mechanism is real:** the official PHP SDK exposes a
+  **`SdkOrderSplitWith`** model class in its Models list (alongside `SdkOrder`, `Merchant`,
+  `SdkOrderProduct`, `SdkOrderSelf`), so `splitWith` is a first-class part of the order model, not
+  an assessment inference. **Still open (Open Q7/Q13):** the exact fields/semantics of
+  `SdkOrderSplitWith` — and specifically whether the fee recipient must be a *separately-registered*
+  POK merchant account — are **not** in this doc set; the full per-model field reference lives at a
+  GitHub docs path (`github.com/pokpay-ltd/php-sdk/tree/HEAD/docs/Model`) not reproduced here.
 - **`commissions` breakdown** (`netAmount`/`totalCommissionAmount`/`grossAmount`), `selectedBranchId`
   (maps to a studio location), `merchantCustomReference` (our idempotency handle — set it to the
   appointment/payment id), `webhookUrl`, `redirectUrl`, and `confirmUrl` / `confirmDeeplink`.
 
 ### 1.4 The checkout surface — this is where the frontend work lives
 
-POK payment confirmation is **not** a Stripe-style client-secret-plus-Elements flow. The client
-either (a) is redirected to POK's hosted `confirmUrl` (with `firstName`/`email`/`country`/`city`/
-`language` prefill params), (b) is deep-linked into the POK mobile app via `confirmDeeplink`, or
-(c) completes POK's own `GuestCheckoutForm` mounted in-page and styled via CSS overrides scoped to
-`#pok-payment-container`. There is an `encryptCard()` escape hatch for a fully custom form, **but**:
-⚠️ the assessment notes the **web SDK has no documented low-level 3DS primitive** (React Native and
-Flutter do), so a custom web form means orchestrating 3DS step-up yourself against
-`check-3ds-enrollment`/`setup-tokenized-3ds` with no helper. **This is a real fork in the road
-(Open Q6)** and it shapes PENA-206.
+POK payment confirmation is **not** a Stripe-style client-secret-plus-Elements flow. **[corrected
+3 Aug 2026]** the official docs reframe the options — there are effectively **three well-documented
+web surfaces plus one to verify**:
+
+1. **Embedded drop-in `GuestCheckoutForm`** (the React component; `PokPayment.renderForm` on the
+   CDN) — **this is the best-fit default (see PENA-206).** It is **not** a redirect: it mounts
+   **inline on our own page** (styled via CSS overrides scoped to `#pok-payment-container`, locale
+   `en`/`it`/`al`, `countrySelect: 'dropdown' | 'modal'`), and **POK's own component — not our
+   code — collects the raw card details, runs 3-D Secure, and captures the payment in a single
+   flow.** Because POK's code owns card capture and 3DS, the PCI-SAQ-A / SCA-ownership argument
+   (§2.5) still holds while the surface stays visually on-brand.
+2. **Custom `encryptCard()` form** — a low-level escape hatch: we build the card inputs, call
+   `encryptCard()` to produce a short-lived JWE, and hand it to our backend to tokenize/charge.
+3. **Hosted redirect / app deep-link (to verify). ⚠️** The official create-order payload includes
+   **`redirectUrl` and `deeplink`** fields, which *hint* at a hosted-redirect or POK-app deep-link
+   completion flow (analogous to the `confirmUrl`/`confirmDeeplink` the earlier assessment described)
+   — **but that full hosted flow is not documented in the doc set we have.** Worth checking
+   `payments.doc.pokpay.io` directly (Open Q12) before finalising PENA-206.
+
+**[corrected 3 Aug 2026] The old blanket claim that "the web SDK has no documented low-level 3DS
+primitive" was wrong and is retracted.** The drop-in `GuestCheckoutForm` explicitly *"collects card
+details, runs 3-D Secure, and captures the payment in a single flow,"* and the staging test cards are
+specifically labelled for 3DS scenarios: `4000 0000 0000 1091` (Visa — 3DS challenge),
+`4000 0000 0000 1026` (Visa — frictionless 3DS), `5200 0000 0000 1005` (Mastercard — 3DS challenge),
+vs. the no-3DS `4242 4242 4242 4242`. The **only** accurate residue of the old claim: the *fully
+custom* web path (option 2, `encryptCard()`) has no drop-in web 3DS-orchestration helper equivalent
+to React Native's `createChallenge`, so choosing option 2 does mean owning more of the 3DS dance.
+That is a reason to prefer option 1, not a gap in the web SDK overall. **This shapes PENA-206 and
+Open Q6.**
 
 ### 1.5 What is absent (matters as much as what's present)
 
@@ -193,18 +255,33 @@ Flutter do), so a custom web form means orchestrating 3DS step-up yourself again
 
 The interface (`Pena_e_Arte.Domain/Interfaces/IPaymentProvider.cs`) has five methods and a
 `PaymentProviderCapabilities` record. POK fills the capability record cleanly:
-`SupportsSplit: true` (splitWith), `SupportsAuthCapture: true` (`autoCapture:false`+capture),
-`SupportsHoldExpiry: true` (`expiresAfterMinutes`), `SupportedCurrencies: ["ALL", …]`.
+`SupportsSplit: true` (splitWith — confirmed via the `SdkOrderSplitWith` model),
+`SupportsAuthCapture: true` (`autoCapture:false`+capture — confirmed on the create-order payload),
+`SupportsHoldExpiry:` **pending Open Q9** (a POK-side auto-cancel timer is assumed but its existence
+and field name are not confirmed in the official docs — see Finding C / §1.3), `SupportedCurrencies:
+["ALL", …]`.
 
 But mapping the five *methods* onto POK surfaces **three real gaps that update what EPIC-0001
 built**. These are the substance of PENA-201.
 
 **Finding A — the interface has no per-tenant/studio context, but POK requires per-tenant
-credentials.** The methods take only primitives (`CreatePaymentHoldAsync(amountInCents, currency,
-paymentId, ct)`; `GetStatusAsync(providerReferenceId, ct)`; `CancelAsync(providerReferenceId, ct)`).
-That shape is a residue of the Stripe *aggregator* model, where one platform-level key served every
-tenant. POK has **no platform key**: to call `GET /merchants/{merchantId}/sdk-orders/{id}` you need
-*that studio's* `merchantId` + `keyId`/`keySecret`. The create path can resolve the studio from
+credentials. [more strongly confirmed 3 Aug 2026 — do NOT weaken.]** The methods take only primitives
+(`CreatePaymentHoldAsync(amountInCents, currency, paymentId, ct)`; `GetStatusAsync(providerReferenceId,
+ct)`; `CancelAsync(providerReferenceId, ct)`). That shape is a residue of the Stripe *aggregator*
+model, where one platform-level key served every tenant. POK has **no platform key**: to call
+`GET /merchants/{merchantId}/sdk-orders/{id}` you need *that studio's* `merchantId` +
+`keyId`/`keySecret`. **The official docs make this harder evidence, not softer:**
+- The REST API troubleshooting table states a `403` on `POST .../sdk-orders` means *"`merchantId` in
+  the URL doesn't belong to the merchant tied to your `keyId`/`keySecret`"* — i.e. **`keyId`/`keySecret`
+  are bound 1:1 to a specific `merchantId`.** There is no credential that spans merchants.
+- Both the **WooCommerce** and **PrestaShop** plugin configuration screens require a **separate
+  Key ID + Key Secret + Merchant ID per store install** — the official docs' own model of "one
+  merchant = one credential triple" maps directly onto "one studio = one credential triple."
+- Every official example (JS/React, PHP SDK, both plugins, REST) obtains `keyId`/`keySecret` "from
+  the POK merchant dashboard" for a single merchant; none shows a platform/parent key.
+
+This is concrete, cited justification that **PENA-201's per-tenant context change is necessary**, not
+a hypothesis. The create path can resolve the studio from
 `ICurrentTenant` (it runs inside a request), but **`PaymentReconciliationJob`
 (`Pena_e_Arte.Infrastructure/Jobs/PaymentReconciliationJob.cs`) calls `GetStatusAsync`/`CancelAsync`
 cross-tenant, under `IgnoreQueryFilters()`, with only a `ProviderReferenceId` and no ambient
@@ -228,16 +305,22 @@ to repurpose the second tuple slot to carry `confirmUrl` (least churn) or widen 
 `PaymentHoldResult { ProviderReferenceId, ConfirmUrl?, ConfirmDeeplink?, ClientSecret? }`. The
 frontend consequence is PENA-206.
 
-**Finding C — `HoldExpiresAt` is now double-enforced.** EPIC-0001 added a third
+**Finding C — `HoldExpiresAt` is (probably) double-enforced.** EPIC-0001 added a third
 `ReleaseExpiredHoldsAsync` pass to `PaymentReconciliationJob` to auto-cancel holds past
-`HoldExpiresAt`. POK **already** expires the order server-side via `expiresAfterMinutes`, and the POK
-assessment is explicit: *"Let POK expire the hold; don't build a competing Hangfire timer that can
-disagree with it."* So the just-shipped pass should be **downgraded from enforcer to tolerant
-safety-net**: it should treat POK as the source of truth, set `Payment.HoldExpiresAt` to mirror the
-`expiresAfterMinutes` POK actually applied (not a value we pick independently), and when it does call
-`CancelAsync` on a hold POK has already released it must handle a `409 Conflict`/already-cancelled
-gracefully rather than erroring. **This is a semantic update to code merged three days ago** and
-belongs in PENA-203/205.
+`HoldExpiresAt`. The earlier assessment held that POK **already** expires the order server-side (via
+an `expiresAfterMinutes` field) and was explicit: *"Let POK expire the hold; don't build a competing
+Hangfire timer that can disagree with it."* **[caveat added 3 Aug 2026]** the newer official docs do
+**not** show any such expiry field on the create-order payload (only `amount`, `currencyCode`,
+`autoCapture`, `shippingCost`, `webhookUrl`, `redirectUrl`, `deeplink`), so whether a POK-side
+auto-cancel timer exists at all is **now an explicit open question (Open Q9)** — do not treat
+`expiresAfterMinutes` as a confirmed field. The design intent stands regardless: **if** POK expires
+holds itself, the just-shipped pass should be **downgraded from enforcer to tolerant safety-net** —
+treat POK as the source of truth, set `Payment.HoldExpiresAt` to mirror the value POK actually applied
+(not a value we pick independently), and when it calls `CancelAsync` on a hold POK has already
+released it must handle a `409 Conflict`/already-cancelled gracefully rather than erroring. If POK
+turns out **not** to auto-expire, `HoldExpiresAt` and this pass remain our own authority. Resolve
+Open Q9 before finalising. **This is a semantic update to code merged three days ago** and belongs in
+PENA-203/205.
 
 **Additional wiring gap (not a finding, just unfinished):** `CreatePaymentIntentCommand`
 (`Pena_e_Arte.Application/Payments/Commands/CreatePaymentIntentCommand.cs`) still injects the
@@ -301,11 +384,14 @@ practice reads it narrowly). The POK route does **not** rely on 4(b) — it reli
 
 Article 90 (p.49) requires the **payment service provider** to apply SCA when the payer "initiates an
 electronic payment transaction," with dynamic linking to amount and payee (90.2). **The PSP here is
-POK, not Pena e Artë.** This is a direct argument for shipping POK's **hosted** checkout form for the
+POK, not Pena e Artë.** This is a direct argument for shipping a **POK-owned checkout surface** for the
 pilot (Open Q6): it keeps SCA/3DS orchestration — and its regulatory weight — with POK, and keeps us
-at PCI **SAQ-A** (card data never touches our infra or forms). A custom `encryptCard()` web form
-would have us orchestrating a flow that is subject to POK's SCA duty with no documented web 3DS
-helper — more risk, no regulatory upside. **Recommendation: hosted form for the pilot.**
+at PCI **SAQ-A** (card data never touches our infra or forms). **[refined 3 Aug 2026]** the official
+docs confirm the ideal fit is POK's **embedded drop-in `GuestCheckoutForm`** — POK's own component
+renders inline on our page and runs card capture + 3DS itself, so we keep the SCA/PCI posture *and*
+stay on-brand (no redirect required). A custom `encryptCard()` web form would instead have us
+orchestrating a flow subject to POK's SCA duty with no drop-in web 3DS helper — more risk, no
+regulatory upside. **Recommendation: the embedded POK drop-in for the pilot.**
 
 ### 2.6 Article 94 — a correction to the "enormous fine" framing
 
@@ -371,8 +457,13 @@ before you can integration-test anything… `localhost` will not work."* POK cal
       it is a hard prerequisite, tracked here, out of this epic's code scope.
 - [ ] **HCP Vault decision from ADR-0002 confirmed** as the production secrets backend the real POK
       credential will resolve through (no new bespoke mechanism).
-- [ ] Day-one 30-second check: **POK React SDK works on React 19** (docs say React 17+; almost
-      certainly fine, verify).
+- [x] ~~Day-one check: POK React SDK works on React 19~~ **[confirmed 3 Aug 2026 — no longer an open
+      check].** The official React page states React 17+ is supported (`--legacy-peer-deps` needed
+      only for React 17 or older) **and explicitly** *"This package supports React 19. Use it with
+      `GuestCheckoutForm`, `AddCardForm`, and `usePOK` the same way as on React 18."* That matches
+      this codebase's actual React 19. Note only: the published peer-dep range may still list React
+      18, so `pnpm add @nebula-ltd/pok-payments-js` may warn — install path is documented, not a
+      blocker.
 
 ### Explicitly out of scope
 
@@ -507,19 +598,24 @@ wiring gaps from §1.6.
 
 - [ ] `PokPaymentProvider : IPaymentProvider` in `Pena_e_Arte.Infrastructure/Services/`, using
       `PokApiClient`. `Capabilities` = `SupportsSplit:true, SupportsAuthCapture:true,
-      SupportsHoldExpiry:true, SupportedCurrencies:["ALL", …observed]`.
+      SupportsHoldExpiry:` set from the Open-Q9 answer (only `true` if a POK-side auto-cancel timer is
+      confirmed to exist), `SupportedCurrencies:["ALL", …observed]`.
 - [ ] `CreatePaymentHoldAsync` creates a POK order with `autoCapture:false`, `currencyCode` from the
-      payment (default `"ALL"`), `expiresAfterMinutes` derived from the booking-confirmation window,
-      `merchantCustomReference` = payment id, `webhookUrl`/`redirectUrl` to our endpoints, and
-      `splitWith` present **but at a 0% fee** (field wired end-to-end, value zero). Returns the
-      `PaymentHoldResult` (POK order id as `ProviderReferenceId`, `confirmUrl`/`confirmDeeplink`).
+      payment (default `"ALL"`), a hold-expiry field **if one exists** (Open Q9 — the earlier
+      `expiresAfterMinutes` name is unconfirmed in the official docs), `merchantCustomReference` =
+      payment id, `webhookUrl`/`redirectUrl` to our endpoints, and `splitWith` present **but at a 0%
+      fee** (field wired end-to-end, value zero). Returns the `PaymentHoldResult` (POK order id as
+      `ProviderReferenceId`, plus the confirm target for the chosen checkout surface — for the
+      recommended embedded `GuestCheckoutForm` that is simply the `orderId`).
 - [ ] `CaptureAsync`/`CancelAsync`/`RefundAsync`/`GetStatusAsync` map onto the POK endpoints;
       `GetStatusAsync` returns POK's real status strings and the **status-mapping seam** (PENA-201) is
       filled with observed POK values → `PaymentStatus` (unknown ⇒ never silently `Paid`).
-- [ ] **`HoldExpiresAt` = POK's authority (Finding C):** set `Payment.HoldExpiresAt` to mirror the
-      `expiresAfterMinutes` POK applied. `PaymentReconciliationJob.ReleaseExpiredHoldsAsync` becomes a
-      **tolerant safety-net** — when it cancels a hold POK already expired, a `409`/already-cancelled
-      is a success, not an error.
+- [ ] **`HoldExpiresAt` reconciled per Open Q9 (Finding C):** if POK confirms a server-side expiry
+      timer, set `Payment.HoldExpiresAt` to mirror the value POK actually applied and make
+      `PaymentReconciliationJob.ReleaseExpiredHoldsAsync` a **tolerant safety-net** — when it cancels a
+      hold POK already expired, a `409`/already-cancelled is a success, not an error. If POK has no
+      such timer, `HoldExpiresAt` and this pass remain our own authority (still handle `409` on a
+      race).
 - [ ] **Close the `CreatePaymentIntentCommand` gaps** (`CreatePaymentIntentCommand.cs`): rename the
       injected `stripePayments` → `paymentProvider`; set `Provider = "pok"`, `Currency` (default
       `"ALL"`), `HoldExpiresAt`, and `PlatformFeeAmount` (0) on the `Payment`; persist
@@ -699,7 +795,8 @@ per the EPIC-0001 pattern.
 ## PENA-206 — Frontend checkout migration (Stripe Elements → POK)
 
 **Priority:** P0, without it a client cannot actually pay · **Track:** Frontend · **Est:** 3–5 days ·
-**Depends on:** PENA-203 · **Decision:** Open Q6 (hosted form vs custom)
+**Depends on:** PENA-203 · **Decision:** Open Q6 (embedded drop-in — recommended default — vs custom
+`encryptCard()` vs a possible hosted redirect, Open Q12)
 
 ### Problem, verified
 
@@ -707,20 +804,37 @@ per the EPIC-0001 pattern.
 `loadStripe`, `@stripe/react-stripe-js` `Elements`/`PaymentElement`, `stripe.confirmPayment`,
 `VITE_STRIPE_PUBLISHABLE_KEY`, and the footer literally says "Secured by Stripe." EPIC-0001 left this
 in place because it can't function without a backend provider (completion summary Deviation #5). POK
-does not use a Stripe client secret (Finding B); it uses `confirmUrl`/`confirmDeeplink` or its own
-`GuestCheckoutForm`. This page must be rewritten. `PaymentMethodSelector.tsx` and 3 pre-existing
-Stripe `PaymentMethodSelector` tests (the known-failing ones in the EPIC-0001 self-check) are also in
-scope.
+does not use a Stripe client secret (Finding B). This page must be rewritten. `PaymentMethodSelector.tsx`
+and 3 pre-existing Stripe `PaymentMethodSelector` tests (the known-failing ones in the EPIC-0001
+self-check) are also in scope.
+
+**[corrected 3 Aug 2026] The choice is not the binary "POK-hosted page vs custom `encryptCard()` form"
+this plan originally framed.** The official docs surface a **third, better-fitting option** that is now
+the recommended default: POK's **`GuestCheckoutForm` is an embedded drop-in React component, rendered
+inline on our own page — not a redirect to a POK-hosted page.** POK's own component (not our code)
+captures the raw card details and runs 3-D Secure, so the PCI-SAQ-A / SCA-ownership argument for
+"let POK own card capture" (§2.5) still holds, **while the checkout stays visually on-brand inside our
+`DepositCheckoutPage`.** That is strictly better than either the redirect-away option (off-brand) or
+the custom `encryptCard()` form (we'd own 3DS orchestration on web). Recommend the **embedded drop-in
+`GuestCheckoutForm`** as the PENA-206 default. (A genuine hosted-redirect flow may also exist via the
+order payload's `redirectUrl`/`deeplink` fields — Open Q12 — but it is not needed if the embedded
+form is used, and is not fully documented in the doc set we have.)
 
 ### Acceptance criteria
 
-- [ ] `DepositCheckoutPage` no longer imports Stripe.js. Depending on Open Q6:
-      - **Hosted (recommended for pilot):** consume the `confirmUrl`/`confirmDeeplink` from
-        `PaymentHoldResult` — redirect to POK's hosted confirm page (with prefill params) or deep-link
-        into the POK app; handle the `redirectUrl` return to show authorised/failed state. Keeps SCA
-        with POK and PCI SAQ-A (§2.5).
-      - **In-page form:** mount POK's `GuestCheckoutForm` in `#pok-payment-container`, styled via
-        scoped CSS overrides — accept the visual seam against shadcn/ui, documented.
+- [ ] `DepositCheckoutPage` no longer imports Stripe.js. Per the checkout decision (Open Q6):
+      - **Embedded drop-in `GuestCheckoutForm` (recommended default):** mount POK's own
+        `GuestCheckoutForm` React component (fed the SDK `orderId` from `PaymentHoldResult`) **inline**
+        in `#pok-payment-container`, styled via scoped CSS overrides, `locale` set from the client's
+        language, `countrySelect: 'modal'` on small screens. POK's component captures the card and runs
+        3-D Secure in-flow (test cards `4000…1091`/`…1026`/`5200…1005`), then fires `onSuccess`/`onError`.
+        Keeps SCA with POK and PCI SAQ-A (§2.5); stays on-brand. Accept and document the minor visual
+        seam against shadcn/ui.
+      - **Custom `encryptCard()` form (only if a fully bespoke UI is required):** we own the card inputs
+        and must own web 3DS orchestration (no drop-in web helper) — more risk, no regulatory upside.
+      - **Hosted redirect / app deep-link (only if Open Q12 confirms it exists):** consume a
+        `redirectUrl`/`deeplink` from order creation, redirect/deep-link out, handle the return state.
+        Off-brand; use only if the embedded form is unavailable.
 - [ ] No `useEffect`-for-data-fetching (CLAUDE.md frontend rule) — use RTK Query as the existing page
       does; no `any` types.
 - [ ] **Capability-driven UI:** the deposit surface reflects whether the studio is POK-connected
@@ -739,19 +853,22 @@ scope.
 
 ### Industry standard
 
-Embedded, platform-branded checkout is the vertical-SaaS standard; the hosted form keeps SCA/PCI with
-the licensed party (§2.5). WCAG 2.1 AA on the checkout as on any page.
+Embedded, platform-branded checkout is the vertical-SaaS standard, and the embedded drop-in
+`GuestCheckoutForm` delivers exactly that while keeping SCA/PCI with the licensed party (§2.5) — the
+best of both. WCAG 2.1 AA on the checkout as on any page.
 
 ### Testing
 
-- Component tests: hosted-redirect path builds the correct `confirmUrl` with prefill params and no PII
-  leak to console; return-status handling; capability-gated empty state; no Stripe import remains.
+- Component tests: the embedded `GuestCheckoutForm` mounts with the `orderId` from `PaymentHoldResult`,
+  its `onSuccess`/`onError` drive the correct post-payment state, no PII leaks to console, capability-
+  gated empty state renders for an unconnected studio, and no Stripe import remains. If a hosted-redirect
+  path is chosen instead (Open Q12), test that it builds the correct redirect URL and handles the return.
 
 ### Help sync (DoD 7)
 
-Update `client-deposit-pay` and the `user-manual` checkout section to describe the POK confirm flow
-(hosted page or app deep-link); update the client tour's deposit step copy. Remove "Secured by Stripe"
-wording from Flow-A Help.
+Update `client-deposit-pay` and the `user-manual` checkout section to describe the POK deposit flow
+(the on-page POK card form, or — if chosen — an app deep-link/redirect return); update the client tour's
+deposit step copy. Remove "Secured by Stripe" wording from Flow-A Help.
 
 ---
 
@@ -799,38 +916,79 @@ secrets-rotation runbook covers POK; a support/monitoring runbook exists; the pa
 ## Open questions for the founder (do not guess — these gate design)
 
 Numbered continuing from the POK assessment's own "questions to send POK" so answers can be tracked.
+Re-annotated **3 Aug 2026** against `docs/payments/pok-official-docs-2026-08-03.md`. Each item is
+tagged **[unchanged]**, **[narrowed]** (was broader, now tighter because the official docs answered
+part of it), or **[new]**.
 
-1. **POK account & sandbox** — is a Pena e Artë POK merchant account open, with sandbox
+1. **[unchanged] POK account & sandbox** — is a Pena e Artë POK merchant account open, with sandbox
    `keyId`/`keySecret` in hand? (Gates PENA-200.)
-2. **Partner / delegated-onboarding programme** — can Pena e Artë provision studio merchants via API,
-   or is every studio a manual POK KYC? *This decides whether PENA-204 is "connect and take deposits
-   today" or "connect, then wait for POK."* Realistic time from studio signup to first deposit?
-3. **Webhook signing** — does a signature scheme exist (undocumented)? If yes, header + rotation. If
-   no, we re-fetch as the only trust (PENA-205 assumes this).
-4. **Pricing** — MDR for ALL card and POK-app transactions, the `splitWith` leg fee, refund and
-   chargeback costs, settlement timing. Needed to model the take-rate and to set the (currently 0%)
-   `PlatformFeeAmount` later.
-5. **Pilot studio** — which named studio pilots first (Phase 2)? Their existing bank/processor also
-   tells us whether the bank-VPOS off-ramp is theoretical or urgent.
-6. **Checkout UI decision** — POK **hosted** `GuestCheckoutForm`/`confirmUrl` (fast, on-brand seam,
-   SCA + PCI SAQ-A stay with POK — **recommended for the pilot**) vs `encryptCard()` **custom** web
-   form (on-brand, but you own 3DS orchestration on web with no documented helper). Shapes PENA-206.
-7. **Pena e Artë's own POK merchant account** — confirmed needed as the `splitWith` fee recipient even
-   at 0%? Or defer `splitWith` wiring until a fee is charged (still model `PlatformFeeAmount`)?
-8. **Legal/accountant sign-off (cheap insurance):** (a) a payments lawyer confirming in writing that a
-   non-custodial booking platform sits in Law 55/2020 Art. 4(g) and that a `splitWith` **software fee**
-   does not recharacterise Pena e Artë as an intermediary; (b) the accountant on whether taking a
-   share of transaction value needs an activity-code change / Person Fizik → SH.P.K.
+2. **[narrowed] Partner / delegated-onboarding programme** — can Pena e Artë provision studio
+   merchants via API, or is every studio a manual POK KYC? *This decides whether PENA-204 is "connect
+   and take deposits today" or "connect, then wait for POK."* Realistic time from studio signup to
+   first deposit? **Narrowed by absence of evidence:** nothing in the official docs shows any
+   merchant-provisioning / delegated-onboarding API — every example (JS/React SDK, PHP SDK,
+   WooCommerce, PrestaShop, REST) assumes a `merchantId` + credential pair you *already hold*,
+   obtained "from the POK merchant dashboard" ("E-payments dropdown → API Keys option"). This leans
+   the answer toward **"no delegated onboarding; each studio needs its own manual POK KYC via its own
+   dashboard"** — but that is an absence of evidence, not a confirmed negative; still worth asking
+   POK directly.
+3. **[unchanged] Webhook signing** — does a signature scheme exist (undocumented)? If yes, header +
+   rotation. If no, we re-fetch as the only trust (PENA-205 assumes this). **Note:** the official
+   create-order payload *does* take a **`webhookUrl`** field, so the webhook mechanism itself is
+   confirmed to exist — but nothing in this doc set describes any signature/verification of the
+   payload POK POSTs to it. Status therefore unchanged (still unconfirmed).
+4. **[unchanged] Pricing** — MDR for ALL card and POK-app transactions, the `splitWith` leg fee, refund
+   and chargeback costs, settlement timing. Needed to model the take-rate and to set the (currently
+   0%) `PlatformFeeAmount` later.
+5. **[unchanged] Pilot studio** — which named studio pilots first (Phase 2)? Their existing
+   bank/processor also tells us whether the bank-VPOS off-ramp is theoretical or urgent.
+6. **[narrowed] Checkout UI decision** — the official docs turn this from a two-way into a three-way
+   with a clear default: **(a) embedded drop-in `GuestCheckoutForm`** — POK's own React component
+   rendered *inline* on our page, running card capture + 3DS itself, SCA + PCI SAQ-A stay with POK,
+   stays on-brand (**recommended default**); **(b) custom `encryptCard()` form** — bespoke UI, but we
+   own web 3DS orchestration with no drop-in helper; **(c) hosted redirect/app deep-link** — only if
+   Q12 confirms it exists. Confirm (a) is acceptable for the pilot. Shapes PENA-206.
+7. **[narrowed] Pena e Artë's own POK merchant account** — confirmed needed as the `splitWith` fee
+   recipient even at 0%? Or defer `splitWith` wiring until a fee is charged (still model
+   `PlatformFeeAmount`)? **Firmer footing:** `splitWith` is confirmed real — the PHP SDK ships an
+   `SdkOrderSplitWith` model class — so the mechanism exists; what's still open is whether the fee
+   recipient must be a *separately-registered* POK merchant account (see the linked new Q13).
+8. **[unchanged] Legal/accountant sign-off (cheap insurance):** (a) a payments lawyer confirming in
+   writing that a non-custodial booking platform sits in Law 55/2020 Art. 4(g) and that a `splitWith`
+   **software fee** does not recharacterise Pena e Artë as an intermediary; (b) the accountant on
+   whether taking a share of transaction value needs an activity-code change / Person Fizik → SH.P.K.
    (`implementation-readiness.md` §2a). Not a code blocker; a launch/GA blocker.
-9. **Hold-expiry window** — confirm the deposit-hold duration (`expiresAfterMinutes`) tied to the
-   booking-confirmation window, so POK is the single source of truth and our job is only a safety net
-   (Finding C).
-10. **OpenAPI/Swagger** — does POK publish one? A generated C# client beats the hand-written PENA-202
-    client.
-11. **Assessment freshness** — the POK assessment is dated 31 Jul 2026 and self-flags several claims
-    (webhook signing absent, MOTO staging-only, no OpenAPI, web-SDK 3DS absent, React 17+) as "verify
-    with POK." Re-verify against live docs and POK's written answers before PENA-202 builds against
-    them.
+9. **[narrowed] Hold-expiry auto-cancel timer** — the authorise-then-capture *mechanism* is now
+   confirmed (`autoCapture:false` on create, then `capture`/`confirm`/`guest-confirm`), so this is no
+   longer about "does auth/capture exist." What remains genuinely open: **does POK apply a server-side
+   auto-cancel/expiry timer to an uncaptured hold at all, under what field name, and what is its
+   default / is it configurable?** The earlier assessment named `expiresAfterMinutes`, but the
+   official create-order payload shows **only** `amount`, `currencyCode`, `autoCapture`, `shippingCost`,
+   `webhookUrl`, `redirectUrl`, `deeplink` — **no expiry field of any name appears.** This drives
+   whether `Payment.HoldExpiresAt` mirrors a POK value or is ours alone (Finding C).
+10. **[narrowed] OpenAPI/Swagger** — still unconfirmed whether a formal machine-readable spec exists,
+    but we now know exactly where to look: the docs explicitly name **`payments.doc.pokpay.io`** as
+    "the authoritative spec for every URL, request schema, response shape, and error code." Narrowed
+    question: **does that site expose a formal OpenAPI/Swagger or Postman collection (→ generate a C#
+    client), or is it only a hand-written HTTP reference (→ keep the hand-written PENA-202 client)?**
+11. **[narrowed] Assessment freshness** — the older `pok-assessment.md` (31 Jul 2026) self-flagged
+    five claims. Two are now **resolved** by `pok-official-docs-2026-08-03.md`: *"web-SDK 3DS absent"*
+    is **corrected** — wrong; the React `GuestCheckoutForm` runs 3DS in-flow (§1.4); and *"React 17+"*
+    is **confirmed accurate** (React 19 explicitly supported, §PENA-200). Three sub-claims remain
+    **unverified** because this newer doc set does not address them at all: *webhook signing absent*,
+    *MOTO staging-only*, *no OpenAPI*. Also note the official REST API page carries
+    `lastUpdated: 2026-04-10` (~4 months old): reliable, but do a quick re-check of `docs.pokpay.io` /
+    `payments.doc.pokpay.io` before PENA-202 builds.
+12. **[new] Hosted-redirect checkout flow** — the order-creation payload includes `redirectUrl` and
+    `deeplink` fields, hinting at a hosted-redirect or POK-app deep-link completion flow as an
+    alternative to the embedded `GuestCheckoutForm`. Does such a flow actually exist and is it
+    documented at `payments.doc.pokpay.io`? Relevant to finalising PENA-206's design (and to Q6c).
+13. **[new] `SdkOrderSplitWith` fields & fee-recipient requirement** — what are the exact fields and
+    semantics of the confirmed `SdkOrderSplitWith` model (fee recipient by `merchantId` vs
+    `userPhoneNumber`, amount vs percentage, currency), and **does the `splitWith` fee recipient need
+    its own separately-registered POK merchant account?** The answer feeds directly into Q7 (whether
+    Pena e Artë must open its own POK merchant account for the fee leg). Full field reference lives at
+    `github.com/pokpay-ltd/php-sdk/tree/HEAD/docs/Model`, not in the doc set on file.
 
 **Explicitly deferred / out of this epic (tracked so not silently dropped):**
 - **Flow B (studio → Pena e Artë subscriptions):** POK has no production recurring/MIT primitive
