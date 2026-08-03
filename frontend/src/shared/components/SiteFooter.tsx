@@ -1,13 +1,10 @@
 import { Link } from "react-router-dom";
-import { LEGAL_ENTITY_NAME, LEGAL_ENTITY_NIPT } from "@/shared/constants/legalEntity";
 
 // Site-wide legal footer. Distinct from AuthShellFooter.tsx (which is a generic
-// auth-card wrapper — "Already have an account? Sign in"). This one carries the
-// platform's trader-identification disclosure (legal entity + NIPT) and links to
-// the four policy pages, and is rendered on every public route.
-//
-// Brand ("TattooOS") stays in the UI; the operating legal entity is disclosed
-// below it — the standard header-brand / footer-entity split.
+// auth-card wrapper — "Already have an account? Sign in"). This one carries
+// links to the four policy pages and is rendered on every public route.
+// Entity-level trader disclosure (name + NIPT) lives on the Privacy/Terms
+// pages instead of here — deliberately removed from the site-wide footer.
 
 const POLICY_LINKS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/privacy", label: "Privacy Policy" },
@@ -38,13 +35,7 @@ export function SiteFooter() {
           </Link>
         ))}
       </nav>
-      <p className="leading-relaxed">
-        © {currentYear} TattooOS
-        <span aria-hidden="true" className="mx-2 select-none text-border">
-          ·
-        </span>
-        TattooOS is operated by {LEGAL_ENTITY_NAME}, NIPT {LEGAL_ENTITY_NIPT}
-      </p>
+      <p className="leading-relaxed">© {currentYear} TattooOS</p>
     </footer>
   );
 }
