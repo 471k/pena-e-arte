@@ -115,6 +115,19 @@ with POK" flag, it is marked ⚠️.
 > current enough to treat as reliable, but not so recent that a quick re-check of `docs.pokpay.io` /
 > `payments.doc.pokpay.io` before PENA-202 implementation is unwarranted.
 
+> **Update (3 Aug 2026, round 2) — field-level model details now confirmed from the PHP SDK's GitHub
+> docs.** The POK PHP SDK's per-model reference (`github.com/pokpay-ltd/php-sdk/tree/HEAD/docs/Model`,
+> the `docs/Model/*.md` files) was read directly this round and resolves several field-name questions
+> the official docs bundle left open: the full `CreateSdkOrderPayload` field list (including a
+> **confirmed `expiresAfterMinutes`**, plus new `failRedirectUrl` and `merchantCustomReference`), the
+> returned `SdkOrder` object (including an authoritative **`expiresAt`**), the `SdkOrderSplitWith`
+> fields (**`merchantId` + `percentage`**, a pure percentage split), and the `Merchant` model
+> (**`nuis` / `fieldOfOperation`**). The SDK is also confirmed **OpenAPI-Generator-generated**, so a
+> real OpenAPI spec exists behind POK's API. These are folded in below tagged
+> **[SDK-model-confirmed 3 Aug 2026]**, and they **resolve** several previously-open questions rather
+> than merely narrowing them (see § Open questions). The one thing the model docs read did **not**
+> show is the order **status enum** — a newly-isolated gap for PENA-205 (new Open Q14).
+
 ### 1.1 Who POK is (the legal linchpin)
 
 POK is the trading name of **RPAY SH.P.K.**, a Tirana fintech **licensed by the Bank of Albania as
@@ -170,38 +183,72 @@ For a cardholder-present deposit paid via POK's own checkout surface, `guest-con
 server-led `capture` after an `autoCapture:false` authorise) is the finishing call; PENA-203 picks
 the exact one against observed sandbox behaviour.
 
-Key order-creation fields:
+**[SDK-model-confirmed 3 Aug 2026] The full create-order payload is now known.** The PHP SDK's
+`CreateSdkOrderPayload` model doc lists every field, superseding the truncated REST-API quickstart
+example this plan was first written against:
+
+- **Required:** `amount` (string), `currencyCode` (string, **defaults `"ALL"`** — matches this
+  codebase's own `Payment.Currency` default already; no correction needed there).
+- **Optional:** `autoCapture` (bool), `products` (`SdkOrderProduct[]`), `shippingCost` (float),
+  `webhookUrl` (string), `redirectUrl` (string), **`failRedirectUrl` (string) — new, a distinct URL
+  for failed/declined payments**, **`merchantCustomReference` (string) — new, the merchant's own
+  reference id, stashed at order-creation time**, `deeplink` (string), `splitWith`
+  (`SdkOrderSplitWith`), `description` (string), and **`expiresAfterMinutes` (int) — CONFIRMED to
+  exist**.
+
+Field-by-field against our state machine:
 
 - **`autoCapture: false`** — authorise now, capture later. Maps exactly onto our documented
   `PaymentStatus.Captured` = "Card deposit authorised (held), not yet captured"
-  (`Pena_e_Arte.Domain/Enums/PaymentStatus.cs:11`). **No new state machine needed.** **[confirmed
-  3 Aug 2026]** — `autoCapture` is shown on the official create-order payload.
-- **Hold self-expiry — mechanism assumed, field name NOT confirmed. ⚠️** The earlier assessment
-  named an **`expiresAfterMinutes`** field that would self-expire the order server-side; this is what
-  `Payment.HoldExpiresAt` (added in EPIC-0001) is for, and the **HoldExpiresAt finding** in §1.6
-  turns on it. **But `pok-official-docs-2026-08-03.md` does not show any such field.** The only
-  create-order fields the official docs actually display are **`amount`, `currencyCode`,
-  `autoCapture`, `shippingCost`, `webhookUrl`, `redirectUrl`, and `deeplink`** — no auto-cancel/hold
-  timer of any name appears. So what remains genuinely open is narrowed to: *does a POK-side
-  auto-cancel timer exist at all, under what field name, and what is its default/whether it is
-  configurable?* (Open Q9.) Do not build against `expiresAfterMinutes` as a confirmed field name.
+  (`Pena_e_Arte.Domain/Enums/PaymentStatus.cs:11`). **No new state machine needed.**
+- **Hold self-expiry — `expiresAfterMinutes` CONFIRMED; question resolved. [SDK-model-confirmed
+  3 Aug 2026]** The prior round's "narrowing" (that no expiry field was visible) is **withdrawn**:
+  `expiresAfterMinutes` (int) is a real field on `CreateSdkOrderPayload` under **exactly the name the
+  original assessment claimed** — it was simply absent from the *truncated* REST-API quickstart
+  payload example, not absent from the API. This is what `Payment.HoldExpiresAt` (EPIC-0001) is for,
+  and it drives the **HoldExpiresAt finding** in §1.6. **Better still, the returned `SdkOrder` carries
+  its own authoritative `expiresAt` (DateTime)** (see the returned-object list below) — so we set the
+  window via `expiresAfterMinutes` on create *and* read POK's computed `expiresAt` back rather than
+  recomputing it. Open Q9 is now **resolved**.
 - **`currencyCode: "ALL"`** native, with `originalCurrencyCode`/`appliedExchangeRate`/`finalAmount`
   FX fields returned. `Payment.Currency` (added in EPIC-0001, defaults `"ALL"`) exists for exactly
   this. No other reviewed provider bills in lek.
-- **`splitWith: { merchantId | userPhoneNumber, amount }`** — a platform fee taken **atomically at
-  payment time**, settled by POK directly to Pena e Artë's own POK merchant account, without the
-  principal ever touching Pena e Artë. This is the field `Payment.PlatformFeeAmount` shadows. Build
-  it now at a **0% fee** per ADR-0001 monetization; retrofitting a split later is painful.
-  **[confirmed 3 Aug 2026] The split mechanism is real:** the official PHP SDK exposes a
-  **`SdkOrderSplitWith`** model class in its Models list (alongside `SdkOrder`, `Merchant`,
-  `SdkOrderProduct`, `SdkOrderSelf`), so `splitWith` is a first-class part of the order model, not
-  an assessment inference. **Still open (Open Q7/Q13):** the exact fields/semantics of
-  `SdkOrderSplitWith` — and specifically whether the fee recipient must be a *separately-registered*
-  POK merchant account — are **not** in this doc set; the full per-model field reference lives at a
-  GitHub docs path (`github.com/pokpay-ltd/php-sdk/tree/HEAD/docs/Model`) not reproduced here.
-- **`commissions` breakdown** (`netAmount`/`totalCommissionAmount`/`grossAmount`), `selectedBranchId`
-  (maps to a studio location), `merchantCustomReference` (our idempotency handle — set it to the
-  appointment/payment id), `webhookUrl`, `redirectUrl`, and `confirmUrl` / `confirmDeeplink`.
+- **`splitWith: SdkOrderSplitWith` — full fields now known. [SDK-model-confirmed 3 Aug 2026]** The
+  model has exactly two fields: **`merchantId` (string, optional)** and **`percentage` (float,
+  optional)**. It is a **pure percentage split paid to a recipient identified by their own POK
+  `merchantId`** — there is **no** currency field and **no** flat-amount field (and no
+  `userPhoneNumber`; the earlier `{ merchantId | userPhoneNumber, amount }` framing was wrong). The
+  fee is taken **atomically at payment time** and settled by POK directly to the recipient merchant's
+  account, without the principal ever touching Pena e Artë — this is the field
+  `Payment.PlatformFeeAmount` shadows. Build it now at a **0% `percentage`** per ADR-0001 monetization;
+  retrofitting later is painful. Because the recipient is addressed by `merchantId`, the fee leg
+  **requires Pena e Artë to hold its own POK merchant account** (Open Q7) even at 0%. This resolves
+  the old "what are `SdkOrderSplitWith`'s fields" question (Open Q13) directly.
+- **`merchantCustomReference`** — our idempotency handle and reconciliation anchor: set it to
+  `Payment.Id` at order-creation time so a later webhook/poll can resolve order → `Payment` → studio.
+  It is also returned on the `SdkOrder` (see below).
+- **Assessment-named fields not seen in the SDK model docs read this round:** a `commissions`
+  breakdown (`netAmount`/`totalCommissionAmount`/`grossAmount`), `selectedBranchId` (studio location),
+  and `confirmUrl`/`confirmDeeplink` were named by the earlier assessment but do **not** appear in the
+  `CreateSdkOrderPayload`/`SdkOrder` model docs — carry them as unverified until seen in the API
+  reference.
+
+**[SDK-model-confirmed 3 Aug 2026] The returned `SdkOrder` object fields are now known** (PHP SDK
+`SdkOrder` model doc): `id`, `amount` (float), `capturedAmount` (float), `currencyCode` (defaults
+`"ALL"`), `products` (optional), `shippingCost` (optional), `finalAmount` (float), `createdAt`
+(DateTime), **`expiresAt` (DateTime) — the order's own authoritative computed hold-expiry timestamp**,
+`redirectUrl` (optional), `failRedirectUrl` (optional), `merchantCustomReference` (optional),
+`merchant` (`Merchant`, optional), and `self` (`SdkOrderSelf`, optional). **`expiresAt` is a concrete
+implementation input for Finding C / PENA-203:** the reconciliation job should **read and store/compare
+against POK's returned `expiresAt`** rather than computing its own expiry from
+`createdAt + expiresAfterMinutes` — which avoids clock-skew and rounding disagreements between us and
+POK. This is now a design decision, not just "confirm a field exists."
+
+> **Order status enum still not seen — a specific remaining gap.** Neither the `SdkOrder` model doc nor
+> `SdkOrderResponseData` (which merely wraps `SdkOrder`) exposed an order **status** field / enum
+> (PENDING / AUTHORIZED / CAPTURED / REFUNDED / …) in what was read. PENA-205's status-mapping seam
+> needs POK's exact status vocabulary — flagged as **new Open Q14**; the likely next place to look is
+> `docs/Api/SdkOrdersApi.md` and `docs/Model/SdkOrderSelf.md` (not yet read), or live sandbox responses.
 
 ### 1.4 The checkout surface — this is where the frontend work lives
 
@@ -243,9 +290,11 @@ Open Q6.**
 - **No merchant/sub-merchant onboarding API documented.** ⚠️ Studios are onboarded by POK out of
   band unless a partner programme exists (Open Q2). This decides whether PENA-204 is "self-serve
   connect" or "connect, then wait for POK KYC".
-- **No .NET SDK.** PHP/JS/React Native/Flutter only. We hand-write a thin `HttpClient` REST client
-  (PENA-202). ⚠️ Ask whether an OpenAPI/Swagger spec exists (a generated client beats a hand-written
-  one).
+- **No .NET SDK** (PHP/JS/React Native/Flutter only) — **but the PHP SDK is confirmed
+  OpenAPI-Generator-generated, so a real OpenAPI spec exists behind POK's API.** [SDK-model-confirmed
+  3 Aug 2026] Rather than hand-write the client blind, **ask POK for that spec and generate the C#
+  client** with OpenAPI Generator (Open Q10 / PENA-202); hand-write the thin `HttpClient` REST client
+  only as a fallback if POK will not share it.
 - **No recurring/MIT primitive in production** (only a **staging-only** MOTO endpoint). This is the
   Flow B question and is **out of scope for this epic** — Flow A deposits are cardholder-present.
 - **No payouts/settlement API and no chargeback/dispute API documented** — so we cannot show a studio
@@ -255,10 +304,10 @@ Open Q6.**
 
 The interface (`Pena_e_Arte.Domain/Interfaces/IPaymentProvider.cs`) has five methods and a
 `PaymentProviderCapabilities` record. POK fills the capability record cleanly:
-`SupportsSplit: true` (splitWith — confirmed via the `SdkOrderSplitWith` model),
+`SupportsSplit: true` (`SdkOrderSplitWith` = `merchantId` + `percentage` — confirmed),
 `SupportsAuthCapture: true` (`autoCapture:false`+capture — confirmed on the create-order payload),
-`SupportsHoldExpiry:` **pending Open Q9** (a POK-side auto-cancel timer is assumed but its existence
-and field name are not confirmed in the official docs — see Finding C / §1.3), `SupportedCurrencies:
+`SupportsHoldExpiry:` **`true`** (confirmed: `expiresAfterMinutes` on create, authoritative `expiresAt`
+returned on the order — Open Q9 now resolved; see Finding C / §1.3), `SupportedCurrencies:
 ["ALL", …]`.
 
 But mapping the five *methods* onto POK surfaces **three real gaps that update what EPIC-0001
@@ -305,22 +354,24 @@ to repurpose the second tuple slot to carry `confirmUrl` (least churn) or widen 
 `PaymentHoldResult { ProviderReferenceId, ConfirmUrl?, ConfirmDeeplink?, ClientSecret? }`. The
 frontend consequence is PENA-206.
 
-**Finding C — `HoldExpiresAt` is (probably) double-enforced.** EPIC-0001 added a third
-`ReleaseExpiredHoldsAsync` pass to `PaymentReconciliationJob` to auto-cancel holds past
-`HoldExpiresAt`. The earlier assessment held that POK **already** expires the order server-side (via
-an `expiresAfterMinutes` field) and was explicit: *"Let POK expire the hold; don't build a competing
-Hangfire timer that can disagree with it."* **[caveat added 3 Aug 2026]** the newer official docs do
-**not** show any such expiry field on the create-order payload (only `amount`, `currencyCode`,
-`autoCapture`, `shippingCost`, `webhookUrl`, `redirectUrl`, `deeplink`), so whether a POK-side
-auto-cancel timer exists at all is **now an explicit open question (Open Q9)** — do not treat
-`expiresAfterMinutes` as a confirmed field. The design intent stands regardless: **if** POK expires
-holds itself, the just-shipped pass should be **downgraded from enforcer to tolerant safety-net** —
-treat POK as the source of truth, set `Payment.HoldExpiresAt` to mirror the value POK actually applied
-(not a value we pick independently), and when it calls `CancelAsync` on a hold POK has already
-released it must handle a `409 Conflict`/already-cancelled gracefully rather than erroring. If POK
-turns out **not** to auto-expire, `HoldExpiresAt` and this pass remain our own authority. Resolve
-Open Q9 before finalising. **This is a semantic update to code merged three days ago** and belongs in
-PENA-203/205.
+**Finding C — `HoldExpiresAt` is double-enforced; POK is the authority. [SDK-model-confirmed
+3 Aug 2026 — Open Q9 resolved.]** EPIC-0001 added a third `ReleaseExpiredHoldsAsync` pass to
+`PaymentReconciliationJob` to auto-cancel holds past `HoldExpiresAt`. The earlier assessment held that
+POK **already** expires the order server-side and was explicit: *"Let POK expire the hold; don't build
+a competing Hangfire timer that can disagree with it."* **This is now confirmed, not a caveat:** the
+PHP SDK's `CreateSdkOrderPayload` carries **`expiresAfterMinutes` (int)** and the returned `SdkOrder`
+carries **`expiresAt` (DateTime)** — POK's own authoritative computed expiry timestamp. The prior
+round's "narrowing" of this to an open question is **withdrawn**; the field exists under exactly the
+name the original assessment claimed, and was only missing from the *truncated* REST quickstart
+example. The design is therefore now concrete, not conditional:
+  - **Set the hold window via `expiresAfterMinutes` on create**, and treat POK as the source of truth.
+  - **Read POK's returned `expiresAt` back and store it into `Payment.HoldExpiresAt`** — mirror the
+    value POK actually applied; do **not** compute our own expiry from
+    `createdAt + expiresAfterMinutes` (avoids clock-skew / rounding disagreement with POK).
+  - **Downgrade `ReleaseExpiredHoldsAsync` from enforcer to tolerant safety-net:** when it calls
+    `CancelAsync` on a hold POK has already expired, a `409 Conflict`/already-cancelled is a
+    **success**, not an error.
+**This is a semantic update to code merged in EPIC-0001** and belongs in PENA-203/205.
 
 **Additional wiring gap (not a finding, just unfinished):** `CreatePaymentIntentCommand`
 (`Pena_e_Arte.Application/Payments/Commands/CreatePaymentIntentCommand.cs`) still injects the
@@ -417,6 +468,17 @@ leg directly to Pena e Artë's own merchant account as earned software revenue; 
 lands on a Pena e Artë ledger. ⚠️ **But taking a percentage of transaction value may raise an
 activity-code / entity question** (`implementation-readiness.md` §2a: is a share of transaction
 value a "service fee" or something "payment-adjacent"?) — Open Q8, for the accountant/lawyer.
+
+**[SDK-model-confirmed 3 Aug 2026] POK's own onboarding forces this question regardless.** The PHP
+SDK's `Merchant` model (`id`, `name`, `address`, `verificationStatus`, `isVerified`) requires a
+**`nuis` (string)** — Albania's business-registration number, *Numri i Identifikimit të Subjektit* —
+and a declared **`fieldOfOperation` (`FieldOfOperation[]`, an array of business-activity categories)**.
+So the activity-code / entity-type question the accountant must answer (currently framed above as a
+domestic-tax-only concern) is something **POK's own merchant registration structurally requires**, not
+just Albanian tax law: Pena e Artë (and every studio) must declare a `nuis` and a field-of-operation to
+POK to onboard at all, and Pena e Artë's declared field-of-operation must be consistent with earning a
+`splitWith` software fee. This raises the practical priority of Open Q8's accountant sub-question — it
+is a precondition of getting a POK merchant account, not only a domestic-tax nicety.
 
 ### 2.8 Law is a PSD2 approximation
 
@@ -540,6 +602,17 @@ There is no POK code anywhere (grep confirms zero hits). We need a thin, testabl
 14-endpoint POK API, JWT auth with correct token caching, and per-tenant credential resolution that
 never puts a secret in the DB or a log — the first real use of `ISecretsProvider` + `StudioCredentialRef`.
 
+**[SDK-model-confirmed 3 Aug 2026] Prefer generating the client over hand-writing it.** The POK PHP
+SDK is confirmed **auto-generated by OpenAPI Generator** (`org.openapitools.codegen.languages.PhpClientCodegen`,
+per its README plus the tell-tale `.openapi-generator-ignore` and `git_push.sh` in the repo) — which
+means a **real OpenAPI spec exists behind POK's API** (the PHP, and presumably other, SDKs are
+generated from it). So **before hand-writing the REST client, PENA-202 should ask POK directly for
+that spec** (or inspect `payments.doc.pokpay.io` more thoroughly — it is a JS SPA, so read its network
+requests, not a plain fetch that can't render it). A C# client generated via OpenAPI Generator from
+POK's real spec would be **strictly better** than a blind hand-written one; fall back to hand-writing
+only if POK will not share the spec. This resolves the "does an OpenAPI spec exist" open question in
+principle (Open Q10) — the residual is only obtaining the file.
+
 ### Acceptance criteria
 
 - [ ] `PokApiClient` (Infrastructure) over `HttpClient` (registered via `IHttpClientFactory`), base
@@ -597,25 +670,26 @@ wiring gaps from §1.6.
 ### Acceptance criteria
 
 - [ ] `PokPaymentProvider : IPaymentProvider` in `Pena_e_Arte.Infrastructure/Services/`, using
-      `PokApiClient`. `Capabilities` = `SupportsSplit:true, SupportsAuthCapture:true,
-      SupportsHoldExpiry:` set from the Open-Q9 answer (only `true` if a POK-side auto-cancel timer is
-      confirmed to exist), `SupportedCurrencies:["ALL", …observed]`.
+      `PokApiClient`. `Capabilities` = `SupportsSplit:true` (`SdkOrderSplitWith` = `merchantId` +
+      `percentage`), `SupportsAuthCapture:true`, **`SupportsHoldExpiry:true`** (confirmed:
+      `expiresAfterMinutes` on create, authoritative `expiresAt` returned — Open Q9 resolved),
+      `SupportedCurrencies:["ALL", …observed]`.
 - [ ] `CreatePaymentHoldAsync` creates a POK order with `autoCapture:false`, `currencyCode` from the
-      payment (default `"ALL"`), a hold-expiry field **if one exists** (Open Q9 — the earlier
-      `expiresAfterMinutes` name is unconfirmed in the official docs), `merchantCustomReference` =
-      payment id, `webhookUrl`/`redirectUrl` to our endpoints, and `splitWith` present **but at a 0%
-      fee** (field wired end-to-end, value zero). Returns the `PaymentHoldResult` (POK order id as
-      `ProviderReferenceId`, plus the confirm target for the chosen checkout surface — for the
+      payment (default `"ALL"`), **`expiresAfterMinutes`** to set the hold window (confirmed field),
+      **`merchantCustomReference` = `Payment.Id`** — the reconciliation anchor, so a later webhook/poll
+      resolves order → `Payment` → studio through it — `webhookUrl`/`redirectUrl`/**`failRedirectUrl`**
+      to our endpoints, and `splitWith` present **but at a 0% `percentage`** to Pena e Artë's own
+      `merchantId` (field wired end-to-end, value zero). Returns the `PaymentHoldResult` (POK order id
+      as `ProviderReferenceId`, plus the confirm target for the chosen checkout surface — for the
       recommended embedded `GuestCheckoutForm` that is simply the `orderId`).
 - [ ] `CaptureAsync`/`CancelAsync`/`RefundAsync`/`GetStatusAsync` map onto the POK endpoints;
       `GetStatusAsync` returns POK's real status strings and the **status-mapping seam** (PENA-201) is
       filled with observed POK values → `PaymentStatus` (unknown ⇒ never silently `Paid`).
-- [ ] **`HoldExpiresAt` reconciled per Open Q9 (Finding C):** if POK confirms a server-side expiry
-      timer, set `Payment.HoldExpiresAt` to mirror the value POK actually applied and make
+- [ ] **`HoldExpiresAt` mirrors POK's `expiresAt` (Finding C, Open Q9 resolved):** read the returned
+      `SdkOrder.expiresAt` and store it into `Payment.HoldExpiresAt` — do **not** compute expiry locally
+      from `createdAt + expiresAfterMinutes` (avoids clock-skew/rounding). Make
       `PaymentReconciliationJob.ReleaseExpiredHoldsAsync` a **tolerant safety-net** — when it cancels a
-      hold POK already expired, a `409`/already-cancelled is a success, not an error. If POK has no
-      such timer, `HoldExpiresAt` and this pass remain our own authority (still handle `409` on a
-      race).
+      hold POK already expired, a `409`/already-cancelled is a success, not an error.
 - [ ] **Close the `CreatePaymentIntentCommand` gaps** (`CreatePaymentIntentCommand.cs`): rename the
       injected `stripePayments` → `paymentProvider`; set `Provider = "pok"`, `Currency` (default
       `"ALL"`), `HoldExpiresAt`, and `PlatformFeeAmount` (0) on the `Payment`; persist
@@ -916,9 +990,12 @@ secrets-rotation runbook covers POK; a support/monitoring runbook exists; the pa
 ## Open questions for the founder (do not guess — these gate design)
 
 Numbered continuing from the POK assessment's own "questions to send POK" so answers can be tracked.
-Re-annotated **3 Aug 2026** against `docs/payments/pok-official-docs-2026-08-03.md`. Each item is
-tagged **[unchanged]**, **[narrowed]** (was broader, now tighter because the official docs answered
-part of it), or **[new]**.
+Re-annotated **3 Aug 2026** against `docs/payments/pok-official-docs-2026-08-03.md`, then again
+(**round 2, 3 Aug 2026**) against the PHP SDK's GitHub model docs
+(`github.com/pokpay-ltd/php-sdk/tree/HEAD/docs/Model`). Each item is tagged **[unchanged]**,
+**[narrowed]** (was broader, now tighter), **[RESOLVED]** (now answered — no longer a founder
+question), or **[new]**. Round 2 **resolves four** previously-open items (Q7 in part, Q9, Q10, Q13)
+and **adds one** (Q14), so the open count is lower than the ~13 of the prior round.
 
 1. **[unchanged] POK account & sandbox** — is a Pena e Artë POK merchant account open, with sandbox
    `keyId`/`keySecret` in hand? (Gates PENA-200.)
@@ -948,29 +1025,38 @@ part of it), or **[new]**.
    stays on-brand (**recommended default**); **(b) custom `encryptCard()` form** — bespoke UI, but we
    own web 3DS orchestration with no drop-in helper; **(c) hosted redirect/app deep-link** — only if
    Q12 confirms it exists. Confirm (a) is acceptable for the pilot. Shapes PENA-206.
-7. **[narrowed] Pena e Artë's own POK merchant account** — confirmed needed as the `splitWith` fee
-   recipient even at 0%? Or defer `splitWith` wiring until a fee is charged (still model
-   `PlatformFeeAmount`)? **Firmer footing:** `splitWith` is confirmed real — the PHP SDK ships an
-   `SdkOrderSplitWith` model class — so the mechanism exists; what's still open is whether the fee
-   recipient must be a *separately-registered* POK merchant account (see the linked new Q13).
-8. **[unchanged] Legal/accountant sign-off (cheap insurance):** (a) a payments lawyer confirming in
-   writing that a non-custodial booking platform sits in Law 55/2020 Art. 4(g) and that a `splitWith`
-   **software fee** does not recharacterise Pena e Artë as an intermediary; (b) the accountant on
-   whether taking a share of transaction value needs an activity-code change / Person Fizik → SH.P.K.
-   (`implementation-readiness.md` §2a). Not a code blocker; a launch/GA blocker.
-9. **[narrowed] Hold-expiry auto-cancel timer** — the authorise-then-capture *mechanism* is now
-   confirmed (`autoCapture:false` on create, then `capture`/`confirm`/`guest-confirm`), so this is no
-   longer about "does auth/capture exist." What remains genuinely open: **does POK apply a server-side
-   auto-cancel/expiry timer to an uncaptured hold at all, under what field name, and what is its
-   default / is it configurable?** The earlier assessment named `expiresAfterMinutes`, but the
-   official create-order payload shows **only** `amount`, `currencyCode`, `autoCapture`, `shippingCost`,
-   `webhookUrl`, `redirectUrl`, `deeplink` — **no expiry field of any name appears.** This drives
-   whether `Payment.HoldExpiresAt` mirrors a POK value or is ours alone (Finding C).
-10. **[narrowed] OpenAPI/Swagger** — still unconfirmed whether a formal machine-readable spec exists,
-    but we now know exactly where to look: the docs explicitly name **`payments.doc.pokpay.io`** as
-    "the authoritative spec for every URL, request schema, response shape, and error code." Narrowed
-    question: **does that site expose a formal OpenAPI/Swagger or Postman collection (→ generate a C#
-    client), or is it only a hand-written HTTP reference (→ keep the hand-written PENA-202 client)?**
+7. **[RESOLVED in part] Pena e Artë's own POK merchant account** — **now on firm footing.**
+   `SdkOrderSplitWith` = **`merchantId` + `percentage`** (confirmed, ex-Q13): the split pays a
+   `percentage` to a recipient **identified by their own POK `merchantId`**, so the fee leg
+   *structurally requires* Pena e Artë to hold its own POK merchant account to receive it — the
+   "does the recipient need a separately-registered account" half of the old question is answered
+   **yes, by `merchantId`**. The **only** residual is a founder *timing* decision: wire `splitWith`
+   now at 0% `percentage` to Pena e Artë's `merchantId` (still model `PlatformFeeAmount`), or defer the
+   wiring until a fee is actually charged. Not a design unknown any more.
+8. **[unchanged, priority raised] Legal/accountant sign-off (cheap insurance):** (a) a payments lawyer
+   confirming in writing that a non-custodial booking platform sits in Law 55/2020 Art. 4(g) and that a
+   `splitWith` **software fee** does not recharacterise Pena e Artë as an intermediary; (b) the
+   accountant on whether taking a share of transaction value needs an activity-code change /
+   Person Fizik → SH.P.K. (`implementation-readiness.md` §2a). **Priority raised:** the PHP SDK's
+   `Merchant` model requires a **`nuis`** and a declared **`fieldOfOperation`** to onboard at all
+   (§2.7), so the activity-code/entity question is a **precondition of getting any POK merchant
+   account**, not just a domestic-tax nicety. Still not a code blocker; a launch/GA blocker.
+9. **[RESOLVED] Hold-expiry auto-cancel timer** — **answered by the PHP SDK model docs.**
+   `CreateSdkOrderPayload` carries **`expiresAfterMinutes` (int)** and the returned `SdkOrder` carries
+   **`expiresAt` (DateTime)** — POK's authoritative computed expiry. The prior round's "narrowing"
+   (that no expiry field could be found) was an artefact of the *truncated* REST quickstart example,
+   not a real absence, and is withdrawn. Design consequence (Finding C / PENA-203): set the window via
+   `expiresAfterMinutes`, store POK's returned `expiresAt` into `Payment.HoldExpiresAt`, and make the
+   reconciliation pass a tolerant safety-net. No longer a founder question — only confirm the **default
+   window / whether it is configurable** against sandbox behaviour during PENA-203 (a build-time
+   observation, not a blocker).
+10. **[RESOLVED in principle] OpenAPI/Swagger** — **a real OpenAPI spec exists.** The PHP SDK is
+    confirmed **auto-generated by OpenAPI Generator** (`org.openapitools.codegen.languages.PhpClientCodegen`,
+    per its README + `.openapi-generator-ignore` + `git_push.sh`), which is only possible from an
+    OpenAPI spec. The question shifts from "does a spec exist?" to the action **"ask POK for the spec
+    file"** (or mine it from `payments.doc.pokpay.io`'s network requests — it is a JS SPA). If obtained,
+    generate the C# client with OpenAPI Generator rather than hand-writing PENA-202's client (strictly
+    better); hand-write only if POK will not share it.
 11. **[narrowed] Assessment freshness** — the older `pok-assessment.md` (31 Jul 2026) self-flagged
     five claims. Two are now **resolved** by `pok-official-docs-2026-08-03.md`: *"web-SDK 3DS absent"*
     is **corrected** — wrong; the React `GuestCheckoutForm` runs 3DS in-flow (§1.4); and *"React 17+"*
@@ -983,12 +1069,20 @@ part of it), or **[new]**.
     `deeplink` fields, hinting at a hosted-redirect or POK-app deep-link completion flow as an
     alternative to the embedded `GuestCheckoutForm`. Does such a flow actually exist and is it
     documented at `payments.doc.pokpay.io`? Relevant to finalising PENA-206's design (and to Q6c).
-13. **[new] `SdkOrderSplitWith` fields & fee-recipient requirement** — what are the exact fields and
-    semantics of the confirmed `SdkOrderSplitWith` model (fee recipient by `merchantId` vs
-    `userPhoneNumber`, amount vs percentage, currency), and **does the `splitWith` fee recipient need
-    its own separately-registered POK merchant account?** The answer feeds directly into Q7 (whether
-    Pena e Artë must open its own POK merchant account for the fee leg). Full field reference lives at
-    `github.com/pokpay-ltd/php-sdk/tree/HEAD/docs/Model`, not in the doc set on file.
+13. **[RESOLVED] `SdkOrderSplitWith` fields & fee-recipient requirement** — **answered by the PHP SDK
+    model doc.** `SdkOrderSplitWith` has exactly two fields: **`merchantId` (string, optional)** and
+    **`percentage` (float, optional)**. It is a **pure percentage split to a recipient identified by
+    their own POK `merchantId`** — no currency field, no flat-amount field, no `userPhoneNumber`. Both
+    halves of the old question are answered: the fee is a `percentage`, and the recipient **must** be a
+    POK merchant (addressed by `merchantId`) — which is what puts Q7 on firm footing (Pena e Artë needs
+    its own POK merchant account for the fee leg).
+14. **[new] Order status enum values (blocks PENA-205's status-mapping seam)** — the PHP SDK model
+    docs read this round (`SdkOrder`, `SdkOrderResponseData`) show **no order-status field / enum**
+    (PENDING / AUTHORIZED / CAPTURED / REFUNDED / …). PENA-203/205 need POK's exact status vocabulary to
+    fill the provider-status → `PaymentStatus` mapping (replacing the Stripe `"succeeded"` string-match,
+    §1.6). Where to look next: `docs/Api/SdkOrdersApi.md` and `docs/Model/SdkOrderSelf.md` (not yet
+    read), or observe live sandbox responses during PENA-203. Until confirmed, the mapping seam must
+    fail closed (unknown status ⇒ never silently `Paid`).
 
 **Explicitly deferred / out of this epic (tracked so not silently dropped):**
 - **Flow B (studio → Pena e Artë subscriptions):** POK has no production recurring/MIT primitive
