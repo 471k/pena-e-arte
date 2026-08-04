@@ -27,24 +27,36 @@ public class TrafficBroadcastService(
     {
         using var timer = new PeriodicTimer(Interval);
 
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        try
         {
-            if (connectionCounter.Count <= 0) continue;
-
-            try
+            // WaitForNextTickAsync itself throws OperationCanceledException on shutdown (it
+            // doesn't just return false) — that await needs the same cancellation-is-normal
+            // handling as the per-tick body below, or a graceful host stop surfaces as
+            // BackgroundServiceExceptionBehavior.StopHost's "unhandled exception" fatal log
+            // instead of a clean shutdown.
+            while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                using IServiceScope scope = scopeFactory.CreateScope();
-                ITrafficPresenceReader reader = scope.ServiceProvider.GetRequiredService<ITrafficPresenceReader>();
-                TrafficPresenceSnapshot snapshot = await reader.ReadSnapshotAsync(stoppingToken);
-                LiveTrafficSnapshotResponse response = snapshot.ToResponse();
+                if (connectionCounter.Count <= 0) continue;
 
-                await hubContext.Clients.Group("platform:traffic")
-                    .SendAsync("TrafficSnapshotUpdated", response, stoppingToken);
+                try
+                {
+                    using IServiceScope scope = scopeFactory.CreateScope();
+                    ITrafficPresenceReader reader = scope.ServiceProvider.GetRequiredService<ITrafficPresenceReader>();
+                    TrafficPresenceSnapshot snapshot = await reader.ReadSnapshotAsync(stoppingToken);
+                    LiveTrafficSnapshotResponse response = snapshot.ToResponse();
+
+                    await hubContext.Clients.Group("platform:traffic")
+                        .SendAsync("TrafficSnapshotUpdated", response, stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Traffic broadcast tick failed — will retry on the next tick");
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogWarning(ex, "Traffic broadcast tick failed — will retry on the next tick");
-            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on host shutdown — not an error.
         }
     }
 }
