@@ -51,13 +51,15 @@ function sendBeacon(path: string, isNavigation: boolean, token: string | null) {
 export function useTrafficBeacon() {
   const lastPathRef = useRef<string | null>(null);
 
-  // "Latest ref" pattern: kept in sync on every render (not inside an effect) so the
+  // "Latest ref" pattern: kept in sync via an effect (never mutated during render) so the
   // location-change/heartbeat handlers below — set up once and never torn down on login/logout
   // — always read the current token without needing to resubscribe from the router or restart
   // the heartbeat interval every time auth state changes.
   const token = useAppSelector((s) => s.auth.token);
   const tokenRef = useRef(token);
-  tokenRef.current = token;
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   useEffect(() => {
     function handleLocationChange(pathname: string) {

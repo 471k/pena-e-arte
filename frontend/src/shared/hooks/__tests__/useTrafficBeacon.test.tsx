@@ -18,13 +18,14 @@ function renderBeacon(token: string | null = null) {
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockRouterState = { location: { pathname: string } };
+
 const { mockSubscribe, listeners, routerState } = vi.hoisted(() => {
-  const listeners: Array<(state: any) => void> = [];
+  const listeners: Array<(state: MockRouterState) => void> = [];
   return {
     listeners,
     routerState: { location: { pathname: "/discover" } },
-    mockSubscribe: vi.fn((cb: (state: any) => void) => {
+    mockSubscribe: vi.fn((cb: (state: MockRouterState) => void) => {
       listeners.push(cb);
       return () => {
         const i = listeners.indexOf(cb);
