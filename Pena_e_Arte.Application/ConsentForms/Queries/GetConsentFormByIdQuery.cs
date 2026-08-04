@@ -58,6 +58,7 @@ public class GetConsentFormByIdHandler(
             ClientName: $"{form.Client.FirstName} {form.Client.LastName}".Trim(),
             AppointmentDate: form.Appointment.Date,
             ArtistName: artist is null ? null : $"{artist.FirstName} {artist.LastName}".Trim(),
-            ArtistId: artist?.Id);
+            ArtistId: artist?.Id,
+            ConsentTextSnapshot: form.ConsentTextSnapshot);
     }
 }

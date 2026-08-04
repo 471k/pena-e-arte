@@ -34,6 +34,32 @@ public static class ClientEndpoints
         group.MapGet("me/tattoos", GetMyTattooRecords).RequireAuthorization("ClientAndAbove");
         group.MapPatch("me/portable-profile", UpdatePortableProfileOptIn).RequireAuthorization("ClientAndAbove");
         group.MapGet("{userId:guid}/portable-profile", GetPortableProfile).RequireAuthorization("ArtistAndAbove");
+
+        // Right-to-erasure (GDPR Art. 17). Owner/support action targeting a specific client.
+        // Immediately soft-deletes the client's consent forms + profile — the RetentionPurgeJob
+        // hard-purges them after the grace window.
+        group.MapPost("{clientId:guid}/erase-data", RequestDataErasure).RequireAuthorization("OwnerOnly");
+
+        // Client self-service "delete my account". No id in the route — the caller's own client
+        // is resolved from the JWT, so it is impossible to erase another client's data.
+        group.MapPost("me/erase-data", RequestMyDataErasure).RequireAuthorization("ClientAndAbove");
+    }
+
+    private static async Task<IResult> RequestDataErasure(
+        Guid clientId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new RequestDataErasureCommand(clientId), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> RequestMyDataErasure(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new RequestMyDataErasureCommand(), ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> GetMyClient(

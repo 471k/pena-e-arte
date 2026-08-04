@@ -569,6 +569,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
 
+                    b.Property<DateTime?>("ErasureRequestedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -668,6 +671,12 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("CrossTenantConsentSnapshot")
+                        .HasColumnType("longtext");
+
+                    b.Property<Guid?>("CrossTenantConsentTemplateId")
+                        .HasColumnType("char(36)");
+
                     b.Property<DateTime?>("CrossTenantOptInAt")
                         .HasColumnType("datetime(6)");
 
@@ -715,6 +724,12 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("ClientId")
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid?>("ConsentTemplateId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ConsentTextSnapshot")
+                        .HasColumnType("longtext");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -749,6 +764,45 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasDatabaseName("ix_consent_forms_studio_id");
 
                     b.ToTable("consent_forms", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ConsentTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("BodyText")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<Guid?>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudioId", "Kind", "IsActive");
+
+                    b.ToTable("ConsentTemplates");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.DepositRule", b =>
@@ -1395,7 +1449,15 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
                     b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("HoldExpiresAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Method")
@@ -1406,6 +1468,18 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<decimal>("PlatformFeeAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("ProviderReferenceId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
                     b.Property<decimal?>("RefundedAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -1413,10 +1487,6 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
-
-                    b.Property<string>("StripePaymentIntentId")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
 
                     b.Property<Guid>("StudioId")
                         .HasColumnType("char(36)");
@@ -1911,6 +1981,42 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasDatabaseName("ix_studio_closures_studio_dates");
 
                     b.ToTable("StudioClosures");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.StudioCredentialRef", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("SecretPath")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("varchar(400)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudioId", "Provider")
+                        .IsUnique();
+
+                    b.ToTable("StudioCredentialRefs");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.StudioNotificationPreference", b =>

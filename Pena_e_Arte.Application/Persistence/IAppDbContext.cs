@@ -25,6 +25,7 @@ public interface IAppDbContext
     DbSet<SessionSplit> SessionSplits { get; }
     DbSet<IntakeForm> IntakeForms { get; }
     DbSet<ConsentForm> ConsentForms { get; }
+    DbSet<ConsentTemplate> ConsentTemplates { get; }
     DbSet<NotificationLog> NotificationLogs { get; }
     DbSet<StudioNotificationPreference> StudioNotificationPreferences { get; }
     DbSet<ClientNotificationPreference> ClientNotificationPreferences { get; }
@@ -59,6 +60,7 @@ public interface IAppDbContext
 
     // Structured audit log — no tenant filter (StudioId nullable, platform-wide actions allowed)
     DbSet<AuditLogEntry> AuditLogEntries { get; }
+    DbSet<StudioCredentialRef> StudioCredentialRefs { get; }
 
     // Traffic analytics — no tenant filter (StudioId nullable, issuer-only cross-tenant reads)
     DbSet<TrafficEvent> TrafficEvents { get; }

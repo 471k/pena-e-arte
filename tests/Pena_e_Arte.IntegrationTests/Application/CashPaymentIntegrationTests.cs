@@ -38,7 +38,7 @@ public class CashPaymentIntegrationTests
         result.Status.Should().Be(PaymentStatus.CashPending.ToString());
         result.Method.Should().Be(ClientPaymentMethod.Cash.ToString());
         result.Amount.Should().Be(80m);
-        result.StripePaymentIntentId.Should().BeNull();
+        result.ProviderReferenceId.Should().BeNull();
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
         bool exists = await verify.Payments.AnyAsync(p => p.Id == result.Id);
@@ -200,7 +200,7 @@ public class CashPaymentIntegrationTests
         result.Id.Should().Be(paymentId);
         result.Method.Should().Be(ClientPaymentMethod.Cash.ToString());
         result.Status.Should().Be(PaymentStatus.CashPending.ToString());
-        result.StripePaymentIntentId.Should().BeNull();
+        result.ProviderReferenceId.Should().BeNull();
     }
 
     // ── ActivateSubscriptionManually ──────────────────────────────────────
@@ -335,7 +335,7 @@ public class CashPaymentIntegrationTests
             Amount = 50m,
             Method = ClientPaymentMethod.Card,
             Status = PaymentStatus.Pending,
-            StripePaymentIntentId = intentId,
+            ProviderReferenceId = intentId,
         };
         ctx.Payments.Add(payment);
         await ctx.SaveChangesAsync();
@@ -390,7 +390,7 @@ public class CashPaymentIntegrationTests
         tenant.SetTenant(tenantId);
         ICurrentUser currentUser = Substitute.For<ICurrentUser>();
         currentUser.Role.Returns("owner"); // staff path — no ownership restriction
-        IStripePaymentService stripe = Substitute.For<IStripePaymentService>();
+        IPaymentProvider stripe = Substitute.For<IPaymentProvider>();
         DeclareCashDepositHandler handler = new(db, tenant, currentUser, stripe);
         return await handler.Handle(new DeclareCashDepositCommand(appointmentId, null), default);
     }

@@ -11,7 +11,7 @@ namespace Pena_e_Arte.UnitTests.Jobs;
 public class PaymentReconciliationJobTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
-    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     private PaymentReconciliationJob CreateSut() => new(_db, _stripe);
@@ -22,7 +22,7 @@ public class PaymentReconciliationJobTests
     public async Task RunAsync_CapturedPaymentStripeSucceeded_MarksAsPaid()
     {
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_test_001");
-        _stripe.GetPaymentIntentStatusAsync("pi_test_001", Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync("pi_test_001", Arg.Any<CancellationToken>())
                .Returns("succeeded");
 
         await CreateSut().RunAsync();
@@ -34,7 +34,7 @@ public class PaymentReconciliationJobTests
     public async Task RunAsync_CapturedPaymentStripeSucceeded_SetsPaidAt()
     {
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_test_002");
-        _stripe.GetPaymentIntentStatusAsync("pi_test_002", Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync("pi_test_002", Arg.Any<CancellationToken>())
                .Returns("succeeded");
 
         await CreateSut().RunAsync();
@@ -46,7 +46,7 @@ public class PaymentReconciliationJobTests
     public async Task RunAsync_CapturedPaymentStripePending_DoesNotMarkAsPaid()
     {
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_test_003");
-        _stripe.GetPaymentIntentStatusAsync("pi_test_003", Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync("pi_test_003", Arg.Any<CancellationToken>())
                .Returns("requires_capture");
 
         await CreateSut().RunAsync();
@@ -58,7 +58,7 @@ public class PaymentReconciliationJobTests
     public async Task RunAsync_CapturedPaymentStripeNull_DoesNotMarkAsPaid()
     {
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_test_004");
-        _stripe.GetPaymentIntentStatusAsync("pi_test_004", Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync("pi_test_004", Arg.Any<CancellationToken>())
                .Returns((string?)null);
 
         await CreateSut().RunAsync();
@@ -76,7 +76,7 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.Received(1).CancelPaymentIntentAsync("pi_stale_001", Arg.Any<CancellationToken>());
+        await _stripe.Received(1).CancelAsync("pi_stale_001", Arg.Any<CancellationToken>());
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Failed);
     }
 
@@ -88,7 +88,7 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.DidNotReceive().CancelPaymentIntentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Pending);
     }
 
@@ -100,7 +100,58 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.DidNotReceive().CancelPaymentIntentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Pending);
+    }
+
+    // ── ReleaseExpiredHolds (PENA-106) ────────────────────────────────────────────
+
+    [Fact]
+    public async Task RunAsync_PendingCardHoldPastExpiry_CancelsAndMarksFailed()
+    {
+        // Future appointment so CancelStalePending does NOT match — isolates the hold-expiry pass.
+        Guid appointmentId = await SeedAppointment(DateTime.UtcNow.AddDays(5));
+        Payment payment = new()
+        {
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            ClientId = Guid.NewGuid(),
+            Amount = 50m,
+            Status = PaymentStatus.Pending,
+            Method = ClientPaymentMethod.Card,
+            ProviderReferenceId = "pi_hold_expired",
+            HoldExpiresAt = DateTime.UtcNow.AddMinutes(-5),
+        };
+        _db.Payments.Add(payment);
+        await _db.SaveChangesAsync();
+
+        await CreateSut().RunAsync();
+
+        await _stripe.Received(1).CancelAsync("pi_hold_expired", Arg.Any<CancellationToken>());
+        _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Failed);
+    }
+
+    [Fact]
+    public async Task RunAsync_PendingCardHoldNotYetExpired_DoesNotCancel()
+    {
+        Guid appointmentId = await SeedAppointment(DateTime.UtcNow.AddDays(5));
+        Payment payment = new()
+        {
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            ClientId = Guid.NewGuid(),
+            Amount = 50m,
+            Status = PaymentStatus.Pending,
+            Method = ClientPaymentMethod.Card,
+            ProviderReferenceId = "pi_hold_active",
+            HoldExpiresAt = DateTime.UtcNow.AddMinutes(30),
+        };
+        _db.Payments.Add(payment);
+        await _db.SaveChangesAsync();
+
+        await CreateSut().RunAsync();
+
+        await _stripe.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Pending);
     }
 
@@ -108,7 +159,7 @@ public class PaymentReconciliationJobTests
     public async Task RunAsync_AlreadyPaidPayment_IsNotTouched()
     {
         Payment payment = await SeedPayment(PaymentStatus.Paid, "pi_paid_001");
-        _stripe.GetPaymentIntentStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _stripe.GetStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                .Returns("succeeded");
 
         await CreateSut().RunAsync();
@@ -131,7 +182,7 @@ public class PaymentReconciliationJobTests
             Amount = 50m,
             Status = status,
             Method = ClientPaymentMethod.Card,
-            StripePaymentIntentId = intentId,
+            ProviderReferenceId = intentId,
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

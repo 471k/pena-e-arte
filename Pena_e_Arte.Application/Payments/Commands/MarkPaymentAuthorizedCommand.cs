@@ -11,7 +11,7 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 /// (payment_intent.amount_capturable_updated) — the client has authorized the card.
 /// Moves the payment from Pending to Captured (authorized, held, not yet captured).
 /// </summary>
-public record MarkPaymentAuthorizedCommand(string StripePaymentIntentId) : IRequest;
+public record MarkPaymentAuthorizedCommand(string ProviderReferenceId) : IRequest;
 
 public class MarkPaymentAuthorizedHandler(IAppDbContext db, IRealtimeNotifier realtime)
     : IRequestHandler<MarkPaymentAuthorizedCommand>
@@ -21,7 +21,7 @@ public class MarkPaymentAuthorizedHandler(IAppDbContext db, IRealtimeNotifier re
         // Webhook-only path — see ConfirmPaymentCommand for rationale on IgnoreQueryFilters.
         Domain.Entities.Payment? payment = await db.Payments
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(p => p.StripePaymentIntentId == command.StripePaymentIntentId, ct);
+            .FirstOrDefaultAsync(p => p.ProviderReferenceId == command.ProviderReferenceId, ct);
 
         // Only the Pending → Captured transition is valid; everything else is a stale event
         if (payment is null || payment.Status != PaymentStatus.Pending) return;

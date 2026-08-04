@@ -18,7 +18,7 @@ import { cn } from "@/shared/utils/cn";
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyAppointmentsQuery } from "@/features/appointments/appointmentsApi";
-import { useSignConsentFormMutation } from "../consentFormsApi";
+import { useSignConsentFormMutation, useGetActiveConsentTemplateQuery } from "../consentFormsApi";
 
 const schema = z.object({
   appointmentId: z.string().min(1, "Please select an appointment"),
@@ -34,6 +34,7 @@ export function SignConsentFormPage() {
   const user = useCurrentUser();
 
   const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
+  const { data: activeTemplate } = useGetActiveConsentTemplateQuery();
   const relevantAppointments = appointments?.filter(
     (a) => a.status === "Pending" || a.status === "Confirmed",
   );
@@ -109,6 +110,21 @@ export function SignConsentFormPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6">
+        {activeTemplate?.bodyText ? (
+          <section aria-label="Consent agreement" className="mb-5">
+            <h2 className="text-sm font-semibold mb-2">
+              Consent agreement
+              {activeTemplate.version ? ` (v${activeTemplate.version})` : ""}
+            </h2>
+            {/* The full, active consent text the client is agreeing to — shown before the
+                signature field so consent is specific and informed (GDPR Art. 7). The exact
+                text is snapshotted server-side at signing time. */}
+            <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/20 p-4 text-sm text-foreground/90">
+              {activeTemplate.bodyText}
+            </div>
+          </section>
+        ) : null}
+
         <p className="text-sm text-muted-foreground mb-6">
           By signing this consent form you acknowledge the risks and procedures associated with your
           tattoo session. Type your full legal name below to provide your digital signature. A PDF

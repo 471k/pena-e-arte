@@ -31,7 +31,7 @@ public class CancelAppointmentHandler(
     IRealtimeNotifier realtime,
     ISender sender,
     IJobScheduler jobs,
-    IStripePaymentService stripe)
+    IPaymentProvider paymentProvider)
     : IRequestHandler<CancelAppointmentCommand>
 {
     public async Task Handle(CancelAppointmentCommand command, CancellationToken ct)
@@ -87,7 +87,7 @@ public class CancelAppointmentHandler(
         if (payment is not null)
         {
             if (payment.Method == ClientPaymentMethod.Card
-                && !string.IsNullOrEmpty(payment.StripePaymentIntentId)
+                && !string.IsNullOrEmpty(payment.ProviderReferenceId)
                 && (payment.Status == PaymentStatus.Captured || payment.Status == PaymentStatus.Paid))
             {
                 int refundPercent = isClient
@@ -96,7 +96,7 @@ public class CancelAppointmentHandler(
 
                 if (refundPercent >= 100)
                 {
-                    await stripe.RefundPaymentIntentAsync(payment.StripePaymentIntentId, null, ct);
+                    await paymentProvider.RefundAsync(payment.ProviderReferenceId, null, ct);
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = payment.Amount;
                     appointment.DepositStatus = DepositStatus.Refunded;
@@ -106,7 +106,7 @@ public class CancelAppointmentHandler(
                     decimal refundAmount = Math.Round(
                         appointment.DepositAmount * refundPercent / 100m, 2, MidpointRounding.AwayFromZero);
                     long refundCents = (long)Math.Round(refundAmount * 100m, MidpointRounding.AwayFromZero);
-                    await stripe.RefundPaymentIntentAsync(payment.StripePaymentIntentId, refundCents, ct);
+                    await paymentProvider.RefundAsync(payment.ProviderReferenceId, refundCents, ct);
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = refundAmount;
                     appointment.DepositStatus = DepositStatus.Refunded;

@@ -1,5 +1,120 @@
 # EPIC-0001 — Pre-implementation hardening (steps 0–6)
 
+## Execution status — 31 July 2026 (COMPLETE: all 7 phases landed)
+
+Autonomous run on branch `epic-0001/pre-implementation-hardening` (branched off
+`f3bf5d3`; this worktree was one docs-only commit behind `main`'s `7e4196c` — the
+missing commit is `docs: log K3s production-deployment spec`, immaterial to every
+code phase here). Executed across three sessions: Phases 1–2, then 3–5, then 6–7.
+**All seven phases (PENA-100 → PENA-107) are landed and verified.**
+
+**Landed — each verified to the full Definition of Done for its layer** (backend:
+`dotnet build` clean, `dotnet format --verify-no-changes` clean, `dotnet test`
+green; frontend: `pnpm lint` 0 errors, `pnpm build` clean, `pnpm test` green):
+
+- **Phase 1 — PENA-100/101** (`6f1491f`): legal-entity disclosure
+  (`legalEntity.ts`, `SiteFooter.tsx`), index.html title/description/OG meta,
+  `appsettings.json` LegalEntityName/Nipt, cookie-banner `/privacy` link, dead
+  `/privacy` `/terms` link fix via real policy routes + public Home surface.
+- **Phase 2 — PENA-102** (`1b26e7e`): the four policy pages + Home fleshed out
+  (Privacy with `[LAWYER REVIEW REQUIRED]` banner, Terms, Refund from live deposit
+  code, Contact, Home) + signup Terms/Privacy consent lines on both register pages.
+- **Phase 3 — PENA-103** (`0b7bc45`): `ConsentTemplate` (versioned, nullable-studio,
+  Kind discriminator) + immutable `ConsentTextSnapshot` resolved server-side at
+  signing; migration `AddConsentTemplateAndSnapshot`; audited cross-tenant
+  profile-sharing opt-in/opt-out (`UpdatePortableProfileOptInCommand` now
+  `IAuditableCommand`); active-template query + endpoint; frontend renders template
+  before signing and the snapshot on the detail page. **FINDING corrected:** the
+  epic's premise that the portable profile shares Art. 9 medical notes/allergies is
+  false — `PortableClientProfile` shares only tattoo history + body map; enum named
+  `CrossTenantProfileSharing`, and Help/Privacy copy states this truthfully. Tests:
+  resolver unit tests + snapshot-immutability + opt-in/opt-out audit integration.
+- **Phase 4 — PENA-104** (`4f7a666`): `IR2Service.DeleteAsync` (new); two-stage
+  `RetentionPurgeJob` (soft-delete → grace → hard-purge + R2 delete), registered in
+  `Program.cs` via `AddOrUpdate` (NOT `IJobScheduler`); `App:RetentionDays` config
+  (placeholders); `RequestDataErasureCommand` (owner/support endpoint, audited,
+  distinct from automatic purge). No self-service erasure UI (open question §3.8).
+- **Phase 5 — PENA-105** (`59f7926`): docker-compose Twilio/Instagram env fix +
+  `.env.example`; `ISecretsProvider` (fail-closed) + `VaultSecretsProvider`
+  (VaultSharp) + local Vault dev-mode compose service; `StudioCredentialRef`
+  pointer schema + migration; `.githooks/pre-commit` gitleaks hook (proven to block
+  a staged secret); `docs/infra/ADR-0002-secrets-management.md` + rotation runbook.
+
+- **Phase 6 — PENA-106** (`0c71d36`): deleted `IStripePaymentService`/
+  `StripePaymentService` outright; provider-neutral `IPaymentProvider` +
+  `PaymentProviderCapabilities`; `NullPaymentProvider` (fail-closed DI default);
+  `Payment.StripePaymentIntentId` → `ProviderReferenceId` (renamed across ~22 files/
+  ~74 call sites) + new `Provider`/`Currency`/`HoldExpiresAt`/`PlatformFeeAmount`;
+  migration `ReplaceStripePaymentIntentWithProviderReference` (EF auto-detected the
+  rename as `RenameColumn` — no data loss; verified on a scratch DB);
+  `PaymentReconciliationJob` gains a third hold-expiry auto-release pass;
+  `NetArchTest.Rules` architecture fitness test (no platform-balance-ledger type);
+  Flow-A Stripe wording neutralised in Help/manual (Flow-B billing kept). SessionSplit
+  and Flow B untouched.
+- **Phase 7 — PENA-107** (`d8b3c83`): architecture-test visibility step in the
+  backend CI job; new `help-sync` CI job (did-you-update-the-docs, `[skip-help-sync]`
+  override); `CONTRIBUTING.md` at repo root. No duplicate gitleaks step. Both checks
+  proven locally (arch test fails on an injected `PlatformLedger`; help-sync fails on
+  a gated change without Help).
+
+**Outcome:** all seven phases landed, each committed separately with the exact
+Deliverable message, and pushed. Final self-check green — see
+`docs/engineering/EPIC-0001-completion-summary-2026-07-31.md`. Branch is for human
+review; NOT merged, no PR (touches payments, secrets, consent/GDPR).
+
+---
+
+## Open questions for the founder — RESOLVED 1 Aug 2026 (except #4)
+
+The founder answered these on 1 Aug 2026; resolutions are wired into the branch.
+Numbering matches the master prompt's §3.
+
+1. **(Phase 1) — RESOLVED.** `SITE_TAGLINE` stays "TattooOS — booking & studio
+   management for tattoo shops" (title/og:title). A distinct SEO
+   `SITE_META_DESCRIPTION` was added — "TattooOS — booking, deposits, consent
+   forms, and client records for tattoo studios. Ditch the DMs and paper forms." —
+   used for `<meta name="description">`/`og:description` (in `legalEntity.ts`,
+   mirrored in `index.html`).
+2. **(Phase 1) — RESOLVED.** `tattooos.co` and `support@tattooos.co` are confirmed
+   real and monitored. The contact form (see #5) routes to `support@tattooos.co`.
+3. **(Phase 1) — RESOLVED.** `LEGAL_ENTITY_ADDRESS = "Rruga Pirro Goda, Tiranë,
+   Albania"`; rendered on the Privacy and Terms pages.
+4. **(Phase 2) — STILL OPEN (not ready).** Final lawyer-reviewed Privacy/Terms text
+   is pending; `HAS_FINAL_LEGAL_COPY = false` and the `[LAWYER REVIEW REQUIRED]`
+   banner stay exactly as shipped until the Albanian data-protection lawyer
+   delivers copy.
+5. **(Phase 2) — RESOLVED: contact form, built.** `/contact` is now a real
+   name/email/message form → `SubmitContactRequestCommand` (AllowAnonymous,
+   rate-limited) → Resend email to `support@tattooos.co` with the submitter as
+   ReplyTo. Deliberately **not persisted** (send-only — no new PII-retention
+   surface); the Privacy Policy sub-processor list records this.
+6. **(Phase 4) — RESOLVED.** Consent forms + body maps retained **7 years / 2555
+   days** (body-art record-retention convention), 30-day hard-purge grace. Wired in
+   `App:RetentionDays` + `RetentionOptions.cs`.
+7. **(Phase 5) — RESOLVED: HCP Vault** (HashiCorp-managed) for production — not a
+   self-hosted Raft cluster, not Infisical/Doppler. Same `VaultSharp` client, no
+   code change; local dev stays dev-mode Vault. See ADR-0002.
+8. **(Phase 4) — RESOLVED: build it.** A client-facing self-service "Delete my
+   account" flow was added on `MyProfilePage` (confirmation flow, warns of the
+   30-day-then-irreversible consequence) calling the erasure path scoped to the
+   caller's own account (id resolved from `currentUser`, never trusted from the
+   request — IDOR-proof). Audited, distinguishing self-service from owner-initiated.
+
+### Finding (refund commercial terms) — RESOLVED 1 Aug 2026
+
+No-show stays 100% forfeiture (unchanged). The **default** late-cancellation notice
+window changed from 24h to **48h** (`AppointmentSelfServiceDefaults.CancellationWindowHours`);
+`/refund-policy` and Help copy updated. See #10 for the deferred "transferable
+deposit" idea.
+
+10. **(New — deferred, tracked)** Deposit-transferable-to-a-rebooked-appointment as
+    an alternative to late-cancellation forfeiture — founder flagged it as worth
+    exploring. It needs a **credit-ledger concept** (a real feature, not a config
+    tweak), so it is **out of scope for this pass**, recorded here so it is not
+    silently dropped.
+
+---
+
 **Status:** Ready for engineering · **Date:** 31 July 2026 · **Owner:** Phi
 **Blocks:** ADR-0001 provider integrations (POK, easyPos, Polar)
 **Source documents:** `docs/payments/ADR-0001-payment-providers.md`,

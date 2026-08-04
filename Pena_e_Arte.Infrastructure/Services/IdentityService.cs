@@ -39,6 +39,10 @@ public class IdentityService(
         IdentityUser? user = await userManager.FindByEmailAsync(email);
         if (user is null) return (false, null, "Invalid credentials.");
 
+        // A locked-out account (e.g. after account erasure) can never log in. CheckPasswordAsync
+        // alone does NOT enforce lockout, so this check is required.
+        if (await userManager.IsLockedOutAsync(user)) return (false, null, "Invalid credentials.");
+
         bool valid = await userManager.CheckPasswordAsync(user, password);
         if (!valid) return (false, null, "Invalid credentials.");
 
@@ -47,6 +51,25 @@ public class IdentityService(
         Guid? activeTenantId = await ReadActiveTenantIdAsync(user);
 
         return (true, GenerateJwt(user, roles, userClaims, activeTenantId), null);
+    }
+
+    public async Task DisableLoginAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return;
+
+        await userManager.SetLockoutEnabledAsync(user, true);
+        // Far-future but within MySQL's datetime range (DateTimeOffset.MaxValue can overflow it).
+        await userManager.SetLockoutEndDateAsync(user, new DateTimeOffset(9999, 12, 31, 23, 59, 59, TimeSpan.Zero));
+        // Kill any existing refresh token so an in-flight session can't refresh past the lockout.
+        await userManager.RemoveAuthenticationTokenAsync(user, "App", "RefreshToken");
+    }
+
+    public async Task DeleteUserAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return;
+        await userManager.DeleteAsync(user);
     }
 
     public async Task<(bool Success, string? Token, string? Error)> GeneratePasswordResetTokenAsync(string email)
@@ -175,6 +198,10 @@ public class IdentityService(
         IdentityUser? user = await userManager.FindByEmailAsync(email);
 
         if (user is null)
+            return (false, null, "No account found with this email. Please register first.");
+
+        // A locked-out account (e.g. after erasure) can't log in via OAuth either.
+        if (await userManager.IsLockedOutAsync(user))
             return (false, null, "No account found with this email. Please register first.");
 
         IList<string> roles = await userManager.GetRolesAsync(user);

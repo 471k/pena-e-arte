@@ -22,6 +22,10 @@ internal sealed class NullR2Service : IR2Service
     public Task UploadAsync(string objectKey, byte[] data, string contentType, CancellationToken ct)
         => throw new InvalidOperationException("Cloudflare R2 is not configured.");
 
+    // No-op: with no R2 configured there is no object to delete, and the retention job must
+    // still be able to hard-purge the DB rows without crashing in an R2-less environment.
+    public Task DeleteAsync(string objectKey, CancellationToken ct) => Task.CompletedTask;
+
     public Task<IReadOnlyList<R2ObjectInfo>> ListByPrefixAsync(string prefix, CancellationToken ct)
         => Task.FromResult<IReadOnlyList<R2ObjectInfo>>(Array.Empty<R2ObjectInfo>());
 }

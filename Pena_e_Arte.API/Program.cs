@@ -93,6 +93,11 @@ try
             "traffic-rollup",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 2, minute: 30));
+
+        recurringJobs.AddOrUpdate<RetentionPurgeJob>(
+            "retention-purge",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 4)); // staggered away from reconciliation (2am) and instagram-sync (3am)
     }
 
     // Without a configured TrustedProxyCidr, the .NET runtime's own forwarded-headers hardening
@@ -141,6 +146,7 @@ try
     app.MapPrometheusScrapingEndpoint();
 
     app.MapPublicEndpoints();
+    app.MapContactEndpoints();
     app.MapSavedImagesEndpoints();
     app.MapPublicDesignEndpoints();
     app.MapAuthEndpoints();

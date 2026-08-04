@@ -7,6 +7,6 @@ public class MarkPaymentFailedValidator : AbstractValidator<MarkPaymentFailedCom
 {
     public MarkPaymentFailedValidator()
     {
-        RuleFor(x => x.StripePaymentIntentId).NotEmpty();
+        RuleFor(x => x.ProviderReferenceId).NotEmpty();
     }
 }

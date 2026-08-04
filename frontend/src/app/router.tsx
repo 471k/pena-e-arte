@@ -35,7 +35,7 @@ import {
   LiveTrafficPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
-import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage } from "@/features/public";
+import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage } from "@/features/public";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
@@ -66,7 +66,10 @@ export function getRoleRedirectPath(role: Role): string {
 
 function IndexRedirect() {
   const role = useAppSelector((s) => s.auth.role);
-  if (!role) return <Navigate to="/discover" replace />;
+  // Unauthenticated root visit now lands on the public Home surface (PENA-102)
+  // instead of being bounced straight into /discover. Authenticated users still
+  // go to their role home.
+  if (!role) return <HomePage />;
   return <Navigate to={getRoleRedirectPath(role)} replace />;
 }
 
@@ -103,7 +106,7 @@ function AppLayout() {
   }
 }
 
-export const router = createBrowserRouter([
+export const routes = [
   { path: "/login",           element: <LoginPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/reset-password",  element: <ResetPasswordPage /> },
@@ -117,6 +120,15 @@ export const router = createBrowserRouter([
   { path: "/artist/:slug",            element: <ArtistPortfolioPage /> },
   { path: "/share/:token",            element: <SharedDesignPage /> },
   { path: "/embed/:studioSlug",       element: <EmbedPage /> },
+
+  // ── Public policy / legal surfaces (PENA-101, PENA-102) ─────────────────────
+  // Top-level, outside the authenticated AppRoot tree. Before these existed,
+  // CatchAllRedirect silently bounced /privacy and /terms to /discover.
+  { path: "/privacy",         element: <PrivacyPolicyPage /> },
+  { path: "/terms",           element: <TermsOfServicePage /> },
+  { path: "/refund-policy",   element: <RefundPolicyPage /> },
+  { path: "/contact",         element: <ContactPage /> },
+
   {
     path: "/",
     element: <AppRoot />,
@@ -362,4 +374,6 @@ export const router = createBrowserRouter([
     ],
   },
   { path: "*", element: <CatchAllRedirect /> },
-]);
+];
+
+export const router = createBrowserRouter(routes);

@@ -20,26 +20,26 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class PaymentHandlerIntegrationTests
 {
     private readonly DatabaseFixture _fixture;
-    private readonly IStripePaymentService _stripe;
+    private readonly IPaymentProvider _stripe;
     private readonly IRealtimeNotifier _realtime;
     private readonly ISender _sender = Substitute.For<ISender>();
 
     public PaymentHandlerIntegrationTests(DatabaseFixture fixture)
     {
         _fixture = fixture;
-        _stripe = Substitute.For<IStripePaymentService>();
+        _stripe = Substitute.For<IPaymentProvider>();
         _realtime = Substitute.For<IRealtimeNotifier>();
 
-        _stripe.CreatePaymentIntentAsync(
+        _stripe.CreatePaymentHoldAsync(
                 Arg.Any<long>(), Arg.Any<string>(),
                 Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(($"pi_{Guid.NewGuid():N}", $"pi_{Guid.NewGuid():N}_secret"));
 
-        _stripe.RefundPaymentIntentAsync(
+        _stripe.RefundAsync(
                 Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Returns($"re_{Guid.NewGuid():N}");
 
-        _stripe.CapturePaymentAsync(
+        _stripe.CaptureAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
     }
@@ -344,7 +344,7 @@ public class PaymentHandlerIntegrationTests
 
         await RunCaptureHandler(tenantId, paymentId);
 
-        await _stripe.Received(1).CapturePaymentAsync(
+        await _stripe.Received(1).CaptureAsync(
             intentId, Arg.Any<CancellationToken>());
     }
 
@@ -403,7 +403,7 @@ public class PaymentHandlerIntegrationTests
         await RunRefundHandler(tenantId, paymentId, refundAmount: null);
 
         // SeedPendingPayment seeds Amount = 100m → 10000 cents
-        await _stripe.Received(1).RefundPaymentIntentAsync(
+        await _stripe.Received(1).RefundAsync(
             intentId, 10000L, Arg.Any<CancellationToken>());
     }
 
@@ -417,7 +417,7 @@ public class PaymentHandlerIntegrationTests
 
         await RunRefundHandler(tenantId, paymentId, refundAmount: 40m);
 
-        await _stripe.Received(1).RefundPaymentIntentAsync(
+        await _stripe.Received(1).RefundAsync(
             intentId, 4000L, Arg.Any<CancellationToken>());
     }
 
@@ -509,7 +509,7 @@ public class PaymentHandlerIntegrationTests
             ClientId = clientId,
             Amount = 100m,
             Status = status,
-            StripePaymentIntentId = intentId
+            ProviderReferenceId = intentId
         };
         ctx.Payments.Add(payment);
         await ctx.SaveChangesAsync();

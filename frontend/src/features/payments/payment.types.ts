@@ -20,7 +20,7 @@ export interface PaymentResponse {
   amount:                number;
   status:                PaymentStatus;
   method:                PaymentMethod;
-  stripePaymentIntentId: string | null;
+  providerReferenceId: string | null;
   clientSecret:          string | null;
   cashNote:              string | null;
   paidAt:                string | null;

@@ -24,6 +24,14 @@ describe("CookieConsentBanner", () => {
     expect(screen.queryByRole("region", { name: /cookie consent/i })).not.toBeInTheDocument();
   });
 
+  it("links to the Privacy Policy for details", () => {
+    render(<CookieConsentBanner />);
+    expect(screen.getByRole("link", { name: /privacy policy/i })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+  });
+
   it("hides itself and persists consent when 'Got it' is clicked", async () => {
     const user = userEvent.setup();
     render(<CookieConsentBanner />);

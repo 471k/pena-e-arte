@@ -37,7 +37,20 @@ export function CookieConsentBanner() {
         <Cookie className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
         <p className="text-xs text-muted-foreground">
           We use essential cookies to keep you signed in and remember your preferences.
-          By continuing to use TattooOS, you agree to this.
+          By continuing to use TattooOS, you agree to this. See our{" "}
+          {/* Plain anchor (not react-router <Link>) so this banner renders correctly even
+              when mounted outside a Router context, as its unit test does. */}
+          <a
+            href="/privacy"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Privacy Policy
+          </a>{" "}
+          for details.
+          {/* NOTE: TattooOS currently sets NO non-essential (analytics/marketing) cookies,
+              so an accept-all banner is accurate today. If any analytics or marketing cookie
+              is ever added, this banner MUST gain a real category-level opt-in (essential vs.
+              analytics vs. marketing) at that point — do not add categories before then. */}
         </p>
       </div>
       <Button size="sm" onClick={accept} className="shrink-0 self-end sm:self-auto">

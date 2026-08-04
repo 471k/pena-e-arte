@@ -24,7 +24,7 @@ public class AppointmentHandlerIntegrationTests
     private readonly IJobScheduler _jobs;
     private readonly IRealtimeNotifier _realtime;
     private readonly ISender _sender = Substitute.For<ISender>();
-    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly IPlanLimitService _planLimits = Substitute.For<IPlanLimitService>();
 
     public AppointmentHandlerIntegrationTests(DatabaseFixture fixture)

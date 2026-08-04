@@ -23,7 +23,7 @@ public class MarkPaymentAuthorizedHandlerTests
 
         await CreateSut().Handle(new MarkPaymentAuthorizedCommand(intentId), default);
 
-        _db.Payments.Single(p => p.StripePaymentIntentId == intentId)
+        _db.Payments.Single(p => p.ProviderReferenceId == intentId)
             .Status.Should().Be(PaymentStatus.Captured);
     }
 
@@ -39,7 +39,7 @@ public class MarkPaymentAuthorizedHandlerTests
 
         await CreateSut().Handle(new MarkPaymentAuthorizedCommand(intentId), default);
 
-        _db.Payments.Single(p => p.StripePaymentIntentId == intentId)
+        _db.Payments.Single(p => p.ProviderReferenceId == intentId)
             .Status.Should().Be(status);
     }
 
@@ -62,7 +62,7 @@ public class MarkPaymentAuthorizedHandlerTests
             Amount = 50m,
             Method = ClientPaymentMethod.Card,
             Status = status,
-            StripePaymentIntentId = intentId,
+            ProviderReferenceId = intentId,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

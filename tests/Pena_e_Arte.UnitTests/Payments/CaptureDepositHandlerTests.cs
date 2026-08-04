@@ -15,7 +15,7 @@ public class CaptureDepositHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
-    private readonly IStripePaymentService _stripe = Substitute.For<IStripePaymentService>();
+    private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
     private readonly ISender _sender = Substitute.For<ISender>();
     private readonly Guid _studioId = Guid.NewGuid();
@@ -37,7 +37,7 @@ public class CaptureDepositHandlerTests
         await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
         await _stripe.Received(1)
-            .CapturePaymentAsync("pi_test", Arg.Any<CancellationToken>());
+            .CaptureAsync("pi_test", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class CaptureDepositHandlerTests
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*not completed card authorization*");
-        await _stripe.DidNotReceive().CapturePaymentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().CaptureAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class CaptureDepositHandlerTests
             ClientId = client.Id,
             Amount = 100m,
             Status = status,
-            StripePaymentIntentId = stripeIntentId
+            ProviderReferenceId = stripeIntentId
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -84,7 +85,9 @@ function makeStore() {
 function renderPage() {
   render(
     <Provider store={makeStore()}>
-      <MyProfilePage />
+      <MemoryRouter>
+        <MyProfilePage />
+      </MemoryRouter>
     </Provider>,
   );
 }

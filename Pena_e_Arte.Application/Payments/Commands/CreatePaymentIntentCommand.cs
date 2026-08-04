@@ -15,7 +15,7 @@ public record CreatePaymentIntentCommand(CreatePaymentIntentRequest Request) : I
 public class CreatePaymentIntentHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
-    IStripePaymentService stripePayments,
+    IPaymentProvider stripePayments,
     IRealtimeNotifier realtime)
     : IRequestHandler<CreatePaymentIntentCommand, PaymentIntentResponse>
 {
@@ -38,7 +38,7 @@ public class CreatePaymentIntentHandler(
         Guid paymentId = existing?.Id ?? Guid.NewGuid();
         long amountInCents = (long)(req.Amount * 100);
 
-        (string intentId, string clientSecret) = await stripePayments.CreatePaymentIntentAsync(
+        (string intentId, string clientSecret) = await stripePayments.CreatePaymentHoldAsync(
             amountInCents, req.Currency, paymentId, ct);
 
         Payment payment;
@@ -53,7 +53,7 @@ public class CreatePaymentIntentHandler(
                 Amount = req.Amount,
                 Status = PaymentStatus.Pending,
                 Method = ClientPaymentMethod.Card,
-                StripePaymentIntentId = intentId,
+                ProviderReferenceId = intentId,
                 ClientSecret = clientSecret
             };
             db.Payments.Add(payment);
@@ -65,7 +65,7 @@ public class CreatePaymentIntentHandler(
             payment.Amount = req.Amount;
             payment.Status = PaymentStatus.Pending;
             payment.Method = ClientPaymentMethod.Card;
-            payment.StripePaymentIntentId = intentId;
+            payment.ProviderReferenceId = intentId;
             payment.ClientSecret = clientSecret;
             payment.UpdatedAt = DateTime.UtcNow;
         }

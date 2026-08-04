@@ -12,7 +12,11 @@ public class NotificationService(
     IResend resend,
     ILogger<NotificationService> logger) : INotificationService
 {
-    public async Task SendEmailAsync(string to, string subject, string body, CancellationToken ct = default)
+    public Task SendEmailAsync(string to, string subject, string body, CancellationToken ct = default) =>
+        SendEmailAsync(to, subject, body, replyTo: null, ct);
+
+    public async Task SendEmailAsync(
+        string to, string subject, string body, string? replyTo, CancellationToken ct = default)
     {
         EmailMessage message = new()
         {
@@ -21,6 +25,8 @@ public class NotificationService(
             HtmlBody = body,
         };
         message.To.Add(to);
+        if (!string.IsNullOrWhiteSpace(replyTo))
+            message.ReplyTo = replyTo;
 
         ResendResponse<Guid> response = await resend.EmailSendAsync(message, ct);
 

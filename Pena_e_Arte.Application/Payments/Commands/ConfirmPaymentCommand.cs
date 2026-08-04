@@ -6,7 +6,7 @@ using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
-public record ConfirmPaymentCommand(string StripePaymentIntentId) : IRequest;
+public record ConfirmPaymentCommand(string ProviderReferenceId) : IRequest;
 
 public class ConfirmPaymentHandler(IAppDbContext db)
     : IRequestHandler<ConfirmPaymentCommand>
@@ -18,7 +18,7 @@ public class ConfirmPaymentHandler(IAppDbContext db)
         // secured at the endpoint level by Stripe-Signature HMAC validation.
         Domain.Entities.Payment? payment = await db.Payments
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(p => p.StripePaymentIntentId == command.StripePaymentIntentId, ct);
+            .FirstOrDefaultAsync(p => p.ProviderReferenceId == command.ProviderReferenceId, ct);
 
         if (payment is null || payment.Status == PaymentStatus.Paid) return;
 
