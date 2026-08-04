@@ -38,39 +38,171 @@ These require a human with account/billing access. **None of this belongs in `k8
 written by this session** — it produces the real-world resources the manifests below then
 reference by name/secret. Do not proceed past Phase 1 until these exist:
 
-1. **A VPS with K3s installed.** `CLAUDE.md` names Hetzner/AWS; this consultation isn't
-   picking one for you (see §2 "flagged" below) — but concretely, once you've picked one:
-   `curl -sfL https://get.k3s.io | sh -` on a fresh Ubuntu 24.04 box provisions a
-   single-node K3s cluster in ~60 seconds. Copy `/etc/rancher/k3s/k3s.yaml` off the box
-   (it's the kubeconfig; rewrite its `server:` field from `127.0.0.1` to the box's public
-   IP) — you'll need its contents as a GitHub Actions secret in Phase 9.
-2. **A managed MySQL 8.4-compatible instance** (see §2 — provider not chosen here). Create
-   the instance, create a database named `pena_e_arte_prod`, and note the resulting
-   connection string in the same shape `DB_CONNECTION_STRING` already uses (see §6.5) —
-   confirm the provider allows `utf8mb4`/`utf8mb4_unicode_ci` as the server default (or that
-   it can be set per-connection; EF Core migrations run with the app's own connection, not
-   server defaults, so this is a should-confirm, not a hard blocker).
+1. **Hetzner Cloud VPS, K3s installed with its default Traefik ingress controller.** Provider
+   and ingress controller are now decided (were open in an earlier draft of this prompt —
+   resolved 2026-07-26, see §2.7/§2.8; the ingress-controller choice was **revised same-day**
+   from the community `ingress-nginx` project originally spec'd here, once it turned out that
+   project was archived 2026-03-24 — no further releases, bugfixes, or security patches — and
+   was caught before anything beyond K3s itself was installed): **Hetzner**, not AWS —
+   cheapest for this scale, and Hetzner has no first-party managed-MySQL product to
+   conveniently co-locate with anyway (confirmed against Hetzner's own current site nav — no
+   "Managed Databases" product listed), so same-provider DB convenience was never on the table
+   either way.
+   - Create the server in the Hetzner Cloud Console: Ubuntu 24.04 LTS image (or newer — 26.04
+     LTS was available and used in practice, which is fine, more current, longer support
+     window), the **Regular Performance** (shared vCPU) tier at the 2 vCPU / 4 GB RAM size
+     (Hetzner's own "best price-performance" tier per their current site copy — their old
+     `CX22`-style SKU names may have changed, match by spec, not by a possibly-stale name;
+     `CPX22` was the real current match in practice). Location: **Nuremberg or Falkenstein**
+     (Germany) — closest of Hetzner's regions to Albania, and pairs well with DigitalOcean's
+     Frankfurt region for the database (§0.2).
+   - Add your SSH public key at creation time instead of a password.
+   - Add a Hetzner Cloud Firewall: allow `22/tcp` (restricted to your own IP), `80/tcp` and
+     `443/tcp` (world-open — this is the public ingress; `80` specifically so Traefik/whatever
+     serves it can redirect plain HTTP to HTTPS rather than refusing the connection), and
+     `6443/tcp` restricted to your own IP only (the K3s API server — never expose this
+     world-wide). Leave outbound unrestricted — this box's dependency set (GHCR, DigitalOcean,
+     Cloudflare, Let's Encrypt, Stripe, Resend, Twilio, apt mirrors) doesn't publish stable IP
+     ranges suitable for tight egress rules; an accepted-risk call, named rather than silently
+     skipped.
+   - Install K3s with **Traefik left enabled** (the default — do not pass
+     `--disable traefik`; an earlier draft of this step disabled it in favor of installing
+     `ingress-nginx` separately, reversed for the reason above):
+     ```bash
+     curl -sfL https://get.k3s.io | sh -
+     ```
+     Verify with `kubectl get pods -n kube-system` — expect `traefik-*` and `svclb-traefik-*`
+     pods reaching `Running` within a minute or two. K3s's built-in ServiceLB automatically
+     binds Traefik to the node's 80/443 — unlike the bare-metal `ingress-nginx` install this
+     replaces, **no manual `hostNetwork`/`hostPort` patch step is needed**, one genuine
+     simplification from this change.
+   - Copy `/etc/rancher/k3s/k3s.yaml` off the box (it's the kubeconfig; rewrite its `server:`
+     field from `127.0.0.1` to the box's public IP) — you'll need its contents as a GitHub
+     Actions secret in Phase 9. Confirm the real Pod CIDR now, don't assume Flannel's default:
+     `kubectl cluster-info dump | grep -m1 cluster-cidr` — needed for §8.10's
+     `ForwardedHeaders:TrustedProxyCidr` value.
+2. **DigitalOcean Managed MySQL, engine version 8.4.** Provider resolved 2026-07-26 (see
+   §2.7) — real MySQL protocol (not Vitess), and DigitalOcean now defaults new clusters to
+   MySQL 8.4 (confirmed current as of this prompt — 8.0 clusters are on a forced-upgrade path
+   to 8.4 starting Oct 2026 per DigitalOcean's own migration notice), an exact version match
+   with `mysql:8.4` in `docker-compose.yml`.
+   - Create the cluster in the DigitalOcean console, **Frankfurt (FRA1)** region (closest to
+     the Hetzner Germany regions), MySQL 8.4.
+   - Under the cluster's **Trusted Sources**, restrict inbound connections to the Hetzner
+     VPS's public IP only — a managed database reachable from the entire internet is not an
+     acceptable default.
+   - DigitalOcean enforces TLS on managed MySQL connections. The connection string this
+     prompt's §6.5/§8.8 use must add `SslMode=Required` (or `VerifyCA` with DigitalOcean's
+     provided CA certificate bundled into the container image/secret) — this is a real
+     difference from today's local `DB_CONNECTION_STRING`, which has no SSL parameters at
+     all, and is called out explicitly in Phase 8 below so it isn't silently dropped.
+   - Create a database named `pena_e_arte_prod` inside the cluster (DigitalOcean provisions a
+     default one; add this one explicitly rather than reusing the default, for a name that
+     matches this project's existing naming convention). Confirm `utf8mb4`/
+     `utf8mb4_unicode_ci` as the connection-level charset/collation (DigitalOcean's server
+     default may differ from the local container's — EF Core migrations run with the app's
+     own connection settings, not the server default, so this is a should-confirm, not a hard
+     blocker).
+   - Copy the resulting connection details into the `.NET` connection-string shape (not
+     DigitalOcean's own `mysql://` URI shape): `Server=<host>;Port=25060;
+     Database=pena_e_arte_prod;User=<user>;Password=<password>;SslMode=Required;
+     AllowPublicKeyRetrieval=true;`
 3. **A Cloudflare API token** scoped to `Zone:DNS:Edit` for the `tattooos.co` zone only (not
-   the Global API Key) — needed for cert-manager's DNS-01 solver.
-4. **DNS records in Cloudflare** for whichever hostname(s) Phase 6 below targets, pointed at
-   the K3s box's public IP. If Cloudflare's orange-cloud proxy is enabled on those records,
-   confirm it's compatible with DNS-01 issuance (DNS-01 validates via TXT record, not HTTP
-   traffic, so proxying the A/AAAA record doesn't interfere — but flag if this assumption
-   doesn't hold for your zone setup).
+   the Global API Key) — needed for cert-manager's DNS-01 solver. Cloudflare dashboard → My
+   Profile → API Tokens → Create Token → "Edit zone DNS" template, scoped to `tattooos.co`.
+4. **A DNS record in Cloudflare**: `A` record, name `app`, value = the Hetzner box's public
+   IP. Leaving Cloudflare's orange-cloud proxy **on** is fine and recommended (DNS-01
+   validates via a TXT record, not by reaching the server on port 80/443, so proxying doesn't
+   interfere with issuance) — but if it's on, set Cloudflare's **SSL/TLS mode to "Full
+   (strict)"** (SSL/TLS → Overview in the Cloudflare dashboard), not "Flexible": strict mode
+   validates Cloudflare's edge-to-origin connection against the real Let's Encrypt cert
+   cert-manager issues on the box; Flexible would silently accept an unencrypted or
+   self-signed origin connection instead, undermining the whole point of Phase 6.
 5. **A GHCR PAT or confirmation that `GITHUB_TOKEN`'s default `packages: write` permission is
    enabled** for `471k/pena-e-arte` (Settings → Actions → General → Workflow permissions).
 6. Once 1–5 exist, add these **GitHub Actions repo secrets** (Settings → Secrets and
    variables → Actions): `KUBE_CONFIG` (base64 of the rewritten kubeconfig from step 1),
-   `PROD_DB_CONNECTION_STRING`, `CLOUDFLARE_API_TOKEN`. The other secrets the API already
-   needs (`JWT_SECRET_KEY`, `STRIPE_SECRET_KEY`, etc. — full list in §6.5) get their
-   production values added as GitHub secrets too, reusing the exact names already in
-   `.env.example` with a `PROD_` prefix where they don't already have one, so Phase 9's
-   workflow can reference them.
+   `PROD_DB_CONNECTION_STRING` (the DigitalOcean connection string from step 2, with
+   `SslMode=Required`), `CLOUDFLARE_API_TOKEN`. The other secrets the API already needs
+   (`JWT_SECRET_KEY`, `STRIPE_SECRET_KEY`, etc. — full list in §6.5) get their production
+   values added as GitHub secrets too, reusing the exact names already in `.env.example` with
+   a `PROD_` prefix where they don't already have one, so Phase 9's workflow can reference
+   them. **Never paste any of these secret values into a chat/prompt/doc anywhere, including
+   back to this consultation project** — add them directly in the GitHub Settings UI.
 
-**When Phase 0 is done, hand this file to a Claude Code session with a note confirming which
-managed-MySQL provider and which VPS host were actually used** (Phase 2 below needs to know
-this to write accurate provisioning notes into the docs), then let it run Phases 1–10
-unattended.
+### 0.1 — Phase 0 progress log (updated live as steps complete, not written up front)
+
+**Step 1 (Hetzner/K3s) — done, 2026-07-27:**
+- Project: `pena-e-arte-prod`
+- Server: `pena-e-arte-k3s` — CPX22 (2 vCPU/4GB/80GB), Falkenstein, Ubuntu 26.04 LTS, backups on
+- Public IPv4: `49.13.66.15` (the value for the Cloudflare `app` DNS record in step 4)
+- Public IPv6: `2a01:4f8:c17:29e8::1`
+- Firewall: `pena-e-arte-k3s-fw` — `22`/`6443` restricted to the operator's IP, `80`/`443`/ICMP
+  open to anyone
+- SSH key pair: private key at `C:\Users\User\.ssh\hetzner-pena-e-arte` on the operator's
+  machine (passphrase-protected — file contents/passphrase never recorded anywhere, including
+  here), public key attached to the Hetzner server
+- K3s: `v1.36.2+k3s1`, running with its **default Traefik** ingress controller (not
+  `ingress-nginx` — see §2.8's corrected resolution; this was reinstalled twice: once to
+  remove an earlier `--disable traefik` flag, once more after the cluster's admin kubeconfig
+  was accidentally exposed in a chat session and needed fresh, never-exposed credentials)
+- kubeconfig: `C:\Users\User\.kube\hetzner-prod.yaml` on the operator's machine, `server:`
+  field rewritten to `https://49.13.66.15:6443` — **file contents never recorded in any doc or
+  chat**, only its local path
+- Pod CIDR: confirmed `10.42.0.0/16` (K3s stock default, empirically confirmed via
+  `kubectl get node pena-e-arte-k3s -o jsonpath='{.spec.podCIDR}'` returning `10.42.0.0/24`)
+  — this is the real value for `FORWARDED_HEADERS_TRUSTED_PROXY_CIDR`, referenced from Phase
+  10 rather than re-derived there
+
+**Step 2 (DigitalOcean managed MySQL) — done, 2026-07-27:**
+- DigitalOcean project: `pena-e-arte-prod` (kept separate from the operator's other
+  DigitalOcean projects — `Bite Right Demo`, `Klinika dentare`, `Phi Software S...`)
+- Cluster: `pena-e-arte-prod-db` — MySQL 8.4, Standard Edition, Basic/Regular, 1 vCPU/1GB RAM,
+  10GiB autoscaling storage, single primary node (no standby/HA), Frankfurt (FRA1), $15.15/mo
+- Network Access: trusted sources restricted to `49.13.66.15/32` ("Hetzner K3s box") only —
+  no other inbound allowed
+- Database created: `pena_e_arte_prod` (the auto-created `defaultdb` was left in place, unused)
+- Connection host: `pena-e-arte-prod-db-do-user-30836506-0.j.db.ondigitalocean.com`, port
+  `25060`, user `doadmin`, `sslmode=REQUIRED` — confirms §0 step 2's `SslMode=Required`
+  requirement was correctly anticipated
+- **Password never recorded in this doc or in chat** — the operator holds the assembled
+  `PROD_DB_CONNECTION_STRING` value locally, to be added directly as a GitHub Actions secret
+  in step 6
+
+**Step 3 (Cloudflare API token) — done, 2026-07-27:**
+- Token name: `pena-e-arte-dns01`
+- Permissions: `Zone → DNS → Edit`
+- Zone Resources: `Include → Specific zone → tattooos.co` only (not All zones)
+- Client IP Address Filtering: `Is in → 49.13.66.15` — restricted to the Hetzner box only, an
+  extra layer beyond the zone scoping
+- TTL: no expiration (accepted tradeoff for a long-lived automation credential)
+- **Token value never recorded in this doc or in chat** — held locally, to be added directly
+  as the `CLOUDFLARE_API_TOKEN` GitHub Actions secret in step 6
+
+**Step 4 (Cloudflare DNS record + SSL mode) — done, 2026-07-27.**
+- DNS record: `A` — `app` → `49.13.66.15` (Hetzner server public IP from step 1), Proxied
+  (orange cloud, so Cloudflare terminates client TLS and fronts the origin — required for
+  Full (strict) mode below)
+- SSL/TLS encryption mode: changed from `Full` to `Full (strict)` — Cloudflare now validates
+  the origin certificate rather than accepting any/self-signed cert. This means Phase 6's
+  cert-manager + Let's Encrypt setup is not optional/deferrable: until a trusted cert is live
+  on the Traefik Ingress, Cloudflare will fail the edge-to-origin TLS handshake and the origin
+  will be unreachable through the proxy. Confirmed via dashboard: "Automatic mode disabled",
+  mode active.
+- No other DNS records touched; the 3 pre-existing records on the zone were left as-is.
+
+**Steps 5–6 (GHCR permissions + GitHub Actions secrets) — not started.** Secrets this step
+will need once steps 1–4 are complete: `KUBE_CONFIG` (base64 of the kubeconfig file above),
+`PROD_DB_CONNECTION_STRING` (from step 2, with `SslMode=Required`), `CLOUDFLARE_API_TOKEN`
+(from step 3), plus production values for `JWT_SECRET_KEY`, the Stripe keys/webhook secrets,
+R2 credentials, `RESEND_API_KEY`, `HANGFIRE_DASHBOARD_USERNAME`/`PASSWORD`,
+`PROD_GRAFANA_ADMIN_USER`/`PASSWORD`, and `FORWARDED_HEADERS_TRUSTED_PROXY_CIDR` (already known:
+`10.42.0.0/16`).
+
+**When Phase 0 is done, confirm here that it's actually complete** (kubectl can reach the
+box, the DigitalOcean cluster is up and its Trusted Sources are locked to the Hetzner IP, the
+Cloudflare token and DNS record exist, GitHub secrets are populated) before handing this file
+to a Claude Code session to run Phases 1–10 unattended.
 
 ---
 
@@ -93,13 +225,15 @@ does this), #6 (industry-standard — see §11), #7 (Help sync — see §10, N/A
 
 Resolved via this project's clarifying pass before this prompt was written:
 
-1. **Cluster is not provisioned yet.** This prompt's Phases 1–10 write manifests, workflows,
-   and docs against a cluster that Phase 0 makes real — it does not create the cluster itself.
+1. **Cluster is not provisioned yet as of this prompt's original draft; provisioning target is
+   now decided.** This prompt's Phases 1–10 write manifests, workflows, and docs against a
+   cluster that Phase 0 makes real — it does not create the cluster itself. Phase 0 must still
+   actually be executed (a human task) before Phases 1–10 run.
 2. **Managed MySQL, not self-hosted.** No MySQL `StatefulSet`/PVC gets written. The API's
    `ConnectionStrings__Default` in production points at the managed instance via a K8s Secret
-   populated from the `PROD_DB_CONNECTION_STRING` GitHub secret. Provider is Phi's choice
-   (§4.1) — the manifests are provider-agnostic (any MySQL 8.4-compatible endpoint + standard
-   connection string works with Pomelo unchanged).
+   populated from the `PROD_DB_CONNECTION_STRING` GitHub secret — **now with `SslMode=Required`
+   in that connection string** (§0.2), since DigitalOcean enforces TLS on managed connections
+   and today's local `DB_CONNECTION_STRING` has no SSL parameters to copy from.
 3. **Observability is self-hosted in-cluster**, reusing the exact configs already built and
    verified today under `docker/observability/` (`prometheus.yml`, `loki-config.yml`,
    `tempo.yaml`, `config.alloy`, `grafana/provisioning/`) — translated into ConfigMaps, not
@@ -123,6 +257,33 @@ Resolved via this project's clarifying pass before this prompt was written:
 6. **Registry: GHCR** (`ghcr.io/471k/pena-e-arte-api`, `ghcr.io/471k/pena-e-arte-frontend`) —
    matches the GitHub Actions runner with zero new account, consistent with `ci.yml` already
    living in the same repo.
+7. **VPS provider: Hetzner** (resolved 2026-07-26, was §3.2 in the original draft — see that
+   section below, now marked resolved rather than deleted, for the reasoning trail). Cheapest
+   option at this scale; also, checked directly against Hetzner's current site, they have no
+   first-party managed-database product, so "same provider as the DB" was never actually an
+   available convenience to weigh against AWS either way.
+8. **Ingress controller: Traefik, K3s's own default — revised same-day, see below**
+   (resolved 2026-07-26, closes what was previously an open item in Phase 6 of this prompt).
+   The first resolution of this item picked `ingress-nginx` (disabling K3s's built-in Traefik
+   to install it separately) specifically to match `CLAUDE.md`'s documented "Nginx" stack
+   line. That was reversed the same day, mid-Phase-0-execution, once it turned out the
+   community `kubernetes/ingress-nginx` project was archived 2026-03-24 — no further releases,
+   bugfixes, or security patches, ever, going forward. Shipping a new production cluster on an
+   already-end-of-life ingress controller was worse than deviating from `CLAUDE.md`'s literal
+   wording, so this now uses K3s's built-in Traefik (actively maintained by Traefik Labs,
+   purpose-built for K3s, zero extra install step) instead — **`CLAUDE.md`'s infra stack table
+   should be updated to say Traefik, not Nginx, for the ingress layer; flagged here, not done
+   silently, and not yet applied since this consultation project can edit `docs/claude/` but
+   `CLAUDE.md` itself lives at the repo root — whoever runs Phases 1–10 should make that edit
+   too.** `nginx.conf.template`'s own reverse-proxy role (frontend Pod → API Service) is
+   unaffected either way; only the layer in front of it (cluster ingress → frontend Pod)
+   changed. See §0 step 1 for the exact install sequence and Phase 6 for the resulting
+   Ingress-annotation differences.
+9. **Managed MySQL provider: DigitalOcean, engine 8.4** (resolved 2026-07-26, was §3.1 in the
+   original draft, now marked resolved below). DigitalOcean now defaults new clusters to
+   MySQL 8.4 — an exact version match with `mysql:8.4` — and uses the real MySQL protocol, not
+   Vitess, minimizing migration/FK-behavior risk. TLS is mandatory on the connection; see
+   item 2 above.
 
 ---
 
@@ -132,29 +293,33 @@ These are named explicitly, per this project's own precedent, rather than silent
 silently skipped. **Do not implement a specific choice for any of these; implement the
 provider-agnostic version and leave the named gap.**
 
-### 3.1 — Managed MySQL provider (money decision, Phi's call)
+### 3.1 — Managed MySQL provider — **RESOLVED 2026-07-26: DigitalOcean**
 
-Three real current-market candidates, priced as of this consultation (verify current pricing
-before committing — rates change):
+Originally an open money decision. Three real current-market candidates were priced and
+compared (kept here for the reasoning trail):
 
 | Provider | Entry price (2026) | Notes |
 |---|---|---|
-| DigitalOcean Managed MySQL | ~$15/mo | Standard MySQL protocol (not Vitess-sharded) — closest behavioral match to today's `mysql:8.4` container and Pomelo/EF Core. Recommended default for this app's size and this project's "match local dev exactly" philosophy. |
-| PlanetScale (Vitess-backed MySQL, PS-10 tier) | ~$39/mo for HA | PlanetScale's free/Hobby tier is gone (removed April 2024) and their newer low-cost tiers lean Postgres-first; the MySQL-compatible tier is Vitess underneath, which has known foreign-key-constraint and some `ALTER TABLE` behavioral differences from real MySQL — worth a compatibility check against this app's actual migration history before committing, given EF Core relies on real FK constraints. |
-| AWS RDS for MySQL | Variable, generally the most expensive at every tier of the three | Makes sense if there's already other AWS infra to attach it to; otherwise adds AWS billing-account overhead for a solo-dev setup with no other AWS footprint today. |
+| **DigitalOcean Managed MySQL — chosen** | ~$15/mo | Standard MySQL protocol (not Vitess-sharded) — closest behavioral match to today's `mysql:8.4` container and Pomelo/EF Core, and now defaults new clusters to MySQL 8.4 (exact version match). |
+| PlanetScale (Vitess-backed MySQL, PS-10 tier) — not chosen | ~$39/mo for HA | PlanetScale's free/Hobby tier is gone (removed April 2024) and their newer low-cost tiers lean Postgres-first; the MySQL-compatible tier is Vitess underneath, which has known foreign-key-constraint and some `ALTER TABLE` behavioral differences from real MySQL. |
+| AWS RDS for MySQL — not chosen | Variable, generally the most expensive at every tier of the three | Would only have made sense paired with an AWS VPS, which also wasn't chosen (§3.2). |
 
-**This session should not create any of these accounts.** Phase 0 step 2 already required Phi
-to have picked one and created the instance before this session starts; if it wasn't done,
-stop here rather than substituting a self-hosted `StatefulSet` "to keep moving" — that would
+Concrete provisioning steps (region, trusted-sources firewall, TLS requirement) are in §0
+step 2. **This session should not create the account itself** — Phase 0 step 2 requires Phi
+to have already created the instance before this session starts; if it wasn't done, stop
+here rather than substituting a self-hosted `StatefulSet` "to keep moving" — that would
 silently reverse decision §2.2.
 
-### 3.2 — VPS/host provider (money decision, Phi's call)
+### 3.2 — VPS/host provider — **RESOLVED 2026-07-26: Hetzner**
 
-`CLAUDE.md` lists "Hetzner/AWS" without picking one. Not resolved by this prompt — Phase 0
-step 1 required the box to already exist. If cost is the deciding factor: Hetzner's cloud VPS
-tier is meaningfully cheaper than equivalent AWS EC2 for a single-node K3s box at this app's
-current scale, which is why `CLAUDE.md` lists it first — but this is a recorded observation,
-not this prompt overriding Phi's actual choice.
+Originally an open money decision; `CLAUDE.md` listed "Hetzner/AWS" without picking one.
+Hetzner was chosen: meaningfully cheaper than equivalent AWS EC2 for a single-node K3s box at
+this app's current scale (why `CLAUDE.md` lists it first), and — checked directly against
+Hetzner's current site as part of resolving this — Hetzner has no first-party managed-MySQL
+product, so there was never a "same provider as the DB" convenience to weigh against AWS
+either way; the database (§3.1) lives on a different provider regardless of which VPS host was
+picked. Concrete provisioning steps (region, tier, firewall, K3s install with Traefik
+disabled) are in §0 step 1.
 
 ### 3.3 — Redis: self-hosted single instance in-cluster (lower-stakes than 3.1/3.2, flagged for visibility not a blocking question)
 
@@ -202,8 +367,9 @@ traffic exists** — this prompt does not run a load test.
 ## 5. Constraints (restated, apply throughout)
 
 - No new NuGet/npm packages without flagging as a prerequisite decision. This prompt adds
-  **zero** application-code packages; the one new dependency is `cert-manager` and (if used)
-  `ingress-nginx`, both cluster-level Kubernetes add-ons, not app packages.
+  **zero** application-code packages; the one new dependency is `cert-manager`, a cluster-level
+  Kubernetes add-on, not an app package. Traefik itself isn't a new dependency — it's K3s's
+  own built-in default, installed automatically.
 - No `useEffect` for data fetching — not applicable, this prompt touches no React data-fetch
   code.
 - TypeScript strict / no `any` — not applicable, no `.ts`/`.tsx` changes.
@@ -447,18 +613,26 @@ silently left undocumented.
 
 ### Phase 6 — `Ingress` + cert-manager
 
+**Ingress controller: Traefik — resolved 2026-07-26, revised same-day (see §2.8 for the full
+reasoning trail).** An earlier resolution of this item disabled K3s's built-in Traefik in
+favor of installing the community `ingress-nginx` project, to match `CLAUDE.md`'s "Nginx"
+stack line. That was reversed within the same day, mid-Phase-0-execution, once it turned out
+`kubernetes/ingress-nginx` was archived 2026-03-24 (no further releases/patches ever). Phase 0
+now installs K3s with Traefik left at its default (no `--disable traefik` flag). If, when this
+phase actually runs, `kubectl get pods -n kube-system` does **not** show `traefik-*`/
+`svclb-traefik-*` pods `Running`, **stop and flag it back to Phi rather than silently
+installing a different ingress controller** — it means Phase 0 wasn't executed exactly as
+specified in §0 step 1, not that this phase should improvise around it. `CLAUDE.md`'s infra
+stack table still says "Nginx" for ingress as of this writing — flagged as needing an update
+(see §2.8), not yet made since it's outside this consultation project's `docs/claude/`-only
+write scope.
+
 Install `cert-manager` (`kubectl apply -f
 https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml` —
-CD should pin an exact version tag rather than `latest` once Phase 0 confirms the target;
-flag the exact pinned version as a TODO if not resolved before merging) and `ingress-nginx`
-(K3s ships Traefik by default — **explicit decision needed**: either disable Traefik at K3s
-install time — `curl -sfL https://get.k3s.io | sh -s - --disable traefik` — and install
-ingress-nginx to match `CLAUDE.md`'s documented stack, or use Traefik's own
-`IngressRoute`/cert-manager integration instead. This prompt writes standard
-`networking.k8s.io/v1 Ingress` objects, which work with either controller, but the
-Traefik-vs-nginx-ingress choice affects Phase 0's install command — **flag this back to Phi
-if K3s was already installed with Traefik still enabled**, don't silently reconfigure a live
-cluster).
+pin the exact current stable version tag from
+[cert-manager's releases page](https://github.com/cert-manager/cert-manager/releases) rather
+than trusting `latest` to still point at the same thing it does today; record the tag actually
+used in the Decisions Log entry this phase's own §13 requires).
 
 `ClusterIssuer` (Cloudflare DNS-01):
 ```yaml
@@ -479,7 +653,10 @@ spec:
               name: cloudflare-api-token
               key: api-token
 ```
-`Ingress`:
+`Ingress` — note the annotations are different from the original `ingress-nginx`-targeted
+draft (removed: `nginx.ingress.kubernetes.io/*`, which Traefik doesn't read at all — a
+leftover `nginx.ingress.kubernetes.io/*` annotation is silently ignored by Traefik rather than
+erroring, so this would have failed quietly, not loudly, if left in):
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -487,9 +664,8 @@ metadata:
   name: pena-e-arte
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod-dns01
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # matches nginx.conf.template's
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"   # own /hubs/ SignalR timeout
 spec:
+  ingressClassName: traefik
   tls:
     - hosts: ["app.tattooos.co"]     # CONFIRM against real DNS record, see §2.4
       secretName: pena-e-arte-tls
@@ -504,6 +680,28 @@ spec:
                 name: pena-e-arte-frontend
                 port: { number: 8080 }
 ```
+`cert-manager.io/cluster-issuer` is controller-agnostic (cert-manager reads it regardless of
+which ingress controller is in front), so that annotation carries over unchanged.
+`ingressClassName: traefik` is added explicitly rather than relying on whatever K3s's default
+`IngressClass` resolves to.
+
+**WebSocket/long-connection timeout — flagged, not asserted.** Traefik detects and proxies
+WebSocket upgrades (what `/hubs/*` SignalR connections need) automatically, unlike `nginx`,
+which needs the explicit `Upgrade`/`Connection` header passthrough `nginx.conf.template`
+already does at the frontend-Pod hop — that part is unaffected by this change either way.
+What's *not* carried over cleanly is nginx's simple per-Ingress `proxy-read-timeout`/
+`proxy-send-timeout` annotations: Traefik has no direct equivalent annotation on a plain
+`networking.k8s.io/v1 Ingress` object. Its timeout knobs live either in the (cluster-wide)
+static entrypoint config (`transport.respondingTimeouts`, part of the Traefik HelmChart values
+K3s manages) or a `Middleware` CRD referenced via
+`traefik.ingress.kubernetes.io/router.middlewares`. **Do not guess which one at spec-writing
+time** — during Phase 6's actual execution, open a long-lived SignalR connection through the
+real Ingress and confirm empirically whether Traefik's default timeouts already exceed what
+`/hubs/*` needs (plausible, since Traefik's defaults are often quite long/unset by default)
+before adding any extra config; only add the static-config or Middleware fix if a real
+connection drop is observed, and record whichever it turns out to be in the Decisions Log
+entry this phase's own §13 requires.
+
 Cloudflare API token delivered as a `v1 Secret` (`cloudflare-api-token`), populated from the
 `CLOUDFLARE_API_TOKEN` GitHub secret by CD (§8.9) — never committed.
 
@@ -543,8 +741,8 @@ the matching Deployment/DaemonSet, 1:1 with the compose service it replaces:
   a considered auth story is exactly the kind of thing this project's rules say to flag rather
   than default into. **Flagged, not built**: if Phi wants Grafana reachable at, say,
   `grafana.tattooos.co`, that's a small additive Ingress host plus an actual auth decision
-  (Grafana's own OAuth, or an additional `nginx.ingress.kubernetes.io/auth-type` basic-auth
-  gate) — named as a follow-up, not assumed.
+  (Grafana's own OAuth, or a Traefik `BasicAuth` `Middleware` CRD attached via
+  `traefik.ingress.kubernetes.io/router.middlewares`) — named as a follow-up, not assumed.
 
 ### Phase 8 — Secrets management
 
@@ -592,28 +790,32 @@ This is the concrete "done" signal from the original scoping note — and there'
 correctness bug underneath it worth fixing precisely, not just filling in a CIDR:
 
 **The production request path has two reverse-proxy hops in front of the API**, not one:
-`client → (Cloudflare, if proxied) → ingress-nginx Pod → frontend nginx Pod (proxies /api/) →
-API Pod`. Both `ingress-nginx` and the frontend's own nginx container run as Pods inside the
+`client → (Cloudflare, if proxied) → Traefik Pod → frontend nginx Pod (proxies /api/) →
+API Pod`. Both Traefik and the frontend's own nginx container run as Pods inside the
 cluster, so both hops' source IPs fall inside the cluster's Pod CIDR — K3s's default (Flannel)
 Pod CIDR is `10.42.0.0/16` **only if the Phase-0 install didn't override it**; confirm via
 `kubectl cluster-info dump | grep -m1 cluster-cidr` or `/etc/rancher/k3s/config.yaml` on the
 real box before hardcoding this. Set `FORWARDED_HEADERS_TRUSTED_PROXY_CIDR` to that confirmed
-value.
+value. (This part of the fix is unaffected by the Traefik-vs-ingress-nginx change in §2.8 —
+the topology is still two in-cluster proxy hops regardless of which one is first.)
 
 **That alone is not sufficient.** `ForwardedHeadersOptionsBuilder.cs` (§6.4) constructs
 `ForwardedHeadersOptions` without setting `ForwardLimit`, which defaults to **1** — meaning
 ASP.NET Core only strips *one* trusted hop off the `X-Forwarded-For` chain even if two are
-present and both match `KnownNetworks`. With nginx's `$proxy_add_x_forwarded_for` correctly
-appending at each hop, the header arriving at Kestrel looks like `<real-client-ip>,
-<ingress-nginx-pod-ip>` — but with `ForwardLimit: 1`, the middleware only processes the
-right-most entry and `HttpContext.Connection.RemoteIpAddress` ends up as the *ingress-nginx
-pod's* IP, not the real client's, defeating the exact per-client rate-limiting this config was
-added for in today's security pass. **Fix, exact diff:**
+present and both match `KnownNetworks`. Traefik, like nginx, appends to an existing
+`X-Forwarded-For` header rather than replacing it, so the header arriving at Kestrel looks
+like `<real-client-ip>, <traefik-pod-ip>` — but with `ForwardLimit: 1`, the middleware only
+processes the right-most entry and `HttpContext.Connection.RemoteIpAddress` ends up as the
+*Traefik pod's* IP, not the real client's, defeating the exact per-client rate-limiting this
+config was added for in today's security pass. **Confirm Traefik's append behavior
+empirically against the real Ingress during Phase 6/10 execution** (don't just assume it
+matches nginx's `$proxy_add_x_forwarded_for` semantics exactly) before relying on it. **Fix,
+exact diff:**
 ```csharp
 ForwardedHeadersOptions options = new()
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-    ForwardLimit = 2,   // two trusted proxy hops in the K3s topology: ingress-nginx, then the
+    ForwardLimit = 2,   // two trusted proxy hops in the K3s topology: Traefik, then the
                          // frontend Pod's own nginx (see docs/claude/overnight-prompt-
                          // k3s-production-deploy-2026-07-26.md §8.10 for the full chain)
 };

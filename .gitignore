@@ -45,6 +45,14 @@ secrets.json
 **/secrets.json
 Seeded Test Accounts.txt
 
+## GeoIP — geoipupdate config carries a live AccountID/LicenseKey; .mmdb files
+## are large binary downloads, never source
+GeoIP.conf
+**/GeoIP.conf
+*.mmdb
+data/geoip/
+tools/geoipupdate/
+
 ## Frontend
 **/node_modules/
 **/dist/
