@@ -1,0 +1,23 @@
+how do i run all these myself later?
+
+Since your local .env already has everything filled in (Grafana password, MYSQL_HOST_PORT=3307 override, JWT secret, Hangfire creds), next time it's just one command from the repo root:
+
+  Ran 1 shell command
+
+To bring the whole stack up:
+docker compose up -d --build
+Run from the repo root. --build rebuilds api/frontend from source (drop it if you haven't changed backend/frontend code since the last build — plain docker compose up -d is faster then).
+
+To stop everything (keeps data — DB rows, Grafana dashboards, Prometheus/Loki/Tempo history):
+docker compose down
+
+To wipe everything and start totally fresh (deletes all volumes — DB data, Grafana state, etc.):
+docker compose down -v
+
+URLs once it's up:
+- App: http://localhost:8081
+- API directly: http://localhost:8080
+- Grafana: http://localhost:3000 (admin / whatever's in your .env)
+- Prometheus: http://localhost:9090
+
+That's it — your .env is gitignored so it stays on this machine permanently and nobody needs to redo the setup you did today. Only thing to remember: it's a local file, so if you ever reinstall/move machines, copy .env.example → .env and refill the values (the same ones you already have) since .env itself never gets committed.

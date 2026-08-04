@@ -1,0 +1,11 @@
+briefly explain the roles and purpose for each of these container: redis, minio, prometheus, loki, alloy, grafana, tempo
+
+- redis — in-memory cache/store for rate-limit counters, cached DB query results, and similar short-lived state the app needs fast, shared access to across requests.
+- minio — local stand-in for Cloudflare R2 (S3-compatible object storage), holding uploaded files like design images/PDFs during dev, without needing a real cloud bucket.
+- prometheus — scrapes the API's /metrics endpoint on an interval and stores the resulting time-series data (request rates, latencies, error counts) — the metrics half of observability.
+- loki — stores and indexes logs, queryable by label (container name, service) with full-text/JSON search inside each line — the logs half of observability.
+- alloy — the log shipper: watches Docker's container logs via the Docker socket and forwards them into Loki. It's the plumbing between "the app writes JSON to stdout" and "Loki has it."
+- tempo — stores and indexes distributed traces (the span-by-span timeline of a single request, e.g. how long the DB query vs. the Stripe call took) — the traces half of observability.
+- grafana — the UI on top of all three: dashboards backed by Prometheus, log search via Loki, trace search via Tempo, and jump-links between a log line and its trace.
+
+Together, prometheus/loki/tempo/alloy/grafana form the "LGTM-ish" observability stack; redis/minio are unrelated app infrastructure (caching and file storage) that predate this stack.

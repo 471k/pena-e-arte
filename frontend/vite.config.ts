@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ["test.tattooos.co"],
     proxy: {
       "/api": "http://localhost:5078",
       "/hubs": {

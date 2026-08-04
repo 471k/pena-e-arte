@@ -2187,6 +2187,116 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("tattoo_records", (string)null);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.TrafficDailyAggregate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("varchar(2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid?>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("UniqueVisitorCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VisitCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id")
+                        .HasName("pk_traffic_daily_aggregates");
+
+                    b.HasIndex("Date", "StudioId", "Role", "CountryCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_traffic_daily_aggregates_bucket");
+
+                    b.ToTable("traffic_daily_aggregates", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.TrafficEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Browser")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("CountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("varchar(2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DeviceType")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("IpHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Os")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Region")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid?>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("VisitorId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_traffic_events");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_traffic_events_created_at");
+
+                    b.HasIndex("StudioId", "CreatedAt")
+                        .HasDatabaseName("ix_traffic_events_studio_created_at");
+
+                    b.ToTable("traffic_events", (string)null);
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.UserOnboardingState", b =>
                 {
                     b.Property<Guid>("Id")

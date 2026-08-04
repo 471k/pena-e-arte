@@ -62,5 +62,9 @@ public interface IAppDbContext
     DbSet<AuditLogEntry> AuditLogEntries { get; }
     DbSet<StudioCredentialRef> StudioCredentialRefs { get; }
 
+    // Traffic analytics — no tenant filter (StudioId nullable, issuer-only cross-tenant reads)
+    DbSet<TrafficEvent> TrafficEvents { get; }
+    DbSet<TrafficDailyAggregate> TrafficDailyAggregates { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

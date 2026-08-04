@@ -31,6 +31,9 @@ public static class PlatformEndpoints
         group.MapGet("plan-usage-report", GetPlanUsageReport);
         group.MapGet("help-search-insights", GetHelpSearchInsights);
         group.MapGet("audit-log", GetAuditLog);
+        group.MapGet("traffic/live", GetLiveTrafficSnapshot);
+        group.MapGet("traffic/history", GetTrafficHistory);
+        group.MapGet("traffic/breakdown", GetTrafficBreakdown);
     }
 
     private static async Task<IResult> GetStats(
@@ -194,6 +197,34 @@ public static class PlatformEndpoints
     {
         AuditLogPageResponse result = await mediator.Send(
             new GetAuditLogQuery(action, targetType, from, to, page, pageSize), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetLiveTrafficSnapshot(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        LiveTrafficSnapshotResponse result = await mediator.Send(new GetLiveTrafficSnapshotQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetTrafficHistory(
+        ISender mediator,
+        CancellationToken ct,
+        int? days = null)
+    {
+        TrafficHistoryResponse result =
+            await mediator.Send(new GetTrafficHistoryQuery(Math.Clamp(days ?? 30, 1, 90)), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetTrafficBreakdown(
+        ISender mediator,
+        CancellationToken ct,
+        int? days = null)
+    {
+        TrafficBreakdownResponse result =
+            await mediator.Send(new GetTrafficBreakdownQuery(Math.Clamp(days ?? 30, 1, 90)), ct);
         return Results.Ok(result);
     }
 }

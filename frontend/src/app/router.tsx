@@ -32,6 +32,7 @@ import {
   IndustryReportsPage,
   HelpInsightsPage,
   AuditLogPage,
+  LiveTrafficPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage } from "@/features/public";
@@ -171,6 +172,7 @@ export const routes = [
                 element: <RoleGuard allowedRoles={[Role.Issuer]} />,
                 children: [
                   { index: true,               element: <ErrorBoundary><IssuerDashboardPage /></ErrorBoundary> },
+                  { path: "traffic",           element: <ErrorBoundary><LiveTrafficPage /></ErrorBoundary> },
                   { path: "studios",           element: <ErrorBoundary><IssuerStudioListPage /></ErrorBoundary> },
                   { path: "studios/:studioId", element: <ErrorBoundary><IssuerStudioDetailPage /></ErrorBoundary> },
                   {

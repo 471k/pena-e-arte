@@ -154,6 +154,14 @@ public static class InfrastructureServiceExtensions
         services.AddHttpClient("OAuthJwks");
         services.AddScoped<IOAuthTokenValidator, OAuthTokenValidator>();
 
+        // GeoIpService/UserAgentParserService are stateless wrappers over thread-safe underlying
+        // readers/parsers (DatabaseReader, UAParser.Parser) — safe as singletons.
+        services.AddSingleton<IGeoIpService, GeoIpService>();
+        services.AddSingleton<IUserAgentParser, UserAgentParserService>();
+        services.AddSingleton<ITrafficConnectionCounter, TrafficConnectionCounter>();
+        services.AddScoped<ITrafficPresenceReader, TrafficPresenceService>();
+        services.AddHostedService<TrafficBroadcastService>();
+
         return services;
     }
 }

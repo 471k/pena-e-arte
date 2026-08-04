@@ -967,6 +967,22 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["Data covers a rolling 30-day window and is aggregated across all studios."],
   },
   {
+    id: "issuer-live-traffic",
+    roles: [Issuer],
+    title: "See who's on the site right now",
+    route: "/platform/traffic",
+    keywords: ["live traffic", "visitors", "analytics", "site traffic", "geography", "country", "real-time"],
+    summary: "A real-time view of everyone currently browsing the platform — guests and signed-in users by role — plus historical trends by country, device, and page.",
+    steps: [
+      "Open Live Traffic from the platform nav.",
+      "The top row shows how many people are on the site right now, split into Guests and each signed-in role.",
+      "The live table lists each current visitor's role, studio (if applicable), approximate location, device, and current page.",
+      "Scroll down for the historical trend chart, top countries, and device/browser breakdown over the last 30 days.",
+    ],
+    tips: ["Country/city is approximate, resolved from IP address — it can be off by a city or two, especially on mobile networks.", "No visitor is ever identified by name, email, or IP address here — only role, rough location, and device."],
+    relatedArticleIds: ["issuer-audit-log"],
+  },
+  {
     id: "issuer-audit-log",
     roles: [Issuer],
     title: "Review the platform audit log",

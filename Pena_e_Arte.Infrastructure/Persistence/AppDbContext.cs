@@ -70,6 +70,10 @@ public class AppDbContext(
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
 
+    // --- Traffic analytics (no tenant filter — StudioId nullable, issuer-only cross-tenant reads) ---
+    public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
+    public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);

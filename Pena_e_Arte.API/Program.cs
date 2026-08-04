@@ -89,6 +89,11 @@ try
             j => j.ExecuteAsync(CancellationToken.None),
             Cron.Daily(hour: 3));
 
+        recurringJobs.AddOrUpdate<TrafficRollupJob>(
+            "traffic-rollup",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 2, minute: 30));
+
         recurringJobs.AddOrUpdate<RetentionPurgeJob>(
             "retention-purge",
             j => j.RunAsync(CancellationToken.None),
@@ -126,6 +131,7 @@ try
     app.MapHub<DesignHub>("/hubs/design");
     app.MapHub<NotificationHub>("/hubs/notification");
     app.MapHub<SupportHub>("/hubs/support");
+    app.MapHub<TrafficHub>("/hubs/traffic");
     app.MapHealthChecks("/health");
     app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
