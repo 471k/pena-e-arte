@@ -44,6 +44,8 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();
     public DbSet<UserOnboardingState> UserOnboardingStates => Set<UserOnboardingState>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+    public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
+    public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

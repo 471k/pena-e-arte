@@ -123,3 +123,56 @@ export interface AuditLogQueryParams {
   page?:       number;
   pageSize?:   number;
 }
+
+export interface LiveVisitorResponse {
+  visitorId:   string;
+  role:        string | null;
+  studioId:    string | null;
+  studioName:  string | null;
+  countryCode: string | null;
+  city:        string | null;
+  deviceType:  string | null;
+  browser:     string | null;
+  path:        string;
+  connectedAt: string;
+}
+
+export interface LiveTrafficSnapshotResponse {
+  totalActive: number;
+  guestCount:  number;
+  roleCounts:  Record<string, number>;
+  visitors:    LiveVisitorResponse[];
+}
+
+export interface TrafficHistoryDataPoint {
+  date:         string;
+  guestCount:   number;
+  clientCount:  number;
+  artistCount:  number;
+  ownerCount:   number;
+  issuerCount:  number;
+}
+
+export interface TrafficHistoryResponse {
+  days:       number;
+  dataPoints: TrafficHistoryDataPoint[];
+}
+
+export interface TrafficCountryCount {
+  countryCode: string | null;
+  country:     string | null;
+  count:       number;
+}
+
+export interface TrafficNamedCount {
+  name:  string;
+  count: number;
+}
+
+export interface TrafficBreakdownResponse {
+  days:             number;
+  topCountries:     TrafficCountryCount[];
+  deviceBreakdown:  TrafficNamedCount[];
+  browserBreakdown: TrafficNamedCount[];
+  topPages:         TrafficNamedCount[];
+}

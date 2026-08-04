@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Pena_e_Arte.Application\Pena_e_Arte.Application.csproj" />
     <ProjectReference Include="..\Pena_e_Arte.Domain\Pena_e_Arte.Domain.csproj" />
+    <ProjectReference Include="..\Pena_e_Arte.Contracts\Pena_e_Arte.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -10,6 +11,7 @@
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.24" />
     <PackageReference Include="Hangfire.Core" Version="1.8.24" />
     <PackageReference Include="Hangfire.MySqlStorage" Version="2.0.3" />
+    <PackageReference Include="MaxMind.GeoIP2" Version="6.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.*" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.10" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
@@ -19,6 +21,7 @@
     <PackageReference Include="StackExchange.Redis" Version="3.0.17" />
     <PackageReference Include="Stripe.net" Version="52.1.1" />
     <PackageReference Include="Twilio" Version="7.14.9" />
+    <PackageReference Include="UAParser.Core" Version="4.0.5" />
   </ItemGroup>
 
   <PropertyGroup>

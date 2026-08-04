@@ -7,6 +7,11 @@ export const issuerTourSteps: TourStep[] = [
     body: "How the whole platform is doing — studio counts, revenue, and which studios need attention.",
   },
   {
+    targetSelector: '[data-tour="issuer-traffic-nav"]',
+    title: "Live traffic",
+    body: "See who's on the site right now — guests and signed-in users by role, where they're browsing from, and trends over time.",
+  },
+  {
     targetSelector: '[data-tour="issuer-studios-nav"]',
     title: "All studios",
     body: "Search, filter, and manage every studio on the platform here.",

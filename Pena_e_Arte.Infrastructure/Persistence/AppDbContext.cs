@@ -68,6 +68,10 @@ public class AppDbContext(
     // --- Structured audit log (no tenant filter — StudioId nullable, platform-wide actions allowed) ---
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
+    // --- Traffic analytics (no tenant filter — StudioId nullable, issuer-only cross-tenant reads) ---
+    public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
+    public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);

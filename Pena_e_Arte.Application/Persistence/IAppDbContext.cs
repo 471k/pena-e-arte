@@ -60,5 +60,9 @@ public interface IAppDbContext
     // Structured audit log — no tenant filter (StudioId nullable, platform-wide actions allowed)
     DbSet<AuditLogEntry> AuditLogEntries { get; }
 
+    // Traffic analytics — no tenant filter (StudioId nullable, issuer-only cross-tenant reads)
+    DbSet<TrafficEvent> TrafficEvents { get; }
+    DbSet<TrafficDailyAggregate> TrafficDailyAggregates { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -1,12 +1,15 @@
 using System.Security.Claims;
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Application.Reviews.Commands;
+using Pena_e_Arte.Application.Traffic.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Contracts.Responses.Public;
+using Pena_e_Arte.Domain.Interfaces;
 using StackExchange.Redis;
 
 namespace Pena_e_Arte.API.Endpoints;
@@ -43,6 +46,8 @@ public static class PublicEndpoints
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
         group.MapGet("/artists/{slug}/instagram-posts", GetArtistInstagramPosts)
              .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapPost("/traffic/beacon", RecordTrafficBeacon)
+             .AllowAnonymous().RequireRateLimiting("public-write");
     }
 
     private static async Task<IResult> GetSitemap(
@@ -268,6 +273,115 @@ public static class PublicEndpoints
         List<InstagramPostResponse> result =
             await mediator.Send(new GetPublicArtistInstagramPostsQuery(slug), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> RecordTrafficBeacon(
+        RecordTrafficBeaconRequest request,
+        IValidator<RecordTrafficBeaconRequest> validator,
+        ClaimsPrincipal user,
+        HttpContext http,
+        IConnectionMultiplexer redis,
+        IGeoIpService geoIp,
+        IUserAgentParser uaParser,
+        ISender mediator,
+        IConfiguration config,
+        CancellationToken ct)
+    {
+        FluentValidation.Results.ValidationResult validation = await validator.ValidateAsync(request, ct);
+        if (!validation.IsValid) throw new ValidationException(validation.Errors);
+
+        Guid? userId = user.Identity?.IsAuthenticated == true
+            ? Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out Guid uid) ? uid : null
+            : null;
+        string? role = user.Identity?.IsAuthenticated == true ? user.FindFirstValue(ClaimTypes.Role) : null;
+        Guid? studioId = Guid.TryParse(user.FindFirstValue("tenant_id"), out Guid sid) ? sid : null;
+
+        // Visitor id comes from the client-generated anonymous identifier, sent as a header
+        // (not the request body — keeps the DTO free of anything resembling a tracking id
+        // a reviewer might mistake for a required business field).
+        if (!Guid.TryParse(http.Request.Headers["X-Visitor-Id"], out Guid visitorId))
+            return Results.BadRequest();
+
+        System.Net.IPAddress? ip = http.Connection.RemoteIpAddress;
+
+        // GeoIP lookup and UA parsing only run on navigation events. A visitor's device/browser/
+        // OS/location cannot change between beacons within the same presence window, so the 20s
+        // heartbeats (IsNavigation: false) skip this work entirely and just refresh the
+        // zset score / TTL — this is one of the highest-traffic endpoints in the app.
+        GeoIpResult? geo = null;
+        string? deviceType = null, browser = null, os = null;
+        string? ipHash = null;
+        if (request.IsNavigation)
+        {
+            geo = ip is not null ? geoIp.Lookup(ip) : null;
+            (deviceType, browser, os) = uaParser.Parse(http.Request.Headers.UserAgent);
+            ipHash = ip is not null ? HashIp(ip, config["GeoIp:IpHashPepper"]) : null;
+        }
+
+        try
+        {
+            IDatabase db = redis.GetDatabase();
+            long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            string detailKey = $"traffic:presence:detail:{visitorId}";
+
+            // Pipelined into one round-trip via IBatch (matches TrafficPresenceService's own
+            // batching pattern on the read side) rather than four sequential awaited calls.
+            IBatch batch = db.CreateBatch();
+            List<Task> batchTasks =
+            [
+                batch.SortedSetAddAsync("traffic:presence:zset", visitorId.ToString(), nowMs),
+                batch.KeyExpireAsync(detailKey, TimeSpan.FromSeconds(60)),
+            ];
+
+            if (request.IsNavigation)
+            {
+                batchTasks.Add(batch.HashSetAsync(detailKey,
+                [
+                    new HashEntry("userId", userId?.ToString() ?? ""),
+                    new HashEntry("role", role ?? ""),
+                    new HashEntry("studioId", studioId?.ToString() ?? ""),
+                    new HashEntry("path", request.Path),
+                    new HashEntry("countryCode", geo?.CountryCode ?? ""),
+                    new HashEntry("city", geo?.City ?? ""),
+                    new HashEntry("deviceType", deviceType ?? ""),
+                    new HashEntry("browser", browser ?? ""),
+                ]));
+                // HSETNX semantics (When.NotExists): set once on the visitor's first beacon,
+                // left untouched by every heartbeat/navigation after that, so "connected since"
+                // reflects when they arrived, not when they were last seen.
+                batchTasks.Add(batch.HashSetAsync(detailKey, "connectedAt", nowMs, When.NotExists));
+            }
+
+            batch.Execute();
+            await Task.WhenAll(batchTasks);
+        }
+        catch
+        {
+            // Redis unavailable — live presence not recorded; non-critical, matches
+            // RecordArtistView's existing degrade-gracefully precedent.
+        }
+
+        if (request.IsNavigation)
+        {
+            try
+            {
+                await mediator.Send(new RecordTrafficEventCommand(
+                    visitorId, userId, role, studioId, request.Path,
+                    geo, ipHash, deviceType, browser, os), ct);
+            }
+            catch
+            {
+                // Historical persist failed — never break the visitor's page load for this.
+            }
+        }
+
+        return Results.NoContent();
+    }
+
+    private static string HashIp(System.Net.IPAddress ip, string? pepper)
+    {
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(ip.ToString() + (pepper ?? ""));
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
     }
 }
 

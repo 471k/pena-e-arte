@@ -11,13 +11,16 @@ import type {
   HelpSearchInsightsResponse,
   AuditLogPageResponse,
   AuditLogQueryParams,
+  LiveTrafficSnapshotResponse,
+  TrafficHistoryResponse,
+  TrafficBreakdownResponse,
 } from "./platform.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
 export const platformApi = createApi({
   reducerPath: "platformApi",
   baseQuery,
-  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "IssuerStudioSummary", "PlanUsageReport", "AuditLog"],
+  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "IssuerStudioSummary", "PlanUsageReport", "AuditLog", "LiveTraffic", "TrafficHistory", "TrafficBreakdown"],
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStatsResponse, void>({
       query: () => "platform/stats",
@@ -121,6 +124,18 @@ export const platformApi = createApi({
       query: (params) => ({ url: "platform/audit-log", params: params ?? undefined }),
       providesTags: ["AuditLog"],
     }),
+    getLiveTrafficSnapshot: builder.query<LiveTrafficSnapshotResponse, void>({
+      query: () => "platform/traffic/live",
+      providesTags: ["LiveTraffic"],
+    }),
+    getTrafficHistory: builder.query<TrafficHistoryResponse, { days?: number } | void>({
+      query: (args) => `platform/traffic/history${args?.days ? `?days=${args.days}` : ""}`,
+      providesTags: ["TrafficHistory"],
+    }),
+    getTrafficBreakdown: builder.query<TrafficBreakdownResponse, { days?: number } | void>({
+      query: (args) => `platform/traffic/breakdown${args?.days ? `?days=${args.days}` : ""}`,
+      providesTags: ["TrafficBreakdown"],
+    }),
   }),
 });
 
@@ -142,4 +157,7 @@ export const {
   useGetPlanUsageReportQuery,
   useGetHelpSearchInsightsQuery,
   useGetAuditLogQuery,
+  useGetLiveTrafficSnapshotQuery,
+  useGetTrafficHistoryQuery,
+  useGetTrafficBreakdownQuery,
 } = platformApi;

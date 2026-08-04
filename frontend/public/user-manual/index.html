@@ -448,6 +448,7 @@ ol.steps li { margin: 6px 0; }
         <button class="nav-section-toggle" aria-expanded="true">Platform admin</button>
         <ul class="nav-section-list">
           <li><a href="#issuer-dashboard" data-nav-link>Platform overview</a></li>
+          <li><a href="#issuer-live-traffic" data-nav-link>Live traffic</a></li>
           <li><a href="#issuer-studios" data-nav-link>Studio list</a></li>
           <li><a href="#issuer-studio-detail" data-nav-link>Studio detail</a></li>
           <li><a href="#issuer-plans" data-nav-link>Plan management</a></li>
@@ -2733,6 +2734,37 @@ ol.steps li { margin: 6px 0; }
 <li>Review the zero-result queries table — each row is a search that found nothing, which is the clearest signal of a documentation gap or confusing UX to fix in the in-app FAQ or this manual.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#issuer-feedback">Feedback inbox</a></div>
+</section>
+
+<section id="issuer-live-traffic" data-role="issuer">
+<h2><span class="role-badge role-issuer">Issuer</span> Live traffic</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>At <code>/platform/traffic</code>: a real-time view of everyone currently browsing the platform — guests and signed-in users by role — updated roughly every 5 seconds, plus historical trends by country, device, and page over the last 30 days.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 300" role="img" aria-label="Live traffic wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="21" font-size="10" font-weight="700">Live Traffic — 14 active now</text>
+<rect x="16" y="46" width="140" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="26" y="62" font-size="7" fill-opacity="0.6">Active now</text><text x="26" y="82" font-size="14" font-weight="700">14</text>
+<rect x="164" y="46" width="140" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="174" y="62" font-size="7" fill-opacity="0.6">Guests</text><text x="174" y="82" font-size="14" font-weight="700">9</text>
+<rect x="312" y="46" width="140" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="322" y="62" font-size="7" fill-opacity="0.6">Clients</text><text x="322" y="82" font-size="14" font-weight="700">3</text>
+<rect x="460" y="46" width="140" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="470" y="62" font-size="7" fill-opacity="0.6">Artists</text><text x="470" y="82" font-size="14" font-weight="700">2</text>
+<rect x="20" y="110" width="720" height="24" fill="currentColor" fill-opacity="0.06"/>
+<text x="32" y="126" font-size="8" font-weight="700">Role</text><text x="140" y="126" font-size="8" font-weight="700">Location</text><text x="280" y="126" font-size="8" font-weight="700">Device</text><text x="440" y="126" font-size="8" font-weight="700">Page</text><text x="620" y="126" font-size="8" font-weight="700">Connected</text>
+<text x="32" y="150" font-size="8">Guest</text><text x="140" y="150" font-size="8">🇦🇱 Tirana</text><text x="280" y="150" font-size="8">mobile · Chrome</text><text x="440" y="150" font-size="8" font-family="monospace">/discover</text><text x="620" y="150" font-size="8">12s ago</text>
+<text x="32" y="170" font-size="8">Owner</text><text x="140" y="170" font-size="8">🇬🇷 Athens</text><text x="280" y="170" font-size="8">desktop · Firefox</text><text x="440" y="170" font-size="8" font-family="monospace">/dashboard</text><text x="620" y="170" font-size="8">1m ago</text>
+</svg>
+</figure>
+<figcaption>Live traffic — KPI row, then the live visitor table, then a historical trend chart and breakdown lists further down the page</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open Live Traffic from the platform nav.</li>
+<li>The top row shows how many people are on the site right now, split into Guests and each signed-in role.</li>
+<li>The live table lists each current visitor's role, studio (if applicable), approximate location, device, and current page.</li>
+<li>Scroll down for the historical trend chart (toggle between Guests and each role), top countries, and device/browser breakdown over the last 30 days.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> country/city is approximate, resolved from IP address — it can be off by a city or two, especially on mobile networks. No visitor is ever identified by name, email, or IP address here — only role, rough location, and device.</div>
+<div class="crosslinks">See also: <a href="#issuer-audit-log">Audit log</a></div>
 </section>
 
 <section id="issuer-audit-log" data-role="issuer">

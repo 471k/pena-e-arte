@@ -163,6 +163,7 @@ DesignApproved          client approved design
 DesignChangeRequested   client requested changes
 NotificationReceived    generic in-app notification
 SupportMessageReceived  new reply posted on a support ticket
+TrafficSnapshotUpdated  live visitor presence snapshot (TrafficHub, every 5s while ≥1 issuer connected)
 ```
 
 Always push from Infrastructure (Hangfire jobs or command handlers).
@@ -288,6 +289,7 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 31 | Owner Revenue & Trend Reporting | No entity (aggregate reads over `Payment`/`Appointment`) | None — standard tenant-scoped read | Per-tenant |
 | 32 | Structured Admin/Audit Log | `AuditLogEntry` (no tenant filter, `StudioId` nullable) | `IAuditableCommand` marker + `AuditLogBehavior` (MediatR pipeline) | Per-tenant (owner read), Issuer-level (cross-tenant read) |
 | 33 | NIPT Business Verification | `Studio.Nipt` | None — format validation only, no external registry call | Per-tenant (owner write), Issuer-level (read via existing `GetStudiosQuery`/`GetStudioByIdQuery`) |
+| 34 | Live Site Traffic Analytics | `TrafficEvent`, `TrafficDailyAggregate` (both no tenant filter, `StudioId` nullable) | Redis presence (`traffic:presence:*`) + `TrafficHub` SignalR + `TrafficBroadcastService` (5s), `TrafficRollupJob` (Hangfire daily), MaxMind GeoLite2 (`MaxMind.GeoIP2`) + `UAParser.Core`, `IgnoreQueryFilters()` — 41st approved usage | Issuer-level |
 
 ### Client Self-Service Cancel/Reschedule + Owner Revenue Reporting + Structured Audit Log — 2026-07-21
 
@@ -684,6 +686,95 @@ tests green.
 
 ---
 
+### Live Site Traffic Analytics — 2026-08-04
+
+Issuer-only real-time + historical site-traffic analytics, covering both the unauthenticated
+public surface (`features/public/*`) and the authenticated in-app surface. See §9 of
+`docs/claude/overnight-prompt-live-traffic-analytics-2026-08-03.md` for the full
+industry-benchmark write-up (Google Analytics Realtime / Plausible Live / Cloudflare Web
+Analytics / PostHog Live comparison set) and §9.2 for the ADR on why a self-hosted analytics
+service (Umami/Plausible/Matomo) was rejected in favor of the open-source *libraries* those
+tools themselves use (GeoIP + UA parsing), integrated directly into this app's own stack —
+the deciding factor being that none of those services have any visibility into this app's
+JWT/tenant model, so none can distinguish "guest" from "client/artist/owner/issuer" or
+attribute a visit to a specific studio, which is the entire point of this feature.
+
+- **Entities**: `TrafficEvent` (one row per navigation event, not every heartbeat) and
+  `TrafficDailyAggregate` (nightly rollup) — both non-tenant shape (no `HasQueryFilter`),
+  same reasoning as `AuditLogEntry`/`HelpSearchLog`/`FeedbackReport`. Neither ever persists a
+  raw IP address; `TrafficEvent.IpHash` is a one-way SHA-256 of the raw IP plus a server-side
+  pepper (`GeoIp:IpHashPepper`), kept only for coarse abuse/dedup signal.
+- **GeoIP provider**: MaxMind GeoLite2-City via the official `MaxMind.GeoIP2` client
+  (v6.1.0), read from a local `.mmdb` file at `GeoIp:DatabasePath`. Chosen over DB-IP Lite
+  (the lower-friction alternative considered in the source prompt's §3.1) because the
+  account/license-key friction was judged an acceptable one-time cost for MaxMind's
+  materially better-maintained ruleset; the license key itself is never read by the app —
+  only by the separate `geoipupdate` refresh job. `GeoIpService` degrades to always-`null`
+  gracefully (never throws) when `GeoIp:DatabasePath` is unset or unreadable, so the feature
+  ships and functions (minus geography) even before the GeoIP file is provisioned.
+- **UA parsing**: `UAParser.Core` (v4.0.5) — same `ua-parser` ruleset family Umami/Plausible/
+  PostHog use. Note for future readers: this package's actual API surface differs from the
+  classic `ua-parser-dotnet` shape assumed by early drafts of this feature — `ClientInfo`
+  lives in the `UAParser.Objects` namespace, and the parsed browser is `ClientInfo.Browser`
+  (not `.UA`). `Device` has no structured `DeviceType` enum, only a free-text `Family`
+  string plus an `IsSpider` bool; `UserAgentParserService` buckets `Family` into
+  desktop/mobile/tablet/bot itself (bot also triggered by `IsSpider` or `Family == "Spider"`).
+- **Live presence**: Redis, not the database — a sorted set (`traffic:presence:zset`, score =
+  last-seen unix ms) plus one hash per visitor (`traffic:presence:detail:{visitorId}`), both
+  effectively TTL'd via a 60s read-window filter + trim rather than native per-member expiry
+  (sorted sets have none). `TrafficPresenceService` (`ITrafficPresenceReader`) is the single
+  read path shared by both `GetLiveTrafficSnapshotQuery` (on-demand, initial page load) and
+  `TrafficBroadcastService` (`BackgroundService`, 5s `PeriodicTimer`, broadcasts
+  `TrafficSnapshotUpdated` to `TrafficHub`'s one group, `platform:traffic`) — deliberately
+  factored this way so the two can never disagree with each other. The 5s cadence matches
+  Google Analytics Realtime / Plausible Live's own refresh rate (verified via web search,
+  2026-08, cited in the source prompt's §9). `ITrafficConnectionCounter` (DI singleton,
+  `Interlocked`-backed, not a bare `static` field) lets the broadcast loop skip all Redis/DB
+  work when no issuer has the page open.
+- **`connectedAt` gap fixed during implementation**: the source prompt's §6.3 key-scheme
+  description listed a `connectedAt` field in the presence detail hash, but its own §6.4
+  beacon-handler code never actually wrote it — would have made "connected Xs ago" always
+  read as "last-seen Xs ago" instead (reset on every heartbeat). Fixed by writing
+  `connectedAt` via Redis `HSETNX` semantics (`When.NotExists`) so it's set once on a
+  visitor's first beacon and left untouched by every subsequent heartbeat/navigation.
+- **`IgnoreQueryFilters()` — approved usage #41**: `RecordTrafficEventCommand`'s StudioId
+  resolution for an anonymous `/artist/{slug}` beacon, mirroring `RecordArtistView`'s own
+  lookup (#13) exactly. `/s/{slug}` beacons resolve `StudioId` via a plain `Studios` query
+  with no `IgnoreQueryFilters()` at all, since `Studio` carries no query filter to begin with.
+- **`/share/:token` redaction**: `frontend/src/app/router.tsx` has one route that embeds a
+  live, still-valid token directly in the path segment (`DesignShareToken` via
+  `/share/:token`) rather than as a separately-read param — `useTrafficBeacon.ts` redacts
+  this segment client-side before ever sending `Path` to the backend, so a share token never
+  ends up sitting in `TrafficEvent.Path`.
+- **Beacon mount point**: `useTrafficBeacon` uses the router's own `router.subscribe()` API
+  rather than `useLocation()`, and is mounted once in `main.tsx` as a sibling of
+  `<RouterProvider>` (alongside `<CookieConsentBanner />`) rather than inside any route
+  element. This app's public routes (`/discover`, `/s/:slug`, `/artist/:slug`, ...) are
+  top-level route-array entries with no shared layout wrapper the authenticated routes share
+  via `AppRoot` — there is no single component every route renders through — so
+  `router.subscribe()` was used specifically because it works regardless of where it's
+  mounted, avoiding a route-tree restructure for this alone.
+- **`KpiCard` extracted**: moved from a private, unexported function inside
+  `IssuerDashboardPage.tsx` into `features/platform/components/KpiCard.tsx` (`KpiCard` +
+  `KpiSkeleton`) so `LiveTrafficPage` could reuse the same visual pattern instead of
+  duplicating it, per this project's own reuse-over-duplication rule.
+  `IssuerDashboardPage.tsx`'s own multi-row `KpiGridSkeleton` stayed local (page-specific
+  layout, not a generic shared shape).
+- **Retention**: `TrafficRollupJob` (Hangfire, daily `02:30` UTC, staggered from the existing
+  `02:00`/`03:00` jobs) aggregates the previous UTC day's `TrafficEvent` rows into
+  `TrafficDailyAggregate` (idempotent — always recomputes and overwrites the target day's
+  counts rather than insert-only, so a re-run never double-counts), then purges raw
+  `TrafficEvent` rows older than 35 days — long enough for a rolling "top pages this month"
+  breakdown without keeping raw per-visit data forever.
+- **New `AllowAnonymous` endpoint**: `POST /api/v1/public/traffic/beacon` — see the
+  `AllowAnonymous Exceptions` table below.
+- Not built this pass (deliberately deferred, full spec in the source prompt's §3.4):
+  owner-facing "my studio's public page views" — no evidence any vertical-booking-SaaS
+  competitor (Vagaro/Fresha/Boulevard/Mindbody/GlossGenius) exposes anything like this to
+  tenant owners, so it's correctly scoped issuer-only for now.
+
+---
+
 ## Platform Subscription Architecture
 
 Subscriptions are issuer-level — they control studio (tenant) access to the platform.
@@ -886,6 +977,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
 | 39 | `GetHelpSearchInsightsHandler` | Cross-tenant aggregate of help search queries for the issuer product-insights view | IssuerOnly |
 | 40 | `GetSitemapUrlsHandler` | Public SEO sitemap — active studio/artist slugs across all tenants for `/sitemap.xml` | Anonymous |
+| 41 | `RecordTrafficEventHandler` | Cross-tenant artist-slug lookup to resolve `StudioId` for an anonymous `/artist/{slug}` traffic beacon, mirroring `RecordArtistView`'s own lookup (#13) | Anonymous |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -918,6 +1010,7 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/studios/nearby` | Public geo search (DiscoverPage Studios tab) | None — read-only, non-sensitive studio info only |
 | `GET /api/v1/public/studios/{slug}/reviews` | Public studio review list | None — read-only, non-sensitive review content only |
 | `GET /api/v1/public/artists/{slug}/reviews` | Public artist review list | None — read-only, non-sensitive review content only |
+| `POST /api/v1/public/traffic/beacon` | Anonymous + authenticated traffic beacon (role/tenant read from JWT when present) | Rate-limited (`public-write`); no PII accepted in the request body — `Path`/`IsNavigation` only, visitor id via header, IP never persisted |
 
 The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`, `/auth/oauth/*`,
 `/auth/forgot-password`, `/auth/reset-password`, `/auth/refresh`, `/auth/verify-email`)
@@ -1529,6 +1622,11 @@ does not re-litigate them.
 | K3s production deployment — Phase 0 provider decisions resolved (2026-07-26) | Follow-up to the entry directly below (logged first, chronologically earlier same day): the two money decisions that entry deliberately left open are now resolved. **VPS host: Hetzner** — cheapest at this scale, and checked directly against Hetzner's current site as part of resolving this: they have no first-party managed-database product, so "same provider as the DB" was never actually an available convenience to weigh against AWS either way. **Managed MySQL: DigitalOcean, engine 8.4** — DigitalOcean now defaults new clusters to MySQL 8.4 (an exact version match with `mysql:8.4`), confirmed current at resolution time (DigitalOcean's own migration notice: 8.0 clusters are on a forced-upgrade path to 8.4 starting Oct 2026). Also resolved as part of the same pass: **ingress controller is ingress-nginx**, with Traefik explicitly disabled at K3s install time (`--disable traefik`) rather than left ambiguous between the two, matching `CLAUDE.md`'s documented stack; and the production connection string requires **`SslMode=Required`** (DigitalOcean enforces TLS on managed connections; today's local `DB_CONNECTION_STRING` has no SSL parameters, so this is a real addition, not a copy-paste). `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md` §0/§2/§3/Phase 6 updated in place to reflect all four resolutions — no new dated file, since Phase 0 (provisioning) still hadn't been executed as of this update, only decided. | Unblocks Phase 0 of the referenced prompt — Phi can now actually provision the box and database instead of the prompt naming an open money decision. Region pairing recorded for latency: Hetzner Nuremberg/Falkenstein (Germany) + DigitalOcean Frankfurt (FRA1), both close to the app's Albania-based user base. |
 | K3s production deployment — spec'd, not yet executed (2026-07-26) | Full engineering-consultation audit of the production-deployment gap: `docker-compose.yml`/Dockerfiles/observability stack all work locally, but zero K8s manifests, zero CD step, and no live server existed anywhere despite `CLAUDE.md` naming K3s as the target orchestrator. Resolved via a clarifying pass with Phi: cluster not yet provisioned (VPS host — Hetzner vs. AWS — deliberately left open, a money decision, not decided here); MySQL will be a **managed** instance in production, not self-hosted (provider also deliberately left open — DigitalOcean/PlanetScale/AWS RDS candidates priced and compared, DigitalOcean recommended as the closest behavioral match to today's real-MySQL-protocol container, final pick is Phi's); observability stays **self-hosted in-cluster**, reusing `docker/observability/*` configs as ConfigMaps rather than switching to a managed service; TLS via cert-manager + Let's Encrypt using Cloudflare's **DNS-01** solver (not HTTP-01) against the `tattooos.co` zone, chosen for wildcard-cert support and no port-80-reachability requirement during issuance. Full phase-by-phase spec — including two problems found during the audit that needed precise, code-level fixes rather than just "add K8s YAML" — written to `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md` for a Claude Code session (main Engineering project, full repo write access) to execute once Phase 0's manual prerequisites (a human provisioning the actual VPS/K3s box, managed DB instance, and Cloudflare API token — none of which a coding session can do unattended) are complete. **Problem 1 — migration race condition:** `Program.cs` runs `AppDbContext.MigrateAsync()` unconditionally on every pod's startup; harmless at today's 1-replica scale, a real concurrent-migration race at the 2-replica rolling-update minimum this deployment requires for zero-downtime. Fix specified: a new `Migrations:ApplyOnStartup` config flag (default `true`, so local dev/`docker-compose.yml` behavior is untouched), set `false` on the K8s API Deployment, with a dedicated one-shot `batch/v1` Job (same image, flag left at its `true` default) run by the CD pipeline before each rollout. **Problem 2 — two-hop forwarded-headers bug:** the K3s topology this deployment introduces has *two* reverse-proxy hops in front of the API (ingress-nginx, then the frontend Pod's own nginx, which already same-origin-proxies `/api/`/`/hubs/` per `nginx.conf.template` — confirmed only one Ingress host is needed at all for exactly this reason), but `ForwardedHeadersOptionsBuilder.cs` (added in today's earlier security-remediation entry) never set `ForwardLimit`, which defaults to `1` — meaning even with `TrustedProxyCidr` correctly set to the cluster's Pod CIDR, only one hop would be stripped from `X-Forwarded-For` and `RemoteIpAddress` would resolve to the ingress pod's IP, not the real client's, silently defeating the per-client rate-limiting that config was added for in the first place. Fix specified: `ForwardLimit = 2`, plus a new `ForwardedHeadersTests.cs` case asserting the real client IP survives a real two-hop chain. Neither fix has been implemented yet — this entry records the spec, not a shipped change. No Help Menu/user-manual/onboarding-tour update needed: zero user-visible surface, stated explicitly in the prompt per CLAUDE.md rule #7's exception clause. Explicitly **not** covered by this spec, named rather than silently dropped: alerting/on-call routing, a public status page, retention tuning, autoscaling, multi-node/HA control plane, and a backup/DR runbook for whichever managed MySQL provider gets picked. | Closes the "Production/K3s rollout" and "CD pipeline" follow-ups this same log's observability entry (above) explicitly named as blocked on this landing. Alerting/on-call routing, public status page, and retention-cost tuning remain out of scope after this too — restated here so they don't quietly fall off the backlog now that the thing blocking them is unblocked. Full spec, exact manifests structure, exact code diffs, and the DigitalOcean/PlanetScale/AWS RDS pricing comparison: `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md`. |
 | Security remediation (adversarial pass findings) — 2026-07-26 | Fixed the P0 cross-tenant SignalR authorization gap: `ScheduleHub`/`DesignHub`/`NotificationHub.JoinStudio` now validate the caller's `tenant_id` claim against the requested `studioId` (issuer role bypasses for cross-tenant support access), mirroring `SupportHub.JoinTicket`'s 2026-07-21 fix — the same defect existed in all three studio-scoped hubs and was never generalized past the one hub that got reviewed that day. Also: `ForwardedHeaders:TrustedProxyCidr` config added (optional, logs a warning when unset); rate limiting added to `reset-password`/`refresh`/`verify-email` (reused the existing `auth` policy — frontend's `usePresignedUpload`-adjacent `baseQuery.ts` refresh flow already single-flights via an in-tab lock, so 10/min is not a real constraint); Hangfire dashboard now gated by real HTTP Basic Auth (finally consuming the `Hangfire:DashboardUsername`/`Password` env vars docker-compose already required) with the issuer-JWT check kept as an additional layer; a startup-time fail-fast guard on `Jwt:SecretKey` length (≥32 bytes); R2 presigned-upload object keys now keep only the client's folder/purpose prefix and server-generate the file name (`Guid.NewGuid()` + extension derived from the validated `ContentType`); a new `billing` rate-limit policy (20/min, keyed per authenticated user id) on `CreatePaymentIntent`/`CreateDepositPayment`/`CaptureDeposit`/`RefundPayment`/`CreateCheckout`/`CreateCheckout/finalize`; and a CORS production-misconfiguration guard (throws if `Cors:AllowedOrigins` is empty and `IHostEnvironment.IsProduction()`, matching this same remediation's own JWT-guard precedent of failing loud rather than warning on a missing security-critical value — no pre-existing convention for this either way was found elsewhere in the codebase). **Two of the audit's own premises turned out to be stale or incomplete once checked against live behavior, not assumed correct:** (1) Finding 2's "KnownNetworks/KnownProxies empty means trust every proxy" no longer holds on this SDK — ASP.NET Core's `ForwardedHeadersMiddleware` shipped a security patch in .NET 8.0.17/9.0.6 (carried into this project's net10.0) that flips that default to "ignore the header entirely" instead; confirmed empirically via a TestServer probe (`tests/Pena_e_Arte.IntegrationTests/Middleware/ForwardedHeadersTests.cs`) before writing the fix, and via a Microsoft Learn breaking-changes doc. The real current-state gap is therefore the opposite of the audit's framing: without `TrustedProxyCidr` set, X-Forwarded-For isn't spoofable, but every real client behind the production ingress collapses onto the ingress's own IP for rate-limiting purposes — the original problem this middleware was added to solve in the first place. The fix (configurable `TrustedProxyCidr`) closes both framings regardless. (2) The `billing` policy's per-user-id partition key, as specified, would not have worked at all: `Program.cs` had `UseRateLimiter()` registered *before* `UseAuthentication()`, so `HttpContext.User` was never populated at partition-key-resolution time — verified via a throwaway TestServer probe showing `IsAuthenticated == false` inside the callback with that ordering. Reordered to `UseAuthentication → UseRateLimiter` (verified via the full `BillingRateLimitingTests` suite, run against the real `AddApiRateLimiting()` wiring, that the existing IP-keyed `auth`/`public-write`/`public-read` policies are unaffected by the reorder, and that separate users now correctly get separate buckets). Hangfire reachability (§2.2 item 1) was also verified empirically rather than assumed: the SPA's JWT lives in local/session storage and is only ever attached to `fetch`/XHR by `baseQuery.ts`, never on a top-level navigation, and there is no cookie-auth scheme registered, so `/hangfire` was confirmed completely unreachable by its intended operators before tonight — resolved by wiring real Basic Auth. K3s ingress topology (the other Finding 2 "confirm before assuming" item) could not be checked — no K8s manifests exist in this repo at all, K3s is managed outside it — so the code-level fix was implemented regardless rather than assumed-covered. R2/CDN `X-Content-Type-Options: nosniff` (Finding 6's second half) likewise could not be verified or set from this repo — flagged as an infra follow-up for whoever manages the Cloudflare R2/CDN configuration. Full findings, evidence, and severity in `docs/claude/security-audit-adversarial-2026-07-26.md`; phase-by-phase spec in `docs/claude/overnight-prompt-security-remediation-2026-07-26.md`. | Closes a genuine P0 (any authenticated user of any studio could join any other studio's real-time broadcast group and silently watch client names, appointment notes, design activity, consent/intake submissions, and payment/refund events) plus seven lower-severity defense-in-depth gaps identified by a dedicated end-to-end adversarial pass distinct from the routine role-scoped QA passes. No Help Menu/user-manual/onboarding-tour update needed for any of the eight fixes — every one is backend authorization/config hardening with zero user-visible surface change (stated per-phase during implementation, restated here). No frontend files were touched: all four real presign call sites (`BookAppointmentForm.tsx`, `ArtistDetailPage.tsx`, `UploadRevisionPage.tsx`, `FeedbackDialog.tsx`) already stored the server-returned `publicUrl` rather than reconstructing one, so the coordinated frontend change the source prompt anticipated for the R2 fix wasn't actually needed. |
+| Live traffic analytics — GeoIP provider | MaxMind GeoLite2-City (`MaxMind.GeoIP2` v6.1.0), not DB-IP Lite | Free GeoLite2 signup completed (2026-08-04); MaxMind's better-maintained ruleset judged worth the account/license-key friction DB-IP Lite avoids; recurring refresh handled by a separate `geoipupdate` process/scheduled task outside the app's own request path |
+| Live traffic analytics — live presence store | Redis sorted set + per-visitor hash (`traffic:presence:*`), not the database | "Currently active" is inherently ephemeral state; matches the existing Redis-for-ephemeral-state pattern (sessions, slot locks, rate limits) rather than writing every 20s heartbeat to MySQL |
+| Live traffic analytics — real-time transport | SignalR (`TrafficHub`, one group `platform:traffic`), 5s `PeriodicTimer` broadcast | Matches this project's existing "Real-time \| SignalR" row above; single group is safe because every connection is already issuer-scoped by `[Authorize(Policy = "IssuerOnly")]` at the hub class level — no per-studio partitioning risk like the P0 cross-tenant SignalR bug fixed 2026-07-26 |
+| Live traffic analytics — raw event retention | 35 days (`TrafficRollupJob` purge), daily aggregate kept indefinitely | Long enough for a rolling "top pages this month" breakdown without keeping raw per-visit rows forever; matches the reasoning `GetTrafficBreakdownQuery` needs raw `TrafficEvent` for device/browser/page dimensions that `TrafficDailyAggregate` doesn't carry |
+| Live traffic analytics — owner-facing scope | Deliberately not built this pass — issuer-only | No evidence any vertical-booking-SaaS competitor (Vagaro/Fresha/Boulevard/Mindbody/GlossGenius) exposes live site traffic to tenant owners; this is a general platform-admin pattern (Google Analytics Realtime/Plausible Live/Cloudflare Web Analytics/PostHog Live), not a booking-SaaS one — full backlog spec in the source prompt's §3.4 |
 
 ---
 

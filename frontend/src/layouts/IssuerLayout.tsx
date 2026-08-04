@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { BarChart3, Building2, CreditCard, HelpCircle, LayoutDashboard, MessageSquare, PenLine, Receipt, ScrollText, Share2 } from "lucide-react";
+import { Activity, BarChart3, Building2, CreditCard, HelpCircle, LayoutDashboard, MessageSquare, PenLine, Receipt, ScrollText, Share2 } from "lucide-react";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
@@ -10,6 +10,7 @@ import { HelpMenu } from "@/features/help";
 
 const NAV_ITEMS = [
   { label: "Dashboard",     href: "/platform",               icon: <LayoutDashboard className="h-4 w-4" />, tourId: "issuer-dashboard-nav" },
+  { label: "Live Traffic",  href: "/platform/traffic",       icon: <Activity        className="h-4 w-4" />, tourId: "issuer-traffic-nav" },
   { label: "Studios",       href: "/platform/studios",       icon: <Building2       className="h-4 w-4" />, tourId: "issuer-studios-nav" },
   { label: "Plans",         href: "/platform/plans",         icon: <CreditCard      className="h-4 w-4" />, tourId: "issuer-plans-nav" },
   { label: "Subscriptions", href: "/platform/subscriptions", icon: <Receipt         className="h-4 w-4" />, tourId: "issuer-subscriptions-nav" },

@@ -169,6 +169,13 @@ services:
       Hangfire__DashboardPassword: ${HANGFIRE_DASHBOARD_PASSWORD:?Set HANGFIRE_DASHBOARD_PASSWORD in .env — do not default to admin}
       ForwardedHeaders__TrustedProxyCidr: ${FORWARDED_HEADERS_TRUSTED_PROXY_CIDR:-}
       OpenTelemetry__OtlpEndpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
+      # Container-internal path — always /data/geoip regardless of the host-side
+      # GEOIP_DATABASE_PATH (used only by dotnet-run-on-host / geoipupdate), because the
+      # volume mount below always lands the .mmdb files at this path inside the container.
+      GeoIp__DatabasePath: /data/geoip/GeoLite2-City.mmdb
+      GeoIp__IpHashPepper: ${GEOIP_IP_HASH_PEPPER:-}
+    volumes:
+      - ./data/geoip:/data/geoip:ro
     ports:
       - "8080:8080"
     healthcheck:
