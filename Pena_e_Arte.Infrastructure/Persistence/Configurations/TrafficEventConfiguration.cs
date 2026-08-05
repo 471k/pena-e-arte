@@ -15,8 +15,14 @@ public class TrafficEventConfiguration : IEntityTypeConfiguration<TrafficEvent>
         builder.Property(t => t.Role).HasMaxLength(20);
         builder.Property(t => t.CountryCode).HasMaxLength(2);
         builder.Property(t => t.Country).HasMaxLength(100);
+        builder.Property(t => t.RegionCode).HasMaxLength(10);
         builder.Property(t => t.Region).HasMaxLength(100);
         builder.Property(t => t.City).HasMaxLength(100);
+        builder.Property(t => t.PostalCode).HasMaxLength(20);
+        builder.Property(t => t.ContinentCode).HasMaxLength(2);
+        builder.Property(t => t.Continent).HasMaxLength(100);
+        builder.Property(t => t.TimeZone).HasMaxLength(64);
+        builder.Property(t => t.AsnOrganization).HasMaxLength(256);
         builder.Property(t => t.IpHash).HasMaxLength(64);
         builder.Property(t => t.DeviceType).HasMaxLength(20);
         builder.Property(t => t.Browser).HasMaxLength(50);

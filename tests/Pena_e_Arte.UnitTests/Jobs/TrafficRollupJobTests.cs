@@ -25,7 +25,11 @@ public class TrafficRollupJobTests
     {
         TrafficEvent ev = TrafficEvent.Create(
             visitorId, null, role, studioId, "/discover",
-            countryCode, null, null, null, null, "desktop", "Chrome", "Windows");
+            countryCode: countryCode, country: null, regionCode: null, region: null, city: null,
+            postalCode: null, continentCode: null, continent: null,
+            latitude: null, longitude: null, accuracyRadiusKm: null, timeZone: null,
+            asnNumber: null, asnOrganization: null,
+            ipHash: null, deviceType: "desktop", browser: "Chrome", os: "Windows");
         _db.TrafficEvents.Add(ev);
         await _db.SaveChangesAsync();
         _db.Entry(ev).Property(e => e.CreatedAt).CurrentValue = createdAt;

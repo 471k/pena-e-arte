@@ -13,6 +13,8 @@ public record LiveVisitorResponse(
     string? StudioName,
     string? CountryCode,
     string? City,
+    double? Latitude,
+    double? Longitude,
     string? DeviceType,
     string? Browser,
     string Path,
@@ -33,7 +35,8 @@ public record TrafficBreakdownResponse(
     List<TrafficCountryCount> TopCountries,
     List<TrafficNamedCount> DeviceBreakdown,
     List<TrafficNamedCount> BrowserBreakdown,
-    List<TrafficNamedCount> TopPages);
+    List<TrafficNamedCount> TopPages,
+    List<TrafficNamedCount> TopNetworks);
 
 public record TrafficCountryCount(string? CountryCode, string? Country, int Count);
 

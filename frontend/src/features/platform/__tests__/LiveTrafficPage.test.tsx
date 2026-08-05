@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -15,15 +15,42 @@ import type {
   TrafficBreakdownResponse,
 } from "@/features/platform/platform.types";
 
+// react-leaflet/leaflet mocks — mirrors StudioMapPage.test.tsx's established pattern (jsdom has
+// no real tile/canvas rendering, so the map itself is stubbed to plain divs with test ids).
+vi.mock("react-leaflet", () => ({
+  MapContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="map-container">{children}</div>
+  ),
+  TileLayer: () => <div data-testid="tile-layer" />,
+  Marker: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="marker">{children}</div>
+  ),
+  Popup: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="popup">{children}</div>
+  ),
+}));
+
+vi.mock("leaflet", () => ({
+  default: {},
+  divIcon: () => ({}),
+  icon:    () => ({}),
+}));
+
 // SignalR mock — mirrors useSignalR.test.tsx's established pattern. LiveTrafficPage mounts
-// useLiveTrafficHub(true), which would otherwise attempt a real connection in jsdom.
+// useLiveTrafficHub(true), which would otherwise attempt a real connection in jsdom. The
+// registered onreconnecting/onreconnected/onclose callbacks are captured on `hubCallbacks` so
+// tests can invoke them directly to simulate SignalR lifecycle transitions.
+const hubCallbacks: { reconnecting?: () => void; reconnected?: () => void; close?: () => void } = {};
 vi.mock("@microsoft/signalr", () => {
   function HubConnectionBuilder(this: Record<string, unknown>) {
     this.withUrl                = vi.fn().mockReturnValue(this);
     this.withAutomaticReconnect = vi.fn().mockReturnValue(this);
     this.configureLogging       = vi.fn().mockReturnValue(this);
     this.build                  = vi.fn(() => ({
-      on:     vi.fn(),
+      on:             vi.fn(),
+      onreconnecting: vi.fn((cb: () => void) => { hubCallbacks.reconnecting = cb; }),
+      onreconnected:  vi.fn((cb: () => void) => { hubCallbacks.reconnected = cb; }),
+      onclose:        vi.fn((cb: () => void) => { hubCallbacks.close = cb; }),
       start:  vi.fn().mockResolvedValue(undefined),
       invoke: vi.fn().mockResolvedValue(undefined),
       stop:   vi.fn().mockResolvedValue(undefined),
@@ -39,12 +66,16 @@ const SNAPSHOT: LiveTrafficSnapshotResponse = {
   visitors: [
     {
       visitorId: "v1", role: "owner", studioId: "s1", studioName: "Ink Society",
-      countryCode: "AL", city: "Tirana", deviceType: "desktop", browser: "Chrome",
+      countryCode: "AL", city: "Tirana", latitude: 41.3275, longitude: 19.8187,
+      deviceType: "desktop", browser: "Chrome",
       path: "/dashboard", connectedAt: new Date().toISOString(),
     },
     {
+      // No resolved coordinates (GeoIP miss / private IP) — must still appear in the table
+      // but must not produce a map marker.
       visitorId: "v2", role: null, studioId: null, studioName: null,
-      countryCode: "GR", city: "Athens", deviceType: "mobile", browser: "Safari",
+      countryCode: "GR", city: "Athens", latitude: null, longitude: null,
+      deviceType: "mobile", browser: "Safari",
       path: "/discover", connectedAt: new Date().toISOString(),
     },
   ],
@@ -64,6 +95,7 @@ const BREAKDOWN: TrafficBreakdownResponse = {
   deviceBreakdown:  [{ name: "desktop", count: 6 }, { name: "mobile", count: 4 }],
   browserBreakdown: [{ name: "Chrome", count: 8 }],
   topPages:         [{ name: "/discover", count: 12 }],
+  topNetworks:      [{ name: "Example ISP", count: 7 }],
 };
 
 const server = setupServer(
@@ -144,10 +176,137 @@ describe("LiveTrafficPage", () => {
     await waitFor(() => expect(screen.getByText(/failed to load live traffic/i)).toBeInTheDocument());
   });
 
-  it("renders the breakdown lists (top countries, device/browser, top pages)", async () => {
+  it("renders the breakdown lists (top countries, device/browser, top pages, top networks)", async () => {
     renderPage();
 
     expect(await screen.findByText("Chrome")).toBeInTheDocument();
     expect(screen.getAllByText("/discover").length).toBeGreaterThan(0);
+    expect(screen.getByText("Example ISP")).toBeInTheDocument();
+  });
+
+  it("renders one map marker per visitor with resolved coordinates, omitting those without", async () => {
+    renderPage();
+
+    await screen.findByText("Ink Society");
+    // v1 has latitude/longitude, v2 does not — only one marker expected.
+    expect(screen.getAllByTestId("marker")).toHaveLength(1);
+  });
+
+  it("shows the 'no located visitors' message when nobody has resolved coordinates", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/live", () =>
+        HttpResponse.json({
+          totalActive: 1,
+          guestCount: 1,
+          roleCounts: {},
+          visitors: [
+            {
+              visitorId: "v3", role: null, studioId: null, studioName: null,
+              countryCode: null, city: null, latitude: null, longitude: null,
+              deviceType: null, browser: null, path: "/discover", connectedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/no located visitors right now/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("marker")).not.toBeInTheDocument();
+  });
+
+  it("wraps the live visitor map and live table in their own cards", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Live visitor map")).toBeInTheDocument();
+    expect(screen.getByText("Who's here right now")).toBeInTheDocument();
+  });
+
+  it("shows a per-card error instead of an indefinite skeleton when the history request fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/history", () =>
+        HttpResponse.json({ message: "fail" }, { status: 500 }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/couldn't load traffic trend/i)).toBeInTheDocument();
+  });
+
+  it("shows a per-card error instead of an indefinite skeleton when the breakdown request fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/breakdown", () =>
+        HttpResponse.json({ message: "fail" }, { status: 500 }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/couldn't load country data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't load device data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't load page data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't load network data/i)).toBeInTheDocument();
+  });
+
+  it("renders 'Not enough data yet' when the trend has fewer than 2 data points", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/history", () =>
+        HttpResponse.json({
+          days: 30,
+          dataPoints: [{ date: "2026-08-04", guestCount: 3, clientCount: 1, artistCount: 0, ownerCount: 0, issuerCount: 0 }],
+        }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/not enough data yet/i)).toBeInTheDocument();
+  });
+
+  it("shows 'Live' once the SignalR connection resolves", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+  });
+
+  it("transitions the status badge through reconnecting, back to live, and to offline", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+
+    hubCallbacks.reconnecting?.();
+    expect(await screen.findByText("Reconnecting…")).toBeInTheDocument();
+
+    hubCallbacks.reconnected?.();
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+
+    hubCallbacks.close?.();
+    expect(await screen.findByText("Offline")).toBeInTheDocument();
+  });
+
+  it("re-queries history and breakdown with the selected day range when a range button is clicked", async () => {
+    let capturedDays: string | null = null;
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/history", ({ request }) => {
+        capturedDays = new URL(request.url).searchParams.get("days");
+        return HttpResponse.json(HISTORY);
+      }),
+    );
+    renderPage();
+
+    await screen.findByText("Chrome");
+    fireEvent.click(screen.getByRole("button", { name: "7d" }));
+
+    await waitFor(() => expect(capturedDays).toBe("7"));
+    expect(await screen.findByText("Traffic trend (7 days)")).toBeInTheDocument();
+  });
+
+  it("gives the resting (non-selected) date-range and series buttons a visible background", async () => {
+    renderPage();
+
+    await screen.findByText("Chrome");
+    const button90d = screen.getByRole("button", { name: "90d" });
+    expect(button90d.className).toContain("bg-muted/60");
+
+    const clientsButton = screen.getByRole("button", { name: "Clients" });
+    expect(clientsButton.className).toContain("bg-muted/60");
   });
 });

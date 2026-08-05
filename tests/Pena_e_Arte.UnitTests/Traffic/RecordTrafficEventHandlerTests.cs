@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentAssertions;
 using Pena_e_Arte.Application.Traffic.Commands;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Traffic;
@@ -152,6 +153,35 @@ public class RecordTrafficEventHandlerTests
 
         TrafficEvent saved = _db.TrafficEvents.Single();
         saved.Path.Length.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task Handle_GeoResultProvided_MapsEveryFieldOntoTheSavedEvent()
+    {
+        GeoIpResult geo = new(
+            CountryCode: "AL", Country: "Albania", RegionCode: "11", Region: "Tirana County",
+            City: "Tirana", PostalCode: "1001", ContinentCode: "EU", Continent: "Europe",
+            Latitude: 41.3275, Longitude: 19.8187, AccuracyRadiusKm: 20, TimeZone: "Europe/Tirane",
+            AsnNumber: 12345, AsnOrganization: "Example ISP");
+
+        var command = new RecordTrafficEventCommand(
+            Guid.NewGuid(), null, null, null, "/discover",
+            Geo: geo, IpHash: "hash", DeviceType: "desktop", Browser: "Chrome", Os: "Windows");
+
+        await CreateSut().Handle(command, default);
+
+        TrafficEvent saved = _db.TrafficEvents.Single();
+        saved.CountryCode.Should().Be("AL");
+        saved.RegionCode.Should().Be("11");
+        saved.PostalCode.Should().Be("1001");
+        saved.ContinentCode.Should().Be("EU");
+        saved.Continent.Should().Be("Europe");
+        saved.Latitude.Should().Be(41.3275);
+        saved.Longitude.Should().Be(19.8187);
+        saved.AccuracyRadiusKm.Should().Be(20);
+        saved.TimeZone.Should().Be("Europe/Tirane");
+        saved.AsnNumber.Should().Be(12345);
+        saved.AsnOrganization.Should().Be("Example ISP");
     }
 
     [Fact]

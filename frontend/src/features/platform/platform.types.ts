@@ -131,6 +131,8 @@ export interface LiveVisitorResponse {
   studioName:  string | null;
   countryCode: string | null;
   city:        string | null;
+  latitude:    number | null;
+  longitude:   number | null;
   deviceType:  string | null;
   browser:     string | null;
   path:        string;
@@ -175,4 +177,5 @@ export interface TrafficBreakdownResponse {
   deviceBreakdown:  TrafficNamedCount[];
   browserBreakdown: TrafficNamedCount[];
   topPages:         TrafficNamedCount[];
+  topNetworks:      TrafficNamedCount[];
 }

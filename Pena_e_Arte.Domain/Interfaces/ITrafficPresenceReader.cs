@@ -24,6 +24,8 @@ public record TrafficPresenceVisitor(
     string? StudioName,
     string? CountryCode,
     string? City,
+    double? Latitude,
+    double? Longitude,
     string? DeviceType,
     string? Browser,
     string Path,

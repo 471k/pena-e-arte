@@ -160,7 +160,7 @@ function Chart({ data, activeTooltip, onHover }: ChartProps) {
 export function MrrChart() {
   const [months, setMonths]   = useState<3 | 6 | 12>(3);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
-  const { data, isLoading }   = useGetMrrHistoryQuery(months);
+  const { data, isLoading, isError } = useGetMrrHistoryQuery(months);
 
   return (
     <Card>
@@ -185,9 +185,13 @@ export function MrrChart() {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {isLoading || !data ? (
+        {isLoading ? (
           <Skeleton className="h-[130px] w-full" />
-        ) : data.length === 0 ? (
+        ) : isError ? (
+          <p className="h-[130px] flex items-center justify-center text-xs text-destructive" role="alert">
+            Couldn't load MRR data — try refreshing.
+          </p>
+        ) : !data || data.length === 0 ? (
           <p className="h-[130px] flex items-center justify-center text-xs text-muted-foreground">
             No MRR data yet.
           </p>
