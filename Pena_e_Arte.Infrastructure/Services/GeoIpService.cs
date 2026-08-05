@@ -7,51 +7,82 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Infrastructure.Services;
 
 /// <summary>
-/// Wraps MaxMind.GeoIP2's DatabaseReader over a local .mmdb file (GeoLite2-City —
-/// see docs/claude/architecture.md's "Live Traffic Analytics" Decisions Log entry).
-/// DatabaseReader is thread-safe and reused as a singleton (per MaxMind's own docs).
-/// Degrades to always-null gracefully if GeoIp:DatabasePath is unset or the file is
-/// missing/unreadable — this must never throw or block ingestion.
+/// Wraps MaxMind.GeoIP2's DatabaseReader over two local .mmdb files — GeoLite2-City
+/// (GeoIp:DatabasePath) and GeoLite2-ASN (GeoIp:AsnDatabasePath), both free MaxMind
+/// editions (see docs/claude/architecture.md's "Live Traffic Analytics" Decisions Log
+/// entries). DatabaseReader is thread-safe and reused as a singleton (per MaxMind's own
+/// docs). Each reader degrades to always-null gracefully, independently of the other, if
+/// its config path is unset or the file is missing/unreadable — one database being absent
+/// must never block a lookup against the other, and neither must ever throw or block
+/// ingestion.
 /// </summary>
 public class GeoIpService : IGeoIpService, IDisposable
 {
-    private readonly DatabaseReader? _reader;
+    private readonly DatabaseReader? _cityReader;
+    private readonly DatabaseReader? _asnReader;
     private readonly ILogger<GeoIpService> _logger;
 
     public GeoIpService(IConfiguration config, ILogger<GeoIpService> logger)
     {
         _logger = logger;
-        string? path = config["GeoIp:DatabasePath"];
+        _cityReader = OpenReader(config["GeoIp:DatabasePath"], "GeoIp:DatabasePath");
+        _asnReader = OpenReader(config["GeoIp:AsnDatabasePath"], "GeoIp:AsnDatabasePath");
+    }
+
+    private DatabaseReader? OpenReader(string? path, string configKey)
+    {
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             _logger.LogWarning(
-                "GeoIp:DatabasePath not configured or file not found — traffic events will have no country/city data until this is set up. See docs/claude/architecture.md 'Live Traffic Analytics' entry.");
-            return;
+                "{ConfigKey} not configured or file not found — traffic events will be missing the corresponding GeoIP data until this is set up. See docs/claude/architecture.md 'Live Traffic Analytics' entry.",
+                configKey);
+            return null;
         }
 
         try
         {
-            _reader = new DatabaseReader(path);
+            return new DatabaseReader(path);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to open GeoIP database at {@Path}", path);
+            return null;
         }
     }
 
     public GeoIpResult? Lookup(System.Net.IPAddress ip)
     {
-        if (_reader is null) return null;
+        if (_cityReader is null && _asnReader is null) return null;
         if (System.Net.IPAddress.IsLoopback(ip) || IsPrivateRange(ip)) return null;
 
+        MaxMind.GeoIP2.Responses.CityResponse? city = LookupCity(ip);
+        (long? asnNumber, string? asnOrganization) = LookupAsn(ip);
+
+        if (city is null && asnNumber is null) return null;
+
+        return new GeoIpResult(
+            CountryCode: city?.Country.IsoCode,
+            Country: city?.Country.Name,
+            RegionCode: city?.MostSpecificSubdivision.IsoCode,
+            Region: city?.MostSpecificSubdivision.Name,
+            City: city?.City.Name,
+            PostalCode: city?.Postal.Code,
+            ContinentCode: city?.Continent.Code,
+            Continent: city?.Continent.Name,
+            Latitude: city?.Location.Latitude,
+            Longitude: city?.Location.Longitude,
+            AccuracyRadiusKm: city?.Location.AccuracyRadius,
+            TimeZone: city?.Location.TimeZone,
+            AsnNumber: asnNumber,
+            AsnOrganization: asnOrganization);
+    }
+
+    private MaxMind.GeoIP2.Responses.CityResponse? LookupCity(System.Net.IPAddress ip)
+    {
+        if (_cityReader is null) return null;
         try
         {
-            var city = _reader.City(ip);
-            return new GeoIpResult(
-                city.Country.IsoCode,
-                city.Country.Name,
-                city.MostSpecificSubdivision.Name,
-                city.City.Name);
+            return _cityReader.City(ip);
         }
         catch (AddressNotFoundException)
         {
@@ -59,8 +90,27 @@ public class GeoIpService : IGeoIpService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "GeoIP lookup failed for a request — degrading to no location data");
+            _logger.LogWarning(ex, "GeoIP City lookup failed for a request — degrading to no location data");
             return null;
+        }
+    }
+
+    private (long? AsnNumber, string? AsnOrganization) LookupAsn(System.Net.IPAddress ip)
+    {
+        if (_asnReader is null) return (null, null);
+        try
+        {
+            MaxMind.GeoIP2.Responses.AsnResponse asn = _asnReader.Asn(ip);
+            return (asn.AutonomousSystemNumber, asn.AutonomousSystemOrganization);
+        }
+        catch (AddressNotFoundException)
+        {
+            return (null, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "GeoIP ASN lookup failed for a request — degrading to no network data");
+            return (null, null);
         }
     }
 
@@ -88,5 +138,9 @@ public class GeoIpService : IGeoIpService, IDisposable
         return b[0] == 10 || (b[0] == 172 && b[1] is >= 16 and <= 31) || (b[0] == 192 && b[1] == 168);
     }
 
-    public void Dispose() => _reader?.Dispose();
+    public void Dispose()
+    {
+        _cityReader?.Dispose();
+        _asnReader?.Dispose();
+    }
 }

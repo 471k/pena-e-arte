@@ -24,9 +24,9 @@ public class GetLiveTrafficSnapshotHandlerTests
             [
                 new TrafficPresenceVisitor(
                     "visitor-1", "owner", "studio-1", "Ink Society", "AL", "Tirana",
-                    "desktop", "Chrome", "/dashboard", connectedAt),
+                    41.3275, 19.8187, "desktop", "Chrome", "/dashboard", connectedAt),
                 new TrafficPresenceVisitor(
-                    "visitor-2", null, null, null, null, null, "mobile", "Safari", "/discover", connectedAt),
+                    "visitor-2", null, null, null, null, null, null, null, "mobile", "Safari", "/discover", connectedAt),
             ]);
         _reader.ReadSnapshotAsync(Arg.Any<CancellationToken>()).Returns(snapshot);
 
@@ -38,7 +38,10 @@ public class GetLiveTrafficSnapshotHandlerTests
         result.Visitors.Should().HaveCount(2);
         result.Visitors[0].VisitorId.Should().Be("visitor-1");
         result.Visitors[0].StudioName.Should().Be("Ink Society");
+        result.Visitors[0].Latitude.Should().Be(41.3275);
+        result.Visitors[0].Longitude.Should().Be(19.8187);
         result.Visitors[1].Role.Should().BeNull();
+        result.Visitors[1].Latitude.Should().BeNull();
     }
 
     [Fact]

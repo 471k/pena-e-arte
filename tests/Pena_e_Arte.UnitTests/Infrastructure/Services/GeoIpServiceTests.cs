@@ -23,6 +23,14 @@ public class GeoIpServiceTests
         return new ConfigurationBuilder().AddInMemoryCollection(dict).Build();
     }
 
+    private static IConfiguration ConfigWithAsnPath(string? cityPath, string? asnPath)
+    {
+        var dict = new Dictionary<string, string?>();
+        if (cityPath is not null) dict["GeoIp:DatabasePath"] = cityPath;
+        if (asnPath is not null) dict["GeoIp:AsnDatabasePath"] = asnPath;
+        return new ConfigurationBuilder().AddInMemoryCollection(dict).Build();
+    }
+
     [Fact]
     public void Lookup_NoDatabasePathConfigured_ReturnsNullGracefully()
     {
@@ -51,6 +59,34 @@ public class GeoIpServiceTests
         GeoIpService sut = new(ConfigWithPath(null), Substitute.For<ILogger<GeoIpService>>());
 
         Action act = () => sut.Lookup(IPAddress.Parse("203.0.113.5"));
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Lookup_AsnDatabasePathNotConfigured_ReturnsNullGracefully()
+    {
+        // Neither reader configured — City is also absent here, so the whole lookup degrades
+        // to null, same as the no-database-at-all case. The ASN reader itself failing to open
+        // must not affect the City reader (or vice versa) — that independence is what matters,
+        // not any particular non-null result, since no real .mmdb fixture is available in tests.
+        GeoIpService sut = new(
+            ConfigWithAsnPath(cityPath: null, asnPath: null),
+            Substitute.For<ILogger<GeoIpService>>());
+
+        GeoIpResult? result = sut.Lookup(IPAddress.Parse("8.8.8.8"));
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void Lookup_AsnDatabasePathDoesNotExistOnDisk_ReturnsNullGracefully()
+    {
+        GeoIpService sut = new(
+            ConfigWithAsnPath(cityPath: null, asnPath: @"C:\this\path\does\not\exist.mmdb"),
+            Substitute.For<ILogger<GeoIpService>>());
+
+        Action act = () => sut.Lookup(IPAddress.Parse("8.8.8.8"));
 
         act.Should().NotThrow();
     }

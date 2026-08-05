@@ -343,6 +343,11 @@ public static class PublicEndpoints
                     new HashEntry("path", request.Path),
                     new HashEntry("countryCode", geo?.CountryCode ?? ""),
                     new HashEntry("city", geo?.City ?? ""),
+                    // Only lat/long are added here for the live map — postal/timezone/ASN etc.
+                    // are deliberately not carried into the hot-path Redis payload, matching this
+                    // hash's existing minimalism (it doesn't even carry country/region today).
+                    new HashEntry("latitude", geo?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? ""),
+                    new HashEntry("longitude", geo?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? ""),
                     new HashEntry("deviceType", deviceType ?? ""),
                     new HashEntry("browser", browser ?? ""),
                 ]));

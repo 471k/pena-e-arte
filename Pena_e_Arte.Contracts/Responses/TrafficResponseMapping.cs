@@ -17,6 +17,7 @@ public static class TrafficResponseMapping
             Visitors: snapshot.Visitors
                 .Select(v => new LiveVisitorResponse(
                     v.VisitorId, v.Role, v.StudioId, v.StudioName,
-                    v.CountryCode, v.City, v.DeviceType, v.Browser, v.Path, v.ConnectedAt))
+                    v.CountryCode, v.City, v.Latitude, v.Longitude,
+                    v.DeviceType, v.Browser, v.Path, v.ConnectedAt))
                 .ToList());
 }

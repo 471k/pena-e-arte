@@ -2742,7 +2742,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-issuer">Issuer</span> Live traffic</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/platform/traffic</code>: a real-time view of everyone currently browsing the platform — guests and signed-in users by role — updated roughly every 5 seconds, plus historical trends by country, device, and page over the last 30 days.</p>
+<p>At <code>/platform/traffic</code>: a real-time view of everyone currently browsing the platform — guests and signed-in users by role — updated roughly every 5 seconds, plus a live world map and historical trends by country, network, device, and page over the last 30 days.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 300" role="img" aria-label="Live traffic wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -2757,15 +2757,16 @@ ol.steps li { margin: 6px 0; }
 <text x="32" y="170" font-size="8">Owner</text><text x="140" y="170" font-size="8">🇬🇷 Athens</text><text x="280" y="170" font-size="8">desktop · Firefox</text><text x="440" y="170" font-size="8" font-family="monospace">/dashboard</text><text x="620" y="170" font-size="8">1m ago</text>
 </svg>
 </figure>
-<figcaption>Live traffic — KPI row, then the live visitor table, then a historical trend chart and breakdown lists further down the page</figcaption>
+<figcaption>Live traffic — KPI row, then the live visitor map, then the live visitor table, then a historical trend chart and breakdown lists (including top networks) further down the page</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Open Live Traffic from the platform nav.</li>
 <li>The top row shows how many people are on the site right now, split into Guests and each signed-in role.</li>
+<li>The live visitor map plots a dot for each current visitor with a resolved location — click a dot for their role, city, and device.</li>
 <li>The live table lists each current visitor's role, studio (if applicable), approximate location, device, and current page.</li>
-<li>Scroll down for the historical trend chart (toggle between Guests and each role), top countries, and device/browser breakdown over the last 30 days.</li>
+<li>Scroll down for the historical trend chart (toggle between Guests and each role), top countries, device/browser breakdown, top pages, and top networks (ISP) over the last 30 days.</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> country/city is approximate, resolved from IP address — it can be off by a city or two, especially on mobile networks. No visitor is ever identified by name, email, or IP address here — only role, rough location, and device.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> country/city is approximate, resolved from IP address — it can be off by a city or two, especially on mobile networks. No visitor is ever identified by name, email, or IP address here — only role, rough location, network, and device. A visitor without a resolvable location still appears in the live table but won't show a dot on the map.</div>
 <div class="crosslinks">See also: <a href="#issuer-audit-log">Audit log</a></div>
 </section>
 

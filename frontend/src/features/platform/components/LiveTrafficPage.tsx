@@ -1,4 +1,7 @@
 import { useState } from "react";
+import "leaflet/dist/leaflet.css";
+import { divIcon } from "leaflet";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Activity, Ghost, Palette, Shield, User } from "lucide-react";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -38,6 +41,64 @@ function relativeTime(iso: string): string {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   return `${hours}h ago`;
+}
+
+const visitorPin = divIcon({
+  className: "",
+  html: `<span style="display:block;width:10px;height:10px;border-radius:9999px;background:#0f172a;border:2px solid white;box-shadow:0 0 0 1px rgba(15,23,42,0.4)"></span>`,
+  iconSize: [10, 10],
+  iconAnchor: [5, 5],
+  popupAnchor: [0, -6],
+});
+
+const WORLD_MAP_CENTER: [number, number] = [20, 0];
+const WORLD_MAP_ZOOM = 1.5;
+
+// Only currently-active (<=60s, Redis-backed) visitors with a resolved lat/long are plotted —
+// not a historical heatmap. A GeoIP miss (private/dev IP, database unavailable) just omits that
+// visitor from the map; the table above/below remains the complete list regardless.
+function LiveVisitorMap({ visitors }: { visitors: LiveVisitorResponse[] }) {
+  const located = visitors.filter(
+    (v): v is LiveVisitorResponse & { latitude: number; longitude: number } =>
+      v.latitude !== null && v.longitude !== null,
+  );
+
+  return (
+    <div className="relative h-[280px] rounded-md overflow-hidden border">
+      <MapContainer
+        center={WORLD_MAP_CENTER}
+        zoom={WORLD_MAP_ZOOM}
+        className="h-full w-full"
+        zoomControl={false}
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {located.map((v) => (
+          <Marker key={v.visitorId} position={[v.latitude, v.longitude]} icon={visitorPin}>
+            <Popup>
+              <div className="min-w-[140px] space-y-1 py-0.5 text-xs">
+                <p className="font-semibold">
+                  {v.role ? (ROLE_LABELS[v.role] ?? v.role) : "Guest"}
+                </p>
+                <p className="text-muted-foreground">
+                  {countryFlag(v.countryCode)} {v.city ?? v.countryCode ?? "Unknown"}
+                </p>
+                {v.deviceType && <p className="text-muted-foreground capitalize">{v.deviceType}</p>}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+      {located.length === 0 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] bg-background border rounded-full px-3 py-1 text-xs text-muted-foreground shadow-md">
+          No located visitors right now.
+        </div>
+      )}
+    </div>
+  );
 }
 
 function VisitorRow({ visitor }: { visitor: LiveVisitorResponse }) {
@@ -183,6 +244,15 @@ export function LiveTrafficPage() {
         </section>
 
         <section>
+          <p className="text-sm font-medium mb-2">Live visitor map</p>
+          {snapshotLoading || !snapshot ? (
+            <div className="h-[280px] rounded-md bg-muted animate-pulse" />
+          ) : (
+            <LiveVisitorMap visitors={snapshot.visitors} />
+          )}
+        </section>
+
+        <section>
           <p className="text-sm font-medium mb-2">Who's here right now</p>
           {snapshotLoading || !snapshot ? (
             <div className="space-y-2">
@@ -228,7 +298,7 @@ export function LiveTrafficPage() {
           </CardContent>
         </Card>
 
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Top countries</CardTitle></CardHeader>
             <CardContent className="pt-0">
@@ -271,6 +341,20 @@ export function LiveTrafficPage() {
                 <CountList
                   items={breakdown.topPages.map((p: TrafficNamedCount) => ({ name: p.name, count: p.count }))}
                   emptyLabel="No page data yet."
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Top networks</CardTitle></CardHeader>
+            <CardContent className="pt-0">
+              {breakdownLoading || !breakdown ? (
+                <div className="h-24 rounded bg-muted animate-pulse" />
+              ) : (
+                <CountList
+                  items={breakdown.topNetworks.map((n: TrafficNamedCount) => ({ name: n.name, count: n.count }))}
+                  emptyLabel="No network data yet."
                 />
               )}
             </CardContent>

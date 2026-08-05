@@ -15,6 +15,27 @@ import type {
   TrafficBreakdownResponse,
 } from "@/features/platform/platform.types";
 
+// react-leaflet/leaflet mocks — mirrors StudioMapPage.test.tsx's established pattern (jsdom has
+// no real tile/canvas rendering, so the map itself is stubbed to plain divs with test ids).
+vi.mock("react-leaflet", () => ({
+  MapContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="map-container">{children}</div>
+  ),
+  TileLayer: () => <div data-testid="tile-layer" />,
+  Marker: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="marker">{children}</div>
+  ),
+  Popup: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="popup">{children}</div>
+  ),
+}));
+
+vi.mock("leaflet", () => ({
+  default: {},
+  divIcon: () => ({}),
+  icon:    () => ({}),
+}));
+
 // SignalR mock — mirrors useSignalR.test.tsx's established pattern. LiveTrafficPage mounts
 // useLiveTrafficHub(true), which would otherwise attempt a real connection in jsdom.
 vi.mock("@microsoft/signalr", () => {
@@ -39,12 +60,16 @@ const SNAPSHOT: LiveTrafficSnapshotResponse = {
   visitors: [
     {
       visitorId: "v1", role: "owner", studioId: "s1", studioName: "Ink Society",
-      countryCode: "AL", city: "Tirana", deviceType: "desktop", browser: "Chrome",
+      countryCode: "AL", city: "Tirana", latitude: 41.3275, longitude: 19.8187,
+      deviceType: "desktop", browser: "Chrome",
       path: "/dashboard", connectedAt: new Date().toISOString(),
     },
     {
+      // No resolved coordinates (GeoIP miss / private IP) — must still appear in the table
+      // but must not produce a map marker.
       visitorId: "v2", role: null, studioId: null, studioName: null,
-      countryCode: "GR", city: "Athens", deviceType: "mobile", browser: "Safari",
+      countryCode: "GR", city: "Athens", latitude: null, longitude: null,
+      deviceType: "mobile", browser: "Safari",
       path: "/discover", connectedAt: new Date().toISOString(),
     },
   ],
@@ -64,6 +89,7 @@ const BREAKDOWN: TrafficBreakdownResponse = {
   deviceBreakdown:  [{ name: "desktop", count: 6 }, { name: "mobile", count: 4 }],
   browserBreakdown: [{ name: "Chrome", count: 8 }],
   topPages:         [{ name: "/discover", count: 12 }],
+  topNetworks:      [{ name: "Example ISP", count: 7 }],
 };
 
 const server = setupServer(
@@ -144,10 +170,42 @@ describe("LiveTrafficPage", () => {
     await waitFor(() => expect(screen.getByText(/failed to load live traffic/i)).toBeInTheDocument());
   });
 
-  it("renders the breakdown lists (top countries, device/browser, top pages)", async () => {
+  it("renders the breakdown lists (top countries, device/browser, top pages, top networks)", async () => {
     renderPage();
 
     expect(await screen.findByText("Chrome")).toBeInTheDocument();
     expect(screen.getAllByText("/discover").length).toBeGreaterThan(0);
+    expect(screen.getByText("Example ISP")).toBeInTheDocument();
+  });
+
+  it("renders one map marker per visitor with resolved coordinates, omitting those without", async () => {
+    renderPage();
+
+    await screen.findByText("Ink Society");
+    // v1 has latitude/longitude, v2 does not — only one marker expected.
+    expect(screen.getAllByTestId("marker")).toHaveLength(1);
+  });
+
+  it("shows the 'no located visitors' message when nobody has resolved coordinates", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/live", () =>
+        HttpResponse.json({
+          totalActive: 1,
+          guestCount: 1,
+          roleCounts: {},
+          visitors: [
+            {
+              visitorId: "v3", role: null, studioId: null, studioName: null,
+              countryCode: null, city: null, latitude: null, longitude: null,
+              deviceType: null, browser: null, path: "/discover", connectedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/no located visitors right now/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("marker")).not.toBeInTheDocument();
   });
 });
