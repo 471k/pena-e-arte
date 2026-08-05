@@ -3,7 +3,7 @@ using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Application.Persistence;
 
-public interface IAppDbContext : IAsyncDisposable
+public interface IAppDbContext
 {
     // Tenant-scoped
     DbSet<Appointment> Appointments { get; }

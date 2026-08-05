@@ -51,7 +51,8 @@ public class GetTrafficBreakdownHandler(IAppDbContextFactory dbContextFactory)
 
     private async Task<List<TrafficCountryCount>> TopCountriesAsync(DateOnly sinceDate, CancellationToken ct)
     {
-        await using IAppDbContext db = await dbContextFactory.CreateDbContextAsync(ct);
+        await using IAppDbContextLease lease = await dbContextFactory.CreateDbContextAsync(ct);
+        IAppDbContext db = lease.Context;
 
         // Projected into an anonymous type first, then mapped to the record client-side — EF
         // Core's InMemory provider (used by unit tests against FakeDbContext) cannot translate
@@ -75,7 +76,8 @@ public class GetTrafficBreakdownHandler(IAppDbContextFactory dbContextFactory)
         Expression<Func<TrafficEvent, string>> keySelector,
         CancellationToken ct)
     {
-        await using IAppDbContext db = await dbContextFactory.CreateDbContextAsync(ct);
+        await using IAppDbContextLease lease = await dbContextFactory.CreateDbContextAsync(ct);
+        IAppDbContext db = lease.Context;
 
         var counts = await db.TrafficEvents
             .Where(predicate)

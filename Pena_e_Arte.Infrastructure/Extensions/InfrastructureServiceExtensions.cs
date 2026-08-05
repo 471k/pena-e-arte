@@ -35,15 +35,14 @@ public static class InfrastructureServiceExtensions
             .AddInterceptors(sp.GetRequiredService<SubscriptionCacheInvalidationInterceptor>()));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
-        // Separate from the scoped AppDbContext above — this factory hands out short-lived,
-        // independent contexts to code that needs to run several queries concurrently (a single
-        // DbContext can't serve overlapping operations). See GetTrafficBreakdownQuery.
-        services.AddDbContextFactory<AppDbContext>((sp, options) =>
-            options.UseMySql(
-                connectionString,
-                new MySqlServerVersion(new Version(8, 4, 0)),
-                mysql => mysql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName))
-            .AddInterceptors(sp.GetRequiredService<SubscriptionCacheInvalidationInterceptor>()));
+        // IAppDbContextFactory hands out independent IAppDbContext instances for code that needs
+        // to run several queries concurrently (a single DbContext can't serve overlapping
+        // operations — see GetTrafficBreakdownQuery). EF Core's own IDbContextFactory<T> can't be
+        // used here: it resolves against the root provider, so it can't inject AppDbContext's
+        // scoped constructor dependencies (ICurrentTenant, the interceptor above) — confirmed via
+        // a real startup failure, not a theoretical concern. AppDbContextRuntimeFactory instead
+        // opens a genuine new DI scope per call via IServiceScopeFactory, so AppDbContext gets
+        // built exactly like it is for a normal HTTP request.
         services.AddSingleton<IAppDbContextFactory, AppDbContextRuntimeFactory>();
 
         services.AddIdentityCore<IdentityUser>(options =>

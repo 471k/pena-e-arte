@@ -1,15 +1,30 @@
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Pena_e_Arte.Application.Persistence;
 
 namespace Pena_e_Arte.Infrastructure.Persistence;
 
 /// <summary>
-/// Runtime IAppDbContextFactory, backed by EF Core's own IDbContextFactory&lt;AppDbContext&gt;
-/// (registered via AddDbContextFactory). Not to be confused with AppDbContextFactory, which
-/// implements IDesignTimeDbContextFactory&lt;AppDbContext&gt; for the `dotnet ef` CLI only.
+/// Not to be confused with AppDbContextFactory, which implements
+/// IDesignTimeDbContextFactory&lt;AppDbContext&gt; for the `dotnet ef` CLI only.
+///
+/// Opens a genuine new DI scope per call and resolves IAppDbContext from it — EF Core's own
+/// IDbContextFactory&lt;AppDbContext&gt; can't be used here since it resolves against the root
+/// provider and can't inject AppDbContext's scoped constructor dependencies (ICurrentTenant, the
+/// cache-invalidation interceptor).
 /// </summary>
-public class AppDbContextRuntimeFactory(IDbContextFactory<AppDbContext> factory) : IAppDbContextFactory
+public class AppDbContextRuntimeFactory(IServiceScopeFactory scopeFactory) : IAppDbContextFactory
 {
-    public async Task<IAppDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-        await factory.CreateDbContextAsync(ct);
+    public Task<IAppDbContextLease> CreateDbContextAsync(CancellationToken ct = default)
+    {
+        AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+        IAppDbContext context = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
+        return Task.FromResult<IAppDbContextLease>(new AppDbContextLease(scope, context));
+    }
+
+    private sealed class AppDbContextLease(AsyncServiceScope scope, IAppDbContext context) : IAppDbContextLease
+    {
+        public IAppDbContext Context => context;
+
+        public ValueTask DisposeAsync() => scope.DisposeAsync();
+    }
 }

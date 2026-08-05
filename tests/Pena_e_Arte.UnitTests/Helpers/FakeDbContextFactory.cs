@@ -9,6 +9,16 @@ namespace Pena_e_Arte.UnitTests.Helpers;
 /// </summary>
 public class FakeDbContextFactory(string databaseName) : IAppDbContextFactory
 {
-    public Task<IAppDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-        Task.FromResult<IAppDbContext>(FakeDbContext.Create(databaseName));
+    public Task<IAppDbContextLease> CreateDbContextAsync(CancellationToken ct = default)
+    {
+        FakeDbContext db = FakeDbContext.Create(databaseName);
+        return Task.FromResult<IAppDbContextLease>(new FakeAppDbContextLease(db));
+    }
+
+    private sealed class FakeAppDbContextLease(FakeDbContext db) : IAppDbContextLease
+    {
+        public IAppDbContext Context => db;
+
+        public ValueTask DisposeAsync() => db.DisposeAsync();
+    }
 }
