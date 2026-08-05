@@ -27,7 +27,13 @@ export function useLiveTrafficHub(enabled: boolean): {
   useEffect(() => {
     if (!active) return;
 
-    const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
+    // Connecting directly to the backend (bypassing Vite's dev proxy) is deliberate for real
+    // local dev — see useSignalR.ts's note that the proxy doesn't reliably forward WebSocket
+    // upgrades. But "localhost:5078" only means anything when the browser and the dev server
+    // are the same machine; a remote client (e.g. testing through a Cloudflare Tunnel to a
+    // public hostname) needs a relative URL instead, routed through the proxy on this machine.
+    const isLocalDevBrowser = import.meta.env.DEV && window.location.hostname === "localhost";
+    const hubBase = isLocalDevBrowser ? "http://localhost:5078" : "";
 
     const connection = new HubConnectionBuilder()
       .withUrl(`${hubBase}/hubs/traffic`, { accessTokenFactory: () => token! })
