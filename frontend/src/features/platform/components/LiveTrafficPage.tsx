@@ -7,6 +7,7 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { LineAreaChart } from "@/shared/components/charts/LineAreaChart";
+import { LiveStatusBadge } from "@/shared/components/LiveStatusBadge";
 import { KpiCard, KpiSkeleton } from "./KpiCard";
 import {
   useGetLiveTrafficSnapshotQuery,
@@ -126,7 +127,7 @@ function VisitorRow({ visitor }: { visitor: LiveVisitorResponse }) {
 function LiveVisitorTable({ visitors }: { visitors: LiveVisitorResponse[] }) {
   if (visitors.length === 0) {
     return (
-      <p className="text-center text-sm text-muted-foreground py-12">
+      <p className="text-center text-sm text-muted-foreground py-8">
         No one's on the site right now.
       </p>
     );
@@ -163,6 +164,13 @@ const TREND_SERIES = [
 type TrendSeriesKey = (typeof TREND_SERIES)[number]["key"];
 
 function TrendChart({ data, series }: { data: TrafficHistoryDataPoint[]; series: TrendSeriesKey }) {
+  if (data.length < 2) {
+    return (
+      <p className="h-[130px] flex items-center justify-center text-center text-xs text-muted-foreground px-4">
+        Not enough data yet — check back after a few days of traffic.
+      </p>
+    );
+  }
   const labelEvery = Math.ceil(data.length / 8 || 1);
   return (
     <LineAreaChart
@@ -199,14 +207,20 @@ function CountList({ items, emptyLabel }: { items: { name: string; count: number
 
 export function LiveTrafficPage() {
   useDocumentMeta({ title: "Live Traffic — Platform Admin", canonical: "/platform/traffic" });
-  useLiveTrafficHub(true);
+  const { connectionState, lastUpdatedAt } = useLiveTrafficHub(true);
 
   const [series, setSeries] = useState<TrendSeriesKey>("guestCount");
+  const [days, setDays] = useState<7 | 30 | 90>(30);
 
-  const { data: snapshot, isLoading: snapshotLoading, isError: snapshotError } =
-    useGetLiveTrafficSnapshotQuery();
-  const { data: history, isLoading: historyLoading } = useGetTrafficHistoryQuery({ days: 30 });
-  const { data: breakdown, isLoading: breakdownLoading } = useGetTrafficBreakdownQuery({ days: 30 });
+  const {
+    data: snapshot, isLoading: snapshotLoading, isError: snapshotError, refetch: refetchSnapshot,
+  } = useGetLiveTrafficSnapshotQuery();
+  const {
+    data: history, isLoading: historyLoading, isError: historyError, refetch: refetchHistory,
+  } = useGetTrafficHistoryQuery({ days });
+  const {
+    data: breakdown, isLoading: breakdownLoading, isError: breakdownError, refetch: refetchBreakdown,
+  } = useGetTrafficBreakdownQuery({ days });
 
   const roleCounts = snapshot?.roleCounts ?? {};
 
@@ -220,6 +234,13 @@ export function LiveTrafficPage() {
             {snapshot.totalActive} active now
           </span>
         )}
+        <div className="ml-auto">
+          <LiveStatusBadge
+            connectionState={connectionState}
+            lastUpdatedAt={lastUpdatedAt}
+            onRefresh={() => { refetchSnapshot(); refetchHistory(); refetchBreakdown(); }}
+          />
+        </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-4 space-y-6">
@@ -243,30 +264,50 @@ export function LiveTrafficPage() {
           )}
         </section>
 
-        <section>
-          <p className="text-sm font-medium mb-2">Live visitor map</p>
-          {snapshotLoading || !snapshot ? (
-            <div className="h-[280px] rounded-md bg-muted animate-pulse" />
-          ) : (
-            <LiveVisitorMap visitors={snapshot.visitors} />
-          )}
-        </section>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Live visitor map</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            {snapshotLoading ? (
+              <div className="h-[280px] rounded-md bg-muted animate-pulse" />
+            ) : snapshotError || !snapshot ? null : (
+              <LiveVisitorMap visitors={snapshot.visitors} />
+            )}
+          </CardContent>
+        </Card>
 
-        <section>
-          <p className="text-sm font-medium mb-2">Who's here right now</p>
-          {snapshotLoading || !snapshot ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => <div key={i} className="h-8 rounded bg-muted animate-pulse" />)}
-            </div>
-          ) : (
-            <LiveVisitorTable visitors={snapshot.visitors} />
-          )}
-        </section>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Who's here right now</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            {snapshotLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => <div key={i} className="h-8 rounded bg-muted animate-pulse" />)}
+              </div>
+            ) : snapshotError || !snapshot ? null : (
+              <LiveVisitorTable visitors={snapshot.visitors} />
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-sm">Traffic trend (30 days)</CardTitle>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-sm">Traffic trend ({days} days)</CardTitle>
+              <div className="flex items-center gap-1">
+                {([7, 30, 90] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDays(d)}
+                    className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
+                      days === d
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
               <div className="flex items-center gap-1 flex-wrap justify-end">
                 {TREND_SERIES.map(({ key, label }) => (
                   <button
@@ -276,7 +317,7 @@ export function LiveTrafficPage() {
                     className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
                       series === key
                         ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                   >
                     {label}
@@ -286,9 +327,13 @@ export function LiveTrafficPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {historyLoading || !history ? (
+            {historyLoading ? (
               <div className="h-[130px] rounded bg-muted animate-pulse" />
-            ) : history.dataPoints.length === 0 ? (
+            ) : historyError ? (
+              <p className="h-[130px] flex items-center justify-center text-xs text-destructive" role="alert">
+                Couldn't load traffic trend — try refreshing.
+              </p>
+            ) : !history || history.dataPoints.length === 0 ? (
               <p className="h-[130px] flex items-center justify-center text-xs text-muted-foreground">
                 No traffic data yet.
               </p>
@@ -302,9 +347,13 @@ export function LiveTrafficPage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Top countries</CardTitle></CardHeader>
             <CardContent className="pt-0">
-              {breakdownLoading || !breakdown ? (
+              {breakdownLoading ? (
                 <div className="h-24 rounded bg-muted animate-pulse" />
-              ) : (
+              ) : breakdownError ? (
+                <p className="text-center text-xs text-destructive py-6" role="alert">
+                  Couldn't load country data — try refreshing.
+                </p>
+              ) : !breakdown ? null : (
                 <CountList
                   items={breakdown.topCountries.map((c: TrafficCountryCount) => ({
                     name: `${countryFlag(c.countryCode)} ${c.countryCode ?? "Unknown"}`,
@@ -319,9 +368,13 @@ export function LiveTrafficPage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Device / browser</CardTitle></CardHeader>
             <CardContent className="pt-0">
-              {breakdownLoading || !breakdown ? (
+              {breakdownLoading ? (
                 <div className="h-24 rounded bg-muted animate-pulse" />
-              ) : (
+              ) : breakdownError ? (
+                <p className="text-center text-xs text-destructive py-6" role="alert">
+                  Couldn't load device data — try refreshing.
+                </p>
+              ) : !breakdown ? null : (
                 <CountList
                   items={[...breakdown.deviceBreakdown, ...breakdown.browserBreakdown].map(
                     (b: TrafficNamedCount) => ({ name: b.name, count: b.count })
@@ -335,9 +388,13 @@ export function LiveTrafficPage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Top pages</CardTitle></CardHeader>
             <CardContent className="pt-0">
-              {breakdownLoading || !breakdown ? (
+              {breakdownLoading ? (
                 <div className="h-24 rounded bg-muted animate-pulse" />
-              ) : (
+              ) : breakdownError ? (
+                <p className="text-center text-xs text-destructive py-6" role="alert">
+                  Couldn't load page data — try refreshing.
+                </p>
+              ) : !breakdown ? null : (
                 <CountList
                   items={breakdown.topPages.map((p: TrafficNamedCount) => ({ name: p.name, count: p.count }))}
                   emptyLabel="No page data yet."
@@ -349,9 +406,13 @@ export function LiveTrafficPage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Top networks</CardTitle></CardHeader>
             <CardContent className="pt-0">
-              {breakdownLoading || !breakdown ? (
+              {breakdownLoading ? (
                 <div className="h-24 rounded bg-muted animate-pulse" />
-              ) : (
+              ) : breakdownError ? (
+                <p className="text-center text-xs text-destructive py-6" role="alert">
+                  Couldn't load network data — try refreshing.
+                </p>
+              ) : !breakdown ? null : (
                 <CountList
                   items={breakdown.topNetworks.map((n: TrafficNamedCount) => ({ name: n.name, count: n.count }))}
                   emptyLabel="No network data yet."

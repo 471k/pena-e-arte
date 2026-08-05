@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { platformApi } from "@/features/platform/platformApi";
 import type { LiveTrafficSnapshotResponse } from "@/features/platform/platform.types";
+
+export type LiveConnectionState = "connecting" | "connected" | "reconnecting" | "disconnected";
 
 /**
  * TrafficHub has exactly one group ("platform:traffic"), and every connection is added to it
@@ -11,12 +13,19 @@ import type { LiveTrafficSnapshotResponse } from "@/features/platform/platform.t
  * documented against useSupportHub in the Decisions Log does not apply to this hub by
  * construction. Left as a comment here so a future reader doesn't "fix" a bug that isn't there.
  */
-export function useLiveTrafficHub(enabled: boolean) {
+export function useLiveTrafficHub(enabled: boolean): {
+  connectionState: LiveConnectionState;
+  lastUpdatedAt: number | null;
+} {
   const token    = useAppSelector((s) => s.auth.token);
   const dispatch = useAppDispatch();
+  const [connectionState, setConnectionState] = useState<LiveConnectionState>("connecting");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+
+  const active = enabled && !!token;
 
   useEffect(() => {
-    if (!enabled || !token) return;
+    if (!active) return;
 
     const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
 
@@ -26,16 +35,25 @@ export function useLiveTrafficHub(enabled: boolean) {
       .configureLogging(LogLevel.Warning)
       .build();
 
+    connection.onreconnecting(() => setConnectionState("reconnecting"));
+    connection.onreconnected(() => setConnectionState("connected"));
+    connection.onclose(() => setConnectionState("disconnected"));
+
     connection.on("TrafficSnapshotUpdated", (payload: LiveTrafficSnapshotResponse) => {
       dispatch(
         platformApi.util.updateQueryData("getLiveTrafficSnapshot", undefined, () => payload)
       );
+      setLastUpdatedAt(Date.now());
     });
 
-    const start = connection.start().catch(() => {});
+    const start = connection.start()
+      .then(() => setConnectionState("connected"))
+      .catch(() => setConnectionState("disconnected"));
 
     return () => {
       void start.finally(() => connection.stop());
     };
-  }, [enabled, token, dispatch]);
+  }, [active, token, dispatch]);
+
+  return { connectionState: active ? connectionState : "disconnected", lastUpdatedAt };
 }

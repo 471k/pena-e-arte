@@ -74,4 +74,15 @@ public class GetTrafficBreakdownHandlerTests
         result.BrowserBreakdown.Should().ContainSingle(b => b.Name == "Safari" && b.Count == 2);
         result.TopPages.Should().ContainSingle(p => p.Name == "/discover" && p.Count == 2);
     }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(-5, 1)]
+    [InlineData(500, 90)]
+    public async Task Handle_ClampsDaysToValidRange(int requestedDays, int expectedDays)
+    {
+        TrafficBreakdownResponse result = await CreateSut().Handle(new GetTrafficBreakdownQuery(requestedDays), default);
+
+        result.Days.Should().Be(expectedDays);
+    }
 }

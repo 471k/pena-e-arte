@@ -18,7 +18,8 @@ public class GetTrafficHistoryHandler(IAppDbContext db)
 {
     public async Task<TrafficHistoryResponse> Handle(GetTrafficHistoryQuery query, CancellationToken ct)
     {
-        DateOnly since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-query.Days));
+        int days = Math.Clamp(query.Days, 1, 90);
+        DateOnly since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-days));
 
         List<TrafficDailyAggregate> rows = await db.TrafficDailyAggregates
             .AsNoTracking()
@@ -37,6 +38,6 @@ public class GetTrafficHistoryHandler(IAppDbContext db)
                 IssuerCount: g.Where(r => r.Role == "issuer").Sum(r => r.VisitCount)))
             .ToList();
 
-        return new TrafficHistoryResponse(query.Days, dataPoints);
+        return new TrafficHistoryResponse(days, dataPoints);
     }
 }

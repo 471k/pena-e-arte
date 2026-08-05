@@ -23,8 +23,9 @@ public class GetTrafficBreakdownHandler(IAppDbContext db)
 
     public async Task<TrafficBreakdownResponse> Handle(GetTrafficBreakdownQuery query, CancellationToken ct)
     {
-        DateOnly sinceDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-query.Days));
-        DateTime sinceTimestamp = DateTime.UtcNow.AddDays(-query.Days);
+        int days = Math.Clamp(query.Days, 1, 90);
+        DateOnly sinceDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-days));
+        DateTime sinceTimestamp = DateTime.UtcNow.AddDays(-days);
 
         // Projected into an anonymous type first, then mapped to the record client-side — EF
         // Core's InMemory provider (used by unit tests against FakeDbContext) cannot translate
@@ -63,7 +64,7 @@ public class GetTrafficBreakdownHandler(IAppDbContext db)
             t => t.AsnOrganization!, ct);
 
         return new TrafficBreakdownResponse(
-            query.Days, topCountries, deviceBreakdown, browserBreakdown, topPages, topNetworks);
+            days, topCountries, deviceBreakdown, browserBreakdown, topPages, topNetworks);
     }
 
     private async Task<List<TrafficNamedCount>> TopNamedCountsAsync(

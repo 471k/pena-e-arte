@@ -66,4 +66,15 @@ public class GetTrafficHistoryHandlerTests
         result.DataPoints[0].Date.Should().Be(day1);
         result.DataPoints[1].Date.Should().Be(day2);
     }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(-5, 1)]
+    [InlineData(500, 90)]
+    public async Task Handle_ClampsDaysToValidRange(int requestedDays, int expectedDays)
+    {
+        TrafficHistoryResponse result = await CreateSut().Handle(new GetTrafficHistoryQuery(requestedDays), default);
+
+        result.Days.Should().Be(expectedDays);
+    }
 }

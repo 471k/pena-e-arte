@@ -978,9 +978,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "The top row shows how many people are on the site right now, split into Guests and each signed-in role.",
       "The live visitor map plots a dot for each current visitor with a resolved location — click a dot for their role, city, and device.",
       "The live table lists each current visitor's role, studio (if applicable), approximate location, device, and current page.",
-      "Scroll down for the historical trend chart, top countries, device/browser breakdown, top pages, and top networks (ISP) over the last 30 days.",
+      "Scroll down for the historical trend chart, top countries, device/browser breakdown, top pages, and top networks (ISP) — use the 7d/30d/90d toggle above the chart to change the time window for all of them at once.",
     ],
-    tips: ["Country/city is approximate, resolved from IP address — it can be off by a city or two, especially on mobile networks.", "No visitor is ever identified by name, email, or IP address here — only role, rough location, network, and device.", "A visitor without a resolvable location (private network, GeoIP miss) still appears in the live table but won't show a dot on the map."],
+    tips: ["Country/city is approximate, resolved from IP address — it can be off by a city or two, especially on mobile networks.", "No visitor is ever identified by name, email, or IP address here — only role, rough location, network, and device.", "A visitor without a resolvable location (private network, GeoIP miss) still appears in the live table but won't show a dot on the map.", "A pulsing 'Live' badge in the header confirms the real-time feed is connected — if it says 'Reconnecting…' or 'Offline,' the numbers on screen may be stale; use the ↻ button next to it to refresh manually."],
     relatedArticleIds: ["issuer-audit-log"],
   },
   {

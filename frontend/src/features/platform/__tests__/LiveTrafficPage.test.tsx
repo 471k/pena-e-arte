@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -37,14 +37,20 @@ vi.mock("leaflet", () => ({
 }));
 
 // SignalR mock — mirrors useSignalR.test.tsx's established pattern. LiveTrafficPage mounts
-// useLiveTrafficHub(true), which would otherwise attempt a real connection in jsdom.
+// useLiveTrafficHub(true), which would otherwise attempt a real connection in jsdom. The
+// registered onreconnecting/onreconnected/onclose callbacks are captured on `hubCallbacks` so
+// tests can invoke them directly to simulate SignalR lifecycle transitions.
+const hubCallbacks: { reconnecting?: () => void; reconnected?: () => void; close?: () => void } = {};
 vi.mock("@microsoft/signalr", () => {
   function HubConnectionBuilder(this: Record<string, unknown>) {
     this.withUrl                = vi.fn().mockReturnValue(this);
     this.withAutomaticReconnect = vi.fn().mockReturnValue(this);
     this.configureLogging       = vi.fn().mockReturnValue(this);
     this.build                  = vi.fn(() => ({
-      on:     vi.fn(),
+      on:             vi.fn(),
+      onreconnecting: vi.fn((cb: () => void) => { hubCallbacks.reconnecting = cb; }),
+      onreconnected:  vi.fn((cb: () => void) => { hubCallbacks.reconnected = cb; }),
+      onclose:        vi.fn((cb: () => void) => { hubCallbacks.close = cb; }),
       start:  vi.fn().mockResolvedValue(undefined),
       invoke: vi.fn().mockResolvedValue(undefined),
       stop:   vi.fn().mockResolvedValue(undefined),
@@ -207,5 +213,100 @@ describe("LiveTrafficPage", () => {
 
     expect(await screen.findByText(/no located visitors right now/i)).toBeInTheDocument();
     expect(screen.queryByTestId("marker")).not.toBeInTheDocument();
+  });
+
+  it("wraps the live visitor map and live table in their own cards", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Live visitor map")).toBeInTheDocument();
+    expect(screen.getByText("Who's here right now")).toBeInTheDocument();
+  });
+
+  it("shows a per-card error instead of an indefinite skeleton when the history request fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/history", () =>
+        HttpResponse.json({ message: "fail" }, { status: 500 }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/couldn't load traffic trend/i)).toBeInTheDocument();
+  });
+
+  it("shows a per-card error instead of an indefinite skeleton when the breakdown request fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/breakdown", () =>
+        HttpResponse.json({ message: "fail" }, { status: 500 }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/couldn't load country data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't load device data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't load page data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't load network data/i)).toBeInTheDocument();
+  });
+
+  it("renders 'Not enough data yet' when the trend has fewer than 2 data points", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/history", () =>
+        HttpResponse.json({
+          days: 30,
+          dataPoints: [{ date: "2026-08-04", guestCount: 3, clientCount: 1, artistCount: 0, ownerCount: 0, issuerCount: 0 }],
+        }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/not enough data yet/i)).toBeInTheDocument();
+  });
+
+  it("shows 'Live' once the SignalR connection resolves", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+  });
+
+  it("transitions the status badge through reconnecting, back to live, and to offline", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+
+    hubCallbacks.reconnecting?.();
+    expect(await screen.findByText("Reconnecting…")).toBeInTheDocument();
+
+    hubCallbacks.reconnected?.();
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+
+    hubCallbacks.close?.();
+    expect(await screen.findByText("Offline")).toBeInTheDocument();
+  });
+
+  it("re-queries history and breakdown with the selected day range when a range button is clicked", async () => {
+    let capturedDays: string | null = null;
+    server.use(
+      http.get("http://localhost/api/v1/platform/traffic/history", ({ request }) => {
+        capturedDays = new URL(request.url).searchParams.get("days");
+        return HttpResponse.json(HISTORY);
+      }),
+    );
+    renderPage();
+
+    await screen.findByText("Chrome");
+    fireEvent.click(screen.getByRole("button", { name: "7d" }));
+
+    await waitFor(() => expect(capturedDays).toBe("7"));
+    expect(await screen.findByText("Traffic trend (7 days)")).toBeInTheDocument();
+  });
+
+  it("gives the resting (non-selected) date-range and series buttons a visible background", async () => {
+    renderPage();
+
+    await screen.findByText("Chrome");
+    const button90d = screen.getByRole("button", { name: "90d" });
+    expect(button90d.className).toContain("bg-muted/60");
+
+    const clientsButton = screen.getByRole("button", { name: "Clients" });
+    expect(clientsButton.className).toContain("bg-muted/60");
   });
 });
