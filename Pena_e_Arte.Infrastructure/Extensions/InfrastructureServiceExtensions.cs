@@ -35,6 +35,17 @@ public static class InfrastructureServiceExtensions
             .AddInterceptors(sp.GetRequiredService<SubscriptionCacheInvalidationInterceptor>()));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
+        // Separate from the scoped AppDbContext above — this factory hands out short-lived,
+        // independent contexts to code that needs to run several queries concurrently (a single
+        // DbContext can't serve overlapping operations). See GetTrafficBreakdownQuery.
+        services.AddDbContextFactory<AppDbContext>((sp, options) =>
+            options.UseMySql(
+                connectionString,
+                new MySqlServerVersion(new Version(8, 4, 0)),
+                mysql => mysql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName))
+            .AddInterceptors(sp.GetRequiredService<SubscriptionCacheInvalidationInterceptor>()));
+        services.AddSingleton<IAppDbContextFactory, AppDbContextRuntimeFactory>();
+
         services.AddIdentityCore<IdentityUser>(options =>
         {
             options.Password.RequireDigit = true;

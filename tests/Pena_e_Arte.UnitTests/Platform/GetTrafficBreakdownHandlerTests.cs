@@ -8,9 +8,18 @@ namespace Pena_e_Arte.UnitTests.Platform;
 
 public class GetTrafficBreakdownHandlerTests
 {
-    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly string _dbName = Guid.NewGuid().ToString();
+    private readonly FakeDbContext _db;
 
-    private GetTrafficBreakdownHandler CreateSut() => new(_db);
+    public GetTrafficBreakdownHandlerTests()
+    {
+        _db = FakeDbContext.Create(_dbName);
+    }
+
+    // The handler now takes IAppDbContextFactory (it runs its 5 aggregate queries concurrently,
+    // each against its own short-lived context) rather than a single IAppDbContext — the fake
+    // factory points at the same named in-memory database as `_db` so seeded data is visible.
+    private GetTrafficBreakdownHandler CreateSut() => new(new FakeDbContextFactory(_dbName));
 
     private static TrafficEvent MakeEvent(
         string path = "/discover", string? deviceType = "desktop", string? browser = "Chrome",

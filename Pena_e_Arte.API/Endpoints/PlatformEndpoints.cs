@@ -213,8 +213,9 @@ public static class PlatformEndpoints
         CancellationToken ct,
         int? days = null)
     {
-        TrafficHistoryResponse result =
-            await mediator.Send(new GetTrafficHistoryQuery(Math.Clamp(days ?? 30, 1, 90)), ct);
+        // Range clamping is the handler's job (GetTrafficHistoryQuery.cs) — the sole source of
+        // truth, so the bound only needs to change in one place.
+        TrafficHistoryResponse result = await mediator.Send(new GetTrafficHistoryQuery(days ?? 30), ct);
         return Results.Ok(result);
     }
 
@@ -223,8 +224,9 @@ public static class PlatformEndpoints
         CancellationToken ct,
         int? days = null)
     {
-        TrafficBreakdownResponse result =
-            await mediator.Send(new GetTrafficBreakdownQuery(Math.Clamp(days ?? 30, 1, 90)), ct);
+        // Range clamping is the handler's job (GetTrafficBreakdownQuery.cs) — the sole source of
+        // truth, so the bound only needs to change in one place.
+        TrafficBreakdownResponse result = await mediator.Send(new GetTrafficBreakdownQuery(days ?? 30), ct);
         return Results.Ok(result);
     }
 }

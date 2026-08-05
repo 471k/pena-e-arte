@@ -4,6 +4,7 @@ import { divIcon } from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Activity, Ghost, Palette, Shield, User } from "lucide-react";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { formatRelativeTimeFromNow } from "@/shared/utils/formatRelativeTime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { LineAreaChart } from "@/shared/components/charts/LineAreaChart";
@@ -33,15 +34,6 @@ function countryFlag(countryCode: string | null): string {
   if (!countryCode || countryCode.length !== 2) return "🌐";
   const codePoints = [...countryCode.toUpperCase()].map((c) => 0x1f1e6 - 65 + c.charCodeAt(0));
   return String.fromCodePoint(...codePoints);
-}
-
-function relativeTime(iso: string): string {
-  const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
 }
 
 const visitorPin = divIcon({
@@ -119,7 +111,9 @@ function VisitorRow({ visitor }: { visitor: LiveVisitorResponse }) {
       </td>
       <td className="px-3 py-2 capitalize">{visitor.deviceType ?? "—"}{visitor.browser ? ` · ${visitor.browser}` : ""}</td>
       <td className="px-3 py-2 truncate max-w-[200px] font-mono text-[11px]">{visitor.path}</td>
-      <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{relativeTime(visitor.connectedAt)}</td>
+      <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+        {formatRelativeTimeFromNow(visitor.connectedAt)}
+      </td>
     </tr>
   );
 }
@@ -205,6 +199,32 @@ function CountList({ items, emptyLabel }: { items: { name: string; count: number
   );
 }
 
+function BreakdownCard({
+  title, busy, error, errorLabel, emptyLabel, items,
+}: {
+  title: string;
+  busy: boolean;
+  error: boolean;
+  errorLabel: string;
+  emptyLabel: string;
+  items: { name: string; count: number }[] | undefined;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-sm">{title}</CardTitle></CardHeader>
+      <CardContent className="pt-0">
+        {busy ? (
+          <div className="h-24 rounded bg-muted animate-pulse" />
+        ) : error ? (
+          <p className="text-center text-xs text-destructive py-6" role="alert">{errorLabel}</p>
+        ) : !items ? null : (
+          <CountList items={items} emptyLabel={emptyLabel} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function LiveTrafficPage() {
   useDocumentMeta({ title: "Live Traffic — Platform Admin", canonical: "/platform/traffic" });
   const { connectionState, lastUpdatedAt } = useLiveTrafficHub(true);
@@ -213,14 +233,25 @@ export function LiveTrafficPage() {
   const [days, setDays] = useState<7 | 30 | 90>(30);
 
   const {
-    data: snapshot, isLoading: snapshotLoading, isError: snapshotError, refetch: refetchSnapshot,
+    data: snapshot, isLoading: snapshotLoading, isFetching: snapshotFetching,
+    isError: snapshotError, refetch: refetchSnapshot,
   } = useGetLiveTrafficSnapshotQuery();
   const {
-    data: history, isLoading: historyLoading, isError: historyError, refetch: refetchHistory,
+    data: history, isLoading: historyLoading, isFetching: historyFetching,
+    isError: historyError, refetch: refetchHistory,
   } = useGetTrafficHistoryQuery({ days });
   const {
-    data: breakdown, isLoading: breakdownLoading, isError: breakdownError, refetch: refetchBreakdown,
+    data: breakdown, isLoading: breakdownLoading, isFetching: breakdownFetching,
+    isError: breakdownError, refetch: refetchBreakdown,
   } = useGetTrafficBreakdownQuery({ days });
+
+  // isLoading only ever fires once per cache entry (the very first fetch) — a refetch of a
+  // previously-failed query (no cached data) needs isFetching too, or clicking refresh after an
+  // error gives no visual feedback at all until the new response silently lands.
+  const snapshotBusy  = snapshotLoading  || (snapshotFetching  && !snapshot);
+  const historyBusy   = historyLoading   || (historyFetching   && !history);
+  const breakdownBusy = breakdownLoading || (breakdownFetching && !breakdown);
+  const isRefreshing  = snapshotFetching || historyFetching || breakdownFetching;
 
   const roleCounts = snapshot?.roleCounts ?? {};
 
@@ -238,6 +269,7 @@ export function LiveTrafficPage() {
           <LiveStatusBadge
             connectionState={connectionState}
             lastUpdatedAt={lastUpdatedAt}
+            isRefreshing={isRefreshing}
             onRefresh={() => { refetchSnapshot(); refetchHistory(); refetchBreakdown(); }}
           />
         </div>
@@ -251,7 +283,7 @@ export function LiveTrafficPage() {
         )}
 
         <section className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {snapshotLoading || !snapshot ? (
+          {snapshotBusy || !snapshot ? (
             <>{Array.from({ length: 5 }, (_, i) => <KpiSkeleton key={i} />)}</>
           ) : (
             <>
@@ -267,7 +299,7 @@ export function LiveTrafficPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Live visitor map</CardTitle></CardHeader>
           <CardContent className="pt-0">
-            {snapshotLoading ? (
+            {snapshotBusy ? (
               <div className="h-[280px] rounded-md bg-muted animate-pulse" />
             ) : snapshotError || !snapshot ? null : (
               <LiveVisitorMap visitors={snapshot.visitors} />
@@ -278,7 +310,7 @@ export function LiveTrafficPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Who's here right now</CardTitle></CardHeader>
           <CardContent className="pt-0">
-            {snapshotLoading ? (
+            {snapshotBusy ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => <div key={i} className="h-8 rounded bg-muted animate-pulse" />)}
               </div>
@@ -327,7 +359,7 @@ export function LiveTrafficPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {historyLoading ? (
+            {historyBusy ? (
               <div className="h-[130px] rounded bg-muted animate-pulse" />
             ) : historyError ? (
               <p className="h-[130px] flex items-center justify-center text-xs text-destructive" role="alert">
@@ -344,82 +376,46 @@ export function LiveTrafficPage() {
         </Card>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Top countries</CardTitle></CardHeader>
-            <CardContent className="pt-0">
-              {breakdownLoading ? (
-                <div className="h-24 rounded bg-muted animate-pulse" />
-              ) : breakdownError ? (
-                <p className="text-center text-xs text-destructive py-6" role="alert">
-                  Couldn't load country data — try refreshing.
-                </p>
-              ) : !breakdown ? null : (
-                <CountList
-                  items={breakdown.topCountries.map((c: TrafficCountryCount) => ({
-                    name: `${countryFlag(c.countryCode)} ${c.countryCode ?? "Unknown"}`,
-                    count: c.count,
-                  }))}
-                  emptyLabel="No geography data yet."
-                />
-              )}
-            </CardContent>
-          </Card>
+          <BreakdownCard
+            title="Top countries"
+            busy={breakdownBusy}
+            error={breakdownError}
+            errorLabel="Couldn't load country data — try refreshing."
+            emptyLabel="No geography data yet."
+            items={breakdown?.topCountries.map((c: TrafficCountryCount) => ({
+              name: `${countryFlag(c.countryCode)} ${c.countryCode ?? "Unknown"}`,
+              count: c.count,
+            }))}
+          />
 
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Device / browser</CardTitle></CardHeader>
-            <CardContent className="pt-0">
-              {breakdownLoading ? (
-                <div className="h-24 rounded bg-muted animate-pulse" />
-              ) : breakdownError ? (
-                <p className="text-center text-xs text-destructive py-6" role="alert">
-                  Couldn't load device data — try refreshing.
-                </p>
-              ) : !breakdown ? null : (
-                <CountList
-                  items={[...breakdown.deviceBreakdown, ...breakdown.browserBreakdown].map(
-                    (b: TrafficNamedCount) => ({ name: b.name, count: b.count })
-                  )}
-                  emptyLabel="No device data yet."
-                />
-              )}
-            </CardContent>
-          </Card>
+          <BreakdownCard
+            title="Device / browser"
+            busy={breakdownBusy}
+            error={breakdownError}
+            errorLabel="Couldn't load device data — try refreshing."
+            emptyLabel="No device data yet."
+            items={breakdown && [...breakdown.deviceBreakdown, ...breakdown.browserBreakdown].map(
+              (b: TrafficNamedCount) => ({ name: b.name, count: b.count })
+            )}
+          />
 
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Top pages</CardTitle></CardHeader>
-            <CardContent className="pt-0">
-              {breakdownLoading ? (
-                <div className="h-24 rounded bg-muted animate-pulse" />
-              ) : breakdownError ? (
-                <p className="text-center text-xs text-destructive py-6" role="alert">
-                  Couldn't load page data — try refreshing.
-                </p>
-              ) : !breakdown ? null : (
-                <CountList
-                  items={breakdown.topPages.map((p: TrafficNamedCount) => ({ name: p.name, count: p.count }))}
-                  emptyLabel="No page data yet."
-                />
-              )}
-            </CardContent>
-          </Card>
+          <BreakdownCard
+            title="Top pages"
+            busy={breakdownBusy}
+            error={breakdownError}
+            errorLabel="Couldn't load page data — try refreshing."
+            emptyLabel="No page data yet."
+            items={breakdown?.topPages.map((p: TrafficNamedCount) => ({ name: p.name, count: p.count }))}
+          />
 
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Top networks</CardTitle></CardHeader>
-            <CardContent className="pt-0">
-              {breakdownLoading ? (
-                <div className="h-24 rounded bg-muted animate-pulse" />
-              ) : breakdownError ? (
-                <p className="text-center text-xs text-destructive py-6" role="alert">
-                  Couldn't load network data — try refreshing.
-                </p>
-              ) : !breakdown ? null : (
-                <CountList
-                  items={breakdown.topNetworks.map((n: TrafficNamedCount) => ({ name: n.name, count: n.count }))}
-                  emptyLabel="No network data yet."
-                />
-              )}
-            </CardContent>
-          </Card>
+          <BreakdownCard
+            title="Top networks"
+            busy={breakdownBusy}
+            error={breakdownError}
+            errorLabel="Couldn't load network data — try refreshing."
+            emptyLabel="No network data yet."
+            items={breakdown?.topNetworks.map((n: TrafficNamedCount) => ({ name: n.name, count: n.count }))}
+          />
         </div>
       </main>
     </div>

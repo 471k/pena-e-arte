@@ -127,8 +127,10 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasForeignKey(a => a.AppointmentId);
     }
 
-    public static FakeDbContext Create() =>
+    public static FakeDbContext Create() => Create(Guid.NewGuid().ToString());
+
+    public static FakeDbContext Create(string databaseName) =>
         new(new DbContextOptionsBuilder<FakeDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(databaseName)
             .Options);
 }

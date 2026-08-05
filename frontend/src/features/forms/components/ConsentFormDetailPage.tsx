@@ -6,6 +6,7 @@ import { Separator } from "@/shared/components/ui/separator";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import { formatRelativeTimeFromNow } from "@/shared/utils/formatRelativeTime";
 import { useGetConsentFormByIdQuery } from "../consentFormsApi";
 import type { ConsentFormDetailResponse } from "../form.types";
 
@@ -16,20 +17,6 @@ function formatDateTime(dateStr: string): string {
     day: "numeric", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
-}
-
-function formatRelative(dateStr: string): string {
-  const diffMs    = Date.now() - new Date(dateStr).getTime();
-  const diffDays  = Math.floor(diffMs / 86_400_000);
-  const diffHours = Math.floor(diffMs / 3_600_000);
-  const diffMins  = Math.floor(diffMs / 60_000);
-
-  if (diffMins  < 1)  return "just now";
-  if (diffMins  < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays  < 30) return `${diffDays}d ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  return `${diffMonths}mo ago`;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -222,13 +209,17 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
           <div className="grid grid-cols-2 gap-4">
             <DetailRow label="Created">
               <span>{formatDateTime(form.createdAt)}</span>
-              <p className="text-xs text-foreground/45 mt-0.5">{formatRelative(form.createdAt)}</p>
+              <p className="text-xs text-foreground/45 mt-0.5">
+                {formatRelativeTimeFromNow(form.createdAt)}
+              </p>
             </DetailRow>
 
             {form.signedAt && (
               <DetailRow label="Signed">
                 <span>{formatDateTime(form.signedAt)}</span>
-                <p className="text-xs text-foreground/45 mt-0.5">{formatRelative(form.signedAt)}</p>
+                <p className="text-xs text-foreground/45 mt-0.5">
+                  {formatRelativeTimeFromNow(form.signedAt)}
+                </p>
               </DetailRow>
             )}
           </div>

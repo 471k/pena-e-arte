@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { LiveConnectionState } from "@/shared/hooks/useLiveTrafficHub";
+import { formatRelativeTime } from "@/shared/utils/formatRelativeTime";
 
 const STATE_COPY: Record<LiveConnectionState, { label: string; dot: string }> = {
   connected:    { label: "Live",          dot: "bg-emerald-500" },
@@ -8,28 +9,34 @@ const STATE_COPY: Record<LiveConnectionState, { label: string; dot: string }> = 
   disconnected: { label: "Offline",       dot: "bg-red-500" },
 };
 
-// Bundling `ts` into the same state value as `label` (rather than a ref) means a stale label
-// from a previous ts never flashes before the next interval tick recomputes it, without reading
-// a ref during render. The only setState call site is inside the interval callback (a genuine
-// external-timer subscription), never synchronously in the effect body.
+// `label` deliberately keeps showing the previous tick's value across a `ts` change instead of
+// resetting to null — a label that's stale by at most one 1s tick (still reading e.g. "3s ago"
+// for a moment right after a fresh push) is imperceptible, whereas resetting to null made the
+// "· Updated Xs ago" text visibly disappear and reappear on every single SignalR push. The only
+// setState call site is inside the interval callback (a genuine external-timer subscription),
+// never synchronously in the effect body.
 function useRelativeSeconds(ts: number | null): string | null {
-  const [computed, setComputed] = useState<{ forTs: number; label: string } | null>(null);
+  const [label, setLabel] = useState<string | null>(null);
 
   useEffect(() => {
     if (ts === null) return;
     const id = setInterval(() => {
-      const seconds = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-      setComputed({ forTs: ts, label: seconds < 5 ? "just now" : `${seconds}s ago` });
+      setLabel(formatRelativeTime(Date.now() - ts));
     }, 1000);
     return () => clearInterval(id);
   }, [ts]);
 
-  return ts !== null && computed?.forTs === ts ? computed.label : null;
+  return ts === null ? null : label;
 }
 
 export function LiveStatusBadge({
-  connectionState, lastUpdatedAt, onRefresh,
-}: { connectionState: LiveConnectionState; lastUpdatedAt: number | null; onRefresh?: () => void }) {
+  connectionState, lastUpdatedAt, isRefreshing, onRefresh,
+}: {
+  connectionState: LiveConnectionState;
+  lastUpdatedAt: number | null;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+}) {
   const copy = STATE_COPY[connectionState];
   const relative = useRelativeSeconds(lastUpdatedAt);
 
@@ -42,7 +49,13 @@ export function LiveStatusBadge({
       <span>{copy.label}</span>
       {relative && <span>· Updated {relative}</span>}
       {onRefresh && (
-        <button type="button" onClick={onRefresh} className="ml-1 hover:text-foreground" aria-label="Refresh now">
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className={`ml-1 hover:text-foreground disabled:opacity-60 ${isRefreshing ? "animate-spin" : ""}`}
+          aria-label="Refresh now"
+        >
           ↻
         </button>
       )}

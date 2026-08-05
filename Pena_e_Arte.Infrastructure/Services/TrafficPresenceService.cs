@@ -80,16 +80,8 @@ public class TrafficPresenceService(IConnectionMultiplexer redis, IAppDbContext 
                 if (role is null) guestCount++;
                 else roleCounts[role] = roleCounts.GetValueOrDefault(role) + 1;
 
-                double? latitude = double.TryParse(
-                    fields.GetValueOrDefault("latitude"),
-                    System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out double lat) ? lat : null;
-                double? longitude = double.TryParse(
-                    fields.GetValueOrDefault("longitude"),
-                    System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out double lng) ? lng : null;
+                double? latitude = ParseNullableDouble(fields.GetValueOrDefault("latitude"));
+                double? longitude = ParseNullableDouble(fields.GetValueOrDefault("longitude"));
 
                 visitors.Add(new TrafficPresenceVisitor(
                     VisitorId: visitorId,
@@ -117,4 +109,11 @@ public class TrafficPresenceService(IConnectionMultiplexer redis, IAppDbContext 
     }
 
     private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
+
+    private static double? ParseNullableDouble(string? value) =>
+        double.TryParse(
+            value,
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out double parsed) ? parsed : null;
 }
