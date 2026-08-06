@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useAppSelector } from "@/app/hooks";
 import { router } from "@/app/router";
+import { generateUuid } from "@/shared/utils/uuid";
 
 const VISITOR_ID_KEY = "pea_visitor_id";
 const BEACON_URL = "/api/v1/public/traffic/beacon";
@@ -9,7 +10,7 @@ const HEARTBEAT_INTERVAL_MS = 20_000;
 function getVisitorId(): string {
   let id = localStorage.getItem(VISITOR_ID_KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    id = generateUuid();
     localStorage.setItem(VISITOR_ID_KEY, id);
   }
   return id;
