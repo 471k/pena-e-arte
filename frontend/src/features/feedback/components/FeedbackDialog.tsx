@@ -24,6 +24,7 @@ import {
 } from "@/shared/components/ui/select";
 import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { cn } from "@/shared/utils/cn";
+import { generateUuid } from "@/shared/utils/uuid";
 import { FEEDBACK_TYPE } from "../feedback.types";
 import { useSubmitFeedbackMutation } from "../feedbackApi";
 
@@ -63,7 +64,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
   const [submitted, setSubmitted] = useState(false);
   const [submitFeedback, { isLoading }] = useSubmitFeedbackMutation();
 
-  const [uploadSessionId] = useState(() => crypto.randomUUID());
+  const [uploadSessionId] = useState(() => generateUuid());
   const { upload: uploadFile } = usePresignedUpload();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
@@ -108,7 +109,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
       }
 
       const kind = file.type.startsWith("video/") ? "video" : "image";
-      const id = crypto.randomUUID();
+      const id = generateUuid();
       const previewUrl = kind === "image" ? URL.createObjectURL(file) : null;
       setAttachments((prev) => [
         ...prev,

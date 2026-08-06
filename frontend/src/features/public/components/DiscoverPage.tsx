@@ -161,7 +161,11 @@ function DiscoverMeta() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function DiscoverPage() {
-  const hasGeo = "geolocation" in navigator;
+  // window.isSecureContext guards against Chrome logging "A Geolocation request can
+  // only be fulfilled in a secure context" on every mount when the app is reached over
+  // plain HTTP on a non-localhost origin (e.g. a LAN IP) — the API object is present
+  // either way, but calling it there is a guaranteed, noisy failure.
+  const hasGeo = "geolocation" in navigator && window.isSecureContext;
   const token  = useAppSelector((s) => s.auth.token);
   const user   = useAppSelector((s) => s.auth.user);
   const role   = useAppSelector((s) => s.auth.role);

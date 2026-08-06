@@ -20,6 +20,7 @@ import { useAppSelector }  from "@/app/hooks";
 import { useCurrentUser }  from "@/shared/hooks/useCurrentUser";
 import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { cn }              from "@/shared/utils/cn";
+import { generateUuid }    from "@/shared/utils/uuid";
 import { Role }            from "@/shared/types/roles";
 import {
   useCreateAppointmentMutation,
@@ -348,7 +349,7 @@ export function BookAppointmentForm() {
   // Reference images — uploaded to R2 as they're picked (same presign→PUT flow as
   // Design revisions), before the appointment itself exists, so objects live under a
   // per-form-session key rather than an appointment id.
-  const [uploadSessionId] = useState(() => crypto.randomUUID());
+  const [uploadSessionId] = useState(() => generateUuid());
   const { upload: uploadImage } = usePresignedUpload();
   const [images, setImages] = useState<ReferenceImage[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -376,7 +377,7 @@ export function BookAppointmentForm() {
         continue;
       }
 
-      const id = crypto.randomUUID();
+      const id = generateUuid();
       const previewUrl = URL.createObjectURL(file);
       setImages((prev) => [...prev, { id, previewUrl, status: "uploading", publicUrl: null }]);
 
