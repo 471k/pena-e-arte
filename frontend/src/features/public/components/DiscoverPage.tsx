@@ -227,15 +227,26 @@ export function DiscoverPage() {
         setIsGeoLocating(false);
         await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
       },
-      () => {
-        setLat(DEFAULT_LAT);
-        setLng(DEFAULT_LNG);
-        setLocationName(DEFAULT_CITY);
-        setIsGeoLocating(false);
-      },
-      { timeout: 8000, maximumAge: 60_000 },
+      () => handleGeoFailure(),
+      // 8s was too tight for a cold location fix (Windows Location Services can take
+      // several seconds to warm up on the first request of a session) — a real,
+      // reproduced timeout on first mount fell through to handleGeoFailure below even
+      // though a retry moments later resolved correctly.
+      { timeout: 15_000, maximumAge: 60_000 },
     );
   }, [hasGeo, reverseGeocode]);
+
+  // Geolocation denied/unavailable/timed out — don't silently pretend DEFAULT_CITY was
+  // the user's detected location: that combined with nearOnly's default 50km radius
+  // made real, unrelated-city results disappear with no indication anything failed.
+  // Falling back to the default anchor with nearOnly off shows all results instead.
+  function handleGeoFailure() {
+    setLat(DEFAULT_LAT);
+    setLng(DEFAULT_LNG);
+    setLocationName(DEFAULT_CITY);
+    setNearOnly(false);
+    setIsGeoLocating(false);
+  }
 
   // ── Re-trigger geolocation ────────────────────────────────────────────────
   function handleUseMyLocation() {
@@ -249,13 +260,8 @@ export function DiscoverPage() {
         setIsGeoLocating(false);
         await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
       },
-      () => {
-        setLat(DEFAULT_LAT);
-        setLng(DEFAULT_LNG);
-        setLocationName(DEFAULT_CITY);
-        setIsGeoLocating(false);
-      },
-      { timeout: 8000, maximumAge: 0 },
+      () => handleGeoFailure(),
+      { timeout: 15_000, maximumAge: 0 },
     );
   }
 
