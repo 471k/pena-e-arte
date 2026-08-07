@@ -111,34 +111,6 @@ function PortfolioSkeleton() {
   );
 }
 
-// ── Column distribution ───────────────────────────────────────────────────────
-
-function useColumnCount(): 1 | 2 | 3 {
-  const getCount = (): 1 | 2 | 3 => {
-    if (typeof window === "undefined") return 2;
-    if (window.innerWidth >= 1024) return 3;
-    if (window.innerWidth >= 640)  return 2;
-    return 1;
-  };
-
-  const [count, setCount] = useState<1 | 2 | 3>(getCount);
-
-  // Acceptable useEffect: ResizeObserver/resize event — browser API side-effect.
-  useEffect(() => {
-    const update = () => setCount(getCount());
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  return count;
-}
-
-function distributeToColumns<T>(items: T[], columnCount: number): T[][] {
-  const cols: T[][] = Array.from({ length: columnCount }, () => []);
-  items.forEach((item, i) => cols[i % columnCount].push(item));
-  return cols;
-}
-
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 
 interface LightboxProps {
@@ -451,23 +423,28 @@ interface MasonryGridProps {
 }
 
 function MasonryGrid({ images, onOpen, savedIds, onToggleSave, token }: MasonryGridProps) {
-  const columnCount = useColumnCount();
-  const columns     = distributeToColumns(images, columnCount);
-
+  // CSS multi-column instead of JS index round-robin: the API returns no image
+  // width/height, so column assignment can't be height-balanced ahead of time —
+  // splitting items across a fixed number of JS-tracked columns by index (i %
+  // columnCount) ignores each image's actual rendered height entirely, leaving
+  // large unbalanced gaps under whichever column happened to get the shortest
+  // images. Letting the browser flow items into columns handles this correctly
+  // regardless of item count or height variance.
   return (
-    <div className="flex gap-3" role="list" aria-label="Portfolio images">
-      {columns.map((col, colIdx) => (
-        <div key={colIdx} className="flex flex-col gap-3 flex-1 min-w-0">
-          {col.map((img) => (
-            <PortfolioTile
-              key={img.imageId}
-              image={img}
-              isSaved={savedIds.has(img.imageId)}
-              onOpen={onOpen}
-              onToggleSave={onToggleSave}
-              showBookmark={token !== null}
-            />
-          ))}
+    <div
+      className="columns-1 sm:columns-2 lg:columns-3 gap-3"
+      role="list"
+      aria-label="Portfolio images"
+    >
+      {images.map((img) => (
+        <div key={img.imageId} className="mb-3 break-inside-avoid">
+          <PortfolioTile
+            image={img}
+            isSaved={savedIds.has(img.imageId)}
+            onOpen={onOpen}
+            onToggleSave={onToggleSave}
+            showBookmark={token !== null}
+          />
         </div>
       ))}
     </div>
@@ -487,10 +464,21 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
 
   const lightboxImage = lightboxIndex !== null ? (allImages[lightboxIndex] ?? null) : null;
 
+  // Effective values actually sent to the backend — distinct from the raw nearOnly/lat/lng
+  // props because of the `nearOnly &&` short-circuit below. Effects must key off these, not
+  // the raw props: e.g. nearOnly flipping true→false while lat is still null (geolocation
+  // still resolving) produces the *same* effective args both before and after, so RTK Query
+  // reuses its cached response and issues no new request — a reset effect keyed on the raw
+  // props would still fire, clear allImages, and then never get it refilled since `images`
+  // never changes reference to re-trigger the accumulate effect below.
+  const effectiveLat      = nearOnly && lat != null ? lat : undefined;
+  const effectiveLng      = nearOnly && lng != null ? lng : undefined;
+  const effectiveRadiusKm = nearOnly ? radiusKm : 50;
+
   const feedArgs: PortfolioFeedArgs = {
-    lat:      nearOnly && lat != null ? lat : undefined,
-    lng:      nearOnly && lng != null ? lng : undefined,
-    radiusKm: nearOnly ? radiusKm : 50,
+    lat:      effectiveLat,
+    lng:      effectiveLng,
+    radiusKm: effectiveRadiusKm,
     page,
     style:    activeStyle || undefined,
   };
@@ -514,12 +502,14 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
     }
   }, [images, page]);
 
-  // Reset when nearOnly/location props change — external props driving local pagination state.
+  // Reset when the *effective* query args change — must track what's actually sent to the
+  // backend (see comment above feedArgs), not the raw nearOnly/lat/lng props, or this can
+  // clear allImages without the accumulate effect above ever re-firing to refill it.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
     setAllImages([]);
-  }, [nearOnly, lat, lng]);
+  }, [effectiveLat, effectiveLng, effectiveRadiusKm]);
 
   function handleStyleChange(style: string) {
     setActiveStyle(style);
