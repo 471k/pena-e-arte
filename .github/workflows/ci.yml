@@ -328,6 +328,7 @@ jobs:
       - name: Check user-facing changes updated Help
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -e
 
@@ -357,7 +358,14 @@ jobs:
             exit 0
           fi
 
-          if git log -1 --format='%B' HEAD | grep -q '\[skip-help-sync\]'; then
+          # For pull_request events, actions/checkout resolves HEAD to a synthetic
+          # merge commit (refs/pull/N/merge) whose message GitHub generates itself
+          # ("Merge <sha> into <sha>") — never the PR branch's actual last commit,
+          # so a [skip-help-sync] marker placed there was never actually seen.
+          # github.event.pull_request.head.sha is the PR's real tip commit; fall
+          # back to HEAD for push events, where no synthetic merge exists.
+          MARKER_SHA="${HEAD_SHA:-HEAD}"
+          if git log -1 --format='%B' "$MARKER_SHA" | grep -q '\[skip-help-sync\]'; then
             echo "Gated paths changed without a Help update, but [skip-help-sync] override is"
             echo "present in the latest commit message. Allowing (reviewer's call)."
             exit 0
