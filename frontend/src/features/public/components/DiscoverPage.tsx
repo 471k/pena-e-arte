@@ -183,6 +183,25 @@ export function DiscoverPage() {
   // (the header already displays the resolved location, implying it's in use).
   const [nearOnly,      setNearOnly]      = useState(true);
 
+  // Tracks WHY lat/lng currently holds the value it does — needed because a
+  // keyword search must ignore ambient location ("geo"/"default") but must
+  // respect an explicit city search ("search"). See PortfolioFeed.tsx's
+  // useLocationScope for how this is consumed.
+  type LocationSource = "geo" | "default" | "search";
+  const [locationSource, setLocationSource] = useState<LocationSource>(hasGeo ? "geo" : "default");
+
+  // Free-text content search ("What"), independent of the existing city
+  // search ("Where", searchInput below). Debounced the same setTimeout/cleanup
+  // way useAddressGeocode.ts debounces its own input — a timer side-effect,
+  // not data fetching; RTK Query still owns the actual request.
+  const [keywordInput, setKeywordInput] = useState("");
+  const [keyword,      setKeyword]      = useState("");
+
+  useEffect(() => {
+    const id = setTimeout(() => setKeyword(keywordInput.trim()), 400);
+    return () => clearTimeout(id);
+  }, [keywordInput]);
+
   // Tab state lives in the URL so a shared /discover?tab=studios link opens on the
   // right tab instead of always defaulting to portfolio.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -224,6 +243,7 @@ export function DiscoverPage() {
     setLat(DEFAULT_LAT);
     setLng(DEFAULT_LNG);
     setLocationName(DEFAULT_CITY);
+    setLocationSource("default");
     setNearOnly(false);
     setIsGeoLocating(false);
   }
@@ -237,6 +257,7 @@ export function DiscoverPage() {
         setLat(pos.coords.latitude);
         setLng(pos.coords.longitude);
         setIsGeoLocating(false);
+        setLocationSource("geo");
         await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
       },
       () => handleGeoFailure(),
@@ -258,6 +279,7 @@ export function DiscoverPage() {
         setLat(pos.coords.latitude);
         setLng(pos.coords.longitude);
         setIsGeoLocating(false);
+        setLocationSource("geo");
         await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
       },
       () => handleGeoFailure(),
@@ -285,6 +307,7 @@ export function DiscoverPage() {
       setLat(parseFloat(first.lat));
       setLng(parseFloat(first.lon));
       setLocationName(first.display_name.split(",").slice(0, 2).join(", ").trim());
+      setLocationSource("search");
       setSearchInput("");
       inputRef.current?.blur();
     } catch {
@@ -359,11 +382,29 @@ export function DiscoverPage() {
           </div>
         )}
 
-        {/* Bottom row: search + tabs + location toggle */}
-        <div className="flex items-center gap-2 px-4 pb-2.5 pt-2.5">
-          {/* Search input */}
-          <div className="flex flex-1 items-center gap-2 max-w-sm">
-            <div className="relative flex-1">
+        {/* Bottom row: search + tabs + location toggle. flex-wrap: with two search
+            inputs the cluster no longer fits beside the tabs/location chip below
+            ~640px. */}
+        <div className="flex flex-wrap items-center gap-2 px-4 pb-2.5 pt-2.5">
+          {/* Search cluster — "What" (keyword, Portfolio tab only) + "Where" (city, unchanged) */}
+          <div className="flex flex-1 min-w-full sm:min-w-0 items-center gap-2 max-w-full sm:max-w-lg">
+            {activeTab === "portfolio" && (
+              <div className="relative flex-1 min-w-[110px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5
+                                   text-muted-foreground pointer-events-none" aria-hidden="true" />
+                <input
+                  type="search"
+                  placeholder="Search styles, artists…"
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                  aria-label="Search tattoo styles or artist names"
+                  className="w-full h-9 pl-8 pr-3 rounded-md border bg-background text-xs
+                             focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+                             placeholder:text-muted-foreground"
+                />
+              </div>
+            )}
+            <div className="relative flex-1 min-w-[110px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5
                                  text-muted-foreground pointer-events-none" aria-hidden="true" />
               <input
@@ -520,6 +561,9 @@ export function DiscoverPage() {
                 lng={lng}
                 radiusKm={radiusKm}
                 nearOnly={nearOnly}
+                keyword={keyword}
+                locationSource={locationSource}
+                locationLabel={locationName}
               />
             )}
           </div>

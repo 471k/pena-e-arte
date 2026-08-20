@@ -503,7 +503,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner, Artist],
     title: "Add portfolio images and tag their style",
     route: "/artists",
-    keywords: ["portfolio", "upload image", "tattoo style", "style tag", "discover filter", "no portfolio work"],
+    keywords: ["portfolio", "upload image", "tattoo style", "style tag", "discover filter", "no portfolio work", "keyword search"],
     summary: "Upload work to an artist's portfolio and tag each image with a tattoo style so it shows up in the public Discover page's style filters.",
     steps: [
       "Open an artist's profile and click the \"Portfolio\" tab.",
@@ -512,7 +512,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click the dropdown again at any time to change or clear an image's style.",
     ],
     tips: [
-      "The Discover page's style filters only match an image's own style tag — an artist's \"Specializations\" text on their profile does not make their work appear under a style filter.",
+      "The Discover page's style filter chips only match an image's own style tag. The separate keyword search box (\"Search styles, artists…\") also matches an artist's name and their \"Specializations\" text, so a well-filled-in Specializations field helps your work surface there even for tattoos left untagged.",
       "An image left without a style still shows in the artist's portfolio, but it won't appear when a client filters Discover by style.",
     ],
     relatedArticleIds: ["owner-artists-list"],

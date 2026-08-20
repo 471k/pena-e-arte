@@ -141,6 +141,7 @@ export interface PortfolioFeedArgs {
   page:      number;
   pageSize?: number;
   style?:    string;
+  search?:   string;
 }
 
 // Attaches the JWT when available so authenticated endpoints (e.g. POST reviews)
@@ -183,14 +184,15 @@ export const publicApi = createApi({
       providesTags: ["NearbyStudios"],
     }),
     getPortfolioFeed: builder.query<PortfolioImageResponse[], PortfolioFeedArgs>({
-      query: ({ lat, lng, radiusKm, page, pageSize = 24, style }) => {
+      query: ({ lat, lng, radiusKm, page, pageSize = 24, style, search }) => {
         const params = new URLSearchParams();
         params.set("radiusKm", String(radiusKm));
         params.set("page",     String(page));
         params.set("pageSize", String(pageSize));
         if (lat != null) params.set("lat", String(lat));
         if (lng != null) params.set("lng", String(lng));
-        if (style)       params.set("style", style);
+        if (style)        params.set("style",  style);
+        if (search)       params.set("search", search);
         return `portfolio/feed?${params.toString()}`;
       },
       providesTags: ["PortfolioFeed"],

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { Provider }     from "react-redux";
@@ -335,6 +335,40 @@ describe("DiscoverPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/location not found/i);
   });
+
+  // ── Keyword search ("What" field) ─────────────────────────────────────────
+
+  it("keyword input renders on the Portfolio tab with its accessible label", () => {
+    renderPage();
+    expect(
+      screen.getByLabelText(/search tattoo styles or artist names/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keyword input is absent when the Studios tab is active", async () => {
+    renderPage();
+    await switchToStudiosTab();
+    expect(
+      screen.queryByLabelText(/search tattoo styles or artist names/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("typing a keyword sends a debounced search param in the feed request", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    const input = screen.getByLabelText(/search tattoo styles or artist names/i);
+    await user.type(input, "dragon");
+
+    await waitFor(() => expect(capturedUrl).toContain("search=dragon"), { timeout: 3000 });
+  }, 10000);
 
   // ── Tab switching ───────────────────────────────────────────────────────
 

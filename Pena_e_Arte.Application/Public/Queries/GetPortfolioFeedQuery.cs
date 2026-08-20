@@ -13,7 +13,8 @@ public record GetPortfolioFeedQuery(
     double RadiusKm,
     int Page,
     int PageSize = 24,
-    string? Style = null) : IRequest<List<PortfolioImageResponse>>;
+    string? Style = null,
+    string? Search = null) : IRequest<List<PortfolioImageResponse>>;
 
 public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer redis)
     : IRequestHandler<GetPortfolioFeedQuery, List<PortfolioImageResponse>>
@@ -64,6 +65,16 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
 
         if (!string.IsNullOrWhiteSpace(query.Style))
             imageQuery = imageQuery.Where(p => p.Style == query.Style);
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            string search = query.Search.Trim().ToLower();
+            imageQuery = imageQuery.Where(p =>
+                (p.Style != null && p.Style.ToLower().Contains(search)) ||
+                p.Artist.FirstName.ToLower().Contains(search) ||
+                p.Artist.LastName.ToLower().Contains(search) ||
+                (p.Artist.Specializations != null && p.Artist.Specializations.ToLower().Contains(search)));
+        }
 
         List<PortfolioImage> images = await imageQuery
             .OrderByDescending(p => p.CreatedAt)

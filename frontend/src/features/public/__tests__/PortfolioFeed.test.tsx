@@ -27,7 +27,11 @@ function renderFeed(props: Partial<React.ComponentProps<typeof PortfolioFeed>> =
   render(
     <Provider store={makeStore()}>
       <MemoryRouter>
-        <PortfolioFeed lat={null} lng={null} radiusKm={50} nearOnly={false} {...props} />
+        <PortfolioFeed
+          lat={null} lng={null} radiusKm={50} nearOnly={false}
+          keyword="" locationSource="default" locationLabel="Lisbon, Portugal"
+          {...props}
+        />
       </MemoryRouter>
     </Provider>,
   );
@@ -263,6 +267,78 @@ describe("PortfolioFeed", () => {
     // Wait for the network call to fire
     await screen.findByText(/no portfolio work yet/i);
     expect(capturedUrl).toContain("style=realism");
+  });
+
+  // ── Keyword search ─────────────────────────────────────────────────────────
+
+  it("a non-empty keyword sends the search param in the feed request", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderFeed({ keyword: "dragon" });
+    await screen.findByText(/no tattoos matching/i);
+    expect(capturedUrl).toContain("search=dragon");
+  });
+
+  it("a keyword search ignores ambient (non-explicit) location", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderFeed({
+      keyword: "dragon", lat: 38.7, lng: -9.1, nearOnly: true, locationSource: "geo",
+    });
+    await screen.findByText(/no tattoos matching/i);
+    expect(capturedUrl).not.toContain("lat=");
+    expect(capturedUrl).not.toContain("lng=");
+  });
+
+  it("a keyword search respects an explicit city search", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderFeed({
+      keyword: "dragon", lat: 38.7, lng: -9.1, nearOnly: true, locationSource: "search",
+    });
+    await screen.findByText(/no tattoos matching/i);
+    expect(capturedUrl).toContain("search=dragon");
+    expect(capturedUrl).toContain("lat=");
+    expect(capturedUrl).toContain("lng=");
+  });
+
+  it("no-keyword behavior is unchanged: location still applies regardless of locationSource", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json(IMAGES);
+      }),
+    );
+    renderFeed({ keyword: "", lat: 38.7, lng: -9.1, nearOnly: true, locationSource: "geo" });
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    expect(capturedUrl).toContain("lat=");
+    expect(capturedUrl).toContain("lng=");
+  });
+
+  it("empty-result state with a keyword shows the keyword-specific message", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", () =>
+        HttpResponse.json([]),
+      ),
+    );
+    renderFeed({ keyword: "oni" });
+    expect(await screen.findByText(/no tattoos matching "oni"/i)).toBeInTheDocument();
   });
 
   // ── Lightbox navigation ────────────────────────────────────────────────────
