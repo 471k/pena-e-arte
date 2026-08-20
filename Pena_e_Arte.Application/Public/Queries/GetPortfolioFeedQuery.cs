@@ -66,6 +66,10 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
         if (!string.IsNullOrWhiteSpace(query.Style))
             imageQuery = imageQuery.Where(p => p.Style == query.Style);
 
+        // Known limitation: leading-wildcard Contains() across 4 columns can't use an index and
+        // runs on every debounced keystroke from this unauthenticated public endpoint. Matches
+        // existing precedent (GetArtistsQuery/GetClientsQuery) rather than introducing a new
+        // pattern; revisit with full-text search or a MySQL FULLTEXT index if this becomes hot.
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             string search = query.Search.Trim().ToLower();
