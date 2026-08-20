@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Activity, BarChart3, Building2, CreditCard, HelpCircle, LayoutDashboard, MessageSquare, PenLine, Receipt, ScrollText, Share2 } from "lucide-react";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { NavDrawer } from "@/shared/components/NavDrawer";
+import { shouldOpenNavDrawerForTourStep } from "@/shared/utils/shouldOpenNavDrawerForTourStep";
 import type { NavItem } from "@/shared/types/navItem";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
@@ -74,7 +75,7 @@ export function IssuerLayout() {
         <NavDrawer navItems={navItems} title="Platform Admin" open={navOpen} onOpenChange={setNavOpen} />
 
         <div className="ml-auto flex items-center gap-3">
-          <HelpMenu onBeforeTourStep={(step) => setNavOpen(step.targetSelector.endsWith('-nav"]'))} />
+          <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

@@ -96,6 +96,14 @@ export function OnboardingTour({ steps, onComplete, onSkip, onBeforeStep }: Onbo
       rafId1 = requestAnimationFrame(() => {
         rafId2 = requestAnimationFrame(() => measure(0));
       });
+    } else if (onBeforeStep) {
+      // onBeforeStep may trigger a state update elsewhere (e.g. opening a
+      // drawer) to reveal the target — that update hasn't committed to the
+      // DOM yet in this same synchronous tick, so measuring immediately
+      // would only see whatever was already there before the update.
+      rafId1 = requestAnimationFrame(() => {
+        rafId2 = requestAnimationFrame(() => measure(0));
+      });
     } else {
       measure(0);
     }

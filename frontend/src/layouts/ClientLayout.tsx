@@ -9,6 +9,7 @@ import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { NavDrawer } from "@/shared/components/NavDrawer";
+import { shouldOpenNavDrawerForTourStep } from "@/shared/utils/shouldOpenNavDrawerForTourStep";
 import type { NavItem } from "@/shared/types/navItem";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
@@ -70,7 +71,7 @@ export function ClientLayout() {
         <NavDrawer navItems={NAV_ITEMS} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
 
         <div className="ml-auto flex items-center gap-3">
-          <HelpMenu onBeforeTourStep={(step) => setNavOpen(step.targetSelector.endsWith('-nav"]'))} />
+          <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

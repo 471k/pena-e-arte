@@ -11,6 +11,7 @@ import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { Button } from "@/shared/components/ui/button";
 import { NavDrawer } from "@/shared/components/NavDrawer";
+import { shouldOpenNavDrawerForTourStep } from "@/shared/utils/shouldOpenNavDrawerForTourStep";
 import type { NavItem } from "@/shared/types/navItem";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
@@ -91,7 +92,7 @@ export function OwnerLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
-          <HelpMenu onBeforeTourStep={(step) => setNavOpen(step.targetSelector.endsWith('-nav"]'))} />
+          <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>
