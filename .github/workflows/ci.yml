@@ -93,7 +93,7 @@ jobs:
         run: docker rm -f ci-mysql || true
 
       - name: Publish test results
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Backend test results
