@@ -279,6 +279,23 @@ export function PaymentListPage() {
             keyExtractor={(p) => p.id}
             onRowClick={(p) => navigate(`/payments/${p.appointmentId}`)}
             emptyMessage={tableEmptyMessage}
+            mobileCard={(p) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium truncate">{p.clientName || "—"}</span>
+                  <PaymentStatusBadge status={p.status} />
+                </div>
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-muted-foreground">
+                    {p.appointmentDate ? formatDate(p.appointmentDate) : "—"}
+                  </span>
+                  <span className="font-semibold">{formatCurrency(p.amount)}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {p.method}{p.paidAt ? ` · Paid ${formatDate(p.paidAt)}` : ""}
+                </p>
+              </div>
+            )}
           />
         )}
 

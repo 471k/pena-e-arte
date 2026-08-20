@@ -271,4 +271,21 @@ describe("OwnerLayout", () => {
     const artistsLink = screen.getByRole("link", { name: /^artists$/i });
     expect(artistsLink.className).not.toMatch(/bg-primary/);
   });
+
+  it("renders a mobile nav drawer trigger", () => {
+    renderLayout();
+    expect(screen.getByRole("button", { name: /open navigation menu/i })).toBeInTheDocument();
+  });
+
+  it("opening the drawer and clicking a nav item navigates and closes it", async () => {
+    const user = userEvent.setup();
+    renderLayout({}, "/dashboard");
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const artistsLinks = await screen.findAllByRole("link", { name: /^artists$/i });
+    await user.click(artistsLinks[artistsLinks.length - 1]);
+
+    await screen.findByTestId("outlet");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });

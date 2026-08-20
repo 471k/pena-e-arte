@@ -17,7 +17,7 @@ function getStepsForRole(role: Role, hasMultipleStudios: boolean): TourStep[] {
   }
 }
 
-export function useOnboardingTour(role: Role | null) {
+export function useOnboardingTour(role: Role | null, onBeforeStep?: (step: TourStep) => void) {
   const [forceActive, setForceActive] = useState(false);
   // Hides the tour immediately on skip/complete without waiting for the
   // invalidated status query to refetch over the network.
@@ -45,7 +45,7 @@ export function useOnboardingTour(role: Role | null) {
   const steps = role ? getStepsForRole(role, (studios?.length ?? 0) > 1) : [];
 
   const tourElement = shouldShow && role
-    ? <OnboardingTour steps={steps} onComplete={finish} onSkip={finish} />
+    ? <OnboardingTour steps={steps} onComplete={finish} onSkip={finish} onBeforeStep={onBeforeStep} />
     : null;
 
   return { tourElement, restartTour };

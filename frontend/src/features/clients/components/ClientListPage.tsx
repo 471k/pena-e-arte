@@ -165,6 +165,18 @@ export function ClientListPage() {
             keyExtractor={(c) => c.id}
             onRowClick={(c) => navigate(`/clients/${c.id}`)}
             emptyMessage={search ? `No clients match "${search}".` : "No clients in this studio yet."}
+            mobileCard={(c) => (
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
+                  {c.firstName[0]?.toUpperCase()}{c.lastName[0]?.toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium truncate">{c.firstName} {c.lastName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{c.email}{c.phone ? ` · ${c.phone}` : ""}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </div>
+            )}
           />
         )}
       </main>

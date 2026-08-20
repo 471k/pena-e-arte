@@ -212,15 +212,42 @@ describe("Artists feature", () => {
     // header row + 3 data rows
     expect(rows.length).toBeGreaterThanOrEqual(4);
 
-    expect(screen.getByText("Elena Martins")).toBeInTheDocument();
-    expect(screen.getByText("Marco Silva")).toBeInTheDocument();
-    expect(screen.getByText("Sara Costa")).toBeInTheDocument();
+    // Each name appears twice — once in the mobileCard, once in the table (dual-render).
+    expect(screen.getAllByText("Elena Martins")).toHaveLength(2);
+    expect(screen.getAllByText("Marco Silva")).toHaveLength(2);
+    expect(screen.getAllByText("Sara Costa")).toHaveLength(2);
 
     // Data rows have cursor-pointer class
     const dataRows = rows.slice(1);
     for (const row of dataRows) {
       expect(row).toHaveClass("cursor-pointer");
     }
+  });
+
+  it("renders a mobileCard with specializations and Edit/Delete actions for each artist (Owner role)", async () => {
+    renderList();
+    await screen.findAllByRole("row");
+
+    const cardList = screen.getByRole("list");
+    expect(within(cardList).getByText("Elena Martins")).toBeInTheDocument();
+    expect(within(cardList).getByText("Traditional")).toBeInTheDocument();
+    expect(within(cardList).getByText("Realism")).toBeInTheDocument();
+    expect(within(cardList).getAllByRole("button", { name: /edit/i }).length).toBeGreaterThanOrEqual(1);
+    expect(within(cardList).getAllByRole("button", { name: /delete/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("clicking Delete inside a mobileCard does not also trigger row navigation", async () => {
+    const user = userEvent.setup();
+    renderList();
+    await screen.findAllByRole("row");
+
+    const cardList = screen.getByRole("list");
+    const [deleteButton] = within(cardList).getAllByRole("button", { name: /delete/i });
+    await user.click(deleteButton);
+
+    // Row navigation did not fire — still on the list page, now showing the confirm state.
+    expect(screen.getByPlaceholderText(/search by name or email/i)).toBeInTheDocument();
+    expect(within(cardList).getAllByRole("button", { name: /confirm/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   // 2. Clicking Elena navigates to detail view
@@ -230,8 +257,8 @@ describe("Artists feature", () => {
 
     await screen.findAllByRole("row");
 
-    const elenaCell = await screen.findByText("Elena Martins");
-    await user.click(elenaCell);
+    const [, elenaTableCell] = await screen.findAllByText("Elena Martins");
+    await user.click(elenaTableCell);
 
     // Avatar initials
     await screen.findByText("EM");

@@ -176,3 +176,30 @@ describe("AppointmentCard", () => {
   explicitly flagging the gap
 - No shipping a user-facing change without updating `helpContent.ts`, the
   standalone manual, and any affected onboarding-tour step in the same change
+
+---
+
+## Mobile / Responsive Conventions
+
+Breakpoints: use Tailwind's default `sm` (640px) and `lg` (1024px) tokens
+only — do not add custom breakpoints to `index.css`'s `@theme`.
+
+- Below `sm`: phone. Stacked/card layouts, full-width controls.
+- `sm`–`lg`: tablet/narrow desktop. Most pages behave like desktop but
+  dense controls (nav, action-button rows) still collapse.
+- `lg`+: desktop. No special-casing needed beyond what's already there.
+
+Touch targets: minimum 44×44px hit area for any tappable element below
+`sm` (buttons, nav items, icon-only actions, table row actions). Above
+`sm`, denser desktop sizing is fine.
+
+Navigation: use `shared/components/NavDrawer.tsx` (a `Sheet`-based drawer,
+`lg:hidden`) for any role layout's primary nav — do not build a new
+off-canvas/hamburger pattern. Desktop (`lg`+) nav stays a plain horizontal
+`<nav>`, wrapped `hidden lg:flex`.
+
+Tables: use `DataTable`'s `mobileCard` prop for any list of records with
+more than ~3 columns — do not ship a bare `<Table>` for tabular data meant
+to be usable on a phone. `DataTable` without `mobileCard` still gets an
+`overflow-x-auto` wrapper automatically, so it never regresses, but a
+horizontally-scrolled dense table is a fallback, not a target state.

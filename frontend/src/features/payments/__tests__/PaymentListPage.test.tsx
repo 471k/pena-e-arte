@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -140,8 +140,9 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    expect(await screen.findByText("Maria Silva")).toBeInTheDocument();
-    expect(screen.getByText("João Santos")).toBeInTheDocument();
+    // Appears twice per payment: once in the mobileCard, once in the table (dual-render).
+    expect(await screen.findAllByText("Maria Silva")).toHaveLength(2);
+    expect(screen.getAllByText("João Santos")).toHaveLength(2);
   });
 
   it("renders the formatted amount in each row", async () => {
@@ -151,8 +152,9 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    // Amount 100 → "100,00 €" in pt-PT locale (or similar)
-    expect(await screen.findByText(/100/)).toBeInTheDocument();
+    // Amount 100 → "100,00 €" in pt-PT locale (or similar); appears in both the
+    // mobileCard and the table (dual-render).
+    expect(await screen.findAllByText(/100/)).not.toHaveLength(0);
   });
 
   it("renders a status badge for each payment", async () => {
@@ -162,7 +164,7 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
     // "Paid" / "Cash Pending" may appear in both the filter pill and the badge
     expect(screen.getAllByText("Paid").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Cash Pending").length).toBeGreaterThanOrEqual(1);
@@ -175,9 +177,13 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
+    // PAYMENT_CARD has a paidAt, so its mobileCard text combines "Card · Paid …" —
+    // distinct from the table's plain "Card" cell, so this one stays a single match.
     expect(screen.getByText("Card")).toBeInTheDocument();
-    expect(screen.getByText("Cash")).toBeInTheDocument();
+    // PAYMENT_CASH has no paidAt, so its mobileCard text is just "Cash" — identical
+    // to the table's plain "Cash" cell, so this one legitimately duplicates.
+    expect(screen.getAllByText("Cash")).toHaveLength(2);
   });
 
   it("clicking a row navigates to /payments/:appointmentId", async () => {
@@ -188,7 +194,8 @@ describe("PaymentListPage", () => {
     );
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByText("Maria Silva"));
+    const [, tableNameCell] = await screen.findAllByText("Maria Silva");
+    await user.click(tableNameCell);
     expect(screen.getByTestId("detail-page")).toBeInTheDocument();
   });
 
@@ -207,7 +214,7 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
     expect(screen.queryByRole("button", { name: /load more/i })).not.toBeInTheDocument();
   });
 
@@ -218,7 +225,7 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    await screen.findByText("Client 0");
+    await screen.findAllByText("Client 0");
     expect(screen.getByRole("button", { name: /load more/i })).toBeInTheDocument();
   });
 
@@ -229,7 +236,7 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    await screen.findByText("Client 0");
+    await screen.findAllByText("Client 0");
     expect(screen.getByText("20 payments")).toBeInTheDocument();
   });
 
@@ -250,12 +257,12 @@ describe("PaymentListPage", () => {
 
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Client 0");
+    await screen.findAllByText("Client 0");
 
     await user.click(screen.getByRole("button", { name: /load more/i }));
 
-    expect(await screen.findByText("Extra Client")).toBeInTheDocument();
-    expect(screen.getByText("Client 0")).toBeInTheDocument(); // previous page still shown
+    expect(await screen.findAllByText("Extra Client")).toHaveLength(2);
+    expect(screen.getAllByText("Client 0")).toHaveLength(2); // previous page still shown
   });
 
   // ── Rich empty state ──────────────────────────────────────────────────────────
@@ -283,7 +290,7 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
     expect(screen.getAllByRole("button", { name: /^view$/i })).toHaveLength(2);
   });
 
@@ -295,7 +302,7 @@ describe("PaymentListPage", () => {
     );
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
     await user.click(screen.getByRole("button", { name: /^view$/i }));
     expect(screen.getByTestId("detail-page")).toBeInTheDocument();
   });
@@ -309,7 +316,7 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
     expect(screen.getByPlaceholderText(/search by client name/i)).toBeInTheDocument();
   });
 
@@ -321,11 +328,11 @@ describe("PaymentListPage", () => {
     );
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
 
     await user.type(screen.getByPlaceholderText(/search by client name/i), "Maria");
 
-    expect(screen.getByText("Maria Silva")).toBeInTheDocument();
+    expect(screen.getAllByText("Maria Silva")).toHaveLength(2);
     expect(screen.queryByText("João Santos")).not.toBeInTheDocument();
   });
 
@@ -337,11 +344,11 @@ describe("PaymentListPage", () => {
     );
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("João Santos");
+    await screen.findAllByText("João Santos");
 
     await user.type(screen.getByPlaceholderText(/search by client name/i), "joão");
 
-    expect(screen.getByText("João Santos")).toBeInTheDocument();
+    expect(screen.getAllByText("João Santos")).toHaveLength(2);
     expect(screen.queryByText("Maria Silva")).not.toBeInTheDocument();
   });
 
@@ -354,7 +361,7 @@ describe("PaymentListPage", () => {
       ),
     );
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
 
     // PAYMENT_CARD is "Paid", PAYMENT_CASH is "CashPending" (displayed as "Cash Pending")
     expect(screen.getByRole("button", { name: "Paid" })).toBeInTheDocument();
@@ -369,11 +376,11 @@ describe("PaymentListPage", () => {
     );
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
 
     await user.click(screen.getByRole("button", { name: "Paid" }));
 
-    expect(screen.getByText("Maria Silva")).toBeInTheDocument();   // Paid
+    expect(screen.getAllByText("Maria Silva")).toHaveLength(2);   // Paid
     expect(screen.queryByText("João Santos")).not.toBeInTheDocument(); // CashPending
   });
 
@@ -385,12 +392,28 @@ describe("PaymentListPage", () => {
     );
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Maria Silva");
+    await screen.findAllByText("Maria Silva");
 
     await user.click(screen.getByRole("button", { name: "Paid" }));
     expect(screen.queryByText("João Santos")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Paid" }));
-    expect(screen.getByText("João Santos")).toBeInTheDocument();
+    expect(screen.getAllByText("João Santos")).toHaveLength(2);
+  });
+
+  // ── mobileCard ─────────────────────────────────────────────────────────────────
+
+  it("renders a mobileCard combining method and paid date on one line when paidAt is set", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD]),
+      ),
+    );
+    renderPage();
+    await screen.findAllByText("Maria Silva");
+
+    const cardList = screen.getByRole("list");
+    expect(within(cardList).getByText("Maria Silva")).toBeInTheDocument();
+    expect(within(cardList).getByText(/Card · Paid/)).toBeInTheDocument();
   });
 });

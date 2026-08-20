@@ -229,4 +229,30 @@ describe("ArtistLayout", () => {
     expect(screen.queryByRole("link", { name: /reactivate your subscription/i })).not.toBeInTheDocument();
     expect(screen.getByText(/contact your studio owner/i)).toBeInTheDocument();
   });
+
+  it("renders a mobile nav drawer trigger", () => {
+    renderLayout();
+    expect(screen.getByRole("button", { name: /open navigation menu/i })).toBeInTheDocument();
+  });
+
+  it("opening the drawer includes the conditional 'My Portfolio' item once the artist record loads", async () => {
+    const user = userEvent.setup();
+    renderLayout();
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const portfolioLinks = await screen.findAllByRole("link", { name: /my portfolio/i });
+    expect(portfolioLinks.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("opening the drawer and clicking a nav item navigates and closes it", async () => {
+    const user = userEvent.setup();
+    renderLayout({}, "/schedule");
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const clientsLinks = await screen.findAllByRole("link", { name: /^clients$/i });
+    await user.click(clientsLinks[clientsLinks.length - 1]);
+
+    await screen.findByTestId("outlet");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });

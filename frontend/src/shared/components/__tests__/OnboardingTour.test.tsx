@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -111,6 +112,40 @@ describe("OnboardingTour", () => {
 
     expect(await screen.findByText("Designs page", {}, { timeout: 3000 })).toBeInTheDocument();
   }, 10000);
+
+  it("calls onBeforeStep once per step, before the target needs to resolve — e.g. mounting a drawer's content on demand", async () => {
+    const onBeforeStep = vi.fn();
+
+    function DrawerHost() {
+      const [drawerOpen, setDrawerOpen] = useState(false);
+      return (
+        <>
+          {drawerOpen && <button data-tour="drawer-target">Drawer Target</button>}
+          <OnboardingTour
+            steps={[{ targetSelector: '[data-tour="drawer-target"]', title: "Drawer step", body: "Body" }]}
+            onComplete={vi.fn()}
+            onSkip={vi.fn()}
+            onBeforeStep={(step) => {
+              onBeforeStep(step);
+              setDrawerOpen(true);
+            }}
+          />
+        </>
+      );
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/start"]}>
+        <DrawerHost />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("dialog", { name: "Drawer step" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(onBeforeStep).toHaveBeenCalledTimes(1);
+    expect(onBeforeStep).toHaveBeenCalledWith(
+      expect.objectContaining({ targetSelector: '[data-tour="drawer-target"]' }),
+    );
+  });
 
   it("advances to the next step and calls onComplete after the last step's Done button", async () => {
     const user = userEvent.setup();
