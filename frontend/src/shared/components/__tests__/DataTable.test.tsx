@@ -95,4 +95,78 @@ describe("DataTable", () => {
     const rows = screen.getAllByRole("row").slice(1);
     rows.forEach((row) => expect(row).not.toHaveClass("cursor-pointer"));
   });
+
+  describe("mobileCard", () => {
+    it("without mobileCard: table is wrapped in overflow-x-auto, no card list rendered", () => {
+      renderTable();
+      expect(screen.queryByRole("list")).not.toBeInTheDocument();
+      const table = screen.getByRole("table");
+      // The Table UI primitive wraps <table> in its own div — DataTable's
+      // overflow-x-auto wrapper is the grandparent, not the direct parent.
+      expect(table.parentElement?.parentElement).toHaveClass("overflow-x-auto");
+    });
+
+    it("with mobileCard and non-empty data: both the card list and the table wrapper are present", () => {
+      render(
+        <DataTable
+          columns={COLUMNS}
+          data={DATA}
+          keyExtractor={(row) => row.id}
+          mobileCard={(row) => <span>{row.name} card</span>}
+        />,
+      );
+      expect(screen.getByRole("list")).toBeInTheDocument();
+      expect(screen.getByText("Alice card")).toBeInTheDocument();
+      const table = screen.getByRole("table");
+      expect(table.parentElement?.parentElement).toHaveClass("hidden", "sm:block");
+    });
+
+    it("with mobileCard and empty data: card list is not rendered, table's emptyMessage row shows without hidden sm:block", () => {
+      render(
+        <DataTable
+          columns={COLUMNS}
+          data={[]}
+          keyExtractor={(row) => row.id}
+          mobileCard={(row) => <span>{row.name} card</span>}
+          emptyMessage="Nothing to show."
+        />,
+      );
+      expect(screen.queryByRole("list")).not.toBeInTheDocument();
+      expect(screen.getByText("Nothing to show.")).toBeInTheDocument();
+      const table = screen.getByRole("table");
+      expect(table.parentElement?.parentElement).not.toHaveClass("hidden");
+    });
+
+    it("onRowClick fires from a card listitem click", async () => {
+      const user = userEvent.setup();
+      const onClick = vi.fn();
+      render(
+        <DataTable
+          columns={COLUMNS}
+          data={DATA}
+          keyExtractor={(row) => row.id}
+          onRowClick={onClick}
+          mobileCard={(row) => <span>{row.name} card</span>}
+        />,
+      );
+      await user.click(screen.getByText("Alice card"));
+      expect(onClick).toHaveBeenCalledWith(DATA[0]);
+    });
+
+    it("onRowClick fires from a table row click when mobileCard is also present", async () => {
+      const user = userEvent.setup();
+      const onClick = vi.fn();
+      render(
+        <DataTable
+          columns={COLUMNS}
+          data={DATA}
+          keyExtractor={(row) => row.id}
+          onRowClick={onClick}
+          mobileCard={(row) => <span>{row.name} card</span>}
+        />,
+      );
+      await user.click(screen.getAllByText("Alice")[0].closest("tr")!);
+      expect(onClick).toHaveBeenCalledWith(DATA[0]);
+    });
+  });
 });

@@ -16,13 +16,37 @@ export interface OnboardingTourProps {
   steps: TourStep[];
   onComplete: () => void;
   onSkip: () => void;
+  /** Called once per step, before the target element is searched for —
+   *  use this to open a container (e.g. a mobile nav drawer) that the
+   *  step's target may be hidden inside. */
+  onBeforeStep?: (step: TourStep) => void;
 }
 
 const MAX_POLL_ATTEMPTS = 20;
+const DUPLICATE_MATCH_POLL_ATTEMPTS = 4;
 const POLL_INTERVAL_MS = 50;
 const SPOTLIGHT_PADDING = 6;
 
-export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProps) {
+// A target selector can match more than one element at once — e.g. a nav item
+// rendered both in the always-in-DOM desktop nav and in a mobile NavDrawer's
+// Sheet content. The hidden one (display:none, zero-size) is often first in
+// DOM order, so a plain first-match lookup can silently target it while a
+// visible copy is still mounting (e.g. a drawer sliding open). Only bother
+// checking layout when there's more than one candidate — with a single match
+// (the overwhelming common case) there's no ambiguity to resolve, and jsdom
+// (no real layout engine, every rect reads 0×0) would otherwise make every
+// step pay the full poll timeout for nothing.
+function resolveTarget(selector: string): { el: Element | null; ambiguous: boolean } {
+  const candidates = document.querySelectorAll(selector);
+  if (candidates.length <= 1) return { el: candidates[0] ?? null, ambiguous: false };
+  for (const el of candidates) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) return { el, ambiguous: false };
+  }
+  return { el: candidates[0], ambiguous: true };
+}
+
+export function OnboardingTour({ steps, onComplete, onSkip, onBeforeStep }: OnboardingTourProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const navigate = useNavigate();
@@ -36,6 +60,7 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
   // element (route changes render asynchronously) up to ~1s before giving up.
   useEffect(() => {
     if (!step) return;
+    onBeforeStep?.(step);
     let cancelled = false;
     let rafId1 = 0;
     let rafId2 = 0;
@@ -43,13 +68,19 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
 
     function measure(attempt: number) {
       if (cancelled) return;
-      const el = document.querySelector(step!.targetSelector);
+      const { el, ambiguous } = resolveTarget(step!.targetSelector);
       if (!el) {
         if (attempt < MAX_POLL_ATTEMPTS) {
           pollTimer = setTimeout(() => measure(attempt + 1), POLL_INTERVAL_MS);
         } else {
           skipUnresolvableStep();
         }
+        return;
+      }
+      // Multiple matches and none visible yet (e.g. a drawer still sliding
+      // open) — give it a short window before settling for the first match.
+      if (ambiguous && attempt < DUPLICATE_MATCH_POLL_ATTEMPTS) {
+        pollTimer = setTimeout(() => measure(attempt + 1), POLL_INTERVAL_MS);
         return;
       }
       setTargetRect(el.getBoundingClientRect());
@@ -62,6 +93,14 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
 
     if (step.route && location.pathname !== step.route) {
       navigate(step.route);
+      rafId1 = requestAnimationFrame(() => {
+        rafId2 = requestAnimationFrame(() => measure(0));
+      });
+    } else if (onBeforeStep) {
+      // onBeforeStep may trigger a state update elsewhere (e.g. opening a
+      // drawer) to reveal the target — that update hasn't committed to the
+      // DOM yet in this same synchronous tick, so measuring immediately
+      // would only see whatever was already there before the update.
       rafId1 = requestAnimationFrame(() => {
         rafId2 = requestAnimationFrame(() => measure(0));
       });
@@ -87,12 +126,12 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
   useEffect(() => {
     if (!step || !targetRect) return;
     function recompute() {
-      const el = document.querySelector(step!.targetSelector);
+      const { el } = resolveTarget(step!.targetSelector);
       if (el) setTargetRect(el.getBoundingClientRect());
     }
     window.addEventListener("resize", recompute);
     window.addEventListener("scroll", recompute, true);
-    const el = document.querySelector(step.targetSelector);
+    const { el } = resolveTarget(step.targetSelector);
     const observer = new ResizeObserver(recompute);
     if (el) observer.observe(el);
     return () => {

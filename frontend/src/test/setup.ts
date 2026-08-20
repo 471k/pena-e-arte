@@ -65,6 +65,21 @@ class MockResizeObserver {
 }
 window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 
+// JSDOM has no layout engine and doesn't implement matchMedia at all. Default
+// min-width queries to matching — JSDOM's own default viewport (1024×768) is
+// desktop-sized, and no test currently depends on a mobile default. Tests that
+// need to simulate a narrow viewport can reassign window.matchMedia themselves.
+window.matchMedia = window.matchMedia || ((query: string) => ({
+  matches: query.includes("min-width"),
+  media: query,
+  onchange: null,
+  addListener: () => {},
+  removeListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  dispatchEvent: () => false,
+})) as typeof window.matchMedia;
+
 // globals: false means @testing-library/react never auto-registers afterEach(cleanup).
 // Each test would otherwise accumulate the previous test's DOM.
 afterEach(() => {

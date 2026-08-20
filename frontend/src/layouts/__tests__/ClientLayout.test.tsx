@@ -192,4 +192,23 @@ describe("ClientLayout", () => {
     expect(screen.getByText(/contact the studio/i)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /reactivate your subscription/i })).not.toBeInTheDocument();
   });
+
+  it("renders a mobile nav drawer trigger", () => {
+    renderLayout();
+    expect(screen.getByRole("button", { name: /open navigation menu/i })).toBeInTheDocument();
+  });
+
+  it("opening the drawer and clicking a nav item navigates and closes it", async () => {
+    const user = userEvent.setup();
+    renderLayout({}, "/book");
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const drawerDesignsLink = await screen.findAllByRole("link", { name: /my designs/i });
+    // Two matches once open: the desktop nav link (hidden lg:flex, still in DOM) and the drawer's.
+    expect(drawerDesignsLink.length).toBeGreaterThanOrEqual(1);
+    await user.click(drawerDesignsLink[drawerDesignsLink.length - 1]);
+
+    await screen.findByTestId("outlet");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });

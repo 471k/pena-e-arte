@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -179,5 +179,41 @@ describe("IssuerLayout", () => {
   it("does not render a ReadOnlyBanner (IssuerLayout has no banner)", () => {
     renderLayout();
     expect(screen.queryByRole("button", { name: /dismiss/i })).not.toBeInTheDocument();
+  });
+
+  it("renders a mobile nav drawer trigger", () => {
+    renderLayout();
+    expect(screen.getByRole("button", { name: /open navigation menu/i })).toBeInTheDocument();
+  });
+
+  it("opening the drawer and clicking a nav item navigates and closes it", async () => {
+    const user = userEvent.setup();
+    renderLayout("/platform");
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const studiosLinks = await screen.findAllByRole("link", { name: /^studios$/i });
+    await user.click(studiosLinks[studiosLinks.length - 1]);
+
+    await screen.findByTestId("outlet");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows the open-feedback badge count on both the desktop nav's and the drawer's Feedback item", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/feedback", () =>
+        HttpResponse.json([{ id: "fb-1" }, { id: "fb-2" }]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderLayout();
+
+    const desktopFeedbackLink = await screen.findByRole("link", { name: /^feedback/i });
+    expect(await within(desktopFeedbackLink).findByText("2")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    // Radix marks background content aria-hidden while the sheet is open, so
+    // only the drawer's own Feedback link is queryable by role at this point.
+    const drawerFeedbackLink = await screen.findByRole("link", { name: /^feedback/i });
+    expect(within(drawerFeedbackLink).getByText("2")).toBeInTheDocument();
   });
 });

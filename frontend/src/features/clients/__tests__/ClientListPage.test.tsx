@@ -104,42 +104,53 @@ describe("ClientListPage", () => {
 
   it("renders client full names", async () => {
     renderPage();
-    expect(await screen.findByText("João Silva")).toBeInTheDocument();
-    expect(screen.getByText("Maria Ferreira")).toBeInTheDocument();
+    // Appears twice per client: once in the mobileCard, once in the table (dual-render).
+    expect(await screen.findAllByText("João Silva")).toHaveLength(2);
+    expect(screen.getAllByText("Maria Ferreira")).toHaveLength(2);
   });
 
   it("renders initials avatar for each client", async () => {
     renderPage();
-    await screen.findByText("João Silva");
-    expect(screen.getByText("JS")).toBeInTheDocument();
-    expect(screen.getByText("MF")).toBeInTheDocument();
+    await screen.findAllByText("João Silva");
+    expect(screen.getAllByText("JS")).toHaveLength(2);
+    expect(screen.getAllByText("MF")).toHaveLength(2);
+  });
+
+  it("renders the mobileCard for each client, combining email and phone on one line", async () => {
+    renderPage();
+    await screen.findAllByText("João Silva");
+    // Unique to the card — the table's Email/Phone columns never combine the two.
+    expect(screen.getByText("joao@test.com · +351912345678")).toBeInTheDocument();
+    // Maria has no phone, so the card falls back to email alone — identical to the
+    // table's plain Email cell text, so this one legitimately duplicates.
+    expect(screen.getAllByText("maria@test.com")).toHaveLength(2);
   });
 
   it("renders the phone number when present", async () => {
     renderPage();
-    await screen.findByText("João Silva");
+    await screen.findAllByText("João Silva");
     expect(screen.getByText("+351912345678")).toBeInTheDocument();
   });
 
   it("renders an accessible em-dash when phone is null", async () => {
     renderPage();
-    await screen.findByText("Maria Ferreira");
+    await screen.findAllByText("Maria Ferreira");
     expect(screen.getByLabelText("Not provided")).toBeInTheDocument();
   });
 
   it("clicking a client row navigates to /clients/:id", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("João Silva");
+    const [, tableNameCell] = await screen.findAllByText("João Silva");
 
-    await user.click(screen.getByText("João Silva"));
+    await user.click(tableNameCell);
 
     expect(screen.getByTestId("client-detail")).toBeInTheDocument();
   });
 
   it("search input is present on the page", async () => {
     renderPage();
-    await screen.findByText("João Silva");
+    await screen.findAllByText("João Silva");
     expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
   });
 
@@ -167,7 +178,7 @@ describe("ClientListPage", () => {
 
   it("renders a View button for each loaded client", async () => {
     renderPage();
-    await screen.findByText("João Silva");
+    await screen.findAllByText("João Silva");
 
     const viewButtons = screen.getAllByRole("button", { name: /^view$/i });
     expect(viewButtons.length).toBe(2);
@@ -176,7 +187,7 @@ describe("ClientListPage", () => {
   it("clicking the View button navigates to /clients/:id", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("João Silva");
+    await screen.findAllByText("João Silva");
 
     const viewButtons = screen.getAllByRole("button", { name: /^view$/i });
     await user.click(viewButtons[0]);

@@ -167,43 +167,44 @@ describe("ArtistListPage", () => {
 
   it("renders artist full names", async () => {
     renderPage();
-    expect(await screen.findByText("Ana Costa")).toBeInTheDocument();
-    expect(screen.getByText("Marco Silva")).toBeInTheDocument();
+    // Appears twice per artist: once in the mobileCard, once in the table (dual-render).
+    expect(await screen.findAllByText("Ana Costa")).toHaveLength(2);
+    expect(screen.getAllByText("Marco Silva")).toHaveLength(2);
   });
 
   it("renders initials avatar for each artist", async () => {
     renderPage();
-    await screen.findByText("Ana Costa");
-    expect(screen.getByText("AC")).toBeInTheDocument();
-    expect(screen.getByText("MS")).toBeInTheDocument();
+    await screen.findAllByText("Ana Costa");
+    expect(screen.getAllByText("AC")).toHaveLength(2);
+    expect(screen.getAllByText("MS")).toHaveLength(2);
   });
 
   it("renders specialization chips when present", async () => {
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
     expect(screen.getAllByText("Realism").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Blackwork").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders em-dash placeholder when specializations are null", async () => {
     renderPage();
-    await screen.findByText("Marco Silva");
+    await screen.findAllByText("Marco Silva");
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
   });
 
   it("clicking an artist row navigates to /artists/:id", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ana Costa");
+    const [, tableNameCell] = await screen.findAllByText("Ana Costa");
 
-    await user.click(screen.getByText("Ana Costa"));
+    await user.click(tableNameCell);
 
     expect(screen.getByTestId("artist-detail")).toBeInTheDocument();
   });
 
   it("search input is present on the page", async () => {
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
     expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
   });
 
@@ -232,7 +233,7 @@ describe("ArtistListPage", () => {
   it("Edit button navigates to /artists/:id", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     const editButtons = screen.getAllByRole("button", { name: /^edit$/i });
     await user.click(editButtons[0]);
@@ -242,37 +243,39 @@ describe("ArtistListPage", () => {
 
   it("Delete button is visible to owners", async () => {
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
     expect(screen.getAllByRole("button", { name: /^delete$/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it("Delete button is NOT visible to non-owners", async () => {
     renderPageAsArtist();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
     expect(screen.queryByRole("button", { name: /^delete$/i })).not.toBeInTheDocument();
   });
 
   it("clicking Delete shows inline confirmation for that artist", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
 
+    // Warning text is table-only — the mobileCard's confirm state has no such copy.
     expect(screen.getByText(/delete ana costa\?/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^cancel$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^confirm$/i })).toBeInTheDocument();
+    // Cancel/Confirm now render in both the card and the table for the confirmed row.
+    expect(screen.getAllByRole("button", { name: /^cancel$/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("button", { name: /^confirm$/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it("clicking Cancel hides the delete confirmation", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
     expect(screen.getByText(/delete ana costa\?/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /^cancel$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^cancel$/i })[0]);
 
     expect(screen.queryByText(/delete ana costa\?/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^delete$/i }).length).toBeGreaterThanOrEqual(1);
@@ -281,10 +284,10 @@ describe("ArtistListPage", () => {
   it("confirming delete calls DELETE /artists/:id", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^confirm$/i })[0]);
 
     await waitFor(() => {
       expect(screen.queryByText(/delete ana costa\?/i)).not.toBeInTheDocument();
@@ -302,10 +305,10 @@ describe("ArtistListPage", () => {
     );
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^confirm$/i })[0]);
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
@@ -313,14 +316,14 @@ describe("ArtistListPage", () => {
       ));
     expect(toast.success).not.toHaveBeenCalled();
     // Artist still in the list — the row was never actually removed.
-    expect(screen.getByText("Ana Costa")).toBeInTheDocument();
+    expect(screen.getAllByText("Ana Costa")).toHaveLength(2);
   });
 
   // ── Specialization filter ───────────────────────────────────────────────────
 
   it("spec filter buttons appear for specs in the loaded data", async () => {
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     expect(screen.getByRole("button", { name: "Realism" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Blackwork" })).toBeInTheDocument();
@@ -329,24 +332,24 @@ describe("ArtistListPage", () => {
   it("clicking a spec filter button filters the table to matching artists", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     await user.click(screen.getByRole("button", { name: "Realism" }));
 
-    expect(screen.getByText("Ana Costa")).toBeInTheDocument();
+    expect(screen.getAllByText("Ana Costa")).toHaveLength(2);
     expect(screen.queryByText("Marco Silva")).not.toBeInTheDocument();
   });
 
   it("clicking the active spec filter button again clears the filter", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     await user.click(screen.getByRole("button", { name: "Realism" }));
     expect(screen.queryByText("Marco Silva")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Realism" }));
-    expect(screen.getByText("Marco Silva")).toBeInTheDocument();
+    expect(screen.getAllByText("Marco Silva")).toHaveLength(2);
   });
 
   // ── Rich empty state ────────────────────────────────────────────────────────
@@ -378,7 +381,7 @@ describe("ArtistListPage", () => {
 
   it("does not show a usage indicator when the plan has unlimited artists (null max)", async () => {
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
     expect(screen.queryByText(/artists used/i)).not.toBeInTheDocument();
   });
 
@@ -395,7 +398,7 @@ describe("ArtistListPage", () => {
       http.get("http://localhost/api/v1/billing/usage", () => HttpResponse.json(usage)),
     );
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     expect(await screen.findByText("2 of 6 artists used")).toBeInTheDocument();
   });
@@ -409,7 +412,7 @@ describe("ArtistListPage", () => {
       }),
     );
     renderPageAsArtist();
-    await screen.findByText("Ana Costa");
+    await screen.findAllByText("Ana Costa");
 
     expect(usageSpy).not.toHaveBeenCalled();
   });

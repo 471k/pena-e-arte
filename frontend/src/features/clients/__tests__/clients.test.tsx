@@ -112,9 +112,10 @@ describe("Clients feature", () => {
     const rows = await screen.findAllByRole("row");
     expect(rows.length).toBeGreaterThanOrEqual(4);
 
-    expect(screen.getByText("Ana Ferreira")).toBeInTheDocument();
-    expect(screen.getByText("Bruno Santos")).toBeInTheDocument();
-    expect(screen.getByText("Carla Nunes")).toBeInTheDocument();
+    // Each name appears twice — once in the mobileCard, once in the table (dual-render).
+    expect(screen.getAllByText("Ana Ferreira")).toHaveLength(2);
+    expect(screen.getAllByText("Bruno Santos")).toHaveLength(2);
+    expect(screen.getAllByText("Carla Nunes")).toHaveLength(2);
 
     // Data rows have cursor-pointer class (for onRowClick)
     const dataRows = rows.slice(1);
@@ -169,7 +170,7 @@ describe("Clients feature", () => {
       expect(screen.getAllByRole("row")).toHaveLength(2);
     }, { timeout: 1000 });
 
-    expect(screen.getByText("Ana Ferreira")).toBeInTheDocument();
+    expect(screen.getAllByText("Ana Ferreira")).toHaveLength(2);
     expect(screen.queryByText("Bruno Santos")).not.toBeInTheDocument();
   });
 

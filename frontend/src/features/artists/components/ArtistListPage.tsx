@@ -312,6 +312,52 @@ export function ArtistListPage() {
               keyExtractor={(a) => a.id}
               onRowClick={(a) => navigate(`/artists/${a.id}`)}
               emptyMessage={tableEmptyMessage}
+              mobileCard={(a) => (
+                <div className="space-y-2" onClick={(e) => { if ((e.target as HTMLElement).closest("[data-card-actions]")) e.stopPropagation(); }}>
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
+                      {a.firstName[0]?.toUpperCase()}{a.lastName[0]?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{a.firstName} {a.lastName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{a.email}</p>
+                    </div>
+                  </div>
+                  {a.specializations && (
+                    <div className="flex flex-wrap gap-1">
+                      {a.specializations.split(",").map((s) => s.trim()).filter(Boolean).map((spec) => (
+                        <span key={spec} className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">{spec}</span>
+                      ))}
+                    </div>
+                  )}
+                  <div data-card-actions className="flex items-center justify-end gap-1 pt-1">
+                    <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => navigate(`/artists/${a.id}`)}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Button>
+                    {canManage && (
+                      confirmDeleteId === a.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+                          <Button variant="destructive" size="sm" className="h-8 text-xs" disabled={isDeletingArtist} onClick={async () => {
+                            try { await deleteArtist(a.id).unwrap(); toast.success("Artist deleted."); }
+                            catch (err: unknown) {
+                              const message = (err as { data?: { message?: string } } | undefined)?.data?.message ?? "Failed to delete artist.";
+                              toast.error(message);
+                            }
+                            setConfirmDeleteId(null);
+                          }}>
+                            {isDeletingArtist ? "Deleting…" : "Confirm"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setConfirmDeleteId(a.id)}>
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
             />
           </>
         )}

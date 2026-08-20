@@ -18,10 +18,15 @@ import { FaqAccordion } from "./FaqAccordion";
 import { ContactSupportPanel } from "./ContactSupportPanel";
 import type { HelpArticle, FaqItem, HelpRole, HelpSearchResult } from "../help.types";
 import type { Role } from "@/shared/types/roles";
+import type { TourStep } from "@/shared/components/OnboardingTour";
 
 const SEARCH_LOG_DEBOUNCE_MS = 800;
 
-export function HelpMenu() {
+interface HelpMenuProps {
+  onBeforeTourStep?: (step: TourStep) => void;
+}
+
+export function HelpMenu({ onBeforeTourStep }: HelpMenuProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
@@ -30,7 +35,7 @@ export function HelpMenu() {
   const navigate = useNavigate();
   const [logHelpSearch] = useLogHelpSearchMutation();
   const loggedQueriesRef = useRef<Set<string>>(new Set());
-  const { tourElement, restartTour } = useOnboardingTour(role as Role | null);
+  const { tourElement, restartTour } = useOnboardingTour(role as Role | null, onBeforeTourStep);
 
   const scopedArticles = useMemo(() => {
     if (!role) return [];
