@@ -211,7 +211,7 @@ public class GetPortfolioFeedHandlerTests
         _db.Studios.Add(new Studio { Id = studioFarId, Name = "Far Studio", Slug = "far", City = "Berlin", Latitude = 52.5200, Longitude = 13.4050, IsActive = true });
 
         Artist nearArtist = await SeedArtist(studioNearId, "near-artist", "n@x.com", []);
-        Artist farArtist  = await SeedArtist(studioFarId, "far-artist", "f@x.com", []);
+        Artist farArtist = await SeedArtist(studioFarId, "far-artist", "f@x.com", []);
         _db.PortfolioImages.Add(new PortfolioImage { ArtistId = nearArtist.Id, StudioId = studioNearId, ImageUrl = "n.jpg", Style = "dragon" });
         _db.PortfolioImages.Add(new PortfolioImage { ArtistId = farArtist.Id, StudioId = studioFarId, ImageUrl = "f.jpg", Style = "dragon" });
         await _db.SaveChangesAsync();
