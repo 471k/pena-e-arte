@@ -152,4 +152,109 @@ public class GetPortfolioFeedHandlerTests
 
         result.Should().OnlyContain(r => r.ArtistSlug == "near-artist");
     }
+
+    [Fact]
+    public async Task Search_matches_style_substring()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+
+        Artist artist = await SeedArtist(studioId, "ana-lima", "a@x.com", []);
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img.jpg", Style = "blackwork" });
+        await _db.SaveChangesAsync();
+
+        List<PortfolioImageResponse> result = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1, Search: "black"), CancellationToken.None);
+
+        result.Should().OnlyContain(r => r.ArtistSlug == "ana-lima");
+    }
+
+    [Fact]
+    public async Task Search_matches_artist_name_case_insensitively()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+
+        await SeedArtist(studioId, "ana-lima", "a@x.com", ["img.jpg"]);
+        await SeedArtist(studioId, "rui-costa", "r@x.com", ["img2.jpg"]);
+
+        List<PortfolioImageResponse> result = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1, Search: "LIMA"), CancellationToken.None);
+
+        result.Should().OnlyContain(r => r.ArtistSlug == "ana-lima");
+    }
+
+    [Fact]
+    public async Task Search_matches_artist_specializations_when_style_does_not_match()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+
+        Artist artist = await SeedArtist(studioId, "ana-lima", "a@x.com", []);
+        artist.Specializations = "dragon motifs, oni masks";
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img.jpg", Style = "japanese" });
+        await _db.SaveChangesAsync();
+
+        List<PortfolioImageResponse> result = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1, Search: "dragon"), CancellationToken.None);
+
+        result.Should().OnlyContain(r => r.ArtistSlug == "ana-lima");
+    }
+
+    [Fact]
+    public async Task Search_composes_with_location_filter_as_AND()
+    {
+        Guid studioNearId = Guid.NewGuid();
+        Guid studioFarId = Guid.NewGuid();
+
+        _db.Studios.Add(new Studio { Id = studioNearId, Name = "Near Studio", Slug = "near", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+        _db.Studios.Add(new Studio { Id = studioFarId, Name = "Far Studio", Slug = "far", City = "Berlin", Latitude = 52.5200, Longitude = 13.4050, IsActive = true });
+
+        Artist nearArtist = await SeedArtist(studioNearId, "near-artist", "n@x.com", []);
+        Artist farArtist = await SeedArtist(studioFarId, "far-artist", "f@x.com", []);
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = nearArtist.Id, StudioId = studioNearId, ImageUrl = "n.jpg", Style = "dragon" });
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = farArtist.Id, StudioId = studioFarId, ImageUrl = "f.jpg", Style = "dragon" });
+        await _db.SaveChangesAsync();
+
+        List<PortfolioImageResponse> result = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(38.7169, -9.1395, 50, 1, Search: "dragon"), CancellationToken.None);
+
+        result.Should().OnlyContain(r => r.ArtistSlug == "near-artist");
+    }
+
+    [Fact]
+    public async Task Search_composes_with_style_filter_as_AND()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+
+        Artist artist = await SeedArtist(studioId, "ana-lima", "a@x.com", []);
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img1.jpg", Style = "japanese" });
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img2.jpg", Style = "blackwork" });
+        await _db.SaveChangesAsync();
+
+        List<PortfolioImageResponse> result = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1, Style: "japanese", Search: "lima"), CancellationToken.None);
+
+        result.Should().ContainSingle(r => r.ImageUrl == "img1.jpg");
+    }
+
+    [Fact]
+    public async Task Blank_search_behaves_identically_to_no_search()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+
+        await SeedArtist(studioId, "ana-lima", "a@x.com", ["img1.jpg"]);
+        await SeedArtist(studioId, "rui-costa", "r@x.com", ["img2.jpg"]);
+
+        List<PortfolioImageResponse> withoutSearch = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1), CancellationToken.None);
+
+        List<PortfolioImageResponse> withBlankSearch = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1, Search: "   "), CancellationToken.None);
+
+        withBlankSearch.Select(r => r.ArtistSlug).Should()
+            .BeEquivalentTo(withoutSearch.Select(r => r.ArtistSlug));
+    }
 }

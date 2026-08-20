@@ -26,10 +26,13 @@ import { ReviewSection } from "./ReviewSection";
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface PortfolioFeedProps {
-  lat:      number | null;
-  lng:      number | null;
-  radiusKm: number;
-  nearOnly: boolean;
+  lat:            number | null;
+  lng:            number | null;
+  radiusKm:       number;
+  nearOnly:       boolean;
+  keyword:        string;
+  locationSource: "geo" | "default" | "search";
+  locationLabel:  string;
 }
 
 // ── Style chips ───────────────────────────────────────────────────────────────
@@ -453,7 +456,9 @@ function MasonryGrid({ images, onOpen, savedIds, onToggleSave, token }: MasonryG
 
 // ── Main feed component ───────────────────────────────────────────────────────
 
-export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedProps) {
+export function PortfolioFeed({
+  lat, lng, radiusKm, nearOnly, keyword, locationSource, locationLabel,
+}: PortfolioFeedProps) {
   const [page,          setPage]         = useState(1);
   const [activeStyle,   setActiveStyle]  = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -471,9 +476,19 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
   // reuses its cached response and issues no new request — a reset effect keyed on the raw
   // props would still fire, clear allImages, and then never get it refilled since `images`
   // never changes reference to re-trigger the accumulate effect below.
-  const effectiveLat      = nearOnly && lat != null ? lat : undefined;
-  const effectiveLng      = nearOnly && lng != null ? lng : undefined;
-  const effectiveRadiusKm = nearOnly ? radiusKm : 50;
+  // A keyword search is global by default — it must NOT silently inherit
+  // whatever ambient location DiscoverPage currently has (geolocation result
+  // or the Lisbon fallback). It only becomes location-scoped when the visitor
+  // explicitly searched a city (locationSource === "search") AND "Near me" is
+  // still on — so the existing "Near me" pill remains the one on/off switch
+  // for location scoping in every case, keyword or not; a keyword just adds
+  // one more condition on top when the current location isn't an explicit
+  // search. With no keyword, this reduces to exactly today's behavior.
+  const hasKeyword        = keyword.trim().length > 0;
+  const useLocationScope  = nearOnly && (!hasKeyword || locationSource === "search");
+  const effectiveLat      = useLocationScope && lat != null ? lat : undefined;
+  const effectiveLng      = useLocationScope && lng != null ? lng : undefined;
+  const effectiveRadiusKm = useLocationScope ? radiusKm : 50;
 
   const feedArgs: PortfolioFeedArgs = {
     lat:      effectiveLat,
@@ -481,6 +496,7 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
     radiusKm: effectiveRadiusKm,
     page,
     style:    activeStyle || undefined,
+    search:   keyword.trim() || undefined,
   };
 
   const { data: images, isLoading, isFetching, isError } = useGetPortfolioFeedQuery(feedArgs);
@@ -509,7 +525,7 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
     setAllImages([]);
-  }, [effectiveLat, effectiveLng, effectiveRadiusKm]);
+  }, [effectiveLat, effectiveLng, effectiveRadiusKm, keyword]);
 
   function handleStyleChange(style: string) {
     setActiveStyle(style);
@@ -585,11 +601,13 @@ export function PortfolioFeed({ lat, lng, radiusKm, nearOnly }: PortfolioFeedPro
           <div className="space-y-1.5">
             <p className="text-base font-semibold">No portfolio work yet</p>
             <p className="text-sm text-muted-foreground max-w-xs">
-              {nearOnly
-                ? "No artists with portfolio images found nearby. Try a larger radius or turn off the location filter."
-                : activeStyle
-                  ? `No ${activeStyle} tattoos found. Try a different style or browse all.`
-                  : "Be among the first artists to show your work here."}
+              {hasKeyword
+                ? `No tattoos matching "${keyword.trim()}"${useLocationScope ? ` in ${locationLabel}` : ""} found. Try a different search term${useLocationScope ? " or a wider area" : ""}.`
+                : nearOnly
+                  ? "No artists with portfolio images found nearby. Try a larger radius or turn off the location filter."
+                  : activeStyle
+                    ? `No ${activeStyle} tattoos found. Try a different style or browse all.`
+                    : "Be among the first artists to show your work here."}
             </p>
           </div>
           <Link

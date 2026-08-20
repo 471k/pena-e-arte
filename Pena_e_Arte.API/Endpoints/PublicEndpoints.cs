@@ -228,12 +228,14 @@ public static class PublicEndpoints
         double radiusKm = 50,
         int page = 1,
         int pageSize = 24,
-        string? style = null)
+        string? style = null,
+        string? search = null)
     {
         if (pageSize is < 1 or > 100) pageSize = 24;
+        if (!string.IsNullOrWhiteSpace(search) && search.Length > 100) search = search[..100];
 
         List<PortfolioImageResponse> result = await mediator.Send(
-            new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize, style), ct);
+            new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize, style, search), ct);
         return Results.Ok(result);
     }
 
