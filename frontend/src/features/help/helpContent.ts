@@ -9,11 +9,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Client],
     title: "Book an appointment",
     route: "/book",
-    keywords: ["booking", "request", "artist", "schedule a tattoo", "new appointment", "reference images", "upload photo"],
+    keywords: ["booking", "request", "artist", "schedule a tattoo", "new appointment", "reference images", "upload photo", "let studio choose", "any artist", "studio picks artist"],
     summary: "Request a tattoo appointment by picking an artist, a date, and how long the session should be.",
     steps: [
       "If a banner asks you to verify your email, click \"Resend verification email\" (you must verify before your booking is finalized).",
       "In the \"Book an appointment\" card, choose an artist, a date, and an appointment duration.",
+      "Or toggle \"Let the studio choose my artist\" if you don't have a preference — the studio will assign one before confirming.",
       "Optionally add notes, and attach up to 6 reference images (JPEG, PNG, or WebP) under \"Reference images\" — click the box to pick photos from your device.",
       "Submit the booking request.",
       "Check \"My Bookings\" below the form to see your pending and upcoming appointments.",
@@ -21,6 +22,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Your booking is a request, not a confirmed slot — the studio replies within 24 hours.",
       "Reference images upload as soon as you pick them — wait for each thumbnail to finish before submitting.",
+      "If you let the studio choose, you won't know your artist until the studio assigns one — you'll get an email when they do.",
     ],
     relatedArticleIds: ["client-cancel-booking"],
   },
@@ -669,6 +671,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to Schedule.",
       "Use the left/right arrows to move between weeks, or click \"Today\" to jump back to the current week.",
       "Click any appointment card to see more details or take action on it.",
+      "Appointments waiting on an artist show a \"Needs artist\" badge — open one and assign an artist from its detail page before it can be confirmed.",
+    ],
+    relatedArticleIds: ["owner-appointments-assign-artist"],
+  },
+  {
+    id: "owner-appointments-assign-artist",
+    roles: [Owner],
+    title: "Assign an artist to a studio-choice booking",
+    route: "/schedule",
+    keywords: ["assign artist", "needs artist", "unassigned booking"],
+    summary: "Pick which artist does the work for a client who let the studio choose.",
+    steps: [
+      "Open the appointment from Schedule — look for the \"Needs artist\" badge.",
+      "Use the Artist dropdown near the top of the appointment to pick an artist.",
+      "The client is emailed once you've assigned one, and the appointment can now be confirmed.",
     ],
   },
   {

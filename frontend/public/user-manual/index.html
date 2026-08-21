@@ -897,7 +897,8 @@ ol.steps li { margin: 6px 0; }
 <text x="16" y="25" font-size="10" font-weight="700">Book · My Studios · My Designs · Intake · Consent · Profile</text>
 <rect x="260" y="60" width="240" height="330" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="280" y="88" font-size="12" font-weight="700">Book an appointment</text>
-<text x="280" y="112" font-size="9" fill-opacity="0.6">Artist</text><rect x="280" y="118" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="112" font-size="9" fill-opacity="0.6">Artist</text><rect x="280" y="118" width="140" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="428" y="118" width="52" height="20" rx="10" fill="currentColor" fill-opacity="0.08"/><text x="454" y="131" font-size="7" text-anchor="middle" fill-opacity="0.55">Studio picks</text>
 <text x="280" y="150" font-size="9" fill-opacity="0.6">Date &amp; time</text><rect x="280" y="156" width="95" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="385" y="150" font-size="9" fill-opacity="0.6">Session length</text><rect x="385" y="156" width="95" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="192" font-size="8" fill-opacity="0.6">✓ Slot available</text>
@@ -908,10 +909,10 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="420" font-size="11" font-weight="700">My Bookings</text>
 </svg>
 </figure>
-<figcaption>Book — fields appear in this order: artist, date/time, duration, deposit rule, notes, reference images</figcaption>
+<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), date/time, duration, deposit rule, notes, reference images</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
-<li>Pick an <span class="step-title">Artist</span> (searchable dropdown).</li>
+<li>Pick an <span class="step-title">Artist</span> (searchable dropdown), or toggle <span class="step-title">Let the studio choose my artist</span> to skip picking one — the artist selector hides and the studio assigns someone before confirming.</li>
 <li>Choose a <span class="step-title">Date &amp; time</span> and a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
 <li>If the studio has an active deposit rule, choose it and see the estimated deposit amount.</li>
 <li>Add optional <span class="step-title">Notes</span> (style, size, placement, skin concerns).</li>
@@ -923,6 +924,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Reschedule</span> to move the same booking to a new date, time, or duration (only enabled with enough notice — otherwise contact the studio directly).</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first.</div>
+<div class="callout callout-tip"><strong>Let the studio choose:</strong> if you don't have an artist preference, toggle this on instead of picking one. You won't know who your artist is until the studio assigns one — you'll get an email the moment they do, and the appointment still needs the studio's confirmation either way.</div>
 <div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled.</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
 </section>
@@ -2090,12 +2092,16 @@ ol.steps li { margin: 6px 0; }
 <text x="20" y="100" font-size="11" font-weight="700">Mon 1 Jul</text>
 <rect x="20" y="108" width="500" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="30" y="127" font-size="9">10:00 – Jane Doe · Elena Martins · 60 min</text>
+<rect x="20" y="146" width="500" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="30" y="165" font-size="9">14:00 – Marco Rossi · 90 min</text>
+<rect x="440" y="152" width="70" height="18" rx="9" fill="#f59e0b" fill-opacity="0.15"/><text x="475" y="165" font-size="7" text-anchor="middle" fill="#b45309">Needs artist</text>
 </svg>
 </figure>
-<figcaption>Owner schedule — same weekly-list layout, studio-wide scope</figcaption>
+<figcaption>Owner schedule — same weekly-list layout, studio-wide scope; unassigned studio-choice bookings show a "Needs artist" badge</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Navigate weeks, click any appointment for full detail or use inline status actions.</li>
+<li>A <span class="step-title">Needs artist</span> badge marks a Pending appointment where the client let the studio choose — open it and assign an artist before it can be confirmed.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-schedule">Artist: weekly schedule</a>, <a href="#owner-appointment-detail">Appointment detail</a></div>
 </section>
@@ -2104,23 +2110,26 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Appointment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (plus Charge deposit)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>Same page as <a href="#artist-appointment-detail">the artist's appointment detail</a>, at <code>/appointments/&lt;id&gt;</code> — owners additionally see a <span class="step-title">Charge deposit</span> button whenever the deposit is still pending.</p>
+<p>Same page as <a href="#artist-appointment-detail">the artist's appointment detail</a>, at <code>/appointments/&lt;id&gt;</code> — owners additionally see a <span class="step-title">Charge deposit</span> button whenever the deposit is still pending, and an editable <span class="step-title">Artist</span> dropdown for assigning who does the work.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner appointment detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="11" font-weight="700">‹ Appointment</text>
 <rect x="260" y="60" width="240" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="272" y="82" font-size="9">Client: Jane Doe</text>
-<text x="272" y="100" font-size="9">Deposit: €50.00 · Pending</text>
+<text x="272" y="100" font-size="9">Artist: Unassigned — pick an artist ▾</text>
+<text x="272" y="118" font-size="9">Deposit: €50.00 · Pending</text>
 <rect x="260" y="270" width="240" height="26" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="290" y="287" font-size="9">💳 Charge deposit</text>
 </svg>
 </figure>
-<figcaption>Owner appointment detail — Charge deposit routes into the payment-creation flow</figcaption>
+<figcaption>Owner appointment detail — the Artist row is an editable dropdown; Charge deposit routes into the payment-creation flow</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Same status actions as the artist view.</li>
+<li>If the client let the studio choose, the <span class="step-title">Artist</span> row is a dropdown reading "Unassigned — pick an artist" — select one to assign them. The client is emailed, and a deferred percentage-based deposit becomes payable once an artist (and their hourly rate) is known.</li>
 <li>Click <span class="step-title">Charge deposit</span> to jump straight into <a href="#owner-create-payment">creating a payment</a> pre-filled for this appointment.</li>
 </ol>
+<div class="callout callout-warn"><strong>Confirm is blocked until assigned:</strong> a studio-choice booking can't be confirmed — by either the UI or the server — until you've picked an artist. Sending a manual reminder is blocked the same way.</div>
 <div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a>, <a href="#owner-create-payment">Create payment</a></div>
 </section>
 
