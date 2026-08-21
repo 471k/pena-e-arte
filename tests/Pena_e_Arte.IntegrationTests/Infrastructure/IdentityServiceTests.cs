@@ -109,6 +109,31 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task GetUserRolesAsync_ExistingUser_ReturnsAssignedRoles()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+
+        (bool _, Guid userId, string[] _) = await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
+
+        IReadOnlyList<string> roles = await sut.GetUserRolesAsync(userId, default);
+
+        roles.Should().Contain("owner");
+    }
+
+    [Fact]
+    public async Task GetUserRolesAsync_NoSuchUser_ReturnsEmpty()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+
+        IReadOnlyList<string> roles = await sut.GetUserRolesAsync(Guid.NewGuid(), default);
+
+        roles.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task CreateUserAsync_ValidUser_AddsTenantIdClaim()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
