@@ -29,6 +29,7 @@ public interface IAppDbContext
     DbSet<NotificationLog> NotificationLogs { get; }
     DbSet<StudioNotificationPreference> StudioNotificationPreferences { get; }
     DbSet<ClientNotificationPreference> ClientNotificationPreferences { get; }
+    DbSet<ManualReminder> ManualReminders { get; }
 
     // Issuer-level
     DbSet<Studio> Studios { get; }

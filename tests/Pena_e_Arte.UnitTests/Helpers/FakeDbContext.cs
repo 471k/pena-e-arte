@@ -30,6 +30,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     public DbSet<StudioNotificationPreference> StudioNotificationPreferences => Set<StudioNotificationPreference>();
     public DbSet<ClientNotificationPreference> ClientNotificationPreferences => Set<ClientNotificationPreference>();
+    public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
     public DbSet<Studio> Studios => Set<Studio>();
     public DbSet<Plan> Plans => Set<Plan>();
     public DbSet<PlanPrice> PlanPrices => Set<PlanPrice>();

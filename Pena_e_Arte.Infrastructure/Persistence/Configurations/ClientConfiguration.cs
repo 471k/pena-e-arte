@@ -16,6 +16,7 @@ public class ClientConfiguration : TenantEntityConfiguration<Client>
         builder.Property(c => c.LastName).HasMaxLength(100).IsRequired();
         builder.Property(c => c.Email).HasMaxLength(256).IsRequired();
         builder.Property(c => c.Phone).HasMaxLength(20);
+        builder.Property(c => c.SmsOptOut).HasDefaultValue(false).IsRequired();
 
         builder.HasIndex(c => new { c.StudioId, c.Email })
                .IsUnique()
