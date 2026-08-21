@@ -1,12 +1,13 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Application.Appointments.Queries;
 
 public record CheckSlotAvailabilityQuery(
-    Guid ArtistId,
+    Guid? ArtistId,
     DateTime Date,
     int DurationMinutes)
     : IRequest<SlotAvailabilityResult>;
@@ -19,6 +20,15 @@ public class CheckSlotAvailabilityHandler(IAppDbContext db)
     public async Task<SlotAvailabilityResult> Handle(
         CheckSlotAvailabilityQuery query, CancellationToken ct)
     {
+        if (query.ArtistId is null)
+        {
+            bool anyAvailable = await db.IsAnyArtistAvailableAsync(query.Date, query.DurationMinutes, ct);
+            return anyAvailable
+                ? new SlotAvailabilityResult(true, null)
+                : new SlotAvailabilityResult(false, "No artist is available at that time.");
+        }
+
+        Guid artistId = query.ArtistId.Value;
         DateTime end = query.Date.AddMinutes(query.DurationMinutes);
 
         DayOfWeek day = query.Date.DayOfWeek;
@@ -33,7 +43,7 @@ public class CheckSlotAvailabilityHandler(IAppDbContext db)
             return new SlotAvailabilityResult(false, "Studio is closed that day.");
 
         var schedule = await db.ArtistSchedules
-            .Where(s => s.ArtistId == query.ArtistId &&
+            .Where(s => s.ArtistId == artistId &&
                         s.DayOfWeek == day &&
                         s.IsAvailable)
             .FirstOrDefaultAsync(ct);
@@ -47,7 +57,7 @@ public class CheckSlotAvailabilityHandler(IAppDbContext db)
                 $"Outside artist's hours ({schedule.StartTime:hh\\:mm}–{schedule.EndTime:hh\\:mm}).");
 
         bool onLeave = await db.ArtistTimeOffs.AnyAsync(
-            t => t.ArtistId == query.ArtistId &&
+            t => t.ArtistId == artistId &&
                  t.StartDate <= query.Date.Date &&
                  t.EndDate >= query.Date.Date, ct);
 
@@ -55,7 +65,7 @@ public class CheckSlotAvailabilityHandler(IAppDbContext db)
             return new SlotAvailabilityResult(false, "Artist is on leave that day.");
 
         bool conflict = await db.Appointments.AnyAsync(a =>
-            a.ArtistId == query.ArtistId &&
+            a.ArtistId == artistId &&
             a.Date < end &&
             a.EndDate > query.Date &&
             a.Status != AppointmentStatus.Cancelled, ct);

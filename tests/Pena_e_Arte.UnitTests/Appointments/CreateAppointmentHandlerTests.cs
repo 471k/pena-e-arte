@@ -229,7 +229,7 @@ public class CreateAppointmentHandlerTests
         try { await CreateSut().Handle(new CreateAppointmentCommand(req), default); } catch { }
 
         await _locker.Received(1)
-            .ReleaseLockAsync(Arg.Any<Guid>(), req.ArtistId, req.Date, Arg.Any<CancellationToken>());
+            .ReleaseLockAsync(Arg.Any<Guid>(), req.ArtistId!.Value, req.Date, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -366,6 +366,55 @@ public class CreateAppointmentHandlerTests
 
         result.ImageUrls.Should().BeEmpty();
         _db.AppointmentAttachments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_StudioChoiceBooking_ArtistAvailable_PersistsNullArtistId()
+    {
+        SeedArtist();
+        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.ArtistId.Should().BeNull();
+        _db.Appointments.Should().ContainSingle(a => a.Id == result.Id && a.ArtistId == null);
+    }
+
+    [Fact]
+    public async Task Handle_StudioChoiceBooking_PercentRule_DepositAmountIsZero()
+    {
+        SeedArtist(hourlyRate: 100m);
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "20%", AmountPercent = 20m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        // No specific artist rate to compute from at booking time — deferred to assignment.
+        result.DepositAmount.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Handle_StudioChoiceBooking_NoActiveArtist_ThrowsBusinessRuleViolationException()
+    {
+        // No artist seeded at all — nothing can ever be available.
+        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_StudioChoiceBooking_DoesNotAcquireSlotLock()
+    {
+        SeedArtist();
+        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+
+        await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await _locker.DidNotReceiveWithAnyArgs()
+            .TryAcquireLockAsync(default, default, default, default);
     }
 
     private Guid SeedArtist(decimal? hourlyRate = null)

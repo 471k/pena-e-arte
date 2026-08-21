@@ -82,6 +82,54 @@ public class CheckSlotAvailabilityHandlerTests
         result.Available.Should().BeTrue();
     }
 
+    private Guid SeedActiveArtist()
+    {
+        Artist artist = new()
+        {
+            StudioId = _studioId,
+            FirstName = "Any",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@artist.test",
+        };
+        _db.Artists.Add(artist);
+        _db.SaveChanges();
+        return artist.Id;
+    }
+
+    [Fact]
+    public async Task Handle_NullArtistId_AnActiveArtistIsAvailable_ReturnsAvailable()
+    {
+        DateTime slot = NextDateForDay(DayOfWeek.Monday);
+        Guid artistId = SeedActiveArtist();
+        _db.ArtistSchedules.Add(new ArtistSchedule
+        {
+            StudioId = _studioId,
+            ArtistId = artistId,
+            DayOfWeek = slot.DayOfWeek,
+            StartTime = TimeSpan.FromHours(9),
+            EndTime = TimeSpan.FromHours(18),
+            IsAvailable = true,
+        });
+        _db.SaveChanges();
+
+        SlotAvailabilityResult result = await CreateSut().Handle(
+            new CheckSlotAvailabilityQuery(null, slot.AddHours(10), 60), default);
+
+        result.Available.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_NullArtistId_NoActiveArtist_ReturnsUnavailable()
+    {
+        DateTime slot = NextDateForDay(DayOfWeek.Monday);
+
+        SlotAvailabilityResult result = await CreateSut().Handle(
+            new CheckSlotAvailabilityQuery(null, slot.AddHours(10), 60), default);
+
+        result.Available.Should().BeFalse();
+        result.Reason.Should().Be("No artist is available at that time.");
+    }
+
     private static DateTime NextDateForDay(DayOfWeek day)
     {
         DateTime date = DateTime.UtcNow.Date.AddDays(1);

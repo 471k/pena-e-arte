@@ -72,7 +72,7 @@ public class CreateManualReminderHandler(
                 .FirstOrDefaultAsync(a => a.Id == req.AppointmentId, ct)
                 ?? throw new NotFoundException(nameof(Appointment), req.AppointmentId);
 
-            if (isArtist && appointment.Artist.UserId != currentUser.UserId)
+            if (isArtist && (appointment.Artist is null || appointment.Artist.UserId != currentUser.UserId))
                 throw new NotFoundException(nameof(Appointment), req.AppointmentId);
 
             if (appointment.Client.Phone is null)
@@ -88,7 +88,9 @@ public class CreateManualReminderHandler(
             // Authoritative — the appointment's own artist, never req.ArtistId. Prevents an
             // owner/issuer from attributing the reminder (and its quota consumption/audit
             // trail) to an unrelated artist by supplying a mismatched ArtistId.
-            resolvedArtistId = appointment.ArtistId;
+            resolvedArtistId = appointment.ArtistId
+                ?? throw new BusinessRuleViolationException(
+                    "Assign an artist to this appointment before sending a reminder.");
         }
         else if (req.ClientId is not null)
         {

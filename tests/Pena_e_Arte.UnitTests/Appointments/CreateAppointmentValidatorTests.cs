@@ -29,11 +29,12 @@ public class CreateAppointmentValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptyArtistId_FailsOnArtistId()
+    public void Validate_NullArtistId_IsValid()
     {
-        _sut.ShouldFailOn(
-            ValidCommand() with { Request = ValidRequest() with { ArtistId = Guid.Empty } },
-            "Request.ArtistId");
+        // Studio-choice booking — no specific artist selected — is a legitimately valid request.
+        ValidationResult result = _sut.Validate(
+            ValidCommand() with { Request = ValidRequest() with { ArtistId = null } });
+        result.Errors.Should().NotContain(e => e.PropertyName == "Request.ArtistId");
     }
 
     [Fact]

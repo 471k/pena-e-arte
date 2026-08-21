@@ -15,7 +15,6 @@ public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentCom
 
     public CreateAppointmentValidator(IR2Service r2)
     {
-        RuleFor(x => x.Request.ArtistId).NotEmpty();
         RuleFor(x => x.Request.ClientId).NotEmpty();
         RuleFor(x => x.Request.Date)
             .GreaterThan(DateTime.UtcNow.AddMinutes(30))

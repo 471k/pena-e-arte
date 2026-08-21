@@ -245,6 +245,56 @@ public class CreateManualReminderHandlerTests
         _db.ManualReminders.Should().BeEmpty();
     }
 
+    private Guid SeedUnassignedAppointment(Guid clientId)
+    {
+        Appointment appointment = new()
+        {
+            StudioId = _studioId,
+            ArtistId = null,
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(2),
+            EndDate = DateTime.UtcNow.AddDays(2).AddHours(2),
+            DurationMinutes = 120,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending
+        };
+        _db.Appointments.Add(appointment);
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
+        return appointment.Id;
+    }
+
+    [Fact]
+    public async Task Handle_ArtistRole_UnassignedAppointment_ThrowsNotFoundException()
+    {
+        Guid artistId = SeedArtistAsCurrentUser();
+        Guid clientId = SeedClient(artistId);
+        Guid appointmentId = SeedUnassignedAppointment(clientId);
+
+        CreateManualReminderRequest req = new(appointmentId, null, null, null, null, null, null);
+        Func<Task> act = () => CreateSut().Handle(new CreateManualReminderCommand(req), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_OwnerRole_UnassignedAppointment_ThrowsBusinessRuleViolationException()
+    {
+        _currentUser.Role.Returns("owner");
+        Guid artistId = Guid.NewGuid();
+        _db.Artists.Add(new Artist { StudioId = _studioId, Id = artistId, FirstName = "Jo", LastName = "Artist", Email = "jo@a.com" });
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
+        Guid clientId = SeedClient(artistId);
+        Guid appointmentId = SeedUnassignedAppointment(clientId);
+
+        CreateManualReminderRequest req = new(appointmentId, null, null, null, null, null, null);
+        Func<Task> act = () => CreateSut().Handle(new CreateManualReminderCommand(req), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*Assign an artist*");
+    }
+
     [Fact]
     public async Task Handle_ValidCreate_SetsAuditTargetIdToNewReminderId()
     {

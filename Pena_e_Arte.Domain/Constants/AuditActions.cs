@@ -16,6 +16,7 @@ public static class AuditActions
     public const string ReferralCodeReactivated = "ReferralCode.Reactivated";
     public const string ReferralCodeDeleted = "ReferralCode.Deleted";
     public const string AppointmentCancelled = "Appointment.Cancelled";
+    public const string AppointmentArtistAssigned = "Appointment.ArtistAssigned";
     public const string SessionSplitsUpdated = "SessionSplits.Updated";
     public const string ClientProfileCrossTenantOptedIn = "ClientProfile.CrossTenantOptedIn";
     public const string ClientProfileCrossTenantOptedOut = "ClientProfile.CrossTenantOptedOut";

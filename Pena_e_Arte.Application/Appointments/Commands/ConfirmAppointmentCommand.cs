@@ -28,6 +28,10 @@ public class ConfirmAppointmentHandler(
             throw new BusinessRuleViolationException(
                 $"Only Pending appointments can be confirmed (current: {appointment.Status}).");
 
+        if (appointment.ArtistId is null)
+            throw new BusinessRuleViolationException(
+                "Assign an artist before confirming this appointment.");
+
         appointment.Status = AppointmentStatus.Confirmed;
         appointment.UpdatedAt = DateTime.UtcNow;
 

@@ -69,12 +69,14 @@ public class RescheduleAppointmentHandler(
         RescheduleAppointmentRequest req = command.Request;
         DateTime newEnd = req.NewDate.AddMinutes(req.NewDurationMinutes);
 
-        bool conflict = await db.Appointments.AnyAsync(a =>
-            a.Id != command.AppointmentId &&
-            a.ArtistId == appointment.ArtistId &&
-            a.Date < newEnd &&
-            a.EndDate > req.NewDate &&
-            a.Status != AppointmentStatus.Cancelled, ct);
+        bool conflict = appointment.ArtistId is Guid artistId
+            ? await db.Appointments.AnyAsync(a =>
+                a.Id != command.AppointmentId &&
+                a.ArtistId == artistId &&
+                a.Date < newEnd &&
+                a.EndDate > req.NewDate &&
+                a.Status != AppointmentStatus.Cancelled, ct)
+            : !await db.IsAnyArtistAvailableAsync(req.NewDate, req.NewDurationMinutes, ct);
 
         if (conflict) throw new SlotAlreadyBookedException();
 

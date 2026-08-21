@@ -59,7 +59,7 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
             return new RevenueSummaryResponse(monthlyTrend, []);
 
         List<Guid> appointmentIds = periodPayments.Select(p => p.AppointmentId).Distinct().ToList();
-        Dictionary<Guid, Guid> artistIdByAppointment = await db.Appointments
+        Dictionary<Guid, Guid?> artistIdByAppointment = await db.Appointments
             .Where(a => appointmentIds.Contains(a.Id))
             .Select(a => new { a.Id, a.ArtistId })
             .ToDictionaryAsync(a => a.Id, a => a.ArtistId, ct);
@@ -67,10 +67,13 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
         Dictionary<Guid, decimal> revenueByArtist = new();
         foreach (Payment payment in periodPayments)
         {
-            if (!artistIdByAppointment.TryGetValue(payment.AppointmentId, out Guid artistId))
+            // Unassigned (studio-choice, not yet assigned) appointments have no artist to
+            // attribute revenue to — excluded from the per-artist breakdown, same as any
+            // other appointment whose id isn't found at all.
+            if (!artistIdByAppointment.TryGetValue(payment.AppointmentId, out Guid? artistId) || artistId is null)
                 continue;
 
-            revenueByArtist[artistId] = revenueByArtist.GetValueOrDefault(artistId) + RetainedAmount(payment);
+            revenueByArtist[artistId.Value] = revenueByArtist.GetValueOrDefault(artistId.Value) + RetainedAmount(payment);
         }
 
         Dictionary<Guid, string> artistNames = await db.Artists
