@@ -90,6 +90,26 @@ public class AssignAppointmentArtistHandler(
 
             if (conflict) throw new SlotAlreadyBookedException();
 
+            // The slot lock above is keyed by the ARTIST being assigned — it serializes two
+            // requests targeting the same artist, but not two requests assigning the SAME
+            // appointment to two DIFFERENT artists (different lock keys, no conflict between
+            // them). Detected here instead: re-read this appointment's persisted ArtistId
+            // (bypassing this DbContext's identity map via AsNoTracking, so a concurrent
+            // request's already-committed write is actually visible) and compare it to the
+            // value this handler originally loaded — if another request already changed it in
+            // between, this is a lost-update race, not a legitimate reassignment; reject
+            // loudly rather than silently overwriting (and sending a notification naming an
+            // artist who isn't the one that ends up persisted).
+            Guid? currentArtistId = await db.Appointments
+                .AsNoTracking()
+                .Where(a => a.Id == appointment.Id)
+                .Select(a => a.ArtistId)
+                .FirstOrDefaultAsync(ct);
+
+            if (currentArtistId != appointment.ArtistId)
+                throw new ConflictException(
+                    "This appointment's artist was just changed by another request. Refresh and try again.");
+
             appointment.ArtistId = artist.Id;
 
             // Decision #5: recompute a deferred deposit (a percent rule had no artist rate

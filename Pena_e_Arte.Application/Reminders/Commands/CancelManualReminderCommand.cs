@@ -30,7 +30,11 @@ public class CancelManualReminderHandler(
             .FirstOrDefaultAsync(m => m.Id == command.Id, ct)
             ?? throw new NotFoundException(nameof(ManualReminder), command.Id);
 
-        if (currentUser.Role == "artist" && reminder.Artist.UserId != currentUser.UserId)
+        // Artist is nullable at runtime despite its non-nullable-looking `= null!` default —
+        // the global query filter excludes a soft-deleted artist, so .Include(m => m.Artist)
+        // silently yields null once the linked artist is deleted. Treated the same as any
+        // other ownership mismatch: a caller can't prove this is theirs, so it isn't theirs.
+        if (currentUser.Role == "artist" && (reminder.Artist is null || reminder.Artist.UserId != currentUser.UserId))
             throw new NotFoundException(nameof(ManualReminder), command.Id);
 
         if (reminder.Status != ManualReminderStatus.Scheduled)
@@ -39,6 +43,18 @@ public class CancelManualReminderHandler(
 
         if (!string.IsNullOrEmpty(reminder.JobId))
             jobs.CancelJob(reminder.JobId);
+
+        // Re-check directly against the database (bypassing this DbContext's identity map via
+        // AsNoTracking, so a concurrent request's already-committed write is actually visible)
+        // right before writing — narrows the window where ManualReminderJob could concurrently
+        // transition this same reminder to Sent/Failed between the read above and this write.
+        bool stillScheduled = await db.ManualReminders
+            .AsNoTracking()
+            .AnyAsync(m => m.Id == reminder.Id && m.Status == ManualReminderStatus.Scheduled, ct);
+
+        if (!stillScheduled)
+            throw new ConflictException(
+                "This reminder has already been sent and can no longer be cancelled.");
 
         reminder.Status = ManualReminderStatus.Cancelled;
         reminder.UpdatedAt = DateTime.UtcNow;

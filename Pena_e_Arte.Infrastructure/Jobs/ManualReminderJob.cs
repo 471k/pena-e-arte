@@ -60,10 +60,70 @@ public class ManualReminderJob(
             return;
         }
 
+        // A reminder can be scheduled up to 90 days ahead, but PlanLimitBehavior only checked
+        // NotificationsPerMonth against the CREATION month's usage — it has no way to know
+        // which month this will actually send in. Re-checked here, against the send month's
+        // real usage, so a batch scheduled while under this month's cap can't silently blow
+        // past next month's cap with zero enforcement. Queried directly against
+        // reminder.StudioId (not ICurrentTenant/IPlanLimitService, which assume an HTTP
+        // request's JWT-scoped tenant — this job runs with no such context) and skips the
+        // 30s usage cache PlanLimitService uses, since this runs once per reminder, not once
+        // per request.
+        Subscription? subscription = await db.Subscriptions
+            .AsNoTracking()
+            .Include(s => s.Plan)
+            .FirstOrDefaultAsync(s => s.StudioId == reminder.StudioId, ct);
+
+        if (subscription?.Plan?.MaxNotificationsPerMonth is int maxNotifications)
+        {
+            DateTime sendMonthStart = new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            // NotificationLog has its own tenant-scoped global query filter (like
+            // ManualReminder above) that this job's ambient context can't satisfy —
+            // IgnoreQueryFilters() plus the explicit StudioId check is the same pattern.
+            int usedThisMonth = await db.NotificationLogs
+                .IgnoreQueryFilters()
+                .Where(n => n.StudioId == reminder.StudioId && n.DeletedAt == null && n.CreatedAt >= sendMonthStart)
+                .CountAsync(ct);
+
+            if (usedThisMonth >= maxNotifications)
+            {
+                reminder.Status = ManualReminderStatus.Failed;
+                reminder.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation(
+                    "Skipping ManualReminder {@ManualReminderId} — studio has exceeded its " +
+                    "NotificationsPerMonth plan limit for the send month", manualReminderId);
+                return;
+            }
+        }
+
+        // A Hangfire retry after a crash between the SMS send and the save below (see
+        // SendAttemptedAt's doc comment) lands back here with a prior attempt already
+        // claimed — the actual delivery outcome is unknown, so this deliberately does not
+        // re-send. Marked Failed so it stops looking pending and surfaces for reconciliation,
+        // rather than silently retrying forever or texting the client a second time.
+        if (reminder.SendAttemptedAt.HasValue)
+        {
+            logger.LogWarning(
+                "ManualReminder {@ManualReminderId} already had a send attempt at {@SendAttemptedAt} " +
+                "with no recorded outcome — likely a retry after a crash. Not re-sending.",
+                manualReminderId, reminder.SendAttemptedAt);
+            reminder.Status = ManualReminderStatus.Failed;
+            reminder.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+
         Studio? studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == reminder.StudioId, ct);
         string studioName = studio?.Name ?? "your studio";
 
         string body = BuildBody(reminder, studioName);
+
+        // Claimed and durably persisted before the send itself — if the process dies or the
+        // post-send save below fails, the guard above prevents a retry from sending twice.
+        reminder.SendAttemptedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
         bool success = await TrySendSmsAsync(reminder, body, ct);
 
         NotificationLog log = new()

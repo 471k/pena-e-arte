@@ -144,13 +144,15 @@ public class CreateManualReminderHandler(
         db.ManualReminders.Add(reminder);
         await db.SaveChangesAsync(ct);
 
-        // Quota is checked (and consumed) only after the reminder is durably persisted, not
-        // before — otherwise a transient DB failure between the two would waste a day's quota
-        // on a reminder that was never actually created. On rejection, the tentatively-saved
-        // row is removed so no orphaned reminder is left behind.
+        // Hangfire job scheduled (and persisted) before quota is touched, not after — a
+        // ManualReminder row surviving with no JobId (e.g. a crash between quota-consume and
+        // this save) would never fire yet still show as pending and have wasted a day's
+        // quota slot for nothing. On failure here, nothing external has happened yet (quota
+        // untouched), so a plain row removal is enough.
         try
         {
-            await quota.CheckAndIncrementAsync(tenant.StudioId, resolvedArtistId, ct);
+            reminder.JobId = jobs.ScheduleManualReminder(reminder.Id, scheduledFor);
+            await db.SaveChangesAsync(ct);
         }
         catch
         {
@@ -159,8 +161,26 @@ public class CreateManualReminderHandler(
             throw;
         }
 
-        reminder.JobId = jobs.ScheduleManualReminder(reminder.Id, scheduledFor);
-        await db.SaveChangesAsync(ct);
+        // Quota is checked (and consumed) last, only once the reminder is durably persisted
+        // AND its send is actually scheduled — otherwise a transient failure at an earlier
+        // step would waste a day's quota on a reminder that was never actually created or
+        // never actually scheduled to send. On rejection, the already-scheduled job is
+        // cancelled (it would otherwise still fire and send, bypassing the very quota that
+        // just rejected it) and the tentatively-saved row removed, so no orphaned reminder or
+        // phantom send is left behind.
+        try
+        {
+            await quota.CheckAndIncrementAsync(tenant.StudioId, resolvedArtistId, ct);
+        }
+        catch
+        {
+            // Guaranteed non-null — this catch only runs after the job-scheduling try above
+            // succeeded, which set and persisted JobId before returning.
+            jobs.CancelJob(reminder.JobId!);
+            db.ManualReminders.Remove(reminder);
+            await db.SaveChangesAsync(ct);
+            throw;
+        }
 
         command.AuditTargetId = reminder.Id;
 

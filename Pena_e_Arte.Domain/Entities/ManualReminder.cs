@@ -15,6 +15,14 @@ public class ManualReminder : TenantEntity
     public string? JobId { get; set; }                // Hangfire job id, for cancellation
     public DateTime? SentAt { get; set; }
 
+    /// <summary>
+    /// Set immediately before the SMS send is attempted — durably claims this reminder so a
+    /// Hangfire retry (triggered by, e.g., a transient DB failure on the post-send save, not
+    /// by the send itself) can tell "already attempted, unknown outcome" apart from "never
+    /// attempted" and skip re-sending rather than risk texting the client twice.
+    /// </summary>
+    public DateTime? SendAttemptedAt { get; set; }
+
     public Artist Artist { get; set; } = null!;
     public Appointment? Appointment { get; set; }
     public Client? Client { get; set; }

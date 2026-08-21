@@ -14,7 +14,8 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 public class AssignAppointmentArtistHandlerTests
 {
-    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly string _dbName = Guid.NewGuid().ToString();
+    private readonly FakeDbContext _db;
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ISlotLocker _locker = Substitute.For<ISlotLocker>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
@@ -23,6 +24,7 @@ public class AssignAppointmentArtistHandlerTests
 
     public AssignAppointmentArtistHandlerTests()
     {
+        _db = FakeDbContext.Create(_dbName);
         _tenant.StudioId.Returns(_studioId);
         _locker.TryAcquireLockAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                .Returns(true);
@@ -335,6 +337,30 @@ public class AssignAppointmentArtistHandlerTests
         await _sender.Received(1).Send(
             Arg.Is<SendAppointmentArtistAssignedNotificationCommand>(c => c.AppointmentId == appointmentId),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ArtistChangedByAnotherRequestSinceLoad_ThrowsConflictException()
+    {
+        Guid artistId = SeedArtist();
+        Guid otherArtistId = SeedArtist();
+        Guid appointmentId = SeedUnassignedAppointment();
+
+        // Simulates a second, concurrent request that already assigned a different artist —
+        // a second FakeDbContext against the same in-memory database, so its committed write
+        // is visible to this handler's own AsNoTracking re-check (unlike a second query on
+        // the SAME context, which would just return the already-tracked, stale instance).
+        using (FakeDbContext otherDb = FakeDbContext.Create(_dbName))
+        {
+            Appointment appt = otherDb.Appointments.Single(a => a.Id == appointmentId);
+            appt.ArtistId = otherArtistId;
+            await otherDb.SaveChangesAsync();
+        }
+
+        Func<Task> act = () => CreateSut().Handle(
+            new AssignAppointmentArtistCommand(appointmentId, new AssignAppointmentArtistRequest(artistId)), default);
+
+        await act.Should().ThrowAsync<ConflictException>();
     }
 
     [Fact]

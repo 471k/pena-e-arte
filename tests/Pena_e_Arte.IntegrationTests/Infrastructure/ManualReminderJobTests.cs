@@ -237,4 +237,86 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         await _realtime.Received(1).NotifyStudioAsync(
             studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task SendAsync_ValidReminder_SetsSendAttemptedAt()
+    {
+        Guid studioId = Guid.NewGuid();
+        (Guid reminderId, _) = await SeedReminder(studioId);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendAsync(reminderId);
+
+        await using AppDbContext verify = fixture.CreateDbContext(studioId);
+        ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == reminderId);
+        reminder.SendAttemptedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SendAsync_RetryAfterPriorSendAttempt_DoesNotResendAndMarksFailed()
+    {
+        // A prior attempt already claimed this reminder (set SendAttemptedAt) but never
+        // reached the final status-write — mirrors a Hangfire retry after a crash between
+        // the SMS send and the post-send save.
+        Guid studioId = Guid.NewGuid();
+        (Guid reminderId, _) = await SeedReminder(studioId,
+            r => r.SendAttemptedAt = DateTime.UtcNow.AddMinutes(-5));
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendAsync(reminderId);
+
+        await _notifications.DidNotReceive().SendSmsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        await using AppDbContext verify = fixture.CreateDbContext(studioId);
+        ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == reminderId);
+        reminder.Status.Should().Be(ManualReminderStatus.Failed);
+    }
+
+    [Fact]
+    public async Task SendAsync_StudioOverNotificationsPerMonthCapAtSendTime_SkipsSendAndMarksFailed()
+    {
+        Guid studioId = Guid.NewGuid();
+        (Guid reminderId, _) = await SeedReminder(studioId);
+
+        await using (AppDbContext setup = fixture.CreateDbContext(Guid.Empty))
+        {
+            Plan plan = new() { Name = "Starter", MaxNotificationsPerMonth = 1 };
+            setup.Plans.Add(plan);
+            setup.Studios.Add(new Studio
+            {
+                Id = studioId,
+                Name = "Test Studio",
+                Slug = $"test-studio-{Guid.NewGuid()}",
+                OwnerEmail = "owner@test.com",
+            });
+            setup.Subscriptions.Add(new Subscription
+            {
+                StudioId = studioId,
+                PlanId = plan.Id,
+                Status = SubscriptionStatus.Active,
+                CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+                GracePeriodEnd = DateTime.UtcNow.AddDays(37),
+            });
+            // Already at this month's cap (MaxNotificationsPerMonth = 1) before the send is attempted.
+            setup.NotificationLogs.Add(new NotificationLog
+            {
+                StudioId = studioId,
+                RecipientType = NotificationRecipientType.ExternalContact,
+                Channel = NotificationChannel.Sms,
+                Body = "Existing notification counted toward this month's cap.",
+                SentAt = DateTime.UtcNow,
+                IsSuccess = true,
+            });
+            await setup.SaveChangesAsync();
+        }
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendAsync(reminderId);
+
+        await _notifications.DidNotReceive().SendSmsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        await using AppDbContext verify = fixture.CreateDbContext(studioId);
+        ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == reminderId);
+        reminder.Status.Should().Be(ManualReminderStatus.Failed);
+    }
 }

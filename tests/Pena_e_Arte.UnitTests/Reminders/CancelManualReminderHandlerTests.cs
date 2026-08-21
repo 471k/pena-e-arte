@@ -11,13 +11,15 @@ namespace Pena_e_Arte.UnitTests.Reminders;
 
 public class CancelManualReminderHandlerTests
 {
-    private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly string _dbName = Guid.NewGuid().ToString();
+    private readonly FakeDbContext _db;
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public CancelManualReminderHandlerTests()
     {
+        _db = FakeDbContext.Create(_dbName);
         _currentUser.Role.Returns("owner");
     }
 
@@ -125,5 +127,44 @@ public class CancelManualReminderHandlerTests
         await CreateSut().Handle(new CancelManualReminderCommand(id), default);
 
         _jobs.DidNotReceive().CancelJob(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Cancel_LinkedArtistNoLongerResolves_ThrowsNotFoundException()
+    {
+        // No corresponding Artist row for this ArtistId — mirrors what a soft-deleted artist
+        // looks like in production (excluded by Artist's global query filter, which
+        // FakeDbContext doesn't replicate; a missing related row produces the same null
+        // navigation via .Include(), which is what the handler actually branches on).
+        _currentUser.Role.Returns("artist");
+        _currentUser.UserId.Returns(Guid.NewGuid());
+        Guid id = SeedReminder(Guid.NewGuid(), ManualReminderStatus.Scheduled);
+
+        Func<Task> act = () => CreateSut().Handle(new CancelManualReminderCommand(id), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Cancel_ReminderAlreadySentByJobConcurrently_ThrowsConflictException()
+    {
+        Guid artistId = SeedArtistAsCurrentUser();
+        Guid id = SeedReminder(artistId, ManualReminderStatus.Scheduled, jobId: "job-1");
+
+        // Simulates ManualReminderJob concurrently transitioning this same reminder to Sent —
+        // a second FakeDbContext against the same in-memory database, so its committed write
+        // is visible to this handler's own AsNoTracking re-check (unlike a second query on
+        // the SAME context, which would just return the already-tracked, stale instance).
+        using (FakeDbContext otherDb = FakeDbContext.Create(_dbName))
+        {
+            ManualReminder reminder = otherDb.ManualReminders.Single(m => m.Id == id);
+            reminder.Status = ManualReminderStatus.Sent;
+            reminder.SentAt = DateTime.UtcNow;
+            await otherDb.SaveChangesAsync();
+        }
+
+        Func<Task> act = () => CreateSut().Handle(new CancelManualReminderCommand(id), default);
+
+        await act.Should().ThrowAsync<ConflictException>();
     }
 }
