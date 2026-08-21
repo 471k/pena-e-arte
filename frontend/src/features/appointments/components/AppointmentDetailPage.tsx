@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, Trash2, UserX,
+  ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, Send, Trash2, UserX,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
+import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import {
   useGetAppointmentQuery,
   useCancelAppointmentMutation,
@@ -86,6 +87,7 @@ export function AppointmentDetailPage() {
   const canOwner     = usePermission(Role.Owner);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
 
   const { data: appt, isLoading, isError } = useGetAppointmentQuery(id ?? "", {
     skip: !id,
@@ -287,6 +289,16 @@ export function AppointmentDetailPage() {
                   Reschedule
                 </Button>
 
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={anyLoading}
+                  onClick={() => setReminderDialogOpen(true)}
+                >
+                  <Send className="h-4 w-4" />
+                  Send Reminder
+                </Button>
+
                 {appt.depositStatus === DepositStatus.Pending && canOwner && (
                   <Button
                     variant="outline"
@@ -358,6 +370,14 @@ export function AppointmentDetailPage() {
           appointment={appt}
           open={rescheduleDialogOpen}
           onOpenChange={setRescheduleDialogOpen}
+        />
+      )}
+
+      {appt && (
+        <ReminderDialog
+          appointmentId={appt.id}
+          open={reminderDialogOpen}
+          onOpenChange={setReminderDialogOpen}
         />
       )}
     </div>

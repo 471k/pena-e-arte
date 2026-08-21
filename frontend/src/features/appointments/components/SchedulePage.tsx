@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { CalendarDays, ChevronLeft, ChevronRight, PenLine } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, MessageSquarePlus, PenLine } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetAppointmentsQuery } from "../appointmentsApi";
 import { AppointmentCard } from "./AppointmentCard";
+import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 
 function SchedulePageSkeleton() {
   return (
@@ -50,6 +51,7 @@ export function SchedulePage() {
   useDocumentMeta({ title: "Schedule — TattooOS", canonical: "/schedule" });
 
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+  const [quickReminderOpen, setQuickReminderOpen] = useState(false);
 
   const weekEnd = addDays(weekStart, 7);
 
@@ -113,6 +115,16 @@ export function SchedulePage() {
             onClick={() => setWeekStart(getWeekStart(new Date()))}
           >
             Today
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-1"
+            onClick={() => setQuickReminderOpen(true)}
+            aria-label="Quick reminder"
+          >
+            <MessageSquarePlus className="h-4 w-4" />
           </Button>
         </div>
       </header>
@@ -178,6 +190,8 @@ export function SchedulePage() {
           })}
         </main>
       )}
+
+      <ReminderDialog open={quickReminderOpen} onOpenChange={setQuickReminderOpen} />
     </div>
   );
 }

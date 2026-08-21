@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, ChevronRight, Mail, Pencil, Phone, Loader2, MapPin, UserRound } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronRight, Mail, Pencil, Phone, Loader2, MapPin, Send, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -38,6 +38,7 @@ import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { BodyMap } from "./BodyMap";
 import { TattooHistorySection } from "./TattooHistorySection";
+import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import { useGetPortableProfileQuery } from "../clientsApi";
 
 const profileSchema = z.object({
@@ -116,6 +117,7 @@ export function ClientDetailPage() {
   const [isEditing,    setIsEditing]    = useState(false);
   const [bodyMapMode,  setBodyMapMode]  = useState<"view" | "edit">("view");
   const [bodyMapDraft, setBodyMapDraft] = useState<string[]>([]);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } =
     useForm<ProfileFormValues>({ resolver: zodResolver(profileSchema) });
@@ -214,10 +216,21 @@ export function ClientDetailPage() {
         </Button>
 
         {canEdit && !isEditing && (
-          <Button variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
-            <Pencil className="h-3.5 w-3.5" />
-            {profileNotFound ? "Add Profile" : "Edit Profile"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReminderDialogOpen(true)}
+              className="gap-1.5"
+            >
+              <Send className="h-3.5 w-3.5" />
+              Send Reminder
+            </Button>
+            <Button variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
+              <Pencil className="h-3.5 w-3.5" />
+              {profileNotFound ? "Add Profile" : "Edit Profile"}
+            </Button>
+          </div>
         )}
 
         {isEditing && (
@@ -583,6 +596,12 @@ export function ClientDetailPage() {
           </Tabs>
         )}
       </main>
+
+      <ReminderDialog
+        clientId={id}
+        open={reminderDialogOpen}
+        onOpenChange={setReminderDialogOpen}
+      />
     </div>
   );
 }
