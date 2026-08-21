@@ -1781,7 +1781,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click a row to view/edit that artist, or use the row's <span class="step-title">Delete</span> action (with confirm).</li>
 <li>Click <span class="step-title">New Artist</span> to add one.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-artist-detail">Artist detail</a></div>
+<div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-become-artist">Enable your own artist profile</a>, <a href="#owner-artist-detail">Artist detail</a></div>
 </section>
 
 <section id="owner-create-artist" data-role="owner">
@@ -1812,6 +1812,36 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Create Artist</span> — you land on their new detail page.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-artist-detail">Artist detail</a></div>
+</section>
+
+<section id="owner-become-artist" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Enable your own artist profile</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>If you also tattoo yourself, at <code>/artists</code> you can link your existing owner login as a bookable artist — no new email, password, or invite email, and no second account.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Enable your own artist profile wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="10" font-weight="700">‹ Artists</text>
+<rect x="260" y="60" width="240" height="230" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="280" y="88" font-size="12" font-weight="700">Enable my artist profile</text>
+<text x="280" y="108" font-size="9" fill-opacity="0.6">First name</text><rect x="280" y="114" width="90" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="380" y="108" font-size="9" fill-opacity="0.6">Last name</text><rect x="380" y="114" width="100" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="150" font-size="9" fill-opacity="0.6">Specializations (optional)</text><rect x="280" y="156" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="188" font-size="9" fill-opacity="0.6">Hourly rate (€, optional)</text><rect x="280" y="194" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="280" y="228" width="200" height="26" rx="4" fill="#7c3aed"/><text x="292" y="245" font-size="9" fill="#fff">Enable my artist profile</text>
+</svg>
+</figure>
+<figcaption>Enable your own artist profile — no Email field, since it's your own account's email</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Go to Artists.</li>
+<li>Click <span class="step-title">Enable my artist profile</span> in the banner near the top of the list (only shown if you don't already have one).</li>
+<li>Enter your first and last name, and optionally specializations and an hourly rate.</li>
+<li>Click <span class="step-title">Enable my artist profile</span> — you land on your new artist detail page.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get a "My Portfolio" shortcut in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
+<div class="crosslinks">See also: <a href="#owner-artists">Artist list</a>, <a href="#owner-artist-detail">Artist detail</a></div>
 </section>
 
 <section id="owner-artist-detail" data-role="owner">

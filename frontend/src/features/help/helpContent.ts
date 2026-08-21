@@ -520,7 +520,31 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Edit\" on a row to open that artist's profile, or \"New Artist\" to add one.",
       "To remove an artist, click \"Delete\", then \"Confirm\".",
     ],
+    tips: [
+      "If you also tattoo, look for \"Enable my artist profile\" near the top of this page.",
+    ],
     warnings: ["Deleting an artist cannot be undone from this screen."],
+    relatedArticleIds: ["owner-become-artist"],
+  },
+  {
+    id: "owner-become-artist",
+    roles: [Owner],
+    title: "Enable your own artist profile",
+    route: "/artists",
+    keywords: ["owner artist", "I also tattoo", "myself as artist", "owner-operator", "dual role", "become an artist"],
+    summary: "If you also tattoo, add yourself as a bookable artist without creating a second account.",
+    steps: [
+      "Go to Artists.",
+      "Click \"Enable my artist profile\" in the banner near the top of the list.",
+      "Enter your first and last name, and optionally your specializations and hourly rate.",
+      "Click \"Enable my artist profile\".",
+    ],
+    tips: [
+      "This uses your existing owner login — no new email, password, or invite email.",
+      "Once enabled, you'll get a \"My Portfolio\" shortcut in your menu, and you'll be selectable when booking or scheduling appointments, just like any other artist.",
+      "This counts as one artist seat against your plan's usage, the same as inviting any other artist.",
+    ],
+    relatedArticleIds: ["owner-artists-list"],
   },
   {
     id: "owner-artist-portfolio",
