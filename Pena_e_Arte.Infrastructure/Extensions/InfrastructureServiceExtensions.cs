@@ -149,6 +149,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
         services.AddScoped<IPlanLimitService, PlanLimitService>();
+        services.AddScoped<IManualReminderQuotaService, ManualReminderQuotaService>();
         services.AddSingleton<IEmailRenderer, EmailRenderer>();
         services.AddSingleton<IAppSettings, AppSettings>();
 
