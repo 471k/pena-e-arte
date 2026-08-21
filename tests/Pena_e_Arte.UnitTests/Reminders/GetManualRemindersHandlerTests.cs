@@ -20,9 +20,14 @@ public class GetManualRemindersHandlerTests
         _db.Artists.Add(new Artist { StudioId = _studioId, Id = artistId, FirstName = "Jo", LastName = "Artist", Email = $"{Guid.NewGuid()}@a.com" });
         ManualReminder reminder = new()
         {
-            StudioId = _studioId, ArtistId = artistId, AppointmentId = appointmentId, ClientId = clientId,
-            RecipientName = "Walk-in", RecipientPhone = "+351900000000",
-            ScheduledFor = DateTime.UtcNow.AddHours(1), Status = ManualReminderStatus.Scheduled
+            StudioId = _studioId,
+            ArtistId = artistId,
+            AppointmentId = appointmentId,
+            ClientId = clientId,
+            RecipientName = "Walk-in",
+            RecipientPhone = "+351900000000",
+            ScheduledFor = DateTime.UtcNow.AddHours(1),
+            Status = ManualReminderStatus.Scheduled
         };
         _db.ManualReminders.Add(reminder);
         _db.SaveChanges();

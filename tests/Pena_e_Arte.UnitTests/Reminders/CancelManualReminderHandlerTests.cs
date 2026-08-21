@@ -39,8 +39,13 @@ public class CancelManualReminderHandlerTests
     {
         ManualReminder reminder = new()
         {
-            StudioId = _studioId, ArtistId = artistId, RecipientName = "Walk-in", RecipientPhone = "+351900000000",
-            ScheduledFor = DateTime.UtcNow.AddHours(1), Status = status, JobId = jobId
+            StudioId = _studioId,
+            ArtistId = artistId,
+            RecipientName = "Walk-in",
+            RecipientPhone = "+351900000000",
+            ScheduledFor = DateTime.UtcNow.AddHours(1),
+            Status = status,
+            JobId = jobId
         };
         _db.ManualReminders.Add(reminder);
         _db.SaveChanges();

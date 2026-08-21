@@ -124,9 +124,14 @@ public class ManualReminderFlowIntegrationTests(DatabaseFixture fixture)
 
         Appointment appointment = new()
         {
-            StudioId = studioId, ArtistId = artistId, ClientId = client.Id,
-            Date = DateTime.UtcNow.AddDays(1), EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
-            DurationMinutes = 120, Status = AppointmentStatus.Confirmed, DepositStatus = DepositStatus.Paid
+            StudioId = studioId,
+            ArtistId = artistId,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+            DurationMinutes = 120,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid
         };
         seedCtx.Appointments.Add(appointment);
         await seedCtx.SaveChangesAsync();

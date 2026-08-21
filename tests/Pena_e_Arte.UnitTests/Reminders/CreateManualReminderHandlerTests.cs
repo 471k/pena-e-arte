@@ -45,8 +45,13 @@ public class CreateManualReminderHandlerTests
     {
         Client client = new()
         {
-            StudioId = _studioId, ArtistId = artistId, FirstName = "Ana", LastName = "Silva",
-            Email = $"{Guid.NewGuid()}@c.com", Phone = phone, SmsOptOut = optOut
+            StudioId = _studioId,
+            ArtistId = artistId,
+            FirstName = "Ana",
+            LastName = "Silva",
+            Email = $"{Guid.NewGuid()}@c.com",
+            Phone = phone,
+            SmsOptOut = optOut
         };
         _db.Clients.Add(client);
         _db.SaveChanges();
@@ -58,9 +63,14 @@ public class CreateManualReminderHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId = _studioId, ArtistId = artistId, ClientId = clientId,
-            Date = DateTime.UtcNow.AddDays(2), EndDate = DateTime.UtcNow.AddDays(2).AddHours(2),
-            DurationMinutes = 120, Status = AppointmentStatus.Confirmed, DepositStatus = DepositStatus.Paid
+            StudioId = _studioId,
+            ArtistId = artistId,
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(2),
+            EndDate = DateTime.UtcNow.AddDays(2).AddHours(2),
+            DurationMinutes = 120,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid
         };
         _db.Appointments.Add(appointment);
         _db.SaveChanges();

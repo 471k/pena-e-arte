@@ -41,8 +41,12 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         {
             Client client = new()
             {
-                StudioId = studioId, FirstName = "Ana", LastName = "Silva",
-                Email = $"{Guid.NewGuid()}@c.com", Phone = "+351910000001", SmsOptOut = clientOptedOut
+                StudioId = studioId,
+                FirstName = "Ana",
+                LastName = "Silva",
+                Email = $"{Guid.NewGuid()}@c.com",
+                Phone = "+351910000001",
+                SmsOptOut = clientOptedOut
             };
             ctx.Clients.Add(client);
             await ctx.SaveChangesAsync();
@@ -50,9 +54,14 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
 
             Appointment appointment = new()
             {
-                StudioId = studioId, ArtistId = artist.Id, ClientId = client.Id,
-                Date = DateTime.UtcNow.AddDays(1), EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
-                DurationMinutes = 120, Status = appointmentStatus.Value, DepositStatus = DepositStatus.Paid
+                StudioId = studioId,
+                ArtistId = artist.Id,
+                ClientId = client.Id,
+                Date = DateTime.UtcNow.AddDays(1),
+                EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+                DurationMinutes = 120,
+                Status = appointmentStatus.Value,
+                DepositStatus = DepositStatus.Paid
             };
             ctx.Appointments.Add(appointment);
             await ctx.SaveChangesAsync();
@@ -62,8 +71,13 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         {
             Client client = new()
             {
-                StudioId = studioId, Id = clientId.Value, FirstName = "Ana", LastName = "Silva",
-                Email = $"{Guid.NewGuid()}@c.com", Phone = "+351910000001", SmsOptOut = clientOptedOut
+                StudioId = studioId,
+                Id = clientId.Value,
+                FirstName = "Ana",
+                LastName = "Silva",
+                Email = $"{Guid.NewGuid()}@c.com",
+                Phone = "+351910000001",
+                SmsOptOut = clientOptedOut
             };
             ctx.Clients.Add(client);
             await ctx.SaveChangesAsync();
@@ -71,9 +85,14 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
 
         ManualReminder reminder = new()
         {
-            StudioId = studioId, ArtistId = artist.Id, AppointmentId = resolvedAppointmentId, ClientId = resolvedClientId,
-            RecipientName = "Walk-in", RecipientPhone = "+351900000000",
-            ScheduledFor = DateTime.UtcNow, Status = ManualReminderStatus.Scheduled
+            StudioId = studioId,
+            ArtistId = artist.Id,
+            AppointmentId = resolvedAppointmentId,
+            ClientId = resolvedClientId,
+            RecipientName = "Walk-in",
+            RecipientPhone = "+351900000000",
+            ScheduledFor = DateTime.UtcNow,
+            Status = ManualReminderStatus.Scheduled
         };
         configure?.Invoke(reminder);
         ctx.ManualReminders.Add(reminder);
