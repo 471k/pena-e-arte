@@ -25,6 +25,9 @@ public static class AuditActions
     public const string ClientDataErasureRequested = "Client.DataErasureRequested";
 
     public const string ClientArtistReassigned = "Client.ArtistReassigned";
+
+    public const string ManualReminderSent = "ManualReminder.Sent";
+    public const string ManualReminderCancelled = "ManualReminder.Cancelled";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -38,4 +41,5 @@ public static class AuditTargetTypes
     public const string Payment = "Payment";
     public const string ClientProfile = "ClientProfile";
     public const string Client = "Client";
+    public const string ManualReminder = "ManualReminder";
 }
