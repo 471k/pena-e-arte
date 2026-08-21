@@ -562,9 +562,10 @@ ol.steps li { margin: 6px 0; }
 <circle cx="340" cy="240" r="6" fill="#0f172a" stroke="currentColor"/>
 <circle cx="500" cy="150" r="6" fill="#0f172a" stroke="currentColor"/>
 <circle cx="440" cy="330" r="6" fill="#0f172a" stroke="currentColor"/>
-<rect x="350" y="250" width="150" height="60" rx="4" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-opacity="0.2"/>
+<rect x="350" y="250" width="150" height="75" rx="4" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-opacity="0.2"/>
 <text x="360" y="270" font-size="10" font-weight="700">Ink &amp; Soul Studio</text>
 <text x="360" y="285" font-size="9" fill-opacity="0.6">Lisbon · View studio →</text>
+<text x="360" y="298" font-size="9" fill-opacity="0.6">Get directions →</text>
 <text x="600" y="440" font-size="9" fill-opacity="0.5">Map tiles © OpenStreetMap</text>
 </svg>
 </figure>
@@ -572,7 +573,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Pan and zoom the map like any web map.</li>
-<li><span class="step-title">Click a pin</span> to open a popup with the studio's name, city, and a "View studio" link.</li>
+<li><span class="step-title">Click a pin</span> to open a popup with the studio's name, city, a "View studio" link, and a "Get directions" link that opens Google Maps.</li>
 <li>Use <span class="step-title">List view</span> in the header to switch back to the Discover feed instead.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#guest-discover">Discover feed</a>, <a href="#guest-studio-portfolio">Studio profile page</a></div>
@@ -582,7 +583,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Studio profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (own studio, reply to reviews)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details in the sidebar.</p>
+<p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details — phone, Instagram, and a "Get Directions" link to Google Maps — in the sidebar.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile page wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -601,7 +602,7 @@ ol.steps li { margin: 6px 0; }
 <text x="20" y="440" font-size="12" font-weight="700">Reviews</text>
 <rect x="520" y="140" width="220" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <rect x="536" y="156" width="188" height="30" rx="4" fill="#7c3aed"/><text x="590" y="176" font-size="10" fill="#fff">Book an Appointment</text>
-<text x="536" y="210" font-size="9" fill-opacity="0.6">📞 phone · @instagram · city</text>
+<text x="536" y="210" font-size="9" fill-opacity="0.6">📞 phone · @instagram · 🧭 Get Directions</text>
 <text x="600" y="120" font-size="10" fill-opacity="0.7">Sticky sidebar</text>
 <line x1="595" y1="125" x2="620" y2="140" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="3,3"/>
 </svg>
@@ -614,9 +615,10 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Artists</span> grid — click any artist card to open their own profile page.</li>
 <li><span class="step-title">Portfolio</span> masonry gallery — click a photo to open it full-size in a lightbox.</li>
 <li><span class="step-title">Reviews</span> section at the bottom, with a form to leave your own review (sign-in required, and you need a completed appointment at this studio).</li>
-<li>In the sidebar: <span class="step-title">Book an Appointment</span> button (sends signed-out visitors to sign in first), phone number, Instagram handle, and city.</li>
+<li>In the sidebar: <span class="step-title">Book an Appointment</span> button (sends signed-out visitors to sign in first), phone number, Instagram handle, and a <span class="step-title">Get Directions</span> link that opens the studio's pinned location in Google Maps.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> the studio owner can reply publicly to any review directly from this same page when signed in.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> "Get Directions" opens Google Maps in a new tab — on a phone, this hands off straight to the Google Maps app if it's installed.</div>
 <div class="callout callout-tip"><strong>Reviews aren't one-and-done:</strong> you can leave a new review every time you have a completed appointment at a studio — it's not capped to one review per client, ever. Pick which visit you're reviewing if you have more than one eligible one.</div>
 <div class="crosslinks">See also: <a href="#guest-artist-portfolio">Artist profile page</a>, <a href="#client-book">Book an appointment</a></div>
 </section>

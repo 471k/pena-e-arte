@@ -29,6 +29,8 @@ const STUDIO: PublicStudioResponse = {
   name:            "Tinta & Alma",
   slug:            "tinta-alma",
   city:            "Porto",
+  latitude:        41.1579,
+  longitude:       -8.6291,
   description:     "Premier tattoo studio in Porto.",
   coverImageUrl:   null,
   phoneNumber:     null,

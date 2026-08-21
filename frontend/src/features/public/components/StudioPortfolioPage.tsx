@@ -24,14 +24,15 @@ import { useGetPublicStudioQuery } from "../publicApi";
 import type { PublicArtistSummary } from "../publicApi";
 import { useDocumentMeta }          from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }        from "@/shared/utils/useStructuredData";
+import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
 import { ReviewSection }            from "./ReviewSection";
 import { PublicPageHeader }         from "./PublicPageHeader";
 
 function StudioMeta({
-  name, slug, description, coverImageUrl, city, averageRating, reviewCount,
+  name, slug, description, coverImageUrl, city, latitude, longitude, averageRating, reviewCount,
 }: {
   name: string; slug: string; description: string | null; coverImageUrl: string | null;
-  city: string; averageRating: number | null; reviewCount: number;
+  city: string; latitude: number; longitude: number; averageRating: number | null; reviewCount: number;
 }) {
   useDocumentMeta({
     title:       `${name} — Book a Tattoo on TattooOS`,
@@ -47,6 +48,9 @@ function StudioMeta({
     url:           `https://tattooos.co/s/${slug}`,
     image:         coverImageUrl ?? undefined,
     address:       { "@type": "PostalAddress", addressLocality: city },
+    ...(hasPinnedLocation(latitude, longitude)
+      ? { geo: { "@type": "GeoCoordinates", latitude, longitude } }
+      : {}),
     ...(reviewCount > 0
       ? { aggregateRating: { "@type": "AggregateRating", ratingValue: averageRating, reviewCount } }
       : {}),
@@ -261,6 +265,8 @@ export function StudioPortfolioPage() {
         description={studio.description}
         coverImageUrl={studio.coverImageUrl}
         city={studio.city}
+        latitude={studio.latitude}
+        longitude={studio.longitude}
         averageRating={studio.averageRating}
         reviewCount={studio.reviewCount}
       />
@@ -453,10 +459,24 @@ export function StudioPortfolioPage() {
                 </a>
               )}
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {studio.city}
-              </div>
+              {hasPinnedLocation(studio.latitude, studio.longitude) ? (
+                <a
+                  href={buildGoogleMapsDirectionsUrl(studio.latitude, studio.longitude)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-muted-foreground
+                             hover:text-foreground transition-colors min-h-[44px]"
+                  aria-label={`Get directions to ${studio.name} in ${studio.city} — opens Google Maps`}
+                >
+                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Get Directions — {studio.city}
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  {studio.city}
+                </div>
+              )}
             </div>
 
             <p className="text-xs text-muted-foreground/60 text-center px-1">

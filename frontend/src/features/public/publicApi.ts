@@ -17,6 +17,8 @@ export interface PublicStudioResponse {
   name:            string;
   slug:            string;
   city:            string;
+  latitude:        number;
+  longitude:       number;
   description:     string | null;
   coverImageUrl:   string | null;
   phoneNumber:     string | null;

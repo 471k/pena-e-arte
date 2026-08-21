@@ -97,4 +97,14 @@ describe("StudioMapPage", () => {
     expect(screen.getByRole("link", { name: /sign in/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /register/i })).toBeInTheDocument();
   });
+
+  it("renders a 'Get directions' link in each popup pointing to Google Maps", () => {
+    renderPage();
+    const links = screen.getAllByRole("link", { name: /get directions/i });
+    expect(links).toHaveLength(STUDIOS.length);
+    expect(links[0]).toHaveAttribute(
+      "href",
+      "https://www.google.com/maps/dir/?api=1&destination=41.15%2C-8.61",
+    );
+  });
 });
