@@ -4,6 +4,8 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { CalendarDays, ChevronLeft, ChevronRight, MessageSquarePlus, PenLine } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useAppSelector } from "@/app/hooks";
+import { Role } from "@/shared/types/roles";
 import { useGetAppointmentsQuery } from "../appointmentsApi";
 import { AppointmentCard } from "./AppointmentCard";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
@@ -52,6 +54,12 @@ export function SchedulePage() {
 
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [quickReminderOpen, setQuickReminderOpen] = useState(false);
+  // Exact-role (not usePermission's rank-based "Artist and above") check: raw-contact
+  // reminders require an ArtistId the backend can only infer for the artist themselves —
+  // owner/issuer have no artist context on this page and no artist-picker exists yet, so
+  // showing this button to them would open a dialog that always 422s on submit.
+  const role = useAppSelector((s) => s.auth.role);
+  const canQuickRemind = role === Role.Artist;
 
   const weekEnd = addDays(weekStart, 7);
 
@@ -117,15 +125,17 @@ export function SchedulePage() {
             Today
           </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="ml-1"
-            onClick={() => setQuickReminderOpen(true)}
-            aria-label="Quick reminder"
-          >
-            <MessageSquarePlus className="h-4 w-4" />
-          </Button>
+          {canQuickRemind && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-1"
+              onClick={() => setQuickReminderOpen(true)}
+              aria-label="Quick reminder"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </header>
 

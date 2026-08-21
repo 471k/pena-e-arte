@@ -385,4 +385,11 @@ describe("SchedulePage", () => {
     expect(within(dialog).getByLabelText(/^name$/i)).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/^phone$/i)).toBeInTheDocument();
   });
+
+  it("owner does NOT see the 'Quick reminder' button (no artist-picker exists for the raw-contact path)", async () => {
+    renderPage(Role.Owner);
+    await screen.findByText("No appointments this week");
+
+    expect(screen.queryByRole("button", { name: /quick reminder/i })).not.toBeInTheDocument();
+  });
 });
