@@ -5,6 +5,8 @@ public record PublicStudioResponse(
     string Name,
     string Slug,
     string City,
+    double Latitude,
+    double Longitude,
     string? Description,
     string? CoverImageUrl,
     string? PhoneNumber,

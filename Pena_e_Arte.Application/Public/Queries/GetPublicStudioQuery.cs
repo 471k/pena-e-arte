@@ -87,6 +87,8 @@ public class GetPublicStudioHandler(IAppDbContext db)
             studio.Name,
             studio.Slug,
             studio.City,
+            studio.Latitude,
+            studio.Longitude,
             studio.Description,
             studio.CoverImageUrl,
             studio.PhoneNumber,

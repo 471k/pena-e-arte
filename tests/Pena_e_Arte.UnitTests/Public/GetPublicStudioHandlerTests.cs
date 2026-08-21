@@ -17,6 +17,8 @@ public class GetPublicStudioHandlerTests
         Name = "Test Studio",
         Slug = slug,
         City = "Porto",
+        Latitude = 41.1579,
+        Longitude = -8.6291,
         IsActive = active,
         PhoneNumber = "+351 912 000 000",
         InstagramHandle = "teststudio",
@@ -77,6 +79,8 @@ public class GetPublicStudioHandlerTests
         result.Should().NotBeNull();
         result!.PhoneNumber.Should().Be("+351 912 000 000");
         result.InstagramHandle.Should().Be("teststudio");
+        result.Latitude.Should().Be(41.1579);
+        result.Longitude.Should().Be(-8.6291);
     }
 
     [Fact]
