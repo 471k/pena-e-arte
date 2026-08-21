@@ -141,10 +141,70 @@ public class ManualReminderFlowIntegrationTests(DatabaseFixture fixture)
         await CreateCreateHandler(createDb, TenantFor(studioId)).Handle(new CreateManualReminderCommand(req), default);
 
         await using AppDbContext queryDb = fixture.CreateDbContext(studioId);
-        GetManualRemindersHandler queryHandler = new(queryDb);
+        ICurrentUser ownerUser = Substitute.For<ICurrentUser>();
+        ownerUser.Role.Returns("owner");
+        GetManualRemindersHandler queryHandler = new(queryDb, ownerUser);
         List<ManualReminderResponse> results = await queryHandler.Handle(
             new GetManualRemindersQuery(appointment.Id, null), default);
 
         results.Should().ContainSingle(r => r.RecipientName == "Ana Silva");
+    }
+
+    [Fact]
+    public async Task Create_OwnerCallerForAssignedClient_ResolvesArtistFromClientWithNoExplicitArtistId()
+    {
+        Guid studioId = Guid.NewGuid();
+        Guid artistId = await SeedArtistAsCurrentUser(studioId);
+
+        await using AppDbContext seedCtx = fixture.CreateDbContext(studioId);
+        Client client = new() { StudioId = studioId, ArtistId = artistId, FirstName = "Ana", LastName = "Silva", Email = $"{Guid.NewGuid()}@c.com", Phone = "+351910000001" };
+        seedCtx.Clients.Add(client);
+        await seedCtx.SaveChangesAsync();
+
+        _currentUser.Role.Returns("owner");
+        await using AppDbContext createDb = fixture.CreateDbContext(studioId);
+        // No ArtistId on the request — the client's own assigned artist must be resolved.
+        CreateManualReminderRequest req = new(null, client.Id, null, null, null, null, null);
+        ManualReminderResponse result = await CreateCreateHandler(createDb, TenantFor(studioId))
+            .Handle(new CreateManualReminderCommand(req), default);
+
+        await using AppDbContext verify = fixture.CreateDbContext(studioId);
+        ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == result.Id);
+        reminder.ArtistId.Should().Be(artistId);
+    }
+
+    [Fact]
+    public async Task GetManualReminders_ArtistCaller_DoesNotSeeColleagueArtistsReminderForSameClient()
+    {
+        Guid studioId = Guid.NewGuid();
+        Guid myArtistId = await SeedArtistAsCurrentUser(studioId);
+
+        await using AppDbContext seedCtx = fixture.CreateDbContext(studioId);
+        Guid colleagueArtistId = Guid.NewGuid();
+        seedCtx.Artists.Add(new Artist { StudioId = studioId, Id = colleagueArtistId, FirstName = "Col", LastName = "League", Email = $"{Guid.NewGuid()}@a.com" });
+        await seedCtx.SaveChangesAsync();
+
+        Client sharedClient = new() { StudioId = studioId, FirstName = "Shared", LastName = "Client", Email = $"{Guid.NewGuid()}@c.com", Phone = "+351900000000" };
+        seedCtx.Clients.Add(sharedClient);
+        await seedCtx.SaveChangesAsync();
+
+        seedCtx.ManualReminders.Add(new ManualReminder
+        {
+            StudioId = studioId,
+            ArtistId = colleagueArtistId,
+            ClientId = sharedClient.Id,
+            RecipientName = "Shared Client",
+            RecipientPhone = "+351900000000",
+            ScheduledFor = DateTime.UtcNow.AddHours(1),
+            Status = ManualReminderStatus.Scheduled,
+        });
+        await seedCtx.SaveChangesAsync();
+
+        await using AppDbContext queryDb = fixture.CreateDbContext(studioId);
+        GetManualRemindersHandler queryHandler = new(queryDb, _currentUser);
+        List<ManualReminderResponse> results = await queryHandler.Handle(
+            new GetManualRemindersQuery(null, sharedClient.Id), default);
+
+        results.Should().BeEmpty();
     }
 }

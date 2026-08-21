@@ -20,11 +20,19 @@ namespace Pena_e_Arte.Application.Reminders.Commands;
 // returning works correctly — unlike CancelAppointmentCommand's AuditTargetId, which is a
 // pre-existing AppointmentId known up front from the request.
 public record CreateManualReminderCommand(CreateManualReminderRequest Request)
-    : IRequest<ManualReminderResponse>, IAuditableCommand
+    : IRequest<ManualReminderResponse>, IAuditableCommand, IQuotaCheckedCommand
 {
     public string AuditAction => AuditActions.ManualReminderSent;
     public string AuditTargetType => AuditTargetTypes.ManualReminder;
     public Guid AuditTargetId { get; set; }
+
+    // Manual reminders write to the same NotificationLog table every other notification-
+    // sending command counts against — without this, a studio could blow past its plan's
+    // NotificationsPerMonth cap purely via manual SMS, bypassing the enforcement every other
+    // notification path already participates in (the flat 20/day/artist Redis quota below is
+    // a separate, purpose-built abuse guard — see Decision 6 in architecture.md — not a
+    // substitute for plan-tier enforcement).
+    public QuotaType QuotaType => QuotaType.NotificationsPerMonth;
 }
 
 public class CreateManualReminderHandler(
@@ -38,13 +46,23 @@ public class CreateManualReminderHandler(
     public async Task<ManualReminderResponse> Handle(CreateManualReminderCommand command, CancellationToken ct)
     {
         CreateManualReminderRequest req = command.Request;
+        bool isArtist = currentUser.Role == "artist";
 
-        Artist artist = await ResolveArtistAsync(req.ArtistId, ct);
+        // Only needed for the artist-role ownership checks below and as the artist-role
+        // fallback source of truth — owner/issuer callers resolve the target artist per
+        // branch instead (from the appointment/client's own ArtistId whenever one exists),
+        // so they never need to pass ArtistId just to send a reminder about a specific
+        // appointment or an already-assigned client.
+        Artist? callerArtist = isArtist
+            ? await db.Artists.FirstOrDefaultAsync(a => a.UserId == currentUser.UserId, ct)
+                ?? throw new ForbiddenException()
+            : null;
 
         string recipientName;
         string recipientPhone;
         Guid? clientId = null;
         Guid? appointmentId = null;
+        Guid resolvedArtistId;
 
         if (req.AppointmentId is not null)
         {
@@ -54,7 +72,7 @@ public class CreateManualReminderHandler(
                 .FirstOrDefaultAsync(a => a.Id == req.AppointmentId, ct)
                 ?? throw new NotFoundException(nameof(Appointment), req.AppointmentId);
 
-            if (currentUser.Role == "artist" && appointment.Artist.UserId != currentUser.UserId)
+            if (isArtist && appointment.Artist.UserId != currentUser.UserId)
                 throw new NotFoundException(nameof(Appointment), req.AppointmentId);
 
             if (appointment.Client.Phone is null)
@@ -67,6 +85,10 @@ public class CreateManualReminderHandler(
             recipientPhone = appointment.Client.Phone;
             clientId = appointment.ClientId;
             appointmentId = appointment.Id;
+            // Authoritative — the appointment's own artist, never req.ArtistId. Prevents an
+            // owner/issuer from attributing the reminder (and its quota consumption/audit
+            // trail) to an unrelated artist by supplying a mismatched ArtistId.
+            resolvedArtistId = appointment.ArtistId;
         }
         else if (req.ClientId is not null)
         {
@@ -74,7 +96,7 @@ public class CreateManualReminderHandler(
                 .FirstOrDefaultAsync(c => c.Id == req.ClientId, ct)
                 ?? throw new NotFoundException(nameof(Client), req.ClientId);
 
-            if (currentUser.Role == "artist" && client.ArtistId != artist.Id)
+            if (isArtist && client.ArtistId != callerArtist!.Id)
                 throw new NotFoundException(nameof(Client), req.ClientId);
 
             if (client.Phone is null)
@@ -86,22 +108,28 @@ public class CreateManualReminderHandler(
             recipientName = $"{client.FirstName} {client.LastName}";
             recipientPhone = client.Phone;
             clientId = client.Id;
+            // The client's own assigned artist is authoritative when set; only an Unassigned
+            // client (no authoritative source) falls back to requiring an explicit ArtistId.
+            resolvedArtistId = isArtist
+                ? callerArtist!.Id
+                : client.ArtistId ?? await RequireExplicitArtistAsync(req.ArtistId, ct);
         }
         else
         {
             // Raw-contact path — validator has already enforced both fields are present.
             recipientName = req.RecipientName!;
             recipientPhone = req.RecipientPhone!;
+            resolvedArtistId = isArtist
+                ? callerArtist!.Id
+                : await RequireExplicitArtistAsync(req.ArtistId, ct);
         }
-
-        await quota.CheckAndIncrementAsync(tenant.StudioId, artist.Id, ct);
 
         DateTime scheduledFor = req.ScheduledFor ?? DateTime.UtcNow;
 
         ManualReminder reminder = new()
         {
             StudioId = tenant.StudioId,
-            ArtistId = artist.Id,
+            ArtistId = resolvedArtistId,
             AppointmentId = appointmentId,
             ClientId = clientId,
             RecipientName = recipientName,
@@ -114,6 +142,21 @@ public class CreateManualReminderHandler(
         db.ManualReminders.Add(reminder);
         await db.SaveChangesAsync(ct);
 
+        // Quota is checked (and consumed) only after the reminder is durably persisted, not
+        // before — otherwise a transient DB failure between the two would waste a day's quota
+        // on a reminder that was never actually created. On rejection, the tentatively-saved
+        // row is removed so no orphaned reminder is left behind.
+        try
+        {
+            await quota.CheckAndIncrementAsync(tenant.StudioId, resolvedArtistId, ct);
+        }
+        catch
+        {
+            db.ManualReminders.Remove(reminder);
+            await db.SaveChangesAsync(ct);
+            throw;
+        }
+
         reminder.JobId = jobs.ScheduleManualReminder(reminder.Id, scheduledFor);
         await db.SaveChangesAsync(ct);
 
@@ -122,21 +165,17 @@ public class CreateManualReminderHandler(
         return ToResponse(reminder);
     }
 
-    private async Task<Artist> ResolveArtistAsync(Guid? requestedArtistId, CancellationToken ct)
+    private async Task<Guid> RequireExplicitArtistAsync(Guid? requestedArtistId, CancellationToken ct)
     {
-        if (currentUser.Role == "artist")
-        {
-            return await db.Artists.FirstOrDefaultAsync(a => a.UserId == currentUser.UserId, ct)
-                ?? throw new ForbiddenException();
-        }
-
-        // Owner/issuer: act on behalf of the requested artist (Decision 2). Require it explicitly
-        // rather than silently picking "any" artist at the studio.
+        // Owner/issuer with no authoritative artist source (raw-contact, or an Unassigned
+        // client) must act on behalf of an explicitly named artist (Decision 2) — never
+        // silently picking "any" artist at the studio.
         if (requestedArtistId is null)
             throw new BusinessRuleViolationException("ArtistId is required.");
 
-        return await db.Artists.FirstOrDefaultAsync(a => a.Id == requestedArtistId, ct)
+        Artist artist = await db.Artists.FirstOrDefaultAsync(a => a.Id == requestedArtistId, ct)
             ?? throw new NotFoundException(nameof(Artist), requestedArtistId);
+        return artist.Id;
     }
 
     private static ManualReminderResponse ToResponse(ManualReminder r) => new(

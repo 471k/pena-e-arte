@@ -1,8 +1,10 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Reminders.Queries;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Reminders;
@@ -10,18 +12,27 @@ namespace Pena_e_Arte.UnitTests.Reminders;
 public class GetManualRemindersHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    private GetManualRemindersHandler CreateSut() => new(_db);
-
-    private Guid SeedReminder(Guid? appointmentId, Guid? clientId)
+    public GetManualRemindersHandlerTests()
     {
-        Guid artistId = Guid.NewGuid();
-        _db.Artists.Add(new Artist { StudioId = _studioId, Id = artistId, FirstName = "Jo", LastName = "Artist", Email = $"{Guid.NewGuid()}@a.com" });
+        _currentUser.Role.Returns("owner");
+    }
+
+    private GetManualRemindersHandler CreateSut() => new(_db, _currentUser);
+
+    private Guid SeedReminder(Guid? appointmentId, Guid? clientId, Guid? artistId = null)
+    {
+        Guid resolvedArtistId = artistId ?? Guid.NewGuid();
+        if (artistId is null)
+        {
+            _db.Artists.Add(new Artist { StudioId = _studioId, Id = resolvedArtistId, FirstName = "Jo", LastName = "Artist", Email = $"{Guid.NewGuid()}@a.com" });
+        }
         ManualReminder reminder = new()
         {
             StudioId = _studioId,
-            ArtistId = artistId,
+            ArtistId = resolvedArtistId,
             AppointmentId = appointmentId,
             ClientId = clientId,
             RecipientName = "Walk-in",
@@ -33,6 +44,18 @@ public class GetManualRemindersHandlerTests
         _db.SaveChanges();
         _db.ChangeTracker.Clear();
         return reminder.Id;
+    }
+
+    private Guid SeedArtistAsCurrentUser()
+    {
+        Guid userId = Guid.NewGuid();
+        Artist artist = new() { StudioId = _studioId, UserId = userId, FirstName = "Jo", LastName = "Artist", Email = $"{Guid.NewGuid()}@a.com" };
+        _db.Artists.Add(artist);
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
+        _currentUser.Role.Returns("artist");
+        _currentUser.UserId.Returns(userId);
+        return artist.Id;
     }
 
     [Fact]
@@ -65,5 +88,44 @@ public class GetManualRemindersHandlerTests
         var result = await CreateSut().Handle(new GetManualRemindersQuery(null, clientId), default);
 
         result.Should().ContainSingle(r => r.Id == id);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistCaller_DoesNotSeeColleaguesRemindersForSameAppointment()
+    {
+        Guid appointmentId = Guid.NewGuid();
+        Guid myArtistId = SeedArtistAsCurrentUser();
+        // A colleague's reminder for the SAME appointment — must never be visible to me.
+        SeedReminder(appointmentId, null, artistId: Guid.NewGuid());
+        Guid myReminderId = SeedReminder(appointmentId, null, artistId: myArtistId);
+
+        var result = await CreateSut().Handle(new GetManualRemindersQuery(appointmentId, null), default);
+
+        result.Should().ContainSingle(r => r.Id == myReminderId);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistCaller_DoesNotSeeColleaguesRemindersForSameClient()
+    {
+        Guid clientId = Guid.NewGuid();
+        Guid myArtistId = SeedArtistAsCurrentUser();
+        SeedReminder(null, clientId, artistId: Guid.NewGuid());
+        Guid myReminderId = SeedReminder(null, clientId, artistId: myArtistId);
+
+        var result = await CreateSut().Handle(new GetManualRemindersQuery(null, clientId), default);
+
+        result.Should().ContainSingle(r => r.Id == myReminderId);
+    }
+
+    [Fact]
+    public async Task Handle_OwnerCaller_SeesAllArtistsReminders()
+    {
+        Guid clientId = Guid.NewGuid();
+        Guid firstId = SeedReminder(null, clientId, artistId: Guid.NewGuid());
+        Guid secondId = SeedReminder(null, clientId, artistId: Guid.NewGuid());
+
+        var result = await CreateSut().Handle(new GetManualRemindersQuery(null, clientId), default);
+
+        result.Select(r => r.Id).Should().BeEquivalentTo([firstId, secondId]);
     }
 }

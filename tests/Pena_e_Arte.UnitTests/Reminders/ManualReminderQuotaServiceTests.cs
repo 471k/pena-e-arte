@@ -18,11 +18,16 @@ public class ManualReminderQuotaServiceTests
 
     private ManualReminderQuotaService CreateSut() => new(_redis);
 
+    private void MockScriptResult(long count)
+    {
+        _db.ScriptEvaluateAsync(Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>(), Arg.Any<CommandFlags>())
+           .Returns(Task.FromResult(RedisResult.Create(count)));
+    }
+
     [Fact]
     public async Task CheckAndIncrementAsync_UnderLimit_DoesNotThrow()
     {
-        _db.StringIncrementAsync(Arg.Any<RedisKey>(), Arg.Any<long>(), Arg.Any<CommandFlags>())
-           .Returns(Task.FromResult(5L));
+        MockScriptResult(5);
 
         Func<Task> act = () => CreateSut().CheckAndIncrementAsync(Guid.NewGuid(), Guid.NewGuid(), default);
 
@@ -32,8 +37,7 @@ public class ManualReminderQuotaServiceTests
     [Fact]
     public async Task CheckAndIncrementAsync_AtLimit_ThrowsManualReminderQuotaExceededException()
     {
-        _db.StringIncrementAsync(Arg.Any<RedisKey>(), Arg.Any<long>(), Arg.Any<CommandFlags>())
-           .Returns(Task.FromResult(21L));
+        MockScriptResult(21);
 
         Func<Task> act = () => CreateSut().CheckAndIncrementAsync(Guid.NewGuid(), Guid.NewGuid(), default);
 
@@ -43,8 +47,7 @@ public class ManualReminderQuotaServiceTests
     [Fact]
     public async Task CheckAndIncrementAsync_AtExactlyTwenty_DoesNotThrow()
     {
-        _db.StringIncrementAsync(Arg.Any<RedisKey>(), Arg.Any<long>(), Arg.Any<CommandFlags>())
-           .Returns(Task.FromResult(20L));
+        MockScriptResult(20);
 
         Func<Task> act = () => CreateSut().CheckAndIncrementAsync(Guid.NewGuid(), Guid.NewGuid(), default);
 
@@ -52,24 +55,14 @@ public class ManualReminderQuotaServiceTests
     }
 
     [Fact]
-    public async Task CheckAndIncrementAsync_FirstCallOfDay_SetsExpiry()
+    public async Task CheckAndIncrementAsync_EvaluatesTheAtomicIncrExpireScript()
     {
-        _db.StringIncrementAsync(Arg.Any<RedisKey>(), Arg.Any<long>(), Arg.Any<CommandFlags>())
-           .Returns(Task.FromResult(1L));
+        MockScriptResult(1);
 
         await CreateSut().CheckAndIncrementAsync(Guid.NewGuid(), Guid.NewGuid(), default);
 
-        await _db.Received(1).KeyExpireAsync(Arg.Any<RedisKey>(), TimeSpan.FromHours(25), Arg.Any<ExpireWhen>(), Arg.Any<CommandFlags>());
-    }
-
-    [Fact]
-    public async Task CheckAndIncrementAsync_SubsequentCallOfDay_DoesNotResetExpiry()
-    {
-        _db.StringIncrementAsync(Arg.Any<RedisKey>(), Arg.Any<long>(), Arg.Any<CommandFlags>())
-           .Returns(Task.FromResult(2L));
-
-        await CreateSut().CheckAndIncrementAsync(Guid.NewGuid(), Guid.NewGuid(), default);
-
-        await _db.DidNotReceive().KeyExpireAsync(Arg.Any<RedisKey>(), Arg.Any<TimeSpan?>(), Arg.Any<ExpireWhen>(), Arg.Any<CommandFlags>());
+        await _db.Received(1).ScriptEvaluateAsync(
+            Arg.Is<string>(s => s.Contains("INCR") && s.Contains("EXPIRE")),
+            Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>(), Arg.Any<CommandFlags>());
     }
 }

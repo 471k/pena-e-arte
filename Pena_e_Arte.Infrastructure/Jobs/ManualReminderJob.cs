@@ -34,13 +34,18 @@ public class ManualReminderJob(
             return;
         }
 
-        if (reminder.Appointment is not null && reminder.Appointment.Status == AppointmentStatus.Cancelled)
+        // A reminder can be scheduled up to 90 days ahead — by send time the linked
+        // appointment may have already been cancelled, completed, or marked a no-show, all
+        // of which make "reminding" the client about it meaningless or actively confusing.
+        if (reminder.Appointment is not null && reminder.Appointment.Status
+            is AppointmentStatus.Cancelled or AppointmentStatus.Completed or AppointmentStatus.NoShow)
         {
             reminder.Status = ManualReminderStatus.Cancelled;
             reminder.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
             logger.LogInformation(
-                "Skipping ManualReminder {@ManualReminderId} — linked appointment was cancelled", manualReminderId);
+                "Skipping ManualReminder {@ManualReminderId} — linked appointment is {@AppointmentStatus}",
+                manualReminderId, reminder.Appointment.Status);
             return;
         }
 
@@ -92,13 +97,17 @@ public class ManualReminderJob(
 
     private static string BuildBody(ManualReminder reminder, string studioName)
     {
-        if (!string.IsNullOrWhiteSpace(reminder.Message))
-            return reminder.Message;
+        // Same "Reply STOP to opt out." disclosure AppointmentReminderJob's automatic SMS
+        // carries — required on every outbound SMS this app sends, not just automatic ones,
+        // regardless of whether the artist used the default template or wrote their own text.
+        string message = !string.IsNullOrWhiteSpace(reminder.Message)
+            ? reminder.Message
+            : reminder.Appointment is not null
+                ? $"Hi {reminder.RecipientName}, reminder from {studioName} — your appointment is " +
+                  $"{reminder.Appointment.Date:ddd dd MMM 'at' HH:mm}."
+                : $"Hi {reminder.RecipientName}, this is a reminder from {studioName}.";
 
-        return reminder.Appointment is not null
-            ? $"Hi {reminder.RecipientName}, reminder from {studioName} — your appointment is " +
-              $"{reminder.Appointment.Date:ddd dd MMM 'at' HH:mm}."
-            : $"Hi {reminder.RecipientName}, this is a reminder from {studioName}.";
+        return $"{message} Reply STOP to opt out.";
     }
 
     private async Task<bool> TrySendSmsAsync(ManualReminder reminder, string body, CancellationToken ct)
