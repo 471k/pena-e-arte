@@ -162,6 +162,7 @@ try
     app.MapFormEndpoints();
     app.MapPaymentEndpoints();
     app.MapNotificationEndpoints();
+    app.MapManualReminderEndpoints();
     app.MapFileEndpoints();
     app.MapReferralEndpoints();
     app.MapPlatformEndpoints();
