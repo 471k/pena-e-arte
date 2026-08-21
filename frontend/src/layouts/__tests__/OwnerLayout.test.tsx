@@ -16,6 +16,7 @@ import type { StudioResponse } from "@/features/studios/studiosApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
+import { artistsApi } from "@/features/artists/artistsApi";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -68,6 +69,10 @@ const server = setupServer(
   http.get("http://localhost/api/v1/onboarding/tour-status", () =>
     HttpResponse.json({ hasCompletedTour: true }),
   ),
+  // No linked artist profile by default — a normal 404, same as ArtistLayout expects for every artist.
+  http.get("http://localhost/api/v1/artists/me", () =>
+    HttpResponse.json({ message: "Not found" }, { status: 404 }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -92,8 +97,9 @@ function makeStore(overrides: StoreOverrides = {}) {
       [notificationsApi.reducerPath]:  notificationsApi.reducer,
       [onboardingApi.reducerPath]:     onboardingApi.reducer,
       [authApi.reducerPath]:           authApi.reducer,
+      [artistsApi.reducerPath]:        artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, notificationsApi.middleware, onboardingApi.middleware, authApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, notificationsApi.middleware, onboardingApi.middleware, authApi.middleware, artistsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,

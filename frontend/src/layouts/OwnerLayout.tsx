@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, MessageSquareMore, BarChart3,
+  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -18,6 +18,7 @@ import { logout } from "@/features/auth/authSlice";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { NotificationBell } from "@/features/notifications";
 import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
@@ -44,6 +45,14 @@ export function OwnerLayout() {
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
   useGetSubscriptionQuery();
   const { data: studio } = useGetMyStudioQuery();
+  // Fires unconditionally for every owner (most won't have a profile yet — a normal 404 each
+  // load, exactly like ArtistLayout already does for every artist). RTK Query dedupes this
+  // against the same call ArtistListPage's "Become an artist" CTA makes via the shared
+  // "Artist" cache tag.
+  const { data: myArtist } = useGetMyArtistQuery();
+  const navItems: NavItem[] = myArtist
+    ? [...NAV_ITEMS, { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> }]
+    : NAV_ITEMS;
 
   function handleLogout() {
     dispatch(logout());
@@ -60,7 +69,7 @@ export function OwnerLayout() {
         <span className="font-semibold tracking-tight">TattooOS</span>
 
         <nav className="hidden lg:flex ml-6 items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {NAV_ITEMS.map(({ label, href, icon, tourId }) => (
+          {navItems.map(({ label, href, icon, tourId }) => (
             <NavLink
               key={href}
               to={href}
@@ -79,7 +88,7 @@ export function OwnerLayout() {
             </NavLink>
           ))}
         </nav>
-        <NavDrawer navItems={NAV_ITEMS} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
+        <NavDrawer navItems={navItems} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
 
         <div className="ml-auto flex items-center gap-3">
           <Button

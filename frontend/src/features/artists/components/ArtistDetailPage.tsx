@@ -313,7 +313,7 @@ export function ArtistDetailPage() {
                 className="gap-1.5 text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Delete
+                {isOwnProfile ? "Stop working as an artist" : "Delete"}
               </Button>
             )}
           </div>
@@ -458,7 +458,7 @@ export function ArtistDetailPage() {
                       <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="truncate">{artist.email}</span>
                     </div>
-                    {canManage && (
+                    {canManage && !isOwnProfile && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -703,8 +703,14 @@ export function ArtistDetailPage() {
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {artist.firstName} {artist.lastName}?</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
+            <DialogTitle>
+              {isOwnProfile ? "Stop working as an artist?" : `Delete ${artist.firstName} ${artist.lastName}?`}
+            </DialogTitle>
+            <DialogDescription>
+              {isOwnProfile
+                ? "This removes your artist profile — your owner login and studio access are unaffected. This action cannot be undone."
+                : "This action cannot be undone."}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
@@ -722,10 +728,10 @@ export function ArtistDetailPage() {
               {isDeleting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting…
+                  {isOwnProfile ? "Removing…" : "Deleting…"}
                 </>
               ) : (
-                "Delete"
+                isOwnProfile ? "Stop working as an artist" : "Delete"
               )}
             </Button>
           </DialogFooter>
