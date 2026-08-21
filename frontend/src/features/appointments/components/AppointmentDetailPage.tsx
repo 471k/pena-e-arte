@@ -376,6 +376,7 @@ export function AppointmentDetailPage() {
       {appt && (
         <ReminderDialog
           appointmentId={appt.id}
+          artistId={appt.artistId}
           open={reminderDialogOpen}
           onOpenChange={setReminderDialogOpen}
         />

@@ -599,6 +599,7 @@ export function ClientDetailPage() {
 
       <ReminderDialog
         clientId={id}
+        artistId={client.artistId ?? undefined}
         open={reminderDialogOpen}
         onOpenChange={setReminderDialogOpen}
       />
