@@ -23,6 +23,8 @@ public static class AuditActions
     /// <summary>Client-initiated (or support-initiated) right-to-erasure request. Distinct
     /// from the policy-driven automatic retention purge, which is not an audited command.</summary>
     public const string ClientDataErasureRequested = "Client.DataErasureRequested";
+
+    public const string ClientArtistReassigned = "Client.ArtistReassigned";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>

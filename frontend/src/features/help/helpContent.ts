@@ -331,7 +331,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "View a client's profile and tattoo history",
     route: "/clients",
     keywords: ["client profile", "medical notes", "cross-studio"],
-    summary: "A client's full profile — contact info, health details, body map, forms, and appointment history — all in one place.",
+    summary: "A client's full profile — contact info, health details, body map, forms, and appointment history — all in one place. The artist assigned to the client is shown near the top (read-only for this role — only owners can change it).",
     steps: [
       "Open a client from the Clients list.",
       "Click \"Edit Profile\" (or \"Add Profile\" if none exists yet) to enter date of birth, allergies, and medical notes, then \"Save Profile\".",
@@ -522,11 +522,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Add a client manually",
     route: "/clients/new",
-    keywords: ["new client", "walk-in client"],
+    keywords: ["new client", "walk-in client", "assign artist", "preferred artist"],
     summary: "Add a new client record to your studio.",
     steps: [
       "Go to Clients and click \"New Client\".",
       "Enter the client's first and last name and email address.",
+      "Select the Artist this client belongs to. (If you're an artist adding your own client, this step doesn't apply — it's assigned to you automatically.)",
       "Optionally enter a phone number.",
       "Click \"Create Client\".",
     ],
@@ -541,8 +542,23 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Go to Clients to see the full list.",
       "Use the search box to find a client by name or email.",
+      "Use the Artist filter to narrow the list to one artist's clients, or \"Unassigned\" for clients with no artist yet.",
       "Click \"View\" on any row (or click the row) to open that client's profile.",
       "Click \"New Client\" to add a new one.",
+    ],
+  },
+  {
+    id: "owner-clients-reassign-artist",
+    roles: [Owner],
+    title: "Reassign a client to a different artist",
+    route: "/clients",
+    keywords: ["reassign artist", "change artist", "unassign client"],
+    summary: "Change which artist a client belongs to, or unassign them, from the client's profile.",
+    steps: [
+      "Open the client's profile from the Clients list.",
+      "Click the artist name shown near the top of the profile to open the dropdown.",
+      "Choose a different artist, or choose \"Unassigned\".",
+      "The change saves immediately — no separate save button.",
     ],
   },
   {

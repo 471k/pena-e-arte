@@ -63,6 +63,7 @@ const MY_CLIENT: ClientResponse = {
   firstName: "Marco", lastName: "Cliente",
   email: "marco@test.com", phone: null,
   createdAt: "2024-01-01T00:00:00Z", userId: "u-001",
+  artistId: null, artistName: null,
 };
 
 const STAFF_CLIENT: ClientResponse = {

@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { Toaster } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import { clientsApi } from "@/features/clients/clientsApi";
@@ -31,14 +32,16 @@ import { Role } from "@/shared/types/roles";
 const CLIENT_ID = "client-001";
 
 const CLIENT: ClientResponse = {
-  id:        CLIENT_ID,
-  studioId:  "stud-0001",
-  firstName: "Ana",
-  lastName:  "Ferreira",
-  email:     "ana.ferreira@ink-soul.test",
-  phone:     "+351 912 111 222",
-  createdAt: "2024-01-10T09:00:00.000Z",
-  userId:    "u-ana",
+  id:         CLIENT_ID,
+  studioId:   "stud-0001",
+  firstName:  "Ana",
+  lastName:   "Ferreira",
+  email:      "ana.ferreira@ink-soul.test",
+  phone:      "+351 912 111 222",
+  createdAt:  "2024-01-10T09:00:00.000Z",
+  userId:     "u-ana",
+  artistId:   "artist-001",
+  artistName: "Marta Reis",
 };
 
 const PROFILE: ClientProfileResponse = {
@@ -149,6 +152,14 @@ const server = setupServer(
   }),
   http.get("http://localhost/api/v1/clients/:id/tattoos", () => HttpResponse.json([TATTOO])),
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json([ARTIST])),
+  http.patch("http://localhost/api/v1/clients/:id/artist", async ({ request }) => {
+    const body = (await request.json()) as { artistId: string | null };
+    return HttpResponse.json({
+      ...CLIENT,
+      artistId:   body.artistId,
+      artistName: body.artistId ? ARTIST.firstName + " " + ARTIST.lastName : null,
+    });
+  }),
   http.get("http://localhost/api/v1/clients/:userId/portable-profile", () => HttpResponse.json(null)),
   http.get("http://localhost/api/v1/appointments", () => HttpResponse.json([APPOINTMENT])),
   http.get("http://localhost/api/v1/intake-forms", () => HttpResponse.json([INTAKE_FORM])),
@@ -189,6 +200,7 @@ function makeStore(role: Role) {
 function renderPage(role: Role = Role.Owner) {
   render(
     <Provider store={makeStore(role)}>
+      <Toaster />
       <MemoryRouter initialEntries={[`/clients/${CLIENT_ID}`]}>
         <Routes>
           <Route path="/clients/:id" element={<ClientDetailPage />} />
@@ -460,5 +472,40 @@ describe("ClientDetailPage", () => {
     await screen.findByText("Ana Ferreira");
     await user.click(screen.getByRole("tab", { name: /appointments/i }));
     expect(await screen.findByText("No appointments found.")).toBeInTheDocument();
+  });
+
+  // ── Assigned artist ──────────────────────────────────────────────────────────
+
+  it("Owner sees an editable assigned-artist select, and changing it saves and shows a success toast", async () => {
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await screen.findByText("Ana Ferreira");
+
+    const artistSelect = screen.getByLabelText("Assigned artist");
+    expect(artistSelect).toBeInTheDocument();
+
+    await user.click(artistSelect);
+    await user.click(await screen.findByRole("option", { name: "Unassigned" }));
+
+    expect(await screen.findByText("Assigned artist updated.")).toBeInTheDocument();
+  });
+
+  it("Non-owner (artist) sees plain read-only assigned-artist text, not a select", async () => {
+    renderPage(Role.Artist);
+    await screen.findByText("Ana Ferreira");
+
+    expect(screen.queryByLabelText("Assigned artist")).not.toBeInTheDocument();
+    expect(screen.getByText("Marta Reis")).toBeInTheDocument();
+  });
+
+  it("Non-owner sees 'Unassigned' when the client has no artist", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients/:id", () =>
+        HttpResponse.json({ ...CLIENT, artistId: null, artistName: null })),
+    );
+    renderPage(Role.Artist);
+    await screen.findByText("Ana Ferreira");
+
+    expect(screen.getByText("Unassigned")).toBeInTheDocument();
   });
 });

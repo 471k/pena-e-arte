@@ -105,6 +105,45 @@ public class GetClientsHandlerTests
         result.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Handle_ClientHasArtist_ReturnsArtistIdAndArtistName()
+    {
+        Artist artist = new()
+        {
+            StudioId = _studioId,
+            FirstName = "Art",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Artists.Add(artist);
+        _db.Clients.Add(new Client
+        {
+            StudioId = _studioId,
+            FirstName = "Ana",
+            LastName = "Costa",
+            Email = "ana@example.com",
+            ArtistId = artist.Id
+        });
+        await _db.SaveChangesAsync();
+
+        List<ClientResponse> result = await CreateSut().Handle(new GetClientsQuery(null), default);
+
+        result.Should().ContainSingle();
+        result[0].ArtistId.Should().Be(artist.Id);
+        result[0].ArtistName.Should().Be("Art Ist");
+    }
+
+    [Fact]
+    public async Task Handle_ClientHasNoArtist_ReturnsNullArtistFields()
+    {
+        await SeedClients(("Ana", "Costa", "ana@example.com"));
+
+        List<ClientResponse> result = await CreateSut().Handle(new GetClientsQuery(null), default);
+
+        result[0].ArtistId.Should().BeNull();
+        result[0].ArtistName.Should().BeNull();
+    }
+
     private async Task SeedClients(params (string First, string Last, string Email)[] clients)
     {
         foreach ((string first, string last, string email) in clients)

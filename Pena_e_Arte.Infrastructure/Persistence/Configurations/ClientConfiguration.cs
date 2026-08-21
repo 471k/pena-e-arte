@@ -25,5 +25,14 @@ public class ClientConfiguration : TenantEntityConfiguration<Client>
         // support — see ClientAccountExtensions.FindClientForUserAtStudioAsync).
         builder.HasIndex(c => c.UserId)
                .HasDatabaseName("ix_clients_user_id");
+
+        builder.HasIndex(c => new { c.StudioId, c.ArtistId })
+               .HasDatabaseName("ix_clients_studio_artist");
+
+        builder.HasOne(c => c.Artist)
+               .WithMany(a => a.Clients)
+               .HasForeignKey(c => c.ArtistId)
+               .HasConstraintName("fk_clients_artists")
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -13,7 +13,7 @@ public class GetClientsHandler(IAppDbContext db)
 {
     public async Task<List<ClientResponse>> Handle(GetClientsQuery query, CancellationToken ct)
     {
-        IQueryable<Domain.Entities.Client> q = db.Clients;
+        IQueryable<Domain.Entities.Client> q = db.Clients.Include(c => c.Artist);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -24,9 +24,10 @@ public class GetClientsHandler(IAppDbContext db)
                 c.Email.ToLower().Contains(search));
         }
 
-        return await q
+        List<Domain.Entities.Client> clients = await q
             .OrderBy(c => c.LastName).ThenBy(c => c.FirstName)
-            .Select(c => CreateClientHandler.Map(c))
             .ToListAsync(ct);
+
+        return clients.Select(c => CreateClientHandler.Map(c, c.Artist)).ToList();
     }
 }

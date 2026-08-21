@@ -8,6 +8,9 @@ public class Client : TenantEntity
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
 
+    public Guid? ArtistId { get; set; }
+    public Artist? Artist { get; set; }
+
     /// <summary>
     /// Set when the client (or support on their behalf) requests account erasure. The account's
     /// login is disabled immediately; the RetentionPurgeJob anonymizes this row's PII after the

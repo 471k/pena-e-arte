@@ -1404,7 +1404,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (can add/edit profile info)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/clients/&lt;id&gt;</code>: contact info, medical/health profile, body map, tattoo history, forms, and appointments for one client, in tabs.</p>
+<p>At <code>/clients/&lt;id&gt;</code>: contact info, medical/health profile, body map, tattoo history, forms, and appointments for one client, in tabs. The artist assigned to the client is shown near the top of the profile (read-only for this role — only owners can reassign it).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Client detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1854,6 +1854,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Search by name/email, click a row to view detail, or click <span class="step-title">New Client</span> to add one manually.</li>
+<li>Use the <span class="step-title">Artist</span> filter dropdown to narrow the list to one artist's clients, or "Unassigned" for clients with no artist yet.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-create-client">Add client</a>, <a href="#owner-client-detail">Client detail</a></div>
 </section>
@@ -1872,17 +1873,20 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="108" font-size="9" fill-opacity="0.6">First name</text><rect x="280" y="114" width="90" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="380" y="108" font-size="9" fill-opacity="0.6">Last name</text><rect x="380" y="114" width="100" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="150" font-size="9" fill-opacity="0.6">Email</text><rect x="280" y="156" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="188" font-size="9" fill-opacity="0.6">Phone (optional)</text><rect x="280" y="194" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<rect x="280" y="226" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="243" font-size="10" fill="#fff">Create Client</text>
+<text x="280" y="180" font-size="9" fill-opacity="0.6">Artist</text><rect x="280" y="186" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="210" font-size="9" fill-opacity="0.6">Phone (optional)</text><rect x="280" y="216" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="280" y="248" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="265" font-size="10" fill="#fff">Create Client</text>
 </svg>
 </figure>
-<figcaption>Add client — fields in order: first/last name, email, phone</figcaption>
+<figcaption>Add client — fields in order: first/last name, email, artist, phone</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li>Enter <span class="step-title">First name</span>, <span class="step-title">Last name</span>, <span class="step-title">Email</span>.</li>
+<li>Choose the <span class="step-title">Artist</span> this client belongs to.</li>
 <li>Optionally add a <span class="step-title">Phone</span> number.</li>
 <li>Click <span class="step-title">Create Client</span>.</li>
 </ol>
+<div class="callout callout-tip"><strong>Note:</strong> if you're an artist adding your own client (via <a href="#artist-clients">the artist client list</a>), the Artist field doesn't appear at all — the client is assigned to you automatically.</div>
 <div class="crosslinks">See also: <a href="#owner-client-detail">Client detail</a></div>
 </section>
 
@@ -1890,7 +1894,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs.</p>
+<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. The one difference: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner client detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, ChevronRight, Mail, Pencil, Phone, Loader2, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronRight, Mail, Pencil, Phone, Loader2, MapPin, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -13,6 +13,13 @@ import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { ImageWithFallback } from "@/shared/components/ImageWithFallback";
 import { cn } from "@/shared/utils/cn";
 import { usePermission } from "@/shared/hooks/usePermission";
@@ -22,10 +29,12 @@ import {
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
   useUpdateBodyMapMutation,
+  useUpdateClientArtistMutation,
 } from "../clientsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useGetIntakeFormsQuery } from "@/features/forms/intakeFormsApi";
 import { useGetConsentFormsQuery } from "@/features/forms/consentFormsApi";
+import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { BodyMap } from "./BodyMap";
 import { TattooHistorySection } from "./TattooHistorySection";
@@ -53,6 +62,7 @@ export function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const canEdit = usePermission(Role.Artist);
+  const isOwner = usePermission(Role.Owner);
 
   const {
     data: client,
@@ -60,6 +70,22 @@ export function ClientDetailPage() {
     isUninitialized: clientUninitialized,
     isError: clientError,
   } = useGetClientByIdQuery(id!);
+
+  const { data: artists } = useGetArtistsQuery(undefined, { skip: !isOwner });
+  const [updateClientArtist, { isLoading: isReassigning }] = useUpdateClientArtistMutation();
+
+  async function handleArtistChange(value: string) {
+    if (!id) return;
+    const result = await updateClientArtist({
+      clientId: id,
+      body: { artistId: value === "unassigned" ? null : value },
+    });
+    if ("error" in result) {
+      toast.error("Failed to update assigned artist.");
+      return;
+    }
+    toast.success("Assigned artist updated.");
+  }
 
   const {
     data: profile,
@@ -234,6 +260,33 @@ export function ClientDetailPage() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t">
               <Calendar className="h-3.5 w-3.5 shrink-0" />
               <span>Client since {formatDate(client.createdAt)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
+              {isOwner ? (
+                <Select
+                  value={client.artistId ?? "unassigned"}
+                  onValueChange={handleArtistChange}
+                  disabled={isReassigning}
+                >
+                  <SelectTrigger
+                    aria-label="Assigned artist"
+                    className="h-7 w-auto gap-1.5 border-none px-0 shadow-none text-sm"
+                  >
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {artists?.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.firstName} {a.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span>{client.artistName ?? "Unassigned"}</span>
+              )}
             </div>
           </CardContent>
         </Card>
