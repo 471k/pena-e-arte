@@ -14,6 +14,7 @@ import { artistsApi } from "@/features/artists/artistsApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
+import { remindersApi } from "@/features/reminders/remindersApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import type {
   ClientResponse,
@@ -164,6 +165,7 @@ const server = setupServer(
   http.get("http://localhost/api/v1/appointments", () => HttpResponse.json([APPOINTMENT])),
   http.get("http://localhost/api/v1/intake-forms", () => HttpResponse.json([INTAKE_FORM])),
   http.get("http://localhost/api/v1/consent-forms", () => HttpResponse.json([CONSENT_FORM])),
+  http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -181,6 +183,7 @@ function makeStore(role: Role) {
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
       [intakeFormsApi.reducerPath]: intakeFormsApi.reducer,
       [consentFormsApi.reducerPath]: consentFormsApi.reducer,
+      [remindersApi.reducerPath]: remindersApi.reducer,
     },
     middleware: (gd) =>
       gd().concat(
@@ -189,6 +192,7 @@ function makeStore(role: Role) {
         appointmentsApi.middleware,
         intakeFormsApi.middleware,
         consentFormsApi.middleware,
+        remindersApi.middleware,
       ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -507,5 +511,22 @@ describe("ClientDetailPage", () => {
     await screen.findByText("Ana Ferreira");
 
     expect(screen.getByText("Unassigned")).toBeInTheDocument();
+  });
+
+  // ── Send Reminder ───────────────────────────────────────────────────────────
+
+  it("artist sees 'Send Reminder' button on the client's page", async () => {
+    renderPage(Role.Artist);
+    expect(await screen.findByRole("button", { name: /send reminder/i })).toBeInTheDocument();
+  });
+
+  it("clicking 'Send Reminder' opens the reminder dialog scoped to this client", async () => {
+    const user = userEvent.setup();
+    renderPage(Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /send reminder/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/send reminder/i)).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/^name$/i)).not.toBeInTheDocument();
   });
 });

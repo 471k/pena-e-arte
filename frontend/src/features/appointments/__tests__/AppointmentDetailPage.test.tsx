@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { remindersApi } from "@/features/reminders/remindersApi";
 import { AppointmentDetailPage } from "@/features/appointments/components/AppointmentDetailPage";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -96,6 +97,7 @@ const server = setupServer(
   http.get("http://localhost/api/v1/appointments/check-slot", () =>
     HttpResponse.json({ available: true, reason: null }),
   ),
+  http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -118,8 +120,9 @@ function makeStore(role: Role = Role.Artist) {
       auth:                          authReducer,
       ui:                            uiReducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+      [remindersApi.reducerPath]:    remindersApi.reducer,
     },
-    middleware: (gd) => gd().concat(appointmentsApi.middleware),
+    middleware: (gd) => gd().concat(appointmentsApi.middleware, remindersApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
@@ -425,5 +428,23 @@ describe("AppointmentDetailPage", () => {
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to confirm appointment."));
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  // ── Send Reminder ───────────────────────────────────────────────────────────
+
+  it("artist sees 'Send Reminder' button for a non-terminal appointment", async () => {
+    renderPage("appt-001", Role.Artist);
+    expect(await screen.findByRole("button", { name: /send reminder/i })).toBeInTheDocument();
+  });
+
+  it("clicking 'Send Reminder' opens the reminder dialog scoped to this appointment", async () => {
+    const user = userEvent.setup();
+    renderPage("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /send reminder/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/send reminder/i)).toBeInTheDocument();
+    // Appointment-linked mode never shows the raw-contact name/phone inputs.
+    expect(within(dialog).queryByLabelText(/^name$/i)).not.toBeInTheDocument();
   });
 });
