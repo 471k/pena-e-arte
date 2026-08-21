@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, Send, Trash2, UserX,
+  ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, Send, Trash2, UserRound, UserX,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -11,10 +11,14 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/shared/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/components/ui/select";
 import { Separator } from "@/shared/components/ui/separator";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
+import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
@@ -26,6 +30,7 @@ import {
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
+  useAssignAppointmentArtistMutation,
 } from "../appointmentsApi";
 
 function formatDateTime(dateStr: string): string {
@@ -93,10 +98,13 @@ export function AppointmentDetailPage() {
     skip: !id,
   });
 
+  const { data: artists } = useGetArtistsQuery(undefined, { skip: !canOwner });
+
   const [cancel,   { isLoading: cancelling   }] = useCancelAppointmentMutation();
   const [confirm,  { isLoading: confirming   }] = useConfirmAppointmentMutation();
   const [complete, { isLoading: completing   }] = useCompleteAppointmentMutation();
   const [noShow,   { isLoading: markingNoShow }] = useMarkNoShowMutation();
+  const [assignArtist, { isLoading: assigning }] = useAssignAppointmentArtistMutation();
 
   const isTerminal  = appt ? TERMINAL_STATUSES.has(appt.status) : false;
   const isPending   = appt?.status === AppointmentStatus.Pending;
@@ -130,6 +138,12 @@ export function AppointmentDetailPage() {
     const result = await noShow(appt!.id);
     if ("data" in result) toast.success("Appointment marked as no-show.");
     else                  toast.error("Failed to mark appointment as no-show.");
+  }
+
+  async function handleAssignArtist(artistId: string) {
+    const result = await assignArtist({ id: appt!.id, body: { artistId } });
+    if ("data" in result) toast.success("Artist assigned.");
+    else                  toast.error("Failed to assign artist.");
   }
 
   return (
@@ -175,6 +189,36 @@ export function AppointmentDetailPage() {
                     <Separator />
                   </>
                 )}
+                <Row
+                  label="Artist"
+                  value={
+                    canOwner ? (
+                      <Select value={appt.artistId ?? undefined} onValueChange={handleAssignArtist} disabled={assigning}>
+                        <SelectTrigger
+                          aria-label="Assigned artist"
+                          className="h-7 w-auto gap-1.5 border-none px-0 shadow-none text-sm ml-auto"
+                        >
+                          <SelectValue placeholder="Unassigned — pick an artist" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {artists?.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.firstName} {a.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : appt.artistName ? (
+                      appt.artistName
+                    ) : (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+                        Unassigned
+                      </span>
+                    )
+                  }
+                />
+                <Separator />
                 <Row label="Date &amp; time" value={formatDateTime(appt.date)} />
                 <Separator />
                 <Row label="Duration"  value={`${appt.durationMinutes} min`} />
@@ -257,7 +301,7 @@ export function AppointmentDetailPage() {
 
             {isArtistPlus && !isTerminal && (
               <div className="flex flex-col gap-2">
-                {isPending && (
+                {isPending && appt.artistId !== null && (
                   <Button
                     className="w-full gap-2"
                     disabled={anyLoading}
@@ -266,6 +310,11 @@ export function AppointmentDetailPage() {
                     {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Confirm appointment
                   </Button>
+                )}
+                {isPending && appt.artistId === null && canOwner && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Assign an artist above before this can be confirmed.
+                  </p>
                 )}
 
                 {isConfirmed && (
@@ -289,15 +338,17 @@ export function AppointmentDetailPage() {
                   Reschedule
                 </Button>
 
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  disabled={anyLoading}
-                  onClick={() => setReminderDialogOpen(true)}
-                >
-                  <Send className="h-4 w-4" />
-                  Send Reminder
-                </Button>
+                {appt.artistId !== null && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    disabled={anyLoading}
+                    onClick={() => setReminderDialogOpen(true)}
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Reminder
+                  </Button>
+                )}
 
                 {appt.depositStatus === DepositStatus.Pending && canOwner && (
                   <Button
@@ -376,7 +427,7 @@ export function AppointmentDetailPage() {
       {appt && (
         <ReminderDialog
           appointmentId={appt.id}
-          artistId={appt.artistId}
+          artistId={appt.artistId ?? undefined}
           open={reminderDialogOpen}
           onOpenChange={setReminderDialogOpen}
         />

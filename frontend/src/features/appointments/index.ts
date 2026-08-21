@@ -12,6 +12,7 @@ export {
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
+  useAssignAppointmentArtistMutation,
 } from "./appointmentsApi";
 export type { AppointmentResponse, CreateAppointmentRequest } from "./appointment.types";
 export { AppointmentStatus, DepositStatus } from "./appointment.types";

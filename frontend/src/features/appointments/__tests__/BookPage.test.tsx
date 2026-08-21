@@ -569,6 +569,83 @@ describe("BookAppointmentForm", () => {
     await user.click(screen.getByRole("button", { name: /book another/i }));
     expect(screen.getByRole("button", { name: /request appointment/i })).toBeInTheDocument();
   });
+
+  // ── Let the studio choose ───────────────────────────────────────────────────
+
+  it("toggling 'Let the studio choose my artist' hides the artist selector", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+
+    expect(screen.queryByLabelText("Select artist")).not.toBeInTheDocument();
+  });
+
+  it("submitting with the toggle on and no artist ever picked succeeds with artistId: null", async () => {
+    let capturedBody: unknown = null;
+    server.use(
+      http.post("http://localhost/api/v1/appointments", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({ ...CREATED_APPT, artistId: null, artistName: null }, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    await user.type(
+      screen.getByLabelText(/date.*time/i),
+      new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
+    );
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Appointment requested!");
+    expect(capturedBody).toMatchObject({ artistId: null });
+  });
+
+  it("the slot-check call omits artistId when the toggle is on", async () => {
+    let sawArtistIdParam = false;
+    server.use(
+      http.get("http://localhost/api/v1/appointments/check-slot", ({ request }) => {
+        sawArtistIdParam = new URL(request.url).searchParams.has("artistId");
+        return HttpResponse.json({ available: true, reason: null });
+      }),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    await user.type(
+      screen.getByLabelText(/date.*time/i),
+      new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
+    );
+
+    await screen.findByText(/this slot is available/i);
+    expect(sawArtistIdParam).toBe(false);
+  });
+
+  it("shows studio-assigns-artist confirmation copy for a studio-choice booking", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json({ ...CREATED_APPT, artistId: null, artistName: null }, { status: 201 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    await user.type(
+      screen.getByLabelText(/date.*time/i),
+      new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
+    );
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    expect(await screen.findByText("The studio will assign an artist and confirm soon.")).toBeInTheDocument();
+  });
 });
 
 // ── BookAppointmentForm — reference images ─────────────────────────────────────

@@ -157,4 +157,26 @@ describe("AppointmentCard", () => {
     renderCard(APPT_PENDING);
     expect(screen.queryByText(/reference image/i)).not.toBeInTheDocument();
   });
+
+  // ── Needs artist (studio-choice booking) ────────────────────────────────────
+
+  it("shows the 'Needs artist' badge for a Pending appointment with no assigned artist", () => {
+    renderCard({ ...APPT_PENDING, artistId: null });
+    expect(screen.getByText(/needs artist/i)).toBeInTheDocument();
+  });
+
+  it("does NOT show the 'Needs artist' badge when an artist is assigned", () => {
+    renderCard(APPT_PENDING);
+    expect(screen.queryByText(/needs artist/i)).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the 'Needs artist' badge for a non-Pending unassigned appointment", () => {
+    renderCard({ ...APPT_COMPLETED, artistId: null });
+    expect(screen.queryByText(/needs artist/i)).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the Confirm button for a Pending appointment with no assigned artist", () => {
+    renderCard({ ...APPT_PENDING, artistId: null }, Role.Artist);
+    expect(screen.queryByRole("button", { name: /^confirm$/i })).not.toBeInTheDocument();
+  });
 });
