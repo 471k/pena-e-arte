@@ -310,6 +310,29 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: ["The client's name is a link straight to their client profile."],
     warnings: ["Cancelling an appointment cannot be undone."],
+    relatedArticleIds: ["artist-send-manual-reminder"],
+  },
+  {
+    id: "artist-send-manual-reminder",
+    roles: [Artist, Owner],
+    title: "Send a manual reminder",
+    route: "/schedule",
+    keywords: ["reminder", "sms", "text message", "quick reminder", "send reminder", "notify client"],
+    summary: "Send a one-off SMS reminder — right now or scheduled for later — separate from the automatic 48h/24h appointment reminders the studio already sends.",
+    steps: [
+      "Click \"Send Reminder\" on an appointment's detail page or a client's profile page — the recipient's name and phone number are filled in automatically.",
+      "For someone with no appointment or client record yet, use the \"Quick Reminder\" button (message icon) in the Schedule page's toolbar and type in a name and phone number instead.",
+      "Optionally write a custom message, or leave it blank to send the studio's default reminder text.",
+      "Toggle \"Schedule for later\" and pick a date/time, or leave it off to send immediately.",
+      "Click \"Send now\" or \"Schedule reminder\".",
+      "Reopen the dialog to see the send history and cancel any reminder that's still Scheduled.",
+    ],
+    tips: [
+      "A Quick Reminder sent to a typed-in name and phone number does not create a client record — it stays a one-off text.",
+      "Owners can send a reminder on behalf of any artist from that appointment's or client's page.",
+    ],
+    warnings: ["There's a daily limit on manual reminders per artist — if you hit it, wait until the next day or contact support."],
+    relatedArticleIds: ["artist-appointment-detail", "artist-client-detail", "artist-schedule"],
   },
   {
     id: "artist-clients",
@@ -340,6 +363,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "In the Forms tab, click an intake or consent form entry to open its full detail.",
     ],
     tips: ["A \"Cross-Studio\" tab appears automatically if the client has shared tattoo history from other studios on the app."],
+    relatedArticleIds: ["artist-send-manual-reminder"],
   },
   {
     id: "artist-designs",

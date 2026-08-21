@@ -1318,7 +1318,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Weekly schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (all artists)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card.</p>
+<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card. A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Weekly schedule wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1338,6 +1338,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Use <span class="step-title">‹ ›</span> to move between weeks, or <span class="step-title">Today</span> to jump back to the current week.</li>
 <li>Click an appointment card to open its full detail, or use the inline <span class="step-title">Confirm</span> / <span class="step-title">Complete</span> / no-show / cancel buttons directly on the card.</li>
+<li>Click the <span class="step-title">Quick Reminder</span> button (message icon, top right) to send a one-off SMS to a typed-in name and phone number — no appointment or client record required.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-appointment-detail">Appointment detail</a>, <a href="#owner-schedule">Owner: schedule</a></div>
 </section>
@@ -1346,7 +1347,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Appointment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, any client-attached reference images, and aftercare status once completed, plus every status-change action.</p>
+<p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, any client-attached reference images, and aftercare status once completed, plus every status-change action and a <strong>Send Reminder</strong> button.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Appointment detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1372,6 +1373,7 @@ ol.steps li { margin: 6px 0; }
 <li>If the client attached reference images when booking, click any thumbnail to open the full-size photo in a new tab.</li>
 <li>Download the <span class="step-title">.ics calendar file</span> if you want it in your own calendar app.</li>
 <li>Depending on status: <span class="step-title">Confirm</span> (from Requested), <span class="step-title">Mark as complete</span> (from Confirmed), <span class="step-title">Charge deposit</span> (owner only, if pending), <span class="step-title">Mark no-show</span>, or <span class="step-title">Cancel</span>.</li>
+<li>Click <span class="step-title">Send Reminder</span> to text the client now or schedule it for later — separate from the studio's automatic 48h/24h reminders.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> cancelling an appointment cannot be undone.</div>
 <div class="crosslinks">See also: <a href="#artist-schedule">Weekly schedule</a>, <a href="#owner-payment-detail">Owner: payment detail</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
@@ -1404,7 +1406,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (can add/edit profile info)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/clients/&lt;id&gt;</code>: contact info, medical/health profile, body map, tattoo history, forms, and appointments for one client, in tabs. The artist assigned to the client is shown near the top of the profile (read-only for this role — only owners can reassign it).</p>
+<p>At <code>/clients/&lt;id&gt;</code>: contact info, medical/health profile, body map, tattoo history, forms, and appointments for one client, in tabs, plus a <strong>Send Reminder</strong> button. The artist assigned to the client is shown near the top of the profile (read-only for this role — only owners can reassign it).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Client detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1428,6 +1430,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Cross-Studio</span> tab (if present) shows tattoo history the client has chosen to share from other studios.</li>
 <li><span class="step-title">Forms</span> tab lists the client's intake and consent forms.</li>
 <li><span class="step-title">Appointments</span> tab lists this client's bookings.</li>
+<li>Click <span class="step-title">Send Reminder</span> (top right) to text this client now or schedule it for later.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-tattoo-record">Tattoo record detail</a>, <a href="#client-profile">Client: my profile</a></div>
 </section>
