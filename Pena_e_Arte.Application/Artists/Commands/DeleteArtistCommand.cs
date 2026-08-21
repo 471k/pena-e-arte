@@ -29,6 +29,21 @@ public class DeleteArtistHandler(IAppDbContext db)
             throw new BusinessRuleViolationException(
                 "This artist has upcoming appointments and cannot be deleted.");
 
+        // Clients assigned to this artist must actually become Unassigned, not just look that
+        // way. db.Clients.Include(c => c.Artist) respects Artist's own DeletedAt query filter,
+        // so once this artist is soft-deleted, the Include navigation silently returns null
+        // for these clients while Client.ArtistId still points at the now-deleted row — masking
+        // the stale FK as "Unassigned" in every read path instead of it actually being
+        // Unassigned. Clearing it here is the real fix, not a display-layer workaround.
+        // Change-tracker update (not ExecuteUpdateAsync) — the latter isn't supported by the
+        // EF Core InMemory provider FakeDbContext uses for unit tests.
+        List<Client> affectedClients = await db.Clients.Where(c => c.ArtistId == command.Id).ToListAsync(ct);
+        foreach (Client client in affectedClients)
+        {
+            client.ArtistId = null;
+            client.UpdatedAt = DateTime.UtcNow;
+        }
+
         artist.DeletedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
     }

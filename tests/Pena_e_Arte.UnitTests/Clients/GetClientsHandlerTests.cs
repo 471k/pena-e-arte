@@ -144,6 +144,38 @@ public class GetClientsHandlerTests
         result[0].ArtistName.Should().BeNull();
     }
 
+    [Fact]
+    public async Task Handle_ClientAssignedToSoftDeletedArtist_ReportsRawArtistIdWithNullArtistName()
+    {
+        Artist artist = new()
+        {
+            StudioId = _studioId,
+            FirstName = "Art",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
+            DeletedAt = DateTime.UtcNow,
+        };
+        _db.Artists.Add(artist);
+        _db.Clients.Add(new Client
+        {
+            StudioId = _studioId,
+            FirstName = "Ana",
+            LastName = "Costa",
+            Email = "ana@example.com",
+            ArtistId = artist.Id,
+        });
+        await _db.SaveChangesAsync();
+
+        List<ClientResponse> result = await CreateSut().Handle(new GetClientsQuery(null), default);
+
+        // The raw FK must still be reported even though the artist itself is soft-deleted and
+        // filtered out of the join — this is what DeleteArtistHandler now proactively clears,
+        // but a stale FK (however it arose) must never be silently masked as null here.
+        result.Should().ContainSingle();
+        result[0].ArtistId.Should().Be(artist.Id);
+        result[0].ArtistName.Should().BeNull();
+    }
+
     private async Task SeedClients(params (string First, string Last, string Email)[] clients)
     {
         foreach ((string first, string last, string email) in clients)

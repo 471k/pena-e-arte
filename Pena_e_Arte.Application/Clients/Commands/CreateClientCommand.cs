@@ -57,9 +57,15 @@ public class CreateClientHandler(IAppDbContext db, ICurrentTenant tenant, ICurre
         return Map(client, artist);
     }
 
+    // ArtistId always comes from the client's own scalar FK, never from `artist?.Id` — a
+    // c.Artist Include navigation silently returns null once that artist is soft-deleted
+    // (Artist's own query filter applies to the join), which would otherwise make this
+    // response falsely report "Unassigned" for a client whose ArtistId is actually still set.
+    // ArtistName legitimately stays null in that case — there's no name to show for a
+    // filtered-out artist.
     internal static ClientResponse Map(Client c, Artist? artist = null) =>
         new(c.Id, c.StudioId, c.FirstName, c.LastName, c.Email, c.Phone, c.CreatedAt, c.UserId,
-            artist?.Id, artist is null ? null : $"{artist.FirstName} {artist.LastName}");
+            c.ArtistId, artist is null ? null : $"{artist.FirstName} {artist.LastName}");
 
     /// <summary>Shared by CreateClientCommand and UpdateClientArtistCommand — the two places a
     /// client's artist assignment is set from a caller-supplied id — so the not-found/inactive
