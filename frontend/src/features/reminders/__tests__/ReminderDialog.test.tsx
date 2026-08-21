@@ -9,8 +9,10 @@ import { toast } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import { remindersApi } from "@/features/reminders/remindersApi";
+import { artistsApi } from "@/features/artists/artistsApi";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import type { ManualReminderResponse } from "@/features/reminders/reminder.types";
+import type { ArtistResponse } from "@/features/artists/artistsApi";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -25,8 +27,19 @@ const SENT: ManualReminderResponse = {
   ...SCHEDULED, id: "rem-002", status: "Sent", sentAt: "2026-08-01T10:00:00.000Z",
 };
 
+const ARTIST: ArtistResponse = {
+  id: "artist-001", studioId: "t1",
+  firstName: "Luna", lastName: "Artista",
+  email: "luna@studio.test", specializations: null,
+  hourlyRate: null, portfolioImages: [],
+  isActive: true, avatarUrl: null, slug: null,
+  userId: null,
+  createdAt: "2024-01-01T00:00:00Z", updatedAt: "2024-01-01T00:00:00Z",
+};
+
 const server = setupServer(
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/artists", () => HttpResponse.json([ARTIST])),
   http.post("http://localhost/api/v1/reminders", async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({
@@ -43,24 +56,25 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => { server.resetHandlers(); cleanup(); vi.clearAllMocks(); });
 afterAll(() => server.close());
 
-function makeStore() {
+function makeStore(role: string = "artist") {
   return configureStore({
     reducer: {
       auth: authReducer,
       [remindersApi.reducerPath]: remindersApi.reducer,
+      [artistsApi.reducerPath]: artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(remindersApi.middleware),
+    middleware: (gd) => gd().concat(remindersApi.middleware, artistsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "test@test.com" }, token: "fake", tenantId: "t1", role: "artist" } as any,
+      auth: { user: { id: "u1", email: "test@test.com" }, token: "fake", tenantId: "t1", role } as any,
     },
   });
 }
 
-function renderDialog(props: Partial<React.ComponentProps<typeof ReminderDialog>> = {}) {
+function renderDialog(props: Partial<React.ComponentProps<typeof ReminderDialog>> = {}, role: string = "artist") {
   const onOpenChange = vi.fn();
   render(
-    <Provider store={makeStore()}>
+    <Provider store={makeStore(role)}>
       <ReminderDialog open onOpenChange={onOpenChange} {...props} />
     </Provider>,
   );
@@ -85,6 +99,58 @@ describe("ReminderDialog", () => {
   it("client-linked mode does not show name/phone inputs", () => {
     renderDialog({ clientId: "client-001" });
     expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument();
+  });
+
+  // ── Artist picker (client-linked, no authoritative artist source) ──────────
+
+  it("owner sending to a client with no assigned artist sees an Artist picker", async () => {
+    renderDialog({ clientId: "client-001" }, "owner");
+    expect(await screen.findByLabelText("Artist")).toBeInTheDocument();
+  });
+
+  it("does not show an Artist picker when the caller is an artist", () => {
+    renderDialog({ clientId: "client-001" }, "artist");
+    expect(screen.queryByLabelText("Artist")).not.toBeInTheDocument();
+  });
+
+  it("does not show an Artist picker when artistId is already known", () => {
+    renderDialog({ clientId: "client-001", artistId: "artist-001" }, "owner");
+    expect(screen.queryByLabelText("Artist")).not.toBeInTheDocument();
+  });
+
+  it("does not show an Artist picker in raw-contact mode", () => {
+    renderDialog({}, "owner");
+    expect(screen.queryByLabelText("Artist")).not.toBeInTheDocument();
+  });
+
+  it("submit is disabled until an artist is picked, then enabled once one is chosen", async () => {
+    const user = userEvent.setup();
+    renderDialog({ clientId: "client-001" }, "owner");
+
+    expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
+
+    await user.click(await screen.findByLabelText("Artist"));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+
+    expect(screen.getByRole("button", { name: /send now/i })).not.toBeDisabled();
+  });
+
+  it("submitting with a picked artist includes its id in the create request", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/reminders", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...SCHEDULED, id: "rem-new" });
+      }),
+    );
+    const user = userEvent.setup();
+    renderDialog({ clientId: "client-001" }, "owner");
+
+    await user.click(await screen.findByLabelText("Artist"));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+    await user.click(screen.getByRole("button", { name: /send now/i }));
+
+    await waitFor(() => expect(capturedBody).toMatchObject({ artistId: "artist-001" }));
   });
 
   // ── Send now / Schedule toggle ──────────────────────────────────────────────
@@ -112,6 +178,17 @@ describe("ReminderDialog", () => {
     await user.click(screen.getByRole("switch"));
 
     expect(screen.getByRole("button", { name: /schedule reminder/i })).toBeInTheDocument();
+  });
+
+  it("clearing the scheduled-for date disables submit instead of leaving it enabled", async () => {
+    const user = userEvent.setup();
+    renderDialog({ appointmentId: "appt-001" });
+
+    await user.click(screen.getByRole("switch"));
+    const dateInput = screen.getByLabelText(/send at/i);
+    await user.clear(dateInput);
+
+    expect(screen.getByRole("button", { name: /schedule reminder/i })).toBeDisabled();
   });
 
   // ── Submit gating ────────────────────────────────────────────────────────────

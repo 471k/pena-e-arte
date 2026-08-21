@@ -12,6 +12,12 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/components/ui/select";
+import { useAppSelector } from "@/app/hooks";
+import { Role } from "@/shared/types/roles";
+import { useGetArtistsQuery } from "@/features/artists/artistsApi";
+import {
   useCreateManualReminderMutation,
   useGetManualRemindersQuery,
   useCancelManualReminderMutation,
@@ -41,12 +47,28 @@ function toDatetimeLocalValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+// Browsers allow a datetime-local input to be cleared even with `min` set, and `new
+// Date("")` parses to an Invalid Date rather than throwing — only .toISOString() throws,
+// so this must be checked up front rather than relying on a try/catch at the call site.
+function isValidDateTimeLocal(value: string): boolean {
+  return value.trim().length > 0 && !Number.isNaN(new Date(value).getTime());
+}
+
 export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, artistId }: ReminderDialogProps) {
   const isRawContact = !appointmentId && !clientId;
+
+  // A client with no assigned artist has no authoritative artist source, and an
+  // owner/issuer caller (unlike an artist, who is always resolved from their own
+  // account) must supply one explicitly — mirrors CreateManualReminderCommand's
+  // RequireExplicitArtistAsync fallback for exactly this case.
+  const role = useAppSelector((s) => s.auth.role);
+  const needsArtistPicker = !!clientId && !artistId && role !== Role.Artist;
+  const { data: artists } = useGetArtistsQuery(undefined, { skip: !needsArtistPicker });
 
   const [recipientName, setRecipientName]   = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
   const [message, setMessage]               = useState("");
+  const [pickedArtistId, setPickedArtistId] = useState("");
   const [scheduleLater, setScheduleLater]   = useState(false);
   const [scheduledFor, setScheduledFor]     = useState(() =>
     toDatetimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)));
@@ -63,15 +85,21 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
     setRecipientName("");
     setRecipientPhone("");
     setMessage("");
+    setPickedArtistId("");
     setScheduleLater(false);
     setScheduledFor(toDatetimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)));
   }
 
   async function handleSubmit() {
+    if (scheduleLater && !isValidDateTimeLocal(scheduledFor)) {
+      toast.error("Pick a valid date and time to schedule for.");
+      return;
+    }
+
     const result = await createReminder({
       appointmentId,
       clientId,
-      artistId,
+      artistId: artistId ?? (needsArtistPicker ? pickedArtistId : undefined),
       recipientName:  isRawContact ? recipientName.trim() : undefined,
       recipientPhone: isRawContact ? recipientPhone.trim() : undefined,
       message: message.trim() || undefined,
@@ -99,9 +127,11 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
     toast.success("Reminder cancelled.");
   }
 
-  const canSubmit = isRawContact
+  const canSubmit = (isRawContact
     ? recipientName.trim().length > 0 && recipientPhone.trim().length > 0
-    : true;
+    : needsArtistPicker
+    ? pickedArtistId.length > 0
+    : true) && (!scheduleLater || isValidDateTimeLocal(scheduledFor));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -140,6 +170,24 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
                 />
               </div>
             </>
+          )}
+
+          {needsArtistPicker && (
+            <div className="space-y-1.5">
+              <Label htmlFor="reminder-artist">Artist</Label>
+              <Select value={pickedArtistId} onValueChange={setPickedArtistId}>
+                <SelectTrigger id="reminder-artist" aria-label="Artist">
+                  <SelectValue placeholder="This client has no assigned artist — pick one" />
+                </SelectTrigger>
+                <SelectContent>
+                  {artists?.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.firstName} {a.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
 
           <div className="space-y-1.5">

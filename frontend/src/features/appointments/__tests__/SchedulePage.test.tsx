@@ -11,6 +11,7 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { remindersApi } from "@/features/reminders/remindersApi";
+import { artistsApi } from "@/features/artists/artistsApi";
 import { SchedulePage } from "@/features/appointments/components/SchedulePage";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -95,8 +96,9 @@ function makeStore(role: Role = Role.Artist) {
       ui:                            uiReducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
       [remindersApi.reducerPath]:    remindersApi.reducer,
+      [artistsApi.reducerPath]:      artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(appointmentsApi.middleware, remindersApi.middleware),
+    middleware: (gd) => gd().concat(appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
