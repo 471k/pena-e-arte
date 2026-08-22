@@ -244,8 +244,11 @@ test.describe("Critical path — register, login, create appointment", () => {
     await expect(page).toHaveURL(/\/book/i, { timeout: 10_000 });
 
     // ── Fill the booking form ──────────────────────────────────────────────
-    // Artist picker: Radix Select with id="artistId", Label "Artist"
-    await page.getByLabel("Artist").click();
+    // Artist picker: Radix Select trigger, aria-label="Select artist" (id="artistId").
+    // NOT getByLabel("Artist") — the "Let the studio choose my artist" toggle's own
+    // aria-label also contains "artist" and matches the same substring query, tripping
+    // Playwright's strict mode once that toggle shipped alongside this field.
+    await page.getByRole("combobox", { name: "Select artist" }).click();
     await page.getByRole("option", { name: "Rafaela Costa" })
       .waitFor({ state: "visible", timeout: 5_000 });
     await page.getByRole("option", { name: "Rafaela Costa" }).click();

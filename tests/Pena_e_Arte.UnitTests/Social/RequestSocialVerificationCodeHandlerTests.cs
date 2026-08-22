@@ -32,8 +32,11 @@ public class RequestSocialVerificationCodeHandlerTests
         _checker.IsSupported.Returns(false);
         _db.SocialAccountLinks.Add(new SocialAccountLink
         {
-            StudioId = _studioId, SubjectType = SocialLinkSubjectType.Studio,
-            SubjectId = _studioId, Platform = SocialPlatform.TikTok, Handle = "studio",
+            StudioId = _studioId,
+            SubjectType = SocialLinkSubjectType.Studio,
+            SubjectId = _studioId,
+            Platform = SocialPlatform.TikTok,
+            Handle = "studio",
         });
         await _db.SaveChangesAsync();
 
@@ -57,8 +60,11 @@ public class RequestSocialVerificationCodeHandlerTests
     {
         _db.SocialAccountLinks.Add(new SocialAccountLink
         {
-            StudioId = _studioId, SubjectType = SocialLinkSubjectType.Studio,
-            SubjectId = _studioId, Platform = SocialPlatform.X, Handle = "studio",
+            StudioId = _studioId,
+            SubjectType = SocialLinkSubjectType.Studio,
+            SubjectId = _studioId,
+            Platform = SocialPlatform.X,
+            Handle = "studio",
         });
         await _db.SaveChangesAsync();
 
