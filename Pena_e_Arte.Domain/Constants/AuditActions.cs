@@ -29,6 +29,8 @@ public static class AuditActions
 
     public const string ManualReminderSent = "ManualReminder.Sent";
     public const string ManualReminderCancelled = "ManualReminder.Cancelled";
+
+    public const string ConductReportStatusUpdated = "ConductReport.StatusUpdated";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -43,4 +45,5 @@ public static class AuditTargetTypes
     public const string ClientProfile = "ClientProfile";
     public const string Client = "Client";
     public const string ManualReminder = "ManualReminder";
+    public const string ConductReport = "ConductReport";
 }

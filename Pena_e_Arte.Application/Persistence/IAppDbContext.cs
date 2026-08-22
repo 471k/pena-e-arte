@@ -66,6 +66,10 @@ public interface IAppDbContext
     DbSet<AuditLogEntry> AuditLogEntries { get; }
     DbSet<StudioCredentialRef> StudioCredentialRefs { get; }
 
+    // Trust & safety conduct reports — no tenant filter, same non-tenant shape as
+    // Review/FeedbackReport/AuditLogEntry (see AppDbContext)
+    DbSet<ConductReport> ConductReports { get; }
+
     // Traffic analytics — no tenant filter (StudioId nullable, issuer-only cross-tenant reads)
     DbSet<TrafficEvent> TrafficEvents { get; }
     DbSet<TrafficDailyAggregate> TrafficDailyAggregates { get; }

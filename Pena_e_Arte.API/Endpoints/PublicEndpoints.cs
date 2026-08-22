@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.ConductReports.Commands;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Application.Reviews.Commands;
@@ -9,6 +10,7 @@ using Pena_e_Arte.Application.Traffic.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Contracts.Responses.Public;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 using StackExchange.Redis;
 
@@ -38,6 +40,14 @@ public static class PublicEndpoints
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-read");
         group.MapGet("/artists/{slug}/reviews/eligible-appointments", GetReviewableArtistAppointments)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-read");
+        group.MapPost("/artists/{slug}/reports", FileArtistConductReport)
+             .RequireAuthorization("ClientOnly").RequireRateLimiting("public-write");
+        group.MapPost("/studios/{slug}/reports", FileStudioConductReport)
+             .RequireAuthorization("ClientOnly").RequireRateLimiting("public-write");
+        group.MapGet("/artists/{slug}/reports/reportable-appointments", GetReportableArtistAppointments)
+             .RequireAuthorization("ClientOnly").RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/reports/reportable-appointments", GetReportableStudioAppointments)
+             .RequireAuthorization("ClientOnly").RequireRateLimiting("public-read");
         group.MapPost("/artists/{slug}/view", RecordArtistView)
              .AllowAnonymous().RequireRateLimiting("public-write");
         group.MapGet("/portfolio/feed", GetPortfolioFeed).AllowAnonymous().RequireRateLimiting("public-read");
@@ -189,6 +199,74 @@ public static class PublicEndpoints
         Guid authorId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         List<ReviewableAppointmentResponse> result =
             await mediator.Send(new GetReviewableArtistAppointmentsQuery(slug, authorId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> FileArtistConductReport(
+        string slug,
+        FileArtistConductReportRequest body,
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        string reporterName = user.FindFirstValue(ClaimTypes.Name)
+                           ?? user.FindFirstValue(ClaimTypes.GivenName)
+                           ?? "Anonymous";
+
+        ReportCategory category = Enum.Parse<ReportCategory>(body.Category, ignoreCase: true);
+
+        await mediator.Send(
+            new FileArtistConductReportCommand(
+                slug, body.AppointmentId, reporterId, reporterName, category, body.Reason,
+                body.AttachmentUrls),
+            ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> FileStudioConductReport(
+        string slug,
+        FileStudioConductReportRequest body,
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        string reporterName = user.FindFirstValue(ClaimTypes.Name)
+                           ?? user.FindFirstValue(ClaimTypes.GivenName)
+                           ?? "Anonymous";
+
+        ReportCategory category = Enum.Parse<ReportCategory>(body.Category, ignoreCase: true);
+
+        await mediator.Send(
+            new FileStudioConductReportCommand(
+                slug, body.AppointmentId, reporterId, reporterName, category, body.Reason,
+                body.AttachmentUrls),
+            ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetReportableArtistAppointments(
+        string slug,
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        List<ReportableAppointmentResponse> result =
+            await mediator.Send(new GetReportableArtistAppointmentsQuery(slug, reporterId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetReportableStudioAppointments(
+        string slug,
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        List<ReportableAppointmentResponse> result =
+            await mediator.Send(new GetReportableStudioAppointmentsQuery(slug, reporterId), ct);
         return Results.Ok(result);
     }
 

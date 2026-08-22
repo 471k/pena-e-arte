@@ -26,9 +26,11 @@ import { useDocumentMeta }         from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }       from "@/shared/utils/useStructuredData";
 import { ReviewSection }           from "./ReviewSection";
 import { PublicPageHeader }        from "./PublicPageHeader";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
+import { Role } from "@/shared/types/roles";
+import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
 
@@ -404,9 +406,15 @@ function ArtistPageSkeleton() {
 export function ArtistPortfolioPage() {
   const { slug = "" }  = useParams<{ slug: string }>();
   const token          = useAppSelector((s) => s.auth.token);
+  const role           = useAppSelector((s) => s.auth.role);
   const reviewsRef     = useRef<HTMLDivElement>(null);
   const [lightboxItem, setLightboxItem] = useState<LightboxItem | null>(null);
   const [activeStyle,  setActiveStyle]  = useState<string>("");
+  const [reportOpen,   setReportOpen]   = useState(false);
+  // Filing a conduct report requires ClientOnly server-side — usePermission's rank model
+  // ("at least this role") can't express an exact match, so this checks role equality
+  // directly, same as the backend policy it mirrors.
+  const canFileReport  = !!token && role === Role.Client;
   const navigate       = useNavigate();
   const location       = useLocation();
 
@@ -688,9 +696,30 @@ export function ArtistPortfolioPage() {
             <div ref={reviewsRef}>
               <ReviewSection slug={artist.slug} target="artist" token={token} />
             </div>
+
+            {canFileReport && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setReportOpen(true)}
+                  className="text-xs text-muted-foreground/70 hover:text-muted-foreground
+                             underline underline-offset-2 transition-colors"
+                >
+                  Report this artist
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {canFileReport && (
+        <ConductReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          target={{ kind: "artist", slug: artist.slug, name: artist.name }}
+        />
+      )}
 
       <footer className="py-4 text-center text-xs text-foreground/50 border-t mt-auto">
         <a

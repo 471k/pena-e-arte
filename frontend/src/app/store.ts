@@ -27,6 +27,7 @@ import { helpApi } from "@/features/help/helpApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
 import { reportsApi } from "@/features/reports/reportsApi";
 import { socialApi } from "@/features/social/socialApi";
+import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
 
 const appReducer = combineReducers({
   auth:          authReducer,
@@ -56,6 +57,7 @@ const appReducer = combineReducers({
   [onboardingApi.reducerPath]:     onboardingApi.reducer,
   [reportsApi.reducerPath]:        reportsApi.reducer,
   [socialApi.reducerPath]:         socialApi.reducer,
+  [conductReportsApi.reducerPath]: conductReportsApi.reducer,
 });
 
 type AppState = ReturnType<typeof appReducer>;
@@ -128,6 +130,7 @@ export const store = configureStore({
       onboardingApi.middleware,
       reportsApi.middleware,
       socialApi.middleware,
+      conductReportsApi.middleware,
     ),
 });
 

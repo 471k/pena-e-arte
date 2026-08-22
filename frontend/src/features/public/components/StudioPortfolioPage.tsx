@@ -29,6 +29,8 @@ import { useStructuredData }        from "@/shared/utils/useStructuredData";
 import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
 import { ReviewSection }            from "./ReviewSection";
 import { PublicPageHeader }         from "./PublicPageHeader";
+import { Role } from "@/shared/types/roles";
+import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 
 function StudioMeta({
   name, slug, description, coverImageUrl, city, latitude, longitude, averageRating, reviewCount,
@@ -221,8 +223,13 @@ export function StudioPortfolioPage() {
   const role           = useAppSelector((s) => s.auth.role);
   const tenantId       = useAppSelector((s) => s.auth.tenantId);
   const [lightboxUrl,  setLightboxUrl] = useState<string | null>(null);
+  const [reportOpen,   setReportOpen]  = useState(false);
   const navigate       = useNavigate();
   const location       = useLocation();
+  // Filing a conduct report requires ClientOnly server-side — usePermission's rank model
+  // ("at least this role") can't express an exact match, so this checks role equality
+  // directly, same as the backend policy it mirrors.
+  const canFileReport = !!token && role === Role.Client;
 
   // React Router gives the very first history entry key "default" — anything
   // navigated to from within the app gets a real key. Only that case has
@@ -419,6 +426,19 @@ export function StudioPortfolioPage() {
             )}
 
             <ReviewSection slug={studio.slug} target="studio" token={token} canRespond={canRespond} />
+
+            {canFileReport && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setReportOpen(true)}
+                  className="text-xs text-muted-foreground/70 hover:text-muted-foreground
+                             underline underline-offset-2 transition-colors"
+                >
+                  Report this studio
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right: sticky sidebar */}
@@ -504,6 +524,14 @@ export function StudioPortfolioPage() {
           Powered by TattooOS
         </a>
       </footer>
+
+      {canFileReport && (
+        <ConductReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          target={{ kind: "studio", slug: studio.slug, name: studio.name }}
+        />
+      )}
     </div>
   );
 }

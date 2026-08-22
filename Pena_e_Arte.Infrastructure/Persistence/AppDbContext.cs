@@ -76,6 +76,11 @@ public class AppDbContext(
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
 
+    // --- Trust & safety conduct reports (no tenant filter — same non-tenant shape as
+    //     Review/FeedbackReport/AuditLogEntry; target's studio is unrelated to the filing
+    //     client's own current tenant) ---
+    public DbSet<ConductReport> ConductReports => Set<ConductReport>();
+
     // --- Traffic analytics (no tenant filter — StudioId nullable, issuer-only cross-tenant reads) ---
     public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
     public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
@@ -261,6 +266,31 @@ public class AppDbContext(
             // for a studio is resolved explicitly in the handlers via ConsentTemplateResolver,
             // narrowing to `StudioId == tenant.StudioId || StudioId == null`, never a filter.
             entity.HasIndex(t => new { t.StudioId, t.Kind, t.IsActive });
+        });
+
+        builder.Entity<ConductReport>(entity =>
+        {
+            entity.ToTable("ConductReports");
+            entity.HasKey(r => r.Id);
+
+            entity.Property(r => r.Category).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(r => r.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(r => r.Reason).HasMaxLength(2000).IsRequired();
+            entity.Property(r => r.ReporterName).HasMaxLength(200).IsRequired();
+            entity.Property(r => r.ResolutionNote).HasMaxLength(2000);
+
+            // Same JSON column conversion as FeedbackReport.AttachmentUrls above.
+            entity.Property(r => r.AttachmentUrls)
+                  .HasConversion(
+                      v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                      v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
+                  .HasColumnType("json");
+
+            // No HasQueryFilter — deliberate, same rationale as AuditLogEntry above; the
+            // target's studio is unrelated to the filing client's own current tenant.
+            entity.HasIndex(r => r.StudioId);
+            entity.HasIndex(r => r.ArtistId);
+            entity.HasIndex(r => r.Status);
         });
     }
 }

@@ -50,6 +50,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
     public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
     public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
+    public DbSet<ConductReport> ConductReports => Set<ConductReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

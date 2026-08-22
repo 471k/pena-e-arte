@@ -36,6 +36,7 @@ import {
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage } from "@/features/public";
+import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
@@ -189,6 +190,7 @@ export const routes = [
                   { path: "feedback",          element: <ErrorBoundary><FeedbackInboxPage /></ErrorBoundary> },
                   { path: "help-insights",     element: <ErrorBoundary><HelpInsightsPage /></ErrorBoundary> },
                   { path: "audit-log",         element: <ErrorBoundary><AuditLogPage /></ErrorBoundary> },
+                  { path: "conduct-reports",   element: <ErrorBoundary><ConductReportInboxPage /></ErrorBoundary> },
                 ],
               },
 
@@ -335,6 +337,15 @@ export const routes = [
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><ReportsPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner + Artist: conduct reports ─────────────────────────────
+              {
+                path: "conduct-reports",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><ConductReportsPage /></ErrorBoundary> },
                 ],
               },
 
