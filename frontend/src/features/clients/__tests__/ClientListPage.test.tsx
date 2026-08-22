@@ -11,30 +11,53 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { clientsApi } from "@/features/clients/clientsApi";
 import type { ClientResponse } from "@/features/clients/clientsApi";
+import { artistsApi } from "@/features/artists/artistsApi";
+import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { ClientListPage } from "@/features/clients/components/ClientListPage";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
+const ARTIST_A: ArtistResponse = {
+  id:              "artist-0001",
+  studioId:        "stud-0001",
+  userId:          null,
+  firstName:       "Luna",
+  lastName:        "Artista",
+  email:           "luna@ink.test",
+  specializations: null,
+  hourlyRate:      null,
+  isActive:        true,
+  avatarUrl:       null,
+  portfolioImages: [],
+  slug:            null,
+  createdAt:       "2024-01-01T00:00:00Z",
+  updatedAt:       "2024-01-01T00:00:00Z",
+};
+
 const CLIENT_A: ClientResponse = {
-  id:        "client-0001",
-  studioId:  "stud-0001",
-  firstName: "João",
-  lastName:  "Silva",
-  email:     "joao@test.com",
-  phone:     "+351912345678",
-  createdAt: "2024-01-01T00:00:00Z",
-  userId:    null,
+  id:         "client-0001",
+  studioId:   "stud-0001",
+  firstName:  "João",
+  lastName:   "Silva",
+  email:      "joao@test.com",
+  phone:      "+351912345678",
+  createdAt:  "2024-01-01T00:00:00Z",
+  userId:     null,
+  artistId:   ARTIST_A.id,
+  artistName: "Luna Artista",
 };
 
 const CLIENT_B: ClientResponse = {
-  id:        "client-0002",
-  studioId:  "stud-0001",
-  firstName: "Maria",
-  lastName:  "Ferreira",
-  email:     "maria@test.com",
-  phone:     null,
-  createdAt: "2024-01-02T00:00:00Z",
-  userId:    null,
+  id:         "client-0002",
+  studioId:   "stud-0001",
+  firstName:  "Maria",
+  lastName:   "Ferreira",
+  email:      "maria@test.com",
+  phone:      null,
+  createdAt:  "2024-01-02T00:00:00Z",
+  userId:     null,
+  artistId:   null,
+  artistName: null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -43,6 +66,7 @@ const server = setupServer(
   http.get("http://localhost/api/v1/clients", () =>
     HttpResponse.json([CLIENT_A, CLIENT_B]),
   ),
+  http.get("http://localhost/api/v1/artists", () => HttpResponse.json([ARTIST_A])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -57,8 +81,9 @@ function makeStore() {
       auth: authReducer,
       ui:   uiReducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
+      [artistsApi.reducerPath]: artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(clientsApi.middleware),
+    middleware: (gd) => gd().concat(clientsApi.middleware, artistsApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u1", email: "owner@ink.test" },
@@ -116,14 +141,12 @@ describe("ClientListPage", () => {
     expect(screen.getAllByText("MF")).toHaveLength(2);
   });
 
-  it("renders the mobileCard for each client, combining email and phone on one line", async () => {
+  it("renders the mobileCard for each client, combining email, phone, and artist on one line", async () => {
     renderPage();
     await screen.findAllByText("João Silva");
-    // Unique to the card — the table's Email/Phone columns never combine the two.
-    expect(screen.getByText("joao@test.com · +351912345678")).toBeInTheDocument();
-    // Maria has no phone, so the card falls back to email alone — identical to the
-    // table's plain Email cell text, so this one legitimately duplicates.
-    expect(screen.getAllByText("maria@test.com")).toHaveLength(2);
+    // Unique to the card — the table's Email/Phone/Artist columns never combine into one string.
+    expect(screen.getByText("joao@test.com · +351912345678 · Luna Artista")).toBeInTheDocument();
+    expect(screen.getByText("maria@test.com · Unassigned")).toBeInTheDocument();
   });
 
   it("renders the phone number when present", async () => {
@@ -136,6 +159,16 @@ describe("ClientListPage", () => {
     renderPage();
     await screen.findAllByText("Maria Ferreira");
     expect(screen.getByLabelText("Not provided")).toBeInTheDocument();
+  });
+
+  it("renders the assigned artist name in the table, and an em-dash when unassigned", async () => {
+    renderPage();
+    await screen.findAllByText("João Silva");
+    // The table renders "Luna Artista" as its own cell; the mobileCard folds it into
+    // the combined email/phone/artist line asserted in the test above, so only one
+    // standalone match is expected here.
+    expect(screen.getAllByText("Luna Artista")).toHaveLength(1);
+    expect(screen.getByLabelText("Unassigned")).toBeInTheDocument();
   });
 
   it("clicking a client row navigates to /clients/:id", async () => {
@@ -152,6 +185,12 @@ describe("ClientListPage", () => {
     renderPage();
     await screen.findAllByText("João Silva");
     expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
+  });
+
+  it("artist filter is present on the page", async () => {
+    renderPage();
+    await screen.findAllByText("João Silva");
+    expect(screen.getByLabelText(/filter by artist/i)).toBeInTheDocument();
   });
 
   it("shows an error message when clients fetch fails", async () => {
@@ -242,5 +281,31 @@ describe("ClientListPage", () => {
 
     expect(await screen.findByText(/no clients match/i)).toBeInTheDocument();
     expect(screen.queryByText("No clients yet")).not.toBeInTheDocument();
+  });
+
+  // ── Artist filter ────────────────────────────────────────────────────────────
+
+  it("selecting a specific artist filters the table to that artist's clients", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("João Silva");
+
+    await user.click(screen.getByLabelText(/filter by artist/i));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+
+    expect(screen.getAllByText("João Silva")).toHaveLength(2);
+    expect(screen.queryByText("Maria Ferreira")).not.toBeInTheDocument();
+  });
+
+  it("selecting 'Unassigned' filters the table to clients with no artist", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("João Silva");
+
+    await user.click(screen.getByLabelText(/filter by artist/i));
+    await user.click(await screen.findByRole("option", { name: "Unassigned" }));
+
+    expect(screen.getAllByText("Maria Ferreira")).toHaveLength(2);
+    expect(screen.queryByText("João Silva")).not.toBeInTheDocument();
   });
 });

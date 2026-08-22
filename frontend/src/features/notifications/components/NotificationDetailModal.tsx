@@ -19,7 +19,8 @@ export function NotificationDetailModal({ log, onClose }: Props) {
   if (!log) return null;
 
   const date = log.sentAt ? formatDate(log.sentAt) : formatDate(log.createdAt);
-  const recipient = log.recipientName ?? `Recipient ID: ${log.recipientId.slice(0, 8)}…`;
+  const recipient = log.recipientName
+    ?? (log.recipientId ? `Recipient ID: ${log.recipientId.slice(0, 8)}…` : "External contact");
 
   return (
     <Dialog open={!!log} onOpenChange={(open) => { if (!open) onClose(); }}>

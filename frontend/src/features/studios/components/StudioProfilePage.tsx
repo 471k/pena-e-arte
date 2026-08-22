@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,6 +20,7 @@ import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 import { StudioClosuresCard } from "./StudioClosuresCard";
 import { StudioAuditLogCard } from "./StudioAuditLogCard";
+import { StudioSocialLinksCard } from "./StudioSocialLinksCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
 import { EmbedCodeCard } from "./EmbedCodeCard";
 
@@ -30,7 +32,6 @@ const schema = z.object({
   latitude:        z.number({ message: "Must be a number" }).min(-90).max(90),
   longitude:       z.number({ message: "Must be a number" }).min(-180).max(180),
   phoneNumber:     z.string().max(30, "Max 30 characters").optional(),
-  instagramHandle: z.string().max(60, "Max 60 characters").optional(),
   nipt: z
     .string()
     .trim()
@@ -84,6 +85,15 @@ export function StudioProfilePage() {
   const { data: studio, isLoading } = useGetMyStudioQuery();
   const [updateStudio, { isLoading: saving, isSuccess }] = useUpdateMyStudioMutation();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const social = searchParams.get("social");
+    const platform = searchParams.get("platform");
+    if (social === "connected") toast.success(`${platform ?? "Account"} connected successfully!`);
+    if (social === "error")     toast.error(`${platform ?? "Account"} connection failed. Please try again.`);
+    if (social === "denied")    toast.info(`${platform ?? "Account"} connection cancelled.`);
+  }, [searchParams]);
 
   const niptInputRef = useRef<HTMLInputElement | null>(null);
   const [niptBannerDismissed, setNiptBannerDismissed] = useState(
@@ -141,7 +151,6 @@ export function StudioProfilePage() {
         latitude:        studio.latitude,
         longitude:       studio.longitude,
         phoneNumber:     studio.phoneNumber ?? "",
-        instagramHandle: studio.instagramHandle ?? "",
         nipt:            studio.nipt ?? "",
       });
     }
@@ -305,20 +314,6 @@ export function StudioProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="instagramHandle">Instagram handle (optional)</Label>
-                <Input
-                  id="instagramHandle"
-                  placeholder="your_studio"
-                  {...register("instagramHandle")}
-                  aria-invalid={!!errors.instagramHandle}
-                  aria-describedby={errors.instagramHandle ? "instagramHandle-error" : undefined}
-                />
-                {errors.instagramHandle && (
-                  <p id="instagramHandle-error" className="text-xs text-destructive">{errors.instagramHandle.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
                 <Label htmlFor="nipt">Business tax ID (NIPT)</Label>
                 {studio?.nipt ? (
                   <>
@@ -386,6 +381,7 @@ export function StudioProfilePage() {
           </CardContent>
         </Card>
 
+        <StudioSocialLinksCard />
         <BrandingSettingsCard />
         <StudioClosuresCard />
         <QrCodeSection />

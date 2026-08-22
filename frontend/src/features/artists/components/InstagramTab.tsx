@@ -3,6 +3,7 @@ import { Button }  from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
+import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { cn } from "@/shared/utils/cn";
 import { toast } from "sonner";
 import {
@@ -12,6 +13,7 @@ import {
   useToggleInstagramPostVisibilityMutation,
   useDisconnectInstagramMutation,
 } from "../artistsApi";
+import { useGetSocialLinksQuery } from "@/features/social/socialApi";
 
 function formatSyncedAt(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -29,6 +31,13 @@ interface InstagramTabProps {
 
 export function InstagramTab({ artistId, canConnect, canManagePosts }: InstagramTabProps) {
   const { data: status, isLoading: statusLoading } = useGetInstagramStatusQuery(artistId);
+
+  const { data: socialLinks = [] } = useGetSocialLinksQuery(
+    { subjectType: "Artist", subjectId: artistId },
+    { skip: !status?.isConnected },
+  );
+  const isInstagramVerified =
+    socialLinks.find((l) => l.platform === "Instagram")?.isVerified ?? false;
 
   const { data: posts = [], isLoading: postsLoading } =
     useGetInstagramPostsQuery({ artistId }, { skip: !status?.isConnected });
@@ -108,7 +117,10 @@ export function InstagramTab({ artistId, canConnect, canManagePosts }: Instagram
           <div className="flex items-center gap-3">
             <AtSign className="h-5 w-5 text-pink-500" aria-hidden="true" />
             <div>
-              <p className="text-sm font-medium">@{status.username}</p>
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                @{status.username}
+                {isInstagramVerified && <VerifiedSocialBadge platform="Instagram" />}
+              </p>
               {status.lastSyncedAt && (
                 <p className="text-xs text-muted-foreground">
                   Last synced {formatSyncedAt(status.lastSyncedAt)}

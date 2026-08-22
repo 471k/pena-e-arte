@@ -27,8 +27,13 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
         studio.Longitude = command.Request.Longitude;
         studio.PhoneNumber = string.IsNullOrWhiteSpace(command.Request.PhoneNumber)
                                   ? null : command.Request.PhoneNumber.Trim();
-        studio.InstagramHandle = string.IsNullOrWhiteSpace(command.Request.InstagramHandle)
-                                  ? null : command.Request.InstagramHandle.Trim().TrimStart('@');
+
+        // InstagramHandle is deliberately NOT written here anymore. The frontend form no
+        // longer collects it (Instagram is now managed via SocialLinksCard →
+        // UpdateSocialHandleCommand, writing to SocialAccountLink), so
+        // UpdateStudioRequest.InstagramHandle is always null/omitted on every real call —
+        // writing it unconditionally would silently null out the legacy column (kept only
+        // for its one-time SocialAccountLink backfill history) on every unrelated save.
 
         if (!string.IsNullOrWhiteSpace(command.Request.Nipt))
         {

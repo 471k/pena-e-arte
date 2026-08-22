@@ -184,10 +184,12 @@ describe("HelpMenu", () => {
   }, 10000);
 
   it("'Take the tour again' closes the sheet and relaunches the tour even though it was already completed", async () => {
-    // The owner tour's earlier steps target nav elements that this isolated
-    // render doesn't include, so the tour auto-skips through them (~1s each)
-    // before reaching the last step, "owner-help-button" — the trigger button
-    // HelpMenu itself renders, which does resolve.
+    // The owner tour's earlier steps (7 of them, as of the "Also work as an
+    // artist?" step added alongside the owner-as-artist feature) target nav
+    // elements that this isolated render doesn't include, so the tour
+    // auto-skips through them (~1s each) before reaching the last step,
+    // "owner-help-button" — the trigger button HelpMenu itself renders,
+    // which does resolve. Timeouts below carry margin above that ~7s floor.
     const user = userEvent.setup();
     renderMenu("owner" as Role);
 
@@ -195,8 +197,8 @@ describe("HelpMenu", () => {
     await user.click(screen.getByRole("button", { name: /take the tour again/i }));
 
     expect(screen.queryByRole("heading", { name: /^help$/i })).not.toBeInTheDocument();
-    expect(await screen.findByRole("dialog", {}, { timeout: 8000 })).toBeInTheDocument();
-  }, 15000);
+    expect(await screen.findByRole("dialog", {}, { timeout: 11000 })).toBeInTheDocument();
+  }, 17000);
 
   it("Contact Support tab shows the request form when there is no open ticket", async () => {
     const user = userEvent.setup();

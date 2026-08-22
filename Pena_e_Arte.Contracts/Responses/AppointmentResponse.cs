@@ -3,7 +3,7 @@ namespace Pena_e_Arte.Contracts.Responses;
 public record AppointmentResponse(
     Guid Id,
     Guid StudioId,
-    Guid ArtistId,
+    Guid? ArtistId,
     Guid ClientId,
     DateTime Date,
     DateTime EndDate,
@@ -16,4 +16,5 @@ public record AppointmentResponse(
     string? CancellationReason = null,
     DateTime? AftercareSentAt = null,
     string? ClientName = null,
-    IReadOnlyList<string>? ImageUrls = null);
+    IReadOnlyList<string>? ImageUrls = null,
+    string? ArtistName = null);

@@ -15,6 +15,8 @@ import type {
   InstagramPostItem,
   ConnectInstagramResponse,
 } from "@/features/artists/artistsApi";
+import { socialApi } from "@/features/social/socialApi";
+import type { SocialLinkStatus } from "@/features/social/socialApi";
 import { InstagramTab } from "@/features/artists/components/InstagramTab";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -35,6 +37,21 @@ const CONNECTED_STATUS: InstagramConnectionStatus = {
   postCount:    3,
 };
 
+const UNVERIFIED_SOCIAL_LINKS: SocialLinkStatus[] = [
+  {
+    platform: "Instagram", handle: "ink_artist", isVerified: false, verifiedAt: null,
+    verificationMethod: null, isOAuthConfigured: true, isManualCheckSupported: true,
+    hasPendingCode: false, pendingCodeExpiresAt: null,
+  },
+];
+
+const VERIFIED_SOCIAL_LINKS: SocialLinkStatus[] = [
+  {
+    ...UNVERIFIED_SOCIAL_LINKS[0],
+    isVerified: true, verifiedAt: "2026-07-01T10:00:00Z", verificationMethod: "OAuthConnect",
+  },
+];
+
 const POSTS: InstagramPostItem[] = [
   { id: "post-1", instagramMediaId: "m1", mediaUrl: "https://img/1.jpg", thumbnailUrl: null, caption: "a", mediaType: "IMAGE", postedAt: "2026-07-01T09:00:00Z", isVisible: true },
   { id: "post-2", instagramMediaId: "m2", mediaUrl: "https://img/2.jpg", thumbnailUrl: null, caption: "b", mediaType: "IMAGE", postedAt: "2026-06-30T09:00:00Z", isVisible: true },
@@ -54,6 +71,9 @@ const server = setupServer(
   ),
   http.get(`http://localhost/api/v1/artists/${ARTIST_ID}/instagram/posts`, () =>
     HttpResponse.json(POSTS),
+  ),
+  http.get(`http://localhost/api/v1/artists/${ARTIST_ID}/social`, () =>
+    HttpResponse.json(UNVERIFIED_SOCIAL_LINKS),
   ),
   http.put(`http://localhost/api/v1/artists/${ARTIST_ID}/instagram/posts/:postId/visibility`, async ({ params, request }) => {
     toggledPostId = params.postId as string;
@@ -84,8 +104,9 @@ function makeStore() {
       auth: authReducer,
       ui:   uiReducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
+      [socialApi.reducerPath]:  socialApi.reducer,
     },
-    middleware: (gd) => gd().concat(artistsApi.middleware),
+    middleware: (gd) => gd().concat(artistsApi.middleware, socialApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u1", email: "owner@ink.test" },
@@ -160,6 +181,33 @@ describe("InstagramTab", () => {
     expect(await screen.findByText("@ink_artist")).toBeInTheDocument();
     expect(screen.getByText("3 posts")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
+  });
+
+  it("shows the Verified badge when the Instagram social link is verified", async () => {
+    server.use(
+      http.get(`http://localhost/api/v1/artists/${ARTIST_ID}/instagram/status`, () =>
+        HttpResponse.json(CONNECTED_STATUS),
+      ),
+      http.get(`http://localhost/api/v1/artists/${ARTIST_ID}/social`, () =>
+        HttpResponse.json(VERIFIED_SOCIAL_LINKS),
+      ),
+    );
+    renderTab();
+
+    await screen.findByText("@ink_artist");
+    expect(await screen.findByText(/verified/i)).toBeInTheDocument();
+  });
+
+  it("does not show the Verified badge when the Instagram social link is unverified", async () => {
+    server.use(
+      http.get(`http://localhost/api/v1/artists/${ARTIST_ID}/instagram/status`, () =>
+        HttpResponse.json(CONNECTED_STATUS),
+      ),
+    );
+    renderTab();
+
+    await screen.findByText("@ink_artist");
+    expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
   });
 
   it("renders one <img> per synced post", async () => {

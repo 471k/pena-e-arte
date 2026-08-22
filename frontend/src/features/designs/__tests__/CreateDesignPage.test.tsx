@@ -37,14 +37,16 @@ const ARTIST: ArtistResponse = {
 };
 
 const CLIENT: ClientResponse = {
-  id:        "c-001",
-  studioId:  "s-001",
-  firstName: "João",
-  lastName:  "Silva",
-  email:     "joao@test.com",
-  phone:     null,
-  createdAt: "2024-01-01T00:00:00Z",
-  userId:    null,
+  id:         "c-001",
+  studioId:   "s-001",
+  firstName:  "João",
+  lastName:   "Silva",
+  email:      "joao@test.com",
+  phone:      null,
+  createdAt:  "2024-01-01T00:00:00Z",
+  userId:     null,
+  artistId:   null,
+  artistName: null,
 };
 
 const CREATED_DESIGN: DesignResponse = {

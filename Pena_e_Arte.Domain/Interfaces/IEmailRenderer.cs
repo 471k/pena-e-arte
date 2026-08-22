@@ -9,6 +9,13 @@ public interface IEmailRenderer
         string? notes,
         bool showBranding);
 
+    string RenderAppointmentArtistAssigned(
+        string clientFirstName,
+        string artistFullName,
+        DateTime date,
+        string studioName,
+        bool showBranding);
+
     string RenderAppointmentCreatedClient(
         string clientFirstName,
         DateTime date,
