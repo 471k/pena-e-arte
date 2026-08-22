@@ -1,8 +1,10 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Social;
 using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Application.Public.Queries;
 
@@ -66,6 +68,17 @@ public class GetPublicStudioHandler(IAppDbContext db)
             }
         }
 
+        // Approved: public portfolio query — same class as the other reads in this handler.
+        List<SocialAccountLink> studioSocialLinks = await db.SocialAccountLinks
+            .Where(s => s.SubjectType == SocialLinkSubjectType.Studio && s.SubjectId == studio.Id)
+            .OrderBy(s => s.Platform)
+            .ToListAsync(ct);
+
+        IReadOnlyList<PublicSocialLinkResponse> socialLinks = studioSocialLinks
+            .Select(s => new PublicSocialLinkResponse(
+                s.Platform.ToString(), s.Handle, s.IsVerified, SocialProfileUrlBuilder.Build(s.Platform, s.Handle)))
+            .ToList();
+
         IReadOnlyList<PublicArtistSummary> artistSummaries = artists
             .Select(a =>
             {
@@ -92,11 +105,11 @@ public class GetPublicStudioHandler(IAppDbContext db)
             studio.Description,
             studio.CoverImageUrl,
             studio.PhoneNumber,
-            studio.InstagramHandle,
             studioReviewStats is { Count: > 0 } ? Math.Round(studioReviewStats.Avg, 1) : null,
             studioReviewStats?.Count ?? 0,
             galleryImages,
             artistSummaries,
-            ShowBookingCta: true);
+            ShowBookingCta: true,
+            socialLinks);
     }
 }

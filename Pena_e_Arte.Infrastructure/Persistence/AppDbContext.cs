@@ -57,6 +57,11 @@ public class AppDbContext(
     public DbSet<InstagramConnection> InstagramConnections => Set<InstagramConnection>();
     public DbSet<InstagramPost> InstagramPosts => Set<InstagramPost>();
 
+    // --- Social verification (polymorphic Artist-or-Studio subject, no tenant filter —
+    //     same documented exception as InstagramConnection above; handlers must filter
+    //     by (SubjectType, SubjectId) and verify tenant ownership explicitly) ---
+    public DbSet<SocialAccountLink> SocialAccountLinks => Set<SocialAccountLink>();
+
     // --- Platform feedback (no tenant filter — issuer reads across all studios) ---
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();

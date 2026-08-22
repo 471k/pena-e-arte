@@ -64,6 +64,8 @@ import { useGetDesignsQuery } from "@/features/designs/designsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
+import { InstagramTab } from "./InstagramTab";
+import { SocialLinksCard } from "@/features/social/components/SocialLinksCard";
 
 // Keep in sync with TattooStyle.cs constants on the backend.
 const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -138,6 +140,12 @@ export function ArtistDetailPage() {
     if (ig === "connected") toast.success("Instagram connected successfully!");
     if (ig === "error")     toast.error("Instagram connection failed. Please try again.");
     if (ig === "denied")    toast.info("Instagram connection cancelled.");
+
+    const social = searchParams.get("social");
+    const platform = searchParams.get("platform");
+    if (social === "connected") toast.success(`${platform ?? "Account"} connected successfully!`);
+    if (social === "error")     toast.error(`${platform ?? "Account"} connection failed. Please try again.`);
+    if (social === "denied")    toast.info(`${platform ?? "Account"} connection cancelled.`);
   }, [searchParams]);
 
   const isOwnProfile = isArtistRole && artist?.userId != null && artist.userId === currentUserId;
@@ -447,6 +455,7 @@ export function ArtistDetailPage() {
               <TabsTrigger value="hours"      className="flex-1">Schedule</TabsTrigger>
               <TabsTrigger value="bookings"   className="flex-1">Bookings</TabsTrigger>
               <TabsTrigger value="designs"    className="flex-1">Designs</TabsTrigger>
+              <TabsTrigger value="social"     className="flex-1">Social</TabsTrigger>
             </TabsList>
 
             {/* Profile tab */}
@@ -694,6 +703,23 @@ export function ArtistDetailPage() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            {/* Social tab — Instagram keeps its own dedicated photo-sync UI; the other
+                four platforms are verification-only, managed via SocialLinksCard. */}
+            <TabsContent value="social" className="mt-4 space-y-6">
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Instagram</h3>
+                <InstagramTab artistId={artist.id} canConnect={canManage} canManagePosts={isArtistRole} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Other platforms</h3>
+                <SocialLinksCard
+                  subjectType="Artist"
+                  subjectId={artist.id}
+                  platforms={["TikTok", "Facebook", "X", "YouTube"]}
+                />
+              </div>
             </TabsContent>
           </Tabs>
         )}

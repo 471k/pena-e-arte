@@ -1942,6 +1942,81 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("session_splits", (string)null);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.SocialAccountLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("EncryptedToken")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalUserId")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Handle")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("PendingCodeExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PendingVerificationCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("TokenExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("VerificationMethod")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_social_account_links");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_social_account_links_studio_id");
+
+                    b.HasIndex("SubjectType", "SubjectId", "Platform")
+                        .IsUnique()
+                        .HasDatabaseName("ix_social_account_links_subject_platform");
+
+                    b.ToTable("social_account_links", (string)null);
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Studio", b =>
                 {
                     b.Property<Guid>("Id")

@@ -27,6 +27,8 @@ import { useStructuredData }       from "@/shared/utils/useStructuredData";
 import { ReviewSection }           from "./ReviewSection";
 import { PublicPageHeader }        from "./PublicPageHeader";
 import { useEffect } from "react";
+import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
+import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
 
@@ -557,6 +559,30 @@ export function ArtistPortfolioPage() {
                   €{artist.hourlyRate}/hr
                 </span>
               </p>
+            )}
+
+            {artist.socialLinks.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {artist.socialLinks.map((link) => {
+                  const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? AtSign;
+                  const label = SOCIAL_PLATFORM_LABEL[link.platform] ?? link.platform;
+                  return (
+                    <a
+                      key={link.platform}
+                      href={link.profileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-muted-foreground
+                                 hover:text-foreground transition-colors min-h-[44px]"
+                      aria-label={`${artist.name} on ${label}`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      @{link.handle}
+                      {link.isVerified && <VerifiedSocialBadge platform={label} />}
+                    </a>
+                  );
+                })}
+              </div>
             )}
 
             {artist.showBookingCta && (

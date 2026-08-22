@@ -41,6 +41,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<SavedPortfolioImage> SavedPortfolioImages => Set<SavedPortfolioImage>();
     public DbSet<InstagramConnection> InstagramConnections => Set<InstagramConnection>();
     public DbSet<InstagramPost> InstagramPosts => Set<InstagramPost>();
+    public DbSet<SocialAccountLink> SocialAccountLinks => Set<SocialAccountLink>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();

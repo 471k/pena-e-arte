@@ -12,22 +12,29 @@ export interface PublicArtistSummary {
   reviewCount:     number;
 }
 
+export interface PublicSocialLinkResponse {
+  platform:   string;
+  handle:     string;
+  isVerified: boolean;
+  profileUrl: string;
+}
+
 export interface PublicStudioResponse {
-  studioId:        string;
-  name:            string;
-  slug:            string;
-  city:            string;
-  latitude:        number;
-  longitude:       number;
-  description:     string | null;
-  coverImageUrl:   string | null;
-  phoneNumber:     string | null;
-  instagramHandle: string | null;
-  averageRating:   number | null;
-  reviewCount:     number;
-  galleryImages:   string[];
-  artists:         PublicArtistSummary[];
-  showBookingCta:  boolean;
+  studioId:       string;
+  name:           string;
+  slug:           string;
+  city:           string;
+  latitude:       number;
+  longitude:      number;
+  description:    string | null;
+  coverImageUrl:  string | null;
+  phoneNumber:    string | null;
+  averageRating:  number | null;
+  reviewCount:    number;
+  galleryImages:  string[];
+  artists:        PublicArtistSummary[];
+  showBookingCta: boolean;
+  socialLinks:    PublicSocialLinkResponse[];
 }
 
 export interface ArtistPortfolioImage {
@@ -51,6 +58,7 @@ export interface PublicArtistResponse {
   studioSlug:      string;
   showBookingCta:  boolean;
   isOwnProfile:    boolean;
+  socialLinks:     PublicSocialLinkResponse[];
 }
 
 export interface SharedDesignResponse {

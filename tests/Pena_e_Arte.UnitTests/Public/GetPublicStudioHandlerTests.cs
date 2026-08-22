@@ -2,6 +2,7 @@ using FluentAssertions;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Public;
@@ -21,6 +22,9 @@ public class GetPublicStudioHandlerTests
         Longitude = -8.6291,
         IsActive = active,
         PhoneNumber = "+351 912 000 000",
+        // Legacy free-text column — kept in the DB per the zero-downtime migration
+        // convention, but no longer read by the public response (see SocialAccountLink
+        // and the Handle_ActiveStudio_ReturnsContactFieldsAndVerifiedSocialLinks test).
         InstagramHandle = "teststudio",
     };
 
@@ -78,9 +82,46 @@ public class GetPublicStudioHandlerTests
 
         result.Should().NotBeNull();
         result!.PhoneNumber.Should().Be("+351 912 000 000");
-        result.InstagramHandle.Should().Be("teststudio");
         result.Latitude.Should().Be(41.1579);
         result.Longitude.Should().Be(-8.6291);
+    }
+
+    [Fact]
+    public async Task Handle_VerifiedSocialLink_ReturnedInSocialLinksNotLegacyField()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        _db.SocialAccountLinks.Add(new SocialAccountLink
+        {
+            StudioId = studio.Id,
+            SubjectType = SocialLinkSubjectType.Studio,
+            SubjectId = studio.Id,
+            Platform = SocialPlatform.Instagram,
+            Handle = "teststudio",
+            IsVerified = true,
+        });
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.SocialLinks.Should().ContainSingle(s =>
+            s.Platform == "Instagram" && s.Handle == "teststudio" && s.IsVerified);
+    }
+
+    [Fact]
+    public async Task Handle_NoSocialLinks_SocialLinksIsEmpty()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.SocialLinks.Should().BeEmpty();
     }
 
     [Fact]

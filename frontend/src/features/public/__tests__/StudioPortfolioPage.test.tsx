@@ -48,7 +48,6 @@ const STUDIO: PublicStudioResponse = {
   description:     "Premier tattoo studio in Porto.",
   coverImageUrl:   "https://cdn.example.com/cover.jpg",
   phoneNumber:     "+351 912 345 678",
-  instagramHandle: "inksoultattoo",
   averageRating:   4.7,
   reviewCount:     12,
   galleryImages:   [
@@ -79,6 +78,9 @@ const STUDIO: PublicStudioResponse = {
     },
   ],
   showBookingCta: true,
+  socialLinks: [
+    { platform: "Instagram", handle: "inksoultattoo", isVerified: true, profileUrl: "https://instagram.com/inksoultattoo" },
+  ],
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

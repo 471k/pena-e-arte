@@ -34,7 +34,6 @@ const STUDIO: PublicStudioResponse = {
   description:     "Premier tattoo studio in Porto.",
   coverImageUrl:   null,
   phoneNumber:     null,
-  instagramHandle: null,
   averageRating:   null,
   reviewCount:     0,
   galleryImages:   [],
@@ -61,6 +60,7 @@ const STUDIO: PublicStudioResponse = {
     },
   ],
   showBookingCta: true,
+  socialLinks: [],
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

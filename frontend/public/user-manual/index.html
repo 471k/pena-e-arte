@@ -426,6 +426,7 @@ ol.steps li { margin: 6px 0; }
         <button class="nav-section-toggle" aria-expanded="false">Studio settings</button>
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-studio-profile" data-nav-link>Studio profile</a></li>
+          <li><a href="#owner-social-verification" data-nav-link>Verify social media accounts</a></li>
           <li><a href="#owner-branding" data-nav-link>Branding</a></li>
           <li><a href="#owner-embed" data-nav-link>Embed code</a></li>
           <li><a href="#owner-referral" data-nav-link>Referral programme</a></li>
@@ -583,7 +584,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Studio profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (own studio, reply to reviews)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details — phone, Instagram, and a "Get Directions" link to Google Maps — in the sidebar.</p>
+<p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details — phone, social media links, and a "Get Directions" link to Google Maps — in the sidebar. A social link shows a green "Verified" badge when the studio has proven it owns that account.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile page wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -602,7 +603,7 @@ ol.steps li { margin: 6px 0; }
 <text x="20" y="440" font-size="12" font-weight="700">Reviews</text>
 <rect x="520" y="140" width="220" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <rect x="536" y="156" width="188" height="30" rx="4" fill="#7c3aed"/><text x="590" y="176" font-size="10" fill="#fff">Book an Appointment</text>
-<text x="536" y="210" font-size="9" fill-opacity="0.6">📞 phone · @instagram · 🧭 Get Directions</text>
+<text x="536" y="210" font-size="9" fill-opacity="0.6">📞 phone · @handle ✓ · 🧭 Get Directions</text>
 <text x="600" y="120" font-size="10" fill-opacity="0.7">Sticky sidebar</text>
 <line x1="595" y1="125" x2="620" y2="140" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="3,3"/>
 </svg>
@@ -615,7 +616,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Artists</span> grid — click any artist card to open their own profile page.</li>
 <li><span class="step-title">Portfolio</span> masonry gallery — click a photo to open it full-size in a lightbox.</li>
 <li><span class="step-title">Reviews</span> section at the bottom, with a form to leave your own review (sign-in required, and you need a completed appointment at this studio).</li>
-<li>In the sidebar: <span class="step-title">Book an Appointment</span> button (sends signed-out visitors to sign in first), phone number, Instagram handle, and a <span class="step-title">Get Directions</span> link that opens the studio's pinned location in Google Maps.</li>
+<li>In the sidebar: <span class="step-title">Book an Appointment</span> button (sends signed-out visitors to sign in first), phone number, verified social media links (Instagram, TikTok, Facebook, X, YouTube — whichever the studio has set up), and a <span class="step-title">Get Directions</span> link that opens the studio's pinned location in Google Maps.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> the studio owner can reply publicly to any review directly from this same page when signed in.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> "Get Directions" opens Google Maps in a new tab — on a phone, this hands off straight to the Google Maps app if it's installed.</div>
@@ -627,7 +628,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Artist profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own profile shows a completion nudge)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>An individual artist's public page at <code>/artist/&lt;slug&gt;</code>: profile photo, bio, specialties, hourly rate, a filterable portfolio grid, connected Instagram posts, and reviews. Viewing the page records a "view" used to help rank the discovery feed.</p>
+<p>An individual artist's public page at <code>/artist/&lt;slug&gt;</code>: profile photo, bio, specialties, hourly rate, verified social media links, a filterable portfolio grid, connected Instagram posts, and reviews. Viewing the page records a "view" used to help rank the discovery feed.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist profile page wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -662,7 +663,7 @@ ol.steps li { margin: 6px 0; }
 <li>Avatar, name, studio link, star rating, bio, specialty chips, hourly rate.</li>
 <li><span class="step-title">Book an Appointment</span> button (also pinned to the bottom of the screen on mobile).</li>
 <li><span class="step-title">Portfolio</span> grid with style filter chips — click any photo for a lightbox with per-photo reviews.</li>
-<li><span class="step-title">Instagram</span> section (only shown if the artist connected an account and has visible posts).</li>
+<li><span class="step-title">Social links</span> next to the artist's name — Instagram, TikTok, Facebook, X, YouTube, whichever they've verified — plus an <span class="step-title">Instagram</span> photo section (only shown if the artist connected an account and has visible posts).</li>
 <li><span class="step-title">Reviews</span> at the bottom, with a form to leave one (requires a completed appointment with this artist).</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> reviews can be left against the whole artist, a specific tattoo photo, or the whole studio — each has its own review thread. Studio/artist reviews require a completed appointment and can be repeated each time you visit again; tattoo-photo reviews are a one-time review per photo (photos aren't tied to a specific booking).</div>
@@ -1648,7 +1649,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> My portfolio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗ (public version at <a href="#guest-artist-portfolio">/artist/slug</a>)</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own; edits bio, rate, portfolio)</td></tr><tr><td>Owner</td><td>✓ (any artist at the studio)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with four tabs — Profile, Portfolio, Schedule, and Designs — reached from "My Portfolio" in the artist's own top navigation.</p>
+<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with five tabs — Profile, Portfolio, Schedule, Designs, and Social — reached from "My Portfolio" in the artist's own top navigation.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist portfolio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1669,10 +1670,11 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Portfolio</span> tab — add or remove photos shown on your public artist page. Each image has its own style dropdown (Traditional, Realism, Blackwork, etc.) — tag it so the photo appears when a client filters the public Discover page by that style.</li>
 <li><span class="step-title">Schedule</span> tab — your upcoming appointments.</li>
 <li><span class="step-title">Designs</span> tab — designs you've created.</li>
+<li><span class="step-title">Social</span> tab — connect/verify Instagram (also used for photo sync), plus verify TikTok, Facebook, X, and YouTube. See <a href="#owner-social-verification">Verify social media accounts</a>.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> your hourly rate is used to calculate percentage-based deposit rules at booking time.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> Discover's style filters match each image's own style tag, not the "Specializations" text on your profile — an untagged image stays in your portfolio but won't show up under any style filter.</div>
-<div class="crosslinks">See also: <a href="#guest-artist-portfolio">Guest: artist profile page</a>, <a href="#owner-artist-detail">Owner: artist detail</a></div>
+<div class="crosslinks">See also: <a href="#guest-artist-portfolio">Guest: artist profile page</a>, <a href="#owner-artist-detail">Owner: artist detail</a>, <a href="#owner-social-verification">Verify social media accounts</a></div>
 </section>
 
 <section id="artist-notifications" data-role="artist">
@@ -2298,7 +2300,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The studio settings hub at <code>/studios/me</code>: name, phone, Instagram, business tax ID (NIPT), location, and URL slug at the top, followed by branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
+<p>The studio settings hub at <code>/studios/me</code>: name, phone, business tax ID (NIPT), location, and URL slug at the top, followed by a Social Media card, then branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2319,12 +2321,45 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps (in page order)</h3>
 <ol class="steps">
 <li>Edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
-<li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span>, <span class="step-title">Instagram handle</span>, and <span class="step-title">Location</span> (drag the map pin), then <span class="step-title">Save changes</span>.</li>
+<li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span>, and <span class="step-title">Location</span> (drag the map pin), then <span class="step-title">Save changes</span>.</li>
 <li>If you haven't added your <span class="step-title">Business tax ID (NIPT)</span> yet, a banner prompts you to add it — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, the field becomes read-only; contact support to change it. It's never shown to clients.</li>
-<li>Below: <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
+<li>Below: <a href="#owner-social-verification">Social Media</a> (connect/verify Instagram, TikTok, Facebook, X, YouTube), <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully.</div>
-<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#issuer-audit-log">Issuer: audit log</a></div>
+<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#issuer-audit-log">Issuer: audit log</a>, <a href="#owner-social-verification">Verify social media accounts</a></div>
+</section>
+
+<section id="owner-social-verification" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Verify social media accounts</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own profile's four non-Instagram platforms; Instagram stays on the Social tab's own Connect flow)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>The "Social Media" card (Studio Settings) and the artist profile's "Social" tab both use the same mechanism: connect or verify Instagram, TikTok, Facebook, X, and YouTube accounts, so clients see a green "Verified" checkmark next to the handle wherever it's shown — proof it's really the account it claims to be, not something anyone could type into a form.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 220" role="img" aria-label="Social Media card wireframe">
+<rect width="760" height="30" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="20" font-size="10" font-weight="700">Social Media</text>
+<rect x="16" y="40" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="28" y="61" font-size="9">Instagram   @inkbyana ✓ Verified</text>
+<rect x="16" y="80" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="28" y="101" font-size="9">TikTok      [ handle input ]           Connect</text>
+<rect x="16" y="120" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="28" y="141" font-size="9">YouTube     [ handle input ]  Get verification code</text>
+<rect x="16" y="160" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="28" y="181" font-size="9">Facebook    Not available yet</text>
+</svg>
+</figure>
+<figcaption>Social Media — one row per platform; verified rows show a badge and Disconnect, unverified rows show Connect or a code flow</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>For Instagram or TikTok: click <span class="step-title">Connect</span> and sign in on the platform's own page. This proves ownership directly — no code to copy.</li>
+<li>For Facebook, X, or YouTube (or any account that can't or won't use Connect): type the handle, then click <span class="step-title">Get verification code</span>. Add the code shown to that platform's bio, then click <span class="step-title">I've added it — Verify</span>. It can take a minute to propagate before Verify finds it.</li>
+<li>Once verified, a green <span class="step-title">Verified</span> badge appears next to the handle everywhere it's shown, including the public studio/artist page.</li>
+<li><span class="step-title">Disconnect</span> keeps the handle displayed but removes the Verified badge.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> a green check means TattooOS has directly confirmed this is the same account — not something anyone else could type in.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> changing a handle after it's verified removes the badge until it's re-verified — the old proof only covered the previous handle.</div>
+<div class="callout callout-warn"><strong>Note:</strong> "Not available yet" means that platform isn't connected on this server — this isn't something you can fix from Settings.</div>
+<div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile</a>, <a href="#artist-profile">Artist: my portfolio profile</a>, <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
 </section>
 
 <section id="owner-branding" data-role="owner">

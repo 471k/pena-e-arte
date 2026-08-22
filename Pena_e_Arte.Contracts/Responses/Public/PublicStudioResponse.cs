@@ -10,9 +10,9 @@ public record PublicStudioResponse(
     string? Description,
     string? CoverImageUrl,
     string? PhoneNumber,
-    string? InstagramHandle,
     double? AverageRating,
     int ReviewCount,
     IReadOnlyList<string> GalleryImages,
     IReadOnlyList<PublicArtistSummary> Artists,
-    bool ShowBookingCta);
+    bool ShowBookingCta,
+    IReadOnlyList<PublicSocialLinkResponse> SocialLinks);

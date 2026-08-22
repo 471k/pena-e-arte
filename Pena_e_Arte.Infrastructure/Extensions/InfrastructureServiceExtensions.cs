@@ -12,6 +12,7 @@ using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.Infrastructure.Services.MailKit;
+using Pena_e_Arte.Infrastructure.Services.Social;
 using Resend;
 using StackExchange.Redis;
 using Twilio;
@@ -159,6 +160,35 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IInstagramStateSigner, InstagramStateSigner>();
         services.AddScoped<IInstagramService, InstagramService>();
         services.AddTransient<InstagramSyncJob>();
+
+        // Social verification (Instagram/TikTok/Facebook/X/YouTube) — config-gated, see
+        // ISocialOAuthProvider.IsConfigured. Instagram's provider/checker wrap the
+        // InstagramOptions/IInstagramService already registered above rather than
+        // duplicating them.
+        services.Configure<SocialSigningOptions>(configuration.GetSection(SocialSigningOptions.Section));
+        services.Configure<TikTokOptions>(configuration.GetSection(TikTokOptions.Section));
+        services.Configure<FacebookOptions>(configuration.GetSection(FacebookOptions.Section));
+        services.Configure<XOptions>(configuration.GetSection(XOptions.Section));
+        services.Configure<YouTubeOptions>(configuration.GetSection(YouTubeOptions.Section));
+        services.AddHttpClient("TikTok");
+        services.AddHttpClient("Facebook");
+        services.AddHttpClient("X");
+        services.AddHttpClient("YouTube");
+        services.AddSingleton<ISocialOAuthStateSigner, SocialOAuthStateSigner>();
+
+        services.AddScoped<ISocialOAuthProvider, InstagramSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProvider, TikTokSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProvider, FacebookSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProvider, XSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProvider, YouTubeSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProviderFactory, SocialOAuthProviderFactory>();
+
+        services.AddScoped<ISocialBioChecker, InstagramBioChecker>();
+        services.AddScoped<ISocialBioChecker, TikTokBioChecker>();
+        services.AddScoped<ISocialBioChecker, FacebookBioChecker>();
+        services.AddScoped<ISocialBioChecker, XBioChecker>();
+        services.AddScoped<ISocialBioChecker, YouTubeBioChecker>();
+        services.AddScoped<ISocialBioCheckerFactory, SocialBioCheckerFactory>();
 
         services.Configure<GoogleOptions>(configuration.GetSection(GoogleOptions.Section));
         services.Configure<AppleOptions>(configuration.GetSection(AppleOptions.Section));

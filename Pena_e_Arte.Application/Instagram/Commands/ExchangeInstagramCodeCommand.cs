@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
@@ -64,6 +65,34 @@ public class ExchangeInstagramCodeHandler(
             existing.IsActive = true;
             existing.UpdatedAt = DateTime.UtcNow;
         }
+
+        // SocialAccountLink is the one place every "Verified" badge reads from, across
+        // every subject and platform — see docs/claude/architecture.md's Social
+        // Verification entry. InstagramConnection above keeps owning the photo-sync
+        // lifecycle exactly as before; this is purely additive.
+        SocialAccountLink? socialLink = await db.SocialAccountLinks.FirstOrDefaultAsync(
+            s => s.SubjectType == SocialLinkSubjectType.Artist
+              && s.SubjectId == request.ArtistId
+              && s.Platform == SocialPlatform.Instagram, ct);
+
+        if (socialLink is null)
+        {
+            socialLink = new SocialAccountLink
+            {
+                StudioId = studioId,
+                SubjectType = SocialLinkSubjectType.Artist,
+                SubjectId = request.ArtistId,
+                Platform = SocialPlatform.Instagram,
+            };
+            db.SocialAccountLinks.Add(socialLink);
+        }
+
+        socialLink.Handle = username;
+        socialLink.IsVerified = true;
+        socialLink.VerifiedAt = DateTime.UtcNow;
+        socialLink.VerificationMethod = SocialVerificationMethod.OAuthConnect;
+        socialLink.ExternalUserId = tokenResponse.UserId;
+        socialLink.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 

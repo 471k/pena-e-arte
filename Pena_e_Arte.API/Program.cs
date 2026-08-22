@@ -155,6 +155,8 @@ try
     app.MapArtistEndpoints();
     app.MapInstagramEndpoints();
     app.MapInstagramCallbackEndpoint();
+    app.MapSocialEndpoints();
+    app.MapSocialCallbackEndpoint();
     app.MapClientEndpoints();
     app.MapDesignEndpoints();
     app.MapStudioEndpoints();

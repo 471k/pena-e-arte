@@ -22,6 +22,8 @@ import { StarRating }              from "@/shared/components/ui/StarRating";
 import { useAppSelector }          from "@/app/hooks";
 import { useGetPublicStudioQuery } from "../publicApi";
 import type { PublicArtistSummary } from "../publicApi";
+import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
+import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { useDocumentMeta }          from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }        from "@/shared/utils/useStructuredData";
 import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
@@ -445,19 +447,25 @@ export function StudioPortfolioPage() {
                 </a>
               )}
 
-              {studio.instagramHandle && (
-                <a
-                  href={`https://instagram.com/${studio.instagramHandle.replace(/^@/, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-muted-foreground
-                             hover:text-foreground transition-colors min-h-[44px]"
-                  aria-label={`${studio.name} on Instagram`}
-                >
-                  <AtSign className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  @{studio.instagramHandle.replace(/^@/, "")}
-                </a>
-              )}
+              {studio.socialLinks.map((link) => {
+                const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? AtSign;
+                const label = SOCIAL_PLATFORM_LABEL[link.platform] ?? link.platform;
+                return (
+                  <a
+                    key={link.platform}
+                    href={link.profileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-muted-foreground
+                               hover:text-foreground transition-colors min-h-[44px]"
+                    aria-label={`${studio.name} on ${label}`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    @{link.handle}
+                    {link.isVerified && <VerifiedSocialBadge platform={label} />}
+                  </a>
+                );
+              })}
 
               {hasPinnedLocation(studio.latitude, studio.longitude) ? (
                 <a

@@ -49,6 +49,9 @@ public interface IAppDbContext
     DbSet<InstagramConnection> InstagramConnections { get; }
     DbSet<InstagramPost> InstagramPosts { get; }
 
+    // Social verification — polymorphic subject (Artist or Studio), no tenant filter (see AppDbContext)
+    DbSet<SocialAccountLink> SocialAccountLinks { get; }
+
     // Platform feedback — no tenant filter (issuer reads across all studios)
     DbSet<FeedbackReport> FeedbackReports { get; }
     DbSet<FeedbackMessage> FeedbackMessages { get; }
