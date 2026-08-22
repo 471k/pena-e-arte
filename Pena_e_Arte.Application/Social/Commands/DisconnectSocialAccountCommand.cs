@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Social.Commands;
@@ -15,6 +16,11 @@ public class DisconnectSocialAccountHandler(IAppDbContext db, ICurrentTenant ten
 {
     public async Task<Unit> Handle(DisconnectSocialAccountCommand request, CancellationToken ct)
     {
+        if (request.SubjectType == SocialLinkSubjectType.Artist && request.Platform == SocialPlatform.Instagram)
+            throw new BusinessRuleViolationException(
+                "Use the artist's own Instagram disconnect flow (/artists/{id}/instagram/disconnect) instead — " +
+                "it also deactivates the underlying InstagramConnection, which this generic path never touches.");
+
         await SocialSubjectResolver.ResolveStudioIdAsync(db, tenant, request.SubjectType, request.SubjectId, ct);
 
         SocialAccountLink? link = await db.SocialAccountLinks.FirstOrDefaultAsync(

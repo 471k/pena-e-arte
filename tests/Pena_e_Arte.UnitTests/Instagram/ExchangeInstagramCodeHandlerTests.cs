@@ -57,6 +57,10 @@ public class ExchangeInstagramCodeHandlerTests
         link.VerificationMethod.Should().Be(SocialVerificationMethod.OAuthConnect);
         link.ExternalUserId.Should().Be("ig-user-123");
         link.StudioId.Should().Be(_studioId);
+        // Artist-subject OAuth links keep the token (future re-verification job), unlike
+        // the Studio-subject case in ExchangeSocialOAuthCodeCommand.
+        link.EncryptedToken.Should().Be("encrypted-token");
+        link.TokenExpiresAt.Should().NotBeNull();
     }
 
     [Fact]

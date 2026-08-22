@@ -718,6 +718,7 @@ export function ArtistDetailPage() {
                   subjectType="Artist"
                   subjectId={artist.id}
                   platforms={["TikTok", "Facebook", "X", "YouTube"]}
+                  canManage={canManage}
                 />
               </div>
             </TabsContent>

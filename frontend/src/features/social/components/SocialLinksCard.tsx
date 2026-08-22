@@ -35,11 +35,20 @@ interface SocialLinksCardProps {
    * Instagram on its own dedicated InstagramTab for photo sync, and only shows the
    * other four platforms here). */
   platforms?: readonly SocialPlatform[];
+  /** Owner-only, matching every backend endpoint this card calls (connect-url,
+   * handle, request-code, verify-code, disconnect are all OwnerOnly). An artist
+   * viewing their own profile can see this card (GetSocialLinksQuery is
+   * ArtistAndAbove) but must get a read-only view, not buttons that always 403 —
+   * mirrors InstagramTab.tsx's canConnect prop. Defaults to true for callers (like
+   * Studio Settings) that are already Owner-gated at the route level. */
+  canManage?: boolean;
 }
 
 const DEFAULT_PLATFORMS: readonly SocialPlatform[] = ["Instagram", "TikTok", "Facebook", "X", "YouTube"];
 
-export function SocialLinksCard({ subjectType, subjectId, platforms = DEFAULT_PLATFORMS }: SocialLinksCardProps) {
+export function SocialLinksCard({
+  subjectType, subjectId, platforms = DEFAULT_PLATFORMS, canManage = true,
+}: SocialLinksCardProps) {
   const { data: links = [], isLoading } = useGetSocialLinksQuery({ subjectType, subjectId });
 
   const [fetchConnectUrl] = useLazyGetSocialConnectUrlQuery();
@@ -150,8 +159,8 @@ export function SocialLinksCard({ subjectType, subjectId, platforms = DEFAULT_PL
 
               <div className="flex-1 min-w-[180px] flex items-center gap-2">
                 <span className="text-sm font-medium w-20 shrink-0">{label}</span>
-                {row.isVerified ? (
-                  <span className="text-sm">@{row.handle}</span>
+                {row.isVerified || !canManage ? (
+                  <span className="text-sm">{row.handle ? `@${row.handle}` : "—"}</span>
                 ) : (
                   <Input
                     value={handleDraftFor(row)}
@@ -165,7 +174,7 @@ export function SocialLinksCard({ subjectType, subjectId, platforms = DEFAULT_PL
                 {row.isVerified && <VerifiedSocialBadge platform={label} />}
               </div>
 
-              {row.isVerified ? (
+              {!canManage ? null : row.isVerified ? (
                 <Button
                   variant="ghost"
                   size="sm"

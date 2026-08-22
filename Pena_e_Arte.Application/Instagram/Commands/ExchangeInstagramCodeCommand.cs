@@ -92,6 +92,13 @@ public class ExchangeInstagramCodeHandler(
         socialLink.VerifiedAt = DateTime.UtcNow;
         socialLink.VerificationMethod = SocialVerificationMethod.OAuthConnect;
         socialLink.ExternalUserId = tokenResponse.UserId;
+        // Kept (not discarded like the Studio-subject case) so a future periodic
+        // re-verification job has a token to check — matches ExchangeSocialOAuthCodeCommand's
+        // Artist-subject branch.
+        socialLink.EncryptedToken = encryptedToken;
+        socialLink.TokenExpiresAt = expiresAt;
+        socialLink.PendingVerificationCode = null;
+        socialLink.PendingCodeExpiresAt = null;
         socialLink.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

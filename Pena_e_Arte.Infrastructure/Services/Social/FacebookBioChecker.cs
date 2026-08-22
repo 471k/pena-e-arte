@@ -13,24 +13,22 @@ namespace Pena_e_Arte.Infrastructure.Services.Social;
 /// </summary>
 public sealed class FacebookBioChecker(
     IHttpClientFactory httpFactory,
-    IOptions<InstagramOptions> instagramOptions,
     IOptions<FacebookOptions> facebookOptions) : ISocialBioChecker
 {
-    private readonly InstagramOptions _igOpts = instagramOptions.Value;
     private readonly FacebookOptions _fbOpts = facebookOptions.Value;
 
     public SocialPlatform Platform => SocialPlatform.Facebook;
 
-    public bool IsSupported => !string.IsNullOrEmpty(_igOpts.AppId) && !string.IsNullOrEmpty(_fbOpts.AppId);
+    public bool IsSupported => !string.IsNullOrEmpty(_fbOpts.AppId);
 
     public async Task<bool> BioContainsCodeAsync(string handle, string code, CancellationToken ct)
     {
         using HttpClient client = httpFactory.CreateClient("Facebook");
 
         // Meta "app access token" format ({app-id}|{app-secret}) — see InstagramBioChecker.
-        string appAccessToken = $"{_igOpts.AppId}|{_igOpts.AppSecret}";
+        string appAccessToken = $"{_fbOpts.AppId}|{_fbOpts.AppSecret}";
         string url =
-            $"https://graph.facebook.com/v21.0/{_igOpts.AppId}" +
+            $"https://graph.facebook.com/v21.0/{_fbOpts.AppId}" +
             $"?fields=business_discovery.username({Uri.EscapeDataString(handle)}){{biography}}" +
             $"&access_token={Uri.EscapeDataString(appAccessToken)}";
 
