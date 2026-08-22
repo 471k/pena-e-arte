@@ -5,13 +5,22 @@ import { toast } from "sonner";
 import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from "@/shared/components/ui/dialog";
 import { DataTable } from "@/shared/components/DataTable";
 import type { ColumnDef } from "@/shared/components/DataTable";
 import { usePermission } from "@/shared/hooks/usePermission";
+import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
 import { cn } from "@/shared/utils/cn";
-import { useGetArtistsQuery, useDeleteArtistMutation } from "../artistsApi";
+import {
+  useGetArtistsQuery, useDeleteArtistMutation,
+  useGetMyArtistQuery, useCreateOwnArtistProfileMutation,
+} from "../artistsApi";
 import { useGetPlanUsageQuery } from "@/features/billing/billingApi";
 import type { ArtistResponse } from "../artistsApi";
 
@@ -52,6 +61,34 @@ export function ArtistListPage() {
   const [deleteArtist, { isLoading: isDeletingArtist }] = useDeleteArtistMutation();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [selectedSpec, setSelectedSpec]       = useState<string | null>(null);
+
+  const currentUserName = useAppSelector((s) => s.auth.user?.name);
+  const { data: myArtist, isLoading: myArtistLoading } = useGetMyArtistQuery(undefined, { skip: !canManage });
+  const [createOwnArtistProfile, { isLoading: isEnabling }] = useCreateOwnArtistProfileMutation();
+  const [becomeArtistOpen, setBecomeArtistOpen] = useState(false);
+  const [baFirstName, setBaFirstName]           = useState(currentUserName ?? "");
+  const [baLastName, setBaLastName]             = useState("");
+  const [baSpecializations, setBaSpecializations] = useState("");
+  const [baHourlyRate, setBaHourlyRate]         = useState("");
+
+  async function onEnableOwnArtistProfile() {
+    try {
+      const result = await createOwnArtistProfile({
+        firstName:       baFirstName.trim(),
+        lastName:        baLastName.trim(),
+        specializations: baSpecializations.trim() || null,
+        hourlyRate:      baHourlyRate.trim() ? Number(baHourlyRate) : null,
+      }).unwrap();
+      toast.success("Your artist profile is ready.");
+      setBecomeArtistOpen(false);
+      navigate(`/artists/${result.id}`);
+    } catch (err: unknown) {
+      const message =
+        (err as { data?: { message?: string } } | undefined)?.data?.message
+        ?? "Failed to enable your artist profile.";
+      toast.error(message);
+    }
+  }
 
   const allSpecs = useMemo<string[]>(() => {
     if (!artists) return [];
@@ -247,6 +284,25 @@ export function ArtistListPage() {
           />
         </div>
 
+        {canManage && !myArtistLoading && !myArtist && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Also work as an artist?</p>
+              <p className="text-xs text-muted-foreground">
+                Enable your own artist profile — no second account needed.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              data-tour="owner-become-artist-cta"
+              onClick={() => setBecomeArtistOpen(true)}
+            >
+              Enable my artist profile
+            </Button>
+          </div>
+        )}
+
         {isLoading && (
           <div className="space-y-0">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -362,6 +418,61 @@ export function ArtistListPage() {
           </>
         )}
       </main>
+
+      <Dialog open={becomeArtistOpen} onOpenChange={setBecomeArtistOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enable your artist profile</DialogTitle>
+            <DialogDescription>
+              This uses your existing owner login — no new email or password. You'll be selectable
+              when booking or scheduling appointments, just like any other artist.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="ba-first-name">First name</Label>
+                <Input id="ba-first-name" value={baFirstName} onChange={(e) => setBaFirstName(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ba-last-name">Last name</Label>
+                <Input id="ba-last-name" value={baLastName} onChange={(e) => setBaLastName(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ba-specializations">Specializations (optional)</Label>
+              <Input
+                id="ba-specializations"
+                placeholder="e.g. Traditional, Realism"
+                value={baSpecializations}
+                onChange={(e) => setBaSpecializations(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ba-hourly-rate">Hourly rate (€, optional)</Label>
+              <Input
+                id="ba-hourly-rate"
+                type="number"
+                step="0.01"
+                min="0"
+                value={baHourlyRate}
+                onChange={(e) => setBaHourlyRate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBecomeArtistOpen(false)} disabled={isEnabling}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void onEnableOwnArtistProfile()}
+              disabled={isEnabling || !baFirstName.trim() || !baLastName.trim()}
+            >
+              {isEnabling ? "Enabling…" : "Enable my artist profile"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -16,10 +16,16 @@ public class GetAppointmentHandler(IAppDbContext db)
     {
         Domain.Entities.Appointment appointment = await db.Appointments
             .Include(a => a.Client)
+            .Include(a => a.Artist)
             .Include(a => a.Attachments)
             .FirstOrDefaultAsync(a => a.Id == query.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), query.AppointmentId);
 
-        return CreateAppointmentHandler.Map(appointment, $"{appointment.Client.FirstName} {appointment.Client.LastName}");
+        return CreateAppointmentHandler.Map(
+            appointment,
+            $"{appointment.Client.FirstName} {appointment.Client.LastName}",
+            appointment.Artist is not null
+                ? $"{appointment.Artist.FirstName} {appointment.Artist.LastName}"
+                : null);
     }
 }

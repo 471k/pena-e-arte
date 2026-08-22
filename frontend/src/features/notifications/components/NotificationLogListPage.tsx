@@ -43,8 +43,10 @@ function NotificationRow({
             <p className="text-xs text-muted-foreground">
               {log.recipientName ? (
                 <>Recipient: {log.recipientName}</>
-              ) : (
+              ) : log.recipientId ? (
                 <span className="font-mono">Recipient ID: {log.recipientId.slice(0, 8)}…</span>
+              ) : (
+                <span className="text-muted-foreground">External contact</span>
               )}
             </p>
           </div>

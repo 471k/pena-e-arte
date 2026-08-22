@@ -12,6 +12,7 @@ import { Button }   from "@/shared/components/ui/button";
 import { Input }    from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Label }    from "@/shared/components/ui/label";
+import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -66,7 +67,8 @@ const DURATION_OPTIONS: { value: number; label: string }[] = [
 // ── Schema ───────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  artistId:        z.string().min(1, "Select an artist"),
+  artistId:        z.string().nullable(),
+  bookAnyArtist:   z.boolean(),
   clientId:        z.string().min(1, "Select a client"),
   scheduledAt:     z.string().min(1, "Select date and time").refine(
     (v) => new Date(v) > new Date(),
@@ -78,7 +80,10 @@ const schema = z.object({
   ),
   depositRuleId:   z.string().nullable().optional(),
   notes:           z.string().optional(),
-});
+}).refine(
+  (data) => data.bookAnyArtist || (!!data.artistId && data.artistId.length > 0),
+  { message: "Select an artist", path: ["artistId"] },
+);
 
 type FormValues = z.infer<typeof schema>;
 
@@ -420,15 +425,17 @@ export function BookAppointmentForm() {
     resolver: zodResolver(schema),
     defaultValues: {
       artistId:        "",
+      bookAnyArtist:   false,
       durationMinutes: 60,
       clientId:        isClientRole ? (user?.id ?? "") : "",
       depositRuleId:   null,
     },
   });
 
-  const watchedArtistId    = useWatch({ control, name: "artistId" });
-  const watchedDate        = useWatch({ control, name: "scheduledAt" });
-  const watchedDuration    = useWatch({ control, name: "durationMinutes" });
+  const watchedArtistId      = useWatch({ control, name: "artistId" });
+  const watchedBookAnyArtist = useWatch({ control, name: "bookAnyArtist" });
+  const watchedDate          = useWatch({ control, name: "scheduledAt" });
+  const watchedDuration      = useWatch({ control, name: "durationMinutes" });
   const watchedDepositRuleId = useWatch({ control, name: "depositRuleId" });
 
   // Keep clientId current for client role
@@ -467,20 +474,21 @@ export function BookAppointmentForm() {
     useState<CheckSlotAvailabilityParams | null>(null);
 
   useEffect(() => {
-    const delay = watchedArtistId && watchedDate && watchedDuration ? 600 : 0;
+    const ready = watchedDate && watchedDuration && (watchedBookAnyArtist || watchedArtistId);
+    const delay = ready ? 600 : 0;
     const timer = setTimeout(() => {
-      if (!watchedArtistId || !watchedDate || !watchedDuration) {
+      if (!watchedDate || !watchedDuration || (!watchedBookAnyArtist && !watchedArtistId)) {
         setDebouncedCheck(null);
         return;
       }
       setDebouncedCheck({
-        artistId:        watchedArtistId,
+        artistId:        watchedBookAnyArtist ? undefined : (watchedArtistId ?? undefined),
         date:            watchedDate,
         durationMinutes: watchedDuration,
       });
     }, delay);
     return () => clearTimeout(timer);
-  }, [watchedArtistId, watchedDate, watchedDuration]);
+  }, [watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration]);
 
   const {
     data:       slotStatus,
@@ -497,7 +505,7 @@ export function BookAppointmentForm() {
       .filter((img) => img.status === "done" && img.publicUrl)
       .map((img) => img.publicUrl!);
     const result = await createAppointment({
-      artistId:        values.artistId,
+      artistId:        values.bookAnyArtist ? null : values.artistId,
       clientId,
       date:            new Date(values.scheduledAt).toISOString(),
       durationMinutes: values.durationMinutes,
@@ -510,6 +518,7 @@ export function BookAppointmentForm() {
       setBooked(result.data ?? null);
       resetForm({
         artistId:        "",
+        bookAnyArtist:   false,
         durationMinutes: 60,
         clientId:        isClientRole ? (myClient?.id ?? user?.id ?? "") : "",
         depositRuleId:   null,
@@ -625,12 +634,20 @@ export function BookAppointmentForm() {
         <p className="text-sm font-medium">Appointment requested!</p>
         <p className="text-xs text-muted-foreground">
           {depositDone === "paid"
-            ? "Your deposit is authorised — the artist will confirm soon."
+            ? booked.artistId
+              ? "Your deposit is authorised — the artist will confirm soon."
+              : "Your deposit is authorised — the studio will assign an artist and confirm soon."
             : depositDone === "cash"
-            ? "Bring the deposit in cash to the studio. The artist will confirm soon."
+            ? booked.artistId
+              ? "Bring the deposit in cash to the studio. The artist will confirm soon."
+              : "Bring the deposit in cash to the studio. The studio will assign an artist and confirm soon."
             : depositDone === "skipped"
-            ? "The studio will contact you about the deposit. The artist will confirm soon."
-            : "The artist will confirm soon."}
+            ? booked.artistId
+              ? "The studio will contact you about the deposit. The artist will confirm soon."
+              : "The studio will contact you about the deposit and assign an artist soon."
+            : booked.artistId
+            ? "The artist will confirm soon."
+            : "The studio will assign an artist and confirm soon."}
         </p>
         <Button variant="outline" size="sm" onClick={startOver}>
           Book another
@@ -643,66 +660,91 @@ export function BookAppointmentForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <p className="text-xs text-muted-foreground/60">* Required</p>
 
-      {/* Artist selector */}
-      <div className="space-y-1.5">
-        <FieldLabel htmlFor="artistId" required>Artist</FieldLabel>
+      {/* Let the studio choose */}
+      <div className="flex items-center justify-between rounded-md border border-border/40
+                      bg-muted/20 px-3 py-2">
+        <div>
+          <p className="text-xs font-medium">Let the studio choose my artist</p>
+          <p className="text-[11px] text-muted-foreground">
+            We&apos;ll confirm someone&apos;s available — the studio assigns your artist before
+            confirming.
+          </p>
+        </div>
         <Controller
           control={control}
-          name="artistId"
+          name="bookAnyArtist"
           render={({ field }) => (
-            <Select
-              disabled={loadingArtists}
-              value={field.value}
-              onValueChange={field.onChange}
-            >
-              <SelectTrigger
-                id="artistId"
-                aria-label="Select artist"
-                className={cn(errors.artistId && "border-destructive")}
-              >
-                {field.value && selectedArtist ? (
-                  <span className="flex items-center gap-2">
-                    <ArtistAvatar artist={selectedArtist} />
-                    <span>{selectedArtist.firstName} {selectedArtist.lastName}</span>
-                  </span>
-                ) : (
-                  <SelectValue placeholder={loadingArtists ? "Loading artists…" : "Choose an artist"} />
-                )}
-              </SelectTrigger>
-              <SelectContent>
-                <div className="px-2 pb-1.5 pt-1">
-                  <input
-                    type="text"
-                    placeholder="Search artists…"
-                    value={artistSearch}
-                    onChange={(e) => setArtistSearch(e.target.value)}
-                    className="w-full rounded-sm border-0 bg-muted/50 px-2 py-1
-                               text-xs placeholder:text-muted-foreground/60
-                               focus:outline-none focus:ring-1 focus:ring-ring"
-                    aria-label="Search artists"
-                  />
-                </div>
-                {filteredArtists.length === 0 ? (
-                  <div className="py-4 text-center text-xs text-muted-foreground">
-                    {artists?.length === 0
-                      ? "No artists configured for this studio."
-                      : "No artists match your search."}
-                  </div>
-                ) : (
-                  filteredArtists.map((a) => (
-                    <ArtistSelectItem key={a.id} artist={a} />
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <ToggleSwitch
+              checked={field.value}
+              onChange={() => field.onChange(!field.value)}
+              aria-label="Let the studio choose my artist"
+            />
           )}
         />
-        {errors.artistId && (
-          <p className="text-xs text-destructive" role="alert">
-            {errors.artistId.message}
-          </p>
-        )}
       </div>
+
+      {/* Artist selector */}
+      {!watchedBookAnyArtist && (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="artistId" required>Artist</FieldLabel>
+          <Controller
+            control={control}
+            name="artistId"
+            render={({ field }) => (
+              <Select
+                disabled={loadingArtists}
+                value={field.value ?? ""}
+                onValueChange={field.onChange}
+              >
+                <SelectTrigger
+                  id="artistId"
+                  aria-label="Select artist"
+                  className={cn(errors.artistId && "border-destructive")}
+                >
+                  {field.value && selectedArtist ? (
+                    <span className="flex items-center gap-2">
+                      <ArtistAvatar artist={selectedArtist} />
+                      <span>{selectedArtist.firstName} {selectedArtist.lastName}</span>
+                    </span>
+                  ) : (
+                    <SelectValue placeholder={loadingArtists ? "Loading artists…" : "Choose an artist"} />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  <div className="px-2 pb-1.5 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Search artists…"
+                      value={artistSearch}
+                      onChange={(e) => setArtistSearch(e.target.value)}
+                      className="w-full rounded-sm border-0 bg-muted/50 px-2 py-1
+                                 text-xs placeholder:text-muted-foreground/60
+                                 focus:outline-none focus:ring-1 focus:ring-ring"
+                      aria-label="Search artists"
+                    />
+                  </div>
+                  {filteredArtists.length === 0 ? (
+                    <div className="py-4 text-center text-xs text-muted-foreground">
+                      {artists?.length === 0
+                        ? "No artists configured for this studio."
+                        : "No artists match your search."}
+                    </div>
+                  ) : (
+                    filteredArtists.map((a) => (
+                      <ArtistSelectItem key={a.id} artist={a} />
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.artistId && (
+            <p className="text-xs text-destructive" role="alert">
+              {errors.artistId.message}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Client selector — visible for staff roles only */}
       {isStaffRole && (

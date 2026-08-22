@@ -11,5 +11,6 @@ public class CreateClientValidator : AbstractValidator<CreateClientCommand>
         RuleFor(x => x.Request.LastName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Request.Email).NotEmpty().EmailAddress().MaximumLength(256);
         RuleFor(x => x.Request.Phone).MaximumLength(20).When(x => x.Request.Phone is not null);
+        RuleFor(x => x.Request.ArtistId).NotEmpty();
     }
 }

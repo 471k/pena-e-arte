@@ -56,6 +56,9 @@ vi.mock("@/features/studios/components/EmbedCodeCard", () => ({
 vi.mock("@/features/notifications/components/NotificationPreferencesCard", () => ({
   NotificationPreferencesCard: () => <div data-testid="notification-preferences-card" />,
 }));
+vi.mock("@/features/studios/components/StudioSocialLinksCard", () => ({
+  StudioSocialLinksCard: () => <div data-testid="studio-social-links-card" />,
+}));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 

@@ -69,9 +69,17 @@ public class CreateClientValidatorTests
         _sut.ShouldBeValid(Command("Ana", "Costa", "a@b.com", new('9', 20)));
     }
 
+    [Fact]
+    public void Validate_EmptyArtistId_FailsOnArtistId()
+    {
+        _sut.ShouldFailOn(
+            new CreateClientCommand(new CreateClientRequest("Ana", "Costa", "a@b.com", null, Guid.Empty)),
+            "Request.ArtistId");
+    }
+
     private static CreateClientCommand ValidCommand() =>
         Command("Ana", "Costa", "ana@example.com", "+351911000000");
 
     private static CreateClientCommand Command(string first, string last, string email, string? phone) =>
-        new(new CreateClientRequest(first, last, email, phone));
+        new(new CreateClientRequest(first, last, email, phone, Guid.NewGuid()));
 }

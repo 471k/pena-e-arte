@@ -30,6 +30,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     public DbSet<StudioNotificationPreference> StudioNotificationPreferences => Set<StudioNotificationPreference>();
     public DbSet<ClientNotificationPreference> ClientNotificationPreferences => Set<ClientNotificationPreference>();
+    public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
     public DbSet<Studio> Studios => Set<Studio>();
     public DbSet<Plan> Plans => Set<Plan>();
     public DbSet<PlanPrice> PlanPrices => Set<PlanPrice>();
@@ -40,6 +41,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<SavedPortfolioImage> SavedPortfolioImages => Set<SavedPortfolioImage>();
     public DbSet<InstagramConnection> InstagramConnections => Set<InstagramConnection>();
     public DbSet<InstagramPost> InstagramPosts => Set<InstagramPost>();
+    public DbSet<SocialAccountLink> SocialAccountLinks => Set<SocialAccountLink>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();

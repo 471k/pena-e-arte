@@ -4,7 +4,7 @@ namespace Pena_e_Arte.Domain.Entities;
 
 public class Appointment : TenantEntity
 {
-    public Guid ArtistId { get; set; }
+    public Guid? ArtistId { get; set; }
     public Guid ClientId { get; set; }
     public DateTime Date { get; set; }
     public DateTime EndDate { get; set; }
@@ -20,7 +20,7 @@ public class Appointment : TenantEntity
     public string? ReminderJobId48h { get; set; }
     public string? ReminderJobId24h { get; set; }
 
-    public Artist Artist { get; set; } = null!;
+    public Artist? Artist { get; set; }
     public Client Client { get; set; } = null!;
 
     // Reference images the client attached when requesting the appointment.

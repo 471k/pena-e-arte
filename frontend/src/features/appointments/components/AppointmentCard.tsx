@@ -112,6 +112,12 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             )}
             <span className="text-xs text-muted-foreground">{appointment.durationMinutes} min</span>
             <AppointmentStatusBadge status={appointment.status} />
+            {appointment.status === AppointmentStatus.Pending && appointment.artistId === null && (
+              <span className="text-[10px] font-medium uppercase tracking-wide rounded-full
+                               bg-amber-500/15 text-amber-600 px-1.5 py-0.5">
+                Needs artist
+              </span>
+            )}
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-1.5">
             <span>Deposit: {formatCurrency(appointment.depositAmount)}</span>
@@ -136,7 +142,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             className="flex items-center gap-1.5 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
-            {isPending && (
+            {isPending && appointment.artistId !== null && (
               <Button
                 variant="outline"
                 size="sm"

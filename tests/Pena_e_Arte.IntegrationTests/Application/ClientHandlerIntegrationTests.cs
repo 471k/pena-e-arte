@@ -1,11 +1,13 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 using Pena_e_Arte.Application.Clients.Commands;
 using Pena_e_Arte.Application.Clients.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.IntegrationTests.Infrastructure;
@@ -15,15 +17,17 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
 {
+    private record ClientFields(string FirstName, string LastName, string Email, string? Phone);
+
     // ── CreateClient ─────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task CreateClient_NewEmail_PersistsToDatabase()
     {
         Guid tenantId = Guid.NewGuid();
-        CreateClientRequest req = new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null);
+        ClientFields fields = new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null);
 
-        ClientResponse result = await RunCreateHandler(tenantId, req);
+        ClientResponse result = await RunCreateHandler(tenantId, fields);
 
         await using AppDbContext verify = fixture.CreateDbContext(tenantId);
         bool exists = await verify.Clients.AnyAsync(c => c.Id == result.Id);
@@ -60,9 +64,9 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
     public async Task CreateClient_WithPhone_PersistsPhone()
     {
         Guid tenantId = Guid.NewGuid();
-        CreateClientRequest req = new("Rui", "Neves", $"{Guid.NewGuid()}@example.com", "+351912000000");
+        ClientFields fields = new("Rui", "Neves", $"{Guid.NewGuid()}@example.com", "+351912000000");
 
-        ClientResponse result = await RunCreateHandler(tenantId, req);
+        ClientResponse result = await RunCreateHandler(tenantId, fields);
 
         result.Phone.Should().Be("+351912000000");
     }
@@ -85,6 +89,36 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
 
         await act.Should().NotThrowAsync(
             because: "the tenant query filter ensures the AnyAsync check is scoped to the current tenant");
+    }
+
+    [Fact]
+    public async Task CreateClient_ArtistCaller_OverridesRequestedArtistIdWithOwnArtistId()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid otherArtistId = await SeedArtistAsync(tenantId);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(tenantId);
+        ICurrentUser artistUser = Substitute.For<ICurrentUser>();
+        artistUser.UserId.Returns(Guid.NewGuid());
+        artistUser.Role.Returns("artist");
+        Artist callerArtist = new()
+        {
+            StudioId = tenantId,
+            UserId = artistUser.UserId,
+            FirstName = "Caller",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@test.com",
+        };
+        db.Artists.Add(callerArtist);
+        await db.SaveChangesAsync();
+
+        CreateClientHandler handler = new(db, tenant, artistUser);
+        CreateClientRequest req = new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null, otherArtistId);
+        ClientResponse result = await handler.Handle(new CreateClientCommand(req), default);
+
+        result.ArtistId.Should().Be(callerArtist.Id);
     }
 
     // ── GetClients ───────────────────────────────────────────────────────────────
@@ -122,6 +156,139 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
         List<ClientResponse> result = await handler.Handle(new GetClientsQuery(targetEmail), default);
 
         result.Should().ContainSingle(c => c.Email == targetEmail);
+    }
+
+    [Fact]
+    public async Task GetClients_ClientHasArtist_ReturnsArtistIdAndName()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid artistId = await SeedArtistAsync(tenantId);
+        await RunCreateHandler(tenantId, new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null), artistId);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        GetClientsHandler handler = new(db);
+        List<ClientResponse> result = await handler.Handle(new GetClientsQuery(null), default);
+
+        result.Should().ContainSingle(c => c.ArtistId == artistId && c.ArtistName != null);
+    }
+
+    // ── UpdateClientArtist ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateClientArtist_ReassignToDifferentArtist_PersistsChange()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid firstArtistId = await SeedArtistAsync(tenantId);
+        Guid secondArtistId = await SeedArtistAsync(tenantId);
+        ClientResponse created = await RunCreateHandler(
+            tenantId, new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null), firstArtistId);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        UpdateClientArtistHandler handler = new(db);
+        ClientResponse result = await handler.Handle(
+            new UpdateClientArtistCommand(created.Id, new UpdateClientArtistRequest(secondArtistId)), default);
+
+        result.ArtistId.Should().Be(secondArtistId);
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        Client persisted = await verify.Clients.SingleAsync(c => c.Id == created.Id);
+        persisted.ArtistId.Should().Be(secondArtistId);
+    }
+
+    [Fact]
+    public async Task UpdateClientArtist_Unassign_SetsArtistIdNull()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid artistId = await SeedArtistAsync(tenantId);
+        ClientResponse created = await RunCreateHandler(
+            tenantId, new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null), artistId);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        UpdateClientArtistHandler handler = new(db);
+        ClientResponse result = await handler.Handle(
+            new UpdateClientArtistCommand(created.Id, new UpdateClientArtistRequest(null)), default);
+
+        result.ArtistId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateClientArtist_UnknownClient_ThrowsNotFoundException()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid artistId = await SeedArtistAsync(tenantId);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        UpdateClientArtistHandler handler = new(db);
+        Func<Task> act = () => handler.Handle(
+            new UpdateClientArtistCommand(Guid.NewGuid(), new UpdateClientArtistRequest(artistId)), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task UpdateClientArtist_UnknownArtist_ThrowsNotFoundException()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid artistId = await SeedArtistAsync(tenantId);
+        ClientResponse created = await RunCreateHandler(
+            tenantId, new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null), artistId);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        UpdateClientArtistHandler handler = new(db);
+        Func<Task> act = () => handler.Handle(
+            new UpdateClientArtistCommand(created.Id, new UpdateClientArtistRequest(Guid.NewGuid())), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task UpdateClientArtist_InactiveArtist_ThrowsBusinessRuleViolationException()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid artistId = await SeedArtistAsync(tenantId);
+        ClientResponse created = await RunCreateHandler(
+            tenantId, new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null), artistId);
+
+        await using AppDbContext seedDb = fixture.CreateDbContext(tenantId);
+        Artist inactiveArtist = new()
+        {
+            StudioId = tenantId,
+            FirstName = "Inactive",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@test.com",
+            IsActive = false,
+        };
+        seedDb.Artists.Add(inactiveArtist);
+        await seedDb.SaveChangesAsync();
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        UpdateClientArtistHandler handler = new(db);
+        Func<Task> act = () => handler.Handle(
+            new UpdateClientArtistCommand(created.Id, new UpdateClientArtistRequest(inactiveArtist.Id)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task UpdateClientArtist_ValidReassignment_UpdatesUpdatedAtTimestamp()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid firstArtistId = await SeedArtistAsync(tenantId);
+        Guid secondArtistId = await SeedArtistAsync(tenantId);
+        ClientResponse created = await RunCreateHandler(
+            tenantId, new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null), firstArtistId);
+
+        await using AppDbContext beforeDb = fixture.CreateDbContext(tenantId);
+        DateTime before = (await beforeDb.Clients.SingleAsync(c => c.Id == created.Id)).UpdatedAt;
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        UpdateClientArtistHandler handler = new(db);
+        await handler.Handle(
+            new UpdateClientArtistCommand(created.Id, new UpdateClientArtistRequest(secondArtistId)), default);
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        DateTime after = (await verify.Clients.SingleAsync(c => c.Id == created.Id)).UpdatedAt;
+        after.Should().BeOnOrAfter(before);
     }
 
     // ── AddTattooRecord ──────────────────────────────────────────────────────────
@@ -257,13 +424,34 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
 
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
-    private async Task<ClientResponse> RunCreateHandler(Guid tenantId, CreateClientRequest req)
+    private async Task<ClientResponse> RunCreateHandler(Guid tenantId, ClientFields fields, Guid? artistId = null)
     {
+        Guid resolvedArtistId = artistId ?? await SeedArtistAsync(tenantId);
+
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         CurrentTenantService tenant = new();
         tenant.SetTenant(tenantId);
-        CreateClientHandler handler = new(db, tenant);
+        ICurrentUser ownerUser = Substitute.For<ICurrentUser>();
+        ownerUser.UserId.Returns(Guid.NewGuid());
+        ownerUser.Role.Returns("owner");
+        CreateClientHandler handler = new(db, tenant, ownerUser);
+        CreateClientRequest req = new(fields.FirstName, fields.LastName, fields.Email, fields.Phone, resolvedArtistId);
         return await handler.Handle(new CreateClientCommand(req), default);
+    }
+
+    private async Task<Guid> SeedArtistAsync(Guid tenantId)
+    {
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        Artist artist = new()
+        {
+            StudioId = tenantId,
+            FirstName = "Test",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@test.com",
+        };
+        db.Artists.Add(artist);
+        await db.SaveChangesAsync();
+        return artist.Id;
     }
 
     private async Task<(Guid clientId, Guid artistId)> SeedClientAndArtistAsync(Guid tenantId)

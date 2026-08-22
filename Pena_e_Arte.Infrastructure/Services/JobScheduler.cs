@@ -37,4 +37,11 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
 
     public void EnqueueArtistInvite(string email, string firstName, Guid studioId) =>
         backgroundJobs.Enqueue<SendArtistInviteJob>(j => j.SendAsync(email, firstName, studioId, CancellationToken.None));
+
+    public string ScheduleManualReminder(Guid manualReminderId, DateTimeOffset sendAt) =>
+        sendAt <= DateTimeOffset.UtcNow
+            ? backgroundJobs.Enqueue<ManualReminderJob>(j => j.SendAsync(manualReminderId, default))
+            : backgroundJobs.Schedule<ManualReminderJob>(j => j.SendAsync(manualReminderId, default), sendAt);
+
+    public void CancelJob(string jobId) => backgroundJobs.Delete(jobId);
 }

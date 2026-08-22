@@ -20,14 +20,16 @@ import type { PaymentIntentResponse, PaymentResponse } from "@/features/payments
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const CLIENT: ClientResponse = {
-  id:        "c-001",
-  studioId:  "s-001",
-  firstName: "Maria",
-  lastName:  "Silva",
-  email:     "maria@example.com",
-  phone:     null,
-  createdAt: "2026-01-01T00:00:00Z",
-  userId:    null,
+  id:         "c-001",
+  studioId:   "s-001",
+  firstName:  "Maria",
+  lastName:   "Silva",
+  email:      "maria@example.com",
+  phone:      null,
+  createdAt:  "2026-01-01T00:00:00Z",
+  userId:     null,
+  artistId:   null,
+  artistName: null,
 };
 
 const CLIENT_2: ClientResponse = {

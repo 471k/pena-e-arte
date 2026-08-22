@@ -37,6 +37,14 @@ public interface IIdentityService
     Task<Guid?> GetUserIdByEmailAsync(string email, CancellationToken ct);
 
     /// <summary>
+    /// Returns the Identity roles held by the given user (e.g. "owner", "artist", "client",
+    /// "issuer"). Empty if no such user exists. This app's own flows only ever assign a user
+    /// one role, but Identity itself does not prevent more than one, so callers should not
+    /// assume a single-element result.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetUserRolesAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
     /// Returns the user's given-name Identity claim (set at registration when provided),
     /// or null if no account exists for the email or no such claim was ever set.
     /// </summary>

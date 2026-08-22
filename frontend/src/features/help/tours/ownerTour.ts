@@ -12,6 +12,12 @@ export const ownerTourSteps: TourStep[] = [
     body: "Manage your studio's artists here, or add a new one.",
   },
   {
+    targetSelector: '[data-tour="owner-become-artist-cta"]',
+    title: "Also work as an artist?",
+    body: "If you tattoo yourself, enable your own artist profile here — no second account needed.",
+    route: "/artists",
+  },
+  {
     targetSelector: '[data-tour="owner-deposit-rules-nav"]',
     title: "Set up deposit rules",
     body: "Deposit rules decide how much clients pay upfront to secure a booking.",

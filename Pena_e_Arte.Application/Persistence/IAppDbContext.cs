@@ -29,6 +29,7 @@ public interface IAppDbContext
     DbSet<NotificationLog> NotificationLogs { get; }
     DbSet<StudioNotificationPreference> StudioNotificationPreferences { get; }
     DbSet<ClientNotificationPreference> ClientNotificationPreferences { get; }
+    DbSet<ManualReminder> ManualReminders { get; }
 
     // Issuer-level
     DbSet<Studio> Studios { get; }
@@ -47,6 +48,9 @@ public interface IAppDbContext
     // Instagram — artist-scoped, no tenant filter (see AppDbContext)
     DbSet<InstagramConnection> InstagramConnections { get; }
     DbSet<InstagramPost> InstagramPosts { get; }
+
+    // Social verification — polymorphic subject (Artist or Studio), no tenant filter (see AppDbContext)
+    DbSet<SocialAccountLink> SocialAccountLinks { get; }
 
     // Platform feedback — no tenant filter (issuer reads across all studios)
     DbSet<FeedbackReport> FeedbackReports { get; }

@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -7,13 +8,24 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
+import { usePermission } from "@/shared/hooks/usePermission";
+import { Role } from "@/shared/types/roles";
 import { useCreateClientMutation } from "../clientsApi";
+import { useGetArtistsQuery, useGetMyArtistQuery } from "@/features/artists/artistsApi";
 
 const createSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName:  z.string().min(1, "Last name is required"),
   email:     z.string().email("Invalid email"),
+  artistId:  z.string().min(1, "Select an artist"),
   phone:     z.string().optional(),
 });
 
@@ -23,11 +35,24 @@ export function CreateClientPage() {
   const navigate = useNavigate();
   const [createClient, { isLoading }] = useCreateClientMutation();
 
+  const isOwnerPlus = usePermission(Role.Owner);
+  const { data: artists, isLoading: loadingArtists } = useGetArtistsQuery(undefined, { skip: !isOwnerPlus });
+  const { data: myArtist } = useGetMyArtistQuery(undefined, { skip: isOwnerPlus });
+
   const {
     register,
     handleSubmit,
+    control,
+    setValue,
     formState: { errors },
-  } = useForm<CreateFormValues>({ resolver: zodResolver(createSchema) });
+  } = useForm<CreateFormValues>({
+    resolver: zodResolver(createSchema),
+    defaultValues: { artistId: "" },
+  });
+
+  useEffect(() => {
+    if (!isOwnerPlus && myArtist) setValue("artistId", myArtist.id);
+  }, [isOwnerPlus, myArtist, setValue]);
 
   async function onSubmit(values: CreateFormValues) {
     const result = await createClient({
@@ -35,6 +60,7 @@ export function CreateClientPage() {
       lastName:  values.lastName,
       email:     values.email,
       phone:     values.phone?.trim() || null,
+      artistId:  values.artistId,
     });
     if ("data" in result) {
       toast.success("Client created.");
@@ -102,6 +128,38 @@ export function CreateClientPage() {
             )}
           </div>
 
+          {isOwnerPlus && (
+            <div className="space-y-1.5">
+              <Label htmlFor="artistId">Artist</Label>
+              <Controller
+                control={control}
+                name="artistId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id="artistId"
+                      aria-label="Select artist"
+                      className={cn(errors.artistId && "border-destructive")}
+                    >
+                      <SelectValue placeholder={loadingArtists ? "Loading artists…" : "Choose an artist"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {artists?.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.firstName} {a.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.artistId && (
+                <p className="text-xs text-destructive">{errors.artistId.message}</p>
+              )}
+            </div>
+          )}
+          {!isOwnerPlus && <input type="hidden" {...register("artistId")} />}
+
           <div className="space-y-1.5">
             <Label htmlFor="phone">Phone (optional)</Label>
             <Input
@@ -112,7 +170,11 @@ export function CreateClientPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading || (!isOwnerPlus && !myArtist)}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

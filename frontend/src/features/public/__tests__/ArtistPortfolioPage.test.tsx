@@ -55,6 +55,9 @@ const ARTIST: PublicArtistResponse = {
   studioSlug:      "ink-soul",
   showBookingCta:  true,
   isOwnProfile:    false,
+  socialLinks: [
+    { platform: "Instagram", handle: "mariasilva.ink", isVerified: true, profileUrl: "https://instagram.com/mariasilva.ink" },
+  ],
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

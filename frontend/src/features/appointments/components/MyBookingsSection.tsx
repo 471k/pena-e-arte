@@ -255,7 +255,8 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
 
 // ── Booking row ───────────────────────────────────────────────────────────
 
-function artistName(artistId: string, artists: ArtistResponse[]): string {
+function artistName(artistId: string | null, artists: ArtistResponse[]): string {
+  if (artistId === null) return "Studio will assign an artist";
   const a = artists.find((x) => x.id === artistId);
   return a ? `${a.firstName} ${a.lastName}` : "—";
 }

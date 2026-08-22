@@ -49,48 +49,65 @@ public class CreateAppointmentHandler(
 
         DateTime requestEnd = req.Date.AddMinutes(req.DurationMinutes);
 
-        // Validate the artist up front (clean 404 instead of an FK violation),
-        // and load the hourly rate that percent deposit rules are based on.
-        Artist artist = await db.Artists
-            .FirstOrDefaultAsync(a => a.Id == req.ArtistId, ct)
-            ?? throw new NotFoundException(nameof(Artist), req.ArtistId);
+        Artist? artist = null;
+        if (req.ArtistId is Guid artistId)
+        {
+            // ── Specific-artist path — UNCHANGED from today ──
+            artist = await db.Artists.FirstOrDefaultAsync(a => a.Id == artistId, ct)
+                ?? throw new NotFoundException(nameof(Artist), artistId);
 
-        // Check artist schedule: the day must be a working day and the time within working hours
-        DayOfWeek requestDay = req.Date.DayOfWeek;
-        TimeSpan requestStart = req.Date.TimeOfDay;
-        TimeSpan requestEndTime = requestEnd.TimeOfDay;
+            DayOfWeek requestDay = req.Date.DayOfWeek;
+            TimeSpan requestStart = req.Date.TimeOfDay;
+            TimeSpan requestEndTime = requestEnd.TimeOfDay;
 
-        var scheduleEntry = await db.ArtistSchedules
-            .Where(s => s.ArtistId == req.ArtistId && s.DayOfWeek == requestDay && s.IsAvailable)
-            .FirstOrDefaultAsync(ct);
+            var scheduleEntry = await db.ArtistSchedules
+                .Where(s => s.ArtistId == artistId && s.DayOfWeek == requestDay && s.IsAvailable)
+                .FirstOrDefaultAsync(ct);
 
-        if (scheduleEntry is null)
-            throw new BusinessRuleViolationException($"The artist is not available on {requestDay}.");
+            if (scheduleEntry is null)
+                throw new BusinessRuleViolationException($"The artist is not available on {requestDay}.");
 
-        if (requestStart < scheduleEntry.StartTime || requestEndTime > scheduleEntry.EndTime)
-            throw new BusinessRuleViolationException(
-                $"Appointment time is outside the artist's working hours ({scheduleEntry.StartTime:hh\\:mm}–{scheduleEntry.EndTime:hh\\:mm}).");
+            if (requestStart < scheduleEntry.StartTime || requestEndTime > scheduleEntry.EndTime)
+                throw new BusinessRuleViolationException(
+                    $"Appointment time is outside the artist's working hours ({scheduleEntry.StartTime:hh\\:mm}–{scheduleEntry.EndTime:hh\\:mm}).");
 
-        bool onTimeOff = await db.ArtistTimeOffs.AnyAsync(
-            t => t.ArtistId == req.ArtistId &&
-                 t.StartDate <= req.Date.Date &&
-                 t.EndDate >= req.Date.Date, ct);
+            bool onTimeOff = await db.ArtistTimeOffs.AnyAsync(
+                t => t.ArtistId == artistId &&
+                     t.StartDate <= req.Date.Date &&
+                     t.EndDate >= req.Date.Date, ct);
 
-        if (onTimeOff)
-            throw new BusinessRuleViolationException("The artist is on leave on the requested date.");
+            if (onTimeOff)
+                throw new BusinessRuleViolationException("The artist is on leave on the requested date.");
+        }
+        else
+        {
+            // ── Studio-choice path — new. Soft "someone can do this" check; no specific artist
+            // resource is claimed here (Decision #6) — the real per-artist claim happens in
+            // AssignAppointmentArtistCommand. ──
+            bool anyoneAvailable = await db.IsAnyArtistAvailableAsync(req.Date, req.DurationMinutes, ct);
 
-        bool locked = await slotLocker.TryAcquireLockAsync(tenant.StudioId, req.ArtistId, req.Date, ct);
-        if (!locked) throw new SlotAlreadyBookedException();
+            if (!anyoneAvailable)
+                throw new BusinessRuleViolationException(
+                    "No artist is available at that date and time. Please choose a different slot.");
+        }
+
+        bool locked = req.ArtistId is Guid lockArtistId
+            && await slotLocker.TryAcquireLockAsync(tenant.StudioId, lockArtistId, req.Date, ct);
+
+        if (req.ArtistId is not null && !locked) throw new SlotAlreadyBookedException();
 
         try
         {
-            bool conflict = await db.Appointments.AnyAsync(a =>
-                a.ArtistId == req.ArtistId &&
-                a.Date < requestEnd &&
-                a.EndDate > req.Date &&
-                a.Status != AppointmentStatus.Cancelled, ct);
+            if (req.ArtistId is Guid checkArtistId)
+            {
+                bool conflict = await db.Appointments.AnyAsync(a =>
+                    a.ArtistId == checkArtistId &&
+                    a.Date < requestEnd &&
+                    a.EndDate > req.Date &&
+                    a.Status != AppointmentStatus.Cancelled, ct);
 
-            if (conflict) throw new SlotAlreadyBookedException();
+                if (conflict) throw new SlotAlreadyBookedException();
+            }
 
             // Single-active is enforced by the deposit rule handlers; ordering by
             // UpdatedAt keeps selection deterministic even against legacy data.
@@ -99,12 +116,12 @@ public class CreateAppointmentHandler(
                 .OrderByDescending(r => r.UpdatedAt)
                 .FirstOrDefaultAsync(ct);
 
-            decimal depositAmount = DepositCalculator.Calculate(rule, artist.HourlyRate, req.DurationMinutes);
+            decimal depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
 
             Appointment appointment = new()
             {
                 StudioId = tenant.StudioId,
-                ArtistId = req.ArtistId,
+                ArtistId = artist?.Id,
                 ClientId = clientId,
                 Date = req.Date,
                 EndDate = requestEnd,
@@ -147,11 +164,12 @@ public class CreateAppointmentHandler(
         }
         finally
         {
-            await slotLocker.ReleaseLockAsync(tenant.StudioId, req.ArtistId, req.Date, ct);
+            if (req.ArtistId is Guid unlockArtistId)
+                await slotLocker.ReleaseLockAsync(tenant.StudioId, unlockArtistId, req.Date, ct);
         }
     }
 
-    internal static AppointmentResponse Map(Appointment a, string? clientName = null) => new(
+    internal static AppointmentResponse Map(Appointment a, string? clientName = null, string? artistName = null) => new(
         a.Id, a.StudioId, a.ArtistId, a.ClientId,
         a.Date, a.EndDate, a.DurationMinutes,
         a.Status.ToString(), a.DepositStatus.ToString(),
@@ -161,5 +179,6 @@ public class CreateAppointmentHandler(
         clientName,
         // Empty (not necessarily accurate) unless the caller eager-loaded
         // .Include(a => a.Attachments) — see GetAppointmentQuery.
-        a.Attachments.OrderBy(x => x.UploadedAt).Select(x => x.ImageUrl).ToList());
+        a.Attachments.OrderBy(x => x.UploadedAt).Select(x => x.ImageUrl).ToList(),
+        artistName);
 }

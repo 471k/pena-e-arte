@@ -183,6 +183,16 @@ public class IdentityService(
         return Guid.TryParse(user.Id, out Guid id) ? id : null;
     }
 
+    public async Task<IReadOnlyList<string>> GetUserRolesAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return [];
+        // GetRolesAsync returns IList<string>, which does not implicitly convert to
+        // IReadOnlyList<string> despite List<T> satisfying both at runtime.
+        IList<string> roles = await userManager.GetRolesAsync(user);
+        return roles.ToList();
+    }
+
     public async Task<string?> GetUserDisplayNameAsync(string email, CancellationToken ct)
     {
         IdentityUser? user = await userManager.FindByEmailAsync(email);

@@ -32,6 +32,13 @@ export interface CreateArtistRequest {
   hourlyRate:      number | null;
 }
 
+export interface CreateOwnArtistProfileRequest {
+  firstName:       string;
+  lastName:        string;
+  specializations: string | null;
+  hourlyRate:      number | null;
+}
+
 export interface UpdateArtistRequest {
   firstName:       string;
   lastName:        string;
@@ -99,6 +106,10 @@ export const artistsApi = createApi({
     }),
     createArtist: builder.mutation<ArtistResponse, CreateArtistRequest>({
       query: (body) => ({ url: "artists", method: "POST", body }),
+      invalidatesTags: ["Artist"],
+    }),
+    createOwnArtistProfile: builder.mutation<ArtistResponse, CreateOwnArtistProfileRequest>({
+      query: (body) => ({ url: "artists/me", method: "POST", body }),
       invalidatesTags: ["Artist"],
     }),
     getArtists: builder.query<ArtistResponse[], string | undefined>({
@@ -207,6 +218,7 @@ export const artistsApi = createApi({
 export const {
   useGetMyArtistQuery,
   useCreateArtistMutation,
+  useCreateOwnArtistProfileMutation,
   useGetArtistsQuery,
   useGetArtistByIdQuery,
   useUpdateArtistMutation,

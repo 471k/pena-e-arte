@@ -18,7 +18,7 @@ export type DepositStatus = (typeof DepositStatus)[keyof typeof DepositStatus];
 export interface AppointmentResponse {
   id:                 string;
   studioId:           string;
-  artistId:           string;
+  artistId:           string | null;
   clientId:           string;
   date:               string;
   endDate:            string;
@@ -32,16 +32,21 @@ export interface AppointmentResponse {
   aftercareSentAt?:    string | null;
   clientName?:         string | null;
   imageUrls?:          string[];
+  artistName?:         string | null;
 }
 
 export interface CreateAppointmentRequest {
-  artistId:        string;
+  artistId:        string | null;
   clientId:        string;
   date:            string;
   durationMinutes: number;
   depositRuleId:   string | null;
   notes:           string | null;
   imageUrls?:      string[];
+}
+
+export interface AssignAppointmentArtistRequest {
+  artistId: string;
 }
 
 export interface RescheduleAppointmentRequest {
@@ -62,7 +67,7 @@ export interface SlotAvailabilityResponse {
 }
 
 export interface CheckSlotAvailabilityParams {
-  artistId:        string;
+  artistId?:       string;
   date:            string;
   durationMinutes: number;
 }
