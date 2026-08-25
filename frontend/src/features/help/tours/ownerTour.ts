@@ -38,6 +38,11 @@ export const ownerTourSteps: TourStep[] = [
     body: "See your monthly revenue trend and a breakdown by artist here.",
   },
   {
+    targetSelector: '[data-tour="owner-conduct-reports-nav"]',
+    title: "Conduct reports",
+    body: "If a client ever reports a serious issue with your studio or an artist, it lands here.",
+  },
+  {
     targetSelector: '[data-tour="owner-help-button"]',
     title: "Need help?",
     body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",
