@@ -1319,6 +1319,36 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#client-change-password">Change password</a></div>
 </section>
 
+<section id="client-report" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Report an artist or studio</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own real appointment required)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>On a studio's page (<code>/s/{slug}</code>) or an artist's page (<code>/artist/{slug}</code>), below Reviews: a quiet "Report this artist" / "Report this studio" link opens a form to flag a serious issue — scam, sexual misconduct, unsafe hygiene practices, harassment, discrimination, or poor service — for our platform team to review. This is not a public review; it is never shown on the page.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 300" role="img" aria-label="Report dialog wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="21" font-size="10" font-weight="700">Report this artist</text>
+<text x="16" y="56" font-size="8" fill-opacity="0.6">Category</text><rect x="16" y="62" width="300" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="24" y="76" font-size="8">● Sexual misconduct or abuse</text>
+<text x="16" y="100" font-size="8" fill-opacity="0.6">Which visit does this relate to?</text><rect x="16" y="106" width="300" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="24" y="120" font-size="8">1 Aug 2026 — Completed</text>
+<text x="16" y="144" font-size="8" fill-opacity="0.6">What happened?</text><rect x="16" y="150" width="700" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="16" y="222" width="700" height="40" rx="6" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="4 3"/><text x="180" y="246" font-size="8" fill-opacity="0.6">Add a screenshot or short video (up to 3)</text>
+<rect x="616" y="272" width="100" height="20" rx="4" fill="#7c3aed"/><text x="632" y="286" font-size="8" fill="#fff">Submit Report</text>
+</svg>
+</figure>
+<figcaption>Report dialog — category, appointment picker, reason, optional evidence</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click <span class="step-title">Report this artist</span> / <span class="step-title">Report this studio</span> below the Reviews section.</li>
+<li>Pick a <span class="step-title">Category</span> — a small amber dot marks the five categories that are escalated immediately.</li>
+<li>Pick <span class="step-title">Which visit does this relate to?</span> — every real appointment you have there is listed, whatever its status.</li>
+<li>Describe <span class="step-title">What happened?</span> in at least 20 characters, and optionally attach up to 3 screenshots or short video clips as evidence.</li>
+<li>Click <span class="step-title">Submit Report</span>.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, and Discrimination are escalated immediately to the platform team's inbox by email, on top of the normal in-app review.</div>
+<div class="callout callout-warn"><strong>Note:</strong> there is no "my reports" list — once submitted you won't see it again, but it has been received.</div>
+<div class="crosslinks">See also: <a href="#guest-artist-portfolio">Guest: artist profile page</a>, <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
+</section>
+
 <section id="artist-schedule" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Weekly schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -1702,6 +1732,20 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">View all</span> to open the complete filterable log.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-notifications-log">Owner: notification log</a></div>
+</section>
+
+<section id="artist-conduct-reports" data-role="artist">
+<h2><span class="role-badge role-artist">Artist</span> Reports about me</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own reports, redacted)</td></tr><tr><td>Owner</td><td>✗ (uses the studio-wide Conduct Reports page instead)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>At <code>/conduct-reports</code>: every conduct report a client has filed about you specifically — category, description, and which appointment it relates to. An open-count badge appears next to "Reports About Me" in the nav.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Reports About Me</span> from the nav.</li>
+<li>Click a card to expand it and read the full description.</li>
+</ol>
+<div class="callout callout-tip"><strong>Note:</strong> the reporting client's name, email, and account are never shown here — only the studio owner and Pena e Artë platform staff can see who filed a report.</div>
+<div class="crosslinks">See also: <a href="#owner-conduct-reports">Owner: conduct reports</a></div>
 </section>
 
 <section id="owner-dashboard" data-role="owner">
@@ -2575,6 +2619,35 @@ ol.steps li { margin: 6px 0; }
 <li>Scroll to <span class="step-title">Revenue by artist</span> for a table sorted highest-earning artist first.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-billing">Billing</a>, <a href="#owner-payments">Track deposits and payments</a></div>
+</section>
+
+<section id="owner-conduct-reports" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Conduct reports</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (can file one; never sees a list)</td></tr><tr><td>Artist</td><td>✗ (uses the redacted "Reports About Me" page instead)</td></tr><tr><td>Owner</td><td>✓ (own studio)</td></tr><tr><td>Issuer</td><td>✓ (every studio, via the platform inbox)</td></tr></table>
+<p>At <code>/conduct-reports</code>: every trust &amp; safety report a client has filed about your studio or one of your artists, with an open-count badge in the nav. Standard-severity reports (Poor service quality, Other) can be resolved here directly. High-severity reports (Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, Discrimination) are shown in full — including who filed them — but locked to platform-only resolution.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 200" role="img" aria-label="Conduct reports wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="21" font-size="10" font-weight="700">Conduct Reports</text>
+<rect x="16" y="46" width="700" height="60" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<rect x="28" y="58" width="80" height="14" rx="7" fill="#ef4444" fill-opacity="0.3"/><text x="34" y="68" font-size="7">High severity</text>
+<rect x="112" y="58" width="35" height="14" rx="7" fill="#3b82f6" fill-opacity="0.3"/><text x="118" y="68" font-size="7">Open</text>
+<text x="28" y="88" font-size="9" font-weight="700">Sexual misconduct or abuse</text>
+<text x="28" y="100" font-size="8" fill-opacity="0.5">About Maria Silva · 2 Aug 2026 · Reported by Jane Doe</text>
+<rect x="16" y="118" width="700" height="30" rx="6" fill="currentColor" fill-opacity="0.03"/><text x="28" y="137" font-size="8" fill-opacity="0.6">Escalated to platform review — only Pena e Artë staff can close this report.</text>
+</svg>
+</figure>
+<figcaption>Conduct reports — a High-severity card shown expanded, with its locked resolution notice</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Conduct Reports</span> from the nav.</li>
+<li>Click a card to expand it and read the full description and category.</li>
+<li>For a Standard-severity report, click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
+<li>A High-severity report shows escalation copy instead of status buttons — there is nothing to click; Pena e Artë platform staff resolve it.</li>
+</ol>
+<div class="callout callout-tip"><strong>Note:</strong> High-severity reports are locked to platform-only resolution deliberately — an owner resolving a serious report about their own artist would be a conflict of interest.</div>
+<div class="crosslinks">See also: <a href="#artist-conduct-reports">Artist: reports about me</a>, <a href="#issuer-conduct-reports">Issuer: conduct reports</a></div>
 </section>
 
 <section id="issuer-dashboard" data-role="issuer">

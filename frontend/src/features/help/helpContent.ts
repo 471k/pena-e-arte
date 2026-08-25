@@ -1126,6 +1126,67 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: ["Attachments upload as soon as you pick them — wait for each one to finish before submitting."],
   },
+  {
+    id: "client-report-artist-studio",
+    roles: [Client],
+    title: "Report an artist or studio",
+    keywords: ["report", "complaint", "abuse", "scam", "unsafe", "harassment", "discrimination", "misconduct", "trust and safety"],
+    summary: "File a report about a serious issue with an artist or studio — scam, sexual misconduct, unsafe hygiene practices, harassment, discrimination, or poor service — reviewed by our platform team, not shown publicly.",
+    steps: [
+      "Go to the studio's page (/s/{slug}) or the artist's page (/artist/{slug}) and scroll below Reviews to \"Report this artist\" / \"Report this studio\".",
+      "Pick a category and the appointment your report relates to.",
+      "Describe what happened in your own words (minimum 20 characters), and optionally attach up to 3 screenshots or short video clips as evidence.",
+      "Click \"Submit Report\".",
+    ],
+    tips: [
+      "Scam, sexual misconduct, unsafe hygiene practices, harassment, and discrimination are escalated immediately to our platform team for review.",
+      "You won't see the report again after submitting it — there's no \"my reports\" list — but it has been received and reviewed.",
+      "You need a real appointment with the artist/studio to file a report — it doesn't need to be completed, just real.",
+    ],
+    relatedArticleIds: ["client-leave-review"],
+  },
+  {
+    id: "owner-conduct-reports",
+    roles: [Owner],
+    title: "Review conduct reports",
+    route: "/conduct-reports",
+    keywords: ["conduct reports", "trust and safety", "complaint", "misconduct", "escalated"],
+    summary: "Reports clients have filed about your studio or your artists — reviewed here, with an open-count badge in the nav.",
+    steps: [
+      "Open Conduct Reports from the nav.",
+      "Click a report card to expand it and read the full description and category.",
+      "For a Standard-severity report (poor service, other), set its status to Open, Reviewing, Resolved, or Dismissed.",
+      "A High-severity report (scam, sexual misconduct, unsafe hygiene, harassment, discrimination) shows as escalated instead — only Pena e Artë platform staff can close it, though you can still read it in full, including who filed it.",
+    ],
+    tips: ["High-severity reports are locked to platform-only resolution deliberately — an owner resolving a serious report about their own artist would be a conflict of interest."],
+  },
+  {
+    id: "artist-conduct-reports",
+    roles: [Artist],
+    title: "See reports filed about you",
+    route: "/conduct-reports",
+    keywords: ["conduct reports", "reported", "complaint about me"],
+    summary: "Reports clients have filed about you specifically — the category, the description, and which appointment it relates to.",
+    steps: [
+      "Open Reports About Me from the nav.",
+      "Click a report card to expand it and read the full description.",
+    ],
+    tips: ["The reporting client's name, email, and account are never shown to you — only the studio owner and Pena e Artë platform staff can see who filed a report."],
+  },
+  {
+    id: "issuer-conduct-reports",
+    roles: [Issuer],
+    title: "Resolve conduct reports",
+    route: "/platform/conduct-reports",
+    keywords: ["conduct reports", "trust and safety", "moderation", "misconduct"],
+    summary: "The cross-tenant inbox for every conduct report filed on the platform — filter by category, status, or studio, and resolve any report regardless of severity.",
+    steps: [
+      "Open Conduct Reports from the platform nav.",
+      "Filter by status and/or category.",
+      "Click a report card to expand it and read the full description, including the reporter's identity.",
+      "Click a status button to mark it Open, Reviewing, Resolved, or Dismissed — issuer status controls are never locked, unlike an owner's on a High-severity report.",
+    ],
+  },
 ];
 
 export const FAQ_ITEMS: FaqItem[] = [
