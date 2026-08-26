@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "@/app/store";
+import type { FileConductReportArgs, ReportableAppointment } from "@/features/conduct-reports/conductReports.types";
 
 export interface PublicArtistSummary {
   artistId:        string;
@@ -171,6 +172,7 @@ export const publicApi = createApi({
   tagTypes: [
     "PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios",
     "StudioReviews", "ArtistReviews", "PortfolioImageReviews", "PortfolioFeed",
+    "StudioReportableAppointments", "ArtistReportableAppointments",
   ],
   endpoints: (builder) => ({
     getPublicStudio: builder.query<PublicStudioResponse, string>({
@@ -263,6 +265,23 @@ export const publicApi = createApi({
     getArtistInstagramPosts: builder.query<ArtistInstagramPostResponse[], string>({
       query: (slug) => `artists/${slug}/instagram-posts`,
     }),
+    // Every real appointment the caller has with this studio/artist, regardless of status —
+    // deliberately NOT restricted to completed/unreported like the reviews equivalent above
+    // (see FileArtistConductReportCommand's doc comment for why).
+    getReportableStudioAppointments: builder.query<ReportableAppointment[], string>({
+      query: (slug) => `studios/${slug}/reports/reportable-appointments`,
+      providesTags: (_result, _err, slug) => [{ type: "StudioReportableAppointments", id: slug }],
+    }),
+    getReportableArtistAppointments: builder.query<ReportableAppointment[], string>({
+      query: (slug) => `artists/${slug}/reports/reportable-appointments`,
+      providesTags: (_result, _err, slug) => [{ type: "ArtistReportableAppointments", id: slug }],
+    }),
+    fileStudioConductReport: builder.mutation<void, { slug: string; body: FileConductReportArgs }>({
+      query: ({ slug, body }) => ({ url: `studios/${slug}/reports`, method: "POST", body }),
+    }),
+    fileArtistConductReport: builder.mutation<void, { slug: string; body: FileConductReportArgs }>({
+      query: ({ slug, body }) => ({ url: `artists/${slug}/reports`, method: "POST", body }),
+    }),
   }),
 });
 
@@ -282,4 +301,8 @@ export const {
   useGetPortfolioImageReviewsQuery,
   useCreatePortfolioImageReviewMutation,
   useGetArtistInstagramPostsQuery,
+  useGetReportableStudioAppointmentsQuery,
+  useGetReportableArtistAppointmentsQuery,
+  useFileStudioConductReportMutation,
+  useFileArtistConductReportMutation,
 } = publicApi;

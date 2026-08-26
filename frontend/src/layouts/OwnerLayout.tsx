@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus,
+  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -22,17 +22,19 @@ import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { NotificationBell } from "@/features/notifications";
 import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
+import { useGetMyStudioConductReportsQuery } from "@/features/conduct-reports";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",       href: "/dashboard",  icon: <LayoutDashboard className="h-4 w-4" />, tourId: "owner-dashboard-nav" },
-  { label: "Schedule",        href: "/schedule",   icon: <CalendarDays    className="h-4 w-4" /> },
-  { label: "Artists",         href: "/artists",    icon: <Users           className="h-4 w-4" />, tourId: "owner-add-artist-nav" },
-  { label: "Clients",         href: "/clients",    icon: <UserSquare      className="h-4 w-4" /> },
-  { label: "Designs",         href: "/designs",    icon: <Palette         className="h-4 w-4" /> },
-  { label: "Payments",        href: "/payments",   icon: <CreditCard      className="h-4 w-4" /> },
-  { label: "Billing",         href: "/billing",    icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
-  { label: "Reports",         href: "/reports",    icon: <BarChart3       className="h-4 w-4" />, tourId: "owner-reports-nav" },
-  { label: "Studio Settings", href: "/studios/me", icon: <Settings        className="h-4 w-4" />, tourId: "owner-studio-profile-nav" },
+  { label: "Dashboard",        href: "/dashboard",         icon: <LayoutDashboard className="h-4 w-4" />, tourId: "owner-dashboard-nav" },
+  { label: "Schedule",         href: "/schedule",          icon: <CalendarDays    className="h-4 w-4" /> },
+  { label: "Artists",          href: "/artists",           icon: <Users           className="h-4 w-4" />, tourId: "owner-add-artist-nav" },
+  { label: "Clients",          href: "/clients",           icon: <UserSquare      className="h-4 w-4" /> },
+  { label: "Designs",          href: "/designs",           icon: <Palette         className="h-4 w-4" /> },
+  { label: "Payments",         href: "/payments",          icon: <CreditCard      className="h-4 w-4" /> },
+  { label: "Billing",          href: "/billing",           icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
+  { label: "Reports",          href: "/reports",           icon: <BarChart3       className="h-4 w-4" />, tourId: "owner-reports-nav" },
+  { label: "Conduct Reports",  href: "/conduct-reports",   icon: <ShieldAlert     className="h-4 w-4" />, tourId: "owner-conduct-reports-nav" },
+  { label: "Studio Settings",  href: "/studios/me",        icon: <Settings        className="h-4 w-4" />, tourId: "owner-studio-profile-nav" },
 ];
 
 export function OwnerLayout() {
@@ -50,9 +52,14 @@ export function OwnerLayout() {
   // against the same call ArtistListPage's "Become an artist" CTA makes via the shared
   // "Artist" cache tag.
   const { data: myArtist } = useGetMyArtistQuery();
+  const { data: openConductReports } = useGetMyStudioConductReportsQuery({ status: "Open" });
+  const openConductReportCount = openConductReports?.length ?? 0;
+  const withBadges = NAV_ITEMS.map((item) =>
+    item.label === "Conduct Reports" ? { ...item, badge: openConductReportCount } : item,
+  );
   const navItems: NavItem[] = myArtist
-    ? [...NAV_ITEMS, { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> }]
-    : NAV_ITEMS;
+    ? [...withBadges, { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> }]
+    : withBadges;
 
   function handleLogout() {
     dispatch(logout());
@@ -69,7 +76,7 @@ export function OwnerLayout() {
         <span className="font-semibold tracking-tight">TattooOS</span>
 
         <nav className="hidden lg:flex ml-6 items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {navItems.map(({ label, href, icon, tourId }) => (
+          {navItems.map(({ label, href, icon, tourId, badge }) => (
             <NavLink
               key={href}
               to={href}
@@ -85,6 +92,11 @@ export function OwnerLayout() {
             >
               {icon}
               {label}
+              {!!badge && badge > 0 && (
+                <span className="ml-1 min-w-[1.25rem] rounded-full bg-destructive px-1 py-0.5 text-[10px] font-medium text-destructive-foreground text-center">
+                  {badge > 99 ? "99+" : badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

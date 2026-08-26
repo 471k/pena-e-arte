@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, Users, Palette, FileText, ScrollText,
-  DollarSign, Bell, PenLine, ImagePlus, MessageSquareMore,
+  DollarSign, Bell, PenLine, ImagePlus, MessageSquareMore, ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -20,15 +20,17 @@ import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
+import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 
 const STATIC_NAV: NavItem[] = [
-  { label: "Schedule",      href: "/schedule",      icon: <CalendarDays className="h-4 w-4" />, tourId: "artist-schedule-nav" },
-  { label: "Clients",       href: "/clients",       icon: <Users        className="h-4 w-4" />, tourId: "artist-clients-nav" },
-  { label: "Designs",       href: "/designs",       icon: <Palette      className="h-4 w-4" /> },
-  { label: "Intake Forms",  href: "/forms/intake",  icon: <FileText     className="h-4 w-4" /> },
-  { label: "Consent Forms", href: "/forms/consent", icon: <ScrollText   className="h-4 w-4" /> },
-  { label: "Deposit Rules", href: "/deposit-rules", icon: <DollarSign   className="h-4 w-4" /> },
-  { label: "Notifications", href: "/notifications", icon: <Bell         className="h-4 w-4" /> },
+  { label: "Schedule",         href: "/schedule",         icon: <CalendarDays className="h-4 w-4" />, tourId: "artist-schedule-nav" },
+  { label: "Clients",          href: "/clients",          icon: <Users        className="h-4 w-4" />, tourId: "artist-clients-nav" },
+  { label: "Designs",          href: "/designs",          icon: <Palette      className="h-4 w-4" /> },
+  { label: "Intake Forms",     href: "/forms/intake",     icon: <FileText     className="h-4 w-4" /> },
+  { label: "Consent Forms",    href: "/forms/consent",    icon: <ScrollText   className="h-4 w-4" /> },
+  { label: "Deposit Rules",    href: "/deposit-rules",    icon: <DollarSign   className="h-4 w-4" /> },
+  { label: "Notifications",    href: "/notifications",    icon: <Bell         className="h-4 w-4" /> },
+  { label: "Reports About Me", href: "/conduct-reports",  icon: <ShieldAlert  className="h-4 w-4" />, tourId: "artist-conduct-reports-nav" },
 ];
 
 export function ArtistLayout() {
@@ -40,9 +42,14 @@ export function ArtistLayout() {
   const [navOpen, setNavOpen] = useState(false);
 
   const { data: myArtist } = useGetMyArtistQuery();
+  const { data: openConductReports } = useGetMyConductReportsAsArtistQuery();
+  const openConductReportCount = (openConductReports ?? []).filter((r) => r.status === "Open").length;
+  const withBadges = STATIC_NAV.map((item) =>
+    item.label === "Reports About Me" ? { ...item, badge: openConductReportCount } : item,
+  );
   const navItems: NavItem[] = myArtist
-    ? [...STATIC_NAV, { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> }]
-    : STATIC_NAV;
+    ? [...withBadges, { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> }]
+    : withBadges;
 
   function handleLogout() {
     dispatch(logout());
@@ -59,7 +66,7 @@ export function ArtistLayout() {
         <span className="font-semibold tracking-tight">TattooOS</span>
 
         <nav className="hidden lg:flex ml-6 items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {navItems.map(({ label, href, icon, tourId }) => (
+          {navItems.map(({ label, href, icon, tourId, badge }) => (
             <NavLink
               key={href}
               to={href}
@@ -75,6 +82,11 @@ export function ArtistLayout() {
             >
               {icon}
               {label}
+              {!!badge && badge > 0 && (
+                <span className="ml-1 min-w-[1.25rem] rounded-full bg-destructive px-1 py-0.5 text-[10px] font-medium text-destructive-foreground text-center">
+                  {badge > 99 ? "99+" : badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

@@ -172,6 +172,7 @@ try
     app.MapReviewEndpoints();
     app.MapHelpEndpoints();
     app.MapReportEndpoints();
+    app.MapConductReportEndpoints();
 
     app.Run();
 }

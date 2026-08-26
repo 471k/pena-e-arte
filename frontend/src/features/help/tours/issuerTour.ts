@@ -32,6 +32,11 @@ export const issuerTourSteps: TourStep[] = [
     body: "Every suspend, cancel, plan-edit, and other trust-sensitive action taken across the platform, in one searchable log.",
   },
   {
+    targetSelector: '[data-tour="issuer-conduct-reports-nav"]',
+    title: "Conduct reports",
+    body: "Every trust & safety report filed by a client, across every studio — you can resolve any of them, regardless of severity.",
+  },
+  {
     targetSelector: '[data-tour="issuer-help-button"]',
     title: "Need help?",
     body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",

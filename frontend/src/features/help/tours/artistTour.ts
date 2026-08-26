@@ -23,6 +23,11 @@ export const artistTourSteps: TourStep[] = [
     body: "New bookings, form submissions, and other alerts show up here.",
   },
   {
+    targetSelector: '[data-tour="artist-conduct-reports-nav"]',
+    title: "Reports about you",
+    body: "If a client ever files a conduct report about you, you can read it here — their identity is never shown to you.",
+  },
+  {
     targetSelector: '[data-tour="artist-help-button"]',
     title: "Need help?",
     body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",

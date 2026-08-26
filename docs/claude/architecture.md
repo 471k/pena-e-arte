@@ -104,6 +104,19 @@ methodology (Present/Partial/Missing verdicts, P0–P3 priority) — reuse that
 method for any smaller, single-feature benchmark check rather than inventing a
 new rubric each time.
 
+**Trust & Safety Reference Set** (added 2026-08-22, for client-initiated
+report/moderation features specifically): none of the vertical booking-SaaS
+comparators above publicly document a formal client-initiated "report this
+provider" trust & safety flow the way general two-sided marketplaces do —
+this is a genuine gap in the vertical benchmark set for this specific feature
+class, not a case of picking the wrong comparator. Use this set instead when
+building or reviewing a report/moderation feature:
+
+```
+Uber, Airbnb, Etsy, Upwork — category-taxonomy report flows with
+severity-gated escalation
+```
+
 ---
 
 ## Multi-Tenancy Architecture
@@ -351,6 +364,7 @@ Frontend:    VerifiedSocialBadge (shared/components/) — same badge variant as
 | 34 | Live Site Traffic Analytics | `TrafficEvent`, `TrafficDailyAggregate` (both no tenant filter, `StudioId` nullable) | Redis presence (`traffic:presence:*`) + `TrafficHub` SignalR + `TrafficBroadcastService` (5s), `TrafficRollupJob` (Hangfire daily), MaxMind GeoLite2 (`MaxMind.GeoIP2`) + `UAParser.Core`, `IgnoreQueryFilters()` — 41st approved usage | Issuer-level |
 | 35 | Manual Client Reminders | `ManualReminder` | Hangfire + Twilio (reused) + Redis (quota) | Per-tenant |
 | 36 | Social Media Verification | `SocialAccountLink` (polymorphic Artist/Studio subject, no tenant filter — same shape as `InstagramConnection`) | `ISocialOAuthProvider`/`ISocialOAuthProviderFactory` (5 platforms), `ISocialBioChecker`/`ISocialBioCheckerFactory` (4 of 5 — TikTok has no suitable public-read API), `ISocialOAuthStateSigner` (separate key from `IInstagramStateSigner`) | Per-tenant (Artist subject resolves the artist's real tenant; Studio subject is self-referential — `StudioId == SubjectId`) |
+| 37 | Client Conduct Reports | `ConductReport` (non-tenant, no query filter — same shape as `Review`/`FeedbackReport`/`AuditLogEntry`) | None — direct email alert for High severity, same `INotificationService.SendEmailAsync` path as the contact form | Per-tenant (owner read), Per-user (artist read, reporter identity redacted), Issuer-level (cross-tenant read + High-severity resolution) |
 
 ### Client Self-Service Cancel/Reschedule + Owner Revenue Reporting + Structured Audit Log — 2026-07-21
 
@@ -1040,6 +1054,9 @@ Never add a new one without updating this table and the Decisions Log.
 | 40 | `GetSitemapUrlsHandler` | Public SEO sitemap — active studio/artist slugs across all tenants for `/sitemap.xml` | Anonymous |
 | 41 | `RecordTrafficEventHandler` | Cross-tenant artist-slug lookup to resolve `StudioId` for an anonymous `/artist/{slug}` traffic beacon, mirroring `RecordArtistView`'s own lookup (#13) | Anonymous |
 | 42 | `ExchangeSocialOAuthCodeHandler` (Artists + Studios) | Resolve the OAuth subject's real `StudioId` from an anonymous social-verification callback (studio Instagram, TikTok, Facebook, X, YouTube), and check the studio isn't suspended before writing a verified `SocialAccountLink`; subjectId is pre-authenticated via `ISocialOAuthStateSigner` HMAC before this handler runs — same shape as entry #22 for the artist-Instagram callback | Anonymous (state-signed) |
+| 43 | `FileArtistConductReportCommand`, `FileStudioConductReportCommand` | Cross-tenant artist/studio + appointment/client lookup for conduct-report filing — identical join shape to entry #34's review submission, minus the `Completed`/dedup filters (see Decisions Log, "Client Conduct Reports") | ClientOnly |
+| 44 | `GetReportableArtistAppointmentsQuery`, `GetReportableStudioAppointmentsQuery` | Cross-tenant appointment/client lookup for the report-filing appointment picker — identical join shape to entries #19/#20's `IsVerifiedBooking` checks | ClientOnly |
+| 45 | `ConductReportProjections` (Artists + Appointments) | Cross-tenant `Artist`/`Appointment` join to resolve `ArtistName`/`AppointmentDate` for display — needed because the issuer caller (`GetConductReportsHandler`) has no tenant set at all; harmless for the owner/artist callers since the outer `ConductReport` query is already scoped to their own `StudioId`/`ArtistId` before this join runs | Owner / Artist (own scope only) / IssuerOnly |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -1047,6 +1064,13 @@ calls that had never been added to this table (documentation debt, not new code)
 was individually read and confirmed narrow/justified before being added; none constitute
 an unauthorized cross-tenant read. See "Full-App Master Audit — 2026-07-20" below for
 the full note on how this gap was found.
+
+`ConductReport` itself needs no `IgnoreQueryFilters()` entry anywhere — it has no query
+filter registered at all (same non-tenant shape as `Review`/`FeedbackReport`/`AuditLogEntry`),
+so there is nothing to bypass. Entries #43–#45 above exist for a different reason: genuinely
+new cross-tenant reads of *other*, filtered entities (`Artist`, `Appointment`) that the
+conduct-reports feature introduced. Don't mistake the absence of a `ConductReport` row for
+an oversight — it's deliberate.
 
 ---
 
@@ -3143,3 +3167,177 @@ requiring a PR, requiring status checks (`Backend — build, format, test`,
 requiring branches up to date, requiring conversation resolution, and enabling GitHub's native
 secret scanning + push protection under **Code security and analysis**. Do not enable force
 pushes or branch deletion on `main`.
+
+## Client Conduct Reports — 2026-08-22
+
+### What was built
+- `ConductReport` domain entity — non-tenant, same shape as `Review`/`FeedbackReport`/
+  `AuditLogEntry` (no EF Core query filter registered); `ForArtist`/`ForStudio` factories,
+  `UpdateStatus`, `IsReadableBy`.
+- `ReportCategory` and `ReportStatus` enums; `ReportCategoryClassifier` (static High/Standard
+  severity map, one source of truth).
+- `PlatformContacts.SupportEmail` — extracted from `SubmitContactRequestHandler`'s private
+  const, now shared with `ConductReportNotifier`.
+- MediatR: `FileArtistConductReportCommand`, `FileStudioConductReportCommand`,
+  `UpdateConductReportStatusCommand` (`IAuditableCommand`), `GetMyStudioConductReportsQuery`,
+  `GetMyConductReportsAsArtistQuery`, `GetConductReportsQuery`,
+  `GetReportableArtistAppointmentsQuery`, `GetReportableStudioAppointmentsQuery`.
+- `ConductReportAuthorizationGuard` (read + severity-gated write-permission checks) and
+  `ConductReportNotifier` (High-severity email alert) — both internal static helpers, not
+  DI-registered, matching `FeedbackAccessGuard`'s existing convention.
+- `ConductReportProjections` — shared join (Studios/Artists/Appointments) + response mapping
+  for all three read paths, with the redaction guarantee (`ToFullResponseAsync` vs
+  `ToRedactedResponseAsync`).
+- Migration `AddConductReports`.
+- Endpoints: `POST /api/v1/public/{artists,studios}/{slug}/reports` (ClientOnly),
+  `GET .../reports/reportable-appointments` (ClientOnly), `GET /api/v1/studios/me/conduct-reports`
+  (OwnerOnly), `GET /api/v1/artists/me/conduct-reports` (ArtistAndAbove),
+  `PATCH /api/v1/conduct-reports/{id}/status` (OwnerOnly, severity-gated in the handler),
+  `GET /api/v1/platform/conduct-reports` (IssuerOnly).
+- Frontend: `conductReports.types.ts`, `conductReportsApi.ts` (registered in `store.ts`),
+  `publicApi.ts` extended with the file/reportable-appointments endpoints,
+  `ConductReportDialog` wired into `ArtistPortfolioPage`/`StudioPortfolioPage` behind a
+  client-only gate, `ConductReportsPage` (owner/artist, role-branched) at `/conduct-reports`,
+  `ConductReportInboxPage` (issuer) at `/platform/conduct-reports`, nav items + open-count
+  badges in `OwnerLayout`/`ArtistLayout`/`IssuerLayout`.
+- Help sync: 4 new `helpContent.ts` articles (client, owner, artist, issuer), matching sections
+  in the standalone user manual, and a new onboarding-tour step for owner/artist/issuer.
+- Feature Module Map row #37; `IgnoreQueryFilters()` table entries #43–#45 (see below);
+  Trust & Safety Reference Set added to the Industry-Standard Benchmark Set.
+
+### Architecture decisions (restated as committed fact)
+- **Reporter identity is redacted server-side, never client-side.** `ConductReportProjections`
+  nulls `ReporterUserId`/`ReporterName` in `ToRedactedResponseAsync` before the response ever
+  leaves the handler — the artist-facing endpoint has no code path that can leak it. Verified
+  three ways: a unit test on the handler, a real-HTTP integration test asserting the raw JSON
+  string never contains the reporter's name or a populated `reporterUserId` field, and a
+  frontend test asserting the UI never renders it even if a (hypothetical, backend-can't-happen)
+  payload leak occurred.
+- **Severity is a static classification (`ReportCategoryClassifier`), not a stored column** —
+  one place to update if the taxonomy changes; both the email-alert gate and the
+  owner-vs-issuer status-change gate read from it.
+- **Filing eligibility deliberately does NOT require `AppointmentStatus.Completed`, and does
+  NOT dedup against existing reports on the same appointment** — the two places this diverges
+  from `Review`'s eligibility (`FileArtistConductReportHandler`/`FileStudioConductReportHandler`,
+  and `GetReportable{Artist,Studio}AppointmentsQuery`). Both deltas are covered by an explicit
+  "copy-paste guard" test that would fail if a future edit accidentally reintroduced either
+  filter.
+- **`ConductReport` needs no `IgnoreQueryFilters()` entry** — it has no query filter to bypass
+  in the first place (see the `IgnoreQueryFilters()` table's own note below its list). It DOES,
+  however, introduce three genuinely new call sites against *other*, filtered entities
+  (`Artist`, `Appointment`) — documented as table entries #43–#45, since the file's own rule
+  ("never add a new one without updating this table") applies to those regardless of what the
+  prompt that drove this feature said about `ConductReport` itself.
+- **`ConductReportNotifier` and `ConductReportAuthorizationGuard` are plain internal static
+  classes**, not DI-registered services, matching the observed convention: `FeedbackAccessGuard`
+  (this codebase's closest analog) is also a static helper with no DI registration in
+  `Program.cs`. Chose this over a DI-registered service for consistency, not because of any
+  functional requirement.
+- **`ConductReport.IsReadableBy` dropped the unused `userId` parameter** the prompt's own sketch
+  included — the method body never referenced it (Decision 5: the reporting client never reads
+  their own filed reports, so there's no "is this my own row" branch to check against). Kept
+  the simpler three-argument signature rather than carrying a dead parameter.
+
+### Judgment calls made
+- **Attachment-picker duplication vs. extraction (Part 8d)**: duplicated `FeedbackDialog.tsx`'s
+  attachment-picker block into `ConductReportDialog.tsx` rather than extracting a shared
+  component, with a comment pointing back at `FeedbackDialog.tsx` as the source of truth.
+  Extraction would have touched `FeedbackDialog.tsx` too, widening this feature's diff for a UI
+  block that wasn't otherwise changing — not worth it for a single second consumer.
+- **Client-role gating on the report trigger** (`ArtistPortfolioPage`/`StudioPortfolioPage`) uses
+  a direct `role === Role.Client` equality check, not `usePermission()` — `usePermission`'s rank
+  model only expresses "at least this role," which can't express the exact-match `ClientOnly`
+  policy this feature's filing endpoints enforce server-side. This is a deliberate, narrow
+  deviation from the "use `usePermission` for conditional UI" convention in `conventions.md`,
+  scoped to this one exact-match case.
+- **Issuer onboarding tour got a new step, unlike Feedback.** Every other issuer nav item
+  carrying a `tourId` in `IssuerLayout.tsx` has a matching step in `issuerTourSteps` — Feedback
+  is the only nav item that breaks that 1:1 pairing (it has no `tourId` and no tour step at
+  all). Treated the 1:1 pairing as the stronger, more concrete signal of intended behavior and
+  added a Conduct Reports step, rather than copying Feedback's apparent (and likely accidental)
+  omission.
+- **New tour steps were inserted immediately before each layout's existing "Need help?" closing
+  step**, not literally appended after it. A strict reading of "append" would put it after Help,
+  breaking the established "tour always ends on the help pointer" pattern all three tours
+  already have. Interpreted "append, don't insert mid-sequence" as "don't interleave between
+  arbitrary existing feature steps," not as "override the closing convention."
+- **`GetMyConductReportsAsArtistQuery` has no server-side status filter** (unlike
+  `GetMyStudioConductReportsQuery`/`GetConductReportsQuery`, which both accept `Status`) — the
+  artist's own open-count nav badge (`ArtistLayout.tsx`) filters the full result set
+  client-side instead. Not worth adding a query parameter for a list that's realistically small
+  (reports about one artist) just to save one client-side `.filter()`.
+
+### Deviations from the prompt
+- **`IgnoreQueryFilters()` table entries #43–#45 were added**, even though the prompt's Decision
+  7 said not to add a row for this feature. Read closely, that instruction was about
+  `ConductReport`'s own (non-existent) query filter specifically — it did not anticipate that
+  `FileArtistConductReportCommand`/`FileStudioConductReportCommand`,
+  `GetReportable{Artist,Studio}AppointmentsQuery`, and `ConductReportProjections` would each
+  introduce real, new `IgnoreQueryFilters()` calls against `Artist`/`Appointment`/`Studio`,
+  entities that *do* carry filters. The file's own standing rule ("never add a new one without
+  updating this table") is unconditional, so these three got documented rather than silently
+  omitted. The explicit "no entry needed" sentence the prompt asked for was still added, scoped
+  correctly to `ConductReport` itself.
+- **No `AttachmentPicker.tsx` extraction** — see Judgment calls above. The prompt explicitly
+  offered both options; duplication was chosen.
+- **The known `AuditStudioId` gap flagged in `UpdateConductReportStatusCommand`** (an
+  issuer-authored status change on a report with no tenant in scope gets `StudioId = null` on
+  its audit row, rather than the report's actual studio) was left exactly as the prompt
+  predicted — documented in a code comment on the command, not silently "fixed" with an
+  ad-hoc pattern. No new deviation here, just confirming it was verified, not just assumed.
+
+### Verification performed
+- Backend unit tests: 1713/1713 passing (up from a clean baseline before this feature — build
+  and full suite were green before any code was written).
+- Backend integration tests: 377/377 passing, including a real-HTTP
+  `ConductReportEndpointAuthorizationTests` suite that exercises the actual ASP.NET Core
+  authorization + MediatR/AuditLogBehavior pipeline end-to-end: artist read never exposes
+  reporter identity in the raw JSON body, owner attempting to resolve a High-severity report
+  gets a real 403, and an issuer's subsequent resolution both succeeds and writes a real
+  `AuditLogEntry` row with `Action == AuditActions.ConductReportStatusUpdated`.
+- The `AddConductReports` migration was applied to the local dev MySQL database and confirmed
+  to apply cleanly from a schema already at `20260822111309_AddSocialAccountLinks`.
+- Frontend: `pnpm exec tsc --noEmit` clean; full `pnpm vitest run` suite green — **131/131 test
+  files, 1915/1915 tests** — after three real fixes found only by running the full suite (see
+  below), not by the feature's own new tests, none of which render through a full layout tree
+  or through `ArtistPortfolioPage.tsx`'s import graph. Includes 16 new tests across
+  `ConductReportDialog`, `ConductReportsPage` (owner + artist views), and
+  `ConductReportInboxPage`, plus a rerun of `helpContent.test.ts` and
+  `useOnboardingTour.test.tsx` confirming the new articles/tour steps don't break existing
+  structural invariants.
+- **Bug 1 — missing barrel exports.** `features/conduct-reports/index.ts` only re-exported the
+  `conductReportsApi` object itself, not its generated hooks
+  (`useGetMyStudioConductReportsQuery`, `useGetMyConductReportsAsArtistQuery`,
+  `useGetPlatformConductReportsQuery`, `useUpdateConductReportStatusMutation`).
+  `OwnerLayout.tsx`/`ArtistLayout.tsx`/`IssuerLayout.tsx` all import their nav-badge hook from
+  that barrel (not from `conductReportsApi.ts` directly, unlike `ConductReportsPage.tsx`/
+  `ConductReportInboxPage.tsx`), so all three would have thrown
+  `TypeError: ... is not a function` and crashed the nav header in production the moment a
+  signed-in owner/artist/issuer rendered their layout. Fixed by adding the four hooks to the
+  barrel's export list.
+- **Bug 2 — pre-existing layout tests build their own minimal Redux store**, and none of the
+  three (`OwnerLayout.test.tsx`/`ArtistLayout.test.tsx`/`IssuerLayout.test.tsx`) included
+  `conductReportsApi`'s reducer/middleware — so even after Bug 1's fix, every test rendering
+  these layouts failed with `Middleware for RTK-Query API at reducerPath "conductReportsApi"
+  has not been added to the store` (58 test failures across the three files). Fixed by adding
+  `conductReportsApi` to each test's `makeStore()` and an MSW handler for the new
+  `GET .../conduct-reports` endpoint each layout now calls; also renamed each file's
+  now-stale "renders all N nav links" test title to match the new nav-item count (nine for
+  owner, eight for artist, eight for issuer).
+- **Bug 3 — duplicate `useState` import** in `ArtistPortfolioPage.tsx`: the file already
+  imported `useState` on line 1 (for its own `lightboxItem`/`activeStyle` state) before this
+  feature touched it; the edit adding the client-only report-trigger state added `useState` to
+  a *second*, pre-existing `import { useEffect } from "react"` further down the file instead of
+  reusing the existing import, producing a hard duplicate-declaration parse error
+  (`Identifier 'useState' has already been declared`). This broke Vite's transform for the
+  whole module, cascading to 10 failed test files across `features/public` and
+  `features/studios` that transitively load it — none of which are conduct-reports tests, which
+  is exactly why this class of syntax error can hide behind a feature's own passing test suite.
+  Fixed by removing `useState` from the second import.
+- Every one of these three bugs is precisely the class that a feature's own tests — however
+  thorough — cannot catch by construction (missing barrel exports and duplicate imports only
+  surface when something *else* imports the changed module; store-shape assumptions only
+  surface in tests that build their own store). This is why the full backend + frontend suites
+  were re-run to a clean, final state rather than stopping once the new tests were green.
+- No other pre-existing test failures were found — the baseline before this feature was fully
+  green on both backend and frontend.

@@ -29,6 +29,8 @@ import { PublicPageHeader }        from "./PublicPageHeader";
 import { useEffect } from "react";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
+import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
+import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
 
@@ -407,6 +409,8 @@ export function ArtistPortfolioPage() {
   const reviewsRef     = useRef<HTMLDivElement>(null);
   const [lightboxItem, setLightboxItem] = useState<LightboxItem | null>(null);
   const [activeStyle,  setActiveStyle]  = useState<string>("");
+  const [reportOpen,   setReportOpen]   = useState(false);
+  const canFileReport  = useIsClientRole();
   const navigate       = useNavigate();
   const location       = useLocation();
 
@@ -688,9 +692,30 @@ export function ArtistPortfolioPage() {
             <div ref={reviewsRef}>
               <ReviewSection slug={artist.slug} target="artist" token={token} />
             </div>
+
+            {canFileReport && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setReportOpen(true)}
+                  className="text-xs text-muted-foreground/70 hover:text-muted-foreground
+                             underline underline-offset-2 transition-colors"
+                >
+                  Report this artist
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {canFileReport && (
+        <ConductReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          target={{ kind: "artist", slug: artist.slug, name: artist.name }}
+        />
+      )}
 
       <footer className="py-4 text-center text-xs text-foreground/50 border-t mt-auto">
         <a

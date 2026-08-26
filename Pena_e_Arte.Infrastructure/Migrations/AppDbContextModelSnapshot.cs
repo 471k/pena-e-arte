@@ -725,6 +725,69 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("client_profiles", (string)null);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ConductReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("ArtistId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("AttachmentUrls")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<string>("ReporterName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<Guid>("ReporterUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArtistId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("StudioId");
+
+                    b.ToTable("ConductReports", (string)null);
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ConsentForm", b =>
                 {
                     b.Property<Guid>("Id")
