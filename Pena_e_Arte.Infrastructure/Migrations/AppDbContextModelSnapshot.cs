@@ -461,7 +461,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("uix_artist_schedule_artist_day");
 
-                    b.ToTable("ArtistSchedules");
+                    b.ToTable("ArtistSchedules", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ArtistTimeOff", b =>
@@ -501,7 +501,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasIndex("ArtistId", "StartDate", "EndDate")
                         .HasDatabaseName("ix_artist_time_off_artist_dates");
 
-                    b.ToTable("ArtistTimeOffs");
+                    b.ToTable("ArtistTimeOffs", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.AuditLogEntry", b =>
@@ -549,7 +549,59 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasIndex("StudioId");
 
-                    b.ToTable("AuditLogEntries");
+                    b.ToTable("AuditLogEntries", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ChatMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("SenderRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid>("SenderUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_messages");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_chat_messages_studio_id");
+
+                    b.HasIndex("ConversationId", "CreatedAt")
+                        .HasDatabaseName("ix_chat_messages_conversation_created");
+
+                    b.HasIndex("ConversationId", "SenderUserId", "ReadAt")
+                        .HasDatabaseName("ix_chat_messages_conversation_sender_read");
+
+                    b.ToTable("chat_messages", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Client", b =>
@@ -878,7 +930,70 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasIndex("StudioId", "Kind", "IsActive");
 
-                    b.ToTable("ConsentTemplates");
+                    b.ToTable("ConsentTemplates", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Conversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LastMessageAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("LastMessagePreview")
+                        .HasMaxLength(140)
+                        .HasColumnType("varchar(140)");
+
+                    b.Property<Guid?>("LastMessageSenderUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ParticipantARole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid>("ParticipantAUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ParticipantBRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid>("ParticipantBUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversations");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_conversations_studio_id");
+
+                    b.HasIndex("StudioId", "ParticipantAUserId", "LastMessageAt")
+                        .HasDatabaseName("ix_conversations_studio_participant_a_last_message");
+
+                    b.HasIndex("StudioId", "ParticipantAUserId", "ParticipantBUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_conversations_studio_participants");
+
+                    b.HasIndex("StudioId", "ParticipantBUserId", "LastMessageAt")
+                        .HasDatabaseName("ix_conversations_studio_participant_b_last_message");
+
+                    b.ToTable("conversations", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.DepositRule", b =>
@@ -1156,7 +1271,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasIndex("FeedbackReportId");
 
-                    b.ToTable("FeedbackMessages");
+                    b.ToTable("FeedbackMessages", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.FeedbackReport", b =>
@@ -1223,7 +1338,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasIndex("StudioId");
 
-                    b.ToTable("FeedbackReports");
+                    b.ToTable("FeedbackReports", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.HelpSearchLog", b =>
@@ -1324,7 +1439,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasIndex("ArtistId")
                         .IsUnique();
 
-                    b.ToTable("InstagramConnections");
+                    b.ToTable("InstagramConnections", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.InstagramPost", b =>
@@ -1384,7 +1499,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasIndex("ArtistId", "IsVisible");
 
-                    b.ToTable("InstagramPosts");
+                    b.ToTable("InstagramPosts", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.IntakeForm", b =>
@@ -1934,7 +2049,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasIndex("AuthorUserId", "PortfolioImageId")
                         .IsUnique();
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.SavedPortfolioImage", b =>
@@ -2210,7 +2325,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasIndex("StudioId", "StartDate", "EndDate")
                         .HasDatabaseName("ix_studio_closures_studio_dates");
 
-                    b.ToTable("StudioClosures");
+                    b.ToTable("StudioClosures", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.StudioCredentialRef", b =>
@@ -2246,7 +2361,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasIndex("StudioId", "Provider")
                         .IsUnique();
 
-                    b.ToTable("StudioCredentialRefs");
+                    b.ToTable("StudioCredentialRefs", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.StudioNotificationPreference", b =>
@@ -2588,7 +2703,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.HasIndex("UserId", "Role")
                         .IsUnique();
 
-                    b.ToTable("UserOnboardingStates");
+                    b.ToTable("UserOnboardingStates", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -2693,6 +2808,15 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Artist");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ChatMessage", b =>
+                {
+                    b.HasOne("Pena_e_Arte.Domain.Entities.Conversation", null)
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Client", b =>
@@ -3040,6 +3164,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Navigation("Profile");
 
                     b.Navigation("TattooRecords");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Conversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Design", b =>

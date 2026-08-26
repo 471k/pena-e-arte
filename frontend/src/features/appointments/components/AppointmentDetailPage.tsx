@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, Send, Trash2, UserRound, UserX,
+  ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, MessageCircle, Send, Trash2, UserRound, UserX,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +19,8 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
+import { useAppSelector } from "@/app/hooks";
+import { useCreateConversationMutation } from "@/features/messaging";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
@@ -90,6 +92,7 @@ export function AppointmentDetailPage() {
   const navigate     = useNavigate();
   const isArtistPlus = usePermission(Role.Artist);
   const canOwner     = usePermission(Role.Owner);
+  const role         = useAppSelector((s) => s.auth.role);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
@@ -105,6 +108,21 @@ export function AppointmentDetailPage() {
   const [complete, { isLoading: completing   }] = useCompleteAppointmentMutation();
   const [noShow,   { isLoading: markingNoShow }] = useMarkNoShowMutation();
   const [assignArtist, { isLoading: assigning }] = useAssignAppointmentArtistMutation();
+  const [createConversation, { isLoading: startingConversation }] = useCreateConversationMutation();
+
+  // Issuer can view this page but is not a valid messaging participant (see messaging
+  // Decision 1) — only artist/owner get the "Message client" entry point.
+  const canMessageClient = (role === Role.Artist || role === Role.Owner) && !!appt?.clientUserId;
+
+  async function handleMessageClient() {
+    if (!appt?.clientUserId) return;
+    try {
+      const conversation = await createConversation({ recipientUserId: appt.clientUserId }).unwrap();
+      navigate(`/messages?conversation=${conversation.id}`);
+    } catch {
+      toast.error("Failed to start conversation.");
+    }
+  }
 
   const isTerminal  = appt ? TERMINAL_STATUSES.has(appt.status) : false;
   const isPending   = appt?.status === AppointmentStatus.Pending;
@@ -287,6 +305,18 @@ export function AppointmentDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {canMessageClient && (
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                disabled={startingConversation}
+                onClick={handleMessageClient}
+              >
+                {startingConversation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                Message {appt.clientName ?? "client"}
+              </Button>
+            )}
 
             {/* P-09: Add to Calendar */}
             <a

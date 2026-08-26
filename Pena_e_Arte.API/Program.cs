@@ -132,6 +132,7 @@ try
     app.MapHub<NotificationHub>("/hubs/notification");
     app.MapHub<SupportHub>("/hubs/support");
     app.MapHub<TrafficHub>("/hubs/traffic");
+    app.MapHub<ChatHub>("/hubs/chat");
     app.MapHealthChecks("/health");
     app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
@@ -173,6 +174,7 @@ try
     app.MapHelpEndpoints();
     app.MapReportEndpoints();
     app.MapConductReportEndpoints();
+    app.MapMessagingEndpoints();
 
     app.Run();
 }

@@ -30,6 +30,8 @@ public interface IAppDbContext
     DbSet<StudioNotificationPreference> StudioNotificationPreferences { get; }
     DbSet<ClientNotificationPreference> ClientNotificationPreferences { get; }
     DbSet<ManualReminder> ManualReminders { get; }
+    DbSet<Conversation> Conversations { get; }
+    DbSet<ChatMessage> ChatMessages { get; }
 
     // Issuer-level
     DbSet<Studio> Studios { get; }

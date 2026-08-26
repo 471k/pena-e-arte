@@ -17,4 +17,5 @@ public record AppointmentResponse(
     DateTime? AftercareSentAt = null,
     string? ClientName = null,
     IReadOnlyList<string>? ImageUrls = null,
-    string? ArtistName = null);
+    string? ArtistName = null,
+    Guid? ClientUserId = null);

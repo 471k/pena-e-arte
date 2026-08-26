@@ -24,7 +24,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Reference images upload as soon as you pick them — wait for each thumbnail to finish before submitting.",
       "If you let the studio choose, you won't know your artist until the studio assigns one — you'll get an email when they do.",
     ],
-    relatedArticleIds: ["client-cancel-booking"],
+    relatedArticleIds: ["client-cancel-booking", "client-messaging"],
   },
   {
     id: "client-cancel-booking",
@@ -279,6 +279,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     relatedArticleIds: ["client-change-password"],
   },
+  {
+    id: "client-messaging",
+    roles: [Client],
+    title: "Message your artist or the studio",
+    route: "/messages",
+    keywords: ["messages", "chat", "message artist", "contact studio", "inbox", "text artist"],
+    summary: "Send a real-time message to your assigned or booked artist, or to the studio owner, without leaving the app.",
+    steps: [
+      "Open Messages from the menu.",
+      "Click \"New message\" and pick a contact — only your assigned or booked artist and the studio owner are available to message.",
+      "Or continue an existing thread from the conversation list.",
+      "Type your message and press Enter (or click Send).",
+    ],
+    tips: [
+      "You can only start a thread with an artist you've had an appointment with or who's assigned to you — you can always reach the studio owner.",
+      "If the recipient is offline, they get a one-time email so a burst of messages doesn't flood their inbox.",
+    ],
+    relatedArticleIds: ["client-book-appointment"],
+  },
 
   // ── Artist ──────────────────────────────────────────────────────────────
   {
@@ -305,6 +324,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Shows the full details of a single appointment — client, date/time, duration, status, and deposit — plus actions to move it forward.",
     steps: [
       "Review the client, date/time, duration, status, and deposit info.",
+      "Click \"Message [client name]\" to start or continue a chat thread with the client, if they have a linked login.",
       "Click \"Add to Calendar\" to download an .ics file for the appointment.",
       "Click \"Confirm appointment\" or \"Mark as complete\" to advance its status.",
       "Click \"Reschedule\" to pick a new date/time.",
@@ -312,7 +332,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: ["The client's name is a link straight to their client profile."],
     warnings: ["Cancelling an appointment cannot be undone."],
-    relatedArticleIds: ["artist-send-manual-reminder"],
+    relatedArticleIds: ["artist-send-manual-reminder", "artist-messaging"],
   },
   {
     id: "artist-send-manual-reminder",
@@ -470,6 +490,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"View all\" to see your complete notification history.",
     ],
     tips: ["Opening the bell automatically clears the unread count badge."],
+  },
+  {
+    id: "artist-messaging",
+    roles: [Artist],
+    title: "Message a client or the studio owner",
+    route: "/messages",
+    keywords: ["messages", "chat", "message client", "contact owner", "inbox", "text client"],
+    summary: "Send a real-time message to a client you have an appointment with or who's assigned to you, or to the studio owner.",
+    steps: [
+      "Open Messages from the menu, or click \"Message [client name]\" from an appointment's detail page.",
+      "Click \"New message\" and pick a client or the studio owner.",
+      "Or continue an existing thread from the conversation list.",
+      "Reply in real time — new messages arrive without reloading the page.",
+    ],
+    tips: [
+      "You can only message clients you have an appointment with or who are assigned to you — you can always reach the studio owner.",
+      "If the recipient is offline, they get a one-time email so a burst of messages doesn't flood their inbox.",
+    ],
+    relatedArticleIds: ["artist-schedule"],
   },
 
   // ── Owner ───────────────────────────────────────────────────────────────
@@ -880,6 +919,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Scroll down to \"Revenue by artist\" for a breakdown of the last 30 days, sorted highest first.",
     ],
     tips: ["Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't."],
+  },
+  {
+    id: "owner-messaging",
+    roles: [Owner],
+    title: "Message any artist or client",
+    route: "/messages",
+    keywords: ["messages", "chat", "message artist", "message client", "inbox"],
+    summary: "Send a real-time message to any artist or client at your studio.",
+    steps: [
+      "Open Messages from the menu, or click \"Message [client name]\" from an appointment's detail page.",
+      "Click \"New message\" and pick any artist or client at your studio.",
+      "Or continue an existing thread from the conversation list.",
+      "Reply in real time — new messages arrive without reloading the page.",
+    ],
+    tips: ["As the owner, you're the only role with no messaging restrictions — you can start a thread with anyone at your studio."],
   },
   // ── Issuer ──────────────────────────────────────────────────────────────
   {

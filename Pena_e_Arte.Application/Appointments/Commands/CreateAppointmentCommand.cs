@@ -169,7 +169,8 @@ public class CreateAppointmentHandler(
         }
     }
 
-    internal static AppointmentResponse Map(Appointment a, string? clientName = null, string? artistName = null) => new(
+    internal static AppointmentResponse Map(
+        Appointment a, string? clientName = null, string? artistName = null, Guid? clientUserId = null) => new(
         a.Id, a.StudioId, a.ArtistId, a.ClientId,
         a.Date, a.EndDate, a.DurationMinutes,
         a.Status.ToString(), a.DepositStatus.ToString(),
@@ -180,5 +181,6 @@ public class CreateAppointmentHandler(
         // Empty (not necessarily accurate) unless the caller eager-loaded
         // .Include(a => a.Attachments) — see GetAppointmentQuery.
         a.Attachments.OrderBy(x => x.UploadedAt).Select(x => x.ImageUrl).ToList(),
-        artistName);
+        artistName,
+        clientUserId);
 }

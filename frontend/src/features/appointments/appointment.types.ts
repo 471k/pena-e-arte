@@ -33,6 +33,7 @@ export interface AppointmentResponse {
   clientName?:         string | null;
   imageUrls?:          string[];
   artistName?:         string | null;
+  clientUserId?:       string | null;
 }
 
 export interface CreateAppointmentRequest {

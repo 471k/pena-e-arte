@@ -18,6 +18,7 @@ import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
+import { messagingApi } from "@/features/messaging/messagingApi";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -77,6 +78,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/studios/me/conduct-reports", () =>
     HttpResponse.json([]),
   ),
+  http.get("http://localhost/api/v1/conversations/unread-count", () =>
+    HttpResponse.json(0),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -103,8 +107,12 @@ function makeStore(overrides: StoreOverrides = {}) {
       [authApi.reducerPath]:           authApi.reducer,
       [artistsApi.reducerPath]:        artistsApi.reducer,
       [conductReportsApi.reducerPath]: conductReportsApi.reducer,
+      [messagingApi.reducerPath]:      messagingApi.reducer,
     },
-    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, notificationsApi.middleware, onboardingApi.middleware, authApi.middleware, artistsApi.middleware, conductReportsApi.middleware),
+    middleware: (gd) => gd().concat(
+      billingApi.middleware, studiosApi.middleware, notificationsApi.middleware, onboardingApi.middleware,
+      authApi.middleware, artistsApi.middleware, conductReportsApi.middleware, messagingApi.middleware,
+    ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,
@@ -145,12 +153,13 @@ describe("OwnerLayout", () => {
     expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
-  it("renders all nine owner nav links", () => {
+  it("renders all ten owner nav links", () => {
     renderLayout();
     expect(screen.getByRole("link", { name: /^dashboard$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^schedule$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^artists$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^clients$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^messages$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^designs$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^payments$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^billing$/i })).toBeInTheDocument();

@@ -37,6 +37,8 @@ public class AppDbContext(
     public DbSet<StudioNotificationPreference> StudioNotificationPreferences => Set<StudioNotificationPreference>();
     public DbSet<ClientNotificationPreference> ClientNotificationPreferences => Set<ClientNotificationPreference>();
     public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     // --- Issuer-level (no tenant filter) ---
     public DbSet<Studio> Studios => Set<Studio>();
@@ -122,6 +124,8 @@ public class AppDbContext(
         builder.Entity<ManualReminder>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);
         builder.Entity<HelpSearchLog>().HasQueryFilter(h => h.StudioId == tenant.StudioId && h.DeletedAt == null);
         builder.Entity<StudioNotificationPreference>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+        builder.Entity<Conversation>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
+        builder.Entity<ChatMessage>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);
         // ClientNotificationPreference — NOT filtered, dual-keyed by (UserId, StudioId); see ClientNotificationPreferenceConfiguration.
 
         builder.Entity<SavedPortfolioImage>(b =>

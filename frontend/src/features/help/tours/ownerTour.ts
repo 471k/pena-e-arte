@@ -12,6 +12,11 @@ export const ownerTourSteps: TourStep[] = [
     body: "Manage your studio's artists here, or add a new one.",
   },
   {
+    targetSelector: '[data-tour="owner-messages-nav"]',
+    title: "Message any artist or client",
+    body: "Send a real-time message to any artist or client at your studio, right from here.",
+  },
+  {
     targetSelector: '[data-tour="owner-become-artist-cta"]',
     title: "Also work as an artist?",
     body: "If you tattoo yourself, enable your own artist profile here — no second account needed.",

@@ -26,6 +26,7 @@ public class GetAppointmentHandler(IAppDbContext db)
             $"{appointment.Client.FirstName} {appointment.Client.LastName}",
             appointment.Artist is not null
                 ? $"{appointment.Artist.FirstName} {appointment.Artist.LastName}"
-                : null);
+                : null,
+            appointment.Client.UserId);
     }
 }
