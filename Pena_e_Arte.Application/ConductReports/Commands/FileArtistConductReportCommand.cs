@@ -1,6 +1,6 @@
-using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -16,28 +16,13 @@ public record FileArtistConductReportCommand(
     string ReporterName,
     ReportCategory Category,
     string Reason,
-    IReadOnlyList<string>? AttachmentUrls) : IRequest;
+    IReadOnlyList<string>? AttachmentUrls) : IRequest, IFileConductReportCommand;
 
-public class FileArtistConductReportValidator : AbstractValidator<FileArtistConductReportCommand>
-{
-    private const int MaxAttachments = 3;
+public class FileArtistConductReportValidator(IR2Service r2)
+    : FileConductReportValidatorBase<FileArtistConductReportCommand>(r2);
 
-    public FileArtistConductReportValidator(IR2Service r2)
-    {
-        RuleFor(x => x.AppointmentId).NotEmpty();
-        RuleFor(x => x.Reason).NotEmpty().MinimumLength(20).MaximumLength(2000);
-        RuleFor(x => x.ReporterName).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.AttachmentUrls)
-            .Must(urls => urls == null || urls.Count <= MaxAttachments)
-            .WithMessage($"You can attach up to {MaxAttachments} files.");
-        RuleForEach(x => x.AttachmentUrls)
-            .NotEmpty().MaximumLength(2048).Must(r2.IsR2Url)
-            .WithMessage("AttachmentUrls must reference a valid storage URL.")
-            .When(x => x.AttachmentUrls is not null);
-    }
-}
-
-public class FileArtistConductReportHandler(IAppDbContext db, INotificationService notifications)
+public class FileArtistConductReportHandler(
+    IAppDbContext db, INotificationService notifications, ILogger<FileArtistConductReportHandler> logger)
     : IRequestHandler<FileArtistConductReportCommand>
 {
     public async Task Handle(FileArtistConductReportCommand command, CancellationToken ct)
@@ -72,19 +57,24 @@ public class FileArtistConductReportHandler(IAppDbContext db, INotificationServi
         if (!ownedByReporterWithThisArtist)
             throw new NotFoundException(nameof(Appointment), command.AppointmentId);
 
-        ConductReport report = ConductReport.ForArtist(
-            artist.StudioId,
-            artist.Id,
-            command.AppointmentId,
-            command.ReporterUserId,
-            command.ReporterName,
-            command.Category,
-            command.Reason,
-            command.AttachmentUrls);
+        // Not already loaded anywhere else on this path — the artist lookup above only ever
+        // touches Artists, so this is the one query needed to get the Studio for the alert
+        // email, not a re-query of something the handler already has (contrast the studio
+        // handler, which passes the studio it already resolved as the filing target itself).
+        Studio studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == artist.StudioId, ct)
+            ?? throw new NotFoundException(nameof(Studio), artist.StudioId);
 
-        db.ConductReports.Add(report);
-        await db.SaveChangesAsync(ct);
-
-        await ConductReportNotifier.NotifyIfHighSeverityAsync(db, notifications, report, ct);
+        await ConductReportFilingHelper.FileAsync(
+            db, notifications, logger, studio,
+            () => ConductReport.ForArtist(
+                artist.StudioId,
+                artist.Id,
+                command.AppointmentId,
+                command.ReporterUserId,
+                command.ReporterName,
+                command.Category,
+                command.Reason,
+                command.AttachmentUrls),
+            ct);
     }
 }

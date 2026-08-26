@@ -1,11 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useAppSelector } from "@/app/hooks";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import { Role } from "@/shared/types/roles";
 import {
@@ -15,33 +14,9 @@ import {
 } from "../conductReportsApi";
 import { REPORT_STATUS, REPORT_CATEGORY_LABEL } from "../conductReports.types";
 import type { ConductReportResponse, ReportStatus } from "../conductReports.types";
-
-const STATUS_BADGE: Record<ReportStatus, string> = {
-  Open:      "bg-blue-500/15 text-blue-600",
-  Reviewing: "bg-amber-500/15 text-amber-600",
-  Resolved:  "bg-green-500/15 text-green-600",
-  Dismissed: "bg-muted text-muted-foreground",
-};
+import { STATUS_BADGE, fmt, ReportsList } from "./conductReportShared";
 
 const STATUS_BUTTONS = Object.values(REPORT_STATUS);
-
-function fmt(date: string): string {
-  return new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function ReportCardSkeleton() {
-  return (
-    <Card>
-      <CardContent className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-5 w-20 rounded-full" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <Skeleton className="h-3 w-64" />
-      </CardContent>
-    </Card>
-  );
-}
 
 function OwnerReportCard({ report }: { report: ConductReportResponse }) {
   const [expanded, setExpanded] = useState(false);
@@ -184,42 +159,6 @@ function ArtistConductReportsView() {
       renderCard={(report) => <ArtistReportCard key={report.id} report={report} />}
     />
   );
-}
-
-function ReportsList({
-  reports, isLoading, isError, onRetry, emptyMessage, renderCard,
-}: {
-  reports:       ConductReportResponse[] | undefined;
-  isLoading:     boolean;
-  isError:       boolean;
-  onRetry:       () => void;
-  emptyMessage:  string;
-  renderCard:    (report: ConductReportResponse) => ReactNode;
-}) {
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => <ReportCardSkeleton key={i} />)}
-      </div>
-    );
-  }
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <p className="text-sm text-destructive">Failed to load reports.</p>
-        <Button size="sm" variant="outline" onClick={onRetry}>Retry</Button>
-      </div>
-    );
-  }
-  if (!reports || reports.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <ShieldAlert className="h-10 w-10 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-      </div>
-    );
-  }
-  return <div className="space-y-3">{reports.map(renderCard)}</div>;
 }
 
 export function ConductReportsPage() {

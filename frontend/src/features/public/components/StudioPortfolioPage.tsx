@@ -29,7 +29,7 @@ import { useStructuredData }        from "@/shared/utils/useStructuredData";
 import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
 import { ReviewSection }            from "./ReviewSection";
 import { PublicPageHeader }         from "./PublicPageHeader";
-import { Role } from "@/shared/types/roles";
+import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
 import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 
 function StudioMeta({
@@ -226,10 +226,7 @@ export function StudioPortfolioPage() {
   const [reportOpen,   setReportOpen]  = useState(false);
   const navigate       = useNavigate();
   const location       = useLocation();
-  // Filing a conduct report requires ClientOnly server-side — usePermission's rank model
-  // ("at least this role") can't express an exact match, so this checks role equality
-  // directly, same as the backend policy it mirrors.
-  const canFileReport = !!token && role === Role.Client;
+  const canFileReport = useIsClientRole();
 
   // React Router gives the very first history entry key "default" — anything
   // navigated to from within the app gets a real key. Only that case has

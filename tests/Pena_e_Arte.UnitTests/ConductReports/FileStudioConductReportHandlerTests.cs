@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.ConductReports.Commands;
 using Pena_e_Arte.Domain.Entities;
@@ -14,7 +15,8 @@ public class FileStudioConductReportHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
 
-    private FileStudioConductReportHandler CreateSut() => new(_db, _notifications);
+    private FileStudioConductReportHandler CreateSut() =>
+        new(_db, _notifications, NullLogger<FileStudioConductReportHandler>.Instance);
 
     private async Task<Studio> SeedStudio(string slug = "ink-studio")
     {

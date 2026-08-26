@@ -28,17 +28,10 @@ public class GetReportableArtistAppointmentsHandler(IAppDbContext db)
 
         // Approved: cross-tenant ownership check — same pattern as the verified-booking join
         // in GetReviewableArtistAppointmentsHandler, minus the Completed/dedup filters above.
-        return await db.Appointments
-            .IgnoreQueryFilters()
-            .Where(a => a.ArtistId == artist.Id)
-            .Join(db.Clients.IgnoreQueryFilters(),
-                  a => a.ClientId,
-                  c => c.Id,
-                  (a, c) => new { Appointment = a, ClientUserId = c.UserId })
-            .Where(x => x.ClientUserId == query.ReporterUserId)
-            .OrderByDescending(x => x.Appointment.Date)
-            .Select(x => new ReportableAppointmentResponse(
-                x.Appointment.Id, x.Appointment.Date, x.Appointment.DurationMinutes, x.Appointment.Status.ToString()))
-            .ToListAsync(ct);
+        return await ReportableAppointmentsQueryHelper.ToReportableAppointmentsAsync(
+            db,
+            db.Appointments.IgnoreQueryFilters().Where(a => a.ArtistId == artist.Id),
+            query.ReporterUserId,
+            ct);
     }
 }

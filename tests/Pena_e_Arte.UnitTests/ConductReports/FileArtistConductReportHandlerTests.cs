@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.ConductReports.Commands;
 using Pena_e_Arte.Domain.Entities;
@@ -14,7 +15,8 @@ public class FileArtistConductReportHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
 
-    private FileArtistConductReportHandler CreateSut() => new(_db, _notifications);
+    private FileArtistConductReportHandler CreateSut() =>
+        new(_db, _notifications, NullLogger<FileArtistConductReportHandler>.Instance);
 
     private async Task<Artist> SeedArtist(string slug = "maria-silva")
     {
@@ -183,6 +185,29 @@ public class FileArtistConductReportHandlerTests
 
         await _notifications.Received(2).SendEmailAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_AlertEmailSendThrows_StillSucceedsAndReportIsSaved()
+    {
+        // The ConductReport row is already committed by the time the alert email is sent —
+        // an email provider outage must never turn an already-saved report into a 500.
+        _notifications.SendEmailAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("SMTP unavailable"));
+
+        Artist artist = await SeedArtist();
+        Guid reporterId = Guid.NewGuid();
+        Appointment appt = await SeedAppointment(artist.StudioId, artist.Id, reporterId, AppointmentStatus.Completed);
+
+        FileArtistConductReportCommand command = new(
+            artist.Slug!, appt.Id, reporterId, "Ana Silva", ReportCategory.SexualMisconduct,
+            "This is a serious safety concern I need reviewed immediately.", null);
+
+        Func<Task> act = () => CreateSut().Handle(command, CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+        _db.ConductReports.Should().ContainSingle(r => r.AppointmentId == appt.Id);
     }
 
     [Fact]

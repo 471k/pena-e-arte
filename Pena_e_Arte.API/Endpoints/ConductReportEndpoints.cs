@@ -45,10 +45,15 @@ public static class ConductReportEndpoints
         return Results.Ok(result);
     }
 
+    private static bool TryParseReportStatus(string raw, out ReportStatus status) =>
+        Enum.TryParse(raw, ignoreCase: true, out status) && Enum.IsDefined(status);
+
     private static async Task<IResult> UpdateConductReportStatus(
         Guid id, UpdateConductReportStatusRequest request, ISender mediator, CancellationToken ct)
     {
-        ReportStatus status = Enum.Parse<ReportStatus>(request.Status, ignoreCase: true);
+        if (!TryParseReportStatus(request.Status, out ReportStatus status))
+            return Results.BadRequest("Unrecognized status.");
+
         await mediator.Send(
             new UpdateConductReportStatusCommand(id, status, request.ResolutionNote), ct);
         return Results.NoContent();

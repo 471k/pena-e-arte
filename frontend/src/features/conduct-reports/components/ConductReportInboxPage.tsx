@@ -4,7 +4,6 @@ import { Loader2, ShieldAlert } from "lucide-react";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import {
   useGetPlatformConductReportsQuery,
@@ -12,36 +11,11 @@ import {
 } from "../conductReportsApi";
 import { REPORT_STATUS, REPORT_CATEGORY, REPORT_CATEGORY_LABEL } from "../conductReports.types";
 import type { ConductReportResponse, ReportStatus } from "../conductReports.types";
+import { STATUS_BADGE, fmt, ReportsList } from "./conductReportShared";
 
 const STATUS_FILTERS = ["all", ...Object.values(REPORT_STATUS)] as const;
 const CATEGORY_FILTERS = ["all", ...Object.values(REPORT_CATEGORY)] as const;
-
-const STATUS_BADGE: Record<ReportStatus, string> = {
-  Open:      "bg-blue-500/15 text-blue-600",
-  Reviewing: "bg-amber-500/15 text-amber-600",
-  Resolved:  "bg-green-500/15 text-green-600",
-  Dismissed: "bg-muted text-muted-foreground",
-};
-
 const STATUS_BUTTONS = Object.values(REPORT_STATUS);
-
-function fmt(date: string): string {
-  return new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function ReportCardSkeleton() {
-  return (
-    <Card>
-      <CardContent className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-5 w-20 rounded-full" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <Skeleton className="h-3 w-64" />
-      </CardContent>
-    </Card>
-  );
-}
 
 function ReportCard({ report }: { report: ConductReportResponse }) {
   const [expanded, setExpanded] = useState(false);
@@ -173,29 +147,15 @@ export function ConductReportInboxPage() {
           </div>
         </div>
 
-        {isLoading && (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => <ReportCardSkeleton key={i} />)}
-          </div>
-        )}
-
-        {isError && (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <p className="text-sm text-destructive">Failed to load reports.</p>
-            <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
-          </div>
-        )}
-
-        {!isLoading && !isError && reports && reports.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <ShieldAlert className="h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">No conduct reports.</p>
-          </div>
-        )}
-
-        {!isLoading && !isError && reports?.map((report) => (
-          <ReportCard key={report.id} report={report} />
-        ))}
+        <ReportsList
+          reports={reports}
+          isLoading={isLoading}
+          isError={isError}
+          onRetry={refetch}
+          emptyMessage="No conduct reports."
+          skeletonCount={5}
+          renderCard={(report) => <ReportCard key={report.id} report={report} />}
+        />
       </main>
     </div>
   );

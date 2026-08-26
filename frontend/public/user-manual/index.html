@@ -2884,6 +2884,34 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#issuer-dashboard">Platform overview</a></div>
 </section>
 
+<section id="issuer-conduct-reports" data-role="issuer">
+<h2><span class="role-badge role-issuer">Issuer</span> Conduct reports</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (own studio only, via the owner Conduct Reports page)</td></tr><tr><td>Issuer</td><td>✓ (every studio)</td></tr></table>
+<p>At <code>/platform/conduct-reports</code>: the cross-tenant inbox for every trust &amp; safety report filed on the platform, filterable by status, category, or studio. Unlike the owner's own Conduct Reports page, status controls here are never locked — the issuer can resolve a report of any severity, including the High-severity categories (Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, Discrimination) an owner cannot touch.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 200" role="img" aria-label="Issuer conduct reports wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="21" font-size="10" font-weight="700">Conduct Reports (7)</text>
+<rect x="16" y="46" width="700" height="60" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<rect x="28" y="58" width="80" height="14" rx="7" fill="#ef4444" fill-opacity="0.3"/><text x="34" y="68" font-size="7">High severity</text>
+<rect x="112" y="58" width="35" height="14" rx="7" fill="#3b82f6" fill-opacity="0.3"/><text x="118" y="68" font-size="7">Open</text>
+<text x="28" y="88" font-size="9" font-weight="700">Sexual misconduct or abuse</text>
+<text x="28" y="100" font-size="8" fill-opacity="0.5">Ink Studio · About Maria Silva · 2 Aug 2026 · Reported by Jane Doe</text>
+<rect x="16" y="118" width="700" height="30" rx="6" fill="currentColor" fill-opacity="0.03"/><text x="28" y="137" font-size="8" fill-opacity="0.6">[ Open ] [ Reviewing ] [ Resolved ] [ Dismissed ] — always enabled for the issuer</text>
+</svg>
+</figure>
+<figcaption>Issuer conduct reports — filters above the list; status buttons stay enabled regardless of severity</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Conduct Reports</span> from the platform nav.</li>
+<li>Filter by status and/or category.</li>
+<li>Click a card to expand it and read the full description, including the reporter's identity.</li>
+<li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-conduct-reports">Owner: conduct reports</a>, <a href="#issuer-feedback">Feedback inbox</a></div>
+</section>
+
 <section id="issuer-help-insights" data-role="issuer">
 <h2><span class="role-badge role-issuer">Issuer</span> Help search insights</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>

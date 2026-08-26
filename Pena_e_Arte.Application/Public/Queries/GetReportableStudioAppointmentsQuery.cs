@@ -23,17 +23,10 @@ public class GetReportableStudioAppointmentsHandler(IAppDbContext db)
 
         if (studio is null) return [];
 
-        return await db.Appointments
-            .IgnoreQueryFilters()
-            .Where(a => a.StudioId == studio.Id)
-            .Join(db.Clients.IgnoreQueryFilters(),
-                  a => a.ClientId,
-                  c => c.Id,
-                  (a, c) => new { Appointment = a, ClientUserId = c.UserId })
-            .Where(x => x.ClientUserId == query.ReporterUserId)
-            .OrderByDescending(x => x.Appointment.Date)
-            .Select(x => new ReportableAppointmentResponse(
-                x.Appointment.Id, x.Appointment.Date, x.Appointment.DurationMinutes, x.Appointment.Status.ToString()))
-            .ToListAsync(ct);
+        return await ReportableAppointmentsQueryHelper.ToReportableAppointmentsAsync(
+            db,
+            db.Appointments.IgnoreQueryFilters().Where(a => a.StudioId == studio.Id),
+            query.ReporterUserId,
+            ct);
     }
 }

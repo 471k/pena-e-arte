@@ -202,6 +202,9 @@ public static class PublicEndpoints
         return Results.Ok(result);
     }
 
+    private static bool TryParseReportCategory(string raw, out ReportCategory category) =>
+        Enum.TryParse(raw, ignoreCase: true, out category) && Enum.IsDefined(category);
+
     private static async Task<IResult> FileArtistConductReport(
         string slug,
         FileArtistConductReportRequest body,
@@ -209,12 +212,13 @@ public static class PublicEndpoints
         ISender mediator,
         CancellationToken ct)
     {
+        if (!TryParseReportCategory(body.Category, out ReportCategory category))
+            return Results.BadRequest("Unrecognized category.");
+
         Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         string reporterName = user.FindFirstValue(ClaimTypes.Name)
                            ?? user.FindFirstValue(ClaimTypes.GivenName)
                            ?? "Anonymous";
-
-        ReportCategory category = Enum.Parse<ReportCategory>(body.Category, ignoreCase: true);
 
         await mediator.Send(
             new FileArtistConductReportCommand(
@@ -231,12 +235,13 @@ public static class PublicEndpoints
         ISender mediator,
         CancellationToken ct)
     {
+        if (!TryParseReportCategory(body.Category, out ReportCategory category))
+            return Results.BadRequest("Unrecognized category.");
+
         Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
         string reporterName = user.FindFirstValue(ClaimTypes.Name)
                            ?? user.FindFirstValue(ClaimTypes.GivenName)
                            ?? "Anonymous";
-
-        ReportCategory category = Enum.Parse<ReportCategory>(body.Category, ignoreCase: true);
 
         await mediator.Send(
             new FileStudioConductReportCommand(

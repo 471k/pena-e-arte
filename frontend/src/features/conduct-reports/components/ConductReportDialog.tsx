@@ -114,9 +114,17 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // The unmount cleanup below runs once (empty deps) but must see the LATEST attachments, not
+  // the empty array closed over from the initial render — kept in sync via this ref rather than
+  // re-running the cleanup effect on every attachment change (which would revoke blob URLs
+  // mid-session, not just on unmount).
+  const attachmentsRef = useRef<Attachment[]>(attachments);
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
   useEffect(() => () => {
-    attachments.forEach((a) => { if (a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    attachmentsRef.current.forEach((a) => { if (a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
   }, []);
 
   const {
@@ -146,21 +154,36 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
       setAttachmentError(`You can attach up to ${MAX_ATTACHMENTS} files.`);
     }
 
+    const toUpload: { file: File; id: string; kind: "image" | "video"; ext: string }[] = [];
     for (const file of picked.slice(0, Math.max(room, 0))) {
       const ext = ACCEPTED_TYPES[file.type];
       if (!ext) {
         setAttachmentError("Only JPEG/PNG/WebP images or MP4/WebM/MOV videos are accepted.");
         continue;
       }
-
       const kind = file.type.startsWith("video/") ? "video" : "image";
-      const id = generateUuid();
-      const previewUrl = kind === "image" ? URL.createObjectURL(file) : null;
-      setAttachments((prev) => [
-        ...prev,
-        { id, kind, fileName: file.name, previewUrl, status: "uploading", publicUrl: null },
-      ]);
+      toUpload.push({ file, id: generateUuid(), kind, ext });
+    }
 
+    if (toUpload.length === 0) return;
+
+    setAttachments((prev) => [
+      ...prev,
+      ...toUpload.map(({ id, kind, file }) => ({
+        id,
+        kind,
+        fileName: file.name,
+        previewUrl: kind === "image" ? URL.createObjectURL(file) : null,
+        status: "uploading" as const,
+        publicUrl: null,
+      })),
+    ]);
+
+    // Uploads run concurrently — usePresignedUpload's `upload` never throws (it resolves to
+    // null on failure), so Promise.all is equivalent to allSettled here; one slow/failed
+    // upload doesn't hold up the others' status updates, each of which is independently keyed
+    // by attachment id.
+    await Promise.all(toUpload.map(async ({ file, id, ext }) => {
       const objectKey = `conduct-reports/pending/${uploadSessionId}/${Date.now()}-${id}.${ext}`;
       const publicUrl = await uploadFile(file, objectKey);
 
@@ -168,7 +191,7 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
         if (a.id !== id) return a;
         return publicUrl ? { ...a, status: "done", publicUrl } : { ...a, status: "error" };
       }));
-    }
+    }));
   }
 
   function removeAttachment(id: string) {

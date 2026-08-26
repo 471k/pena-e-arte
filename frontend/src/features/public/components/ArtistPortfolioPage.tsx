@@ -29,7 +29,7 @@ import { PublicPageHeader }        from "./PublicPageHeader";
 import { useEffect } from "react";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
-import { Role } from "@/shared/types/roles";
+import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
 import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
@@ -406,15 +406,11 @@ function ArtistPageSkeleton() {
 export function ArtistPortfolioPage() {
   const { slug = "" }  = useParams<{ slug: string }>();
   const token          = useAppSelector((s) => s.auth.token);
-  const role           = useAppSelector((s) => s.auth.role);
   const reviewsRef     = useRef<HTMLDivElement>(null);
   const [lightboxItem, setLightboxItem] = useState<LightboxItem | null>(null);
   const [activeStyle,  setActiveStyle]  = useState<string>("");
   const [reportOpen,   setReportOpen]   = useState(false);
-  // Filing a conduct report requires ClientOnly server-side — usePermission's rank model
-  // ("at least this role") can't express an exact match, so this checks role equality
-  // directly, same as the backend policy it mirrors.
-  const canFileReport  = !!token && role === Role.Client;
+  const canFileReport  = useIsClientRole();
   const navigate       = useNavigate();
   const location       = useLocation();
 
