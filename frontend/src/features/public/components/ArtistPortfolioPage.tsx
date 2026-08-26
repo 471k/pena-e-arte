@@ -26,7 +26,7 @@ import { useDocumentMeta }         from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }       from "@/shared/utils/useStructuredData";
 import { ReviewSection }           from "./ReviewSection";
 import { PublicPageHeader }        from "./PublicPageHeader";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { Role } from "@/shared/types/roles";
