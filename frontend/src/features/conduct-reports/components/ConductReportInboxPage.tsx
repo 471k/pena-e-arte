@@ -11,7 +11,8 @@ import {
 } from "../conductReportsApi";
 import { REPORT_STATUS, REPORT_CATEGORY, REPORT_CATEGORY_LABEL } from "../conductReports.types";
 import type { ConductReportResponse, ReportStatus } from "../conductReports.types";
-import { STATUS_BADGE, fmt, ReportsList } from "./conductReportShared";
+import { STATUS_BADGE, fmt } from "./conductReportFormat";
+import { ReportsList } from "./conductReportShared";
 
 const STATUS_FILTERS = ["all", ...Object.values(REPORT_STATUS)] as const;
 const CATEGORY_FILTERS = ["all", ...Object.values(REPORT_CATEGORY)] as const;

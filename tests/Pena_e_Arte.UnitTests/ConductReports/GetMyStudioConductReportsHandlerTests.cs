@@ -19,8 +19,12 @@ public class GetMyStudioConductReportsHandlerTests
     private async Task SeedStudio(Guid studioId) =>
         await Task.Run(() => _db.Studios.Add(new Studio
         {
-            Id = studioId, Name = "Ink Studio", Slug = $"studio-{studioId}", City = "Lisbon",
-            IsActive = true, OwnerEmail = "o@test.com",
+            Id = studioId,
+            Name = "Ink Studio",
+            Slug = $"studio-{studioId}",
+            City = "Lisbon",
+            IsActive = true,
+            OwnerEmail = "o@test.com",
         }));
 
     [Fact]

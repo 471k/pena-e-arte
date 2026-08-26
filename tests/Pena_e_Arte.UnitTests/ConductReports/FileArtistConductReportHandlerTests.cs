@@ -23,8 +23,12 @@ public class FileArtistConductReportHandlerTests
         Guid studioId = Guid.NewGuid();
         _db.Studios.Add(new Studio
         {
-            Id = studioId, Name = "Ink Studio", Slug = "ink-studio", City = "Lisbon",
-            IsActive = true, OwnerEmail = "owner@ink-studio.test",
+            Id = studioId,
+            Name = "Ink Studio",
+            Slug = "ink-studio",
+            City = "Lisbon",
+            IsActive = true,
+            OwnerEmail = "owner@ink-studio.test",
         });
 
         Artist artist = new() { StudioId = studioId, FirstName = "Maria", LastName = "Silva", Email = "maria@example.com" };

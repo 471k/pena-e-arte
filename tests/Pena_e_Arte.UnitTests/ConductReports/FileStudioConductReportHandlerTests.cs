@@ -22,8 +22,12 @@ public class FileStudioConductReportHandlerTests
     {
         Studio studio = new()
         {
-            Id = Guid.NewGuid(), Name = "Ink Studio", Slug = slug, City = "Lisbon",
-            IsActive = true, OwnerEmail = "owner@ink-studio.test",
+            Id = Guid.NewGuid(),
+            Name = "Ink Studio",
+            Slug = slug,
+            City = "Lisbon",
+            IsActive = true,
+            OwnerEmail = "owner@ink-studio.test",
         };
         _db.Studios.Add(studio);
         await _db.SaveChangesAsync();

@@ -127,13 +127,20 @@ public class ConductReportEndpointAuthorizationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         Studio studio = new()
         {
-            Id = studioId, Name = "Ink Studio", Slug = $"studio-{studioId}", City = "Lisbon",
-            IsActive = true, OwnerEmail = "owner@ink-studio.test",
+            Id = studioId,
+            Name = "Ink Studio",
+            Slug = $"studio-{studioId}",
+            City = "Lisbon",
+            IsActive = true,
+            OwnerEmail = "owner@ink-studio.test",
         };
         Artist artist = new()
         {
-            StudioId = studioId, UserId = artistUserId,
-            FirstName = "Maria", LastName = "Silva", Email = "maria@example.com",
+            StudioId = studioId,
+            UserId = artistUserId,
+            FirstName = "Maria",
+            LastName = "Silva",
+            Email = "maria@example.com",
         };
         db.Studios.Add(studio);
         db.Artists.Add(artist);

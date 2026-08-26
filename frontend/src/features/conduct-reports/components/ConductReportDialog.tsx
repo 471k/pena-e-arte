@@ -31,7 +31,6 @@ import {
   useFileStudioConductReportMutation,
 } from "@/features/public/publicApi";
 import {
-  REPORT_CATEGORY,
   REPORT_CATEGORY_LABEL,
   HIGH_SEVERITY_CATEGORIES,
   type ReportCategory,
