@@ -1,3 +1,3 @@
 namespace Pena_e_Arte.Contracts.Responses.Public;
 
-public record ArtistPortfolioImageResponse(Guid ImageId, string ImageUrl, string? Style);
+public record ArtistPortfolioImageResponse(Guid ImageId, string ImageUrl, string? Style, string? Category);

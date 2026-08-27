@@ -42,6 +42,7 @@ export interface ArtistPortfolioImage {
   imageId:  string;
   imageUrl: string;
   style:    string | null;
+  category: string | null;
 }
 
 export interface PublicArtistResponse {
@@ -97,6 +98,7 @@ export interface PortfolioImageResponse {
   imageId:             string;
   imageUrl:            string;
   style:               string | null;   // nullable — untagged images are valid
+  category:            string | null;   // nullable — uncategorized images are valid; fresh/healed/design
   artistName:          string;
   artistSlug:          string;
   studioName:          string;
@@ -152,6 +154,7 @@ export interface PortfolioFeedArgs {
   page:      number;
   pageSize?: number;
   style?:    string;
+  category?: string;
   search?:   string;
 }
 
@@ -196,14 +199,15 @@ export const publicApi = createApi({
       providesTags: ["NearbyStudios"],
     }),
     getPortfolioFeed: builder.query<PortfolioImageResponse[], PortfolioFeedArgs>({
-      query: ({ lat, lng, radiusKm, page, pageSize = 24, style, search }) => {
+      query: ({ lat, lng, radiusKm, page, pageSize = 24, style, category, search }) => {
         const params = new URLSearchParams();
         params.set("radiusKm", String(radiusKm));
         params.set("page",     String(page));
         params.set("pageSize", String(pageSize));
         if (lat != null) params.set("lat", String(lat));
         if (lng != null) params.set("lng", String(lng));
-        if (style)        params.set("style",  style);
+        if (style)        params.set("style",    style);
+        if (category)     params.set("category", category);
         if (search)       params.set("search", search);
         return `portfolio/feed?${params.toString()}`;
       },

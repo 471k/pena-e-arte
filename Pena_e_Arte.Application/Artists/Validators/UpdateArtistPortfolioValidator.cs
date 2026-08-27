@@ -20,6 +20,9 @@ public class UpdateArtistPortfolioValidator : AbstractValidator<UpdateArtistPort
             image.RuleFor(i => i.Style)
                 .Must(s => s is null || TattooStyle.All.Contains(s))
                 .WithMessage($"Style must be one of: {string.Join(", ", TattooStyle.All)}.");
+            image.RuleFor(i => i.Category)
+                .Must(c => c is null || PortfolioImageCategory.All.Contains(c))
+                .WithMessage($"Category must be one of: {string.Join(", ", PortfolioImageCategory.All)}.");
         });
         RuleFor(x => x.Request.Images.Count).LessThanOrEqualTo(50)
             .WithMessage("A maximum of 50 portfolio images are allowed.");

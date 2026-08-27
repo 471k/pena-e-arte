@@ -482,12 +482,12 @@ public static class DataSeeder
         // public Discover feed grid and need to actually render for it to be
         // demoable rather than showing the broken-image fallback everywhere.
         db.PortfolioImages.AddRange(
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Traditional, ImageUrl = "https://picsum.photos/seed/pena-elena-1/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Japanese, ImageUrl = "https://picsum.photos/seed/pena-elena-2/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, ImageUrl = "https://picsum.photos/seed/pena-marco-1/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, ImageUrl = "https://picsum.photos/seed/pena-marco-2/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric, ImageUrl = "https://picsum.photos/seed/pena-sofia-1/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline, ImageUrl = "https://picsum.photos/seed/pena-sofia-2/800/1000" });
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Traditional, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = "https://picsum.photos/seed/pena-elena-1/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Japanese, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = "https://picsum.photos/seed/pena-elena-2/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = "https://picsum.photos/seed/pena-marco-1/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.Design, ImageUrl = "https://picsum.photos/seed/pena-marco-2/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = "https://picsum.photos/seed/pena-sofia-1/800/1000" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline, Category = null, ImageUrl = "https://picsum.photos/seed/pena-sofia-2/800/1000" });
 
         // ── Clients ───────────────────────────────────────────────────────────
 
@@ -1507,8 +1507,8 @@ public static class DataSeeder
 
         // ── Portfolio images ─────────────────────────────────────────────────
         db.PortfolioImages.AddRange(
-            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, ImageUrl = "https://picsum.photos/seed/pena-luis-1/800/1000" },
-            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, ImageUrl = "https://picsum.photos/seed/pena-luis-2/800/1000" });
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = "https://picsum.photos/seed/pena-luis-1/800/1000" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = "https://picsum.photos/seed/pena-luis-2/800/1000" });
 
         // ── Clients ───────────────────────────────────────────────────────────
 

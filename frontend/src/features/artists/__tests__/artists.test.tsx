@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -18,6 +18,19 @@ import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { ArtistListPage } from "@/features/artists/components/ArtistListPage";
 import { ArtistDetailPage } from "@/features/artists/components/ArtistDetailPage";
 import { Role } from "@/shared/types/roles";
+
+// ── Mocks ──────────────────────────────────────────────────────────────────────
+
+const mockUpload = vi.fn<(file: File, objectKey: string) => Promise<string | null>>();
+
+vi.mock("@/shared/hooks/usePresignedUpload", () => ({
+  usePresignedUpload: () => ({
+    upload: mockUpload,
+    isUploading: false,
+    uploadError: null,
+    clearError: () => {},
+  }),
+}));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -76,7 +89,7 @@ const ARTISTS: ArtistResponse[] = [
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
-let lastPortfolioUpdateBody: { images: { imageUrl: string; style: string | null }[] } | null = null;
+let lastPortfolioUpdateBody: { images: { imageUrl: string; style: string | null; category: string | null }[] } | null = null;
 
 const server = setupServer(
   http.get("http://localhost/api/v1/artists", ({ request }) => {
@@ -114,7 +127,7 @@ const server = setupServer(
   ),
 
   http.put("http://localhost/api/v1/artists/:id/portfolio-images", async ({ request, params }) => {
-    const body = (await request.json()) as { images: { imageUrl: string; style: string | null }[] };
+    const body = (await request.json()) as { images: { imageUrl: string; style: string | null; category: string | null }[] };
     const artist = ARTISTS.find((a) => a.id === params.id);
     if (!artist) return new HttpResponse(null, { status: 404 });
     lastPortfolioUpdateBody = body;
@@ -124,6 +137,7 @@ const server = setupServer(
         imageId:  `img-${i}`,
         imageUrl: img.imageUrl,
         style:    img.style,
+        category: img.category,
       })),
     });
   }),
@@ -375,8 +389,8 @@ describe("Artists feature", () => {
           return HttpResponse.json({
             ...artist,
             portfolioImages: [
-              { imageId: "img-1", imageUrl: "https://r2.example.com/tattoo1.jpg", style: null },
-              { imageId: "img-2", imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism" },
+              { imageId: "img-1", imageUrl: "https://r2.example.com/tattoo1.jpg", style: null, category: null },
+              { imageId: "img-2", imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism", category: "fresh" },
             ],
           });
         }),
@@ -410,12 +424,12 @@ describe("Artists feature", () => {
 
       await waitFor(() => expect(lastPortfolioUpdateBody).not.toBeNull());
       expect(lastPortfolioUpdateBody!.images).toEqual([
-        { imageUrl: "https://r2.example.com/tattoo1.jpg", style: "traditional" },
-        { imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism" },
+        { imageUrl: "https://r2.example.com/tattoo1.jpg", style: "traditional", category: null },
+        { imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism", category: "fresh" },
       ]);
     });
 
-    it("removing an image sends the remaining images without it", async () => {
+    it("removing an image sends the remaining images without it, preserving categories", async () => {
       seedArtistWithImages();
       const user = userEvent.setup();
       renderDetail(ELENA.id);
@@ -429,8 +443,81 @@ describe("Artists feature", () => {
 
       await waitFor(() => expect(lastPortfolioUpdateBody).not.toBeNull());
       expect(lastPortfolioUpdateBody!.images).toEqual([
-        { imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism" },
+        { imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism", category: "fresh" },
       ]);
+    });
+
+    it("shows 'Uncategorized' for an untagged image and the category label for a tagged one", async () => {
+      seedArtistWithImages();
+      renderDetail(ELENA.id);
+
+      await screen.findByText("EM");
+      await userEvent.setup().click(screen.getByRole("tab", { name: /portfolio/i }));
+
+      const selects = await screen.findAllByRole("combobox", { name: /portfolio category/i });
+      expect(selects).toHaveLength(2);
+      expect(within(selects[0]).getByText("Uncategorized")).toBeInTheDocument();
+      expect(within(selects[1]).getByText("Fresh Tattoo")).toBeInTheDocument();
+    });
+
+    it("changing an image's category sends the full image list with that category updated, style unchanged", async () => {
+      seedArtistWithImages();
+      const user = userEvent.setup();
+      renderDetail(ELENA.id);
+
+      await screen.findByText("EM");
+      await user.click(screen.getByRole("tab", { name: /portfolio/i }));
+
+      const [firstCategorySelect] = await screen.findAllByRole("combobox", { name: /portfolio category/i });
+      await user.click(firstCategorySelect);
+      await user.click(await screen.findByRole("option", { name: "Healed Tattoo" }));
+
+      await waitFor(() => expect(lastPortfolioUpdateBody).not.toBeNull());
+      expect(lastPortfolioUpdateBody!.images).toEqual([
+        { imageUrl: "https://r2.example.com/tattoo1.jpg", style: null, category: "healed" },
+        { imageUrl: "https://r2.example.com/tattoo2.jpg", style: "realism", category: "fresh" },
+      ]);
+    });
+
+    it("'Add image' opens a dropdown with three category options; selecting one uploads and tags that category", async () => {
+      seedArtistWithImages();
+      mockUpload.mockResolvedValue("https://r2.example.com/new-upload.jpg");
+      const user = userEvent.setup();
+      renderDetail(ELENA.id);
+
+      await screen.findByText("EM");
+      await user.click(screen.getByRole("tab", { name: /portfolio/i }));
+
+      await user.click(screen.getByRole("button", { name: /add image/i }));
+      expect(screen.getByRole("menuitem", { name: "Fresh Tattoo" })).toBeInTheDocument();
+      expect(screen.getByRole("menuitem", { name: "Healed Tattoo" })).toBeInTheDocument();
+      expect(screen.getByRole("menuitem", { name: "Design" })).toBeInTheDocument();
+
+      await user.click(screen.getByRole("menuitem", { name: "Design" }));
+
+      // Selecting a category triggers a native file input click; simulate the file being chosen.
+      await waitFor(() => expect(mockUpload).not.toHaveBeenCalled());
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
+      expect(fileInput).not.toBeNull();
+      const file = new File(["x"], "new.jpg", { type: "image/jpeg" });
+      Object.defineProperty(fileInput, "files", { value: [file] });
+      fileInput!.dispatchEvent(new Event("change"));
+
+      await waitFor(() => expect(lastPortfolioUpdateBody).not.toBeNull());
+      expect(lastPortfolioUpdateBody!.images).toContainEqual({
+        imageUrl: "https://r2.example.com/new-upload.jpg", style: null, category: "design",
+      });
+    });
+
+    it("a non-manager viewer sees a read-only category badge instead of the select", async () => {
+      seedArtistWithImages();
+      renderDetail(ELENA.id, Role.Artist);
+
+      await screen.findByText("EM");
+      await userEvent.setup().click(screen.getByRole("tab", { name: /portfolio/i }));
+
+      expect(screen.queryAllByRole("combobox", { name: /portfolio category/i })).toHaveLength(0);
+      expect(screen.getByText("Fresh Tattoo")).toBeInTheDocument();
     });
   });
 });

@@ -108,7 +108,7 @@ public class CreateArtistHandler(
         new(a.Id, a.StudioId, a.UserId, a.FirstName, a.LastName, a.Email, a.Specializations, a.HourlyRate,
             a.IsActive, a.AvatarUrl,
             a.Portfolio.OrderByDescending(p => p.CreatedAt)
-                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl, p.Style))
+                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl, p.Style, p.Category))
                 .ToList(),
             a.Slug, a.CreatedAt, a.UpdatedAt);
 }
