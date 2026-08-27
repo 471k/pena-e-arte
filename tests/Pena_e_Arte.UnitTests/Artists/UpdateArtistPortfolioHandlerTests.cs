@@ -134,8 +134,11 @@ public class UpdateArtistPortfolioHandlerTests
         Artist artist = await SeedArtist();
         PortfolioImage image = new()
         {
-            ArtistId = artist.Id, StudioId = _studioId, ImageUrl = "https://img/1.jpg",
-            Style = "realism", Category = null,
+            ArtistId = artist.Id,
+            StudioId = _studioId,
+            ImageUrl = "https://img/1.jpg",
+            Style = "realism",
+            Category = null,
         };
         _db.PortfolioImages.Add(image);
         await _db.SaveChangesAsync();
@@ -155,8 +158,11 @@ public class UpdateArtistPortfolioHandlerTests
         Artist artist = await SeedArtist();
         PortfolioImage image = new()
         {
-            ArtistId = artist.Id, StudioId = _studioId, ImageUrl = "https://img/1.jpg",
-            Style = null, Category = PortfolioImageCategory.FreshTattoo,
+            ArtistId = artist.Id,
+            StudioId = _studioId,
+            ImageUrl = "https://img/1.jpg",
+            Style = null,
+            Category = PortfolioImageCategory.FreshTattoo,
         };
         _db.PortfolioImages.Add(image);
         await _db.SaveChangesAsync();
@@ -176,7 +182,9 @@ public class UpdateArtistPortfolioHandlerTests
         Artist artist = await SeedArtist();
         PortfolioImage image = new()
         {
-            ArtistId = artist.Id, StudioId = _studioId, ImageUrl = "https://img/1.jpg",
+            ArtistId = artist.Id,
+            StudioId = _studioId,
+            ImageUrl = "https://img/1.jpg",
             Category = PortfolioImageCategory.Design,
         };
         _db.PortfolioImages.Add(image);

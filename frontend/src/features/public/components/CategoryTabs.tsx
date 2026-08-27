@@ -1,13 +1,7 @@
 // Shared segmented category filter — used by both PortfolioFeed.tsx (public Discover feed)
 // and ArtistPortfolioPage.tsx (an artist's own public portfolio page).
 
-// Keep in sync with PortfolioImageCategory.cs constants on the backend.
-export const CATEGORIES: ReadonlyArray<{ value: string; label: string }> = [
-  { value: "",       label: "All"            },
-  { value: "fresh",  label: "Fresh Tattoos"  },
-  { value: "healed", label: "Healed Tattoos" },
-  { value: "design", label: "Designs"        },
-];
+import { CATEGORIES } from "./categoryConstants";
 
 interface CategoryTabsProps {
   activeCategory: string;

@@ -23,7 +23,8 @@ import {
   useUnsaveImageMutation,
 } from "../savedImagesApi";
 import { ReviewSection } from "./ReviewSection";
-import { CategoryTabs, CATEGORIES } from "./CategoryTabs";
+import { CategoryTabs } from "./CategoryTabs";
+import { CATEGORIES } from "./categoryConstants";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 

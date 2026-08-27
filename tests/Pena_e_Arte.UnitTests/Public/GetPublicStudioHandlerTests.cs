@@ -53,7 +53,11 @@ public class GetPublicStudioHandlerTests
     {
         _db.PortfolioImages.Add(new PortfolioImage
         {
-            ArtistId = artist.Id, StudioId = artist.StudioId, ImageUrl = url, Category = category, CreatedAt = createdAt,
+            ArtistId = artist.Id,
+            StudioId = artist.StudioId,
+            ImageUrl = url,
+            Category = category,
+            CreatedAt = createdAt,
         });
         await _db.SaveChangesAsync();
     }

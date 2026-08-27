@@ -31,7 +31,8 @@ import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
 import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
-import { CategoryTabs, CATEGORIES } from "./CategoryTabs";
+import { CategoryTabs } from "./CategoryTabs";
+import { CATEGORIES } from "./categoryConstants";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
 
