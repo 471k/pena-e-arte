@@ -34,15 +34,23 @@ public class AcceptStudioJoinInviteHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id = _newStudioId, Name = "Ink Collective", Slug = "ink-collective", City = "Lisbon",
+            Id = _newStudioId,
+            Name = "Ink Collective",
+            Slug = "ink-collective",
+            City = "Lisbon",
             IsActive = newStudioActive,
         });
         if (soloStudioStillOwned)
         {
             _db.Studios.Add(new Studio
             {
-                Id = _oldStudioId, Name = "Jane Doe", Slug = "jane-doe", City = string.Empty,
-                OwnerEmail = "jane@example.com", IsSolo = true, IsActive = true,
+                Id = _oldStudioId,
+                Name = "Jane Doe",
+                Slug = "jane-doe",
+                City = string.Empty,
+                OwnerEmail = "jane@example.com",
+                IsSolo = true,
+                IsActive = true,
             });
         }
 

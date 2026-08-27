@@ -100,8 +100,12 @@ public class InviteSoloArtistToJoinHandlerTests
         SeedSoloOwnerAccount(userId, "jane@example.com");
         _db.Studios.Add(new Studio
         {
-            Name = "Jane Doe", Slug = "jane-doe", City = string.Empty,
-            OwnerEmail = "jane@example.com", IsSolo = true, IsActive = true,
+            Name = "Jane Doe",
+            Slug = "jane-doe",
+            City = string.Empty,
+            OwnerEmail = "jane@example.com",
+            IsSolo = true,
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
@@ -122,8 +126,12 @@ public class InviteSoloArtistToJoinHandlerTests
         SeedSoloOwnerAccount(userId, "jane@example.com");
         _db.Studios.Add(new Studio
         {
-            Name = "Jane Doe", Slug = "jane-doe", City = string.Empty,
-            OwnerEmail = "jane@example.com", IsSolo = true, IsActive = true,
+            Name = "Jane Doe",
+            Slug = "jane-doe",
+            City = string.Empty,
+            OwnerEmail = "jane@example.com",
+            IsSolo = true,
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
@@ -143,8 +151,12 @@ public class InviteSoloArtistToJoinHandlerTests
         SeedSoloOwnerAccount(userId, "jane@example.com");
         _db.Studios.Add(new Studio
         {
-            Name = "Jane Doe", Slug = "jane-doe", City = string.Empty,
-            OwnerEmail = "jane@example.com", IsSolo = true, IsActive = true,
+            Name = "Jane Doe",
+            Slug = "jane-doe",
+            City = string.Empty,
+            OwnerEmail = "jane@example.com",
+            IsSolo = true,
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 

@@ -75,12 +75,20 @@ public class AcceptStudioJoinInviteIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seedDb = fixture.CreateDbContext(Guid.Empty);
         seedDb.Studios.Add(new Studio
         {
-            Id = oldStudioId, Name = "Jane Doe", Slug = $"jane-{Guid.NewGuid():N}",
-            City = string.Empty, OwnerEmail = email, IsSolo = true, IsActive = true,
+            Id = oldStudioId,
+            Name = "Jane Doe",
+            Slug = $"jane-{Guid.NewGuid():N}",
+            City = string.Empty,
+            OwnerEmail = email,
+            IsSolo = true,
+            IsActive = true,
         });
         seedDb.Studios.Add(new Studio
         {
-            Id = newStudioId, Name = "Ink Collective", Slug = $"ink-{Guid.NewGuid():N}", City = "Lisbon",
+            Id = newStudioId,
+            Name = "Ink Collective",
+            Slug = $"ink-{Guid.NewGuid():N}",
+            City = "Lisbon",
         });
         Plan plan = new() { Name = $"Starter-{Guid.NewGuid():N}", MaxArtists = 2 };
         seedDb.Plans.Add(plan);
@@ -172,12 +180,20 @@ public class AcceptStudioJoinInviteIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext seedDb = fixture.CreateDbContext(Guid.Empty);
         seedDb.Studios.Add(new Studio
         {
-            Id = oldStudioId, Name = "Jane Doe", Slug = $"jane-{Guid.NewGuid():N}",
-            City = string.Empty, OwnerEmail = email, IsSolo = true, IsActive = true,
+            Id = oldStudioId,
+            Name = "Jane Doe",
+            Slug = $"jane-{Guid.NewGuid():N}",
+            City = string.Empty,
+            OwnerEmail = email,
+            IsSolo = true,
+            IsActive = true,
         });
         seedDb.Studios.Add(new Studio
         {
-            Id = newStudioId, Name = "Ink Collective", Slug = $"ink-{Guid.NewGuid():N}", City = "Lisbon",
+            Id = newStudioId,
+            Name = "Ink Collective",
+            Slug = $"ink-{Guid.NewGuid():N}",
+            City = "Lisbon",
         });
         Plan plan = new() { Name = $"Starter-{Guid.NewGuid():N}", MaxArtists = 2 };
         seedDb.Plans.Add(plan);

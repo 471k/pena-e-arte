@@ -86,7 +86,10 @@ public class GetMyStudioJoinInvitesHandlerTests
     {
         _db.Studios.Add(new Studio
         {
-            Id = _studioId, Name = "Ink Collective", Slug = "ink-collective", City = "Lisbon",
+            Id = _studioId,
+            Name = "Ink Collective",
+            Slug = "ink-collective",
+            City = "Lisbon",
             IsActive = false,
         });
         _db.StudioJoinInvites.Add(new StudioJoinInvite
