@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -12,7 +13,7 @@ namespace Pena_e_Arte.Application.Studios.Commands;
 
 public record UpdateMyStudioCommand(UpdateStudioRequest Request) : IRequest<StudioResponse>;
 
-public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
+public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILogger<UpdateMyStudioHandler> logger)
     : IRequestHandler<UpdateMyStudioCommand, StudioResponse>
 {
     public async Task<StudioResponse> Handle(UpdateMyStudioCommand command, CancellationToken ct)
@@ -52,6 +53,17 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             }
 
             studio.Nipt = normalizedNipt;
+        }
+
+        // (0, 0) as "location not yet set" is a deliberate, cheap sentinel — real-world
+        // coordinates landing exactly on Null Island are not a realistic false-positive
+        // for this product's userbase. One-way transition: this handler never un-publishes.
+        if (studio.IsSolo && !studio.IsPublished &&
+            !string.IsNullOrWhiteSpace(studio.City) &&
+            (studio.Latitude != 0 || studio.Longitude != 0))
+        {
+            studio.IsPublished = true;
+            logger.LogInformation("Solo studio {@StudioId} auto-published on real location", studio.Id);
         }
 
         await db.SaveChangesAsync(ct);
