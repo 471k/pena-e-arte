@@ -368,6 +368,7 @@ Frontend:    VerifiedSocialBadge (shared/components/) — same badge variant as
 | 36 | Social Media Verification | `SocialAccountLink` (polymorphic Artist/Studio subject, no tenant filter — same shape as `InstagramConnection`) | `ISocialOAuthProvider`/`ISocialOAuthProviderFactory` (5 platforms), `ISocialBioChecker`/`ISocialBioCheckerFactory` (4 of 5 — TikTok has no suitable public-read API), `ISocialOAuthStateSigner` (separate key from `IInstagramStateSigner`) | Per-tenant (Artist subject resolves the artist's real tenant; Studio subject is self-referential — `StudioId == SubjectId`) |
 | 37 | Client Conduct Reports | `ConductReport` (non-tenant, no query filter — same shape as `Review`/`FeedbackReport`/`AuditLogEntry`) | None — direct email alert for High severity, same `INotificationService.SendEmailAsync` path as the contact form | Per-tenant (owner read), Per-user (artist read, reporter identity redacted), Issuer-level (cross-tenant read + High-severity resolution) |
 | 38 | In-App Messaging | `Conversation`, `ChatMessage` (both `TenantEntity`, `DesignRevision`-shaped — ordinary per-studio query filter, not a `FeedbackReport`-style exception) | `ChatHub` SignalR hub (per-user `user:{id}` groups, no join-by-id), `IRealtimeNotifier.NotifyUserAsync`, `IJobScheduler.EnqueueNewMessageEmail` (Hangfire, debounced — see `IgnoreQueryFilters()` row #36) | Per-tenant (client↔artist, client↔owner, artist↔owner only — no issuer) |
+| 39 | Solo/Independent Artist Signup | `Studio.IsSolo`/`IsPublished` (Phase 1); `StudioJoinInvite` (Phase 6, issuer-shaped, no tenant filter) | `RegisterSoloArtistCommand` (auto-provisions `Studio`+`Subscription` on `Free` plan, no NIPT/city/coords); `IPlanLimitService` (existing `MaxArtists` enforcement, unchanged); `IIdentityService` role-swap for studio-join acceptance | Per-tenant (solo signup, publish-on-real-location); cross-tenant (Phase 6 studio-join invite/accept, dual-consent) |
 
 ### Client Self-Service Cancel/Reschedule + Owner Revenue Reporting + Structured Audit Log — 2026-07-21
 
@@ -1113,15 +1114,20 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/artists/{slug}/reviews` | Public artist review list | None — read-only, non-sensitive review content only |
 | `POST /api/v1/public/traffic/beacon` | Anonymous + authenticated traffic beacon (role/tenant read from JWT when present) | Rate-limited (`public-write`); no PII accepted in the request body — `Path`/`IsNavigation` only, visitor id via header, IP never persisted |
 
-The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`, `/auth/oauth/*`,
-`/auth/forgot-password`, `/auth/reset-password`, `/auth/refresh`, `/auth/verify-email`)
+The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`,
+`/auth/register/solo-artist`, `/auth/oauth/*`, `/auth/forgot-password`,
+`/auth/reset-password`, `/auth/refresh`, `/auth/verify-email`)
 are anonymous by necessity (a caller cannot be authenticated before obtaining a token)
 and are covered by CLAUDE.md's blanket "no unprotected endpoints except `/auth` and
 `/health`" exception rather than needing individual rows here — this table exists for
 the non-obvious cases (cross-tenant reads, webhooks, signed tokens), not the login flow
-itself. All seven carry `"auth"` rate limiting except `reset-password`/`refresh`/
-`verify-email`, which predate the Redis rate-limiting feature and were out of scope for
-this audit (see "Full-App Master Audit — 2026-07-20" below).
+itself. `/auth/register/solo-artist` (added 2026-08-26 — see Feature Module Map,
+Solo/Independent Artist Signup) is registration-bootstrap in exactly the same sense as
+`/auth/register`: it creates its own studio/subscription/Identity user in one anonymous
+call rather than requiring one to already exist. All eight carry `"auth"` rate limiting
+except `reset-password`/`refresh`/`verify-email`, which predate the Redis rate-limiting
+feature and were out of scope for this audit (see "Full-App Master Audit — 2026-07-20"
+below).
 
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.

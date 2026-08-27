@@ -15,6 +15,7 @@ public static class AuthEndpoints
 
         group.MapPost("/login", Login).AllowAnonymous().RequireRateLimiting("auth");
         group.MapPost("/register", Register).AllowAnonymous().RequireRateLimiting("auth");
+        group.MapPost("/register/solo-artist", RegisterSoloArtist).AllowAnonymous().RequireRateLimiting("auth");
         group.MapPost("/oauth/login", OAuthLogin).AllowAnonymous().RequireRateLimiting("auth");
         group.MapPost("/oauth/register", OAuthRegister).AllowAnonymous().RequireRateLimiting("auth");
         group.MapPost("/forgot-password", ForgotPassword).AllowAnonymous().RequireRateLimiting("auth");
@@ -49,6 +50,15 @@ public static class AuthEndpoints
         CancellationToken ct)
     {
         await mediator.Send(new RegisterUserCommand(request), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> RegisterSoloArtist(
+        RegisterSoloArtistRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new RegisterSoloArtistCommand(request), ct);
         return Results.NoContent();
     }
 
