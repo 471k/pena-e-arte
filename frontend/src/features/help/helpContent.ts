@@ -585,7 +585,101 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Once enabled, you'll get a \"My Portfolio\" shortcut in your menu, and you'll be selectable when booking or scheduling appointments, just like any other artist.",
       "This counts as one artist seat against your plan's usage, the same as inviting any other artist.",
     ],
-    relatedArticleIds: ["owner-artists-list"],
+    relatedArticleIds: ["owner-artists-list", "owner-solo-studio"],
+  },
+  {
+    id: "owner-solo-studio",
+    roles: [Owner],
+    title: "Understand your solo studio and the Free plan",
+    route: "/dashboard",
+    keywords: ["solo", "independent artist", "solo studio", "free plan", "no NIPT", "no business registration", "sign up as artist"],
+    summary: "If you registered as an independent artist rather than a full studio, here's what \"solo\" means and how the Free plan works.",
+    steps: [
+      "If you signed up from the registration page's \"I'm an independent artist\" option, TattooOS auto-created a studio for you behind the scenes — you don't need to register a business first.",
+      "Your studio starts on the Free plan (1 artist seat, 15 appointments/month, 50 notifications/month, 1 GB storage) at no cost, active immediately, no trial to expire.",
+      "A business tax ID (NIPT) is entirely optional for a solo studio — even once you start taking card or cash payments. You can add one later from Studio Settings if you ever formalize a business, but nothing requires it.",
+      "Finish your own artist profile (see \"Enable your own artist profile\") so you're bookable — this can happen before or after your studio has a real address.",
+    ],
+    tips: [
+      "\"Solo\" is just a label on your studio (Studio.IsSolo) — it doesn't restrict anything you can do, it only reflects that you started without a formal studio.",
+      "The label goes away automatically the moment you upgrade off the Free plan — see \"Grow beyond one artist\".",
+    ],
+    relatedArticleIds: ["owner-publish-studio", "owner-solo-upgrade", "owner-become-artist"],
+  },
+  {
+    id: "owner-publish-studio",
+    roles: [Owner],
+    title: "Publish your studio on the Map and in Discover",
+    route: "/studios/me",
+    keywords: ["publish", "unpublished", "not on map", "studio map", "discover", "isPublished", "visibility", "location"],
+    summary: "A solo studio starts hidden from the Studio Map and Discover until it has a real city and location saved — here's how to fix that.",
+    steps: [
+      "Go to Studio Settings.",
+      "Fill in your real City and pick a location on the map (not the (0, 0) placeholder).",
+      "Save — your studio is published automatically the moment a real city and location are on file. There's no separate \"Publish\" button.",
+    ],
+    tips: [
+      "Until published, your studio won't appear on the Studio Map, the /discover Studios tab, or your public studio page — but your own artist page stays public and bookable the entire time, so clients who already have your link can still book you.",
+      "A banner reappears each time you log in, reminding you to finish this, until it's actually resolved — dismissing it only hides it for the current browser session.",
+      "This is a one-way flip — once published, a studio never goes back to unpublished through this flow.",
+    ],
+    relatedArticleIds: ["owner-solo-studio", "owner-studio-profile"],
+  },
+  {
+    id: "owner-solo-upgrade",
+    roles: [Owner],
+    title: "Grow beyond one artist",
+    route: "/billing",
+    keywords: ["invite second artist", "quota", "max artists", "upgrade plan", "one artist limit"],
+    summary: "The Free plan allows exactly one artist seat — here's what happens when you try to add a second, and how to unlock more.",
+    steps: [
+      "Try to invite a second artist from the Artists page — on the Free plan, this is blocked automatically with a message explaining you're at your plan's limit.",
+      "Go to Billing and choose a paid plan to raise (or remove) the artist-seat limit.",
+      "Invite your second artist — no other setup needed.",
+    ],
+    tips: [
+      "Upgrading off the Free plan also quietly stops describing your studio as \"solo\" — this is cosmetic only and doesn't change what you can already do.",
+      "Your studio's discoverability (published or not) is unaffected by which plan you're on.",
+    ],
+    relatedArticleIds: ["owner-solo-studio", "owner-billing", "owner-artists-add"],
+  },
+  {
+    id: "owner-invite-solo-artist",
+    roles: [Owner],
+    title: "Invite an independent artist to join your studio",
+    route: "/artists/new",
+    keywords: ["invite existing account", "already belongs to an existing account", "send a request to join", "recruit solo artist"],
+    summary: "If the artist you're trying to invite already runs their own solo studio, send them a request to join yours instead of a dead-end error.",
+    steps: [
+      "On the New Artist form, enter the artist's details as usual and submit.",
+      "If that email already belongs to an independent artist's own solo studio, you'll see \"Send a request to join instead\" — click it.",
+      "The artist gets notified and can accept or decline the next time they sign in. You'll see nothing further from your side until they respond.",
+    ],
+    tips: [
+      "This only works for an email that belongs to another solo studio's owner account — any other existing account (a different studio's artist, client, etc.) still can't be invited this way.",
+      "Accepting closes the artist's old solo studio permanently for them — see \"Accept or decline a studio-join invite\" for what that means for them.",
+    ],
+    relatedArticleIds: ["owner-artists-add", "owner-accept-join-invite"],
+  },
+  {
+    id: "owner-accept-join-invite",
+    roles: [Owner, Artist],
+    title: "Accept or decline a studio-join invite",
+    route: "/dashboard",
+    keywords: ["join invite", "studio invite", "accept invite", "decline invite", "dissolve solo studio", "join another studio"],
+    summary: "If another studio invites your independent artist account to join them, here's what accepting or declining actually does.",
+    steps: [
+      "Look for the small mail icon with a badge count near the notification bell — it only appears when you have a pending invite.",
+      "Click it to see which studio invited you, then \"Accept\" or \"Decline\".",
+      "Accepting shows a confirmation dialog first — read it, since this can't be undone from within the invite.",
+      "After accepting, you're signed back in automatically as an artist at the new studio.",
+    ],
+    tips: [
+      "Accepting permanently closes your current solo studio: you stop being its owner and lose access to it, but none of its data (appointments, clients, portfolio, payments) is deleted.",
+      "Declining has no side effects — your solo studio and account are completely unaffected, and the inviting studio can send a new invite later if they want to.",
+      "This only works if you're still the owner of an active solo studio when you accept — if that's changed since the invite was sent, you'll see an error instead.",
+    ],
+    relatedArticleIds: ["owner-invite-solo-artist", "owner-solo-studio"],
   },
   {
     id: "owner-artist-portfolio",
@@ -1244,6 +1338,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
 ];
 
 export const FAQ_ITEMS: FaqItem[] = [
+  {
+    id: "faq-solo-nipt-required",
+    roles: [Owner],
+    question: "Do I need a business tax ID (NIPT) to sign up as an independent artist?",
+    answer: "No. A solo studio never requires a NIPT, even once you start accepting card or cash payments. You can add one later from Studio Settings if you ever formalize a business, but it's always optional for a solo studio.",
+    relatedArticleIds: ["owner-solo-studio"],
+  },
+  {
+    id: "faq-solo-join-studio-data",
+    roles: [Owner],
+    question: "What happens to my appointments, clients, and payments if I join another studio?",
+    answer: "Nothing is deleted or moved. Your solo studio is closed and you lose owner access to it, but all its historical data stays exactly where it is. You start fresh as an artist at the new studio.",
+    relatedArticleIds: ["owner-accept-join-invite"],
+  },
   {
     id: "faq-trial-length",
     roles: [Owner],
