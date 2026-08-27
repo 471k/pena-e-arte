@@ -71,6 +71,21 @@ public class GetPublicStudioHandlerTests
     }
 
     [Fact]
+    public async Task Handle_UnpublishedSoloStudio_ReturnsNull()
+    {
+        Studio studio = MakeStudio();
+        studio.IsSolo = true;
+        studio.IsPublished = false;
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_ActiveStudio_ReturnsStudioWithContactFields()
     {
         Studio studio = MakeStudio();

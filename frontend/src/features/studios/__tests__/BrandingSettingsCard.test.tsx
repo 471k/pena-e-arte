@@ -29,6 +29,8 @@ const STUDIO_BRANDING_ON: StudioResponse = {
   phoneNumber:          null,
   instagramHandle:      null,
   nipt:                 null,
+  isSolo:               false,
+  isPublished:          true,
 };
 
 const STUDIO_BRANDING_REMOVABLE: StudioResponse = {

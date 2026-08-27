@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Artists;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -8,7 +9,6 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
-using Pena_e_Arte.Domain.Utilities;
 
 namespace Pena_e_Arte.Application.Artists.Commands;
 
@@ -34,15 +34,7 @@ public class CreateArtistHandler(
         if (exists)
             throw new BusinessRuleViolationException($"An artist with email '{req.Email}' already exists in this studio.");
 
-        string baseSlug = SlugHelper.GenerateSlug($"{req.FirstName} {req.LastName}");
-        string slug = baseSlug;
-        int counter = 2;
-        // IgnoreQueryFilters: slug must be globally unique for public portfolio URLs
-        while (await db.Artists.IgnoreQueryFilters().AnyAsync(a => a.Slug == slug && a.DeletedAt == null, ct))
-        {
-            slug = $"{baseSlug}-{counter}";
-            counter++;
-        }
+        string slug = await ArtistSlugHelper.GenerateUniqueSlugAsync(db, req.FirstName, req.LastName, ct);
 
         // Create the Identity login account for the artist
         string tempPassword = $"Tmp!{Guid.NewGuid():N}";

@@ -15,18 +15,33 @@ public class Studio
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     /// <summary>
-    /// Controls whether this studio is visible in public-facing endpoints
-    /// (public portfolio, studio map) and whether tenant access is permitted.
-    /// <para>
-    /// NOTE: The SP-02 spec referenced an <c>IsPublished</c> field. No such field
-    /// exists. <c>IsActive</c> serves the same purpose — a studio that should not
-    /// appear publicly is simply deactivated by the issuer. Do not add
-    /// <c>IsPublished</c> without first updating <c>docs/claude/architecture.md</c>.
-    /// </para>
+    /// Gates tenant access entirely — a deactivated studio's owner/artists cannot use the
+    /// app. Distinct from <c>IsPublished</c> (below), which gates only studio-directory
+    /// listing. See architecture.md's "IsActive vs IsPublished" section.
     /// </summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>True for a studio auto-provisioned by RegisterSoloArtistCommand for an
+    /// independent artist with no pre-existing studio. Never set any other way.</summary>
+    public bool IsSolo { get; set; }
+
+    /// <summary>Controls listing in studio-directory surfaces only (Studio Map, /discover
+    /// Studios tab, StudioPortfolioPage) — distinct from IsActive, which gates tenant access.
+    /// True by default for every normally-registered studio. False on creation only for an
+    /// IsSolo studio, until it has real City/Latitude/Longitude (see UpdateMyStudioHandler).
+    /// See architecture.md's "IsActive vs IsPublished" section — this is the field that
+    /// section names as the correct fix for exactly this situation.</summary>
+    public bool IsPublished { get; set; } = true;
+
     public bool ShowPlatformBranding { get; private set; } = true;
     public DateTime? SlugLockedAt { get; set; }
+
+    /// <summary>Set when this studio is soft-closed after its owner accepted a
+    /// StudioJoinInvite to join a different studio (Phase 6). IsActive is also false at
+    /// that point — this field distinguishes "closed by its own owner joining elsewhere"
+    /// from other IsActive=false paths (e.g. issuer suspension). Historical data
+    /// (appointments, clients, portfolio, payments) is retained, never deleted or copied.</summary>
+    public DateTime? ClosedAt { get; set; }
 
     public void UpdateBranding(bool show) => ShowPlatformBranding = show;
     public DateTime TrialExpiresAt { get; set; }

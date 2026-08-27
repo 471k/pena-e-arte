@@ -20,6 +20,13 @@ interface RegisterUserRequest {
   firstName?: string;
 }
 
+export interface RegisterSoloArtistRequest {
+  email:     string;
+  password:  string;
+  firstName: string;
+  lastName:  string;
+}
+
 interface OAuthLoginRequest {
   provider: string;
   idToken:  string;
@@ -86,16 +93,28 @@ export interface ClientNotificationPreferencesResponse {
   preferences: ClientNotificationPreferenceItem[];
 }
 
+export interface MyStudioJoinInviteResponse {
+  id:         string;
+  studioId:   string;
+  studioName: string;
+  studioSlug: string;
+  studioCity: string;
+  expiresAt:  string;
+}
+
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery,
-  tagTypes: ["MyStudios", "ClientStudioNotificationPreferences"],
+  tagTypes: ["MyStudios", "ClientStudioNotificationPreferences", "JoinInvites"],
   endpoints: (builder) => ({
     login: builder.mutation<AuthResponse, LoginRequest>({
       query: (body) => ({ url: "auth/login", method: "POST", body }),
     }),
     registerUser: builder.mutation<void, RegisterUserRequest>({
       query: (body) => ({ url: "auth/register", method: "POST", body }),
+    }),
+    registerSoloArtist: builder.mutation<void, RegisterSoloArtistRequest>({
+      query: (body) => ({ url: "auth/register/solo-artist", method: "POST", body }),
     }),
     oauthLogin: builder.mutation<AuthResponse, OAuthLoginRequest>({
       query: (body) => ({ url: "auth/oauth/login", method: "POST", body }),
@@ -158,12 +177,25 @@ export const authApi = createApi({
         { type: "ClientStudioNotificationPreferences", id: studioId },
       ],
     }),
+    getMyJoinInvites: builder.query<MyStudioJoinInviteResponse[], void>({
+      query: () => "auth/join-invites",
+      providesTags: ["JoinInvites"],
+    }),
+    acceptJoinInvite: builder.mutation<AuthResponse, { inviteId: string }>({
+      query: ({ inviteId }) => ({ url: `auth/join-invites/${inviteId}/accept`, method: "POST" }),
+      invalidatesTags: ["JoinInvites"],
+    }),
+    declineJoinInvite: builder.mutation<void, { inviteId: string }>({
+      query: ({ inviteId }) => ({ url: `auth/join-invites/${inviteId}/decline`, method: "POST" }),
+      invalidatesTags: ["JoinInvites"],
+    }),
   }),
 });
 
 export const {
   useLoginMutation,
   useRegisterUserMutation,
+  useRegisterSoloArtistMutation,
   useOauthLoginMutation,
   useOauthRegisterMutation,
   useRequestPasswordResetMutation,
@@ -177,4 +209,7 @@ export const {
   useLeaveStudioMutation,
   useGetClientStudioNotificationPreferencesQuery,
   useUpdateClientStudioNotificationPreferencesMutation,
+  useGetMyJoinInvitesQuery,
+  useAcceptJoinInviteMutation,
+  useDeclineJoinInviteMutation,
 } = authApi;

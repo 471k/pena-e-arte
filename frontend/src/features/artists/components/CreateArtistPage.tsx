@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +10,10 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { useInviteSoloArtistToJoinMutation } from "@/features/studios/studiosApi";
 import { useCreateArtistMutation } from "../artistsApi";
+
+const ALREADY_TAKEN_MARKER = "already belongs to an existing account";
 
 const createSchema = z.object({
   firstName:       z.string().min(1, "First name is required"),
@@ -24,6 +28,8 @@ type CreateFormValues = z.infer<typeof createSchema>;
 export function CreateArtistPage() {
   const navigate = useNavigate();
   const [createArtist, { isLoading }] = useCreateArtistMutation();
+  const [inviteToJoin, { isLoading: isInviting }] = useInviteSoloArtistToJoinMutation();
+  const [alreadyTakenValues, setAlreadyTakenValues] = useState<CreateFormValues | null>(null);
 
   const {
     register,
@@ -32,6 +38,7 @@ export function CreateArtistPage() {
   } = useForm<CreateFormValues>({ resolver: zodResolver(createSchema) });
 
   async function onSubmit(values: CreateFormValues) {
+    setAlreadyTakenValues(null);
     const result = await createArtist({
       firstName:       values.firstName,
       lastName:        values.lastName,
@@ -46,7 +53,32 @@ export function CreateArtistPage() {
       const errMsg =
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
         ?? "Failed to create artist.";
-      toast.error(errMsg);
+      if (errMsg.includes(ALREADY_TAKEN_MARKER)) {
+        setAlreadyTakenValues(values);
+      } else {
+        toast.error(errMsg);
+      }
+    }
+  }
+
+  async function onSendJoinRequest() {
+    if (!alreadyTakenValues) return;
+    try {
+      await inviteToJoin({
+        firstName:       alreadyTakenValues.firstName,
+        lastName:        alreadyTakenValues.lastName,
+        email:            alreadyTakenValues.email,
+        specializations: alreadyTakenValues.specializations?.trim() || null,
+        hourlyRate:      alreadyTakenValues.hourlyRate ?? null,
+      }).unwrap();
+      toast.success("Join request sent — they'll see it next time they sign in.");
+      setAlreadyTakenValues(null);
+      navigate("/artists");
+    } catch (err: unknown) {
+      const message =
+        (err as { data?: { message?: string } } | undefined)?.data?.message
+        ?? "Failed to send the join request.";
+      toast.error(message);
     }
   }
 
@@ -135,6 +167,26 @@ export function CreateArtistPage() {
               <p className="text-xs text-destructive">{errors.hourlyRate.message}</p>
             )}
           </div>
+
+          {alreadyTakenValues && (
+            <div className="rounded-md border bg-muted/30 px-3 py-3 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                That email already belongs to an existing account and can't be invited directly.
+                If it's an independent artist running their own solo studio, you can send them a
+                request to join here instead — they'll see it next time they sign in.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={isInviting}
+                onClick={() => void onSendJoinRequest()}
+              >
+                {isInviting ? "Sending…" : "Send a request to join instead"}
+              </Button>
+            </div>
+          )}
 
           <SubscriptionGatedButton type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (

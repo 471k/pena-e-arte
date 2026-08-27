@@ -367,6 +367,7 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list">
           <li><a href="#owner-dashboard" data-nav-link>Dashboard</a></li>
           <li><a href="#owner-setup-checklist" data-nav-link>Setup checklist</a></li>
+          <li><a href="#owner-solo-studio" data-nav-link>Solo studio &amp; Free plan</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -374,7 +375,10 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-artists" data-nav-link>Artist list</a></li>
           <li><a href="#owner-create-artist" data-nav-link>Add artist</a></li>
+          <li><a href="#owner-become-artist" data-nav-link>Enable your own artist profile</a></li>
           <li><a href="#owner-artist-detail" data-nav-link>Artist detail</a></li>
+          <li><a href="#owner-invite-solo-artist" data-nav-link>Invite a solo artist to join</a></li>
+          <li><a href="#owner-accept-join-invite" data-nav-link>Accept/decline a join invite</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -429,6 +433,7 @@ ol.steps li { margin: 6px 0; }
         <button class="nav-section-toggle" aria-expanded="false">Studio settings</button>
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-studio-profile" data-nav-link>Studio profile</a></li>
+          <li><a href="#owner-publish-studio" data-nav-link>Publish your studio</a></li>
           <li><a href="#owner-social-verification" data-nav-link>Verify social media accounts</a></li>
           <li><a href="#owner-branding" data-nav-link>Branding</a></li>
           <li><a href="#owner-embed" data-nav-link>Embed code</a></li>
@@ -442,6 +447,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#owner-notifications-prefs" data-nav-link>Notification preferences</a></li>
           <li><a href="#owner-billing" data-nav-link>Billing</a></li>
           <li><a href="#owner-subscribe" data-nav-link>Choose / change plan</a></li>
+          <li><a href="#owner-solo-upgrade" data-nav-link>Grow beyond one artist</a></li>
           <li><a href="#owner-reports" data-nav-link>Revenue reports</a></li>
         </ul>
       </div>
@@ -1855,6 +1861,33 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-create-deposit-rule">Create deposit rule</a></div>
 </section>
 
+<section id="owner-solo-studio" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Solo studio &amp; Free plan</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>If you signed up from <code>/register</code>'s "I'm an independent artist" option instead of registering a studio, TattooOS auto-created a studio for you behind the scenes — no business tax ID (NIPT) or studio address required up front.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Solo studio and Free plan wireframe">
+<rect x="230" y="120" width="300" height="160" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="246" y="146" font-size="11" font-weight="700">Free plan</text>
+<text x="246" y="168" font-size="9" fill-opacity="0.7">1 artist seat</text>
+<text x="246" y="186" font-size="9" fill-opacity="0.7">15 appointments / month</text>
+<text x="246" y="204" font-size="9" fill-opacity="0.7">50 notifications / month</text>
+<text x="246" y="222" font-size="9" fill-opacity="0.7">1 GB storage</text>
+<text x="246" y="248" font-size="8" fill-opacity="0.55">Active immediately — no trial, no card</text>
+</svg>
+</figure>
+<figcaption>Solo studio — on the Free plan from the moment you sign up</figcaption>
+<h3>What "solo" means</h3>
+<ol class="steps">
+<li>Your studio is fully functional immediately — you can finish your own artist profile and start taking bookings before adding any business details.</li>
+<li>A NIPT is entirely optional for a solo studio, even once you accept card or cash payments. Add one later from Studio Settings only if you choose to.</li>
+<li>Your studio stays hidden from the Studio Map and Discover until it has a real city and location — see <a href="#owner-publish-studio">Publish your studio</a>. Your own artist page is public and bookable the whole time regardless.</li>
+<li>"Solo" is just a label (it doesn't restrict anything) and disappears automatically once you upgrade off the Free plan — see <a href="#owner-solo-upgrade">Grow beyond one artist</a>.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-become-artist">Enable your own artist profile</a>, <a href="#owner-publish-studio">Publish your studio</a>, <a href="#owner-solo-upgrade">Grow beyond one artist</a></div>
+</section>
+
 <section id="owner-artists" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Artist list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -1940,6 +1973,60 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get a "My Portfolio" shortcut in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
 <div class="crosslinks">See also: <a href="#owner-artists">Artist list</a>, <a href="#owner-artist-detail">Artist detail</a></div>
+</section>
+
+<section id="owner-invite-solo-artist" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Invite a solo artist to join</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>At <code>/artists/new</code>: if the artist you're trying to invite already runs their own independent solo studio, a normal invite fails ("already belongs to an existing account"). Instead of a dead end, send them a request to join your studio.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Invite a solo artist wireframe">
+<rect x="240" y="120" width="280" height="130" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="256" y="146" font-size="10" fill-opacity="0.7">That email already belongs to an</text>
+<text x="256" y="160" font-size="10" fill-opacity="0.7">existing account and can't be invited directly.</text>
+<rect x="256" y="180" width="248" height="26" rx="4" fill="currentColor" fill-opacity="0.08"/>
+<text x="264" y="197" font-size="9">Send a request to join instead</text>
+</svg>
+</figure>
+<figcaption>New Artist form — the fallback shown after an "already taken" email</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Fill in the New Artist form as usual and submit.</li>
+<li>If the email belongs to an independent artist's own solo studio, click <span class="step-title">Send a request to join instead</span>.</li>
+<li>The artist is notified and can accept or decline next time they sign in — you'll see nothing further from your side until they respond.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> this only works for an email that belongs to another solo studio's owner account — any other existing account (a different studio's artist, a client, etc.) still can't be invited this way.</div>
+<div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-accept-join-invite">Accept/decline a join invite</a>, <a href="#owner-solo-studio">Solo studio &amp; Free plan</a></div>
+</section>
+
+<section id="owner-accept-join-invite" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Accept/decline a studio join invite</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studio owners)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>If another studio invites your independent artist account to join them, a small mail icon with a badge count appears in the header, next to the notification bell — it only shows up when you have a pending invite.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Studio join invite wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<circle cx="700" cy="20" r="9" fill="currentColor" fill-opacity="0.1"/><text x="696" y="24" font-size="9">✉</text>
+<circle cx="707" cy="13" r="6" fill="#7c3aed"/><text x="704" y="16" font-size="7" fill="#fff">1</text>
+<rect x="480" y="50" width="260" height="90" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="496" y="72" font-size="9">Ink Collective in Lisbon wants</text>
+<text x="496" y="86" font-size="9">you to join as an artist.</text>
+<rect x="496" y="98" width="60" height="20" rx="4" fill="#7c3aed"/><text x="508" y="112" font-size="8" fill="#fff">Accept</text>
+<rect x="564" y="98" width="60" height="20" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="578" y="112" font-size="8">Decline</text>
+</svg>
+</figure>
+<figcaption>Studio join invites — the mail icon only appears when you have a pending invite</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click the mail icon to see which studio invited you.</li>
+<li>Click <span class="step-title">Accept</span> or <span class="step-title">Decline</span>.</li>
+<li>Accepting shows a confirmation dialog first, explaining that this closes your current solo studio — read it, since it can't be undone from within the invite.</li>
+<li>After confirming, you're signed back in automatically as an artist at the new studio.</li>
+</ol>
+<div class="callout callout-warn"><strong>Warning:</strong> accepting permanently closes your current solo studio — you stop being its owner and lose access, though none of its data (appointments, clients, portfolio, payments) is deleted. Declining has no side effects at all.</div>
+<div class="crosslinks">See also: <a href="#owner-invite-solo-artist">Invite a solo artist to join</a>, <a href="#owner-solo-studio">Solo studio &amp; Free plan</a></div>
 </section>
 
 <section id="owner-artist-detail" data-role="owner">
@@ -2423,6 +2510,32 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#issuer-audit-log">Issuer: audit log</a>, <a href="#owner-social-verification">Verify social media accounts</a></div>
 </section>
 
+<section id="owner-publish-studio" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Publish your studio</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>A solo studio (see <a href="#owner-solo-studio">Solo studio &amp; Free plan</a>) starts hidden from the Studio Map, the /discover Studios tab, and its own public studio page — until it has a real city and location on file.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Publish your studio wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.08"/>
+<text x="16" y="22" font-size="9">Finish setting up your studio — add a real city and location in Studio Settings.</text>
+<rect x="700" y="8" width="18" height="18" rx="3" fill="currentColor" fill-opacity="0.06"/><text x="705" y="20" font-size="10">×</text>
+<rect x="260" y="90" width="240" height="120" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="276" y="112" font-size="9" fill-opacity="0.6">City</text><rect x="276" y="118" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="276" y="152" font-size="9" fill-opacity="0.6">Location (drag map pin)</text><rect x="276" y="158" width="200" height="36" rx="4" fill="currentColor" fill-opacity="0.05"/>
+</svg>
+</figure>
+<figcaption>The banner reappears each login until a real city/location is saved</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Go to Studio Settings.</li>
+<li>Fill in your real <span class="step-title">City</span> and drag the map pin to your real <span class="step-title">Location</span>.</li>
+<li><span class="step-title">Save changes</span> — publishing happens automatically the moment a real city and location are saved. There's no separate "Publish" button.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> your own artist page stays public and bookable the whole time, even before your studio is published — clients who already have your link can always book you.</div>
+<div class="crosslinks">See also: <a href="#owner-solo-studio">Solo studio &amp; Free plan</a>, <a href="#owner-studio-profile">Studio profile</a></div>
+</section>
+
 <section id="owner-social-verification" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Verify social media accounts</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -2642,6 +2755,30 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> prefer to pay by cash? Contact support instead — your trial keeps running until the studio confirms payment.</div>
 <div class="crosslinks">See also: <a href="#owner-billing">Billing</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
+</section>
+
+<section id="owner-solo-upgrade" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Grow beyond one artist</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>The Free plan (what every solo studio starts on) allows exactly one artist seat. Here's what happens when you try to add a second, and how to unlock more.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Grow beyond one artist wireframe">
+<rect x="240" y="120" width="280" height="110" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="256" y="146" font-size="10" fill-opacity="0.7">This studio's plan allows up to 1</text>
+<text x="256" y="160" font-size="10" fill-opacity="0.7">artists. Upgrade the plan to continue.</text>
+<rect x="256" y="180" width="140" height="24" rx="4" fill="#7c3aed"/><text x="270" y="196" font-size="9" fill="#fff">Upgrade plan</text>
+</svg>
+</figure>
+<figcaption>Adding a second artist on the Free plan is blocked automatically</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Try to invite a second artist from the Artists page — on the Free plan, this is blocked automatically with a message explaining your plan's limit.</li>
+<li>Go to Billing and choose a paid plan to raise (or remove) the artist-seat limit.</li>
+<li>Invite your second artist — no other setup needed.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> upgrading off the Free plan also quietly stops describing your studio as "solo" — this is cosmetic only and doesn't change what you can already do or your studio's Map/Discover visibility.</div>
+<div class="crosslinks">See also: <a href="#owner-solo-studio">Solo studio &amp; Free plan</a>, <a href="#owner-billing">Billing</a>, <a href="#owner-create-artist">Add artist</a></div>
 </section>
 
 <section id="owner-reports" data-role="owner">

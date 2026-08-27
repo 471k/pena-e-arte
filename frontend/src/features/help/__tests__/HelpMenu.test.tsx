@@ -184,12 +184,15 @@ describe("HelpMenu", () => {
   }, 10000);
 
   it("'Take the tour again' closes the sheet and relaunches the tour even though it was already completed", async () => {
-    // The owner tour's earlier steps (7 of them, as of the "Also work as an
-    // artist?" step added alongside the owner-as-artist feature) target nav
-    // elements that this isolated render doesn't include, so the tour
-    // auto-skips through them (~1s each) before reaching the last step,
-    // "owner-help-button" — the trigger button HelpMenu itself renders,
-    // which does resolve. Timeouts below carry margin above that ~7s floor.
+    // The owner tour's earlier steps (9 of them, as of the solo-studio-publish-banner
+    // and join-invite-bell steps added alongside the solo-artist feature) target nav
+    // elements that this isolated render doesn't include, so the tour auto-skips
+    // through them before reaching the last step, "owner-help-button" — the trigger
+    // button HelpMenu itself renders, which does resolve. Each skip polls up to
+    // MAX_POLL_ATTEMPTS (20) x POLL_INTERVAL_MS (50) = ~1s (OnboardingTour.tsx)
+    // before giving up, so 9 steps is a ~9s floor before real overhead (RAF
+    // double-buffering, React commit time) on top — timeouts below carry generous
+    // margin above that, not just the bare theoretical floor.
     const user = userEvent.setup();
     renderMenu("owner" as Role);
 
@@ -197,8 +200,8 @@ describe("HelpMenu", () => {
     await user.click(screen.getByRole("button", { name: /take the tour again/i }));
 
     expect(screen.queryByRole("heading", { name: /^help$/i })).not.toBeInTheDocument();
-    expect(await screen.findByRole("dialog", {}, { timeout: 11000 })).toBeInTheDocument();
-  }, 17000);
+    expect(await screen.findByRole("dialog", {}, { timeout: 16000 })).toBeInTheDocument();
+  }, 22000);
 
   it("Contact Support tab shows the request form when there is no open ticket", async () => {
     const user = userEvent.setup();

@@ -19,7 +19,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
         // Approved: public portfolio query — see architecture.md AllowAnonymous Exceptions.
         Studio? studio = await db.Studios
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.Slug == query.Slug && s.IsActive, ct);
+            .FirstOrDefaultAsync(s => s.Slug == query.Slug && s.IsActive && s.IsPublished, ct);
 
         if (studio is null) return null;
 

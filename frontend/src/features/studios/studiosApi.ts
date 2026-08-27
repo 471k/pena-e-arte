@@ -29,6 +29,23 @@ export interface StudioResponse {
   phoneNumber:          string | null;
   instagramHandle:      string | null;
   nipt:                 string | null;
+  isSolo:               boolean;
+  isPublished:          boolean;
+}
+
+export interface InviteSoloArtistToJoinRequest {
+  firstName:        string;
+  lastName:         string;
+  email:            string;
+  specializations?: string | null;
+  hourlyRate?:      number | null;
+}
+
+export interface StudioJoinInviteResponse {
+  id:            string;
+  invitedEmail:  string;
+  status:        string;
+  expiresAt:     string;
 }
 
 export interface StudioMapItem {
@@ -102,6 +119,9 @@ export const studiosApi = createApi({
     getMyStudioAuditLog: builder.query<AuditLogPageResponse, AuditLogQueryParams | void>({
       query: (params) => ({ url: "studios/me/audit-log", params: params ?? undefined }),
       providesTags: ["StudioAuditLog"],
+    }),
+    inviteSoloArtistToJoin: builder.mutation<StudioJoinInviteResponse, InviteSoloArtistToJoinRequest>({
+      query: (body) => ({ url: "studios/me/join-invites", method: "POST", body }),
     }),
     // Issuer: list all studios
     getStudios: builder.query<StudioResponse[], void>({
@@ -217,4 +237,5 @@ export const {
   useAddStudioClosureMutation,
   useDeleteStudioClosureMutation,
   useGetMyStudioAuditLogQuery,
+  useInviteSoloArtistToJoinMutation,
 } = studiosApi;

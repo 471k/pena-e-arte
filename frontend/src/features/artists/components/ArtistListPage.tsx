@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -45,6 +45,7 @@ function ArtistRowSkeleton() {
 
 export function ArtistListPage() {
   const navigate  = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const canManage = usePermission(Role.Owner);
   const [inputValue, setInputValue] = useState("");
   const [search, setSearch]         = useState<string | undefined>(undefined);
@@ -70,6 +71,22 @@ export function ArtistListPage() {
   const [baLastName, setBaLastName]             = useState("");
   const [baSpecializations, setBaSpecializations] = useState("");
   const [baHourlyRate, setBaHourlyRate]         = useState("");
+
+  // Guided onboarding: OwnerLayout redirects a solo owner with no artist profile of their
+  // own here with ?onboarding=1 — auto-open the same "Enable my artist profile" dialog
+  // instead of requiring them to find and click the CTA themselves.
+  useEffect(() => {
+    if (searchParams.get("onboarding") === "1" && !myArtistLoading && !myArtist) {
+      // Syncing from the URL (an external source) — same accepted pattern as elsewhere
+      // in this codebase (e.g. IssuerStudioListPage, PortfolioFeed).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBecomeArtistOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("onboarding");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, myArtistLoading, myArtist]);
 
   async function onEnableOwnArtistProfile() {
     try {

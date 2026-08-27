@@ -120,6 +120,14 @@ public class CreateSubscriptionHandler(
         subscription.CurrentPeriodEnd = periodEnd;
         subscription.TrialExpiresAt = null;
 
+        // Upgrading off the Free plan does NOT clear Studio.IsSolo. IsSolo's own doc comment
+        // says "never set any other way" than RegisterSoloArtistCommand for a reason: both
+        // AcceptStudioJoinInviteCommand and InviteSoloArtistToJoinCommand hard-gate on IsSolo to
+        // decide whether an account is eligible to send/receive a studio-join invite. A studio
+        // that's still functionally solo (one owner-artist, no formal multi-staff registration)
+        // but paying for more storage or appointment quota shouldn't silently lose access to
+        // that feature — see docs/claude/architecture.md Decisions Log.
+
         // Record redemption only when a discount was actually applied
         ReferralRedemption? newRedemption = null;
         if (pendingCode is not null && discountApplied)
