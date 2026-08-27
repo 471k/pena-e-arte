@@ -19,6 +19,11 @@ export function getClientTourSteps(hasMultipleStudios: boolean): TourStep[] {
 
   steps.push(
     {
+      targetSelector: '[data-tour="client-messages-nav"]',
+      title: "Message your artist or the studio",
+      body: "Send a real-time message to your assigned or booked artist, or to the studio owner, right from here.",
+    },
+    {
       targetSelector: '[data-tour="client-designs-nav"]',
       title: "Your designs",
       body: "Once your artist uploads a design draft, you'll review and approve it here.",

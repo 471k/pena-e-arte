@@ -37,6 +37,7 @@ import {
 import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
+import { MessagesInboxPage } from "@/features/messaging";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
@@ -347,6 +348,14 @@ export const routes = [
                 children: [
                   { index: true, element: <ErrorBoundary><ConductReportsPage /></ErrorBoundary> },
                 ],
+              },
+
+              // ── Shared: in-app messaging (client, artist, owner — not issuer, see
+              // messaging Decision 1) ─────────────────────────────────────────
+              {
+                path: "messages",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner]} />,
+                children: [{ index: true, element: <ErrorBoundary><MessagesInboxPage /></ErrorBoundary> }],
               },
 
               // ── Owner: payments ─────────────────────────────────────────────

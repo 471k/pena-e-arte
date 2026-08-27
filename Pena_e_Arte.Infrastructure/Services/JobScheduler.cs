@@ -44,4 +44,7 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
             : backgroundJobs.Schedule<ManualReminderJob>(j => j.SendAsync(manualReminderId, default), sendAt);
 
     public void CancelJob(string jobId) => backgroundJobs.Delete(jobId);
+
+    public void EnqueueNewMessageEmail(Guid chatMessageId) =>
+        backgroundJobs.Enqueue<ChatNotificationJob>(j => j.SendNewMessageEmailAsync(chatMessageId, default));
 }

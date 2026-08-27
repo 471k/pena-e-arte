@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert,
+  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -23,12 +23,14 @@ import { NotificationBell } from "@/features/notifications";
 import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
 import { useGetMyStudioConductReportsQuery } from "@/features/conduct-reports";
+import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",        href: "/dashboard",         icon: <LayoutDashboard className="h-4 w-4" />, tourId: "owner-dashboard-nav" },
   { label: "Schedule",         href: "/schedule",          icon: <CalendarDays    className="h-4 w-4" /> },
   { label: "Artists",          href: "/artists",           icon: <Users           className="h-4 w-4" />, tourId: "owner-add-artist-nav" },
   { label: "Clients",          href: "/clients",           icon: <UserSquare      className="h-4 w-4" /> },
+  { label: "Messages",         href: "/messages",          icon: <MessageCircle   className="h-4 w-4" />, tourId: "owner-messages-nav" },
   { label: "Designs",          href: "/designs",           icon: <Palette         className="h-4 w-4" /> },
   { label: "Payments",         href: "/payments",          icon: <CreditCard      className="h-4 w-4" /> },
   { label: "Billing",          href: "/billing",           icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
@@ -42,6 +44,7 @@ export function OwnerLayout() {
   const navigate = useNavigate();
   const tenantId = useAppSelector((s) => s.auth.tenantId);
   useSignalR(tenantId);
+  useChatHub();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
@@ -114,6 +117,7 @@ export function OwnerLayout() {
             <MessageSquareMore className="h-4 w-4" />
           </Button>
           <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
+          <MessagesNavBadge />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

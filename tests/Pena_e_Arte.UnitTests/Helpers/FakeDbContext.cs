@@ -51,6 +51,8 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
     public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
     public DbSet<ConductReport> ConductReports => Set<ConductReport>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -128,6 +130,11 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasMany(a => a.Attachments)
             .WithOne(a => a.Appointment)
             .HasForeignKey(a => a.AppointmentId);
+
+        modelBuilder.Entity<Conversation>()
+            .HasMany(c => c.Messages)
+            .WithOne()
+            .HasForeignKey(m => m.ConversationId);
     }
 
     public static FakeDbContext Create() => Create(Guid.NewGuid().ToString());

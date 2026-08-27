@@ -12,6 +12,11 @@ export const artistTourSteps: TourStep[] = [
     body: "Find any client's profile, tattoo history, and forms here.",
   },
   {
+    targetSelector: '[data-tour="artist-messages-nav"]',
+    title: "Message a client or the studio owner",
+    body: "Send a real-time message to a client you have an appointment with, or to the studio owner, right from here.",
+  },
+  {
     targetSelector: '[data-tour="artist-create-design-button"]',
     title: "Upload a design",
     body: "Start a new design project here to upload artwork for a client to review.",

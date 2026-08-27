@@ -19,6 +19,7 @@ const NOTIFICATION_TYPES: { value: NotificationType; label: string }[] = [
   { value: "IntakeFormSubmitted",   label: "Intake form submitted" },
   { value: "ConsentFormSigned",     label: "Consent form signed" },
   { value: "DesignReviewed",        label: "Design reviewed" },
+  { value: "MessageReceived",       label: "New message received" },
 ];
 
 const CHANNELS: NotificationChannel[] = ["Email", "Sms"];

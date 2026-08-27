@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, Users, Palette, FileText, ScrollText,
-  DollarSign, Bell, PenLine, ImagePlus, MessageSquareMore, ShieldAlert,
+  DollarSign, Bell, PenLine, ImagePlus, MessageSquareMore, ShieldAlert, MessageCircle,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -21,10 +21,12 @@ import { HelpMenu } from "@/features/help";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
+import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 
 const STATIC_NAV: NavItem[] = [
   { label: "Schedule",         href: "/schedule",         icon: <CalendarDays className="h-4 w-4" />, tourId: "artist-schedule-nav" },
   { label: "Clients",          href: "/clients",          icon: <Users        className="h-4 w-4" />, tourId: "artist-clients-nav" },
+  { label: "Messages",         href: "/messages",         icon: <MessageCircle className="h-4 w-4" />, tourId: "artist-messages-nav" },
   { label: "Designs",          href: "/designs",          icon: <Palette      className="h-4 w-4" /> },
   { label: "Intake Forms",     href: "/forms/intake",     icon: <FileText     className="h-4 w-4" /> },
   { label: "Consent Forms",    href: "/forms/consent",    icon: <ScrollText   className="h-4 w-4" /> },
@@ -38,6 +40,7 @@ export function ArtistLayout() {
   const navigate = useNavigate();
   const tenantId = useAppSelector((s) => s.auth.tenantId);
   useSignalR(tenantId);
+  useChatHub();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
@@ -104,6 +107,7 @@ export function ArtistLayout() {
             <MessageSquareMore className="h-4 w-4" />
           </Button>
           <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
+          <MessagesNavBadge />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

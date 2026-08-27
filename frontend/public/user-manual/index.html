@@ -318,6 +318,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#client-verify-email" data-nav-link>Verify email</a></li>
           <li><a href="#client-change-password" data-nav-link>Change password</a></li>
           <li><a href="#client-change-email" data-nav-link>Change email</a></li>
+          <li><a href="#client-messaging" data-nav-link>Messages</a></li>
         </ul>
       </div>
     </div>
@@ -328,6 +329,7 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list">
           <li><a href="#artist-schedule" data-nav-link>Weekly schedule</a></li>
           <li><a href="#artist-appointment-detail" data-nav-link>Appointment detail</a></li>
+          <li><a href="#artist-messaging" data-nav-link>Messages</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -403,6 +405,7 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-schedule" data-nav-link>Schedule</a></li>
           <li><a href="#owner-appointment-detail" data-nav-link>Appointment detail</a></li>
+          <li><a href="#owner-messaging" data-nav-link>Messages</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -1349,6 +1352,37 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#guest-artist-portfolio">Guest: artist profile page</a>, <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
 </section>
 
+<section id="client-messaging" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Messages</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own booked/assigned artist, and the studio owner)</td></tr><tr><td>Artist</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Owner</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<p>At <code>/messages</code>: real-time, two-party threads with your booked or assigned artist, or with the studio owner. Delivered instantly over a live connection while the app is open; if the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 420" role="img" aria-label="Messages wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Messages</text>
+<rect x="616" y="10" width="120" height="20" rx="4" fill="#7c3aed"/><text x="628" y="24" font-size="8" fill="#fff">New message</text>
+<rect x="16" y="56" width="220" height="340" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<rect x="24" y="66" width="204" height="48" rx="6" fill="currentColor" fill-opacity="0.06"/><text x="34" y="84" font-size="9" font-weight="700">Marco Ink</text><text x="34" y="98" font-size="8" fill-opacity="0.6">See you Thursday!</text>
+<text x="34" y="146" font-size="9" font-weight="700" fill-opacity="0.7">Studio Owner</text><text x="34" y="160" font-size="8" fill-opacity="0.5">Thanks for booking</text>
+<rect x="252" y="56" width="488" height="300" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<rect x="266" y="72" width="200" height="30" rx="6" fill="currentColor" fill-opacity="0.08"/><text x="276" y="91" font-size="8">Hey, looking forward to it!</text>
+<rect x="474" y="112" width="200" height="30" rx="6" fill="#7c3aed" fill-opacity="0.8"/><text x="484" y="131" font-size="8" fill="#fff">See you Thursday!</text>
+<rect x="266" y="368" width="440" height="36" rx="6" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15"/><text x="278" y="390" font-size="8" fill-opacity="0.5">Type a message…</text>
+</svg>
+</figure>
+<figcaption>Messages — conversation list on the left, active thread on the right</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Messages</span> from the nav.</li>
+<li>Click <span class="step-title">New message</span> and pick a contact — only your booked/assigned artist and the studio owner are listed.</li>
+<li>Or click an existing thread in the conversation list.</li>
+<li>Type your message and press Enter, or click the send button.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> if you don't have a linked artist yet, you can still always reach the studio owner.</div>
+<div class="crosslinks">See also: <a href="#client-book-appointment">Book an appointment</a></div>
+</section>
+
 <section id="artist-schedule" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Weekly schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -1409,9 +1443,10 @@ ol.steps li { margin: 6px 0; }
 <li>Download the <span class="step-title">.ics calendar file</span> if you want it in your own calendar app.</li>
 <li>Depending on status: <span class="step-title">Confirm</span> (from Requested), <span class="step-title">Mark as complete</span> (from Confirmed), <span class="step-title">Charge deposit</span> (owner only, if pending), <span class="step-title">Mark no-show</span>, or <span class="step-title">Cancel</span>.</li>
 <li>Click <span class="step-title">Send Reminder</span> to text the client now or schedule it for later — separate from the studio's automatic 48h/24h reminders.</li>
+<li>Click <span class="step-title">Message [client name]</span> to start or continue a real-time chat thread with the client, if they have a linked login.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> cancelling an appointment cannot be undone.</div>
-<div class="crosslinks">See also: <a href="#artist-schedule">Weekly schedule</a>, <a href="#owner-payment-detail">Owner: payment detail</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
+<div class="crosslinks">See also: <a href="#artist-schedule">Weekly schedule</a>, <a href="#owner-payment-detail">Owner: payment detail</a>, <a href="#ref-appointment-statuses">Appointment statuses</a>, <a href="#artist-messaging">Artist: messages</a>, <a href="#owner-messaging">Owner: messages</a></div>
 </section>
 
 <section id="artist-clients" data-role="artist">
@@ -1746,6 +1781,21 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> the reporting client's name, email, and account are never shown here — only the studio owner and Pena e Artë platform staff can see who filed a report.</div>
 <div class="crosslinks">See also: <a href="#owner-conduct-reports">Owner: conduct reports</a></div>
+</section>
+
+<section id="artist-messaging" data-role="artist">
+<h2><span class="role-badge role-artist">Artist</span> Messages</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Artist</td><td>✓ (own booked/assigned clients, and the studio owner)</td></tr><tr><td>Owner</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<p>At <code>/messages</code>, and from a "Message [client name]" button on an appointment's detail page: real-time, two-party threads with a client you have an appointment with or who's assigned to you, or with the studio owner. If the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Messages</span> from the nav, or click <span class="step-title">Message [client name]</span> on an appointment's detail page.</li>
+<li>Click <span class="step-title">New message</span> and pick a client or the studio owner.</li>
+<li>Or click an existing thread in the conversation list.</li>
+<li>Type your message and press Enter, or click the send button — replies arrive live without reloading.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a></div>
 </section>
 
 <section id="owner-dashboard" data-role="owner">
@@ -2176,7 +2226,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Charge deposit</span> to jump straight into <a href="#owner-create-payment">creating a payment</a> pre-filled for this appointment.</li>
 </ol>
 <div class="callout callout-warn"><strong>Confirm is blocked until assigned:</strong> a studio-choice booking can't be confirmed — by either the UI or the server — until you've picked an artist. Sending a manual reminder is blocked the same way.</div>
-<div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a>, <a href="#owner-create-payment">Create payment</a></div>
+<div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#owner-messaging">Owner: messages</a></div>
 </section>
 
 <section id="owner-intake-list" data-role="owner">
@@ -2648,6 +2698,21 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> High-severity reports are locked to platform-only resolution deliberately — an owner resolving a serious report about their own artist would be a conflict of interest.</div>
 <div class="crosslinks">See also: <a href="#artist-conduct-reports">Artist: reports about me</a>, <a href="#issuer-conduct-reports">Issuer: conduct reports</a></div>
+</section>
+
+<section id="owner-messaging" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Messages</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Artist</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Owner</td><td>✓ (any artist or client at the studio)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<p>At <code>/messages</code>, and from a "Message [client name]" button on an appointment's detail page: real-time, two-party threads with any artist or client at your studio — the owner is the only role with no messaging restrictions. If the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Messages</span> from the nav, or click <span class="step-title">Message [client name]</span> on an appointment's detail page.</li>
+<li>Click <span class="step-title">New message</span> and pick any artist or client at your studio.</li>
+<li>Or click an existing thread in the conversation list.</li>
+<li>Type your message and press Enter, or click the send button — replies arrive live without reloading.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a></div>
 </section>
 
 <section id="issuer-dashboard" data-role="issuer">
