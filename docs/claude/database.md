@@ -80,7 +80,9 @@ public class Studio  // NOT a TenantEntity — issuer-owned
     public string?  Nipt             { get; set; }  // business tax ID (NUIS) — nullable for backfill, not an auth factor
     public double   Latitude         { get; set; }
     public double   Longitude        { get; set; }
-    public bool     IsActive         { get; set; }
+    public bool     IsActive         { get; set; }  // gates tenant access entirely
+    public bool     IsSolo           { get; set; }  // auto-provisioned solo-artist studio (never set elsewhere)
+    public bool     IsPublished      { get; set; }  // gates studio-directory listing only — see architecture.md
     public DateTime TrialExpiresAt   { get; set; }  // CreatedAt + 14 days
     public string?  StripeCustomerId { get; set; }  // Stripe Billing (SaaS subscription)
     public DateTime CreatedAt        { get; init; } = DateTime.UtcNow;

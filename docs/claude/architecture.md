@@ -232,10 +232,10 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
 | 05 | Payments & Session Splits | `Payment`, `SessionSplit` | Stripe (aggregator, card) + Cash (manual) | Per-tenant |
 | 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + Resend | Per-tenant |
-| 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth | Platform-wide |
+| 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth. Filters `IsActive && IsPublished`. | Platform-wide |
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
-| 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints | Platform-wide |
+| 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints. `GetPublicStudioQuery`/`/s/{slug}` filters `IsActive && IsPublished`; `GetPublicArtistQuery`/`/artist/{slug}` stays `IsActive`-only (see "IsActive vs IsPublished"). | Platform-wide |
 
 #### StudioPortfolioPage (`/s/{slug}`)
 
@@ -929,19 +929,30 @@ Returns only published/active studios.
 
 ### IsActive vs IsPublished — intentional design decision
 
-The SP-02 spec referred to an `IsPublished` boolean on `Studio`. No such
-field exists or is planned. The public portfolio endpoints (`GetPublicStudioQuery`,
-`GetPublicArtistQuery`) and the studio map endpoint filter on `Studio.IsActive`
-instead.
+**Update 2026-08-26:** `Studio.IsPublished` now exists (see the Solo/Independent
+Artist Signup feature, Decisions Log below). This section previously said no such
+field existed or was planned; that changed the moment a feature needed a studio to
+be active-but-unlisted (exactly the trigger condition this section always said would
+justify adding it).
 
-This is **intentional**: `IsActive` already covers the intended behaviour —
-deactivated studios (suspended, manually disabled by issuer) do not appear in
-public-facing endpoints. A separate `IsPublished` field would add complexity
-without adding expressive power given the current subscription and trial model.
+`IsActive` and `IsPublished` are now both real, distinct fields:
 
-If a future feature requires a studio to be active but unlisted (e.g. soft-launch
-mode), add `IsPublished bool` to `Studio` at that time and update this section.
-Until then, do not add `IsPublished` to the entity or the EF Core config.
+- **`IsActive`** gates tenant access entirely. A deactivated studio's owner/artists
+  cannot use the app at all (suspended, manually disabled by issuer).
+- **`IsPublished`** gates listing in studio-directory surfaces only: Studio Map
+  (`GetStudioMapQuery`), `/discover`'s Studios tab (`GetNearbyStudiosQuery`), and
+  `StudioPortfolioPage` (`GetPublicStudioQuery`). Defaults to `true` for every
+  normally-registered studio; only starts `false` for an `IsSolo` studio
+  auto-provisioned with no real location yet, and flips to `true` automatically
+  the first time `UpdateMyStudioHandler` sees a real `City`/`Latitude`/`Longitude`.
+
+**`GetPublicArtistQuery` (`/artist/{slug}`) deliberately still filters on
+`IsActive` only, not `IsPublished`** — a solo artist must be publicly bookable
+from their own portfolio URL immediately, even before their studio is "published"
+to the directory surfaces above. Do not add an `IsPublished` check there.
+
+All three directory-surface queries filter on `IsActive && IsPublished` now — a
+suspended or unpublished studio never appears in any of them.
 
 ```
 GET /api/studios/map
@@ -1645,6 +1656,8 @@ does not re-litigate them.
 | `platformApi` RTK Query slice | New `features/platform/platformApi.ts` for all issuer platform endpoints | Keeps issuer platform concerns isolated from billing/studio slices |
 | Payment model: aggregator vs marketplace | Aggregator (platform's own Stripe account collects all card payments) | Stripe Connect not available in platform country; aggregator avoids connected accounts entirely |
 | Client payment methods | Card (Stripe Payment Element) + Cash (manual) — no PayPal | Simplest model matching actual studio workflow; studios often accept cash deposits in person |
+| `Studio.IsPublished` | New bool, default `true`; `false` only on `IsSolo` creation | Lets a solo-artist studio be active (tenant access, bookable artist page) but excluded from directory surfaces until it has a real location — the exact case this section previously said would justify the field |
+| Solo-artist signup | `RegisterSoloArtistCommand` auto-provisions a `Studio{IsSolo=true, IsPublished=false}` + `Subscription` on the `Free` plan, `owner` role, no NIPT/city/coords required | Matches category standard (Fresha/Vagaro/Boulevard/GlossGenius all let a single-provider business start taking bookings without a formal multi-staff registration step) |
 | Cash payment flow | `DeclareCashDepositCommand` (client) → `ConfirmCashDepositCommand` (owner/artist) | Two-step prevents fraud; owner must physically confirm before status changes to Paid |
 | Cash subscription activation | `ActivateSubscriptionManuallyCommand` (IssuerOnly) | Issuer confirms cash payment out-of-band then activates in-platform; rare but necessary |
 | Studio payouts | Not handled by the platform — out of scope | Platform collects deposit; studio-to-artist split is an internal business matter |

@@ -62,7 +62,8 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             studio.ShowPlatformBranding,
             AllowBrandingRemoval: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
-            studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt);
+            studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
+            studio.IsSolo, studio.IsPublished);
     }
 }
 
