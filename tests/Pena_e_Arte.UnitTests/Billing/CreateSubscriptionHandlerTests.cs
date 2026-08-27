@@ -185,6 +185,30 @@ public class CreateSubscriptionHandlerTests
             Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Handle_SoloStudioUpgradingToPaidPlan_ClearsIsSolo()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 49m);
+        await SeedSubscription(SubscriptionStatus.Trialing, isSolo: true);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        _db.Studios.Single(s => s.Id == _studioId).IsSolo.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_SoloStudioStayingOnFreePlan_KeepsIsSolo()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 0m);
+        await SeedSubscription(SubscriptionStatus.Trialing, isSolo: true);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        _db.Studios.Single(s => s.Id == _studioId).IsSolo.Should().BeTrue();
+    }
+
     private async Task<Guid> SeedPlan(string? stripePriceIdMonthly = null, decimal priceMonthly = 49m)
     {
         Plan plan = new() { Name = "Pro" };
@@ -212,7 +236,8 @@ public class CreateSubscriptionHandlerTests
         return code.Id;
     }
 
-    private async Task SeedSubscription(SubscriptionStatus status, Guid? pendingReferralCodeId = null)
+    private async Task SeedSubscription(
+        SubscriptionStatus status, Guid? pendingReferralCodeId = null, bool isSolo = false)
     {
         Studio studio = new()
         {
@@ -222,6 +247,7 @@ public class CreateSubscriptionHandlerTests
             City = "Lisboa",
             OwnerEmail = "owner@test.com",
             IsActive = true,
+            IsSolo = isSolo,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
             PendingReferralCodeId = pendingReferralCodeId,
         };

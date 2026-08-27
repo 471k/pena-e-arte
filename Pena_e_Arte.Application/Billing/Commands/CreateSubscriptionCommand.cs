@@ -120,6 +120,12 @@ public class CreateSubscriptionHandler(
         subscription.CurrentPeriodEnd = periodEnd;
         subscription.TrialExpiresAt = null;
 
+        // A solo studio upgrading off the Free plan stops describing itself as "solo" —
+        // purely cosmetic/analytics, does not gate anything (a solo studio already has
+        // full functional access; IsPublished is unaffected).
+        if (subscription.Studio is { IsSolo: true } && price.Price > 0)
+            subscription.Studio.IsSolo = false;
+
         // Record redemption only when a discount was actually applied
         ReferralRedemption? newRedemption = null;
         if (pendingCode is not null && discountApplied)
