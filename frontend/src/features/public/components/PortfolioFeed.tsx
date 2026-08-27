@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bookmark, MapPin, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
+import { Badge }    from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ImageWithFallback } from "@/shared/components/ImageWithFallback";
 import { StarRating } from "@/shared/components/ui/StarRating";
@@ -22,6 +23,7 @@ import {
   useUnsaveImageMutation,
 } from "../savedImagesApi";
 import { ReviewSection } from "./ReviewSection";
+import { CategoryTabs, CATEGORIES } from "./CategoryTabs";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -220,6 +222,12 @@ function PortfolioLightbox({ images, currentIndex, token, onClose, onNavigate }:
                   {image.artistName}
                 </Link>
                 <p className="text-sm text-muted-foreground">{image.studioName}</p>
+
+                {image.category && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {CATEGORIES.find((c) => c.value === image.category)?.label ?? image.category}
+                  </Badge>
+                )}
 
                 {image.style && (
                   <span className="inline-block text-[10px] font-medium uppercase tracking-wider
@@ -461,6 +469,7 @@ export function PortfolioFeed({
 }: PortfolioFeedProps) {
   const [page,          setPage]         = useState(1);
   const [activeStyle,   setActiveStyle]  = useState("");
+  const [activeCategory, setActiveCategory] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [allImages,     setAllImages]    = useState<PortfolioImageResponse[]>([]);
 
@@ -496,6 +505,7 @@ export function PortfolioFeed({
     radiusKm: effectiveRadiusKm,
     page,
     style:    activeStyle || undefined,
+    category: activeCategory || undefined,
     search:   keyword.trim() || undefined,
   };
 
@@ -533,6 +543,12 @@ export function PortfolioFeed({
     setAllImages([]);
   }
 
+  function handleCategoryChange(category: string) {
+    setActiveCategory(category);
+    setPage(1);
+    setAllImages([]);
+  }
+
   function handleToggleSave(imageId: string, isSaved: boolean) {
     if (!userId) return;
     if (isSaved) void unsaveImage(imageId);
@@ -541,6 +557,7 @@ export function PortfolioFeed({
 
   if (isLoading && page === 1) return (
     <div className="space-y-4">
+      <CategoryTabs activeCategory={activeCategory} onChange={handleCategoryChange} />
       <StyleChips activeStyle={activeStyle} onChange={handleStyleChange} />
       <PortfolioSkeleton />
     </div>
@@ -549,6 +566,7 @@ export function PortfolioFeed({
   if (isError && allImages.length === 0) {
     return (
       <div className="space-y-4">
+        <CategoryTabs activeCategory={activeCategory} onChange={handleCategoryChange} />
         <StyleChips activeStyle={activeStyle} onChange={handleStyleChange} />
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <div className="rounded-full bg-destructive/10 p-6">
@@ -584,6 +602,7 @@ export function PortfolioFeed({
   if (allImages.length === 0 && !isLoading) {
     return (
       <div className="space-y-4">
+        <CategoryTabs activeCategory={activeCategory} onChange={handleCategoryChange} />
         <StyleChips activeStyle={activeStyle} onChange={handleStyleChange} />
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <div className="rounded-full bg-muted/40 p-6">
@@ -605,9 +624,13 @@ export function PortfolioFeed({
                 ? `No tattoos matching "${keyword.trim()}"${useLocationScope ? ` in ${locationLabel}` : ""} found. Try a different search term${useLocationScope ? " or a wider area" : ""}.`
                 : nearOnly
                   ? "No artists with portfolio images found nearby. Try a larger radius or turn off the location filter."
-                  : activeStyle
-                    ? `No ${activeStyle} tattoos found. Try a different style or browse all.`
-                    : "Be among the first artists to show your work here."}
+                  : activeStyle && activeCategory
+                    ? `No ${activeStyle} ${CATEGORIES.find((c) => c.value === activeCategory)?.label.toLowerCase()} found. Try a different style or category, or browse all.`
+                    : activeStyle
+                      ? `No ${activeStyle} tattoos found. Try a different style or browse all.`
+                      : activeCategory
+                        ? `No ${CATEGORIES.find((c) => c.value === activeCategory)?.label.toLowerCase()} found. Try a different filter or browse all.`
+                        : "Be among the first artists to show your work here."}
             </p>
           </div>
           <Link
@@ -626,6 +649,7 @@ export function PortfolioFeed({
 
   return (
     <div className="space-y-4">
+      <CategoryTabs activeCategory={activeCategory} onChange={handleCategoryChange} />
       <StyleChips activeStyle={activeStyle} onChange={handleStyleChange} />
 
       <MasonryGrid

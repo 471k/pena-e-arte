@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Social;
 using Pena_e_Arte.Contracts.Responses.Public;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 
@@ -52,8 +53,16 @@ public class GetPublicStudioHandler(IAppDbContext db)
             .FirstOrDefaultAsync(ct);
 
         // Gallery: up to 3 images per artist, max 9 total, round-robin so no single artist dominates.
+        // Prefer Fresh/Healed tattoo photos over Design images — a design/flash sketch only fills a
+        // slot when an artist has fewer than 3 non-Design images. Newest first within each group.
         List<List<string>> imagesByArtist = artists
-            .Select(a => a.Portfolio.Select(p => p.ImageUrl).Take(3).ToList())
+            .Select(a =>
+            {
+                List<PortfolioImage> ordered = a.Portfolio.OrderByDescending(p => p.CreatedAt).ToList();
+                List<PortfolioImage> nonDesign = ordered.Where(p => p.Category != PortfolioImageCategory.Design).ToList();
+                List<PortfolioImage> designs = ordered.Where(p => p.Category == PortfolioImageCategory.Design).ToList();
+                return nonDesign.Concat(designs).Take(3).Select(p => p.ImageUrl).ToList();
+            })
             .Where(imgs => imgs.Count > 0)
             .ToList();
 

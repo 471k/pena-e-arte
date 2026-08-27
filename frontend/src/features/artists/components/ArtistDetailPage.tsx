@@ -32,6 +32,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import { Badge } from "@/shared/components/ui/badge";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import {
   Dialog,
@@ -77,6 +81,13 @@ const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "fineline",        label: "Fineline"        },
   { value: "neo-traditional", label: "Neo-Traditional" },
   { value: "japanese",        label: "Japanese"        },
+];
+
+// Keep in sync with PortfolioImageCategory.cs constants on the backend.
+const CATEGORY_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "fresh",  label: "Fresh Tattoo"  },
+  { value: "healed", label: "Healed Tattoo" },
+  { value: "design", label: "Design"        },
 ];
 
 const editSchema = z.object({
@@ -214,7 +225,7 @@ export function ArtistDetailPage() {
     }
   }
 
-  function openImagePicker() {
+  function openImagePicker(category: string) {
     if (!id || !artist) return;
     const input = document.createElement("input");
     input.type = "file";
@@ -230,14 +241,15 @@ export function ArtistDetailPage() {
         return;
       }
       const images = [
-        ...artist.portfolioImages.map((p) => ({ imageUrl: p.imageUrl, style: p.style })),
-        { imageUrl: publicUrl, style: null },
+        ...artist.portfolioImages.map((p) => ({ imageUrl: p.imageUrl, style: p.style, category: p.category })),
+        { imageUrl: publicUrl, style: null, category },
       ];
       const result = await updatePortfolio({ id, images });
       if ("error" in result) {
         toast.error("Failed to save portfolio image.");
       } else {
-        toast.success("Image added to portfolio. Pick a style so it shows up under Discover filters.");
+        const label = CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category;
+        toast.success(`${label} added to portfolio. Pick a style so it shows up under Discover filters.`);
       }
     };
     document.body.appendChild(input);
@@ -248,7 +260,7 @@ export function ArtistDetailPage() {
     if (!id || !artist) return;
     const images = artist.portfolioImages
       .filter((p) => p.imageId !== imageId)
-      .map((p) => ({ imageUrl: p.imageUrl, style: p.style }));
+      .map((p) => ({ imageUrl: p.imageUrl, style: p.style, category: p.category }));
     const result = await updatePortfolio({ id, images });
     if ("error" in result) {
       toast.error("Failed to remove image.");
@@ -260,10 +272,24 @@ export function ArtistDetailPage() {
     const images = artist.portfolioImages.map((p) => ({
       imageUrl: p.imageUrl,
       style:    p.imageId === imageId ? style : p.style,
+      category: p.category,
     }));
     const result = await updatePortfolio({ id, images });
     if ("error" in result) {
       toast.error("Failed to update style.");
+    }
+  }
+
+  async function updateImageCategory(imageId: string, category: string | null) {
+    if (!id || !artist) return;
+    const images = artist.portfolioImages.map((p) => ({
+      imageUrl: p.imageUrl,
+      style:    p.style,
+      category: p.imageId === imageId ? category : p.category,
+    }));
+    const result = await updatePortfolio({ id, images });
+    if ("error" in result) {
+      toast.error("Failed to update category.");
     }
   }
 
@@ -529,20 +555,40 @@ export function ArtistDetailPage() {
             <TabsContent value="portfolio" className="mt-4">
               {canManagePortfolio && (
                 <div className="flex justify-end mb-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    disabled={isUploading || isSavingPf}
-                    onClick={openImagePicker}
-                  >
-                    {isUploading || isSavingPf ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ImagePlus className="h-3.5 w-3.5" />
-                    )}
-                    Add image
-                  </Button>
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={isUploading || isSavingPf}
+                      >
+                        {isUploading || isSavingPf ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ImagePlus className="h-3.5 w-3.5" />
+                        )}
+                        Add image
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {CATEGORY_OPTIONS.map(({ value, label }) => (
+                        <DropdownMenuItem
+                          key={value}
+                          onSelect={() => {
+                            // Deferred (not prevented — a prevented onSelect keeps the dropdown
+                            // open indefinitely): opening the native file picker synchronously
+                            // from a DropdownMenuItem select races the menu's own close/focus-
+                            // return behavior, the same class of overlay-interaction issue
+                            // documented elsewhere in this codebase for Dialog-based overlays.
+                            setTimeout(() => openImagePicker(value), 0);
+                          }}
+                        >
+                          {label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
 
@@ -551,13 +597,14 @@ export function ArtistDetailPage() {
                   <p className="text-sm font-medium">No portfolio images yet</p>
                   {canManagePortfolio && (
                     <p className="text-xs text-muted-foreground">
-                      Upload images and tag each with a style so they appear on the public discover feed and its style filters.
+                      Upload fresh tattoos, healed results, or designs, and tag each with a style so
+                      they appear on the public discover feed and its filters.
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="columns-2 md:columns-3 gap-3 space-y-3">
-                  {artist.portfolioImages.map(({ imageId, imageUrl, style }) => (
+                  {artist.portfolioImages.map(({ imageId, imageUrl, style, category }) => (
                     <div key={imageId} className="relative break-inside-avoid group space-y-1.5">
                       <div className="relative">
                         <img
@@ -591,28 +638,56 @@ export function ArtistDetailPage() {
                         )}
                       </div>
                       {canManagePortfolio ? (
-                        <Select
-                          value={style ?? "none"}
-                          onValueChange={(v) => void updateImageStyle(imageId, v === "none" ? null : v)}
-                        >
-                          <SelectTrigger
-                            aria-label="Tattoo style"
-                            className={cn("h-7 text-xs", !style && "text-muted-foreground")}
+                        <>
+                          <Select
+                            value={category ?? "none"}
+                            onValueChange={(v) => void updateImageCategory(imageId, v === "none" ? null : v)}
                           >
-                            <SelectValue placeholder="No style" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No style</SelectItem>
-                            {STYLE_OPTIONS.map(({ value, label }) => (
-                              <SelectItem key={value} value={value}>{label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : style ? (
-                        <p className="text-xs text-muted-foreground px-1">
-                          {STYLE_OPTIONS.find((s) => s.value === style)?.label ?? style}
-                        </p>
-                      ) : null}
+                            <SelectTrigger
+                              aria-label="Portfolio category"
+                              className={cn("h-7 text-xs", !category && "text-muted-foreground")}
+                            >
+                              <SelectValue placeholder="Uncategorized" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Uncategorized</SelectItem>
+                              {CATEGORY_OPTIONS.map(({ value, label }) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={style ?? "none"}
+                            onValueChange={(v) => void updateImageStyle(imageId, v === "none" ? null : v)}
+                          >
+                            <SelectTrigger
+                              aria-label="Tattoo style"
+                              className={cn("h-7 text-xs", !style && "text-muted-foreground")}
+                            >
+                              <SelectValue placeholder="No style" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No style</SelectItem>
+                              {STYLE_OPTIONS.map(({ value, label }) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
+                      ) : (
+                        <div className="space-y-0.5 px-1">
+                          {category && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category}
+                            </Badge>
+                          )}
+                          {style && (
+                            <p className="text-xs text-muted-foreground">
+                              {STYLE_OPTIONS.find((s) => s.value === style)?.label ?? style}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

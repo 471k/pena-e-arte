@@ -44,8 +44,8 @@ const ARTIST: PublicArtistResponse = {
   bio:             "Specialises in neo-trad and blackwork.",
   profileImageUrl: null,
   portfolioImages: [
-    { imageId: "img-001", imageUrl: "https://cdn.example.com/port1.jpg", style: null },
-    { imageId: "img-002", imageUrl: "https://cdn.example.com/port2.jpg", style: null },
+    { imageId: "img-001", imageUrl: "https://cdn.example.com/port1.jpg", style: null, category: null },
+    { imageId: "img-002", imageUrl: "https://cdn.example.com/port2.jpg", style: null, category: null },
   ] satisfies ArtistPortfolioImage[],
   specializations: "Blackwork, Neo-Trad",
   hourlyRate:      120,
@@ -302,6 +302,57 @@ describe("ArtistPortfolioPage", () => {
       renderPage(null);
       expect(screen.getByText("Artist not found.")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+    });
+  });
+
+  describe("category filtering", () => {
+    it("does not render category tabs when fewer than 2 distinct categories are present", () => {
+      renderPage();
+      expect(screen.queryByRole("group", { name: /filter by portfolio category/i })).not.toBeInTheDocument();
+    });
+
+    it("renders category tabs and filters images when >= 2 distinct categories are present", () => {
+      mockUseGetPublicArtistQuery.mockReturnValue({
+        data: {
+          ...ARTIST,
+          portfolioImages: [
+            { imageId: "img-fresh", imageUrl: "https://cdn.example.com/fresh.jpg", style: null, category: "fresh" },
+            { imageId: "img-design", imageUrl: "https://cdn.example.com/design.jpg", style: null, category: "design" },
+          ] satisfies ArtistPortfolioImage[],
+        },
+        isLoading: false,
+        isError: false,
+      });
+      renderPage();
+
+      const group = screen.getByRole("group", { name: /filter by portfolio category/i });
+      expect(group).toBeInTheDocument();
+
+      expect(screen.getAllByRole("button", { name: /view portfolio image/i })).toHaveLength(2);
+
+      fireEvent.click(screen.getByRole("radio", { name: "Designs" }));
+      expect(screen.getAllByRole("button", { name: /view portfolio image/i })).toHaveLength(1);
+    });
+
+    it("combines an active category with an active style filter", () => {
+      mockUseGetPublicArtistQuery.mockReturnValue({
+        data: {
+          ...ARTIST,
+          portfolioImages: [
+            { imageId: "img-1", imageUrl: "https://cdn.example.com/1.jpg", style: "blackwork", category: "fresh" },
+            { imageId: "img-2", imageUrl: "https://cdn.example.com/2.jpg", style: "realism", category: "fresh" },
+            { imageId: "img-3", imageUrl: "https://cdn.example.com/3.jpg", style: "blackwork", category: "design" },
+          ] satisfies ArtistPortfolioImage[],
+        },
+        isLoading: false,
+        isError: false,
+      });
+      renderPage();
+
+      fireEvent.click(screen.getByRole("radio", { name: "Fresh Tattoos" }));
+      fireEvent.click(screen.getByRole("radio", { name: "Blackwork" }));
+
+      expect(screen.getAllByRole("button", { name: /view portfolio image/i })).toHaveLength(1);
     });
   });
 });

@@ -5,6 +5,7 @@ export interface ArtistPortfolioImage {
   imageId:  string;
   imageUrl: string;
   style:    string | null;
+  category: string | null;
 }
 
 export interface ArtistResponse {
@@ -129,7 +130,7 @@ export const artistsApi = createApi({
     }),
     updateArtistPortfolio: builder.mutation<
       ArtistResponse,
-      { id: string; images: { imageUrl: string; style: string | null }[] }
+      { id: string; images: { imageUrl: string; style: string | null; category: string | null }[] }
     >({
       query: ({ id, images }) => ({
         url:    `artists/${id}/portfolio-images`,

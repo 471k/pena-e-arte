@@ -4,6 +4,7 @@ public record PortfolioImageResponse(
     Guid ImageId,
     string ImageUrl,
     string? Style,              // nullable — untagged images are valid
+    string? Category,           // nullable — uncategorized images are valid; fresh/healed/design
     string ArtistName,
     string ArtistSlug,
     string StudioName,

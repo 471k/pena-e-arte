@@ -49,6 +49,15 @@ public class GetPublicStudioHandlerTests
         await _db.SaveChangesAsync();
     }
 
+    private async Task AddCategorizedPortfolioImage(Artist artist, string url, string? category, DateTime createdAt)
+    {
+        _db.PortfolioImages.Add(new PortfolioImage
+        {
+            ArtistId = artist.Id, StudioId = artist.StudioId, ImageUrl = url, Category = category, CreatedAt = createdAt,
+        });
+        await _db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task Handle_UnknownSlug_ReturnsNull()
     {
@@ -314,6 +323,54 @@ public class GetPublicStudioHandlerTests
 
         result!.Artists.Should().ContainSingle(a => a.Slug == "active-artist");
         result.Artists.Should().NotContain(a => a.Slug == "deleted-artist");
+    }
+
+    [Fact]
+    public async Task Handle_GalleryImages_PrefersNonDesignOverDesignImages()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        Artist artist = MakeArtist(studio.Id, "artist-a");
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+
+        DateTime now = DateTime.UtcNow;
+        await AddCategorizedPortfolioImage(artist, "fresh-1", "fresh", now.AddMinutes(-1));
+        await AddCategorizedPortfolioImage(artist, "fresh-2", "fresh", now.AddMinutes(-2));
+        await AddCategorizedPortfolioImage(artist, "design-1", "design", now);
+        await AddCategorizedPortfolioImage(artist, "design-2", "design", now.AddMinutes(-3));
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.GalleryImages.Should().HaveCount(3);
+        result.GalleryImages.Should().Contain(["fresh-1", "fresh-2", "design-1"]);
+        result.GalleryImages.Should().NotContain("design-2");
+    }
+
+    [Fact]
+    public async Task Handle_GalleryImages_ArtistWithOnlyDesignImages_FallsBackToDesigns()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        Artist artist = MakeArtist(studio.Id, "artist-a");
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+
+        DateTime now = DateTime.UtcNow;
+        await AddCategorizedPortfolioImage(artist, "design-1", "design", now);
+        await AddCategorizedPortfolioImage(artist, "design-2", "design", now.AddMinutes(-1));
+        await AddCategorizedPortfolioImage(artist, "design-3", "design", now.AddMinutes(-2));
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.GalleryImages.Should().HaveCount(3);
+        result.GalleryImages.Should().Contain(["design-1", "design-2", "design-3"]);
     }
 }
 

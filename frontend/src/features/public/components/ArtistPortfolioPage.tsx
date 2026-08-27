@@ -31,6 +31,7 @@ import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
 import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
+import { CategoryTabs, CATEGORIES } from "./CategoryTabs";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
 
@@ -409,6 +410,7 @@ export function ArtistPortfolioPage() {
   const reviewsRef     = useRef<HTMLDivElement>(null);
   const [lightboxItem, setLightboxItem] = useState<LightboxItem | null>(null);
   const [activeStyle,  setActiveStyle]  = useState<string>("");
+  const [activeCategory, setActiveCategory] = useState<string>("");
   const [reportOpen,   setReportOpen]   = useState(false);
   const canFileReport  = useIsClientRole();
   const navigate       = useNavigate();
@@ -436,6 +438,12 @@ export function ArtistPortfolioPage() {
     if (!artist) return [];
     const seen = new Set(artist.portfolioImages.map((p) => p.style).filter(Boolean));
     return STYLES.filter(({ value }) => seen.has(value));
+  }, [artist]);
+
+  const availableCategories = useMemo(() => {
+    if (!artist) return [];
+    const seen = new Set(artist.portfolioImages.map((p) => p.category).filter(Boolean));
+    return CATEGORIES.filter(({ value }) => value !== "" && seen.has(value));
   }, [artist]);
 
   function scrollToReviews() {
@@ -467,11 +475,13 @@ export function ArtistPortfolioPage() {
     else navigate(`/s/${studioSlug}`);
   }
 
-  const visibleImages = activeStyle
-    ? artist.portfolioImages.filter((p) => p.style === activeStyle)
-    : artist.portfolioImages;
+  const visibleImages = artist.portfolioImages.filter((p) =>
+    (!activeStyle || p.style === activeStyle) &&
+    (!activeCategory || p.category === activeCategory)
+  );
 
   const activeStyleLabel = STYLES.find(({ value }) => value === activeStyle)?.label ?? activeStyle;
+  const activeCategoryLabel = CATEGORIES.find(({ value }) => value === activeCategory)?.label ?? activeCategory;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -631,6 +641,15 @@ export function ArtistPortfolioPage() {
                 )}
               </div>
 
+              {availableCategories.length > 1 && (
+                <CategoryTabs
+                  activeCategory={activeCategory}
+                  onChange={setActiveCategory}
+                  categories={[{ value: "", label: "All" }, ...availableCategories]}
+                  className="mb-4"
+                />
+              )}
+
               {availableStyles.length > 1 && (
                 <div
                   role="group"
@@ -662,7 +681,15 @@ export function ArtistPortfolioPage() {
                 images={visibleImages}
                 artistName={artist.name}
                 onImageClick={(item) => setLightboxItem(item)}
-                emptyMessage={activeStyle ? `No ${activeStyleLabel} images yet.` : undefined}
+                emptyMessage={
+                  activeStyle && activeCategory
+                    ? `No ${activeStyleLabel} ${activeCategoryLabel.toLowerCase()} yet.`
+                    : activeStyle
+                      ? `No ${activeStyleLabel} images yet.`
+                      : activeCategory
+                        ? `No ${activeCategoryLabel.toLowerCase()} yet.`
+                        : undefined
+                }
               />
             </section>
 
