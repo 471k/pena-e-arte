@@ -18,10 +18,13 @@ public class DeclineStudioJoinInviteHandler(IAppDbContext db, ICurrentUser curre
             throw new NotFoundException(nameof(StudioJoinInvite), command.InviteId);
 
         // IgnoreQueryFilters: invites are cross-tenant by nature — see AppDbContext.
+        // Plain == (not .ToLower()) — MySQL's default collation is already case-insensitive,
+        // and .ToLower() on both sides would prevent the invited-email index from being used
+        // (see ix_studio_join_invites_invited_email) for no behavioral benefit.
         StudioJoinInvite? invite = await db.StudioJoinInvites.IgnoreQueryFilters()
             .FirstOrDefaultAsync(i =>
                 i.Id == command.InviteId
-                && i.InvitedEmail.ToLower() == currentUser.Email.ToLower(), ct);
+                && i.InvitedEmail == currentUser.Email, ct);
 
         if (invite is null || invite.Status != StudioJoinInviteStatus.Pending)
             throw new NotFoundException(nameof(StudioJoinInvite), command.InviteId);

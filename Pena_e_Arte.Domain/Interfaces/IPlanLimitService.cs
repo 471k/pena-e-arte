@@ -56,4 +56,14 @@ public interface IPlanLimitService
     /// truly concurrent requests — see PlanLimitService's cache-logic comment.
     /// </summary>
     Task InvalidateUsageCacheAsync(QuotaType quotaType, CancellationToken ct = default);
+
+    /// <summary>
+    /// Same as <see cref="InvalidateUsageCacheAsync(QuotaType, CancellationToken)"/> but scoped
+    /// to an explicit studio rather than ICurrentTenant — the write-through counterpart to
+    /// <see cref="EnsureWithinLimitAsync(Guid, QuotaType, CancellationToken)"/> for the same
+    /// cross-studio-accept case. Using the ICurrentTenant-scoped overload there would invalidate
+    /// the caller's OLD studio's cache (their active tenant at that point in the flow) instead of
+    /// the studio that actually gained the new artist.
+    /// </summary>
+    Task InvalidateUsageCacheAsync(Guid studioId, QuotaType quotaType, CancellationToken ct = default);
 }

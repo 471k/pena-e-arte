@@ -30,9 +30,13 @@ public class AcceptStudioJoinInviteHandlerTests
         _db, _currentUser, _identity, _planLimits, NullLogger<AcceptStudioJoinInviteHandler>.Instance);
 
     private async Task<Guid> SeedPendingInviteAndSoloStudio(
-        DateTime? expiresAt = null, bool soloStudioStillOwned = true)
+        DateTime? expiresAt = null, bool soloStudioStillOwned = true, bool newStudioActive = true)
     {
-        _db.Studios.Add(new Studio { Id = _newStudioId, Name = "Ink Collective", Slug = "ink-collective", City = "Lisbon" });
+        _db.Studios.Add(new Studio
+        {
+            Id = _newStudioId, Name = "Ink Collective", Slug = "ink-collective", City = "Lisbon",
+            IsActive = newStudioActive,
+        });
         if (soloStudioStillOwned)
         {
             _db.Studios.Add(new Studio
@@ -148,6 +152,74 @@ public class AcceptStudioJoinInviteHandlerTests
         Func<Task> act = () => CreateSut().Handle(new AcceptStudioJoinInviteCommand(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_InvitingStudioInactive_ThrowsBusinessRuleViolationException()
+    {
+        Guid inviteId = await SeedPendingInviteAndSoloStudio(newStudioActive: false);
+
+        Func<Task> act = () => CreateSut().Handle(new AcceptStudioJoinInviteCommand(inviteId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        // The caller's own solo studio must not be touched when the inviting studio turns out
+        // to be unusable — otherwise they'd be locked out of both.
+        _db.Studios.Single(s => s.Id == _oldStudioId).IsActive.Should().BeTrue();
+        _db.Artists.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_HappyPath_InvalidatesUsageCacheForNewStudioNotOldStudio()
+    {
+        Guid inviteId = await SeedPendingInviteAndSoloStudio();
+
+        await CreateSut().Handle(new AcceptStudioJoinInviteCommand(inviteId), default);
+
+        await _planLimits.Received(1)
+            .InvalidateUsageCacheAsync(_newStudioId, QuotaType.Artists, Arg.Any<CancellationToken>());
+        await _planLimits.DidNotReceive()
+            .InvalidateUsageCacheAsync(_oldStudioId, QuotaType.Artists, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_IdentityFailureAfterQuotaCheck_LeavesInvitePendingAndNoArtistCreated()
+    {
+        // Proves the DB write is retry-safe: if token issuance fails, nothing has been
+        // committed to the DB yet, so the invite is still Pending and a retry is possible —
+        // unlike marking the invite Accepted before the Identity swap, which would permanently
+        // block any retry.
+        Guid inviteId = await SeedPendingInviteAndSoloStudio();
+        _identity.IssueTokensForTenantAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((false, (string?)null, (string?)null, "Transient failure."));
+
+        Func<Task> act = () => CreateSut().Handle(new AcceptStudioJoinInviteCommand(inviteId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        _db.StudioJoinInvites.Single(i => i.Id == inviteId).Status.Should().Be(StudioJoinInviteStatus.Pending);
+        _db.Artists.Should().BeEmpty();
+        _db.Studios.Single(s => s.Id == _oldStudioId).IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_RetryAfterIdentityFailure_SucceedsOnSecondAttempt()
+    {
+        Guid inviteId = await SeedPendingInviteAndSoloStudio();
+        _identity.IssueTokensForTenantAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((false, (string?)null, (string?)null, "Transient failure."));
+
+        Func<Task> firstAttempt = () => CreateSut().Handle(new AcceptStudioJoinInviteCommand(inviteId), default);
+        await firstAttempt.Should().ThrowAsync<BusinessRuleViolationException>();
+
+        // Identity now recovers — the idempotent Identity calls from the first attempt (role
+        // swap, claim add/remove) are safely re-applied, then the DB write completes.
+        _identity.IssueTokensForTenantAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((true, "access-token", "refresh-token", (string?)null));
+
+        AuthResponse result = await CreateSut().Handle(new AcceptStudioJoinInviteCommand(inviteId), default);
+
+        result.AccessToken.Should().Be("access-token");
+        _db.StudioJoinInvites.Single(i => i.Id == inviteId).Status.Should().Be(StudioJoinInviteStatus.Accepted);
+        _db.Artists.Should().ContainSingle();
     }
 
     [Fact]

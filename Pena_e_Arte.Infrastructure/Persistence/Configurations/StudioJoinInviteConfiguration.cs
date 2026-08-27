@@ -14,7 +14,9 @@ public class StudioJoinInviteConfiguration : IEntityTypeConfiguration<StudioJoin
         builder.Property(i => i.InvitedEmail).HasMaxLength(256).IsRequired();
         builder.Property(i => i.FirstName).HasMaxLength(100).IsRequired();
         builder.Property(i => i.LastName).HasMaxLength(100).IsRequired();
-        builder.Property(i => i.Specializations).HasMaxLength(500);
+        // Matches Artist.Specializations (ArtistConfiguration) exactly — this value is copied
+        // verbatim onto the real Artist row at accept time, so the columns must agree.
+        builder.Property(i => i.Specializations).HasMaxLength(1000);
         builder.Property(i => i.HourlyRate).HasColumnType("decimal(18,2)");
         builder.Property(i => i.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
 

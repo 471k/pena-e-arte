@@ -66,13 +66,13 @@ function makeStore() {
   });
 }
 
-function renderBell() {
+function renderBell(enabled = true) {
   const store = makeStore();
   render(
     <Provider store={store}>
       <MemoryRouter initialEntries={["/dashboard"]}>
         <Routes>
-          <Route path="/dashboard" element={<StudioJoinInviteBell />} />
+          <Route path="/dashboard" element={<StudioJoinInviteBell enabled={enabled} />} />
           <Route path="/schedule" element={<div data-testid="schedule-page" />} />
         </Routes>
       </MemoryRouter>
@@ -84,12 +84,25 @@ function renderBell() {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("StudioJoinInviteBell", () => {
+  it("does not fetch or render when enabled=false (non-solo owner)", async () => {
+    let requestMade = false;
+    server.use(http.get("http://localhost/api/v1/auth/join-invites", () => {
+      requestMade = true;
+      return HttpResponse.json(INVITES);
+    }));
+    renderBell(false);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(requestMade).toBe(false);
+    expect(screen.queryByLabelText(/pending/i)).not.toBeInTheDocument();
+  });
+
   it("does not render when there are no pending invites", async () => {
     server.use(http.get("http://localhost/api/v1/auth/join-invites", () => HttpResponse.json([])));
-    const { container } = renderBell();
+    renderBell();
     // allow the query to resolve
     await new Promise((r) => setTimeout(r, 0));
-    expect(container.firstChild).toBeNull();
+    expect(screen.queryByLabelText(/pending/i)).not.toBeInTheDocument();
   });
 
   it("shows the pending-invite badge count", async () => {

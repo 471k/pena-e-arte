@@ -78,20 +78,25 @@ public class RegisterSoloArtistHandler(
             GracePeriodEnd = DateTime.UtcNow.AddYears(50),
         };
 
-        db.Studios.Add(studio);
-        db.Subscriptions.Add(subscription);
-        await db.SaveChangesAsync(ct);
-
-        // "owner" role, not "artist" — mirrors the existing "owner who is also an artist"
-        // pattern via CreateOwnArtistProfileCommand, rather than inventing a second role
-        // model. No owner-email-must-match-an-existing-studio check here (unlike
-        // RegisterUserHandler's owner branch): this handler IS what creates the studio,
+        // Identity user created BEFORE the Studio/Subscription are persisted — studio.Id is
+        // already generated in memory (Studio.Id defaults to Guid.NewGuid() at construction), so
+        // it can be passed here without saving first. This mirrors CreateArtistHandler's
+        // identity-first ordering: if CreateUserAsync fails (duplicate email, transient Identity
+        // error), nothing has been written to db yet, so there's no orphaned Studio/Subscription
+        // left behind with no owning user. "owner" role, not "artist" — mirrors the existing
+        // "owner who is also an artist" pattern via CreateOwnArtistProfileCommand, rather than
+        // inventing a second role model. No owner-email-must-match-an-existing-studio check here
+        // (unlike RegisterUserHandler's owner branch): this handler IS what creates the studio,
         // in the same request, so there is nothing to cross-check against.
         (bool success, Guid userId, string[] errors) =
             await identity.CreateUserAsync(req.Email, req.Password, "owner", studio.Id, req.FirstName);
 
         if (!success)
             throw new BusinessRuleViolationException(string.Join("; ", errors));
+
+        db.Studios.Add(studio);
+        db.Subscriptions.Add(subscription);
+        await db.SaveChangesAsync(ct);
 
         // Send email verification (non-blocking; failure must not abort registration).
         // Duplicated verbatim from RegisterUserHandler rather than extracted into a shared

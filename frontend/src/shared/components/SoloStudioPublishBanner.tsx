@@ -37,6 +37,7 @@ export function SoloStudioPublishBanner({ studio }: SoloStudioPublishBannerProps
   return (
     <div
       role="status"
+      data-tour="owner-solo-publish-banner"
       className="flex items-center gap-3 px-4 py-2.5 bg-primary/10 border-b border-primary/30 text-sm"
     >
       <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />

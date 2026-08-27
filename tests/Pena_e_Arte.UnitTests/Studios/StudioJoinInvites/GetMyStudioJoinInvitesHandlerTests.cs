@@ -82,6 +82,30 @@ public class GetMyStudioJoinInvitesHandlerTests
     }
 
     [Fact]
+    public async Task Handle_InviteFromInactiveStudio_IsExcluded()
+    {
+        _db.Studios.Add(new Studio
+        {
+            Id = _studioId, Name = "Ink Collective", Slug = "ink-collective", City = "Lisbon",
+            IsActive = false,
+        });
+        _db.StudioJoinInvites.Add(new StudioJoinInvite
+        {
+            StudioId = _studioId,
+            InvitedEmail = "jane@example.com",
+            FirstName = "Jane",
+            LastName = "Doe",
+            Status = StudioJoinInviteStatus.Pending,
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+        });
+        await _db.SaveChangesAsync();
+
+        List<MyStudioJoinInviteResponse> result = await CreateSut().Handle(new GetMyStudioJoinInvitesQuery(), default);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_AlreadyRespondedInvite_IsExcluded()
     {
         await SeedStudio();

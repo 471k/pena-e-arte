@@ -149,7 +149,7 @@ export function OwnerLayout() {
           </Button>
           <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
           <MessagesNavBadge />
-          <StudioJoinInviteBell />
+          <StudioJoinInviteBell enabled={!!studio?.isSolo} />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

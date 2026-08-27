@@ -28,14 +28,25 @@ public class AcceptStudioJoinInviteHandler(
 
         // IgnoreQueryFilters + explicit checks: invites are cross-tenant by nature (see
         // AppDbContext). 404, not 403, for "not addressed to me" / already-responded / expired —
-        // same ownership-check convention used elsewhere in this codebase.
+        // same ownership-check convention used elsewhere in this codebase. Plain == (not
+        // .ToLower()) — MySQL's default collation is already case-insensitive, and .ToLower() on
+        // both sides would prevent the invited-email index from being used for no benefit.
         StudioJoinInvite? invite = await db.StudioJoinInvites.IgnoreQueryFilters()
+            .Include(i => i.Studio)
             .FirstOrDefaultAsync(i =>
                 i.Id == command.InviteId
-                && i.InvitedEmail.ToLower() == currentUser.Email.ToLower(), ct);
+                && i.InvitedEmail == currentUser.Email, ct);
 
         if (invite is null || invite.Status != StudioJoinInviteStatus.Pending || invite.ExpiresAt <= DateTime.UtcNow)
             throw new NotFoundException(nameof(StudioJoinInvite), command.InviteId);
+
+        // The inviting studio may have been suspended/deactivated between invite creation and
+        // acceptance — GetMyStudioJoinInvitesQuery filters this case out of the list view, but
+        // it must be re-checked here too: without it, accepting would close the caller's own
+        // working solo studio in exchange for a studio that will reject every request.
+        if (!invite.Studio.IsActive)
+            throw new BusinessRuleViolationException(
+                "This studio is no longer active and can't be joined.");
 
         // The caller must currently be the owner of exactly one IsSolo studio — their own solo
         // studio. If they've already dissolved it, or this isn't actually a solo artist account
@@ -54,6 +65,24 @@ public class AcceptStudioJoinInviteHandler(
         await planLimits.EnsureWithinLimitAsync(invite.StudioId, QuotaType.Artists, ct);
 
         string slug = await ArtistSlugHelper.GenerateUniqueSlugAsync(db, invite.FirstName, invite.LastName, ct);
+
+        // Identity role/tenant swap runs BEFORE the DB write below, not after. Every one of
+        // these calls is idempotent (SwapRoleAsync/EnsureTenantClaimAsync/RemoveTenantClaimAsync
+        // no-op if already applied; IssueTokensForTenantAsync just reissues), so if the DB write
+        // that follows fails, the invite is still Pending and a retry safely re-applies whatever
+        // didn't already land, then completes the DB write. The reverse ordering (DB write, then
+        // Identity) has no such recovery: once the invite is marked Accepted, a retry after an
+        // Identity failure is permanently blocked (see the earlier ordering's post-mortem in the
+        // Decisions Log) — accept without a real recovery path is worse than an extra idempotent
+        // Identity call on the happy path.
+        await identity.SwapRoleAsync(currentUser.UserId, "owner", "artist", ct);
+        await identity.RemoveTenantClaimAsync(currentUser.UserId, callerSoloStudio.Id, ct);
+        await identity.EnsureTenantClaimAsync(currentUser.UserId, invite.StudioId, ct);
+
+        (bool success, string? accessToken, string? refreshToken, string? error) =
+            await identity.IssueTokensForTenantAsync(currentUser.UserId, invite.StudioId, ct);
+
+        if (!success) throw new BusinessRuleViolationException(error ?? "Could not switch studio.");
 
         Artist artist = new()
         {
@@ -74,27 +103,16 @@ public class AcceptStudioJoinInviteHandler(
         callerSoloStudio.IsActive = false;
         callerSoloStudio.ClosedAt = DateTime.UtcNow;
 
-        // Mark the invite Accepted in the same write as the domain changes above — one atomic
-        // DB commit (Identity's role/claim/token propagation below is a separate store and
-        // cannot join this transaction; this mirrors SwitchStudioHandler's existing "DB state is
-        // the source of truth, Identity propagation follows" ordering).
         invite.Status = StudioJoinInviteStatus.Accepted;
         invite.RespondedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
 
-        await planLimits.InvalidateUsageCacheAsync(QuotaType.Artists, ct);
-
-        // Role/tenant swap: remove owner role + old studio's tenant_id claim, add artist role +
-        // new studio's tenant_id claim, then issue fresh tokens scoped to the new studio.
-        await identity.SwapRoleAsync(currentUser.UserId, "owner", "artist", ct);
-        await identity.RemoveTenantClaimAsync(currentUser.UserId, callerSoloStudio.Id, ct);
-        await identity.EnsureTenantClaimAsync(currentUser.UserId, invite.StudioId, ct);
-
-        (bool success, string? accessToken, string? refreshToken, string? error) =
-            await identity.IssueTokensForTenantAsync(currentUser.UserId, invite.StudioId, ct);
-
-        if (!success) throw new BusinessRuleViolationException(error ?? "Could not switch studio.");
+        // Explicit-studioId overload: the caller's ambient tenant is still the now-closed old
+        // studio at this point (RemoveTenantClaimAsync above only updates the Identity claim
+        // store, not this request's already-resolved ICurrentTenant) — the ICurrentTenant-scoped
+        // overload would invalidate the wrong studio's cache entry.
+        await planLimits.InvalidateUsageCacheAsync(invite.StudioId, QuotaType.Artists, ct);
 
         logger.LogInformation(
             "User {@UserId} accepted join invite {@InviteId}: closed studio {@OldStudioId}, joined {@NewStudioId} as artist",

@@ -186,15 +186,18 @@ public class CreateSubscriptionHandlerTests
     }
 
     [Fact]
-    public async Task Handle_SoloStudioUpgradingToPaidPlan_ClearsIsSolo()
+    public async Task Handle_SoloStudioUpgradingToPaidPlan_KeepsIsSolo()
     {
+        // IsSolo is never cleared by a plan change — AcceptStudioJoinInviteCommand and
+        // InviteSoloArtistToJoinCommand both hard-gate on it, so a studio that's still
+        // functionally solo but paying for a bigger plan must not lose join-invite eligibility.
         Guid planId = await SeedPlan(priceMonthly: 49m);
         await SeedSubscription(SubscriptionStatus.Trialing, isSolo: true);
 
         await CreateSut()
             .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
-        _db.Studios.Single(s => s.Id == _studioId).IsSolo.Should().BeFalse();
+        _db.Studios.Single(s => s.Id == _studioId).IsSolo.Should().BeTrue();
     }
 
     [Fact]

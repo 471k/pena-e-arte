@@ -17,9 +17,16 @@ public class InviteSoloArtistToJoinValidator : AbstractValidator<InviteSoloArtis
 {
     public InviteSoloArtistToJoinValidator()
     {
-        RuleFor(x => x.Request.Email).NotEmpty().EmailAddress();
+        // Mirrors CreateArtistValidator exactly — same CreateArtistRequest shape, and this
+        // invite's Specializations/HourlyRate are copied verbatim onto the real Artist row at
+        // accept time (AcceptStudioJoinInviteCommand), so the same bounds must apply here too.
+        RuleFor(x => x.Request.Email).NotEmpty().EmailAddress().MaximumLength(256);
         RuleFor(x => x.Request.FirstName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Request.LastName).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.Request.HourlyRate).InclusiveBetween(0.01m, 10_000m)
+            .When(x => x.Request.HourlyRate is not null);
+        RuleFor(x => x.Request.Specializations).MaximumLength(1000)
+            .When(x => x.Request.Specializations is not null);
     }
 }
 

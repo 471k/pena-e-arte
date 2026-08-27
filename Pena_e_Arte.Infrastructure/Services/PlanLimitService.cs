@@ -90,9 +90,12 @@ public class PlanLimitService(
     // does NOT eliminate the race for two truly concurrent requests that both read the cache
     // before either write completes — that needs a DB-level atomic counter or advisory lock,
     // which is out of scope here (see docs/claude/architecture.md Decisions Log).
-    public async Task InvalidateUsageCacheAsync(QuotaType quotaType, CancellationToken ct = default)
+    public Task InvalidateUsageCacheAsync(QuotaType quotaType, CancellationToken ct = default) =>
+        InvalidateUsageCacheAsync(tenant.StudioId, quotaType, ct);
+
+    public async Task InvalidateUsageCacheAsync(Guid studioId, QuotaType quotaType, CancellationToken ct = default)
     {
-        string key = CacheKey(tenant.StudioId, quotaType);
+        string key = CacheKey(studioId, quotaType);
 
         try
         {
@@ -101,7 +104,7 @@ public class PlanLimitService(
         catch (Exception ex)
         {
             logger.LogWarning(ex,
-                "Redis unavailable — plan usage cache invalidation skipped for studio {StudioId}", tenant.StudioId);
+                "Redis unavailable — plan usage cache invalidation skipped for studio {StudioId}", studioId);
         }
     }
 

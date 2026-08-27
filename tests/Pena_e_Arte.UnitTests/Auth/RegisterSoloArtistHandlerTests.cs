@@ -85,6 +85,21 @@ public class RegisterSoloArtistHandlerTests
     }
 
     [Fact]
+    public async Task Handle_IdentityFailure_DoesNotPersistOrphanedStudioOrSubscription()
+    {
+        // Identity user creation must happen before the Studio/Subscription are saved — otherwise
+        // a failure here would leave a Studio+Subscription committed with no owning user.
+        _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+                 .Returns((false, Guid.Empty, new[] { "Email already taken." }));
+
+        Func<Task> act = () => CreateSut().Handle(new RegisterSoloArtistCommand(ValidRequest()), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        _db.Studios.Should().BeEmpty();
+        _db.Subscriptions.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_DuplicateStudioName_SuffixesSlug()
     {
         IdentitySucceeds();

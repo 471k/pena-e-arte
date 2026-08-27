@@ -20,11 +20,18 @@ import {
 } from "../authApi";
 import type { MyStudioJoinInviteResponse } from "../authApi";
 
+type StudioJoinInviteBellProps = {
+  // Only a solo studio's owner can ever have a pending invite (server-side, an invite is only
+  // ever created for an email that resolves to an IsSolo-owned account) — gate the query on
+  // that so the majority of (non-solo) owners don't issue a request/DB query on every mount
+  // for a result that's guaranteed empty.
+  enabled: boolean;
+};
+
 // Solo-artist studio-join invites — a different domain than NotificationLog (email/SMS
 // history), so this is a small, dedicated bell rather than merged into NotificationBell's
-// dropdown. Only ever populated for an account that currently owns a solo studio; empty
-// otherwise, so it's safe to mount unconditionally in OwnerLayout.
-export function StudioJoinInviteBell() {
+// dropdown.
+export function StudioJoinInviteBell({ enabled }: StudioJoinInviteBellProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,7 +39,7 @@ export function StudioJoinInviteBell() {
   const [confirmInvite, setConfirmInvite] = useState<MyStudioJoinInviteResponse | null>(null);
   const [decliningId, setDecliningId] = useState<string | null>(null);
 
-  const { data: invites } = useGetMyJoinInvitesQuery();
+  const { data: invites } = useGetMyJoinInvitesQuery(undefined, { skip: !enabled });
   const [acceptInvite, { isLoading: isAccepting }] = useAcceptJoinInviteMutation();
   const [declineInvite] = useDeclineJoinInviteMutation();
 
@@ -77,6 +84,7 @@ export function StudioJoinInviteBell() {
         aria-label={`Studio join invites, ${count} pending`}
         aria-expanded={isOpen}
         title="Studio join invites"
+        data-tour="owner-join-invite-bell"
         className="relative h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       >
         <Mail className="h-4 w-4" />
