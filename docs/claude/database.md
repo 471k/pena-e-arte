@@ -83,6 +83,7 @@ public class Studio  // NOT a TenantEntity — issuer-owned
     public bool     IsActive         { get; set; }  // gates tenant access entirely
     public bool     IsSolo           { get; set; }  // auto-provisioned solo-artist studio (never set elsewhere)
     public bool     IsPublished      { get; set; }  // gates studio-directory listing only — see architecture.md
+    public DateTime? ClosedAt        { get; set; }  // set when its owner accepted a StudioJoinInvite to join elsewhere
     public DateTime TrialExpiresAt   { get; set; }  // CreatedAt + 14 days
     public string?  StripeCustomerId { get; set; }  // Stripe Billing (SaaS subscription)
     public DateTime CreatedAt        { get; init; } = DateTime.UtcNow;
@@ -161,6 +162,7 @@ except the following documented, narrowly-scoped exceptions:
 | 3 | `PortableProfileService` | Cross-tenant client profile read | Requires `ClientProfile.AllowCrossTenantRead == true` opt-in |
 | 4 | `IndustryReportJob` | Issuer-level industry aggregate | No PII, issuer-only consumer |
 | 5 | `ClientAccountExtensions.FindClientForUserAtStudioAsync` / `FindAnyClientRecordForUserAsync` | Multi-studio client "switch active studio" flow (`SwitchStudioCommand`) | Only ever queries by the *caller's own* `UserId`; never used to read another user's data, and never copies medical/`ClientProfile` data across studios |
+| 6 | `StudioJoinInvites` reads in `InviteSoloArtistToJoinHandler` / `GetMyStudioJoinInvitesHandler` / `AcceptStudioJoinInviteHandler` / `DeclineStudioJoinInviteHandler` | Solo artist accepting/declining a cross-studio join invite (`docs/claude/overnight-prompt-solo-independent-artist-2026-08-26.md` Phase 6) | `StudioJoinInvite` itself carries no query filter (it isn't a `TenantEntity` — the invitee is not a member of the inviting studio's tenant until they accept); every read is additionally scoped by the *caller's own* email or the studio the caller currently owns, never an arbitrary studio id |
 
 ---
 

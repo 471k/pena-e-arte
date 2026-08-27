@@ -41,6 +41,10 @@ public interface IAppDbContext
     DbSet<ReferralCode> ReferralCodes { get; }
     DbSet<ReferralRedemption> ReferralRedemptions { get; }
 
+    // Solo-artist studio-join invites — no tenant filter (invited party is not yet a
+    // member of the inviting studio's tenant; see AppDbContext)
+    DbSet<StudioJoinInvite> StudioJoinInvites { get; }
+
     // Cross-tenant public data
     DbSet<Review> Reviews { get; }
 

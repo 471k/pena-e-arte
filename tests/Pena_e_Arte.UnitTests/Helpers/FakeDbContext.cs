@@ -37,6 +37,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
+    public DbSet<StudioJoinInvite> StudioJoinInvites => Set<StudioJoinInvite>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<SavedPortfolioImage> SavedPortfolioImages => Set<SavedPortfolioImage>();
     public DbSet<InstagramConnection> InstagramConnections => Set<InstagramConnection>();
@@ -83,6 +84,11 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasOne(r => r.Studio)
             .WithMany()
             .HasForeignKey(r => r.StudioId);
+
+        modelBuilder.Entity<StudioJoinInvite>()
+            .HasOne(i => i.Studio)
+            .WithMany()
+            .HasForeignKey(i => i.StudioId);
 
         modelBuilder.Entity<ReferralCode>()
             .HasMany(r => r.Redemptions)

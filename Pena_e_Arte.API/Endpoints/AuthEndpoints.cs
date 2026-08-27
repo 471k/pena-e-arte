@@ -2,6 +2,7 @@ using System.Security.Claims;
 using MediatR;
 using Pena_e_Arte.Application.Auth.Commands;
 using Pena_e_Arte.Application.Auth.Queries;
+using Pena_e_Arte.Application.Studios.StudioJoinInvites;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 
@@ -33,6 +34,13 @@ public static class AuthEndpoints
             GetStudioNotificationPreferences).RequireAuthorization("ClientOnly");
         group.MapPut("/my-studios/{studioId:guid}/notification-preferences",
             UpdateStudioNotificationPreferences).RequireAuthorization("ClientOnly");
+
+        // Solo-artist studio-join invites — any authenticated role; the handlers themselves
+        // enforce eligibility (invitee email match, solo-owner status), matching this codebase's
+        // "404 not 403" ownership-check convention rather than a narrower RBAC policy.
+        group.MapGet("/join-invites", GetMyJoinInvites).RequireAuthorization("ClientAndAbove");
+        group.MapPost("/join-invites/{id:guid}/accept", AcceptJoinInvite).RequireAuthorization("ClientAndAbove");
+        group.MapPost("/join-invites/{id:guid}/decline", DeclineJoinInvite).RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> Login(
@@ -206,6 +214,32 @@ public static class AuthEndpoints
     {
         await mediator.Send(
             new UpdateClientStudioNotificationPreferencesCommand(studioId, request.Preferences), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetMyJoinInvites(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        List<MyStudioJoinInviteResponse> result = await mediator.Send(new GetMyStudioJoinInvitesQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> AcceptJoinInvite(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AuthResponse result = await mediator.Send(new AcceptStudioJoinInviteCommand(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> DeclineJoinInvite(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new DeclineStudioJoinInviteCommand(id), ct);
         return Results.NoContent();
     }
 }

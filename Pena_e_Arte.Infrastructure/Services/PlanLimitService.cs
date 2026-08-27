@@ -29,9 +29,12 @@ public class PlanLimitService(
         AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
     };
 
-    public async Task EnsureWithinLimitAsync(QuotaType quotaType, CancellationToken ct = default)
+    public Task EnsureWithinLimitAsync(QuotaType quotaType, CancellationToken ct = default) =>
+        EnsureWithinLimitAsync(tenant.StudioId, quotaType, ct);
+
+    public async Task EnsureWithinLimitAsync(Guid studioId, QuotaType quotaType, CancellationToken ct = default)
     {
-        Plan? plan = await ResolveCurrentPlanAsync(ct);
+        Plan? plan = await ResolveCurrentPlanAsync(studioId, ct);
 
         // No resolvable plan (e.g. mid-trial before a plan is chosen) — nothing to enforce.
         if (plan is null) return;
@@ -48,7 +51,7 @@ public class PlanLimitService(
 
         if (max is null) return; // unlimited on this plan
 
-        long current = await GetCurrentUsageAsync(quotaType, ct);
+        long current = await GetCurrentUsageAsync(studioId, quotaType, ct);
         long limit = quotaType == QuotaType.StorageBytes
             ? (long)max.Value * 1024L * 1024L * 1024L
             : max.Value;
@@ -60,14 +63,14 @@ public class PlanLimitService(
 
     public async Task<PlanUsageSnapshot?> GetUsageSnapshotAsync(CancellationToken ct = default)
     {
-        Plan? plan = await ResolveCurrentPlanAsync(ct);
+        Plan? plan = await ResolveCurrentPlanAsync(tenant.StudioId, ct);
         if (plan is null) return null;
 
-        double artists = await GetCurrentUsageAsync(QuotaType.Artists, ct);
-        double appointments = await GetCurrentUsageAsync(QuotaType.AppointmentsPerMonth, ct);
-        double notifications = await GetCurrentUsageAsync(QuotaType.NotificationsPerMonth, ct);
-        double storageBytes = await GetCurrentUsageAsync(QuotaType.StorageBytes, ct);
-        double locations = await GetCurrentUsageAsync(QuotaType.Locations, ct);
+        double artists = await GetCurrentUsageAsync(tenant.StudioId, QuotaType.Artists, ct);
+        double appointments = await GetCurrentUsageAsync(tenant.StudioId, QuotaType.AppointmentsPerMonth, ct);
+        double notifications = await GetCurrentUsageAsync(tenant.StudioId, QuotaType.NotificationsPerMonth, ct);
+        double storageBytes = await GetCurrentUsageAsync(tenant.StudioId, QuotaType.StorageBytes, ct);
+        double locations = await GetCurrentUsageAsync(tenant.StudioId, QuotaType.Locations, ct);
 
         double storageGb = Math.Round(storageBytes / 1024.0 / 1024.0 / 1024.0, 1);
 
@@ -89,7 +92,7 @@ public class PlanLimitService(
     // which is out of scope here (see docs/claude/architecture.md Decisions Log).
     public async Task InvalidateUsageCacheAsync(QuotaType quotaType, CancellationToken ct = default)
     {
-        string key = CacheKey(quotaType);
+        string key = CacheKey(tenant.StudioId, quotaType);
 
         try
         {
@@ -102,21 +105,26 @@ public class PlanLimitService(
         }
     }
 
-    private async Task<Plan?> ResolveCurrentPlanAsync(CancellationToken ct)
+    private async Task<Plan?> ResolveCurrentPlanAsync(Guid studioId, CancellationToken ct)
     {
         Subscription? subscription = await db.Subscriptions
             .AsNoTracking()
             .Include(s => s.Plan)
-            .FirstOrDefaultAsync(s => s.StudioId == tenant.StudioId, ct);
+            .FirstOrDefaultAsync(s => s.StudioId == studioId, ct);
 
         return subscription?.Plan;
     }
 
-    private string CacheKey(QuotaType quotaType) => $"{CacheKeyPrefix}{tenant.StudioId}:{quotaType}";
+    private static string CacheKey(Guid studioId, QuotaType quotaType) => $"{CacheKeyPrefix}{studioId}:{quotaType}";
 
-    private async Task<long> GetCurrentUsageAsync(QuotaType quotaType, CancellationToken ct)
+    // Explicitly scoped to studioId (IgnoreQueryFilters + explicit StudioId comparisons) rather
+    // than relying on the ambient ICurrentTenant-driven global query filter — this method is also
+    // called with a studio that may differ from the current tenant (see the explicit-studioId
+    // overload of EnsureWithinLimitAsync above); using the global filter here would silently
+    // count the wrong studio's usage in that case.
+    private async Task<long> GetCurrentUsageAsync(Guid studioId, QuotaType quotaType, CancellationToken ct)
     {
-        string key = CacheKey(quotaType);
+        string key = CacheKey(studioId, quotaType);
 
         try
         {
@@ -126,25 +134,27 @@ public class PlanLimitService(
         catch (Exception ex)
         {
             logger.LogWarning(ex,
-                "Redis unavailable — plan usage cache read skipped for studio {StudioId}", tenant.StudioId);
+                "Redis unavailable — plan usage cache read skipped for studio {StudioId}", studioId);
         }
 
         DateTime monthStart = new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         long usage = quotaType switch
         {
-            QuotaType.Artists => await db.Artists.CountAsync(ct),
-
-            QuotaType.AppointmentsPerMonth => await db.Appointments
-                .Where(a => a.CreatedAt >= monthStart)
+            QuotaType.Artists => await db.Artists.IgnoreQueryFilters()
+                .Where(a => a.StudioId == studioId && a.DeletedAt == null)
                 .CountAsync(ct),
 
-            QuotaType.NotificationsPerMonth => await db.NotificationLogs
-                .Where(n => n.CreatedAt >= monthStart)
+            QuotaType.AppointmentsPerMonth => await db.Appointments.IgnoreQueryFilters()
+                .Where(a => a.StudioId == studioId && a.DeletedAt == null && a.CreatedAt >= monthStart)
+                .CountAsync(ct),
+
+            QuotaType.NotificationsPerMonth => await db.NotificationLogs.IgnoreQueryFilters()
+                .Where(n => n.StudioId == studioId && n.DeletedAt == null && n.CreatedAt >= monthStart)
                 .CountAsync(ct),
 
             QuotaType.StorageBytes => await db.Studios
-                .Where(s => s.Id == tenant.StudioId)
+                .Where(s => s.Id == studioId)
                 .Select(s => s.StorageUsageBytes)
                 .FirstOrDefaultAsync(ct),
 
@@ -162,7 +172,7 @@ public class PlanLimitService(
         catch (Exception ex)
         {
             logger.LogWarning(ex,
-                "Redis unavailable — plan usage cache write skipped for studio {StudioId}", tenant.StudioId);
+                "Redis unavailable — plan usage cache write skipped for studio {StudioId}", studioId);
         }
 
         return usage;

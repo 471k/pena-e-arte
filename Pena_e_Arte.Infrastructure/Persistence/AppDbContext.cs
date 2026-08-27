@@ -48,6 +48,12 @@ public class AppDbContext(
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
 
+    // --- Solo-artist studio-join invites (no tenant filter — the invited party is not a
+    //     member of the inviting studio's tenant until they accept; handlers resolve and
+    //     verify both sides explicitly, see InviteSoloArtistToJoinCommand /
+    //     AcceptStudioJoinInviteCommand) ---
+    public DbSet<StudioJoinInvite> StudioJoinInvites => Set<StudioJoinInvite>();
+
     // --- Cross-tenant public data (no tenant filter) ---
     public DbSet<Review> Reviews => Set<Review>();
 

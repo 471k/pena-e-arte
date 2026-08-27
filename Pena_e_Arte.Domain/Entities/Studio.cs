@@ -36,6 +36,13 @@ public class Studio
     public bool ShowPlatformBranding { get; private set; } = true;
     public DateTime? SlugLockedAt { get; set; }
 
+    /// <summary>Set when this studio is soft-closed after its owner accepted a
+    /// StudioJoinInvite to join a different studio (Phase 6). IsActive is also false at
+    /// that point — this field distinguishes "closed by its own owner joining elsewhere"
+    /// from other IsActive=false paths (e.g. issuer suspension). Historical data
+    /// (appointments, clients, portfolio, payments) is retained, never deleted or copied.</summary>
+    public DateTime? ClosedAt { get; set; }
+
     public void UpdateBranding(bool show) => ShowPlatformBranding = show;
     public DateTime TrialExpiresAt { get; set; }
     public string? StripeCustomerId { get; set; }

@@ -297,6 +297,30 @@ public class EmailRenderer : IEmailRenderer
         </html>
         """;
 
+    public string RenderStudioJoinInvite(string studioName, string city, string manageInvitesUrl) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>{System.Net.WebUtility.HtmlEncode(studioName)} wants you to join</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">You've been invited to join a studio</h1>
+          <p><strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>
+          {(string.IsNullOrWhiteSpace(city) ? "" : $"in {System.Net.WebUtility.HtmlEncode(city)} ")}
+          has invited you to join as an artist.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(manageInvitesUrl)}"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+            Log in to review this invite
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            Accepting closes your current solo studio (your data is kept, but it becomes
+            inaccessible to you as an owner) and makes you an artist at the new studio instead.
+            This invite expires in 14 days. If you were not expecting this, you can ignore this
+            email or decline it after logging in.
+          </p>
+        </body>
+        </html>
+        """;
+
     public string RenderPasswordReset(string resetUrl) =>
         $"""
         <!DOCTYPE html>

@@ -346,6 +346,18 @@ public class IdentityService(
         return (true, [], false, false);
     }
 
+    public async Task SwapRoleAsync(Guid userId, string oldRole, string newRole, CancellationToken ct)
+    {
+        IdentityUser user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException($"User {userId} not found.");
+
+        if (await userManager.IsInRoleAsync(user, oldRole))
+            await userManager.RemoveFromRoleAsync(user, oldRole);
+
+        if (!await userManager.IsInRoleAsync(user, newRole))
+            await userManager.AddToRoleAsync(user, newRole);
+    }
+
     private async Task<Guid?> ReadActiveTenantIdAsync(IdentityUser user)
     {
         string? stored = await userManager.GetAuthenticationTokenAsync(user, "App", "ActiveTenantId");

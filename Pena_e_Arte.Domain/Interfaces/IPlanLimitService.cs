@@ -33,6 +33,17 @@ public interface IPlanLimitService
     Task EnsureWithinLimitAsync(QuotaType quotaType, CancellationToken ct = default);
 
     /// <summary>
+    /// Same check as <see cref="EnsureWithinLimitAsync(QuotaType, CancellationToken)"/> but
+    /// scoped to an explicit studio rather than ICurrentTenant — for the one legitimate case
+    /// where a caller's JWT still carries a different active tenant than the studio being
+    /// checked (accepting a cross-studio StudioJoinInvite before the tenant claim has switched;
+    /// see AcceptStudioJoinInviteCommand). Ordinary quota-checked commands should keep using the
+    /// ICurrentTenant-scoped overload via PlanLimitBehavior — do not force-fit this overload into
+    /// the IQuotaCheckedCommand pipeline.
+    /// </summary>
+    Task EnsureWithinLimitAsync(Guid studioId, QuotaType quotaType, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns current usage vs. cap for all five dimensions, or null if the studio has
     /// no resolvable Plan (e.g. mid-trial before a plan is chosen).
     /// </summary>
