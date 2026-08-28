@@ -23,6 +23,8 @@ import {
   useCancelManualReminderMutation,
 } from "../remindersApi";
 import { ReminderStatusBadge } from "./ReminderStatusBadge";
+import { PhoneInput } from "@/shared/components/ui/phone-input";
+import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 interface ReminderDialogProps {
   open: boolean;
@@ -128,7 +130,7 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
   }
 
   const canSubmit = (isRawContact
-    ? recipientName.trim().length > 0 && recipientPhone.trim().length > 0
+    ? recipientName.trim().length > 0 && isValidE164Phone(recipientPhone) && recipientPhone.trim().length > 0
     : needsArtistPicker
     ? pickedArtistId.length > 0
     : true) && (!scheduleLater || isValidDateTimeLocal(scheduledFor));
@@ -160,14 +162,22 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="reminder-recipient-phone">Phone</Label>
-                <Input
+                <PhoneInput
                   id="reminder-recipient-phone"
-                  type="tel"
                   value={recipientPhone}
-                  onChange={(e) => setRecipientPhone(e.target.value)}
-                  placeholder="+351 900 000 000"
-                  maxLength={20}
+                  onChange={setRecipientPhone}
+                  aria-invalid={recipientPhone.length > 0 && !isValidE164Phone(recipientPhone)}
+                  aria-describedby={
+                    recipientPhone.length > 0 && !isValidE164Phone(recipientPhone)
+                      ? "reminder-recipient-phone-error"
+                      : undefined
+                  }
                 />
+                {recipientPhone.length > 0 && !isValidE164Phone(recipientPhone) && (
+                  <p id="reminder-recipient-phone-error" className="text-xs text-destructive">
+                    {PHONE_ERROR_MESSAGE}
+                  </p>
+                )}
               </div>
             </>
           )}

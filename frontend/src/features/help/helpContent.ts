@@ -715,7 +715,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to Clients and click \"New Client\".",
       "Enter the client's first and last name and email address.",
       "Select the Artist this client belongs to. (If you're an artist adding your own client, this step doesn't apply — it's assigned to you automatically.)",
-      "Optionally enter a phone number.",
+      "Optionally enter a phone number — pick the country from the dropdown next to the field, then type the number without the country code.",
       "Click \"Create Client\".",
     ],
   },
@@ -878,7 +878,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Edit your studio's public details — name, address, phone, description — and your business tax ID (NIPT), which clients don't see but is used for invoicing and verification.",
     steps: [
       "Go to Studio Settings.",
-      "Click \"Edit\" and update your studio name, address/city, phone number, or description.",
+      "Click \"Edit\" and update your studio name, address/city, phone number (pick the country from the dropdown, then type the number), or description.",
       "If you haven't added your NIPT yet, enter it in the Business tax ID field — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, this field becomes read-only; contact support to change it.",
       "Click \"Save\" to publish the changes.",
     ],

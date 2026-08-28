@@ -136,10 +136,49 @@ describe("CreateClientPage", () => {
     await user.type(screen.getByLabelText(/first name/i), "Ana");
     await user.type(screen.getByLabelText(/last name/i), "Costa");
     await user.type(screen.getByLabelText(/^email/i), "ana@example.com");
-    await user.type(screen.getByLabelText(/phone/i), "+351 912 000 000");
+    await user.type(screen.getByLabelText(/phone/i), "912000000");
     await selectArtist(user);
     await user.click(screen.getByRole("button", { name: /create client/i }));
     expect(await screen.findByTestId("detail-page")).toBeInTheDocument();
+  });
+
+  it("typing an invalid phone number and submitting shows the phone error and blocks submission", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByLabelText(/first name/i), "Ana");
+    await user.type(screen.getByLabelText(/last name/i), "Costa");
+    await user.type(screen.getByLabelText(/^email/i), "ana@example.com");
+    await user.type(screen.getByLabelText(/phone/i), "912");
+    await selectArtist(user);
+    await user.click(screen.getByRole("button", { name: /create client/i }));
+    expect(await screen.findByText(/enter a valid phone number/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("detail-page")).not.toBeInTheDocument();
+  });
+
+  it("typing a valid phone number submits with the correct E.164 value", async () => {
+    let capturedPhone: unknown;
+    server.use(
+      http.post("http://localhost/api/v1/clients", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        capturedPhone = body.phone;
+        return HttpResponse.json({
+          id: "new-client-001", studioId: "stud-0001", firstName: body.firstName,
+          lastName: body.lastName, email: body.email, phone: body.phone ?? null,
+          createdAt: "2026-06-15T09:00:00.000Z", userId: null,
+          artistId: body.artistId ?? null, artistName: "Ana Costa",
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByLabelText(/first name/i), "Ana");
+    await user.type(screen.getByLabelText(/last name/i), "Costa");
+    await user.type(screen.getByLabelText(/^email/i), "ana@example.com");
+    await user.type(screen.getByLabelText(/phone/i), "912345678");
+    await selectArtist(user);
+    await user.click(screen.getByRole("button", { name: /create client/i }));
+    await screen.findByTestId("detail-page");
+    expect(capturedPhone).toBe("+351912345678");
   });
 
   it("shows a success toast after creating a client", async () => {

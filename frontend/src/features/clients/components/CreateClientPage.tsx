@@ -20,13 +20,15 @@ import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useCreateClientMutation } from "../clientsApi";
 import { useGetArtistsQuery, useGetMyArtistQuery } from "@/features/artists/artistsApi";
+import { PhoneInput } from "@/shared/components/ui/phone-input";
+import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 const createSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName:  z.string().min(1, "Last name is required"),
   email:     z.string().email("Invalid email"),
   artistId:  z.string().min(1, "Select an artist"),
-  phone:     z.string().optional(),
+  phone:     z.string().refine(isValidE164Phone, PHONE_ERROR_MESSAGE).optional(),
 });
 
 type CreateFormValues = z.infer<typeof createSchema>;
@@ -162,12 +164,23 @@ export function CreateClientPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="phone">Phone (optional)</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="e.g. +351 912 345 678"
-              {...register("phone")}
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phone"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  aria-invalid={!!errors.phone}
+                  aria-describedby={errors.phone ? "phone-error" : undefined}
+                />
+              )}
             />
+            {errors.phone && (
+              <p id="phone-error" className="text-xs text-destructive">{errors.phone.message}</p>
+            )}
           </div>
 
           <Button
