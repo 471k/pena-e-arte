@@ -82,6 +82,7 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
 public class UpdateMyStudioValidator : AbstractValidator<UpdateMyStudioCommand>
 {
     private static readonly Regex NiptFormat = new(@"^[A-Z]\d{8}[A-Z]$", RegexOptions.Compiled);
+    private static readonly Regex E164Format = new(@"^\+[1-9]\d{1,14}$", RegexOptions.Compiled);
 
     public UpdateMyStudioValidator()
     {
@@ -89,6 +90,10 @@ public class UpdateMyStudioValidator : AbstractValidator<UpdateMyStudioCommand>
         RuleFor(x => x.Request.City).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Request.Latitude).InclusiveBetween(-90, 90);
         RuleFor(x => x.Request.Longitude).InclusiveBetween(-180, 180);
+        RuleFor(x => x.Request.PhoneNumber)
+            .Matches(E164Format)
+            .WithMessage("Phone must be in international format, e.g. +351912345678.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Request.PhoneNumber));
         RuleFor(x => x.Request.Nipt)
             .Length(10)
             .Must(n => NiptFormat.IsMatch(n!.Trim().ToUpperInvariant()))

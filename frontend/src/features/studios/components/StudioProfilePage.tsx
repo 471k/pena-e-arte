@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Building2, Loader2, Save } from "lucide-react";
@@ -23,6 +23,8 @@ import { StudioAuditLogCard } from "./StudioAuditLogCard";
 import { StudioSocialLinksCard } from "./StudioSocialLinksCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
 import { EmbedCodeCard } from "./EmbedCodeCard";
+import { PhoneInput } from "@/shared/components/ui/phone-input";
+import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 const NIPT_HELP = "NIPT format looks wrong — expected a letter, 8 digits, then a letter (e.g. L01234567A)";
 
@@ -31,7 +33,7 @@ const schema = z.object({
   city:            z.string().min(1, "City is required").max(200),
   latitude:        z.number({ message: "Must be a number" }).min(-90).max(90),
   longitude:       z.number({ message: "Must be a number" }).min(-180).max(180),
-  phoneNumber:     z.string().max(30, "Max 30 characters").optional(),
+  phoneNumber:     z.string().refine(isValidE164Phone, PHONE_ERROR_MESSAGE).optional(),
   nipt: z
     .string()
     .trim()
@@ -124,7 +126,7 @@ export function StudioProfilePage() {
     }
   }
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isDirty } } =
+  const { register, handleSubmit, control, reset, watch, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const { ref: niptFieldRef, ...niptRegister } = register("nipt");
@@ -300,13 +302,19 @@ export function StudioProfilePage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="phoneNumber">Phone number (optional)</Label>
-                <Input
-                  id="phoneNumber"
-                  type="tel"
-                  placeholder="+351 912 345 678"
-                  {...register("phoneNumber")}
-                  aria-invalid={!!errors.phoneNumber}
-                  aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
+                <Controller
+                  control={control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <PhoneInput
+                      id="phoneNumber"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      aria-invalid={!!errors.phoneNumber}
+                      aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
+                    />
+                  )}
                 />
                 {errors.phoneNumber && (
                   <p id="phoneNumber-error" className="text-xs text-destructive">{errors.phoneNumber.message}</p>

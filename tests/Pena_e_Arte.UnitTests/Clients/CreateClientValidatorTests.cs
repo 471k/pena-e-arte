@@ -64,9 +64,21 @@ public class CreateClientValidatorTests
     }
 
     [Fact]
-    public void Validate_PhoneAtMaxLength_IsValid()
+    public void Validate_ValidE164Phone_IsValid()
     {
-        _sut.ShouldBeValid(Command("Ana", "Costa", "a@b.com", new('9', 20)));
+        _sut.ShouldBeValid(Command("Ana", "Costa", "a@b.com", "+351912345678"));
+    }
+
+    [Fact]
+    public void Validate_NationalFormatPhoneWithNoPlus_FailsOnPhone()
+    {
+        _sut.ShouldFailOn(Command("Ana", "Costa", "a@b.com", "912345678"), "Request.Phone");
+    }
+
+    [Fact]
+    public void Validate_NonPhoneShapedString_FailsOnPhone()
+    {
+        _sut.ShouldFailOn(Command("Ana", "Costa", "a@b.com", "not a phone"), "Request.Phone");
     }
 
     [Fact]

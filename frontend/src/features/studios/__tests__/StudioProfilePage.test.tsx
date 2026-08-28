@@ -259,6 +259,39 @@ describe("StudioProfilePage — save behaviour", () => {
   });
 });
 
+describe("StudioProfilePage — phone number", () => {
+  it("typing an invalid phone number shows the phone error and disables further save via validation", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.type(screen.getByLabelText(/phone number/i), "912");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(await screen.findByText(/enter a valid phone number/i)).toBeInTheDocument();
+  });
+
+  it("typing a valid phone number saves with the correct E.164 value", async () => {
+    let capturedPhone: unknown;
+    server.use(
+      http.put("http://localhost/api/v1/studios/me", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        capturedPhone = body.phoneNumber;
+        return HttpResponse.json(STUDIO);
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.type(screen.getByLabelText(/phone number/i), "912345678");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await screen.findByText(/changes saved/i);
+    expect(capturedPhone).toBe("+351912345678");
+  });
+});
+
 describe("StudioProfilePage — location picker", () => {
   it("enables the save button after picking a new location", async () => {
     const user = userEvent.setup();

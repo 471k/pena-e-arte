@@ -202,7 +202,23 @@ describe("ReminderDialog", () => {
     await user.type(screen.getByLabelText(/^name$/i), "Wendy");
     expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
 
-    await user.type(screen.getByLabelText(/^phone$/i), "+351900000000");
+    await user.type(screen.getByLabelText(/^phone$/i), "912345678");
+    expect(screen.getByRole("button", { name: /send now/i })).not.toBeDisabled();
+  });
+
+  it("submit stays disabled and shows an inline error while the phone is invalid, then enables once valid", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.type(screen.getByLabelText(/^name$/i), "Wendy");
+    await user.type(screen.getByLabelText(/^phone$/i), "912");
+
+    expect(await screen.findByText(/enter a valid phone number/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/^phone$/i), "345678");
+
+    expect(screen.queryByText(/enter a valid phone number/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /send now/i })).not.toBeDisabled();
   });
 
@@ -218,10 +234,28 @@ describe("ReminderDialog", () => {
     renderDialog();
 
     await user.type(screen.getByLabelText(/^name$/i), "Wendy");
-    await user.type(screen.getByLabelText(/^phone$/i), "+351900000000");
+    await user.type(screen.getByLabelText(/^phone$/i), "912345678");
     await user.click(screen.getByRole("button", { name: /send now/i }));
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Reminder sent."));
+  });
+
+  it("submitting a raw-contact reminder sends the correct E.164 phone value", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/reminders", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...SCHEDULED, id: "rem-new" });
+      }),
+    );
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.type(screen.getByLabelText(/^name$/i), "Wendy");
+    await user.type(screen.getByLabelText(/^phone$/i), "912345678");
+    await user.click(screen.getByRole("button", { name: /send now/i }));
+
+    await waitFor(() => expect(capturedBody).toMatchObject({ recipientPhone: "+351912345678" }));
   });
 
   it("a failed create shows an error toast", async () => {
@@ -233,7 +267,7 @@ describe("ReminderDialog", () => {
     renderDialog();
 
     await user.type(screen.getByLabelText(/^name$/i), "Wendy");
-    await user.type(screen.getByLabelText(/^phone$/i), "+351900000000");
+    await user.type(screen.getByLabelText(/^phone$/i), "912345678");
     await user.click(screen.getByRole("button", { name: /send now/i }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Quota exceeded"));
