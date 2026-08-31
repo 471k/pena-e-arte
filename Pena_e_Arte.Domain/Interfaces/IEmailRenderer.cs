@@ -78,6 +78,14 @@ public interface IEmailRenderer
 
     string RenderPasswordReset(string resetUrl);
 
+    /// <summary>
+    /// Sent once, immediately after a guest checkout booking, carrying BOTH a password-reset
+    /// link (Decision #2 — the guest's passwordless first booking; also doubles as their
+    /// account-recovery safety net if this email is delayed/lost) and the standard
+    /// email-confirmation link.
+    /// </summary>
+    string RenderGuestBookingWelcome(string studioName, string setPasswordUrl, string confirmEmailUrl);
+
     string RenderChangeEmailConfirmation(string confirmUrl);
 
     string RenderEmailChangedNotice(string newEmail);

@@ -337,7 +337,7 @@ describe("BookAppointmentForm", () => {
 
   it("Notes placeholder provides helpful guidance", async () => {
     renderForm();
-    expect(screen.getByPlaceholderText(/style.*size.*placement/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/anything else for the studio/i)).toBeInTheDocument();
   });
 
   it("renders the 'Request Appointment' submit button", () => {
@@ -512,6 +512,7 @@ describe("BookAppointmentForm", () => {
     const futureDate = new Date(Date.now() + 7 * 86_400_000);
     const formatted = futureDate.toISOString().slice(0, 16);
     await user.type(screen.getByLabelText(/date.*time/i), formatted);
+    await fillTattooDescription(user);
 
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
     expect(await screen.findByText("Appointment requested!")).toBeInTheDocument();
@@ -533,6 +534,7 @@ describe("BookAppointmentForm", () => {
 
     const futureDate = new Date(Date.now() + 7 * 86_400_000);
     await user.type(screen.getByLabelText(/date.*time/i), futureDate.toISOString().slice(0, 16));
+    await fillTattooDescription(user);
 
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
     expect(await screen.findByText(/secure your slot with a deposit/i)).toBeInTheDocument();
@@ -552,6 +554,7 @@ describe("BookAppointmentForm", () => {
     await user.click(screen.getByLabelText("Select artist"));
     await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
     await user.type(screen.getByLabelText(/date.*time/i), new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16));
+    await fillTattooDescription(user);
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
     await screen.findByText(/secure your slot/i);
     await user.click(screen.getByText(/sort the deposit out later/i));
@@ -566,6 +569,7 @@ describe("BookAppointmentForm", () => {
     await user.click(screen.getByLabelText("Select artist"));
     await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
     await user.type(screen.getByLabelText(/date.*time/i), new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16));
+    await fillTattooDescription(user);
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
     await screen.findByText("Appointment requested!");
     await user.click(screen.getByRole("button", { name: /book another/i }));
@@ -601,6 +605,7 @@ describe("BookAppointmentForm", () => {
       screen.getByLabelText(/date.*time/i),
       new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
     );
+    await fillTattooDescription(user);
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
 
     await screen.findByText("Appointment requested!");
@@ -644,6 +649,7 @@ describe("BookAppointmentForm", () => {
       screen.getByLabelText(/date.*time/i),
       new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
     );
+    await fillTattooDescription(user);
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
 
     expect(await screen.findByText("The studio will assign an artist and confirm soon.")).toBeInTheDocument();
@@ -652,12 +658,23 @@ describe("BookAppointmentForm", () => {
 
 // ── BookAppointmentForm — reference images ─────────────────────────────────────
 
+// Two CategorizedImagesField instances now render (Area photo, then Reference images) —
+// this block exercises the Reference one specifically, matching its original intent.
 function getImageFileInput() {
-  return document.querySelector<HTMLInputElement>("input[type=file]")!;
+  return document.querySelectorAll<HTMLInputElement>("input[type=file]")[1]!;
 }
 
 function makePng(name = "ref.png") {
   return new File(["img-bytes"], name, { type: "image/png" });
+}
+
+// TattooIntakeFields' description field is required for submit to succeed (Part 3i) — every
+// test that submits the form needs it filled, whether via this helper or inline.
+async function fillTattooDescription(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(
+    screen.getByLabelText(/what are you looking to get done/i),
+    "A small rose on the forearm",
+  );
 }
 
 async function fillMinimalValidForm(user: ReturnType<typeof userEvent.setup>) {
@@ -668,6 +685,7 @@ async function fillMinimalValidForm(user: ReturnType<typeof userEvent.setup>) {
     screen.getByLabelText(/date.*time/i),
     new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
   );
+  await fillTattooDescription(user);
 }
 
 describe("BookAppointmentForm — reference images", () => {
@@ -707,7 +725,7 @@ describe("BookAppointmentForm — reference images", () => {
     renderForm();
     const files = Array.from({ length: 7 }, (_, i) => makePng(`ref-${i}.png`));
     await user.upload(getImageFileInput(), files);
-    expect(await screen.findByText(/up to 6 reference images/i)).toBeInTheDocument();
+    expect(await screen.findByText(/you can attach up to 6 images/i)).toBeInTheDocument();
     expect(await screen.findAllByRole("img")).toHaveLength(6);
   });
 
@@ -731,10 +749,10 @@ describe("BookAppointmentForm — reference images", () => {
   });
 
   it("includes uploaded image URLs in the create-appointment request", async () => {
-    let capturedBody: { imageUrls?: string[] } | null = null;
+    let capturedBody: { images?: { url: string; category: string }[] } | null = null;
     server.use(
       http.post("http://localhost/api/v1/appointments", async ({ request }) => {
-        capturedBody = await request.json() as { imageUrls?: string[] };
+        capturedBody = await request.json() as { images?: { url: string; category: string }[] };
         return HttpResponse.json(CREATED_APPT, { status: 201 });
       }),
     );
@@ -752,15 +770,15 @@ describe("BookAppointmentForm — reference images", () => {
 
     await screen.findByText("Appointment requested!");
     expect(capturedBody).toEqual(
-      expect.objectContaining({ imageUrls: [PRESIGN_PUBLIC_URL] }),
+      expect.objectContaining({ images: [{ url: PRESIGN_PUBLIC_URL, category: "Reference" }] }),
     );
   });
 
-  it("does not include imageUrls when no images were attached", async () => {
-    let capturedBody: { imageUrls?: string[] } | null = null;
+  it("does not include images when no images were attached", async () => {
+    let capturedBody: { images?: { url: string; category: string }[] } | null = null;
     server.use(
       http.post("http://localhost/api/v1/appointments", async ({ request }) => {
-        capturedBody = await request.json() as { imageUrls?: string[] };
+        capturedBody = await request.json() as { images?: { url: string; category: string }[] };
         return HttpResponse.json(CREATED_APPT, { status: 201 });
       }),
     );
@@ -772,7 +790,7 @@ describe("BookAppointmentForm — reference images", () => {
 
     await screen.findByText("Appointment requested!");
     expect(capturedBody).not.toBeNull();
-    expect(capturedBody!.imageUrls).toBeUndefined();
+    expect(capturedBody!.images).toBeUndefined();
   });
 });
 

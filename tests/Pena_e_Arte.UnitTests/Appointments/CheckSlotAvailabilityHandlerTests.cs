@@ -1,6 +1,8 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Queries;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Appointments;
@@ -8,10 +10,16 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 public class CheckSlotAvailabilityHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _artistId = Guid.NewGuid();
 
-    private CheckSlotAvailabilityHandler CreateSut() => new(_db);
+    public CheckSlotAvailabilityHandlerTests()
+    {
+        _tenant.StudioId.Returns(_studioId);
+    }
+
+    private CheckSlotAvailabilityHandler CreateSut() => new(_db, _tenant);
 
     private void SeedSchedule(DayOfWeek day)
     {

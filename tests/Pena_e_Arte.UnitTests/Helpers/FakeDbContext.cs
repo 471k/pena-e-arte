@@ -25,6 +25,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
+    public DbSet<BookingIntake> BookingIntakes => Set<BookingIntake>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
     public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
@@ -79,6 +80,14 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
 
         modelBuilder.Entity<ClientProfile>()
             .OwnsOne(cp => cp.BodyMap);
+
+        modelBuilder.Entity<BookingIntake>()
+            .HasOne(i => i.Appointment)
+            .WithOne(a => a.Intake)
+            .HasForeignKey<BookingIntake>(i => i.AppointmentId);
+
+        modelBuilder.Entity<BookingIntake>()
+            .OwnsOne(i => i.DesiredPlacement);
 
         modelBuilder.Entity<ReferralCode>()
             .HasOne(r => r.Studio)

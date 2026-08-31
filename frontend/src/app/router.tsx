@@ -136,6 +136,17 @@ export const routes = [
     element: <AppRoot />,
     children: [
       { index: true, element: <IndexRedirect /> },
+      // /book is reachable unauthenticated (guest checkout, Decision #1) — sits outside the
+      // blanket auth RoleGuard below, but still gets AppLayout for an authenticated visit
+      // (AppLayout itself already falls back to a bare Outlet with no role, matching the
+      // guest page's own self-contained PublicPageHeader shell). BookPage internally
+      // preserves the pre-existing Client/Issuer-only restriction for authenticated users.
+      {
+        element: <AppLayout />,
+        children: [
+          { path: "book", element: <ErrorBoundary><BookPage /></ErrorBoundary> },
+        ],
+      },
       {
         element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
         children: [
@@ -143,11 +154,6 @@ export const routes = [
             element: <AppLayout />,
             children: [
               // ── Client ──────────────────────────────────────────────────────
-              {
-                path: "book",
-                element: <RoleGuard allowedRoles={[Role.Client, Role.Issuer]} />,
-                children: [{ index: true, element: <ErrorBoundary><BookPage /></ErrorBoundary> }],
-              },
               {
                 path: "my-studios",
                 element: <RoleGuard allowedRoles={[Role.Client]} />,

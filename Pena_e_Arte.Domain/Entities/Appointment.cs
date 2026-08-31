@@ -26,4 +26,8 @@ public class Appointment : TenantEntity
     // Reference images the client attached when requesting the appointment.
     // Empty (not null) when not eagerly loaded via .Include(a => a.Attachments).
     public ICollection<AppointmentAttachment> Attachments { get; set; } = new List<AppointmentAttachment>();
+
+    // Booking-content intake (tattoo description, desired placement, referral source).
+    // Null for appointments created before this feature; every new booking has one.
+    public BookingIntake? Intake { get; set; }
 }

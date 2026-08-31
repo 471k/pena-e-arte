@@ -67,6 +67,9 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
   const anyLoading = cancelling || confirming || completing || markingNoShow;
 
+  // Attachments fall back to the deprecated flat imageUrls for pre-migration appointments.
+  const attachmentCount = appointment.attachments?.length ?? appointment.imageUrls?.length ?? 0;
+
   async function handleCancel() {
     if (!confirmCancel) { setConfirmCancel(true); return; }
     const result = await cancel(appointment.id);
@@ -123,15 +126,16 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             <span>Deposit: {formatCurrency(appointment.depositAmount)}</span>
             <DepositStatusBadge status={appointment.depositStatus} />
           </div>
-          {appointment.notes && (
-            <p className="text-xs text-muted-foreground truncate">{appointment.notes}</p>
+          {(appointment.tattooDescription || appointment.notes) && (
+            <p className="text-xs text-muted-foreground truncate">
+              {appointment.tattooDescription || appointment.notes}
+            </p>
           )}
-          {!!appointment.imageUrls?.length && (
+          {attachmentCount > 0 && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <ImageIcon className="h-3 w-3" aria-hidden="true" />
               <span>
-                {appointment.imageUrls.length}{" "}
-                reference {appointment.imageUrls.length === 1 ? "image" : "images"}
+                {attachmentCount} {attachmentCount === 1 ? "image" : "images"}
               </span>
             </div>
           )}

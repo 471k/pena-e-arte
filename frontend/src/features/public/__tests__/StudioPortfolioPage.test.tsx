@@ -150,10 +150,11 @@ describe("StudioPortfolioPage", () => {
     expect(screen.getByRole("link", { name: "Book an Appointment" })).toBeInTheDocument();
   });
 
-  it("Book an Appointment links to /login redirect when unauthenticated", () => {
+  it("Book an Appointment links directly to /book when unauthenticated (guest checkout)", () => {
     renderPage(null);
     const link = screen.getByRole("link", { name: "Book an Appointment" });
-    expect(link.getAttribute("href")).toMatch(/\/login/);
+    expect(link.getAttribute("href")).toMatch(/^\/book\?studio=/);
+    expect(link.getAttribute("href")).not.toMatch(/\/login/);
   });
 
   it("Book an Appointment links directly to /book when authenticated", () => {

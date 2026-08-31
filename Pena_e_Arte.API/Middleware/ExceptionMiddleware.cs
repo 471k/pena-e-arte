@@ -32,6 +32,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             NotFoundException => (StatusCodes.Status404NotFound, ex.Message, null),
             ConflictException => (StatusCodes.Status409Conflict, ex.Message, null),
             SlotAlreadyBookedException => (StatusCodes.Status409Conflict, ex.Message, null),
+            AccountAlreadyExistsException => (StatusCodes.Status409Conflict, ex.Message, "ACCOUNT_ALREADY_EXISTS"),
             DuplicateNiptException => (StatusCodes.Status409Conflict, ex.Message, null),
             // Unique-index race (e.g. two payment attempts for one appointment) — 1062 = duplicate key
             DbUpdateException { InnerException: MySqlException { Number: 1062 } }

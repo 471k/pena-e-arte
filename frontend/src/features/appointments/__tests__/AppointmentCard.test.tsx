@@ -143,19 +143,22 @@ describe("AppointmentCard", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it("shows a reference-image count badge when the appointment has attachments", () => {
+  it("shows an image count badge when the appointment has attachments", () => {
+    // Count now covers both attachment categories combined (Area + Reference), not just
+    // "reference images" — imageUrls is the deprecated flat mirror, still supported as a
+    // fallback for pre-migration appointments.
     renderCard({ ...APPT_PENDING, imageUrls: ["https://cdn.example.com/1.png", "https://cdn.example.com/2.png"] });
-    expect(screen.getByText("2 reference images")).toBeInTheDocument();
+    expect(screen.getByText("2 images")).toBeInTheDocument();
   });
 
   it("uses singular 'image' for exactly one attachment", () => {
     renderCard({ ...APPT_PENDING, imageUrls: ["https://cdn.example.com/1.png"] });
-    expect(screen.getByText("1 reference image")).toBeInTheDocument();
+    expect(screen.getByText("1 image")).toBeInTheDocument();
   });
 
-  it("does NOT show the reference-image badge when there are no attachments", () => {
+  it("does NOT show the image count badge when there are no attachments", () => {
     renderCard(APPT_PENDING);
-    expect(screen.queryByText(/reference image/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d+ images?/i)).not.toBeInTheDocument();
   });
 
   // ── Needs artist (studio-choice booking) ────────────────────────────────────

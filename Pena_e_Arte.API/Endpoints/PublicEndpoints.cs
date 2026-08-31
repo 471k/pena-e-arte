@@ -2,8 +2,10 @@ using System.Security.Claims;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Appointments.Queries;
 using Pena_e_Arte.Application.ConductReports.Commands;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Public.Commands;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Application.Reviews.Commands;
 using Pena_e_Arte.Application.Traffic.Commands;
@@ -58,6 +60,17 @@ public static class PublicEndpoints
              .AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/traffic/beacon", RecordTrafficBeacon)
              .AllowAnonymous().RequireRateLimiting("public-write");
+
+        group.MapPost("/studios/{slug}/book", CreateGuestAppointment)
+             .AllowAnonymous().RequireRateLimiting("public-booking");
+        group.MapGet("/studios/{slug}/booking/artists", GetPublicBookingArtists)
+             .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/booking/availability", CheckPublicSlotAvailability)
+             .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/booking/deposit-rule", GetPublicDepositRule)
+             .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapPost("/studios/{slug}/booking/presign", GetPresignedGuestUploadUrl)
+             .AllowAnonymous().RequireRateLimiting("public-booking");
     }
 
     private static async Task<IResult> GetSitemap(
@@ -473,6 +486,59 @@ public static class PublicEndpoints
     {
         byte[] bytes = System.Text.Encoding.UTF8.GetBytes(ip.ToString() + (pepper ?? ""));
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static async Task<IResult> CreateGuestAppointment(
+        string slug,
+        CreateGuestAppointmentRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AppointmentResponse result = await mediator.Send(new CreateGuestAppointmentCommand(slug, request), ct);
+        return Results.Created($"/api/v1/appointments/{result.Id}", result);
+    }
+
+    private static async Task<IResult> GetPublicBookingArtists(
+        string slug,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        IReadOnlyList<PublicBookingArtistResponse> result =
+            await mediator.Send(new GetPublicBookingArtistsQuery(slug), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CheckPublicSlotAvailability(
+        string slug,
+        Guid? artistId,
+        DateTime date,
+        int durationMinutes,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        SlotAvailabilityResult result = await mediator.Send(
+            new CheckPublicSlotAvailabilityQuery(slug, artistId, date, durationMinutes), ct);
+        return Results.Ok(new SlotAvailabilityResponse(result.Available, result.Reason));
+    }
+
+    private static async Task<IResult> GetPublicDepositRule(
+        string slug,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        PublicDepositRuleResponse? result = await mediator.Send(new GetPublicDepositRuleQuery(slug), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetPresignedGuestUploadUrl(
+        string slug,
+        PresignGuestUploadRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        PresignUploadResponse result =
+            await mediator.Send(new GetPresignedGuestUploadUrlQuery(slug, request), ct);
+        return Results.Ok(result);
     }
 }
 

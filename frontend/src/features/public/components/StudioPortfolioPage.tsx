@@ -257,10 +257,9 @@ export function StudioPortfolioPage() {
     );
   }
 
-  const bookUrl = `/book?studio=${studio.slug}`;
-  const ctaUrl  = token
-    ? bookUrl
-    : `/login?redirect=${encodeURIComponent(bookUrl)}&studioId=${studio.studioId}`;
+  // Guest checkout (Decision #1/#13, 2026-08-31): /book itself now branches on auth state,
+  // so an unauthenticated visitor goes straight there instead of a forced /login hop.
+  const ctaUrl = `/book?studio=${studio.slug}`;
   const canRespond = role === "owner" && tenantId === studio.studioId;
 
   return (

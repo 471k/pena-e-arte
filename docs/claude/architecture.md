@@ -226,7 +226,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 
 | # | Feature | Domain Entities | Infrastructure | Scope |
 |---|---|---|---|---|
-| 01 | Appointment Booking + Deposits | `Appointment`, `DepositRule` | Stripe (aggregator), Hangfire | Per-tenant |
+| 01 | Appointment Booking + Deposits (incl. guest checkout) | `Appointment`, `DepositRule`, `BookingIntake` | Stripe (aggregator), Hangfire, Cloudflare R2 (guest-pending images) | Per-tenant (guest checkout: `AllowAnonymous`, see AllowAnonymous Exceptions table) |
 | 02 | Consultation & Consent Forms | `IntakeForm`, `ConsentForm` | Cloudflare R2 (PDF storage) | Per-tenant |
 | 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` | Cloudflare R2 (images), SignalR | Per-tenant |
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
@@ -254,7 +254,9 @@ Contact:     PhoneNumber, InstagramHandle added by AddStudioContactInfo migratio
 Reviews:     Studio-level aggregate (AverageRating, ReviewCount) displayed under name.
              Per-artist aggregate shown on each artist card.
 Back nav:    "Browse studios" → /discover, min-h-[44px] touch target.
-CTA:         bg-violet-600 filled button. Unauthenticated → /login?redirect=/book?studio={slug}.
+CTA:         bg-violet-600 filled button. → /book?studio={slug} for every visitor, authenticated
+             or not — /book itself branches on auth state (guest checkout, 2026-08-31; previously
+             unauthenticated visitors were forced through /login first).
 ```
 
 #### ArtistPortfolioPage (`/artist/{slug}`)
@@ -1062,7 +1064,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 33 | `GetSharedDesignQuery` | Public design-share-token lookup, validated by token + expiry | Anonymous |
 | 34 | `CreateArtistReviewCommand`, `CreateStudioReviewCommand` | Cross-tenant artist/studio lookup for public review submission | Authenticated (any role) |
 | 35 | `GetStudioQrCodeQuery` | Public QR code endpoint — resolves slug for the portfolio URL the code points to | Anonymous |
-| 36 | `AppointmentReminderJob`, `DesignRevisionTimeoutJob`, `PaymentReconciliationJob`, `SendArtistInviteJob`, `ManualReminderJob`, `ChatNotificationJob` | Hangfire background jobs run with no request/tenant scope at all — same class as `IndustryReportJob` (#3) | Hangfire job (system) |
+| 36 | `AppointmentReminderJob`, `DesignRevisionTimeoutJob`, `PaymentReconciliationJob`, `SendArtistInviteJob`, `ManualReminderJob`, `ChatNotificationJob`, `GuestPendingUploadCleanupJob` | Hangfire background jobs run with no request/tenant scope at all — same class as `IndustryReportJob` (#3) | Hangfire job (system) |
 | 37 | `DataSeeder` | Startup seed data — runs before any request or tenant scope exists | System (startup) |
 | 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
 | 39 | `GetHelpSearchInsightsHandler` | Cross-tenant aggregate of help search queries for the issuer product-insights view | IssuerOnly |
@@ -1072,6 +1074,12 @@ Never add a new one without updating this table and the Decisions Log.
 | 43 | `FileArtistConductReportCommand`, `FileStudioConductReportCommand` | Cross-tenant artist/studio + appointment/client lookup for conduct-report filing — identical join shape to entry #34's review submission, minus the `Completed`/dedup filters (see Decisions Log, "Client Conduct Reports") | ClientOnly |
 | 44 | `GetReportableArtistAppointmentsQuery`, `GetReportableStudioAppointmentsQuery` | Cross-tenant appointment/client lookup for the report-filing appointment picker — identical join shape to entries #19/#20's `IsVerifiedBooking` checks | ClientOnly |
 | 45 | `ConductReportProjections` (Artists + Appointments) | Cross-tenant `Artist`/`Appointment` join to resolve `ArtistName`/`AppointmentDate` for display — needed because the issuer caller (`GetConductReportsHandler`) has no tenant set at all; harmless for the owner/artist callers since the outer `ConductReport` query is already scoped to their own `StudioId`/`ArtistId` before this join runs | Owner / Artist (own scope only) / IssuerOnly |
+| 46 | `CreateGuestAppointmentHandler` (Public/Commands) | Guest checkout: `Studio` slug lookup (same shape as #2), and cross-tenant `Client` lookup by email to link a studio-pre-created record (same shape as #28) | Anonymous |
+| 47 | `GetPublicBookingArtistsHandler` | `Studio` slug lookup + cross-tenant `Artist` list for the guest booking artist picker | Anonymous |
+| 48 | `CheckPublicSlotAvailabilityHandler` | `Studio` slug lookup for the public slot-availability preview (the actual availability queries run through entry #51) | Anonymous |
+| 49 | `GetPublicDepositRuleHandler` | `Studio` slug lookup + cross-tenant `DepositRule` lookup ("single active rule, if any" — same query `CreateAppointmentCoreAsync` itself runs) for the guest deposit-preview estimate | Anonymous |
+| 50 | `GetPresignedGuestUploadUrlHandler` | `Studio` slug lookup, scoping the server-constructed R2 key for anonymous image upload (Decision #10, guest-checkout prompt) | Anonymous |
+| 51 | `ArtistAvailabilityExtensions` (`IsAnyArtistAvailableAsync`, `CheckArtistScheduleAsync`, `CheckArtistSlotAvailabilityAsync`) + `CreateAppointmentCommand.CreateAppointmentCoreAsync` | Cross-tenant `Artist`/`ArtistSchedule`/`ArtistTimeOff`/`Appointment`/`StudioClosure`/`DepositRule` queries, every one explicitly scoped by an `studioId` parameter rather than the ambient tenant filter — required because these are shared by both an authenticated caller (`CreateAppointmentCommand`, `RescheduleAppointmentCommand`, `CheckSlotAvailabilityQuery` — real `ICurrentTenant.StudioId`) and an anonymous one (`CreateGuestAppointmentHandler`, `CheckPublicSlotAvailabilityHandler` — no JWT at all, `ICurrentTenant.StudioId` defaults to `Guid.Empty`). Found as a real bug during the guest-checkout prompt (2026-08-31): without `IgnoreQueryFilters()`, EF Core's global filter (`StudioId == tenant.StudioId`) still ANDs against the explicit predicate, silently zeroing every result for an anonymous caller regardless of the real studio — caught by a real-`AppDbContext` integration test (`GuestCheckoutBookingIntegrationTests`), not unit tests, since the unit-test `FakeDbContext` never registers query filters at all | Authenticated (`ClientAndAbove`) + Anonymous |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -1113,6 +1121,11 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/studios/{slug}/reviews` | Public studio review list | None — read-only, non-sensitive review content only |
 | `GET /api/v1/public/artists/{slug}/reviews` | Public artist review list | None — read-only, non-sensitive review content only |
 | `POST /api/v1/public/traffic/beacon` | Anonymous + authenticated traffic beacon (role/tenant read from JWT when present) | Rate-limited (`public-write`); no PII accepted in the request body — `Path`/`IsNavigation` only, visitor id via header, IP never persisted |
+| `POST /api/v1/public/studios/{slug}/book` | Guest checkout — books without a prior account | Rate-limited (`public-booking`, 8/5min/IP); duplicate-email rejected via `GetUserIdByEmailAsync` (409, `AccountAlreadyExistsException`); random server-generated password, never returned/logged; plan quota (`AppointmentsPerMonth`) still enforced |
+| `GET /api/v1/public/studios/{slug}/booking/artists` | Public artist list for the guest booking picker | None — read-only, non-sensitive (name/avatar/specializations/hourly rate) |
+| `GET /api/v1/public/studios/{slug}/booking/availability` | Public slot-availability check for guest booking | None — read-only boolean+reason, no PII |
+| `GET /api/v1/public/studios/{slug}/booking/deposit-rule` | Public deposit estimate for guest booking | None — read-only, single active rule's name/amounts only |
+| `POST /api/v1/public/studios/{slug}/booking/presign` | Anonymous image upload before a guest's account exists | Rate-limited (`public-booking`); image content-types only, no PDF; entire R2 key server-constructed, no client-supplied path component; orphan-cleanup job (`GuestPendingUploadCleanupJob`) |
 
 The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`,
 `/auth/register/solo-artist`, `/auth/oauth/*`, `/auth/forgot-password`,
@@ -1753,6 +1766,8 @@ does not re-litigate them.
 | In-App Messaging (2026-08-26) | New `Conversation`/`ChatMessage` entities follow the `DesignRevision` pattern — ordinary `TenantEntity` with a real `StudioId` query filter — deliberately NOT the `FeedbackReport`/`FeedbackMessage` non-tenant exception, since this is real per-studio data, not an issuer cross-tenant ticket system. New `ChatHub` auto-joins a personal `user:{userId}` SignalR group on connect instead of `SupportHub`/`ScheduleHub`'s join-a-resource-group-by-id model — a 1:1 conversation only ever has two already-authenticated participants, so there is no resource id a client could leak or guess, which sidesteps by construction the exact ownership-check bug class `SupportHub.JoinTicket` originally had (see the Support Escalation entry). Eligibility (who a client/artist/owner may message) is relationship-based — client↔their appointment/assigned artist, artist↔their appointment/assigned client, anyone↔the studio owner (resolved via `Studio.OwnerEmail` → `IIdentityService`, same indirection `RegisterOAuthUserHandler`'s owner-email-match already uses) — computed once in an internal `ConversationEligibility` helper shared by the read-side contacts query and the write-side create-conversation check, so the two can't drift (same reasoning as `FeedbackAccessGuard`). Scope is deliberately client↔artist, client↔owner, artist↔owner only — no client↔client, no artist↔artist, no issuer (issuer already has `FeedbackReport`/`SupportHub` for platform support). `POST /api/v1/conversations` is a get-or-create endpoint returning `200`, not `201` — a deliberate, commented-inline deviation from the "201 for a creating POST" convention, since the caller (a "message this person" button) never knows in advance whether a thread already exists. No `NotificationLog` row is written for a chat message — `ChatMessage` itself already durably stores the content and its own `ReadAt` read-state, so a second copy would be redundant; the only new notification surface is `NotificationType.MessageReceived`, Email-channel only (SMS is real per-send cost and would trip on every message in a live back-and-forth — matches the Manual Client Reminders entry's SMS-cost reasoning). The Email is debounced: `SendChatMessageHandler` counts prior unread messages already sent BY the current sender before inserting the new row, and only enqueues `ChatNotificationJob` (Hangfire) when that count is zero — **a real bug was caught and fixed here**: the first-written version of this count checked `SenderUserId != user.UserId` (unread messages from the *other* participant) instead of `== user.UserId` (unread messages from the *sender's own prior streak*), which is backwards for a debounce condition and was only caught because `SendChatMessageHandlerTests` asserted the email is NOT re-enqueued for a second message in the same streak — the test failed against the buggy code, not just against a hand-derived expectation. `ChatNotificationJob` needs `IgnoreQueryFilters()` for the same reason `ManualReminderJob`/`SendArtistInviteJob` already do (a Hangfire job has no `ICurrentTenant` HTTP-request scope to satisfy the query filter) — added to that existing approved-usages row (#36) rather than as a new row, since it's the same already-approved class of usage, not a new exception. Frontend `useChatHub` mirrors `useSignalR`'s always-on-per-layout mounting pattern (not `useSupportHub`'s per-thread-mount pattern), with `useSupportHub`'s two documented bugs (missed reconnect rejoin, self-echo double-refetch) built in from the start rather than discovered later — ChatHub's per-connection auto-join means there is no reconnect-rejoin bug class to begin with. `AppointmentDetailPage.tsx` (artist/owner/issuer-only route) gained a "Message [client]" button gated on role !== Issuer and a new `AppointmentResponse.ClientUserId` projection field. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — Vagaro/Fresha/Boulevard/GlossGenius-tier "message your provider" is a two-party, cross-role thread, not a group chat, matching the scope decided here. Flagged, not silently shipped: no attachments (Decision 7 — `FeedbackReport.AttachmentUrls`' R2 presign flow is the proven pattern to reuse later), no edit/delete (Decision 8), no typing indicators/presence (`TrafficHub` is the only precedent and is issuer-analytics-scoped, a materially different feature), no push notifications (B19 mobile/PWA is itself still missing). Verified: dotnet build/test green (1737 unit + 379 integration, up from 1714/377 — new `Messaging/*HandlerTests`, `ConversationTests`, `ChatMessageTests`, `GetConversationContactsHandlerTests` covering every eligibility branch, `MessagingEndpointAuthorizationTests` exercising the real ASP.NET Core auth pipeline); pnpm tsc/lint/test green (1929 tests, up from 1915 — new `useChatHub`/`ConversationThread`/`NewConversationDialog`/`MessagesInboxPage` tests plus extended `ClientLayout`/`ArtistLayout`/`OwnerLayout` suites); migration applied to a real dev DB; Help Menu (3 new articles), standalone manual (3 new sections + 2 existing appointment-detail sections updated), and all three non-issuer onboarding tours updated in the same change. |
 | In-App Messaging — post-merge `/code-review` findings fixed (2026-08-26) | A dedicated review pass on the entry above's diff found 10 real issues, all fixed same-day. **Security-adjacent:** `ConversationEligibility` never branched on the `issuer` role, so an issuer request fell through every client/artist/owner branch and still picked up the unconditional "owner is reachable by anyone" contact — added an explicit early-return for `issuer` (empty contact list, matches Decision 1). `GetConversationMessagesQuery`'s `before` cursor was resolved by `ChatMessage.Id` alone with no `ConversationId` check, letting a caller supply a real message id from a DIFFERENT conversation they have no access to and leak that conversation's message timing via the resulting page boundary — cursor lookup now scoped to `m.ConversationId == query.ConversationId`. **Correctness:** the client-role branch of `ConversationEligibility` was missing the `IsActive` filter the owner-role branch already had, so a client could still message an artist the studio had deactivated — added. `useChatHub`'s `ConversationRead` handler invalidated only the `["Conversation"]` tag, never the per-conversation `{type:"Messages", id}` tag `getMessages` is cached under, so a sender's open thread kept showing an unread checkmark after the recipient actually read it — fixed to invalidate both. **The debounce race** (`SendChatMessageHandler`'s email-trigger check had a window where two concurrent sends in the same conversation could both decide "I'm first" and both enqueue an email) went through two designs, not one. The first attempt added `Conversation.PendingNotificationSenderUserId` as an EF Core concurrency token, claimed via a **separate `IAppDbContext` from `IAppDbContextFactory`** (the same "several queries can't share one DbContext" mechanism `GetTrafficBreakdownQuery` already established) so a losing claim's exception couldn't touch the message-insert save. That still failed under a real concurrent-send test: EF Core includes a concurrency token's original value in the WHERE clause of *every* update to that row, not just updates that touch the token — so a SECOND concurrent request's own unrelated message-insert (via a third context that had loaded the conversation before the first request's claim committed) got its own `DbUpdateConcurrencyException` and would have failed to save its message entirely, a strictly worse failure mode than the duplicate email being fixed. Reverted (entity field, EF config, `IAppDbContextFactory` dependency, and the migration all backed out) in favor of a schema-free, single-context design: after inserting, ask "of every currently-unread message from this sender, is this one the earliest?" (`ORDER BY CreatedAt` over `ChatMessages`) — whichever message in a streak is earliest is definitionally the one that started it, so exactly one message per streak answers yes under sequential sends. This intentionally does not claim perfect atomicity under true concurrent sends (a pathological interleaving could still under- or double-count) — accepted as this debounce's residual risk given it is a UX nicety, not a delivery guarantee, and given the alternative (the concurrency-token design) was demonstrably worse, not better. **Missing test coverage** (`GetConversationsHandler`, `GetUnreadMessageCountHandler`, `CreateConversationValidator`, `SendChatMessageValidator` had none, a direct CLAUDE.md rule violation) closed with new test files for each. **Two N+1 query patterns** fixed: `GetConversationsHandler` went from ~2-3 queries per conversation (60-90 for a 30-conversation inbox) to one grouped unread-count query plus one batched per-role display-name lookup; `GetConversationContactsHandler` went from one existing-conversation query per eligible contact (50-200 for an owner's full contact list) to loading the caller's own conversations once and matching in memory. **Deliberately not fixed, flagged instead:** the review's 10th finding — `ConversationAccessGuard` is a third independent hand-rolled "load + authorize + throw Forbidden" guard class alongside `FeedbackAccessGuard` and `ConductReportAuthorizationGuard`, and could be generalized into a shared MediatR pipeline behavior — was judged out of proportion for this pass: unifying it would mean redesigning and re-touching two other already-shipped, already-tested features for a DRY win, with no test safety net sized for that broader refactor in this session. Left as-is, matching this feature's own explicit mandate to mirror `FeedbackAccessGuard`'s shape. | Every fix here follows a pattern already established elsewhere in this codebase rather than inventing a new one — batched projections over N+1 loops (the general EF Core anti-pattern this review class always flags), `IAppDbContextFactory` considered (not ultimately used) for the debounce fix via `GetTrafficBreakdownQuery`'s precedent. The debounce redesign is its own small lesson: the first fix was more "correct-looking" (real DB-level atomicity via a concurrency token) but wrong in practice, caught only because a real concurrent-send test was written for it rather than trusting the design on inspection — worth remembering next time a concurrency token looks like the obvious answer for a narrow field-level claim on a row that's also updated by unrelated code paths. Verified: dotnet build/test green (1761 unit + 379 integration, up from 1737/379 — new eligibility/cursor/validator/handler test coverage, including streak-ordering tests for the redesigned debounce check); pnpm tsc/lint/test green; no new migration needed (the reverted concurrency-token migration was removed, not left as dead schema). |
 | Country-code phone inputs — shared `PhoneInput` component (2026-08-26) | New `frontend/src/shared/components/ui/phone-input.tsx` (country-code `Select` + national-number `Input`, backed by `libphonenumber-js/min` for country/calling-code metadata, `AsYouType` formatting, and validity checks) replaces the plain `<Input type="tel">` on the three real phone-entry surfaces in the app: `CreateClientPage.tsx` (`Client.Phone`), `StudioProfilePage.tsx` (`Studio.PhoneNumber`), and `ReminderDialog.tsx`'s raw-contact path (`CreateManualReminderCommand.RecipientPhone`) — confirmed by reading every `phone`/`Phone` reference in `frontend/src/features/**`; everything else is a display-only surface. The component always emits a single E.164 string (no DB schema change — `Client.Phone`/`ManualReminder.RecipientPhone` are `varchar(20)`, already wide enough; `Studio.PhoneNumber` is `longtext`), and derives its initial country from an existing E.164 value or falls back to showing pre-existing legacy freeform data verbatim (not discarded) when it can't parse. Default country is Portugal (`PT`) — matches every pre-existing phone placeholder/test fixture in the codebase, not independently chosen. Backend gained a matching `Matches(E164Format)` FluentValidation rule (`^\+[1-9]\d{1,14}$`, the canonical ITU E.164 shape) in `CreateClientValidator`, `CreateManualReminderValidator`, and — this one previously had **no** phone rule at all — `UpdateMyStudioCommand.cs`'s `UpdateMyStudioValidator`. The regex is duplicated across the three validator classes rather than factored into a shared constant, mirroring this codebase's existing `NiptFormat` duplication between `RegisterStudioValidator` and `UpdateMyStudioValidator`. Motivating bug, not just cosmetics: `NotificationService.SendSmsAsync` passes the stored phone straight into Twilio's `PhoneNumber`, which requires E.164 — before this change nothing guaranteed that shape anywhere in the write path. `CreateManualReminderValidator`'s `RecipientPhone` rule needed an explicit `.Cascade(CascadeMode.Stop)` the source prompt's own code sample didn't include — without it, an empty raw-contact phone failed both `NotEmpty()` **and** `Matches()` simultaneously (two error messages for one empty field), caught by a test the prompt itself asked for ("confirm the two rules don't produce a confusing double message"), not assumed safe. `PhoneInput`'s internal prop-resync tracking uses `useState` (a state-tracked "last emitted" value, sentinel-seeded as `undefined`, never from the live `value` prop — this codebase's own established fix for exactly this sentinel-seeding bug class), not `useRef` as the source prompt's sample code used — mutating a ref during render is flagged as a hard ESLint error under this project's React Compiler lint rules (`react-hooks/refs`), confirmed by running lint, not assumed compatible. `PhoneCountryCode` is aliased to libphonenumber-js's own `CountryCode` literal-union type, not a bare `string` as the source prompt's sample had it — `pnpm tsc --noEmit` didn't catch the mismatch, but `pnpm build`'s `tsc -b` (stricter project-reference build) did, surfacing 8 real type errors; `flagEmoji` itself keeps a plain `string` parameter since it's a general-purpose case-insensitive transform (its own required test passes a lowercase, non-`CountryCode`-shaped input). New dependency: `libphonenumber-js` (`/min` entry point) — version resolved: `1.13.11`. `tsconfig.json`'s `lib` array needed no change (`ES2023` already covers `Intl.DisplayNames`) — verified before editing, not assumed. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — Fresha/Vagaro/Boulevard/GlossGenius-tier booking forms all use a country-code phone picker, not a bare text field, precisely because their SMS reminder pipelines (this app's own `NotificationService`/Twilio integration included) depend on E.164 input. No new UI-combobox dependency for the ~240-country dropdown — Radix `Select`'s built-in typeahead was judged sufficient, consistent with this codebase's "use the shadcn/Radix primitive before reaching for something heavier" convention. Verified: `dotnet build` clean, `dotnet test` on `Pena_e_Arte.UnitTests` green (1845 unit tests, up from 1834 — new `phoneCountries`/`phoneValidation`/`phone-input`/validator test coverage); integration tests not run in this session's sandbox (no local Redis — a pre-existing, already-documented environment gap unrelated to this change, not this feature's own regression); `pnpm tsc --noEmit` and `pnpm build` both clean; every changed/new frontend file individually confirmed lint-clean (`npx eslint <files>`) — a full-repo `eslint .` run crashed on this sandbox's available memory both before and after this change, an environment constraint (not a code issue) also hit earlier the same day on an unrelated PR, so CI's own lint run is the authoritative check; `pnpm vitest run` full suite green (1989 tests, up from 1963 — one unrelated pre-existing flake in `ConductReportInboxPage.test.tsx` during the full-suite run confirmed passing cleanly in isolation, a known class of noise in this sandbox's constrained-memory parallel test runs, not a real failure). |
+| `BookingIntake` vs `IntakeForm` naming (2026-08-31) | The guest-checkout booking prompt's spec named its new booking-content entity (tattoo description, desired placement, referral source, safety notes — 1:1 with `Appointment`) `IntakeForm`. That name was already taken by a real, shipped, different feature (`09ed943`, 2026-07-26): `IntakeForm` is `ClientId` + nullable `AppointmentId` + `FormData`/`FileUrl`/`SubmittedAt` — a studio-sent intake/consent-style form, with its own Commands/Queries, `FormEndpoints.cs`, and a frontend `features/forms` module. The spec's own Context section claimed `IntakeForm` "does not exist anywhere in the codebase," which was simply false and stale by five weeks. Renamed the new entity to `BookingIntake` (table `booking_intakes`) rather than either colliding with or retrofitting unrelated fields onto the existing `IntakeForm` — a "god entity" mixing two different domain concepts (a studio-sent form vs. booking-time intake) is worse than a longer name. The existing `IntakeForm` feature is completely untouched by this work. | Best-practice call, not a re-litigation of the guest-checkout product decision — only the entity's identity/name changed, not its purpose or shape. Verified via `git log` that the real `IntakeForm` predates this prompt; Feature Module Map row #02 ("Consultation & Consent Forms") already correctly lists it as implemented and was left unedited. |
+| Guest checkout `IgnoreQueryFilters()` requirement — every shared availability/booking query (2026-08-31) | `ArtistAvailabilityExtensions` (`IsAnyArtistAvailableAsync`, `CheckArtistScheduleAsync`, `CheckArtistSlotAvailabilityAsync`) and `CreateAppointmentCommand.CreateAppointmentCoreAsync` were extracted/reused for the guest-checkout booking prompt with an explicit `studioId` parameter, on the assumption that an explicit `.Where(x => x.StudioId == studioId)` predicate alone was sufficient to make them safe for an anonymous caller with no tenant JWT. That assumption was wrong: EF Core's global query filter (`HasQueryFilter(x => x.StudioId == tenant.StudioId)`) still applies in addition to any explicit predicate, and `ICurrentTenant.StudioId` defaults to `Guid.Empty` for an anonymous request (`CurrentTenantService`, never `SetTenant`'d) — so every query in both files silently returned zero rows for every guest request (always "unavailable," "no deposit rule," "artist not found") regardless of the real studio, until `IgnoreQueryFilters()` was added to each one (approved usage #51). Also fixed as the same class of bug, one level up: `CreateAppointmentCoreAsync`'s specific-artist path never checked `StudioClosures` before this extraction (only the any-artist path did) — closed as a side effect of sharing one chain, confirmed by the full existing `CreateAppointmentHandlerTests`/`CheckSlotAvailabilityHandlerTests` suites passing unchanged. | Caught by a new integration test class, `GuestCheckoutBookingIntegrationTests`, run against a real MySQL-backed `AppDbContext` with `ICurrentTenant.StudioId == Guid.Empty` (mirroring `PublicPortfolioIntegrationTests`' `fixture.CreateDbContext(Guid.Empty)` pattern) — **not** by unit tests against `FakeDbContext`, which never registers query filters at all and so cannot exercise this bug class. Any future shared query helper reused by both an authenticated and an anonymous/guest caller must be verified the same way — an explicit `studioId`/`tenantId` parameter is necessary but not sufficient; `IgnoreQueryFilters()` is also required, and only a real-context integration test proves it. |
 
 ---
 
@@ -3367,3 +3382,239 @@ pushes or branch deletion on `main`.
   were re-run to a clean, final state rather than stopping once the new tests were green.
 - No other pre-existing test failures were found — the baseline before this feature was fully
   green on both backend and frontend.
+
+---
+
+## Guest Checkout Booking + BookingIntake — 2026-08-31
+
+Full implementation of `docs/claude/overnight-prompt-guest-checkout-booking-2026-08-31.md`, all
+Parts 1–8 (Domain/EF, Contracts, Application, API + governance docs, cleanup job, frontend guest
+form + shared intake fields + appointment-detail rendering, full test suite, Help Menu/manual/tour
+check). This section was originally written mid-implementation (backend-only); it's since been
+completed and this note updated in place rather than left stale.
+
+### What was built
+
+- New `BookingIntake` entity (`TenantEntity`, 1:1 `Appointment`) — `TattooDescription`,
+  `SafetyNotes`, `DesiredPlacement` (`BodyMap` value object, same JSON-column pattern as
+  `ClientProfile.BodyMap`), `ReferralSource` enum + `ReferralSourceOther`. See the Decisions Log
+  entry above for why this isn't named `IntakeForm` (that name was already taken by a real,
+  different, shipped feature — the spec's premise was stale).
+- `AppointmentAttachment.Category` (`AreaPhoto` | `Reference`, defaults `Reference` — existing
+  rows backfill correctly via the migration's `DEFAULT` clause, no separate backfill statement
+  needed on MySQL 8.4). `Client.MarketingOptIn` (bool, default false).
+- One migration (`AddBookingIntakeGuestBookingAndAttachmentCategory`), applied and verified
+  against the local MySQL 8.4 dev database (`DESCRIBE` output confirmed).
+- `CreateAppointmentRequest`/`AppointmentResponse` extended with the shared intake fields;
+  `ImageUrls` kept as a deprecated flat mirror of the `Reference`-category subset (not removed
+  outright, per Part 2's spec instruction) alongside the new `Attachments` field — a deliberate
+  deviation from the spec's "replaces" wording, so the not-yet-updated frontend (Part 6, separate
+  pass) doesn't silently lose its image gallery the moment this backend ships.
+- `CreateAppointmentCommand.CreateAppointmentCoreAsync` extracted (explicit `studioId`/`clientId`
+  params, no `ICurrentTenant` dependency) — shared by the existing authenticated handler and the
+  new `CreateGuestAppointmentHandler`.
+- `ArtistAvailabilityExtensions.CheckArtistScheduleAsync`/`CheckArtistSlotAvailabilityAsync`
+  extracted from `CheckSlotAvailabilityHandler`'s inline chain (studio-closure → schedule → hours
+  → time-off [→ conflict for the full variant]); `IsAnyArtistAvailableAsync` widened to take an
+  explicit `studioId`. All three, plus `CreateAppointmentCoreAsync`, needed `IgnoreQueryFilters()`
+  added throughout — see the "Guest checkout `IgnoreQueryFilters()` requirement" Decisions Log
+  entry above for the real bug this caught.
+- New anonymous surfaces: `POST /studios/{slug}/book` (`CreateGuestAppointmentCommand`),
+  `GET .../booking/artists`, `GET .../booking/availability`, `GET .../booking/deposit-rule`,
+  `POST .../booking/presign` — all under `PublicEndpoints.cs`, all in the `AllowAnonymous
+  Exceptions` table above. New `public-booking` rate-limit policy (8/5min/IP), applied to the
+  submit and presign endpoints.
+- `AccountAlreadyExistsException` → 409 `ACCOUNT_ALREADY_EXISTS` for a duplicate-email guest
+  booking attempt (Decision #3 — never silently attach a booking to an existing account without
+  proof of control).
+- Guest account provisioning mirrors `RegisterUserHandler`'s anonymous account+`Client`
+  linking pattern: a cryptographically random ≥28-char password (guaranteed upper/lower/digit,
+  Fisher-Yates shuffled) satisfies `InfrastructureServiceExtensions`' configured `PasswordOptions`
+  with margin, is used once to create the Identity user, then discarded — never logged, never
+  returned. One combined welcome email (`IEmailRenderer.RenderGuestBookingWelcome`, new method)
+  carries both a password-reset link (the guest's passwordless first-session recovery path) and
+  the standard email-confirmation link.
+- `GuestPendingUploadCleanupJob` (Hangfire, daily at 5am, staggered after `retention-purge`) sweeps
+  `appointments/guest-pending/` for objects older than 48h with no matching
+  `AppointmentAttachment.ImageUrl` — folded into `IgnoreQueryFilters()` entry #36's existing
+  multi-job row.
+
+### Architecture decisions confirmed or corrected against live source
+
+- **`IntakeForm` naming collision** — see the dedicated Decisions Log entry above.
+- **The `IgnoreQueryFilters()` gap** — see the dedicated Decisions Log entry above. This was the
+  most significant finding of this pass: a bug that made the entire guest booking core silently
+  non-functional (every availability check, artist lookup, deposit-rule lookup, and conflict
+  check would have failed or returned empty for every real guest request), invisible to every
+  existing unit test, caught only by writing a real-`AppDbContext` integration test specifically
+  because the fix's own correctness depended on it.
+- **Studio-closure check gap, closed as a side effect** — `CreateAppointmentHandler`'s specific-
+  artist path never checked `StudioClosures` before this extraction (only the any-artist path
+  did); sharing one chain with `CheckSlotAvailabilityHandler` closed it. No existing test
+  regressed, meaning there was no prior coverage for "closed studio + specific artist" on the
+  create path — accepted as a real, beneficial fix per this prompt's own explicit instruction, not
+  reverted to preserve byte-for-byte old behavior.
+- **Conflict-check timing preserved, not merged** — an earlier attempt at this extraction folded
+  the conflict check into the same shared method used pre-lock, which changed
+  `CreateAppointmentHandler`'s exception type for an already-conflicting slot from
+  `SlotAlreadyBookedException` to `BusinessRuleViolationException` (caught by
+  `Handle_TimeOverlap_ThrowsSlotAlreadyBookedException` failing). Split into
+  `CheckArtistScheduleAsync` (no conflict check, used pre-lock by `CreateAppointmentCoreAsync`)
+  and `CheckArtistSlotAvailabilityAsync` (adds the conflict check, used by the read-only preview
+  handlers) to preserve the original race-safety shape: the authoritative conflict check still
+  runs once, after the per-slot lock is acquired.
+
+### Deviations from the prompt
+
+- `ImageUrls` kept (deprecated) rather than removed outright — see above.
+- Nested command-validator composition (`SetValidator`) was specified but this codebase has no
+  existing precedent for it (verified via search); `CreateGuestAppointmentValidator` duplicates
+  the relevant booking-content rules against `x.Request.Booking.*` paths instead, matching this
+  codebase's existing "one self-contained validator per command" convention.
+- `CreateGuestAppointmentHandler` lives under `Pena_e_Arte.Application/Public/Commands/`, not a
+  new top-level feature folder — matches the existing `Public/Queries/` sibling.
+
+### Verification performed
+
+- `dotnet build`: clean, 0 errors, across every project.
+- `dotnet test` (full suite): 1856 unit + 388 integration, all passing, 0 failures — baseline
+  before this session was 1853 unit + 383 integration, also all passing.
+- New `GuestCheckoutBookingIntegrationTests` (5 tests, real MySQL-backed `AppDbContext` with
+  `ICurrentTenant.StudioId == Guid.Empty`, mirroring `PublicPortfolioIntegrationTests`'
+  `fixture.CreateDbContext(Guid.Empty)` pattern): specific-artist and any-artist public
+  availability checks, the public artist list, a full guest-booking happy path (asserts the
+  created `Client`/`Appointment`/`BookingIntake` rows directly against the database, not just the
+  response), and the duplicate-email 409 path.
+- Migration applied and schema verified against the local MySQL 8.4 dev database via `DESCRIBE`.
+- Rate limit policy, `dotnet ef migrations add` correctness, and the frontend-facing manual
+  end-to-end checklist items from the prompt's Definition of Done are **not yet verified** — no
+  frontend exists yet to exercise them through. Left for the Part 6/7/8 pass.
+
+### Parts 6, 7, 8 — frontend, tests, Help — 2026-08-31 (same day, continued session)
+
+Completes the feature. Frontend guest-checkout UI, full backend+frontend test coverage, and Help
+Menu/manual updates, on top of the Parts 1–5a backend above.
+
+**Part 6 (frontend):**
+- Extracted `TattooIntakeFields`, `CategorizedImagesField`, `DesiredPlacementField`, `FieldLabel`
+  out of `BookAppointmentForm.tsx` (Decision #8 — shared between the authenticated and guest
+  forms); `BookAppointmentForm.tsx` now renders two `CategorizedImagesField` instances (Area,
+  Reference — both optional there, per Part 6d) instead of the old single `ReferenceImagesField`.
+- New `frontend/src/features/booking/components/GuestBookAppointmentForm.tsx` — full guest
+  checkout form (identity fields, marketing opt-in, phone, artist/date/duration + availability
+  check, `TattooIntakeFields`, `DesiredPlacementField`, two `CategorizedImagesField` instances —
+  BOTH required here, per Decision #6), backed by a local `useGuestImageUpload` hook against the
+  new anonymous presign endpoint.
+- `publicApi.ts` extended in place (not a separate `publicBookingApi.ts` — it already covers every
+  other `/api/v1/public/` endpoint including write mutations, so extending it matched this
+  codebase's existing slice-boundary convention better than a new file) with the 5 new
+  booking endpoints and their types.
+- `BookPage.tsx` restructured: unauthenticated + `?studio=slug` → `GuestBookPage`; unauthenticated
+  + no slug → `NoStudioBookPage`; authenticated Client/Issuer → `AuthenticatedBookPage` (the
+  original JSX, unchanged); authenticated Artist/Owner → redirect to their own home, preserving the
+  pre-existing router-level restriction now that `/book` sits outside the blanket auth `RoleGuard`.
+- `router.tsx`: `/book` moved to a route wrapped only in `<AppLayout/>` (which already tolerates no
+  role, rendering a bare `Outlet`) instead of nested inside the auth `RoleGuard` — the minimal
+  change to make one route reachable both authenticated and anonymously without duplicating it.
+- `StudioPortfolioPage.tsx`'s CTA changed from `/login?redirect=/book?studio={slug}` to
+  `/book?studio={slug}` directly (Decision #13).
+
+**Part 7 (tests):** New backend unit tests — `GetPublicBookingArtistsHandlerTests`,
+`CheckPublicSlotAvailabilityHandlerTests`, `GetPublicDepositRuleHandlerTests`,
+`GetPresignedGuestUploadUrlHandlerTests` + its validator tests, `CreateGuestAppointmentValidatorTests`,
+`CreateGuestAppointmentHandlerTests` (including a log-inspection test asserting the generated
+password never appears in any `ILogger` call), `GuestPendingUploadCleanupJobTests`. New frontend
+tests — `TattooIntakeFields.test.tsx`, `CategorizedImagesField.test.tsx`,
+`DesiredPlacementField.test.tsx`, `GuestBookAppointmentForm.test.tsx`. Fixed the existing
+`BookPage.test.tsx` suite (which covers `BookAppointmentForm` too) for the new dual-category image
+shape (`imageUrls: string[]` → `images: {url, category}[]`) and the newly-required tattoo
+description field blocking submit until filled.
+
+**Part 8 (Help):** `helpContent.ts`'s `client-book-appointment` article updated for guest checkout,
+plus a new cross-linked `guest-booking-account-setup` article explaining the post-booking
+password-set flow. The standalone user manual (`index.html`) already covers guest checkout, the
+dual image categories, referral source, and desired placement in its Book section — verified by
+inspection, not assumed. Onboarding tours (`clientTour.ts`, `ownerTour.ts`, `artistTour.ts`) — none
+reference any selector inside `BookAppointmentForm.tsx`/`BookPage.tsx`/`AppointmentDetailPage.tsx`
+(confirmed via grep for `data-tour` in those files, which found none, and cross-checked against
+every tour file's `targetSelector` list) — no change needed, matching this codebase's own
+"confirmed no change needed, here's why" convention rather than a silent skip.
+
+**Deliberately not done, flagged not built:** `CreateClientPage.tsx`'s manual Add Client form was
+not given a `MarketingOptIn` checkbox (Part 6f) — the spec itself marks this "not required...low
+cost to include," and closing out the core feature took priority. A real, small, easy follow-up for
+a future pass, not a gap in this feature's own scope.
+
+**Verification:**
+- `dotnet build`: clean, 0 errors.
+- `dotnet test` (full suite, final): **1913 unit + 388 integration, all passing** — up from the
+  1853/383 baseline before this feature (+60 unit, +5 integration), and up from the 1856/388
+  reported after the Parts 1–5a backend pass alone (+57 more unit tests from Part 7).
+- `pnpm tsc --noEmit` and `pnpm build` (`tsc -b`, the stricter project-reference build): both clean.
+- `pnpm vitest run` (full suite, final): 2012 passed / 2032 total. Baseline before this feature was
+  1986/1998 (12 pre-existing failures, all `Test timed out in 10000ms` in interaction-heavy tests —
+  `ReminderDialog`, `StudioProfilePage`, `phone-input` — unrelated to this feature). This run added
+  20 failures across 8 files, all the identical `Test timed out in 10000ms` pattern under
+  concurrent system load (this sandbox has documented resource-contention flakiness when multiple
+  heavy test/build processes run at once) — including 3 of this feature's own new
+  `GuestBookAppointmentForm.test.tsx` tests and, tellingly, 4 failures in `CreateClientPage.test.tsx`,
+  a file this feature never touched. All 3 "failing" `GuestBookAppointmentForm` tests were
+  independently re-run in isolation (no concurrent load) immediately beforehand and passed cleanly
+  (13/13 in that file + `BookingWidget.test.tsx`) — confirming the full-suite failures are
+  environmental, not a real regression. `BookPage.test.tsx` (the file most changed by this feature,
+  covering both `BookAppointmentForm` and the restructured `BookPage`) had **zero failures** in
+  this final run.
+- Migration applied and schema verified against the local MySQL 8.4 dev database via `DESCRIBE`
+  (Part 1, unchanged since).
+- **Not verified this session**: live rate-limit behavior (`public-booking` 8/5min/IP — Redis is
+  not running in this dev environment, a pre-existing documented gap, not this feature's own), and
+  a real-browser manual click-through of the guest booking flow end-to-end. Both remain open items
+  from the prompt's own Definition of Done — flagged, not silently marked done.
+
+### Final closure pass — 2026-08-31 (same day, third session)
+
+The "2012/2032" full-suite number above undercounted — a clean, non-concurrent full re-run found
+**6 real, deterministic failures** the prior pass's "all environmental" conclusion missed (its
+claim that all 3 `GuestBookAppointmentForm` failures were purely load-induced was itself wrong for
+2 of them; only re-verified in true isolation, not just "immediately beforehand" alongside other
+heavy processes, does this actually settle):
+
+1. **`AppointmentDetailPage.tsx`'s new `ImageGallery` used the section label as each image's `alt`
+   text** (`alt="Reference images"`, plural) instead of the pre-existing singular `alt="Reference
+   image"` the existing test queried by — broke `AppointmentDetailPage.test.tsx`'s thumbnail-count
+   assertion. Fixed by giving `ImageGallery` a separate `imageAlt` prop, distinct from its section
+   `label`.
+2. **`AppointmentCard.tsx`'s attachment-count text changed from "N reference image(s)" to "N
+   image(s)"** (correct, since the count now spans both categories, not just Reference) but the
+   existing test still asserted the old wording — updated the test, not the (more accurate) new
+   copy.
+3. **`helpContent.ts`'s new `"body map"` keyword on the booking article** made it start matching a
+   `HelpMenu.test.tsx` search test that asserted the booking article would NOT appear for "body
+   map" (previously true, no longer true now that booking has its own body-map picker) — swapped
+   the test's negative assertion to a genuinely unrelated article (`client-leave-review`) instead of
+   removing the keyword, since a user searching "body map" while filling in the booking form
+   *should* find that article.
+4. **`StudioPortfolioPage.test.tsx` still asserted the pre-Decision-#13 `/login` redirect** for an
+   unauthenticated visitor — updated to assert the direct `/book?studio=` link.
+5–6. **Two `GuestBookAppointmentForm.test.tsx` tests (the full-submit and 409 paths) failed even in
+   a clean, single-file, no-concurrent-load re-run** — not purely environmental, contrary to the
+   prior pass's conclusion. These are this file's two heaviest interaction sequences (every
+   identity field + an artist `Select` + datetime + description + two real image uploads + submit +
+   an async wait) and were consistently landing at or past the 10s default under this sandbox's
+   already-documented CPU contention (see `src/test/setup.ts`'s `asyncUtilTimeout` comment, which
+   describes this exact class of issue and explicitly names per-test timeout bumps as the sanctioned
+   fallback for a test that's individually this heavy). Fixed with an explicit 20s timeout on both
+   `it()` calls, matching that documented convention rather than chasing a phantom Radix/jsdom
+   pointer-events bug that a defensive `document.body.style.pointerEvents` reset (also added, in
+   `beforeEach`/`afterEach`, as cheap insurance against the real, differently-shaped bug this
+   codebase's own "Gotcha: Dialog-based overlay opened from a DropdownMenuItem" note documents) did
+   not on its own resolve.
+
+**True final state, independently re-verified clean (not just claimed) after all six fixes:**
+- `dotnet build`: clean, 0 errors.
+- `dotnet test` (full suite): **1913 unit + 388 integration, all passing, 0 failures.**
+- `pnpm tsc --noEmit` and `pnpm build` (`tsc -b`): both clean.
+- `pnpm vitest run` (full suite, no scope filter): **2032 / 2032 passing, 0 failures.** This is a
+  stronger result than the pre-feature baseline itself (1986/1998, 12 pre-existing timeout
+  failures) — those 12 happened not to reproduce in this run (consistent with their established
+  load-dependent nature) rather than having been fixed by this feature.

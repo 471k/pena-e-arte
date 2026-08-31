@@ -1,6 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "@/app/store";
 import type { FileConductReportArgs, ReportableAppointment } from "@/features/conduct-reports/conductReports.types";
+import type { PresignUploadResponse } from "@/shared/api/filesApi";
+import type { AppointmentResponse, SlotAvailabilityResponse } from "@/features/appointments/appointment.types";
 
 export interface PublicArtistSummary {
   artistId:        string;
@@ -147,6 +149,56 @@ export interface ArtistInstagramPostResponse {
   isVisible:        boolean;
 }
 
+// ── Guest checkout booking (2026-08-31) ─────────────────────────────────────
+
+export interface PublicBookingArtistResponse {
+  artistId:        string;
+  name:            string;
+  avatarUrl:       string | null;
+  specializations: string | null;
+  hourlyRate:      number | null;
+}
+
+export interface PublicDepositRuleResponse {
+  name:          string;
+  amountFixed:   number | null;
+  amountPercent: number | null;
+}
+
+export interface PublicCheckSlotAvailabilityArgs {
+  slug:             string;
+  artistId?:        string;
+  date:             string;
+  durationMinutes:  number;
+}
+
+export interface CreateGuestAppointmentRequest {
+  firstName:       string;
+  lastName:        string;
+  email:           string;
+  phone:           string;
+  marketingOptIn:  boolean;
+  booking: {
+    artistId:        string | null;
+    clientId:        string;
+    date:            string;
+    durationMinutes: number;
+    notes:           string | null;
+    tattooDescription:          string;
+    safetyNotes?:               string | null;
+    desiredPlacementLocations?: string[];
+    referralSource?:            string | null;
+    referralSourceOther?:       string | null;
+    images?: { url: string; category: string }[];
+  };
+}
+
+export interface PresignGuestUploadArgs {
+  slug:        string;
+  contentType: string;
+  category:    "area" | "reference";
+}
+
 export interface PortfolioFeedArgs {
   lat?:      number;
   lng?:      number;
@@ -286,6 +338,34 @@ export const publicApi = createApi({
     fileArtistConductReport: builder.mutation<void, { slug: string; body: FileConductReportArgs }>({
       query: ({ slug, body }) => ({ url: `artists/${slug}/reports`, method: "POST", body }),
     }),
+
+    // ── Guest checkout booking ────────────────────────────────────────────
+    getPublicBookingArtists: builder.query<PublicBookingArtistResponse[], string>({
+      query: (slug) => `studios/${slug}/booking/artists`,
+    }),
+    checkPublicSlotAvailability: builder.query<SlotAvailabilityResponse, PublicCheckSlotAvailabilityArgs>({
+      query: ({ slug, artistId, date, durationMinutes }) => ({
+        url:    `studios/${slug}/booking/availability`,
+        params: { ...(artistId ? { artistId } : {}), date, durationMinutes },
+      }),
+      keepUnusedDataFor: 0,
+    }),
+    getPublicDepositRule: builder.query<PublicDepositRuleResponse | null, string>({
+      query: (slug) => `studios/${slug}/booking/deposit-rule`,
+    }),
+    createGuestAppointment: builder.mutation<
+      AppointmentResponse,
+      { slug: string; body: CreateGuestAppointmentRequest }
+    >({
+      query: ({ slug, body }) => ({ url: `studios/${slug}/book`, method: "POST", body }),
+    }),
+    presignGuestUpload: builder.mutation<PresignUploadResponse, PresignGuestUploadArgs>({
+      query: ({ slug, contentType, category }) => ({
+        url:    `studios/${slug}/booking/presign`,
+        method: "POST",
+        body:   { contentType, category },
+      }),
+    }),
   }),
 });
 
@@ -309,4 +389,9 @@ export const {
   useGetReportableArtistAppointmentsQuery,
   useFileStudioConductReportMutation,
   useFileArtistConductReportMutation,
+  useGetPublicBookingArtistsQuery,
+  useCheckPublicSlotAvailabilityQuery,
+  useGetPublicDepositRuleQuery,
+  useCreateGuestAppointmentMutation,
+  usePresignGuestUploadMutation,
 } = publicApi;

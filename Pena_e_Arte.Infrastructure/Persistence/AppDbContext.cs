@@ -31,6 +31,7 @@ public class AppDbContext(
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
+    public DbSet<BookingIntake> BookingIntakes => Set<BookingIntake>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
     public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
@@ -125,6 +126,7 @@ public class AppDbContext(
         builder.Entity<Payment>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<SessionSplit>().HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<IntakeForm>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
+        builder.Entity<BookingIntake>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         builder.Entity<ConsentForm>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>().HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
         builder.Entity<ManualReminder>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);

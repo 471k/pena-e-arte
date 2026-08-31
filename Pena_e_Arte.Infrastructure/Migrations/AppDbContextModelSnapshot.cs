@@ -309,6 +309,13 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("AppointmentId")
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)")
+                        .HasDefaultValue("Reference");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -552,6 +559,62 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("AuditLogEntries");
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.BookingIntake", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DesiredPlacement")
+                        .IsRequired()
+                        .HasColumnType("json")
+                        .HasColumnName("desired_placement");
+
+                    b.Property<string>("ReferralSource")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("ReferralSourceOther")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("SafetyNotes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("TattooDescription")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_intakes");
+
+                    b.HasIndex("AppointmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_booking_intakes_appointment_id");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_booking_intakes_studio_id");
+
+                    b.ToTable("booking_intakes", (string)null);
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ChatMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -636,6 +699,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("MarketingOptIn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Phone")
                         .HasMaxLength(20)
@@ -2884,6 +2952,18 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Navigation("Artist");
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.BookingIntake", b =>
+                {
+                    b.HasOne("Pena_e_Arte.Domain.Entities.Appointment", "Appointment")
+                        .WithOne("Intake")
+                        .HasForeignKey("Pena_e_Arte.Domain.Entities.BookingIntake", "AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_intakes_appointments");
+
+                    b.Navigation("Appointment");
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ChatMessage", b =>
                 {
                     b.HasOne("Pena_e_Arte.Domain.Entities.Conversation", null)
@@ -3225,6 +3305,8 @@ namespace Pena_e_Arte.Infrastructure.Migrations
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Appointment", b =>
                 {
                     b.Navigation("Attachments");
+
+                    b.Navigation("Intake");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Artist", b =>

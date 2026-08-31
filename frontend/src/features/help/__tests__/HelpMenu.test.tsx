@@ -138,8 +138,11 @@ describe("HelpMenu", () => {
     await user.click(screen.getByRole("button", { name: /open help menu/i }));
     await user.type(screen.getByLabelText(/search help/i), "body map");
 
+    // "body map" now legitimately matches both the profile article and the booking article
+    // (which added a desired-placement body-map picker, 2026-08-31) — narrowing is still
+    // exercised by confirming an unrelated article is excluded.
     expect(screen.getByText(/update your profile and body map/i)).toBeInTheDocument();
-    expect(screen.queryByText(/book an appointment/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/leave a review/i)).not.toBeInTheDocument();
   });
 
   it("logs the search exactly once after the debounce delay for a distinct query", async () => {

@@ -120,6 +120,7 @@ public static class InfrastructureServiceExtensions
 
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
         services.AddTransient<RetentionPurgeJob>();
+        services.AddTransient<GuestPendingUploadCleanupJob>();
 
         // Secrets backend (Vault by default — see docs/infra/ADR-0002-secrets-management.md).
         // Construction does not connect; a call resolves against Vault:Address at use time and

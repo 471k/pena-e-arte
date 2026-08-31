@@ -340,6 +340,32 @@ public class EmailRenderer : IEmailRenderer
         </html>
         """;
 
+    public string RenderGuestBookingWelcome(string studioName, string setPasswordUrl, string confirmEmailUrl) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Your booking at {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Your booking request was sent!</h1>
+          <p><strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong> has received your booking request and
+          will confirm it soon. We've also created an account for you so you can manage this booking.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+            Set your password
+          </a>
+          <p>You can also confirm your email address separately:</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(confirmEmailUrl)}"
+             style="display:inline-block;background:#f3f4f6;color:#111827;padding:10px 20px;border-radius:6px;text-decoration:none;margin:8px 0">
+            Confirm email
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            Lost this email? Use "Forgot password" on the sign-in page any time with this email address to
+            regain access to your account.
+          </p>
+        </body>
+        </html>
+        """;
+
     public string RenderChangeEmailConfirmation(string confirmUrl) =>
         $"""
         <!DOCTYPE html>

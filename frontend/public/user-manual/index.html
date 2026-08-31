@@ -271,6 +271,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#guest-portfolio-feed" data-nav-link>Portfolio feed widget</a></li>
           <li><a href="#guest-shared-design" data-nav-link>Shared design link</a></li>
           <li><a href="#guest-embed" data-nav-link>Embedded booking widget</a></li>
+          <li><a href="#client-book" data-nav-link>Book an appointment (guest checkout, no account needed)</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -627,7 +628,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Artists</span> grid — click any artist card to open their own profile page.</li>
 <li><span class="step-title">Portfolio</span> masonry gallery — click a photo to open it full-size in a lightbox.</li>
 <li><span class="step-title">Reviews</span> section at the bottom, with a form to leave your own review (sign-in required, and you need a completed appointment at this studio).</li>
-<li>In the sidebar: <span class="step-title">Book an Appointment</span> button (sends signed-out visitors to sign in first), phone number, verified social media links (Instagram, TikTok, Facebook, X, YouTube — whichever the studio has set up), and a <span class="step-title">Get Directions</span> link that opens the studio's pinned location in Google Maps.</li>
+<li>In the sidebar: <span class="step-title">Book an Appointment</span> button (takes signed-out visitors straight to a guest checkout booking form for this studio — no sign-in required), phone number, verified social media links (Instagram, TikTok, Facebook, X, YouTube — whichever the studio has set up), and a <span class="step-title">Get Directions</span> link that opens the studio's pinned location in Google Maps.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> the studio owner can reply publicly to any review directly from this same page when signed in.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> "Get Directions" opens Google Maps in a new tab — on a phone, this hands off straight to the Google Maps app if it's installed.</div>
@@ -902,8 +903,8 @@ ol.steps li { margin: 6px 0; }
 <section id="client-book" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Book an appointment</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The client's home screen at <code>/book</code>. Request a new appointment with an artist at your currently active studio, and see your upcoming and past bookings below the form. If you don't belong to a studio yet, you're pointed to Discover instead.</p>
+<tr><td>Guest</td><td>✓ (guest checkout — no account needed to book)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>The client's home screen at <code>/book</code>. Request a new appointment with an artist at your currently active studio, and see your upcoming and past bookings below the form. If you don't belong to a studio yet, you're pointed to Discover instead. <strong>An unauthenticated visitor arriving from a studio's public page (e.g. <code>/book?studio=&lt;slug&gt;</code>) sees a guest checkout version of this same form instead</strong> — no sign-up step first; an account is created automatically as part of the booking.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Book appointment wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -917,26 +918,31 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="192" font-size="8" fill-opacity="0.6">✓ Slot available</text>
 <text x="280" y="212" font-size="9" fill-opacity="0.6">Deposit rule</text><rect x="280" y="218" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="250" font-size="9" fill-opacity="0.6">Notes</text><rect x="280" y="256" width="200" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="298" font-size="9" fill-opacity="0.6">Reference images</text><rect x="280" y="304" width="200" height="40" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3"/><text x="330" y="328" font-size="8" fill-opacity="0.5">Click to add photos (up to 6)</text>
+<text x="280" y="298" font-size="9" fill-opacity="0.6">Area photo · Reference images</text><rect x="280" y="304" width="200" height="40" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3"/><text x="330" y="328" font-size="8" fill-opacity="0.5">Click to add photos (up to 6 each)</text>
 <rect x="280" y="358" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="375" font-size="10" fill="#fff">Request Appointment</text>
 <text x="280" y="420" font-size="11" font-weight="700">My Bookings</text>
 </svg>
 </figure>
-<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), date/time, duration, deposit rule, notes, reference images</figcaption>
+<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), date/time, duration, deposit rule, tattoo description, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
+<li><strong>Guest checkout only</strong> — if you're not signed in, fill in your <span class="step-title">First name</span>, <span class="step-title">Last name</span>, <span class="step-title">Email</span>, and <span class="step-title">Phone</span>, and optionally toggle <span class="step-title">Sign up for news and updates</span>. An account is created for you as part of submitting the booking — see the callout below.</li>
 <li>Pick an <span class="step-title">Artist</span> (searchable dropdown), or toggle <span class="step-title">Let the studio choose my artist</span> to skip picking one — the artist selector hides and the studio assigns someone before confirming.</li>
 <li>Choose a <span class="step-title">Date &amp; time</span> and a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
-<li>If the studio has an active deposit rule, choose it and see the estimated deposit amount.</li>
-<li>Add optional <span class="step-title">Notes</span> (style, size, placement, skin concerns).</li>
-<li>Optionally attach up to 6 <span class="step-title">Reference images</span> (JPEG, PNG, or WebP) — click the box to pick photos, each uploads immediately and shows a thumbnail with a remove (×) button.</li>
+<li>If the studio has an active deposit rule, an estimated deposit amount is shown (signed-in clients can also pick the rule).</li>
+<li>Describe <span class="step-title">What are you looking to get done?</span> (required), optionally pick <span class="step-title">How did you hear about us?</span> (with a free-text field if you pick "Somewhere else"), and add any <span class="step-title">Safety notes</span> (medical conditions, allergies, medications, skin concerns).</li>
+<li>Use the <span class="step-title">Desired placement</span> body map to mark where you want the tattoo.</li>
+<li>Attach an <span class="step-title">Area photo</span> (a photo of the body area) and <span class="step-title">Reference images</span> (style/inspiration photos) — JPEG, PNG, or WebP, up to 6 each. Guest checkout requires both; already signed in, both stay optional.</li>
+<li>Add optional <span class="step-title">Notes</span> for anything else that doesn't fit the fields above (signed-in clients only).</li>
 <li>Click <span class="step-title">Request Appointment</span> (disabled while any image is still uploading).</li>
-<li>If a deposit is required, you're immediately offered <span class="step-title">Card</span> or <span class="step-title">Cash</span> to secure the slot (or you can defer it).</li>
-<li>Your existing bookings are listed below the form.</li>
+<li>If you're already signed in and a deposit is required, you're immediately offered <span class="step-title">Card</span> or <span class="step-title">Cash</span> to secure the slot (or you can defer it).</li>
+<li>Your existing bookings are listed below the form (once signed in).</li>
 <li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it — you'll see whether it's a full refund or a partial/forfeited one before confirming, then click <span class="step-title">Yes, cancel</span>.</li>
 <li>Click <span class="step-title">Reschedule</span> to move the same booking to a new date, time, or duration (only enabled with enough notice — otherwise contact the studio directly).</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first (or, if you're not signed in, takes you straight to that studio's guest checkout form).</div>
+<div class="callout callout-tip"><strong>Guest checkout — what happens after you submit:</strong> you'll receive one email with a link to set your password and a link to confirm your email. Set your password, then sign in to see the booking under My Bookings and manage it. Lost the email or never got it? Use "Forgot password" on the login page with the same email address any time — no separate resend needed.</div>
+<div class="callout callout-warn"><strong>Guest checkout — one account per email:</strong> if the email you enter already has an account on the platform, the booking is rejected with a message to sign in first instead — it's never silently attached to someone else's existing account.</div>
 <div class="callout callout-tip"><strong>Let the studio choose:</strong> if you don't have an artist preference, toggle this on instead of picking one. You won't know who your artist is until the studio assigns one — you'll get an email the moment they do, and the appointment still needs the studio's confirmation either way.</div>
 <div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled.</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>

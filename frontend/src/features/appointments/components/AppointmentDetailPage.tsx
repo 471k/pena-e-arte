@@ -21,7 +21,7 @@ import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useAppSelector } from "@/app/hooks";
 import { useCreateConversationMutation } from "@/features/messaging";
-import { AppointmentStatus, DepositStatus } from "../appointment.types";
+import { AppointmentStatus, AppointmentAttachmentCategory, DepositStatus, ReferralSource } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
@@ -59,6 +59,37 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex justify-between items-center py-2 gap-4">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+const REFERRAL_SOURCE_LABELS: Record<string, string> = {
+  [ReferralSource.Instagram]:        "Instagram",
+  [ReferralSource.TikTok]:           "TikTok",
+  [ReferralSource.YouTube]:          "YouTube",
+  [ReferralSource.FriendsAndFamily]: "Friends & family",
+  [ReferralSource.Other]:            "Somewhere else",
+};
+
+function ImageGallery({ label, imageAlt, urls }: { label: string; imageAlt: string; urls: string[] }) {
+  if (urls.length === 0) return null;
+  return (
+    <div className="py-2 space-y-1.5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="grid grid-cols-4 gap-2">
+        {urls.map((url) => (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="block aspect-square rounded-md overflow-hidden
+                       border border-border/40 bg-muted/30"
+          >
+            <img src={url} alt={imageAlt} className="h-full w-full object-cover" />
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
@@ -123,6 +154,18 @@ export function AppointmentDetailPage() {
       toast.error("Failed to start conversation.");
     }
   }
+
+  // Attachments fall back to the deprecated flat imageUrls (all treated as Reference, matching
+  // its pre-Category-split meaning) for appointments created before this migration.
+  const attachments = appt?.attachments
+    ?? appt?.imageUrls?.map((url) => ({ url, category: AppointmentAttachmentCategory.Reference }))
+    ?? [];
+  const areaPhotoUrls = attachments
+    .filter((a) => a.category === AppointmentAttachmentCategory.AreaPhoto)
+    .map((a) => a.url);
+  const referenceUrls = attachments
+    .filter((a) => a.category === AppointmentAttachmentCategory.Reference)
+    .map((a) => a.url);
 
   const isTerminal  = appt ? TERMINAL_STATUSES.has(appt.status) : false;
   const isPending   = appt?.status === AppointmentStatus.Pending;
@@ -252,35 +295,58 @@ export function AppointmentDetailPage() {
                     </span>
                   }
                 />
+                {appt.tattooDescription && (
+                  <>
+                    <Separator />
+                    <Row label="What they want" value={appt.tattooDescription} />
+                  </>
+                )}
+                {areaPhotoUrls.length > 0 && (
+                  <>
+                    <Separator />
+                    <ImageGallery label="Area photo" imageAlt="Area photo" urls={areaPhotoUrls} />
+                  </>
+                )}
                 {appt.notes && (
                   <>
                     <Separator />
                     <Row label="Notes" value={appt.notes} />
                   </>
                 )}
-                {!!appt.imageUrls?.length && (
+                {referenceUrls.length > 0 && (
+                  <>
+                    <Separator />
+                    <ImageGallery label="Reference images" imageAlt="Reference image" urls={referenceUrls} />
+                  </>
+                )}
+                {(appt.referralSource || appt.safetyNotes) && (
                   <>
                     <Separator />
                     <div className="py-2 space-y-1.5">
-                      <span className="text-sm text-muted-foreground">Reference images</span>
-                      <div className="grid grid-cols-4 gap-2">
-                        {appt.imageUrls.map((url) => (
-                          <a
-                            key={url}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block aspect-square rounded-md overflow-hidden
-                                       border border-border/40 bg-muted/30"
-                          >
-                            <img
-                              src={url}
-                              alt="Reference image"
-                              className="h-full w-full object-cover"
-                            />
-                          </a>
-                        ))}
-                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Intake
+                      </span>
+                      {appt.referralSource && (
+                        <Row
+                          label="How they heard about us"
+                          value={
+                            appt.referralSource === ReferralSource.Other && appt.referralSourceOther
+                              ? appt.referralSourceOther
+                              : REFERRAL_SOURCE_LABELS[appt.referralSource] ?? appt.referralSource
+                          }
+                        />
+                      )}
+                      {appt.safetyNotes && (
+                        <div
+                          role="alert"
+                          className="rounded-md border border-amber-800/40 bg-amber-950/20 px-3 py-2"
+                        >
+                          <p className="text-xs font-medium text-amber-400 mb-0.5">
+                            Anything else I should know
+                          </p>
+                          <p className="text-sm text-amber-200">{appt.safetyNotes}</p>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

@@ -345,22 +345,28 @@ public class CreateAppointmentHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithImageUrls_PersistsAttachmentsAndReturnsThemInOrder()
+    public async Task Handle_WithImages_PersistsAttachmentsAndReturnsThemInOrder()
     {
         CreateAppointmentRequest req = ValidRequest() with
         {
-            ImageUrls = ["https://cdn.example.com/1.png", "https://cdn.example.com/2.png"]
+            Images =
+            [
+                new AppointmentImageRequest("https://cdn.example.com/1.png", "Reference"),
+                new AppointmentImageRequest("https://cdn.example.com/2.png", "Reference"),
+                new AppointmentImageRequest("https://cdn.example.com/area.png", "AreaPhoto"),
+            ]
         };
 
         AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
 
         result.ImageUrls.Should().Equal("https://cdn.example.com/1.png", "https://cdn.example.com/2.png");
-        _db.AppointmentAttachments.Should().HaveCount(2);
+        result.Attachments.Should().HaveCount(3);
+        _db.AppointmentAttachments.Should().HaveCount(3);
         _db.AppointmentAttachments.Should().OnlyContain(a => a.AppointmentId == result.Id && a.StudioId == _studioId);
     }
 
     [Fact]
-    public async Task Handle_WithoutImageUrls_ReturnsEmptyImageUrls()
+    public async Task Handle_WithoutImages_ReturnsEmptyImageUrls()
     {
         AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
 

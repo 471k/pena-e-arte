@@ -42,11 +42,13 @@ public static class RateLimitingExtensions
                     //   auth           |    10    | 1 min   ← login, register, oauth, forgot-password,
                     //                                          reset-password, refresh, verify-email
                     //   public-write   |    30    | 1 min   ← review submit, artist view tracking
+                    //   public-booking |     8    | 5 min   ← guest booking submit + presign
                     //   public-read    |   120    | 1 min   ← portfolio feed, studio/artist pages
                     //   billing        |    20    | 1 min   ← Stripe-calling billing mutations, per user
 
                     AddRedisPolicy(opt, db, logger, "auth", permitLimit: 10, window: TimeSpan.FromMinutes(1));
                     AddRedisPolicy(opt, db, logger, "public-write", permitLimit: 30, window: TimeSpan.FromMinutes(1));
+                    AddRedisPolicy(opt, db, logger, "public-booking", permitLimit: 8, window: TimeSpan.FromMinutes(5));
                     AddRedisPolicy(opt, db, logger, "public-read", permitLimit: 120, window: TimeSpan.FromMinutes(1));
                     AddRedisPolicy(
                         opt, db, logger, "billing", permitLimit: 20, window: TimeSpan.FromMinutes(1),

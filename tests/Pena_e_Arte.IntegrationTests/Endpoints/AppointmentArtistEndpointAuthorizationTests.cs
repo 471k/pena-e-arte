@@ -110,7 +110,7 @@ public class AppointmentArtistEndpointAuthorizationTests(DatabaseFixture fixture
         string token = BuildToken(tenantId, "owner");
 
         CreateAppointmentRequest body = new(
-            null, clientId, DateTime.UtcNow.AddDays(3), 90, null);
+            null, clientId, DateTime.UtcNow.AddDays(3), 90, null, "A small rose on the forearm");
         HttpRequestMessage request = new(HttpMethod.Post, "/api/v1/appointments")
         {
             Content = JsonContent.Create(body),

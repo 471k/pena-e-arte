@@ -102,42 +102,84 @@ public class CreateAppointmentValidatorTests
     }
 
     [Fact]
-    public void Validate_ImageUrlsWithinLimit_IsValid()
+    public void Validate_ImagesWithinLimit_IsValid()
     {
         ValidationResult result = _sut.Validate(
-            ValidCommand() with { Request = ValidRequest() with { ImageUrls = [ValidImageUrl, ValidImageUrl] } });
+            ValidCommand() with
+            {
+                Request = ValidRequest() with
+                {
+                    Images = [new(ValidImageUrl, "Reference"), new(ValidImageUrl, "Reference")]
+                }
+            });
         result.Errors.Should().BeEmpty();
     }
 
     [Fact]
-    public void Validate_NullImageUrls_IsValid()
+    public void Validate_NullImages_IsValid()
     {
-        ValidationResult result = _sut.Validate(ValidCommand() with { Request = ValidRequest() with { ImageUrls = null } });
-        result.Errors.Should().NotContain(e => e.PropertyName.StartsWith("Request.ImageUrls"));
+        ValidationResult result = _sut.Validate(ValidCommand() with { Request = ValidRequest() with { Images = null } });
+        result.Errors.Should().NotContain(e => e.PropertyName.StartsWith("Request.Images"));
     }
 
     [Fact]
-    public void Validate_TooManyImageUrls_FailsOnImageUrls()
+    public void Validate_TooManyImagesInOneCategory_FailsOnImages()
     {
-        List<string> urls = Enumerable.Repeat(ValidImageUrl, 7).ToList();
+        List<AppointmentImageRequest> images = Enumerable.Repeat(new AppointmentImageRequest(ValidImageUrl, "Reference"), 7).ToList();
 
         _sut.ShouldFailOn(
-            ValidCommand() with { Request = ValidRequest() with { ImageUrls = urls } },
-            "Request.ImageUrls");
+            ValidCommand() with { Request = ValidRequest() with { Images = images } },
+            "Request.Images");
     }
 
     [Fact]
-    public void Validate_ImageUrlNotFromR2_FailsOnImageUrls()
+    public void Validate_ImageUrlNotFromR2_FailsOnImages()
     {
         _r2.IsR2Url("https://external.attacker.com/evil.png").Returns(false);
 
         _sut.ShouldFailOn(
-            ValidCommand() with { Request = ValidRequest() with { ImageUrls = ["https://external.attacker.com/evil.png"] } },
-            "Request.ImageUrls[0]");
+            ValidCommand() with
+            {
+                Request = ValidRequest() with
+                {
+                    Images = [new("https://external.attacker.com/evil.png", "Reference")]
+                }
+            },
+            "Request.Images[0].Url");
+    }
+
+    [Fact]
+    public void Validate_EmptyTattooDescription_FailsOnTattooDescription()
+    {
+        _sut.ShouldFailOn(
+            ValidCommand() with { Request = ValidRequest() with { TattooDescription = "" } },
+            "Request.TattooDescription");
+    }
+
+    [Fact]
+    public void Validate_ReferralSourceOtherWithoutText_FailsOnReferralSourceOther()
+    {
+        _sut.ShouldFailOn(
+            ValidCommand() with
+            {
+                Request = ValidRequest() with { ReferralSource = "Other", ReferralSourceOther = null }
+            },
+            "Request.ReferralSourceOther");
+    }
+
+    [Fact]
+    public void Validate_ReferralSourceOtherWithText_IsValid()
+    {
+        ValidationResult result = _sut.Validate(
+            ValidCommand() with
+            {
+                Request = ValidRequest() with { ReferralSource = "Other", ReferralSourceOther = "A friend told me" }
+            });
+        result.Errors.Should().NotContain(e => e.PropertyName == "Request.ReferralSourceOther");
     }
 
     private static CreateAppointmentRequest ValidRequest() =>
-        new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+        new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null, "A small rose on the forearm");
 
     private static CreateAppointmentCommand ValidCommand() =>
         new(ValidRequest());

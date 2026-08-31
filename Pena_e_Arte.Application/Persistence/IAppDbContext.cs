@@ -24,6 +24,7 @@ public interface IAppDbContext
     DbSet<Payment> Payments { get; }
     DbSet<SessionSplit> SessionSplits { get; }
     DbSet<IntakeForm> IntakeForms { get; }
+    DbSet<BookingIntake> BookingIntakes { get; }
     DbSet<ConsentForm> ConsentForms { get; }
     DbSet<ConsentTemplate> ConsentTemplates { get; }
     DbSet<NotificationLog> NotificationLogs { get; }

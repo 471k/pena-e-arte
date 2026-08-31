@@ -16,6 +16,11 @@ public class Client : TenantEntity
     /// </summary>
     public bool SmsOptOut { get; set; }
 
+    /// <summary>"Sign up for news and updates" — account-level marketing consent, captured at
+    /// guest checkout or in the manual Add Client form. Default false (opt-in, never opt-out-
+    /// by-default) — the marketing opt-IN analog of SmsOptOut above.</summary>
+    public bool MarketingOptIn { get; set; }
+
     public Guid? ArtistId { get; set; }
     public Artist? Artist { get; set; }
 

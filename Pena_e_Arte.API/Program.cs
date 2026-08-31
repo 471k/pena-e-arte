@@ -98,6 +98,11 @@ try
             "retention-purge",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 4)); // staggered away from reconciliation (2am) and instagram-sync (3am)
+
+        recurringJobs.AddOrUpdate<GuestPendingUploadCleanupJob>(
+            "guest-pending-upload-cleanup",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 5)); // staggered after retention-purge (4am)
     }
 
     // Without a configured TrustedProxyCidr, the .NET runtime's own forwarded-headers hardening

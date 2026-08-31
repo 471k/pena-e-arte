@@ -76,7 +76,7 @@ public class RescheduleAppointmentHandler(
                 a.Date < newEnd &&
                 a.EndDate > req.NewDate &&
                 a.Status != AppointmentStatus.Cancelled, ct)
-            : !await db.IsAnyArtistAvailableAsync(req.NewDate, req.NewDurationMinutes, ct);
+            : !await db.IsAnyArtistAvailableAsync(tenant.StudioId, req.NewDate, req.NewDurationMinutes, ct);
 
         if (conflict) throw new SlotAlreadyBookedException();
 
