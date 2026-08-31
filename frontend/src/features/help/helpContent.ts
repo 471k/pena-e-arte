@@ -582,7 +582,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "This uses your existing owner login — no new email, password, or invite email.",
-      "Once enabled, you'll get a \"My Portfolio\" shortcut in your menu, and you'll be selectable when booking or scheduling appointments, just like any other artist.",
+      "Once enabled, you'll get \"My Portfolio\" and \"My Earnings\" shortcuts in your menu, and you'll be selectable when booking or scheduling appointments, just like any other artist.",
       "This counts as one artist seat against your plan's usage, the same as inviting any other artist.",
     ],
     relatedArticleIds: ["owner-artists-list", "owner-solo-studio"],
@@ -1017,6 +1017,24 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Scroll down to \"Revenue by artist\" for a breakdown of the last 30 days, sorted highest first.",
     ],
     tips: ["Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't."],
+  },
+  {
+    id: "artist-earnings",
+    roles: [Artist, Owner],
+    title: "My Earnings",
+    route: "/earnings",
+    keywords: ["earnings", "payout", "commission", "how much did I make", "revenue", "session split", "my cut"],
+    summary: "See your own earnings trend over the last 12 months and a payment-by-payment breakdown of what you were paid.",
+    steps: [
+      "Go to My Earnings to see your earnings trend chart for the last 12 months.",
+      "Below the chart, see every payment from the last 30 days that contributed, with the client and appointment date.",
+      "If the studio recorded a session split for a payment (e.g. your cut vs. a studio fee), it's listed under that payment exactly as the studio entered it.",
+    ],
+    tips: [
+      "Only fully paid or partially-refunded-and-retained deposits count — the same rule the studio's own revenue report uses.",
+      "An owner who has also enabled their own artist profile gets this same page for their own bookings.",
+    ],
+    relatedArticleIds: ["owner-reports", "owner-become-artist"],
   },
   {
     id: "owner-messaging",

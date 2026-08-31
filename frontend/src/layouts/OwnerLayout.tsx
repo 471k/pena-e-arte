@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle,
+  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -91,7 +91,11 @@ export function OwnerLayout() {
     item.label === "Conduct Reports" ? { ...item, badge: openConductReportCount } : item,
   );
   const navItems: NavItem[] = myArtist
-    ? [...withBadges, { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> }]
+    ? [
+        ...withBadges,
+        { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> },
+        { label: "My Earnings",  href: "/earnings",                icon: <Wallet    className="h-4 w-4" /> },
+      ]
     : withBadges;
 
   function handleLogout() {

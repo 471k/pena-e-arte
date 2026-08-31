@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -33,8 +34,6 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
             .Where(p => (p.Status == PaymentStatus.Paid || p.Status == PaymentStatus.Refunded) && p.PaidAt != null)
             .ToListAsync(ct);
 
-        static decimal RetainedAmount(Payment p) => Math.Max(0m, p.Amount - (p.RefundedAmount ?? 0m));
-
         List<MonthlyRevenuePoint> monthlyTrend = new(12);
         for (int i = 11; i >= 0; i--)
         {
@@ -43,7 +42,7 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
 
             decimal revenue = collectedPayments
                 .Where(p => p.PaidAt!.Value >= monthStart && p.PaidAt!.Value < monthEnd)
-                .Sum(RetainedAmount);
+                .Sum(p => p.RetainedAmount());
 
             monthlyTrend.Add(new MonthlyRevenuePoint(monthStart.ToString("yyyy-MM"), revenue));
         }
@@ -73,7 +72,7 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
             if (!artistIdByAppointment.TryGetValue(payment.AppointmentId, out Guid? artistId) || artistId is null)
                 continue;
 
-            revenueByArtist[artistId.Value] = revenueByArtist.GetValueOrDefault(artistId.Value) + RetainedAmount(payment);
+            revenueByArtist[artistId.Value] = revenueByArtist.GetValueOrDefault(artistId.Value) + payment.RetainedAmount();
         }
 
         Dictionary<Guid, string> artistNames = await db.Artists

@@ -28,6 +28,11 @@ export const artistTourSteps: TourStep[] = [
     body: "New bookings, form submissions, and other alerts show up here.",
   },
   {
+    targetSelector: '[data-tour="artist-earnings-nav"]',
+    title: "Your earnings",
+    body: "See what you've earned, month by month, and a breakdown of every payment behind it — including any session split the studio recorded.",
+  },
+  {
     targetSelector: '[data-tour="artist-conduct-reports-nav"]',
     title: "Reports about you",
     body: "If a client ever files a conduct report about you, you can read it here — their identity is never shown to you.",

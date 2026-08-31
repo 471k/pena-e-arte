@@ -18,7 +18,7 @@ import {
   ConsentFormDetailPage,
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
-import { ReportsPage } from "@/features/reports";
+import { ReportsPage, MyEarningsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
 import {
@@ -338,6 +338,15 @@ export const routes = [
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><ReportsPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Artist (+ owner-as-artist): my earnings ─────────────────────
+              {
+                path: "earnings",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><MyEarningsPage /></ErrorBoundary> },
                 ],
               },
 

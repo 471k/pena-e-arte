@@ -357,6 +357,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#artist-consent-view" data-nav-link>View consent forms</a></li>
           <li><a href="#artist-profile" data-nav-link>My portfolio profile</a></li>
           <li><a href="#artist-notifications" data-nav-link>Notifications</a></li>
+          <li><a href="#artist-earnings" data-nav-link>My Earnings</a></li>
         </ul>
       </div>
     </div>
@@ -1806,6 +1807,36 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a></div>
 </section>
 
+<section id="artist-earnings" data-role="artist">
+<h2><span class="role-badge role-artist">Artist</span> My Earnings</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own earnings only)</td></tr><tr><td>Owner</td><td>✓ (only if they've also enabled their own artist profile — their own earnings only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>At <code>/earnings</code>: your own earnings trend for the last 12 months, plus every payment from the last 30 days that contributed, with the client, appointment date, and amount. If the studio recorded a session split for a payment (for example, your cut vs. a studio fee), it's shown under that payment exactly as the studio entered it — this page doesn't guess which part of a split is "yours."</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 420" role="img" aria-label="My Earnings wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">My Earnings</text>
+<rect x="20" y="60" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="82" font-size="10" font-weight="700">Earnings trend (last 12 months)</text>
+<polyline points="60,190 150,175 240,180 330,150 420,160 510,120 600,135 690,100" fill="none" stroke="#7c3aed" stroke-width="2"/>
+<rect x="20" y="236" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="258" font-size="10" font-weight="700">Payments (last 30 days)</text>
+<text x="40" y="284" font-size="9" fill-opacity="0.7">Besa Klienti — 15 Jul 2026</text><text x="700" y="284" font-size="9" text-anchor="end">€380.00</text>
+<text x="52" y="298" font-size="7" fill-opacity="0.5">Artist cut</text><text x="700" y="298" font-size="7" text-anchor="end" fill-opacity="0.5">€300.00</text>
+<text x="52" y="310" font-size="7" fill-opacity="0.5">Studio fee</text><text x="700" y="310" font-size="7" text-anchor="end" fill-opacity="0.5">€80.00</text>
+</svg>
+</figure>
+<figcaption>My Earnings — earnings trend chart above, payment breakdown below</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>View the <span class="step-title">Earnings trend</span> chart — hover a point for that month's exact figure.</li>
+<li>Scroll to the <span class="step-title">Payments</span> list for the last 30 days, sorted most recent first.</li>
+<li>If a payment has a session split, its line items appear indented under that payment.</li>
+</ol>
+<div class="callout callout-tip"><strong>Note:</strong> only fully paid or partially-refunded-and-retained payments count — the same rule the studio's own revenue report uses.</div>
+<div class="crosslinks">See also: <a href="#owner-reports">Owner: revenue reports</a>, <a href="#owner-become-artist">Owner: enable your own artist profile</a></div>
+</section>
+
 <section id="owner-dashboard" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Dashboard</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -1973,7 +2004,7 @@ ol.steps li { margin: 6px 0; }
 <li>Enter your first and last name, and optionally specializations and an hourly rate.</li>
 <li>Click <span class="step-title">Enable my artist profile</span> — you land on your new artist detail page.</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get a "My Portfolio" shortcut in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get "My Portfolio" and "My Earnings" shortcuts in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
 <div class="crosslinks">See also: <a href="#owner-artists">Artist list</a>, <a href="#owner-artist-detail">Artist detail</a></div>
 </section>
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, Users, Palette, FileText, ScrollText,
-  DollarSign, Bell, PenLine, ImagePlus, MessageSquareMore, ShieldAlert, MessageCircle,
+  DollarSign, Bell, PenLine, ImagePlus, MessageSquareMore, ShieldAlert, MessageCircle, Wallet,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -31,6 +31,7 @@ const STATIC_NAV: NavItem[] = [
   { label: "Intake Forms",     href: "/forms/intake",     icon: <FileText     className="h-4 w-4" /> },
   { label: "Consent Forms",    href: "/forms/consent",    icon: <ScrollText   className="h-4 w-4" /> },
   { label: "Deposit Rules",    href: "/deposit-rules",    icon: <DollarSign   className="h-4 w-4" /> },
+  { label: "My Earnings",      href: "/earnings",         icon: <Wallet       className="h-4 w-4" />, tourId: "artist-earnings-nav" },
   { label: "Notifications",    href: "/notifications",    icon: <Bell         className="h-4 w-4" /> },
   { label: "Reports About Me", href: "/conduct-reports",  icon: <ShieldAlert  className="h-4 w-4" />, tourId: "artist-conduct-reports-nav" },
 ];
