@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import {
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
 import { generateUuid } from "@/shared/utils/uuid";
+import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
 import {
   useGetPublicBookingArtistsQuery,
   useCheckPublicSlotAvailabilityQuery,
@@ -82,9 +83,15 @@ function useGuestImageUpload(slug: string, category: "area" | "reference") {
   const [images, setImages] = useState<CategorizedImage[]>([]);
   const [error, setError]   = useState<string | null>(null);
 
+  // See BookAppointmentForm.tsx's useCategorizedImageUpload for why this is a ref, not a
+  // closed-over `images` — a `[]`-deps unmount effect otherwise revokes nothing, leaking every
+  // blob URL for a guest who picks photos then abandons/navigates away. Found via /code-review,
+  // 2026-09-01.
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
+
   useEffect(() => () => {
-    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    imagesRef.current.forEach((img) => URL.revokeObjectURL(img.previewUrl));
   }, []);
 
   async function pick(fileList: FileList | null) {
@@ -281,7 +288,11 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
         marketingOptIn: values.marketingOptIn,
         booking: {
           artistId:        values.bookAnyArtist ? null : values.artistId,
-          clientId:        "",
+          // Ignored by CreateGuestAppointmentHandler (it resolves the real client server-side) —
+          // but the backend's ClientId is a non-nullable Guid, so this must still be one
+          // syntactically valid GUID, not an empty string (which fails JSON→Guid deserialization
+          // and 400s the whole request before the handler ever runs).
+          clientId:        "00000000-0000-0000-0000-000000000000",
           date:            new Date(values.scheduledAt).toISOString(),
           durationMinutes: values.durationMinutes,
           notes:           values.notes || null,
@@ -440,7 +451,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
           <Input
             id="scheduledAt"
             type="datetime-local"
-            min={new Date().toISOString().slice(0, 16)}
+            min={toLocalDatetimeInputValue(new Date())}
             {...register("scheduledAt")}
             className={cn(errors.scheduledAt && "border-destructive")}
           />

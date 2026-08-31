@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,7 @@ import { useCurrentUser }  from "@/shared/hooks/useCurrentUser";
 import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { cn }              from "@/shared/utils/cn";
 import { generateUuid }    from "@/shared/utils/uuid";
+import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
 import { Role }            from "@/shared/types/roles";
 import {
   useCreateAppointmentMutation,
@@ -195,10 +196,16 @@ function useCategorizedImageUpload(category: AppointmentAttachmentCategory, uplo
   const [images, setImages] = useState<CategorizedImage[]>([]);
   const [error, setError]   = useState<string | null>(null);
 
+  // Mirrors `images` every render so the unmount-only cleanup below revokes whatever was
+  // actually picked, not the `[]` it closed over at mount — a `[]`-deps effect can't depend on
+  // `images` without re-running on every change, so a ref is the correct way to read the latest
+  // value at unmount time. Found via /code-review, 2026-09-01 (previously leaked every blob URL
+  // for a form abandoned/navigated-away-from after picking images).
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
+
   useEffect(() => () => {
-    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-    // Only revoke on unmount — not on every `images` change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    imagesRef.current.forEach((img) => URL.revokeObjectURL(img.previewUrl));
   }, []);
 
   async function pick(fileList: FileList | null) {
@@ -730,7 +737,7 @@ export function BookAppointmentForm() {
           <Input
             id="scheduledAt"
             type="datetime-local"
-            min={new Date().toISOString().slice(0, 16)}
+            min={toLocalDatetimeInputValue(new Date())}
             {...register("scheduledAt")}
             className={cn(errors.scheduledAt && "border-destructive")}
           />

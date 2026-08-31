@@ -38,7 +38,8 @@ public static class ArtistAvailabilityExtensions
         TimeSpan endTime = end.TimeOfDay;
 
         bool studioClosed = await db.StudioClosures.IgnoreQueryFilters().AnyAsync(
-            c => c.StudioId == studioId && c.StartDate <= date.Date && c.EndDate >= date.Date, ct);
+            c => c.StudioId == studioId && c.DeletedAt == null
+                 && c.StartDate <= date.Date && c.EndDate >= date.Date, ct);
         if (studioClosed) return false;
 
         List<Guid> candidateArtistIds = await db.Artists
@@ -50,17 +51,19 @@ public static class ArtistAvailabilityExtensions
         foreach (Guid artistId in candidateArtistIds)
         {
             bool hasSchedule = await db.ArtistSchedules.IgnoreQueryFilters().AnyAsync(
-                s => s.StudioId == studioId && s.ArtistId == artistId && s.DayOfWeek == day && s.IsAvailable
+                s => s.StudioId == studioId && s.DeletedAt == null && s.ArtistId == artistId
+                     && s.DayOfWeek == day && s.IsAvailable
                      && startTime >= s.StartTime && endTime <= s.EndTime, ct);
             if (!hasSchedule) continue;
 
             bool onTimeOff = await db.ArtistTimeOffs.IgnoreQueryFilters().AnyAsync(
-                t => t.StudioId == studioId && t.ArtistId == artistId
+                t => t.StudioId == studioId && t.DeletedAt == null && t.ArtistId == artistId
                      && t.StartDate <= date.Date && t.EndDate >= date.Date, ct);
             if (onTimeOff) continue;
 
             bool conflict = await db.Appointments.IgnoreQueryFilters().AnyAsync(
-                a => a.StudioId == studioId && a.ArtistId == artistId && a.Date < end && a.EndDate > date
+                a => a.StudioId == studioId && a.DeletedAt == null && a.ArtistId == artistId
+                     && a.Date < end && a.EndDate > date
                      && a.Status != AppointmentStatus.Cancelled, ct);
             if (conflict) continue;
 
@@ -95,13 +98,14 @@ public static class ArtistAvailabilityExtensions
         TimeSpan endTime = end.TimeOfDay;
 
         bool studioClosed = await db.StudioClosures.IgnoreQueryFilters().AnyAsync(
-            c => c.StudioId == studioId && c.StartDate <= date.Date && c.EndDate >= date.Date, ct);
+            c => c.StudioId == studioId && c.DeletedAt == null
+                 && c.StartDate <= date.Date && c.EndDate >= date.Date, ct);
         if (studioClosed)
             return (false, "Studio is closed that day.");
 
         var schedule = await db.ArtistSchedules
             .IgnoreQueryFilters()
-            .Where(s => s.StudioId == studioId && s.ArtistId == artistId &&
+            .Where(s => s.StudioId == studioId && s.DeletedAt == null && s.ArtistId == artistId &&
                         s.DayOfWeek == day && s.IsAvailable)
             .FirstOrDefaultAsync(ct);
 
@@ -112,7 +116,7 @@ public static class ArtistAvailabilityExtensions
             return (false, $"Outside artist's hours ({schedule.StartTime:hh\\:mm}–{schedule.EndTime:hh\\:mm}).");
 
         bool onLeave = await db.ArtistTimeOffs.IgnoreQueryFilters().AnyAsync(
-            t => t.StudioId == studioId && t.ArtistId == artistId &&
+            t => t.StudioId == studioId && t.DeletedAt == null && t.ArtistId == artistId &&
                  t.StartDate <= date.Date && t.EndDate >= date.Date, ct);
 
         if (onLeave)
@@ -138,6 +142,7 @@ public static class ArtistAvailabilityExtensions
         DateTime end = date.AddMinutes(durationMinutes);
         bool conflict = await db.Appointments.IgnoreQueryFilters().AnyAsync(a =>
             a.StudioId == studioId &&
+            a.DeletedAt == null &&
             a.ArtistId == artistId &&
             a.Date < end &&
             a.EndDate > date &&

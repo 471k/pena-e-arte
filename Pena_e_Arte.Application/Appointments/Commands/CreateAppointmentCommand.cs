@@ -84,7 +84,7 @@ public class CreateAppointmentHandler(
             // for why every query here must bypass the (Guid.Empty-scoped, for an anonymous
             // caller) global filter in favor of the explicit studioId predicate.
             artist = await db.Artists.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(a => a.StudioId == studioId && a.Id == artistId, ct)
+                .FirstOrDefaultAsync(a => a.StudioId == studioId && a.DeletedAt == null && a.Id == artistId, ct)
                 ?? throw new NotFoundException(nameof(Artist), artistId);
 
             (bool available, string? reason) = await db.CheckArtistScheduleAsync(
@@ -116,6 +116,7 @@ public class CreateAppointmentHandler(
             {
                 bool conflict = await db.Appointments.IgnoreQueryFilters().AnyAsync(a =>
                     a.StudioId == studioId &&
+                    a.DeletedAt == null &&
                     a.ArtistId == checkArtistId &&
                     a.Date < requestEnd &&
                     a.EndDate > req.Date &&
@@ -128,7 +129,7 @@ public class CreateAppointmentHandler(
             // UpdatedAt keeps selection deterministic even against legacy data.
             DepositRule? rule = await db.DepositRules
                 .IgnoreQueryFilters()
-                .Where(r => r.StudioId == studioId && r.IsActive)
+                .Where(r => r.StudioId == studioId && r.DeletedAt == null && r.IsActive)
                 .OrderByDescending(r => r.UpdatedAt)
                 .FirstOrDefaultAsync(ct);
 

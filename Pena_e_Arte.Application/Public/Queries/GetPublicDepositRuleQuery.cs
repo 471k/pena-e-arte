@@ -24,7 +24,7 @@ public class GetPublicDepositRuleHandler(IAppDbContext db)
         // CreateAppointmentCoreAsync itself runs, IgnoreQueryFilters'd and scoped explicitly.
         DepositRule? rule = await db.DepositRules
             .IgnoreQueryFilters()
-            .Where(r => r.StudioId == studio.Id && r.IsActive)
+            .Where(r => r.StudioId == studio.Id && r.DeletedAt == null && r.IsActive)
             .OrderByDescending(r => r.UpdatedAt)
             .FirstOrDefaultAsync(ct);
 

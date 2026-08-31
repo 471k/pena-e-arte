@@ -134,7 +134,10 @@ describe("GuestBookAppointmentForm", () => {
     expect(screen.getByText("A photo of the area is required.")).toBeInTheDocument();
     expect(screen.getByText("At least one reference image is required.")).toBeInTheDocument();
     expect(mockCreateGuestAppointment).not.toHaveBeenCalled();
-  });
+    // Same sandbox CPU-contention timeout class as the two tests below (src/test/setup.ts's
+    // asyncUtilTimeout comment) — this one's identity+artist-Select+datetime interaction
+    // sequence is heavy enough to occasionally cross the 10s default under load.
+  }, 20000);
 
   it("submits successfully once every field and both required images are filled", async () => {
     // The component's result branching checks `"data" in result` on the awaited mutation call

@@ -46,6 +46,17 @@ public class CreateGuestAppointmentHandler(
             .FirstOrDefaultAsync(s => s.Slug == command.StudioSlug && s.IsActive && s.IsPublished, ct)
             ?? throw new NotFoundException(nameof(Studio), command.StudioSlug);
 
+        // The generic PlanLimitBehavior pipeline check (this command's own IQuotaCheckedCommand)
+        // is a silent no-op here: it resolves the plan via ICurrentTenant.StudioId, which stays
+        // Guid.Empty for an anonymous request (no JWT) — no subscription is ever found for that
+        // id, so EnsureWithinLimitAsync's early "no resolvable plan" return fires every time,
+        // regardless of the real studio's actual usage. The explicit-studioId overload exists
+        // precisely for this "caller knows the target studio isn't the ambient tenant" case (see
+        // PlanLimitService.GetCurrentUsageAsync's own doc comment) — call it directly, now that
+        // the real studio is resolved, before any writes (Identity user included) happen. Found
+        // via /code-review, 2026-09-01.
+        await planLimits.EnsureWithinLimitAsync(studio.Id, QuotaType.AppointmentsPerMonth, ct);
+
         // Duplicate-email handling (Decision #3): an anonymous caller must never be allowed to
         // attach a booking (and medical intake data) to an existing account without proving
         // control of it. Identity users are platform-global, so this check is not studio-scoped.
