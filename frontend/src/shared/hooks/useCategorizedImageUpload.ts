@@ -34,9 +34,13 @@ export function useCategorizedImageUpload({ maxImages, upload }: UseCategorizedI
   // Mirrors `images` every render so the unmount-only cleanup below revokes whatever was
   // actually picked, not the `[]` it closed over at mount — a `[]`-deps effect can't depend on
   // `images` without re-running on every change, so a ref is the correct way to read the latest
-  // value at unmount time.
+  // value at unmount time. The sync itself must happen in an effect (no deps array, so it runs
+  // after every render) rather than during render — mutating a ref while rendering breaks React
+  // Compiler's memoization assumptions (react-hooks/refs lint rule).
   const imagesRef = useRef(images);
-  imagesRef.current = images;
+  useEffect(() => {
+    imagesRef.current = images;
+  });
 
   useEffect(() => () => {
     imagesRef.current.forEach((img) => URL.revokeObjectURL(img.previewUrl));

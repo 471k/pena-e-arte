@@ -19,7 +19,11 @@ public class GetPresignedGuestUploadUrlHandlerTests
 
     private static Studio MakeStudio(string slug = "guest-studio") => new()
     {
-        Name = "Guest Studio", Slug = slug, City = "Porto", IsActive = true, IsPublished = true,
+        Name = "Guest Studio",
+        Slug = slug,
+        City = "Porto",
+        IsActive = true,
+        IsPublished = true,
     };
 
     [Fact]

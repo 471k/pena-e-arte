@@ -29,8 +29,13 @@ public class GetPublicBookingArtistsHandlerTests
         _db.Studios.Add(studio);
         _db.Artists.Add(new Artist
         {
-            StudioId = studio.Id, FirstName = "Luna", LastName = "Artista",
-            Email = "luna@test.com", Specializations = "Neo-trad", HourlyRate = 80, IsActive = true,
+            StudioId = studio.Id,
+            FirstName = "Luna",
+            LastName = "Artista",
+            Email = "luna@test.com",
+            Specializations = "Neo-trad",
+            HourlyRate = 80,
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
@@ -50,8 +55,11 @@ public class GetPublicBookingArtistsHandlerTests
         _db.Studios.Add(studio);
         _db.Artists.Add(new Artist
         {
-            StudioId = studio.Id, FirstName = "Retired", LastName = "Artist",
-            Email = "retired@test.com", IsActive = false,
+            StudioId = studio.Id,
+            FirstName = "Retired",
+            LastName = "Artist",
+            Email = "retired@test.com",
+            IsActive = false,
         });
         await _db.SaveChangesAsync();
 

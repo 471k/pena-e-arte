@@ -52,7 +52,9 @@ public class GuestPendingUploadCleanupJobTests
 
         _db.AppointmentAttachments.Add(new AppointmentAttachment
         {
-            StudioId = Guid.NewGuid(), AppointmentId = Guid.NewGuid(), ImageUrl = publicUrl,
+            StudioId = Guid.NewGuid(),
+            AppointmentId = Guid.NewGuid(),
+            ImageUrl = publicUrl,
         });
         await _db.SaveChangesAsync();
 
@@ -65,9 +67,9 @@ public class GuestPendingUploadCleanupJobTests
     public async Task RunAsync_MixOfOrphanedAndReferencedAndFresh_DeletesOnlyTheOrphan()
     {
         string referencedUrl = "https://cdn.example.com/" + Prefix + "s1/area/referenced.png";
-        R2ObjectInfo orphan     = new(Prefix + "s1/area/orphan.png", DateTime.UtcNow.AddHours(-72), 1024);
+        R2ObjectInfo orphan = new(Prefix + "s1/area/orphan.png", DateTime.UtcNow.AddHours(-72), 1024);
         R2ObjectInfo referenced = new(Prefix + "s1/area/referenced.png", DateTime.UtcNow.AddHours(-72), 1024);
-        R2ObjectInfo fresh      = new(Prefix + "s1/area/fresh.png", DateTime.UtcNow.AddHours(-1), 1024);
+        R2ObjectInfo fresh = new(Prefix + "s1/area/fresh.png", DateTime.UtcNow.AddHours(-1), 1024);
 
         _r2.ListByPrefixAsync(Prefix, Arg.Any<CancellationToken>()).Returns([orphan, referenced, fresh]);
         _r2.GetPublicUrl(orphan.Key).Returns("https://cdn.example.com/" + orphan.Key);
@@ -76,7 +78,9 @@ public class GuestPendingUploadCleanupJobTests
 
         _db.AppointmentAttachments.Add(new AppointmentAttachment
         {
-            StudioId = Guid.NewGuid(), AppointmentId = Guid.NewGuid(), ImageUrl = referencedUrl,
+            StudioId = Guid.NewGuid(),
+            AppointmentId = Guid.NewGuid(),
+            ImageUrl = referencedUrl,
         });
         await _db.SaveChangesAsync();
 
@@ -100,7 +104,7 @@ public class GuestPendingUploadCleanupJobTests
     [Fact]
     public async Task RunAsync_OneDeleteFails_StillProcessesRemainingObjects()
     {
-        R2ObjectInfo failing   = new(Prefix + "s1/area/failing.png", DateTime.UtcNow.AddHours(-72), 1024);
+        R2ObjectInfo failing = new(Prefix + "s1/area/failing.png", DateTime.UtcNow.AddHours(-72), 1024);
         R2ObjectInfo succeeding = new(Prefix + "s1/area/succeeding.png", DateTime.UtcNow.AddHours(-72), 1024);
         _r2.ListByPrefixAsync(Prefix, Arg.Any<CancellationToken>()).Returns([failing, succeeding]);
         _r2.GetPublicUrl(failing.Key).Returns("https://cdn.example.com/" + failing.Key);

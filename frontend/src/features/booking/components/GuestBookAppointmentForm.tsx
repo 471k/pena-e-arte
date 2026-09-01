@@ -23,7 +23,8 @@ import {
   usePresignGuestUploadMutation,
 } from "../../public/publicApi";
 import { FieldLabel } from "@/features/appointments/components/FieldLabel";
-import { TattooIntakeFields, validateTattooIntake, type TattooIntakeValues } from "@/features/appointments/components/TattooIntakeFields";
+import { TattooIntakeFields } from "@/features/appointments/components/TattooIntakeFields";
+import { validateTattooIntake, type TattooIntakeValues } from "@/features/appointments/components/tattooIntakeValidation";
 import { CategorizedImagesField } from "@/features/appointments/components/CategorizedImagesField";
 import { DesiredPlacementField } from "@/features/appointments/components/DesiredPlacementField";
 import { SlotAvailabilityIndicator } from "@/features/appointments/components/SlotAvailabilityIndicator";
