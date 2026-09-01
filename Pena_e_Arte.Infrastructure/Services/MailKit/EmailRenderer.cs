@@ -366,6 +366,25 @@ public class EmailRenderer : IEmailRenderer
         </html>
         """;
 
+    public string RenderGuestBookingEmailCollision(string studioName) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Booking attempt at {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Booking attempt at {System.Net.WebUtility.HtmlEncode(studioName)}</h1>
+          <p>Someone tried to book an appointment at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>
+          using this email address, which already has an account on TattooOS.</p>
+          <p>If that was you, please sign in and book from there — your existing account already has
+          everything needed to manage a booking.</p>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            If you don't recognize this activity, no action is needed — nothing was booked or changed
+            on your account.
+          </p>
+        </body>
+        </html>
+        """;
+
     public string RenderChangeEmailConfirmation(string confirmUrl) =>
         $"""
         <!DOCTYPE html>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +19,8 @@ import {
 import { useAppSelector }  from "@/app/hooks";
 import { useCurrentUser }  from "@/shared/hooks/useCurrentUser";
 import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
+import { useCategorizedImageUpload, ACCEPTED_IMAGE_TYPES } from "@/shared/hooks/useCategorizedImageUpload";
+import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import { cn }              from "@/shared/utils/cn";
 import { generateUuid }    from "@/shared/utils/uuid";
 import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
@@ -35,12 +37,11 @@ import { useEnsureActiveStudio }                  from "@/features/auth/useEnsur
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
 import { FieldLabel }                             from "./FieldLabel";
-import { TattooIntakeFields, type TattooIntakeValues } from "./TattooIntakeFields";
-import { CategorizedImagesField, type CategorizedImage } from "./CategorizedImagesField";
+import { TattooIntakeFields, validateTattooIntake, type TattooIntakeValues } from "./TattooIntakeFields";
+import { CategorizedImagesField } from "./CategorizedImagesField";
 import { DesiredPlacementField }                  from "./DesiredPlacementField";
-import { AppointmentAttachmentCategory, ReferralSource } from "../appointment.types";
-import type { AppointmentResponse, CheckSlotAvailabilityParams }
-  from "../appointment.types";
+import { AppointmentAttachmentCategory } from "../appointment.types";
+import type { AppointmentResponse } from "../appointment.types";
 import type { ArtistResponse }      from "@/features/artists/artistsApi";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 
@@ -48,13 +49,8 @@ import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.t
 
 const VALID_DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480] as const;
 
-// Mirrors CreateAppointmentValidator.cs's MaxImageUrls / accepted content types.
+// Mirrors CreateAppointmentValidator.cs's MaxImageUrls.
 const MAX_REFERENCE_IMAGES = 6;
-const ACCEPTED_IMAGE_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png":  "png",
-  "image/webp": "webp",
-};
 
 const DURATION_OPTIONS: { value: number; label: string }[] = [
   { value: 30,  label: "30 min — Touch-up" },
@@ -188,80 +184,6 @@ function DepositPreview({
   );
 }
 
-// One category's worth of image state + upload handlers — called once per
-// AppointmentAttachmentCategory (Decision #6) so BookAppointmentForm and
-// GuestBookAppointmentForm don't duplicate this logic twice inline.
-function useCategorizedImageUpload(category: AppointmentAttachmentCategory, uploadSessionId: string) {
-  const { upload: uploadImage } = usePresignedUpload();
-  const [images, setImages] = useState<CategorizedImage[]>([]);
-  const [error, setError]   = useState<string | null>(null);
-
-  // Mirrors `images` every render so the unmount-only cleanup below revokes whatever was
-  // actually picked, not the `[]` it closed over at mount — a `[]`-deps effect can't depend on
-  // `images` without re-running on every change, so a ref is the correct way to read the latest
-  // value at unmount time. Found via /code-review, 2026-09-01 (previously leaked every blob URL
-  // for a form abandoned/navigated-away-from after picking images).
-  const imagesRef = useRef(images);
-  imagesRef.current = images;
-
-  useEffect(() => () => {
-    imagesRef.current.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-  }, []);
-
-  async function pick(fileList: FileList | null) {
-    if (!fileList || fileList.length === 0) return;
-    setError(null);
-
-    const room = MAX_REFERENCE_IMAGES - images.length;
-    const picked = Array.from(fileList);
-    if (picked.length > room) {
-      setError(`You can attach up to ${MAX_REFERENCE_IMAGES} images.`);
-    }
-
-    for (const file of picked.slice(0, Math.max(room, 0))) {
-      const ext = ACCEPTED_IMAGE_TYPES[file.type];
-      if (!ext) {
-        setError("Only JPEG, PNG, and WebP images are accepted.");
-        continue;
-      }
-
-      const id = generateUuid();
-      const previewUrl = URL.createObjectURL(file);
-      setImages((prev) => [...prev, { id, previewUrl, status: "uploading", publicUrl: null }]);
-
-      const objectKey = `appointments/pending/${uploadSessionId}/${category}/${Date.now()}-${id}.${ext}`;
-      const publicUrl = await uploadImage(file, objectKey);
-
-      setImages((prev) => prev.map((img) => {
-        if (img.id !== id) return img;
-        return publicUrl
-          ? { ...img, status: "done", publicUrl }
-          : { ...img, status: "error" };
-      }));
-    }
-  }
-
-  function remove(id: string) {
-    setImages((prev) => {
-      const target = prev.find((img) => img.id === id);
-      if (target) URL.revokeObjectURL(target.previewUrl);
-      return prev.filter((img) => img.id !== id);
-    });
-  }
-
-  function clear() {
-    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-    setImages([]);
-    setError(null);
-  }
-
-  const uploading = images.some((img) => img.status === "uploading");
-  const doneUrls = () => images.filter((img) => img.status === "done" && img.publicUrl)
-    .map((img) => img.publicUrl as string);
-
-  return { images, error, pick, remove, clear, uploading, doneUrls };
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BookAppointmentForm() {
@@ -325,8 +247,24 @@ export function BookAppointmentForm() {
   // form, which requires both — Decision #6/Part 6d note: not flipping this existing form's
   // established optional-images expectation without an explicit go-ahead).
   const [uploadSessionId] = useState(() => generateUuid());
-  const areaPhotos  = useCategorizedImageUpload(AppointmentAttachmentCategory.AreaPhoto, uploadSessionId);
-  const referenceImages = useCategorizedImageUpload(AppointmentAttachmentCategory.Reference, uploadSessionId);
+  const { upload: uploadImage } = usePresignedUpload();
+
+  function buildUpload(category: AppointmentAttachmentCategory) {
+    return async (file: File) => {
+      const ext = ACCEPTED_IMAGE_TYPES[file.type];
+      const objectKey = `appointments/pending/${uploadSessionId}/${category}/${Date.now()}-${generateUuid()}.${ext}`;
+      return uploadImage(file, objectKey);
+    };
+  }
+
+  const areaPhotos = useCategorizedImageUpload({
+    maxImages: MAX_REFERENCE_IMAGES,
+    upload:    buildUpload(AppointmentAttachmentCategory.AreaPhoto),
+  });
+  const referenceImages = useCategorizedImageUpload({
+    maxImages: MAX_REFERENCE_IMAGES,
+    upload:    buildUpload(AppointmentAttachmentCategory.Reference),
+  });
 
   const anyImageUploading = areaPhotos.uploading || referenceImages.uploading;
 
@@ -394,26 +332,9 @@ export function BookAppointmentForm() {
     [uniqueArtists, watchedArtistId],
   );
 
-  // Debounced slot-check args — all setState calls inside setTimeout to satisfy lint
-  const [debouncedCheck, setDebouncedCheck] =
-    useState<CheckSlotAvailabilityParams | null>(null);
-
-  useEffect(() => {
-    const ready = watchedDate && watchedDuration && (watchedBookAnyArtist || watchedArtistId);
-    const delay = ready ? 600 : 0;
-    const timer = setTimeout(() => {
-      if (!watchedDate || !watchedDuration || (!watchedBookAnyArtist && !watchedArtistId)) {
-        setDebouncedCheck(null);
-        return;
-      }
-      setDebouncedCheck({
-        artistId:        watchedBookAnyArtist ? undefined : (watchedArtistId ?? undefined),
-        date:            watchedDate,
-        durationMinutes: watchedDuration,
-      });
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration]);
+  const debouncedCheck = useDebouncedSlotCheckArgs(
+    watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration,
+  );
 
   const {
     data:       slotStatus,
@@ -425,18 +346,10 @@ export function BookAppointmentForm() {
   const activeRules = depositRules?.filter((r) => r.isActive) ?? [];
 
   async function onSubmit(values: FormValues) {
-    setTattooDescriptionError(null);
-    setReferralSourceOtherError(null);
-    let valid = true;
-    if (!intake.tattooDescription.trim()) {
-      setTattooDescriptionError("Tell us what you're looking to get done.");
-      valid = false;
-    }
-    if (intake.referralSource === ReferralSource.Other && !intake.referralSourceOther.trim()) {
-      setReferralSourceOtherError("Please tell us where.");
-      valid = false;
-    }
-    if (!valid) return;
+    const { tattooDescriptionError, referralSourceOtherError } = validateTattooIntake(intake);
+    setTattooDescriptionError(tattooDescriptionError);
+    setReferralSourceOtherError(referralSourceOtherError);
+    if (tattooDescriptionError || referralSourceOtherError) return;
 
     const clientId = isClientRole ? (myClient?.id ?? values.clientId) : values.clientId;
     const images = [
@@ -471,7 +384,8 @@ export function BookAppointmentForm() {
         depositRuleId:   null,
       });
       setArtistSearch("");
-      setDebouncedCheck(null);
+      // No explicit debouncedCheck reset needed — useDebouncedSlotCheckArgs derives it from the
+      // same watched fields resetForm() above already clears, so it naturally settles to null.
       areaPhotos.clear();
       referenceImages.clear();
       setIntake({ tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "" });

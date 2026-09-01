@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,8 +12,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
-import { generateUuid } from "@/shared/utils/uuid";
 import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
+import { useCategorizedImageUpload } from "@/shared/hooks/useCategorizedImageUpload";
+import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import {
   useGetPublicBookingArtistsQuery,
   useCheckPublicSlotAvailabilityQuery,
@@ -22,21 +23,15 @@ import {
   usePresignGuestUploadMutation,
 } from "../../public/publicApi";
 import { FieldLabel } from "@/features/appointments/components/FieldLabel";
-import { TattooIntakeFields, type TattooIntakeValues } from "@/features/appointments/components/TattooIntakeFields";
-import { CategorizedImagesField, type CategorizedImage } from "@/features/appointments/components/CategorizedImagesField";
+import { TattooIntakeFields, validateTattooIntake, type TattooIntakeValues } from "@/features/appointments/components/TattooIntakeFields";
+import { CategorizedImagesField } from "@/features/appointments/components/CategorizedImagesField";
 import { DesiredPlacementField } from "@/features/appointments/components/DesiredPlacementField";
 import { SlotAvailabilityIndicator } from "@/features/appointments/components/SlotAvailabilityIndicator";
-import { AppointmentAttachmentCategory, ReferralSource } from "@/features/appointments/appointment.types";
-import type { CheckSlotAvailabilityParams } from "@/features/appointments/appointment.types";
+import { AppointmentAttachmentCategory } from "@/features/appointments/appointment.types";
 
 const VALID_DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480] as const;
 // Mirrors GetPresignedGuestUploadUrlValidator's accepted content types.
 const MAX_IMAGES = 6;
-const ACCEPTED_IMAGE_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png":  "png",
-  "image/webp": "webp",
-};
 
 const DURATION_OPTIONS: { value: number; label: string }[] = [
   { value: 30,  label: "30 min — Touch-up" },
@@ -75,45 +70,16 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-// Guest-flow analog of BookAppointmentForm's useCategorizedImageUpload — uses the anonymous
-// presign endpoint (Decision #10: image-only content types, server-constructed key, no
-// client-supplied prefix) instead of the authenticated files/presign one.
-function useGuestImageUpload(slug: string, category: "area" | "reference") {
+// Builds the shared useCategorizedImageUpload hook's `upload` function against the anonymous
+// guest presign endpoint (Decision #10: image-only content types, server-constructed key, no
+// client-supplied prefix) instead of the authenticated files/presign one BookAppointmentForm
+// uses. The queue/preview/status state itself is no longer duplicated — see
+// shared/hooks/useCategorizedImageUpload.ts. Found via /code-review, 2026-09-01.
+function useGuestPresignUpload() {
   const [presign] = usePresignGuestUploadMutation();
-  const [images, setImages] = useState<CategorizedImage[]>([]);
-  const [error, setError]   = useState<string | null>(null);
 
-  // See BookAppointmentForm.tsx's useCategorizedImageUpload for why this is a ref, not a
-  // closed-over `images` — a `[]`-deps unmount effect otherwise revokes nothing, leaking every
-  // blob URL for a guest who picks photos then abandons/navigates away. Found via /code-review,
-  // 2026-09-01.
-  const imagesRef = useRef(images);
-  imagesRef.current = images;
-
-  useEffect(() => () => {
-    imagesRef.current.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-  }, []);
-
-  async function pick(fileList: FileList | null) {
-    if (!fileList || fileList.length === 0) return;
-    setError(null);
-
-    const room = MAX_IMAGES - images.length;
-    const picked = Array.from(fileList);
-    if (picked.length > room) {
-      setError(`You can attach up to ${MAX_IMAGES} images.`);
-    }
-
-    for (const file of picked.slice(0, Math.max(room, 0))) {
-      if (!ACCEPTED_IMAGE_TYPES[file.type]) {
-        setError("Only JPEG, PNG, and WebP images are accepted.");
-        continue;
-      }
-
-      const id = generateUuid();
-      const previewUrl = URL.createObjectURL(file);
-      setImages((prev) => [...prev, { id, previewUrl, status: "uploading", publicUrl: null }]);
-
+  return function buildUpload(slug: string, category: "area" | "reference") {
+    return async (file: File) => {
       try {
         const result = await presign({ slug, contentType: file.type, category }).unwrap();
         const putResp = await fetch(result.uploadUrl, {
@@ -121,31 +87,12 @@ function useGuestImageUpload(slug: string, category: "area" | "reference") {
           body:    file,
           headers: { "Content-Type": file.type },
         });
-        setImages((prev) => prev.map((img) => {
-          if (img.id !== id) return img;
-          return putResp.ok
-            ? { ...img, status: "done", publicUrl: result.publicUrl }
-            : { ...img, status: "error" };
-        }));
+        return putResp.ok ? result.publicUrl : null;
       } catch {
-        setImages((prev) => prev.map((img) => img.id === id ? { ...img, status: "error" } : img));
+        return null;
       }
-    }
-  }
-
-  function remove(id: string) {
-    setImages((prev) => {
-      const target = prev.find((img) => img.id === id);
-      if (target) URL.revokeObjectURL(target.previewUrl);
-      return prev.filter((img) => img.id !== id);
-    });
-  }
-
-  const uploading = images.some((img) => img.status === "uploading");
-  const doneUrls = () => images.filter((img) => img.status === "done" && img.publicUrl)
-    .map((img) => img.publicUrl as string);
-
-  return { images, error, pick, remove, uploading, doneUrls };
+    };
+  };
 }
 
 function DepositPreview({
@@ -190,8 +137,15 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
   const [booked, setBooked] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const areaPhotos      = useGuestImageUpload(slug, "area");
-  const referenceImages = useGuestImageUpload(slug, "reference");
+  const buildGuestUpload = useGuestPresignUpload();
+  const areaPhotos = useCategorizedImageUpload({
+    maxImages: MAX_IMAGES,
+    upload:    buildGuestUpload(slug, "area"),
+  });
+  const referenceImages = useCategorizedImageUpload({
+    maxImages: MAX_IMAGES,
+    upload:    buildGuestUpload(slug, "reference"),
+  });
   const anyImageUploading = areaPhotos.uploading || referenceImages.uploading;
 
   const [intake, setIntake] = useState<TattooIntakeValues>({
@@ -224,23 +178,9 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
     [artists, watchedArtistId],
   );
 
-  const [debouncedCheck, setDebouncedCheck] = useState<CheckSlotAvailabilityParams | null>(null);
-  useEffect(() => {
-    const ready = watchedDate && watchedDuration && (watchedBookAnyArtist || watchedArtistId);
-    const delay = ready ? 600 : 0;
-    const timer = setTimeout(() => {
-      if (!watchedDate || !watchedDuration || (!watchedBookAnyArtist && !watchedArtistId)) {
-        setDebouncedCheck(null);
-        return;
-      }
-      setDebouncedCheck({
-        artistId:        watchedBookAnyArtist ? undefined : (watchedArtistId ?? undefined),
-        date:            watchedDate,
-        durationMinutes: watchedDuration,
-      });
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration]);
+  const debouncedCheck = useDebouncedSlotCheckArgs(
+    watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration,
+  );
 
   const { data: slotStatus, isFetching: checkingSlot } = useCheckPublicSlotAvailabilityQuery(
     debouncedCheck ? { slug, ...debouncedCheck } : { slug, date: "", durationMinutes: 0 },
@@ -249,20 +189,14 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
 
   async function onSubmit(values: FormValues) {
     setSubmitError(null);
-    setTattooDescriptionError(null);
-    setReferralSourceOtherError(null);
     setAreaPhotoError(null);
     setReferenceImageError(null);
-    let valid = true;
 
-    if (!intake.tattooDescription.trim()) {
-      setTattooDescriptionError("Tell us what you're looking to get done.");
-      valid = false;
-    }
-    if (intake.referralSource === ReferralSource.Other && !intake.referralSourceOther.trim()) {
-      setReferralSourceOtherError("Please tell us where.");
-      valid = false;
-    }
+    const { tattooDescriptionError, referralSourceOtherError } = validateTattooIntake(intake);
+    setTattooDescriptionError(tattooDescriptionError);
+    setReferralSourceOtherError(referralSourceOtherError);
+
+    let valid = !tattooDescriptionError && !referralSourceOtherError;
     if (areaPhotos.doneUrls().length === 0) {
       setAreaPhotoError("A photo of the area is required.");
       valid = false;
@@ -307,25 +241,31 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
     });
 
     if ("data" in result) {
+      // Backend intentionally responds identically here whether a new booking was created or
+      // the email collided with an existing account (enumeration-resistance, 2026-09-01) — the
+      // success screen's copy already covers both ("check your email"; an existing-account
+      // guest gets a different email telling them to log in instead).
       setBooked(true);
     } else {
-      const status = (result.error as { status?: number } | undefined)?.status;
       const errMsg = (result.error as { data?: { message?: string } } | undefined)?.data?.message;
-      setSubmitError(
-        status === 409
-          ? "An account with this email already exists. Please log in to book instead."
-          : errMsg ?? "Failed to book appointment. Please try again."
-      );
+      setSubmitError(errMsg ?? "Failed to book appointment. Please try again.");
     }
   }
 
   if (booked) {
+    // Deliberately generic — the backend responds identically whether a new booking was
+    // created or the email already had an account (enumeration-resistance, 2026-09-01), so this
+    // screen can't claim "Appointment requested!" as a certainty. The follow-up email
+    // disambiguates: a booking-confirmation + set-password email for a genuinely new guest, or
+    // a "log in to book" notice if the email already had an account.
     return (
       <div className="text-center space-y-3 py-6">
         <CheckCircle2 className="h-8 w-8 mx-auto text-green-500" aria-hidden="true" />
-        <p className="text-sm font-medium">Appointment requested!</p>
+        <p className="text-sm font-medium">Check your email</p>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          Check your email to set up your account and manage this booking — you can also use
+          We&apos;ve sent an email with next steps. If this is your first booking with us,
+          it confirms your request and helps you set up your account. If you already have an
+          account, it explains how to log in and book from there — you can also use
           &ldquo;Forgot password&rdquo; any time with this email address.
         </p>
       </div>

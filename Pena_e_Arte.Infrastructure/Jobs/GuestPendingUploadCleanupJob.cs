@@ -37,8 +37,14 @@ public class GuestPendingUploadCleanupJob(
         // at all, and a guest-pending upload isn't attached to any studio's tenant yet at the
         // time this check needs to run — same class as AppointmentReminderJob/etc. (approved
         // exception #36).
+        // Filtered by the actual candidate URLs (a handful of stale uploads, not "every
+        // AppointmentAttachment row this studio's ever had") rather than loading the whole
+        // table and checking membership in memory — cost now scales with what this run is
+        // actually sweeping, not with total platform history. Found via /code-review, 2026-09-01.
+        List<string> candidateUrls = candidates.Select(o => r2.GetPublicUrl(o.Key)).ToList();
         HashSet<string> referencedUrls = (await db.AppointmentAttachments
             .IgnoreQueryFilters()
+            .Where(a => candidateUrls.Contains(a.ImageUrl))
             .Select(a => a.ImageUrl)
             .ToListAsync(ct))
             .ToHashSet();

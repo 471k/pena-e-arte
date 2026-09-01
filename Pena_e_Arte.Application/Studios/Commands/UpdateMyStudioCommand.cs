@@ -3,6 +3,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -82,7 +83,6 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
 public class UpdateMyStudioValidator : AbstractValidator<UpdateMyStudioCommand>
 {
     private static readonly Regex NiptFormat = new(@"^[A-Z]\d{8}[A-Z]$", RegexOptions.Compiled);
-    private static readonly Regex E164Format = new(@"^\+[1-9]\d{1,14}$", RegexOptions.Compiled);
 
     public UpdateMyStudioValidator()
     {
@@ -91,8 +91,8 @@ public class UpdateMyStudioValidator : AbstractValidator<UpdateMyStudioCommand>
         RuleFor(x => x.Request.Latitude).InclusiveBetween(-90, 90);
         RuleFor(x => x.Request.Longitude).InclusiveBetween(-180, 180);
         RuleFor(x => x.Request.PhoneNumber)
-            .Matches(E164Format)
-            .WithMessage("Phone must be in international format, e.g. +351912345678.")
+            .Matches(PhoneValidationRules.E164Format)
+            .WithMessage(PhoneValidationRules.E164ErrorMessage)
             .When(x => !string.IsNullOrWhiteSpace(x.Request.PhoneNumber));
         RuleFor(x => x.Request.Nipt)
             .Length(10)

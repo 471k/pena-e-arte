@@ -6,7 +6,6 @@ using Pena_e_Arte.Application.Appointments.Queries;
 using Pena_e_Arte.Application.Public.Commands;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Requests;
-using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Interfaces;
@@ -116,12 +115,10 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
             _emailRenderer, _notifications, _appSettings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateGuestAppointmentHandler>.Instance);
 
-        AppointmentResponse result = await handler.Handle(
+        GuestBookingAckResponse result = await handler.Handle(
             new CreateGuestAppointmentCommand(studio.Slug, request), default);
 
-        result.ArtistId.Should().Be(artistId);
-        result.TattooDescription.Should().Be("A small rose");
-        result.DesiredPlacementLocations.Should().Equal("forearm_left");
+        result.Should().NotBeNull();
 
         await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
         Client? client = verify.Clients.IgnoreQueryFilters().FirstOrDefault(c => c.Email == email);
@@ -133,21 +130,26 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
 
         Appointment? appointment = verify.Appointments.IgnoreQueryFilters()
             .Include(a => a.Intake)
-            .FirstOrDefault(a => a.Id == result.Id);
+            .FirstOrDefault(a => a.ClientId == client.Id);
         appointment.Should().NotBeNull();
-        appointment!.ClientId.Should().Be(client.Id);
+        appointment!.ArtistId.Should().Be(artistId);
         appointment.Intake.Should().NotBeNull();
         appointment.Intake!.TattooDescription.Should().Be("A small rose");
+        appointment.Intake.DesiredPlacement.Locations.Should().Equal("forearm_left");
     }
 
+    // Enumeration-resistance (2026-09-01, /code-review finding): a colliding email must return
+    // the exact same ack as a real success and must not create a duplicate account/appointment
+    // — disambiguation happens only via the (mocked) email sent, never via the HTTP response.
     [Fact]
-    public async Task CreateGuestAppointment_DuplicateEmail_ThrowsAccountAlreadyExistsException()
+    public async Task CreateGuestAppointment_DuplicateEmail_ReturnsSameAckAndCreatesNothing()
     {
         (Studio studio, Guid artistId) = await SeedPublishedStudioWithArtist();
         DateTime slot = NextMondayAt(10);
         string email = $"existing-{Guid.NewGuid():N}@example.test";
 
         _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
+        _emailRenderer.RenderGuestBookingEmailCollision(Arg.Any<string>()).Returns("<html></html>");
 
         CreateGuestAppointmentRequest request = new(
             "Jamie", "Guest", email, "+351912345678", MarketingOptIn: false,
@@ -159,9 +161,15 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
             _emailRenderer, _notifications, _appSettings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateGuestAppointmentHandler>.Instance);
 
-        await FluentActions.Awaiting(() =>
-            handler.Handle(new CreateGuestAppointmentCommand(studio.Slug, request), default))
-            .Should().ThrowAsync<Pena_e_Arte.Domain.Exceptions.AccountAlreadyExistsException>();
+        GuestBookingAckResponse result = await handler.Handle(
+            new CreateGuestAppointmentCommand(studio.Slug, request), default);
+
+        result.Should().NotBeNull();
+        await _identity.DidNotReceive().CreateUserAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>());
+
+        await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
+        verify.Clients.IgnoreQueryFilters().Any(c => c.Email == email).Should().BeFalse();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────

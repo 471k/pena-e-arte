@@ -47,30 +47,41 @@ public static class ArtistAvailabilityExtensions
             .Where(a => a.StudioId == studioId && a.IsActive && a.DeletedAt == null)
             .Select(a => a.Id)
             .ToListAsync(ct);
+        if (candidateArtistIds.Count == 0) return false;
 
-        foreach (Guid artistId in candidateArtistIds)
-        {
-            bool hasSchedule = await db.ArtistSchedules.IgnoreQueryFilters().AnyAsync(
-                s => s.StudioId == studioId && s.DeletedAt == null && s.ArtistId == artistId
-                     && s.DayOfWeek == day && s.IsAvailable
-                     && startTime >= s.StartTime && endTime <= s.EndTime, ct);
-            if (!hasSchedule) continue;
+        // Batched — one query per check across every candidate artist, instead of the previous
+        // per-artist loop (3 sequential queries × N artists, a real N+1 now reachable by
+        // anonymous traffic via the guest-checkout/public-availability paths). Same semantics:
+        // an artist clears this check iff it has a matching schedule AND is not on time-off AND
+        // has no conflicting appointment. Found via /code-review, 2026-09-01.
+        HashSet<Guid> scheduledArtistIds = (await db.ArtistSchedules.IgnoreQueryFilters()
+            .Where(s => s.StudioId == studioId && s.DeletedAt == null
+                        && candidateArtistIds.Contains(s.ArtistId) && s.DayOfWeek == day && s.IsAvailable
+                        && startTime >= s.StartTime && endTime <= s.EndTime)
+            .Select(s => s.ArtistId)
+            .ToListAsync(ct))
+            .ToHashSet();
+        if (scheduledArtistIds.Count == 0) return false;
 
-            bool onTimeOff = await db.ArtistTimeOffs.IgnoreQueryFilters().AnyAsync(
-                t => t.StudioId == studioId && t.DeletedAt == null && t.ArtistId == artistId
-                     && t.StartDate <= date.Date && t.EndDate >= date.Date, ct);
-            if (onTimeOff) continue;
+        HashSet<Guid> onTimeOffArtistIds = (await db.ArtistTimeOffs.IgnoreQueryFilters()
+            .Where(t => t.StudioId == studioId && t.DeletedAt == null
+                        && candidateArtistIds.Contains(t.ArtistId)
+                        && t.StartDate <= date.Date && t.EndDate >= date.Date)
+            .Select(t => t.ArtistId)
+            .ToListAsync(ct))
+            .ToHashSet();
 
-            bool conflict = await db.Appointments.IgnoreQueryFilters().AnyAsync(
-                a => a.StudioId == studioId && a.DeletedAt == null && a.ArtistId == artistId
-                     && a.Date < end && a.EndDate > date
-                     && a.Status != AppointmentStatus.Cancelled, ct);
-            if (conflict) continue;
+        HashSet<Guid> conflictedArtistIds = (await db.Appointments.IgnoreQueryFilters()
+            .Where(a => a.StudioId == studioId && a.DeletedAt == null
+                        && a.ArtistId != null && candidateArtistIds.Contains(a.ArtistId.Value)
+                        && a.Date < end && a.EndDate > date
+                        && a.Status != AppointmentStatus.Cancelled)
+            .Select(a => a.ArtistId!.Value)
+            .ToListAsync(ct))
+            .ToHashSet();
 
-            return true; // this artist clears all three checks
-        }
-
-        return false;
+        return candidateArtistIds.Any(id =>
+            scheduledArtistIds.Contains(id) && !onTimeOffArtistIds.Contains(id) && !conflictedArtistIds.Contains(id));
     }
 
     /// <summary>

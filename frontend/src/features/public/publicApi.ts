@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "@/app/store";
 import type { FileConductReportArgs, ReportableAppointment } from "@/features/conduct-reports/conductReports.types";
 import type { PresignUploadResponse } from "@/shared/api/filesApi";
-import type { AppointmentResponse, SlotAvailabilityResponse } from "@/features/appointments/appointment.types";
+import type { SlotAvailabilityResponse } from "@/features/appointments/appointment.types";
 
 export interface PublicArtistSummary {
   artistId:        string;
@@ -193,6 +193,13 @@ export interface CreateGuestAppointmentRequest {
   };
 }
 
+// Deliberately the same shape whether the booking succeeded or the email collided with an
+// existing account (enumeration-resistance, 2026-09-01) — never assume `message` implies
+// success; disambiguation happens only via the email the guest receives.
+export interface GuestBookingAckResponse {
+  message: string;
+}
+
 export interface PresignGuestUploadArgs {
   slug:        string;
   contentType: string;
@@ -354,7 +361,7 @@ export const publicApi = createApi({
       query: (slug) => `studios/${slug}/booking/deposit-rule`,
     }),
     createGuestAppointment: builder.mutation<
-      AppointmentResponse,
+      GuestBookingAckResponse,
       { slug: string; body: CreateGuestAppointmentRequest }
     >({
       query: ({ slug, body }) => ({ url: `studios/${slug}/book`, method: "POST", body }),

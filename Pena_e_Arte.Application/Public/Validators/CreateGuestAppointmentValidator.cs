@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using FluentValidation;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Public.Commands;
 using Pena_e_Arte.Domain.Interfaces;
 
@@ -7,21 +7,15 @@ namespace Pena_e_Arte.Application.Public.Validators;
 
 public class CreateGuestAppointmentValidator : AbstractValidator<CreateGuestAppointmentCommand>
 {
-    // Same regex CreateClientValidator/UpdateMyStudioCommand/CreateManualReminderValidator already use.
-    private static readonly Regex E164Format = new(@"^\+[1-9]\d{1,14}$", RegexOptions.Compiled);
-
-    private static readonly int[] ValidDurations = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
-    private const int MaxImagesPerCategory = 6;
-    private static readonly HashSet<string> ValidImageCategories = ["AreaPhoto", "Reference"];
-    private static readonly HashSet<string> ValidReferralSources =
-        ["Instagram", "TikTok", "YouTube", "FriendsAndFamily", "Other"];
-
     // Booking-content rules below deliberately mirror CreateAppointmentValidator's — this
     // codebase has no established nested-command-validator composition convention (verified: no
     // existing SetValidator usage), and the two commands wrap different outer types (a raw
     // CreateAppointmentRequest here vs. a CreateAppointmentCommand there), so duplicating the
     // rule set against `x.Request.Booking.*` paths is the smallest change that stays consistent
-    // with this codebase's existing "one self-contained validator per command" style.
+    // with this codebase's existing "one self-contained validator per command" style. The
+    // underlying constants and the phone regex ARE shared (BookingContentValidationRules,
+    // PhoneValidationRules) — only the FluentValidation call sites are duplicated, not the
+    // rules themselves. Found via /code-review, 2026-09-01.
     public CreateGuestAppointmentValidator(IR2Service r2)
     {
         RuleFor(x => x.StudioSlug).NotEmpty();
@@ -32,15 +26,15 @@ public class CreateGuestAppointmentValidator : AbstractValidator<CreateGuestAppo
         RuleFor(x => x.Request.Phone)
             .NotEmpty()
             .MaximumLength(20)
-            .Matches(E164Format)
-            .WithMessage("Phone must be in international format, e.g. +351912345678.");
+            .Matches(PhoneValidationRules.E164Format)
+            .WithMessage(PhoneValidationRules.E164ErrorMessage);
 
         RuleFor(x => x.Request.Booking.Date)
             .GreaterThan(DateTime.UtcNow.AddMinutes(30))
             .WithMessage("Appointment must be at least 30 minutes in the future.");
         RuleFor(x => x.Request.Booking.DurationMinutes)
-            .Must(d => ValidDurations.Contains(d))
-            .WithMessage($"Duration must be one of: {string.Join(", ", ValidDurations)} minutes.");
+            .Must(d => BookingContentValidationRules.ValidDurations.Contains(d))
+            .WithMessage($"Duration must be one of: {string.Join(", ", BookingContentValidationRules.ValidDurations)} minutes.");
         RuleFor(x => x.Request.Booking.Notes).MaximumLength(2000).When(x => x.Request.Booking.Notes is not null);
 
         RuleFor(x => x.Request.Booking.TattooDescription).NotEmpty().MaximumLength(2000);
@@ -50,8 +44,8 @@ public class CreateGuestAppointmentValidator : AbstractValidator<CreateGuestAppo
         RuleForEach(x => x.Request.Booking.DesiredPlacementLocations).NotEmpty().MaximumLength(200);
 
         RuleFor(x => x.Request.Booking.ReferralSource)
-            .Must(s => s is null || ValidReferralSources.Contains(s))
-            .WithMessage("ReferralSource must be one of: " + string.Join(", ", ValidReferralSources));
+            .Must(s => s is null || BookingContentValidationRules.ValidReferralSources.Contains(s))
+            .WithMessage("ReferralSource must be one of: " + string.Join(", ", BookingContentValidationRules.ValidReferralSources));
         RuleFor(x => x.Request.Booking.ReferralSourceOther)
             .NotEmpty()
             .WithMessage("Please tell us how you heard about us.")
@@ -70,17 +64,17 @@ public class CreateGuestAppointmentValidator : AbstractValidator<CreateGuestAppo
         {
             image.RuleFor(i => i.Url).NotEmpty().MaximumLength(2048).Must(r2.IsR2Url)
                 .WithMessage("Image Url must reference a valid storage URL.");
-            image.RuleFor(i => i.Category).Must(c => ValidImageCategories.Contains(c))
+            image.RuleFor(i => i.Category).Must(c => BookingContentValidationRules.ValidImageCategories.Contains(c))
                 .WithMessage("Category must be one of: AreaPhoto, Reference.");
         });
 
         RuleFor(x => x.Request.Booking.Images)
             .Must(images => images is null ||
-                images.Where(i => i.Category == "AreaPhoto").Count() <= MaxImagesPerCategory)
-            .WithMessage($"You can attach up to {MaxImagesPerCategory} area photos.");
+                images.Where(i => i.Category == "AreaPhoto").Count() <= BookingContentValidationRules.MaxImagesPerCategory)
+            .WithMessage($"You can attach up to {BookingContentValidationRules.MaxImagesPerCategory} area photos.");
         RuleFor(x => x.Request.Booking.Images)
             .Must(images => images is null ||
-                images.Where(i => i.Category == "Reference").Count() <= MaxImagesPerCategory)
-            .WithMessage($"You can attach up to {MaxImagesPerCategory} reference images.");
+                images.Where(i => i.Category == "Reference").Count() <= BookingContentValidationRules.MaxImagesPerCategory)
+            .WithMessage($"You can attach up to {BookingContentValidationRules.MaxImagesPerCategory} reference images.");
     }
 }

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Pena_e_Arte.Application.Public.Commands;
 using Pena_e_Arte.Contracts.Requests;
-using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
@@ -35,6 +35,8 @@ public class CreateGuestAppointmentHandlerTests
                    .Returns(true);
         _appSettings.BaseUrl.Returns("https://tattooos.co");
         _emailRenderer.RenderGuestBookingWelcome(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
+                      .Returns("<html></html>");
+        _emailRenderer.RenderGuestBookingEmailCollision(Arg.Any<string>())
                       .Returns("<html></html>");
     }
 
@@ -97,7 +99,7 @@ public class CreateGuestAppointmentHandlerTests
         _identity.GeneratePasswordResetTokenAsync(email).Returns((true, "reset-token", (string?)null));
         _identity.GenerateEmailConfirmationTokenAsync(newUserId).Returns("confirm-token");
 
-        AppointmentResponse result = await CreateSut().Handle(
+        GuestBookingAckResponse result = await CreateSut().Handle(
             new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default);
 
         result.Should().NotBeNull();
@@ -124,17 +126,21 @@ public class CreateGuestAppointmentHandlerTests
             email, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    // Enumeration-resistance (2026-09-01, /code-review finding): a colliding email must return
+    // the exact same ack as a real success — never a distinct exception/status the caller could
+    // use as an account-existence oracle. Disambiguation happens only via the email sent.
     [Fact]
-    public async Task Handle_DuplicateEmail_ThrowsAccountAlreadyExistsException()
+    public async Task Handle_DuplicateEmail_ReturnsTheSameAckAsSuccess()
     {
         Studio studio = SeedStudioWithAvailableArtist();
         string email = "existing@example.com";
         _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
 
-        Func<Task> act = () => CreateSut().Handle(
+        GuestBookingAckResponse result = await CreateSut().Handle(
             new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default);
 
-        await act.Should().ThrowAsync<AccountAlreadyExistsException>();
+        result.Should().NotBeNull();
+        result.Message.Should().Be("Thanks — check your email to continue.");
     }
 
     [Fact]
@@ -144,12 +150,28 @@ public class CreateGuestAppointmentHandlerTests
         string email = "existing@example.com";
         _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
 
-        await FluentActions.Awaiting(() => CreateSut().Handle(
-            new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default))
-            .Should().ThrowAsync<AccountAlreadyExistsException>();
+        await CreateSut().Handle(
+            new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default);
 
         await _identity.DidNotReceive().CreateUserAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateEmail_SendsCollisionNoticeNotWelcomeEmail()
+    {
+        Studio studio = SeedStudioWithAvailableArtist();
+        string email = "existing@example.com";
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
+
+        await CreateSut().Handle(
+            new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default);
+
+        _emailRenderer.Received(1).RenderGuestBookingEmailCollision(studio.Name);
+        _emailRenderer.DidNotReceive().RenderGuestBookingWelcome(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        await _notifications.Received(1).SendEmailAsync(
+            email, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -208,7 +230,7 @@ public class CreateGuestAppointmentHandlerTests
         _notifications.SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
                       .Returns<Task>(_ => throw new InvalidOperationException("SMTP down"));
 
-        AppointmentResponse result = await CreateSut().Handle(
+        GuestBookingAckResponse result = await CreateSut().Handle(
             new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default);
 
         result.Should().NotBeNull();

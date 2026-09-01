@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
@@ -14,10 +15,8 @@ public class GetPublicDepositRuleHandler(IAppDbContext db)
 {
     public async Task<PublicDepositRuleResponse?> Handle(GetPublicDepositRuleQuery query, CancellationToken ct)
     {
-        // Approved: public/anonymous studio-slug resolution — same predicate as GetPublicStudioHandler.
-        Studio studio = await db.Studios
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.Slug == query.StudioSlug && s.IsActive && s.IsPublished, ct)
+        // Approved: public/anonymous studio-slug resolution — shared via PublicStudioLookupExtensions.
+        Studio studio = await db.GetPublishedStudioBySlugAsync(query.StudioSlug, ct)
             ?? throw new NotFoundException(nameof(Studio), query.StudioSlug);
 
         // Approved: public/anonymous — same "single active rule, if any" query

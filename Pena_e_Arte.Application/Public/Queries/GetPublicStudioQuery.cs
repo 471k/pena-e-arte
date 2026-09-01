@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Social;
 using Pena_e_Arte.Contracts.Responses.Public;
@@ -18,9 +19,8 @@ public class GetPublicStudioHandler(IAppDbContext db)
         GetPublicStudioQuery query, CancellationToken ct)
     {
         // Approved: public portfolio query — see architecture.md AllowAnonymous Exceptions.
-        Studio? studio = await db.Studios
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.Slug == query.Slug && s.IsActive && s.IsPublished, ct);
+        // Shared with the guest-checkout-booking handlers via PublicStudioLookupExtensions.
+        Studio? studio = await db.GetPublishedStudioBySlugAsync(query.Slug, ct);
 
         if (studio is null) return null;
 

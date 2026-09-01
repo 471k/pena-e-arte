@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -27,11 +28,9 @@ public class GetPresignedGuestUploadUrlHandler(IAppDbContext db, IR2Service r2)
 
     public async Task<PresignUploadResponse> Handle(GetPresignedGuestUploadUrlQuery query, CancellationToken ct)
     {
-        // Approved: public/anonymous studio-slug resolution — same predicate as GetPublicStudioHandler.
+        // Approved: public/anonymous studio-slug resolution — shared via PublicStudioLookupExtensions.
         // Deliberately leaks no more than that handler already does (404 either way).
-        Studio studio = await db.Studios
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.Slug == query.StudioSlug && s.IsActive && s.IsPublished, ct)
+        Studio studio = await db.GetPublishedStudioBySlugAsync(query.StudioSlug, ct)
             ?? throw new NotFoundException(nameof(Studio), query.StudioSlug);
 
         // Category is normalized to lowercase "area"/"reference" by the request; the R2 key uses

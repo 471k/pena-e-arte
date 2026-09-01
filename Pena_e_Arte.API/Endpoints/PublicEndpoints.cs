@@ -494,8 +494,12 @@ public static class PublicEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        AppointmentResponse result = await mediator.Send(new CreateGuestAppointmentCommand(slug, request), ct);
-        return Results.Created($"/api/v1/appointments/{result.Id}", result);
+        // 200, not 201 — the ack is deliberately identical whether a real appointment was
+        // created or the email collided with an existing account (enumeration-resistance,
+        // 2026-09-01); a Location header pointing at a real-or-not resource would itself leak
+        // which case occurred.
+        GuestBookingAckResponse result = await mediator.Send(new CreateGuestAppointmentCommand(slug, request), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetPublicBookingArtists(

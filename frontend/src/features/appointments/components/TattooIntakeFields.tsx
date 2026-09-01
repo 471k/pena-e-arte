@@ -25,6 +25,28 @@ export interface TattooIntakeValues {
   safetyNotes:         string;
 }
 
+export interface TattooIntakeValidationErrors {
+  tattooDescriptionError:   string | null;
+  referralSourceOtherError: string | null;
+}
+
+/**
+ * The two manual (non-react-hook-form) validation checks TattooIntakeFields' consumers must run
+ * before submit — required description, and a required "where" when ReferralSource is Other.
+ * Was duplicated identically in BookAppointmentForm's and GuestBookAppointmentForm's onSubmit
+ * handlers. Found via /code-review, 2026-09-01.
+ */
+export function validateTattooIntake(value: TattooIntakeValues): TattooIntakeValidationErrors {
+  return {
+    tattooDescriptionError: value.tattooDescription.trim()
+      ? null
+      : "Tell us what you're looking to get done.",
+    referralSourceOtherError: value.referralSource === ReferralSource.Other && !value.referralSourceOther.trim()
+      ? "Please tell us where."
+      : null,
+  };
+}
+
 interface TattooIntakeFieldsProps {
   value:                     TattooIntakeValues;
   onChange:                  (value: TattooIntakeValues) => void;

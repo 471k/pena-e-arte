@@ -86,6 +86,13 @@ public interface IEmailRenderer
     /// </summary>
     string RenderGuestBookingWelcome(string studioName, string setPasswordUrl, string confirmEmailUrl);
 
+    /// <summary>
+    /// Sent instead of <see cref="RenderGuestBookingWelcome"/> when a guest-checkout email
+    /// collides with an existing platform account — the sole disambiguation channel now that
+    /// the HTTP response is identical either way (enumeration-resistance fix, 2026-09-01).
+    /// </summary>
+    string RenderGuestBookingEmailCollision(string studioName);
+
     string RenderChangeEmailConfirmation(string confirmUrl);
 
     string RenderEmailChangedNotice(string newEmail);

@@ -143,7 +143,7 @@ describe("GuestBookAppointmentForm", () => {
     // The component's result branching checks `"data" in result` on the awaited mutation call
     // directly (no `.unwrap()`), matching RTK Query's dispatched-thunk return shape.
     mockCreateGuestAppointment.mockReturnValue(
-      Promise.resolve({ data: { id: "appt-new" } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
+      Promise.resolve({ data: { message: "Thanks — check your email to continue." } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
     );
 
     const user = userEvent.setup();
@@ -155,7 +155,7 @@ describe("GuestBookAppointmentForm", () => {
 
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
 
-    expect(await screen.findByText("Appointment requested!")).toBeInTheDocument();
+    expect(await screen.findByText("Check your email")).toBeInTheDocument();
     expect(mockCreateGuestAppointment).toHaveBeenCalledWith(
       expect.objectContaining({
         slug: "test-studio",
@@ -170,9 +170,14 @@ describe("GuestBookAppointmentForm", () => {
     // past the 10s default under load even though nothing is actually broken.
   }, 20000);
 
-  it("shows a 'log in instead' message on a 409 duplicate-email response", async () => {
+  // Enumeration-resistance (2026-09-01, /code-review finding): the backend now returns the
+  // exact same ack whether a new booking was created or the email collided with an existing
+  // account — it never sends a 409 for this case anymore. This test confirms the frontend
+  // shows the identical generic success screen either way, rather than assuming a shape the
+  // backend no longer produces.
+  it("shows the same generic success screen for a duplicate-email ack as for a real booking", async () => {
     mockCreateGuestAppointment.mockReturnValue(
-      Promise.resolve({ error: { status: 409, data: { message: "Account already exists." } } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
+      Promise.resolve({ data: { message: "Thanks — check your email to continue." } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
     );
 
     const user = userEvent.setup();
@@ -184,6 +189,7 @@ describe("GuestBookAppointmentForm", () => {
 
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
 
-    expect(await screen.findByText(/already exists.*log in/i)).toBeInTheDocument();
+    expect(await screen.findByText("Check your email")).toBeInTheDocument();
+    expect(screen.queryByText(/already exists/i)).not.toBeInTheDocument();
   }, 20000);
 });

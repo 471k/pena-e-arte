@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using FluentValidation;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Reminders.Commands;
 using Pena_e_Arte.Contracts.Requests;
 
@@ -7,8 +7,6 @@ namespace Pena_e_Arte.Application.Reminders.Validators;
 
 public class CreateManualReminderValidator : AbstractValidator<CreateManualReminderCommand>
 {
-    private static readonly Regex E164Format = new(@"^\+[1-9]\d{1,14}$", RegexOptions.Compiled);
-
     public CreateManualReminderValidator()
     {
         RuleFor(x => x.Request).Must(HaveExactlyOneRecipientSource)
@@ -21,8 +19,8 @@ public class CreateManualReminderValidator : AbstractValidator<CreateManualRemin
         RuleFor(x => x.Request.RecipientPhone)
             .Cascade(CascadeMode.Stop)
             .NotEmpty().MaximumLength(20)
-            .Matches(E164Format)
-            .WithMessage("Phone must be in international format, e.g. +351912345678.")
+            .Matches(PhoneValidationRules.E164Format)
+            .WithMessage(PhoneValidationRules.E164ErrorMessage)
             .When(x => x.Request.AppointmentId is null && x.Request.ClientId is null);
 
         RuleFor(x => x.Request.Message).MaximumLength(320);

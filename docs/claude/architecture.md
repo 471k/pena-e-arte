@@ -3618,3 +3618,174 @@ heavy processes, does this actually settle):
   stronger result than the pre-feature baseline itself (1986/1998, 12 pre-existing timeout
   failures) — those 12 happened not to reproduce in this run (consistent with their established
   load-dependent nature) rather than having been fixed by this feature.
+
+---
+
+## Guest Checkout Booking — full `/code-review` remediation — 2026-09-01
+
+A user-requested `/code-review` of the merged guest-checkout-booking feature (commit `a5cade1`)
+surfaced a large set of findings across multiple review angles. Fixed in two commits: `a768f68`
+(the first, more urgent pass) and the changes documented in this section (everything else the
+user explicitly asked to be fixed, including the two items the first pass had left as open policy
+questions).
+
+### `a768f68` — critical/high findings, fixed same session
+
+- **Critical**: `GuestBookAppointmentForm.tsx` sent `clientId: ""` — the backend's
+  `CreateAppointmentRequest.ClientId` is a non-nullable `Guid` bound straight from JSON with no
+  custom converter, so every real HTTP request would 400 before the handler ran. The integration/
+  unit tests didn't catch this because they construct the C# request object directly with
+  `Guid.Empty`, never exercising real JSON→Guid deserialization. Fixed: send a syntactically valid
+  placeholder GUID (the handler ignores this field entirely and resolves the real client
+  server-side).
+- **Regression, both guest AND authenticated flows**: switching `ArtistAvailabilityExtensions`
+  and `CreateAppointmentCoreAsync` to `IgnoreQueryFilters()` (required so the shared booking core
+  also works for anonymous callers with no tenant JWT) dropped the `DeletedAt == null` half of
+  the filter in 7 places, restoring it in only one (`IsAnyArtistAvailableAsync`'s candidate-artist
+  query). Confirmed exploitable, not theoretical, by checking `DeleteArtistCommand`/
+  `DeleteDepositRuleCommand` — both only set `DeletedAt`, never flip `IsActive`/similar. Fixed:
+  `DeletedAt == null` restored in all 7 (`CreateAppointmentCommand.cs` ×3,
+  `ArtistAvailabilityExtensions.cs` ×3, `GetPublicDepositRuleQuery.cs` ×1).
+- Guest bookings silently bypassed the `AppointmentsPerMonth` plan quota: `PlanLimitBehavior`'s
+  generic pipeline check resolves the plan via `ICurrentTenant.StudioId`, which stays `Guid.Empty`
+  for an anonymous request, so no subscription is ever found and enforcement no-ops. Fixed: an
+  explicit `planLimits.EnsureWithinLimitAsync(studio.Id, ...)` call in
+  `CreateGuestAppointmentHandler`, once the real studio is resolved, before any writes.
+- `public-booking` rate limit (8 req/5min/IP) was too tight for legitimate use — up to 6 images ×
+  2 categories = 12 presign calls + 1 submit is a real, non-abusive request pattern. Raised to 20.
+- `CheckPublicSlotAvailabilityQuery` (new anonymous endpoint) had no FluentValidation validator at
+  all, unlike its authenticated sibling `CheckSlotAvailabilityQuery` — added
+  `CheckPublicSlotAvailabilityValidator`, mirroring the sibling's rules.
+- Both image-upload hooks' unmount-cleanup effects closed over the `[]` `images` they had at
+  mount, so `URL.revokeObjectURL` never ran on a form abandoned after picking photos — fixed with
+  a ref that tracks the current value.
+- `datetime-local` `min` attributes were computed via `toISOString().slice(0, 16)` (UTC) instead
+  of local wall-clock time, shifting the effective minimum bookable time by the visitor's UTC
+  offset. Fixed with a new shared `toLocalDatetimeInputValue` helper.
+
+Verified: backend 1913 unit + 388 integration (unchanged counts, all passing); frontend 2032/2032.
+
+### This pass — the two open policy questions, plus every remaining lower-priority finding
+
+**Account enumeration — resolved, not just flagged.** The original duplicate-email design
+(Decision #3) rejected a colliding email with a distinct `409 AccountAlreadyExistsException` —
+correct in spirit (never silently attach a booking to an account the caller hasn't proven control
+of) but an account-enumeration oracle in practice: the response shape alone told an anonymous
+caller whether any given email has a platform account. Redesigned to mirror
+`ForgotPasswordHandler`'s existing, already-established pattern for exactly this problem: respond
+identically (`GuestBookingAckResponse`, one generic message) whether a new booking was created or
+the email collided; disambiguation happens only out-of-band, via a new
+`RenderGuestBookingEmailCollision` email ("someone tried to book using your email — log in if that
+was you"). `AccountAlreadyExistsException` removed entirely (no longer thrown anywhere).
+`CreateGuestAppointmentCommand`'s return type changed `AppointmentResponse` → `GuestBookingAckResponse`;
+the endpoint now returns `200 OK`, not `201 Created` (a `Location` header pointing at a
+real-or-not resource would itself leak which case occurred). Frontend's confirmation copy changed
+from an assertive "Appointment requested!" to generic "Check your email" — the old copy would have
+been a lie in the collision case, which defeats the entire point of the fix. **Residual, accepted
+risk, documented not hidden**: the two branches still differ in response *timing* (the real-booking
+path does materially more I/O — password hashing, multiple `SaveChanges` — than the collision
+path's single lookup + fire-and-forget email). Closing that would need artificial constant-time
+delays on every real booking; judged not worth the added latency given the primary vector (a
+direct, zero-effort response-shape check) is what this fix actually closes.
+
+**TOCTOU on the duplicate-email check — investigated, finding partially corrected, real gap
+closed.** The review flagged `GetUserIdByEmailAsync` (check) → `CreateUserAsync` (act) as
+non-atomic, claiming concurrent submissions with the same new email could create two Identity
+users sharing an email. Verified against the actual code before accepting the claim:
+`IdentityService.CreateUserAsync` sets `UserName = email`, and `AspNetUsers.UserNameIndex` (on
+`NormalizedUserName`) **is** a real unique database index (confirmed in the `InitialCreate`
+migration) — so a concurrent duplicate cannot actually create two accounts; the loser's
+`CreateAsync` fails at the database. The finding's core claim was wrong. What *is* real: before
+this fix, that failure surfaced as a raw `BusinessRuleViolationException` instead of degrading
+into the same graceful, enumeration-resistant ack as an up-front collision. Fixed: detect the
+"username already taken" `IdentityResult` error and route it through the identical
+collision-notice-email + generic-ack path.
+
+**`HourlyRate` on the public guest-artist-picker endpoint — decided, not left open.** The original
+spec flagged this as needing product-owner confirmation and shipped without getting it
+(`GetPublicBookingArtistsQuery` exposes `Artist.HourlyRate` to fully anonymous visitors). Decision:
+**keep it exposed.** Reasoning: (1) the number already reaches any client, authenticated or not,
+the moment they start a real booking — it's baked into `AppointmentResponse.DepositAmount`'s
+calculation today, so this only moves *when* the same number becomes visible, not *whether* it
+ever does; (2) matches the current vertical-booking-SaaS standard this codebase is held to
+(CLAUDE.md rule #6) — Fresha/Vagaro/Boulevard/GlossGenius all show service pricing to anonymous
+visitors before any signup, precisely so a visitor can decide whether to book at all. No code
+change; this closes the open question the original spec left unresolved.
+
+**Duplication cleanup** (all real, all fixed — not just flagged):
+- Studio-slug-resolution predicate (`Slug == x && IsActive && IsPublished`,
+  `IgnoreQueryFilters()`'d) was copy-pasted identically across 6 handlers, each individually
+  commented "same predicate as GetPublicStudioHandler" instead of sharing one implementation.
+  Extracted to `PublicStudioLookupExtensions.GetPublishedStudioBySlugAsync` — used by all 6,
+  including the original `GetPublicStudioHandler`.
+- The E.164 phone regex (`^\+[1-9]\d{1,14}$`) was independently redeclared as an identical private
+  field in 4 validators (`CreateClientValidator`, `CreateManualReminderValidator`,
+  `UpdateMyStudioValidator`, `CreateGuestAppointmentValidator`). Extracted to
+  `PhoneValidationRules.E164Format` (+ its error message), referenced by all 4.
+- `CreateAppointmentValidator` and `CreateGuestAppointmentValidator` independently redeclared the
+  same `ValidDurations`/`MaxImagesPerCategory`/`ValidImageCategories`/`ValidReferralSources`
+  constants (the `RuleFor` call sites themselves stay duplicated — this codebase has no nested-
+  command-validator composition convention, and the two commands wrap different outer types).
+  Extracted the constants only, to `BookingContentValidationRules`, shared by both.
+- `useCategorizedImageUpload` (authenticated form) and `useGuestImageUpload` (guest form) were
+  near-identical copies of the same picked-files queue/preview/status-tracking logic, differing
+  only in the actual upload call. Merged into one shared
+  `shared/hooks/useCategorizedImageUpload.ts`, parameterized by an injected
+  `upload: (file) => Promise<string | null>` — each form supplies its own presign mechanism as a
+  closure. Files within one batch now upload in parallel (`Promise.all`) instead of serially, a
+  side effect of the merge that also closes a separate, smaller efficiency finding (a guest
+  attaching several photos was waiting roughly N× one file's latency instead of ~1×).
+- The 600ms-debounced slot-availability-check effect (state + `setTimeout`, building
+  `CheckSlotAvailabilityParams` from watched form fields) was duplicated verbatim between both
+  forms, differing only in which RTK Query hook consumed the result. Extracted to
+  `shared/hooks/useDebouncedSlotCheckArgs.ts`.
+- The manual (non-react-hook-form) intake validation — required tattoo description, required
+  "where" when `ReferralSource` is `Other` — was duplicated in both forms' `onSubmit`. Extracted to
+  `validateTattooIntake`, exported alongside `TattooIntakeFields.tsx`.
+
+**Efficiency fixes**:
+- `GuestPendingUploadCleanupJob` loaded every `AppointmentAttachment.ImageUrl` for every tenant,
+  ever, just to check membership for a handful of candidate stale-upload keys — cost grew with
+  total platform history instead of with what the run was actually sweeping. Fixed: the DB query
+  is now filtered to the candidate URLs (`Where(a => candidateUrls.Contains(a.ImageUrl))`), pushing
+  the filter to SQL.
+- `IsAnyArtistAvailableAsync` ran 3 sequential queries (schedule, time-off, conflict) *per
+  candidate artist* in a loop — a pre-existing N+1 newly exposed to unauthenticated traffic via
+  the guest-checkout and public-availability-preview paths. Rewritten to batch: one query per
+  check across every candidate artist (schedule/time-off/conflict → 3 queries total, each
+  producing a `HashSet<Guid>` of matching artist ids), then an in-memory check for "any artist
+  clears all three" — same semantics, no longer N+1.
+
+**Investigated, confirmed no fix needed**: the frontend rendering the backend's raw `data.message`
+verbatim on a non-409 booking-submit failure was flagged as a latent PII/information-disclosure
+risk if a future error path ever included sensitive detail. Traced every exception type reachable
+from `POST /studios/{slug}/book` (`NotFoundException`, `PlanLimitExceededException`,
+`SlotAlreadyBookedException`, FluentValidation failures, `BusinessRuleViolationException` from an
+Identity `CreateUserAsync` failure) — each already returns a safe, backend-authored, non-PII
+string. Confirmed `ExceptionMiddleware.cs`'s default/unmapped case always returns the generic "An
+unexpected error occurred." for any exception without a specific mapping, never the raw exception
+detail — matching CLAUDE.md's own rule ("500 Internal — never expose exception detail to client").
+The frontend boundary is only as safe as what the backend puts in `data.message`, and the
+backend's own boundary already enforces this. No code change made.
+
+Two related lower-confidence findings on the same image-upload code, also investigated, also no
+fix needed: (1) calling `setImages` after a component unmounts mid-upload — React 18 no longer
+warns or errors on this (the "Can't perform a React state update on an unmounted component"
+warning was removed), so it's a wasted update with no visible effect, not a bug; (2) an image
+removed by the user while its upload is still in flight can land in R2 under a real key that never
+gets referenced by any `AppointmentAttachment` — this is precisely the scenario
+`GuestPendingUploadCleanupJob` (made more efficient above) already exists to sweep, by design
+(Decision #12 in the original spec), not a gap this pass needs to additionally guard against on
+the client side.
+
+**Explicitly out of scope, left alone**: findings against `GetMyEarningsQuery.cs`/
+`GetRevenueSummaryQuery.cs` (a duplicated 12-month trend-bucketing loop) and
+`reportsApi.ts`'s missing `from`/`to` date-range wiring belong to the separate, already-shipped
+"artist earnings/payout report" feature (`27a6f15`), not this one — a review angle scoped to "guest
+checkout" surfaced them as adjacent observations while reading nearby files, not as part of this
+feature's own diff. Noted here so they aren't lost, not fixed in this pass.
+
+Verified after every batch of changes (not just at the end): `dotnet build` clean throughout;
+final `dotnet test` — 1914 unit + 388 integration, all passing (the +1 vs. the `a768f68` count is
+the new `CreateGuestAppointmentHandlerTests` coverage for the enumeration-resistance redesign);
+`pnpm tsc --noEmit` and `pnpm build` clean throughout.

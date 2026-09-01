@@ -16,10 +16,8 @@ public class CheckPublicSlotAvailabilityHandler(IAppDbContext db)
 {
     public async Task<SlotAvailabilityResult> Handle(CheckPublicSlotAvailabilityQuery query, CancellationToken ct)
     {
-        // Approved: public/anonymous studio-slug resolution — same predicate as GetPublicStudioHandler.
-        Studio studio = await db.Studios
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.Slug == query.StudioSlug && s.IsActive && s.IsPublished, ct)
+        // Approved: public/anonymous studio-slug resolution — shared via PublicStudioLookupExtensions.
+        Studio studio = await db.GetPublishedStudioBySlugAsync(query.StudioSlug, ct)
             ?? throw new NotFoundException(nameof(Studio), query.StudioSlug);
 
         if (query.ArtistId is null)
