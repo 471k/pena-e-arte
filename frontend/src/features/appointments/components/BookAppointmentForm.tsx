@@ -37,7 +37,8 @@ import { useEnsureActiveStudio }                  from "@/features/auth/useEnsur
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
 import { FieldLabel }                             from "./FieldLabel";
-import { TattooIntakeFields, validateTattooIntake, type TattooIntakeValues } from "./TattooIntakeFields";
+import { TattooIntakeFields } from "./TattooIntakeFields";
+import { validateTattooIntake, type TattooIntakeValues } from "./tattooIntakeValidation";
 import { CategorizedImagesField } from "./CategorizedImagesField";
 import { DesiredPlacementField }                  from "./DesiredPlacementField";
 import { AppointmentAttachmentCategory } from "../appointment.types";

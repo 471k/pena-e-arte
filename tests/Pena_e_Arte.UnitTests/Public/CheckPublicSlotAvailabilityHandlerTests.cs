@@ -15,7 +15,11 @@ public class CheckPublicSlotAvailabilityHandlerTests
 
     private static Studio MakeStudio(string slug = "guest-studio") => new()
     {
-        Name = "Guest Studio", Slug = slug, City = "Porto", IsActive = true, IsPublished = true,
+        Name = "Guest Studio",
+        Slug = slug,
+        City = "Porto",
+        IsActive = true,
+        IsPublished = true,
     };
 
     private static DateTime NextMondayAt(int hour)
@@ -45,8 +49,11 @@ public class CheckPublicSlotAvailabilityHandlerTests
         _db.Studios.Add(studio);
         Artist artist = new()
         {
-            StudioId = studio.Id, FirstName = "Luna", LastName = "Artista",
-            Email = "luna@test.com", IsActive = true,
+            StudioId = studio.Id,
+            FirstName = "Luna",
+            LastName = "Artista",
+            Email = "luna@test.com",
+            IsActive = true,
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
@@ -65,16 +72,22 @@ public class CheckPublicSlotAvailabilityHandlerTests
         _db.Studios.Add(studio);
         Artist artist = new()
         {
-            StudioId = studio.Id, FirstName = "Luna", LastName = "Artista",
-            Email = "luna@test.com", IsActive = true,
+            StudioId = studio.Id,
+            FirstName = "Luna",
+            LastName = "Artista",
+            Email = "luna@test.com",
+            IsActive = true,
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
 
         _db.ArtistSchedules.Add(new ArtistSchedule
         {
-            StudioId = studio.Id, ArtistId = artist.Id, DayOfWeek = DayOfWeek.Monday,
-            StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(23),
+            StudioId = studio.Id,
+            ArtistId = artist.Id,
+            DayOfWeek = DayOfWeek.Monday,
+            StartTime = TimeSpan.Zero,
+            EndTime = TimeSpan.FromHours(23),
             IsAvailable = true,
         });
         await _db.SaveChangesAsync();

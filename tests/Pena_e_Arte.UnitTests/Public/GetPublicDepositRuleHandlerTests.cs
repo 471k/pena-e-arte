@@ -15,7 +15,11 @@ public class GetPublicDepositRuleHandlerTests
 
     private static Studio MakeStudio(string slug = "guest-studio") => new()
     {
-        Name = "Guest Studio", Slug = slug, City = "Porto", IsActive = true, IsPublished = true,
+        Name = "Guest Studio",
+        Slug = slug,
+        City = "Porto",
+        IsActive = true,
+        IsPublished = true,
     };
 
     [Fact]
@@ -25,7 +29,10 @@ public class GetPublicDepositRuleHandlerTests
         _db.Studios.Add(studio);
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = studio.Id, Name = "Standard", AmountFixed = 50, IsActive = true,
+            StudioId = studio.Id,
+            Name = "Standard",
+            AmountFixed = 50,
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
@@ -43,12 +50,18 @@ public class GetPublicDepositRuleHandlerTests
         _db.Studios.Add(studio);
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = studio.Id, Name = "Old", AmountFixed = 20, IsActive = true,
+            StudioId = studio.Id,
+            Name = "Old",
+            AmountFixed = 20,
+            IsActive = true,
             UpdatedAt = DateTime.UtcNow.AddDays(-2),
         });
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = studio.Id, Name = "Newest", AmountFixed = 40, IsActive = true,
+            StudioId = studio.Id,
+            Name = "Newest",
+            AmountFixed = 40,
+            IsActive = true,
             UpdatedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync();
@@ -65,7 +78,10 @@ public class GetPublicDepositRuleHandlerTests
         _db.Studios.Add(studio);
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = studio.Id, Name = "Retired", AmountFixed = 20, IsActive = false,
+            StudioId = studio.Id,
+            Name = "Retired",
+            AmountFixed = 20,
+            IsActive = false,
         });
         await _db.SaveChangesAsync();
 

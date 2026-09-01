@@ -44,15 +44,22 @@ public class CreateGuestAppointmentHandlerTests
     {
         Studio studio = new()
         {
-            Name = "Guest Studio", Slug = "guest-studio", City = "Porto",
-            IsActive = true, IsPublished = true,
+            Name = "Guest Studio",
+            Slug = "guest-studio",
+            City = "Porto",
+            IsActive = true,
+            IsPublished = true,
         };
         _db.Studios.Add(studio);
 
         Artist artist = new()
         {
-            StudioId = studio.Id, FirstName = "Luna", LastName = "Artista",
-            Email = "luna@test.com", IsActive = true, HourlyRate = 80,
+            StudioId = studio.Id,
+            FirstName = "Luna",
+            LastName = "Artista",
+            Email = "luna@test.com",
+            IsActive = true,
+            HourlyRate = 80,
         };
         _db.Artists.Add(artist);
 
@@ -60,8 +67,11 @@ public class CreateGuestAppointmentHandlerTests
         {
             _db.ArtistSchedules.Add(new ArtistSchedule
             {
-                StudioId = studio.Id, ArtistId = artist.Id, DayOfWeek = day,
-                StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(23),
+                StudioId = studio.Id,
+                ArtistId = artist.Id,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23),
                 IsAvailable = true,
             });
         }

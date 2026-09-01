@@ -270,6 +270,11 @@ test.describe("Critical path — register, login, create appointment", () => {
       .waitFor({ state: "visible", timeout: 5_000 });
     await page.getByRole("option", { name: "2 hours" }).click();
 
+    // Tattoo description: required since TattooIntakeFields was added to this form
+    // (shared with the guest checkout form, Decision #8) — submission is blocked
+    // client-side (validateTattooIntake) without it.
+    await page.getByLabel("What are you looking to get done?").fill("A small rose");
+
     // Submit — button text is "Request Appointment"
     await page.getByRole("button", { name: "Request Appointment" }).click();
 

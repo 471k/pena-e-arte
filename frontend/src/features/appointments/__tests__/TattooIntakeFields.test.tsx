@@ -2,7 +2,8 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { TattooIntakeFields, type TattooIntakeValues } from "@/features/appointments/components/TattooIntakeFields";
+import { TattooIntakeFields } from "@/features/appointments/components/TattooIntakeFields";
+import type { TattooIntakeValues } from "@/features/appointments/components/tattooIntakeValidation";
 
 afterEach(() => cleanup());
 
