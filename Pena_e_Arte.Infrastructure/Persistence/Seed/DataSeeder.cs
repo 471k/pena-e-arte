@@ -1545,9 +1545,18 @@ public static class DataSeeder
         db.Artists.Add(s2a1);
 
         // ── Portfolio images ─────────────────────────────────────────────────
+        // Real photos uploaded through the presigned-upload flow — see the Studio1
+        // portfolio-images comment above for how/why these replace picsum.photos.
+        const string luisPrefix = "https://pena-e-arte-r2.phisoftwaresolutions.workers.dev/"
+            + "bbbb0002-0000-0000-0000-000000000000/portfolio/eeee0002-0001-0000-0000-000000000000/";
+
         db.PortfolioImages.AddRange(
-            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = "https://picsum.photos/seed/pena-luis-1/800/1000" },
-            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = "https://picsum.photos/seed/pena-luis-2/800/1000" });
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.Design, ImageUrl = luisPrefix + "ba41595863b9406eacf0cd29e8e7935e.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.Design, ImageUrl = luisPrefix + "097af603c37f48b9a4ba7e96adc30d67.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = luisPrefix + "046706ed689243fca7173fcedbc900cd.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = luisPrefix + "c30d782363b9418c93d100a8adbec371.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = luisPrefix + "d7a9f045086e4b3da5c023db6f721cf7.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = luisPrefix + "d9417a8cd8ed4aef9f3fb4f3bb9fe820.jpg" });
 
         // ── Clients ───────────────────────────────────────────────────────────
 
