@@ -467,8 +467,12 @@ export function ArtistPortfolioPage() {
     );
   }
 
-  const bookUrl = `/book?studio=${artist.studioSlug}&artist=${artist.slug}`;
-  const ctaUrl  = token ? bookUrl : `/login?redirect=${encodeURIComponent(bookUrl)}`;
+  // Guest checkout (Decision #1/#13, 2026-08-31): /book itself branches on auth state, so an
+  // unauthenticated visitor goes straight there instead of a forced /login hop — mirrors the
+  // fix already applied to StudioPortfolioPage's own booking CTA. Found via manual browser
+  // verification, 2026-09-02: this page's CTA was never updated when the guest checkout
+  // feature shipped, so every anonymous visitor landing here was forced through login first.
+  const ctaUrl = `/book?studio=${artist.studioSlug}&artist=${artist.slug}`;
   const studioSlug = artist.studioSlug;
 
   function handleBack() {

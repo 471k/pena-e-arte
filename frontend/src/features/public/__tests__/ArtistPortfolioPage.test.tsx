@@ -185,13 +185,15 @@ describe("ArtistPortfolioPage", () => {
     expect(screen.getByRole("link", { name: /book an appointment/i })).toBeInTheDocument();
   });
 
-  it("book button redirects to login when not authenticated", () => {
+  // Guest checkout (Decision #1/#13, 2026-08-31): /book itself branches on auth state, so
+  // the CTA must link straight there for both authenticated and unauthenticated visitors —
+  // never through a forced /login hop. This page's CTA was missed when the guest checkout
+  // feature shipped and still forced login; found via manual browser verification, 2026-09-02.
+  it("book button links directly to booking when not authenticated (guest checkout)", () => {
     renderPage(null);
     const bookLink = screen.getByRole("link", { name: /book an appointment/i });
-    const href = bookLink.getAttribute("href") ?? "";
-    expect(href).toContain("/login");
-    // /book is URL-encoded in the redirect param
-    expect(decodeURIComponent(href)).toContain("/book");
+    expect(bookLink.getAttribute("href")).toMatch(/^\/book\?studio=/);
+    expect(bookLink.getAttribute("href")).not.toContain("/login");
   });
 
   it("book button links directly to booking when authenticated", () => {
