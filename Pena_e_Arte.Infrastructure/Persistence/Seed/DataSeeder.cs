@@ -476,18 +476,57 @@ public static class DataSeeder
         db.Artists.AddRange(s1a1, s1a2, s1a3);
 
         // ── Portfolio images ─────────────────────────────────────────────────
-        // Real, resolvable placeholder photos (picsum.photos with fixed seeds, so
-        // the same "image" is returned on every reseed) — not r2.example.com like
-        // the rest of this file's asset URLs, since these specifically back the
-        // public Discover feed grid and need to actually render for it to be
-        // demoable rather than showing the broken-image fallback everywhere.
+        // Real tattoo photos uploaded through the app's own presigned-upload flow
+        // (POST /files/presign -> PUT to R2), the same path a real artist's browser
+        // takes — not synthetic placeholders like picsum.photos or r2.example.com.
+        // Source stills live under tattoos_for_seeded_data/{design,fresh,healed}_tattoos
+        // (git-ignored, local only); these are the permanent public R2 CDN URLs that
+        // upload produced. Category matches the source subfolder each photo came from.
+        const string elenaPrefix = "https://pena-e-arte-r2.phisoftwaresolutions.workers.dev/"
+            + "bbbb0001-0000-0000-0000-000000000000/portfolio/eeee0001-0001-0000-0000-000000000000/";
+        const string marcoPrefix = "https://pena-e-arte-r2.phisoftwaresolutions.workers.dev/"
+            + "bbbb0001-0000-0000-0000-000000000000/portfolio/eeee0001-0002-0000-0000-000000000000/";
+        const string sofiaPrefix = "https://pena-e-arte-r2.phisoftwaresolutions.workers.dev/"
+            + "bbbb0001-0000-0000-0000-000000000000/portfolio/eeee0001-0003-0000-0000-000000000000/";
+
         db.PortfolioImages.AddRange(
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Traditional, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = "https://picsum.photos/seed/pena-elena-1/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Japanese, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = "https://picsum.photos/seed/pena-elena-2/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = "https://picsum.photos/seed/pena-marco-1/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.Design, ImageUrl = "https://picsum.photos/seed/pena-marco-2/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = "https://picsum.photos/seed/pena-sofia-1/800/1000" },
-            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline, Category = null, ImageUrl = "https://picsum.photos/seed/pena-sofia-2/800/1000" });
+            // Elena — Traditional / Japanese / Neo-Traditional
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Traditional, Category = PortfolioImageCategory.Design, ImageUrl = elenaPrefix + "71f7360cc3bd481cab2013f0ab6658e2.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.NeoTraditional, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = elenaPrefix + "66ac701bdb594c319db0dfec67a007df.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Japanese, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = elenaPrefix + "bbe35631a9c1496fb703b6194f033cf4.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Traditional, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = elenaPrefix + "b5cf984411dc411a8bae9159c0558eb8.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.NeoTraditional, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = elenaPrefix + "27a3c05896b945468981fb8cda5488d7.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Japanese, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = elenaPrefix + "26aaf774938848b28f2d3ac994ff65bb.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Traditional, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = elenaPrefix + "e05468681ecb4d57ae248437f0d05824.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.NeoTraditional, Category = PortfolioImageCategory.Design, ImageUrl = elenaPrefix + "5f360c16bf264663b291b9c4b14d41c1.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Japanese, Category = PortfolioImageCategory.Design, ImageUrl = elenaPrefix + "ded7441f6d6c46288bb52f52ff0029cb.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Traditional, Category = PortfolioImageCategory.Design, ImageUrl = elenaPrefix + "7f59317bbd334de49e99764247c120c6.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a1.Id, Style = TattooStyle.Japanese, Category = PortfolioImageCategory.Design, ImageUrl = elenaPrefix + "b8ae9058baba48ad98644e2e42005930.jpg" },
+
+            // Marco — Realism
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = marcoPrefix + "938bc4364539466a915f02f6a7ae29a9.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = marcoPrefix + "6be67dfa142540d7a585c17bd3c5cbe0.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = marcoPrefix + "b4da3f368fd94abea9bcc265ae29c04b.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = marcoPrefix + "dc00b70767424e5a8aea3d29778974b5.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = marcoPrefix + "d380c244f238417da321f4b39ba04d65.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = marcoPrefix + "faa6df6b2b73404bac4f7eedddc70683.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = marcoPrefix + "ca3283c50de3419f8f640e6a2757a432.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.Design, ImageUrl = marcoPrefix + "de58f1ca15e64e0c9f1fa4908332f062.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.Design, ImageUrl = marcoPrefix + "7c6177faaf7246a9b80fcf721d1d63f5.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.Design, ImageUrl = marcoPrefix + "b64861fc0a814afebbaf1cbb9605e2f4.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a2.Id, Style = TattooStyle.Realism, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = marcoPrefix + "5b0a83fbdfda4ab9a5b24970b2de1664.jpg" },
+
+            // Sofia — Geometric / Fineline
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = sofiaPrefix + "eb23cfb4c21d453c9d6a5369ff9dada9.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = sofiaPrefix + "d9ec2f16bd3b447cb478e84dc0fcc3df.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = sofiaPrefix + "7f67fbab769b454c8ef90edde802561d.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = sofiaPrefix + "0ae0daef669b47bb9b8d6fc0268bacdb.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = sofiaPrefix + "00d73acb2ea045759950e6978c5f4298.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = sofiaPrefix + "836616b43a7a4b9db078abf40ae062bd.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = sofiaPrefix + "084743f22aec407ea00e78740f3d2a7f.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline, Category = PortfolioImageCategory.Design, ImageUrl = sofiaPrefix + "129bfcc6c83a492a84254d8d57bdd9b1.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Geometric, Category = PortfolioImageCategory.Design, ImageUrl = sofiaPrefix + "00d3b6596ae342199c7a23e6430c81fb.jpg" },
+            new PortfolioImage { StudioId = Studio1Id, ArtistId = s1a3.Id, Style = TattooStyle.Fineline, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = sofiaPrefix + "420a16534eda49ce9c7ffcaf6c60c0e1.jpg" });
 
         // ── Clients ───────────────────────────────────────────────────────────
 
@@ -1506,9 +1545,18 @@ public static class DataSeeder
         db.Artists.Add(s2a1);
 
         // ── Portfolio images ─────────────────────────────────────────────────
+        // Real photos uploaded through the presigned-upload flow — see the Studio1
+        // portfolio-images comment above for how/why these replace picsum.photos.
+        const string luisPrefix = "https://pena-e-arte-r2.phisoftwaresolutions.workers.dev/"
+            + "bbbb0002-0000-0000-0000-000000000000/portfolio/eeee0002-0001-0000-0000-000000000000/";
+
         db.PortfolioImages.AddRange(
-            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = "https://picsum.photos/seed/pena-luis-1/800/1000" },
-            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = "https://picsum.photos/seed/pena-luis-2/800/1000" });
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.Design, ImageUrl = luisPrefix + "ba41595863b9406eacf0cd29e8e7935e.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.Design, ImageUrl = luisPrefix + "097af603c37f48b9a4ba7e96adc30d67.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = luisPrefix + "046706ed689243fca7173fcedbc900cd.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.FreshTattoo, ImageUrl = luisPrefix + "c30d782363b9418c93d100a8adbec371.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = luisPrefix + "d7a9f045086e4b3da5c023db6f721cf7.jpg" },
+            new PortfolioImage { StudioId = Studio2Id, ArtistId = s2a1.Id, Style = TattooStyle.Blackwork, Category = PortfolioImageCategory.HealedTattoo, ImageUrl = luisPrefix + "d9417a8cd8ed4aef9f3fb4f3bb9fe820.jpg" });
 
         // ── Clients ───────────────────────────────────────────────────────────
 

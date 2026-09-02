@@ -24,6 +24,7 @@
   --color-input: hsl(240 5.9% 58%);
   --color-ring: hsl(240 5.9% 10%);
   --radius: 0.5rem;
+  --font-sans: "Fraunces", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -85,7 +86,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Fraunces", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
