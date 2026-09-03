@@ -20,3 +20,17 @@ data:
           - targets: ["pena-e-arte-api.pena-e-arte.svc.cluster.local:8080"]
             labels:
               service: "pena-e-arte-api"
+              environment: "production"
+
+      # Staging as an additional scrape target on this same shared Prometheus, not a second
+      # Prometheus in a duplicated per-namespace stack (see docs/infra/staging-environment.md
+      # — one observability stack, environment-labeled, is the whole point of §2.3). The
+      # environment label is what lets api-overview.json's one dashboard filter between the
+      # two rather than needing a forked copy.
+      - job_name: "pena-e-arte-api-staging"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["pena-e-arte-api.pena-e-arte-staging.svc.cluster.local:8080"]
+            labels:
+              service: "pena-e-arte-api"
+              environment: "staging"

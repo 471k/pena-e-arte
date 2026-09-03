@@ -49,6 +49,26 @@ data:
         target_label  = "__path__"
         replacement   = "/var/log/pods/*$1/*.log"
       }
+
+      # Staging pods are discovered automatically by the same cluster-wide (node-filtered,
+      # not namespace-filtered) discovery.kubernetes above — no separate DaemonSet/config
+      # needed per docs/infra/staging-environment.md's §2.3. These two rules add the same
+      # environment label Prometheus's scrape config carries, so Loki queries can filter the
+      # same way. Both regexes are fully anchored so "pena-e-arte" can't accidentally match
+      # the "pena-e-arte-staging" namespace as a substring.
+      rule {
+        source_labels = ["namespace"]
+        regex         = "^pena-e-arte$"
+        target_label  = "environment"
+        replacement   = "production"
+      }
+
+      rule {
+        source_labels = ["namespace"]
+        regex         = "^pena-e-arte-staging$"
+        target_label  = "environment"
+        replacement   = "staging"
+      }
     }
 
     loki.source.file "pod_logs" {
