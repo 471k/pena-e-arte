@@ -51,8 +51,14 @@ try
 
     WebApplication app = builder.Build();
 
-    using (IServiceScope migrationScope = app.Services.CreateScope())
+    // Gated behind Migrations:ApplyOnStartup (default true, so local dotnet run / docker
+    // compose behavior is unchanged) — with 2+ K8s replicas rolling out simultaneously,
+    // every pod running MigrateAsync() unguarded races on the same migration history table.
+    // Production sets this to false and runs exactly one migration via a dedicated K8s Job
+    // (k8s/base/migration-job.yaml) before the API Deployment rolls out.
+    if (builder.Configuration.GetValue("Migrations:ApplyOnStartup", defaultValue: true))
     {
+        using IServiceScope migrationScope = app.Services.CreateScope();
         AppDbContext migDb = migrationScope.ServiceProvider.GetRequiredService<AppDbContext>();
         await migDb.Database.MigrateAsync();
     }
