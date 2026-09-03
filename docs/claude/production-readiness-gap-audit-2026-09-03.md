@@ -42,6 +42,47 @@ A prior gap list circulated some claims that no longer hold. Re-verified line by
 
 Nothing past this tier can be verified end-to-end until this lands. Confirmed today via live
 `kubectl`: the cluster has **only stock K3s system pods** — no `cert-manager` CRDs, no
+
+### 1.0 — GitHub Actions runners cannot reach the K3s API server at all (the REAL blocker, found by watching a live run)
+
+**Found after merging PR #83**, by watching the CD run it triggered rather than assuming success.
+`cd.yml`'s `deploy`/`deploy-staging` jobs have never once gotten past their very first `kubectl`
+call — confirmed across all 4 CD runs today (three from before this session, one right after the
+merge): every single one fails with the identical error,
+`dial tcp 49.13.66.15:6443: i/o timeout`. **No migration has ever run. The production database
+has never been touched by CD. No manifests have ever actually been applied.** The 1.1-item
+namespace-ordering fix from earlier today is real and worth keeping, but it was never the
+proximate cause of any observed failure — this connectivity issue always fails first, before
+that step is even reached in three of the four runs.
+
+**Root cause (near-certain, matches the "dynamic-IP firewall gotcha" already on record):** the
+Hetzner Cloud Firewall (`pena-e-arte-k3s-fw`) restricts `6443/tcp` (the K3s API server) to the
+operator's own IP only — by design, per the July 26 prompt's own Phase 0 spec ("never expose
+this world-wide"). GitHub-hosted Actions runners use ephemeral cloud IPs nowhere on that
+allowlist, so `KUBE_CONFIG` being a valid, working kubeconfig (confirmed — this session used it
+successfully from the operator's own machine) doesn't help: the TCP connection itself is
+dropped before authentication is ever attempted.
+
+**This blocks 100% of `cd.yml`'s value until resolved** — not just this specific deploy, every
+future one too, staging included. It needs an explicit decision (infra/security tradeoff, not
+something to silently pick) between:
+
+1. **Self-hosted GitHub Actions runner**, installed on the Hetzner box itself (or another host
+   already inside the firewall's allowed access). Most secure — `6443` never needs to be
+   internet-facing at all. Adds an always-on runner process to operate/monitor.
+2. **Dynamic IP allowlisting via the Hetzner Cloud API**, as steps at the start/end of the
+   `deploy`/`deploy-staging` jobs (add the runner's current public IP to
+   `pena-e-arte-k3s-fw`, run kubectl, remove it). Keeps GitHub-hosted runners, no new
+   always-on process, but needs a scoped Hetzner API token as a new GitHub secret and real
+   firewall-management logic in `cd.yml`.
+3. **Open `6443/tcp` to GitHub Actions' published IP ranges** (from `api.github.com/meta`).
+   Simplest, but those ranges are broad and change over time — meaningfully weaker than 1/2,
+   and a real deviation from Phase 0's original "never expose this world-wide" reasoning.
+
+**Recommended: option 1 or 2** — do not pick 3 without Phi explicitly accepting that tradeoff.
+This is now the single highest-priority item in this whole document — it sits ahead of 1.1-1.5
+below, since none of those matter until a `kubectl` command from CI can reach the cluster at
+all.
 `pena-e-arte`/`monitoring`/`pena-e-arte-staging` namespaces, nothing deployed. This is the
 single highest-priority tier.
 
