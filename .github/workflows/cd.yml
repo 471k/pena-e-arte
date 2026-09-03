@@ -1,0 +1,183 @@
+name: CD
+
+# Triggers only after ci.yml's checks pass on main (workflow_run, not a bare push — avoids
+# racing CI). Additive to ci.yml, which stays untouched (its docker-build job still only
+# validates that the images build; this workflow is the first thing that pushes anywhere).
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    name: Build and push images to GHCR
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Pena_e_Arte.API/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/471k/pena-e-arte-api:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/471k/pena-e-arte-api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/471k/pena-e-arte-frontend:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/471k/pena-e-arte-frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          # Real production values, NOT ci.yml's docker-build placeholders
+          # (pk_test_placeholder / placeholder / http://localhost:8081) — those are correct
+          # for that job's build-only validation but would silently ship a broken Stripe
+          # checkout, broken Google/Apple sign-in, and a wrong self-referential public URL
+          # baked into the client bundle if reused here. VITE_STRIPE_PUBLISHABLE_KEY,
+          # VITE_GOOGLE_CLIENT_ID, and VITE_APPLE_CLIENT_ID are client-exposed (visible in the
+          # shipped JS via view-source) — kept as repo secrets anyway for consistency with
+          # this deployment's uniform secret-sourcing pattern, a minor judgment call.
+          build-args: |
+            VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+            VITE_CONTACT_EMAIL=support@tattooos.co
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+            VITE_APPLE_CLIENT_ID=${{ secrets.VITE_APPLE_CLIENT_ID }}
+            VITE_PUBLIC_URL=https://app.tattooos.co
+
+  deploy:
+    name: Deploy to K3s
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Write kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
+
+      # cert-manager itself (the CRDs + controller) is a one-time cluster bootstrap step —
+      # `kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
+      # <pinned-tag>/cert-manager.yaml` — done once by hand against the real cluster, not
+      # re-applied by this job on every deploy (Phase 6). Without it, this workflow's
+      # ClusterIssuer/Ingress cert-manager.io/v1 resources will fail to reconcile.
+
+      - name: Populate pena-e-arte-api-secrets
+        run: |
+          kubectl create secret generic pena-e-arte-api-secrets \
+            -n pena-e-arte \
+            --from-literal=ConnectionStrings__Default="${{ secrets.PROD_DB_CONNECTION_STRING }}" \
+            --from-literal=Jwt__SecretKey="${{ secrets.JWT_SECRET_KEY }}" \
+            --from-literal=Stripe__SecretKey="${{ secrets.STRIPE_SECRET_KEY }}" \
+            --from-literal=Stripe__PublishableKey="${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
+            --from-literal=Stripe__WebhookSecretBilling="${{ secrets.STRIPE_WEBHOOK_SECRET_BILLING }}" \
+            --from-literal=Stripe__WebhookSecretConnect="${{ secrets.STRIPE_WEBHOOK_SECRET_CONNECT }}" \
+            --from-literal=CloudflareR2__AccountId="${{ secrets.R2_ACCOUNT_ID }}" \
+            --from-literal=CloudflareR2__AccessKeyId="${{ secrets.R2_ACCESS_KEY_ID }}" \
+            --from-literal=CloudflareR2__SecretAccessKey="${{ secrets.R2_SECRET_ACCESS_KEY }}" \
+            --from-literal=CloudflareR2__BucketName="${{ secrets.R2_BUCKET_NAME }}" \
+            --from-literal=CloudflareR2__PublicUrl="${{ secrets.R2_PUBLIC_URL }}" \
+            --from-literal=Resend__ApiKey="${{ secrets.RESEND_API_KEY }}" \
+            --from-literal=Resend__FromAddress="${{ secrets.RESEND_FROM_ADDRESS }}" \
+            --from-literal=Twilio__AccountSid="${{ secrets.TWILIO_ACCOUNT_SID }}" \
+            --from-literal=Twilio__AuthToken="${{ secrets.TWILIO_AUTH_TOKEN }}" \
+            --from-literal=Twilio__FromNumber="${{ secrets.TWILIO_FROM_NUMBER }}" \
+            --from-literal=Instagram__AppId="${{ secrets.INSTAGRAM_APP_ID }}" \
+            --from-literal=Instagram__AppSecret="${{ secrets.INSTAGRAM_APP_SECRET }}" \
+            --from-literal=Instagram__RedirectUri="${{ secrets.INSTAGRAM_REDIRECT_URI }}" \
+            --from-literal=Instagram__TokenEncryptionKey="${{ secrets.INSTAGRAM_TOKEN_ENCRYPTION_KEY }}" \
+            --from-literal=Social__StateSigningKey="${{ secrets.SOCIAL_STATE_SIGNING_KEY }}" \
+            --from-literal=Social__TikTok__ClientKey="${{ secrets.TIKTOK_CLIENT_KEY }}" \
+            --from-literal=Social__TikTok__ClientSecret="${{ secrets.TIKTOK_CLIENT_SECRET }}" \
+            --from-literal=Social__TikTok__RedirectUri="${{ secrets.TIKTOK_REDIRECT_URI }}" \
+            --from-literal=Social__Facebook__AppId="${{ secrets.FACEBOOK_APP_ID }}" \
+            --from-literal=Social__Facebook__AppSecret="${{ secrets.FACEBOOK_APP_SECRET }}" \
+            --from-literal=Social__Facebook__RedirectUri="${{ secrets.FACEBOOK_REDIRECT_URI }}" \
+            --from-literal=Social__X__ClientId="${{ secrets.X_CLIENT_ID }}" \
+            --from-literal=Social__X__ClientSecret="${{ secrets.X_CLIENT_SECRET }}" \
+            --from-literal=Social__X__RedirectUri="${{ secrets.X_REDIRECT_URI }}" \
+            --from-literal=Social__X__BearerToken="${{ secrets.X_BEARER_TOKEN }}" \
+            --from-literal=Social__YouTube__ClientId="${{ secrets.YOUTUBE_CLIENT_ID }}" \
+            --from-literal=Social__YouTube__ClientSecret="${{ secrets.YOUTUBE_CLIENT_SECRET }}" \
+            --from-literal=Social__YouTube__RedirectUri="${{ secrets.YOUTUBE_REDIRECT_URI }}" \
+            --from-literal=Social__YouTube__ApiKey="${{ secrets.YOUTUBE_API_KEY }}" \
+            --from-literal=Google__ClientId="${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
+            --from-literal=Apple__ClientId="${{ secrets.VITE_APPLE_CLIENT_ID }}" \
+            --from-literal=Hangfire__DashboardUsername="${{ secrets.HANGFIRE_DASHBOARD_USERNAME }}" \
+            --from-literal=Hangfire__DashboardPassword="${{ secrets.HANGFIRE_DASHBOARD_PASSWORD }}" \
+            --from-literal=ForwardedHeaders__TrustedProxyCidr="${{ secrets.FORWARDED_HEADERS_TRUSTED_PROXY_CIDR }}" \
+            --from-literal=Vault__Address="${{ secrets.VAULT_ADDR }}" \
+            --from-literal=Vault__Token="${{ secrets.VAULT_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Populate cloudflare-api-token
+        run: |
+          kubectl create secret generic cloudflare-api-token \
+            -n pena-e-arte \
+            --from-literal=api-token="${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Populate pena-e-arte-grafana-admin
+        run: |
+          kubectl create secret generic pena-e-arte-grafana-admin \
+            -n monitoring \
+            --from-literal=admin-user="${{ secrets.PROD_GRAFANA_ADMIN_USER }}" \
+            --from-literal=admin-password="${{ secrets.PROD_GRAFANA_ADMIN_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Pin image tags
+        working-directory: k8s/overlays/production
+        run: |
+          kustomize edit set image \
+            ghcr.io/471k/pena-e-arte-api=ghcr.io/471k/pena-e-arte-api:${SHA} \
+            ghcr.io/471k/pena-e-arte-frontend=ghcr.io/471k/pena-e-arte-frontend:${SHA}
+
+      - name: Render manifests
+        run: kubectl kustomize k8s/overlays/production > /tmp/rendered.yaml
+
+      - name: Run migration Job, then wait for completion
+        run: |
+          kubectl delete job pena-e-arte-migrate -n pena-e-arte --ignore-not-found
+          yq 'select(.kind == "Job")' /tmp/rendered.yaml | kubectl apply -f -
+          kubectl wait --for=condition=complete job/pena-e-arte-migrate -n pena-e-arte --timeout=120s
+
+      - name: Apply manifests
+        run: kubectl apply -f /tmp/rendered.yaml
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/pena-e-arte-api -n pena-e-arte --timeout=180s
+          kubectl rollout status deployment/pena-e-arte-frontend -n pena-e-arte --timeout=180s
