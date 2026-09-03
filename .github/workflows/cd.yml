@@ -141,18 +141,22 @@ jobs:
   deploy:
     name: Deploy to K3s
     needs: build-and-push
-    runs-on: ubuntu-latest
+    # Self-hosted, on the K3s node itself — see docs/infra/self-hosted-runner-setup.md.
+    # Every prior run on ubuntu-latest failed identically at the first kubectl call
+    # (`dial tcp 49.13.66.15:6443: i/o timeout`): the Hetzner firewall restricts 6443/tcp to the
+    # operator's own IP, and GitHub-hosted runners use ephemeral IPs nowhere on that allowlist.
+    # Running on the node itself reaches the API server over loopback, never crossing that
+    # firewall at all — kubectl already has a working ~/.kube/config for the github-runner user
+    # (copied from /etc/rancher/k3s/k3s.yaml, pointed at 127.0.0.1), so no "write kubeconfig from
+    # KUBE_CONFIG secret" step is needed here (KUBE_CONFIG stays in use for the operator's own
+    # local kubectl).
+    runs-on: [self-hosted, pena-e-arte-prod]
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Write kubeconfig
-        run: |
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
 
       # cert-manager itself (the CRDs + controller) is a one-time cluster bootstrap step —
       # `kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
@@ -267,24 +271,21 @@ jobs:
       always() &&
       needs.build-and-push-frontend-staging.result == 'success' &&
       (needs.deploy.result == 'success' || needs.deploy.result == 'skipped')
-    runs-on: ubuntu-latest
     # Separate concurrency group from cd-production — a staging-only manual redeploy must
     # never queue behind, or get cancelled by, a production deploy, and a staging deploy
     # failure/hang must never block a subsequent production deploy from running.
     concurrency:
       group: cd-staging
       cancel-in-progress: false
+    # Same reasoning as `deploy` above — self-hosted, on the K3s node itself, no kubeconfig
+    # secret needed. See docs/infra/self-hosted-runner-setup.md.
+    runs-on: [self-hosted, pena-e-arte-prod]
     env:
       SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.SHA }}
-
-      - name: Write kubeconfig
-        run: |
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
 
       # Same fix as `deploy`'s own "Ensure namespaces exist" step, and independently needed
       # here too: `deploy-staging` can run via workflow_dispatch even if `deploy` has never
