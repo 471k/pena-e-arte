@@ -160,6 +160,14 @@ jobs:
       # re-applied by this job on every deploy (Phase 6). Without it, this workflow's
       # ClusterIssuer/Ingress cert-manager.io/v1 resources will fail to reconcile.
 
+      # Must run before the secret-population steps below, not after "Apply manifests" —
+      # on a fresh cluster, `kubectl create secret ... -n pena-e-arte` fails outright if the
+      # pena-e-arte namespace doesn't exist yet, and namespace.yaml's own three Namespace
+      # objects only get applied as part of "Apply manifests" further down. Idempotent on
+      # every later run (namespaces already exist by then).
+      - name: Ensure namespaces exist
+        run: kubectl apply -f k8s/base/namespace.yaml
+
       - name: Populate pena-e-arte-api-secrets
         run: |
           kubectl create secret generic pena-e-arte-api-secrets \
@@ -278,13 +286,15 @@ jobs:
           mkdir -p "$HOME/.kube"
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
 
-      # cert-manager and the pena-e-arte-staging namespace are prerequisites this job assumes
-      # already exist (namespace: created by `deploy`'s own apply of k8s/base/namespace.yaml,
-      # which this job's own manifests also include harmlessly — see
-      # k8s/overlays/staging/namespace-exclude-patch.yaml for why NOT the pena-e-arte/
-      # monitoring Namespace objects specifically). If this job fails on "namespace not found"
-      # or a missing cert-manager CRD, that means `deploy` hasn't actually run against the
-      # real cluster yet — see docs/infra/staging-environment.md's capacity-gate note.
+      # Same fix as `deploy`'s own "Ensure namespaces exist" step, and independently needed
+      # here too: `deploy-staging` can run via workflow_dispatch even if `deploy` has never
+      # once succeeded (its own `if:` above only requires deploy's result to be success-or-
+      # skipped, and it's always "skipped" on manual dispatch) — so this can't actually rely
+      # on `deploy` having created pena-e-arte-staging first. cert-manager itself is still a
+      # one-time manual cluster bootstrap (see `deploy`'s own comment) — if this job fails on
+      # a missing cert-manager CRD, that's the real remaining prerequisite, not the namespace.
+      - name: Ensure namespaces exist
+        run: kubectl apply -f k8s/base/namespace.yaml
 
       # Object names are IDENTICAL to production's (pena-e-arte-api-secrets,
       # pena-e-arte-api-config) — namespace isolation alone disambiguates them, matching
