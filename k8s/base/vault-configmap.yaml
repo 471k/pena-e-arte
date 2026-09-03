@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-vault-config
+  namespace: pena-e-arte
+data:
+  # Real Raft-backed persistent storage — not the docker-compose.yml dev-mode service
+  # (in-memory, auto-unsealed, data lost on restart). tls_disable=true: this listener is
+  # ClusterIP-only, never on the public Ingress (see vault-service.yaml) — internal
+  # cluster traffic only. Single node, manually unsealed after every restart — see
+  # docs/infra/vault-self-hosted-runbook.md and ADR-0002's 3 Sep 2026 addendum for the
+  # accepted no-HA/no-auto-unseal tradeoff.
+  server.hcl: |
+    storage "raft" {
+      path    = "/vault/data"
+      node_id = "vault-0"
+    }
+
+    listener "tcp" {
+      address     = "0.0.0.0:8200"
+      tls_disable = true
+    }
+
+    api_addr     = "http://pena-e-arte-vault.pena-e-arte.svc.cluster.local:8200"
+    cluster_addr = "http://vault-0.pena-e-arte-vault.pena-e-arte.svc.cluster.local:8201"
+
+    disable_mlock = false

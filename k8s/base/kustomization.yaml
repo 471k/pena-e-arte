@@ -13,3 +13,6 @@ resources:
   - migration-job.yaml
   - ingress.yaml
   - cluster-issuer.yaml
+  - vault-statefulset.yaml
+  - vault-service.yaml
+  - vault-configmap.yaml
