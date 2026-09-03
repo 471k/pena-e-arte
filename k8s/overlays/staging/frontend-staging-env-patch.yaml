@@ -1,0 +1,17 @@
+# Container env entries merge by `name` (Kubernetes' own patchMergeKey for EnvVar), so this
+# ADDS IS_STAGING alongside base's BACKEND_HOST/BACKEND_PORT rather than replacing them.
+# frontend/nginx.conf.template reads IS_STAGING via the same envsubst-on-templates mechanism
+# already used for BACKEND_HOST/BACKEND_PORT — see docs/infra/staging-environment.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-frontend
+  namespace: pena-e-arte
+spec:
+  template:
+    spec:
+      containers:
+        - name: frontend
+          env:
+            - name: IS_STAGING
+              value: "noindex, nofollow"

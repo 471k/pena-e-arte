@@ -7,3 +7,13 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
+---
+# Staging's own namespace, declared here (not in the staging overlay) because Kustomize's
+# namespace transformer needs its target namespace to already exist as a resource — keeps all
+# three namespace declarations in one place instead of scattered across overlays. Included by
+# both overlays/production and overlays/staging (each applies all three Namespace objects,
+# harmless/idempotent for the two it doesn't own).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pena-e-arte-staging
