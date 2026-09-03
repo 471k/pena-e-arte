@@ -1,0 +1,56 @@
+# Halved CPU/memory requests+limits vs. production's base defaults (§2.8) — still enough for
+# real behavioral testing (webhooks, SignalR, presence), not sized for load. Directly helps the
+# same-cluster capacity gate in docs/infra/staging-environment.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-api
+  namespace: pena-e-arte
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-frontend
+  namespace: pena-e-arte
+spec:
+  template:
+    spec:
+      containers:
+        - name: frontend
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 125m
+              memory: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-redis
+  namespace: pena-e-arte
+spec:
+  template:
+    spec:
+      containers:
+        - name: redis
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 125m
+              memory: 128Mi

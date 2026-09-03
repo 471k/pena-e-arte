@@ -1,0 +1,27 @@
+# Strategic-merge patch over base/ingress.yaml — same object, staging's own host/tls/secretName.
+# Reuses the letsencrypt-prod-dns01 ClusterIssuer (cluster-scoped, so any namespace's Ingress
+# can reference it — see docs/infra/staging-environment.md for why this isn't renamed).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pena-e-arte
+  # Must match base's resource identity (namespace: pena-e-arte) — patches are matched
+  # BEFORE the namespace: transformer below reassigns everything to pena-e-arte-staging.
+  namespace: pena-e-arte
+spec:
+  tls:
+    - hosts: ["staging.tattooos.co"]
+      secretName: pena-e-arte-staging-tls
+  # `rules` has no strategic-merge key on IngressRule, so a patch replaces the whole list —
+  # the full path/backend content must be repeated here, not just the host, or the merged
+  # Ingress would end up with a host and no route.
+  rules:
+    - host: staging.tattooos.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pena-e-arte-frontend
+                port: { number: 8080 }
