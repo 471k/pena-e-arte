@@ -5,9 +5,10 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    # FLAGGED, NOT GUESSED: Phi's real contact email for Let's Encrypt expiry/revocation
-    # notices — confirm and replace before this manifest is ever applied to the cluster.
-    email: CHANGE-ME@tattooos.co
+    # Temporary personal address, confirmed by Phi 2026-09-03 — swap for a dedicated ops
+    # inbox (e.g. ops@tattooos.co) once one exists. See docs/infra/secrets-rotation-runbook.md
+    # for context; changing this later does not require reissuing existing certs.
+    email: phisoftwaresolutions@gmail.com
     privateKeySecretRef:
       name: letsencrypt-prod-dns01-key
     solvers:
