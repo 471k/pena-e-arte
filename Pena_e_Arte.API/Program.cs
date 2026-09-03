@@ -44,10 +44,15 @@ try
     builder.Services.AddApiCors(builder.Configuration, builder.Environment);
     builder.Services.AddApiRateLimiting();
 
-    builder.Services.AddHealthChecks()
+    Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder healthChecksBuilder = builder.Services.AddHealthChecks()
         .AddCheck<RedisHealthCheck>("redis", tags: ["ready"])
-        .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
-        .AddCheck<StripeHealthCheck>("stripe", tags: ["ready"]);
+        .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+
+    // Skip registering the Stripe check entirely when no key is configured, rather than
+    // letting it report Unhealthy — Cash deposits are a fully independent code path, so an
+    // unconfigured Stripe key should not block pod readiness / the whole deployment.
+    if (!string.IsNullOrWhiteSpace(builder.Configuration["Stripe:SecretKey"]))
+        healthChecksBuilder.AddCheck<StripeHealthCheck>("stripe", tags: ["ready"]);
 
     WebApplication app = builder.Build();
 
