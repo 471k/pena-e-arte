@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: pena-e-arte-grafana
+  template:
+    metadata:
+      labels:
+        app: pena-e-arte-grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:13.1.1
+          ports:
+            - containerPort: 3000
+          env:
+            # pena-e-arte-grafana-admin is created by CD from PROD_GRAFANA_ADMIN_USER /
+            # PROD_GRAFANA_ADMIN_PASSWORD GitHub secrets — never admin/admin, matching the
+            # same guard docker-compose.yml's GF_SECURITY_ADMIN_PASSWORD:?... already enforces
+            # locally. Not committed to k8s/ as YAML with real values (Phase 8).
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pena-e-arte-grafana-admin
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pena-e-arte-grafana-admin
+                  key: admin-password
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "false"
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+          volumeMounts:
+            - name: dashboards-provider
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              subPath: datasources.yaml
+            - name: dashboard-json
+              mountPath: /etc/grafana/provisioning/dashboards/json/api-overview.json
+              subPath: api-overview.json
+            - name: data
+              mountPath: /var/lib/grafana
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+      volumes:
+        - name: dashboards-provider
+          configMap:
+            name: pena-e-arte-grafana-dashboards-provider
+        - name: datasources
+          configMap:
+            name: pena-e-arte-grafana-datasources
+        - name: dashboard-json
+          configMap:
+            name: pena-e-arte-grafana-dashboard-json
+        - name: data
+          persistentVolumeClaim:
+            claimName: pena-e-arte-grafana-data

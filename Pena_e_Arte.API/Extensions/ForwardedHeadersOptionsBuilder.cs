@@ -22,6 +22,13 @@ public static class ForwardedHeadersOptionsBuilder
         ForwardedHeadersOptions options = new()
         {
             ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+            // Two trusted proxy hops in the K3s topology: Traefik (cluster ingress), then the
+            // frontend Pod's own nginx reverse proxy (see docs/claude/overnight-prompt-
+            // k3s-production-deploy-2026-07-26.md §8.10/Phase 10). The default ForwardLimit
+            // of 1 would only strip the right-most hop off X-Forwarded-For, leaving
+            // RemoteIpAddress as the Traefik pod's IP instead of the real client's and
+            // collapsing every client behind the ingress into one rate-limit bucket.
+            ForwardLimit = 2,
         };
 
         string? trustedProxyCidr = config["ForwardedHeaders:TrustedProxyCidr"];

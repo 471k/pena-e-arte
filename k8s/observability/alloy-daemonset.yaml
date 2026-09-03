@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: pena-e-arte-alloy
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: pena-e-arte-alloy
+  template:
+    metadata:
+      labels:
+        app: pena-e-arte-alloy
+    spec:
+      serviceAccountName: pena-e-arte-alloy
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.18.0
+          args:
+            - run
+            - /etc/alloy/config.alloy
+            - --server.http.listen-addr=0.0.0.0:12345
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - containerPort: 12345
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy/config.alloy
+              subPath: config.alloy
+            # Node-local, kubelet-standardized log path — read-only, no container-runtime
+            # socket needed (see alloy-configmap.yaml's comment).
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: pena-e-arte-alloy-config
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pena-e-arte-alloy
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pena-e-arte-alloy
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pena-e-arte-alloy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pena-e-arte-alloy
+subjects:
+  - kind: ServiceAccount
+    name: pena-e-arte-alloy
+    namespace: monitoring

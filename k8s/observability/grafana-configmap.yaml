@@ -1,0 +1,170 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-grafana-dashboards-provider
+  namespace: monitoring
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+
+    providers:
+      - name: "Pena e Arte"
+        orgId: 1
+        folder: "Pena e Arte"
+        type: file
+        options:
+          path: /etc/grafana/provisioning/dashboards/json
+        updateIntervalSeconds: 30
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-grafana-datasources
+  namespace: monitoring
+data:
+  # Translated from docker/observability/grafana/provisioning/datasources/datasources.yaml —
+  # only the URLs change, from compose service names to K8s Service DNS names.
+  datasources.yaml: |
+    apiVersion: 1
+
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus-uid
+        access: proxy
+        url: http://pena-e-arte-prometheus.monitoring.svc.cluster.local:9090
+        isDefault: true
+
+      - name: Loki
+        type: loki
+        uid: loki-uid
+        access: proxy
+        url: http://pena-e-arte-loki.monitoring.svc.cluster.local:3100
+        jsonData:
+          derivedFields:
+            - datasourceUid: tempo-uid
+              matcherRegex: '"trace_id":"([a-f0-9]+)"'
+              name: TraceID
+              url: '$${__value.raw}'
+
+      - name: Tempo
+        type: tempo
+        uid: tempo-uid
+        access: proxy
+        url: http://pena-e-arte-tempo.monitoring.svc.cluster.local:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki-uid
+            filterByTraceID: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-grafana-dashboard-json
+  namespace: monitoring
+data:
+  # Translated from docker/observability/grafana/provisioning/dashboards/json/api-overview.json
+  # — one required fix: the compose version's "up{job=~\"pena-e-arte-api-.*\"}" query matched
+  # the dual "-container"/"-host" job names from the old prometheus.yml. The K8s
+  # prometheus-configmap.yaml collapses to a single job named exactly "pena-e-arte-api" (no
+  # trailing "-container"/"-host" suffix, per Phase 7's intentional simplification), which the
+  # old regex would NOT have matched (it requires a literal "-" after "api") — fixed to an
+  # exact match below so this panel doesn't silently render empty in production.
+  api-overview.json: |
+    {
+      "title": "Pena e Arte API Overview",
+      "uid": "pea-api-overview",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "tags": ["pena-e-arte", "api"],
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request rate by route",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{service=\"pena-e-arte-api\"}[5m]))",
+              "legendFormat": "{{http_route}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Error rate (5xx as % of total)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "min": 0 }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "100 * sum(rate(http_server_request_duration_seconds_count{service=\"pena-e-arte-api\", http_response_status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count{service=\"pena-e-arte-api\"}[5m])), 1e-9)",
+              "legendFormat": "5xx %",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Request duration — p50 / p95 / p99 by route",
+          "type": "timeseries",
+          "gridPos": { "h": 9, "w": 24, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"pena-e-arte-api\"}[5m])))",
+              "legendFormat": "p50 {{http_route}}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"pena-e-arte-api\"}[5m])))",
+              "legendFormat": "p95 {{http_route}}",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"pena-e-arte-api\"}[5m])))",
+              "legendFormat": "p99 {{http_route}}",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Active requests",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum(http_server_active_requests{service=\"pena-e-arte-api\"})",
+              "legendFormat": "active",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Scrape target up (1 = reachable)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "fieldConfig": { "defaults": { "unit": "short", "max": 1, "min": 0 }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "up{job=\"pena-e-arte-api\"}",
+              "legendFormat": "{{job}}",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }

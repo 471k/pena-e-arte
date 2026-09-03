@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pena-e-arte-grafana
+  namespace: monitoring
+spec:
+  # Not exposed via the public Ingress in this prompt — reachable via `kubectl port-forward`
+  # only. No decided-yet need for public Grafana access, and exposing an admin dashboard
+  # publicly without a considered auth story is exactly the kind of thing this project's
+  # rules say to flag rather than default into (Phase 7). Flagged, not built: a
+  # grafana.tattooos.co Ingress host is a small additive change, but needs a real auth
+  # decision (Grafana OAuth, or a Traefik BasicAuth Middleware) first.
+  type: ClusterIP
+  selector:
+    app: pena-e-arte-grafana
+  ports:
+    - port: 3000
+      targetPort: 3000

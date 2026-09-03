@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-alloy-config
+  namespace: monitoring
+data:
+  # Real translation, not a copy-paste of docker/observability/config.alloy: the compose
+  # version's loki.source.docker tails the Docker daemon's socket (/var/run/docker.sock),
+  # which doesn't exist under K3s's containerd runtime. Rather than binding to containerd's
+  # socket directly (no discovery.docker-equivalent component exists for it in Alloy), this
+  # uses Alloy's documented Kubernetes DaemonSet log-shipping pattern: discovery.kubernetes
+  # filtered to the local node (via the NODE_NAME downward-API env var) + loki.source.file
+  # tailing /var/log/pods/**, the kubelet-standardized log path that's identical regardless
+  # of container runtime (containerd, Docker, CRI-O) — this sidesteps the socket-path
+  # question entirely rather than guessing at one. Confirmed against Grafana's current Alloy
+  # docs (grafana.com/docs/alloy/latest/collect/logs-in-kubernetes/) at spec-writing time;
+  # verify empirically against the real cluster during actual Phase 7 execution per the
+  # original prompt's own standard.
+  config.alloy: |
+    discovery.kubernetes "pod" {
+      role = "pod"
+      selectors {
+        role  = "pod"
+        field = "spec.nodeName=" + env("NODE_NAME")
+      }
+    }
+
+    discovery.relabel "pod_logs" {
+      targets = discovery.kubernetes.pod.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+        separator     = "/"
+        target_label  = "__path__"
+        replacement   = "/var/log/pods/*$1/*.log"
+      }
+    }
+
+    loki.source.file "pod_logs" {
+      targets    = discovery.relabel.pod_logs.output
+      forward_to = [loki.write.default.receiver]
+    }
+
+    loki.write "default" {
+      endpoint {
+        url = "http://pena-e-arte-loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+      }
+    }

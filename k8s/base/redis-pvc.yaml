@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pena-e-arte-redis-data
+  namespace: pena-e-arte
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # Default StorageClass — K3s ships local-path-provisioner by default (confirm enabled on
+  # the Phase-0 box). RDB snapshotting only, not full AOF durability — accepted for
+  # session/rate-limit/slot-lock data, none of which is mourned on a pod restart (§3.3).
+  resources:
+    requests:
+      storage: 1Gi
