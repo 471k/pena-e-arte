@@ -31,6 +31,9 @@ public static class AuditActions
     public const string ManualReminderCancelled = "ManualReminder.Cancelled";
 
     public const string ConductReportStatusUpdated = "ConductReport.StatusUpdated";
+
+    public const string PaymentRefunded = "Payment.Refunded";
+    public const string CashDepositConfirmed = "Payment.CashDepositConfirmed";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>

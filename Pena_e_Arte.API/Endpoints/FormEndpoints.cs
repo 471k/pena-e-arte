@@ -5,6 +5,7 @@ using Pena_e_Arte.Application.IntakeForms.Commands;
 using Pena_e_Arte.Application.IntakeForms.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -29,10 +30,11 @@ public static class FormEndpoints
     }
 
     private static async Task<IResult> GetActiveConsentTemplate(
+        ConsentTemplateKind kind,
         ISender mediator,
         CancellationToken ct)
     {
-        ConsentTemplateResponse result = await mediator.Send(new GetActiveConsentTemplateQuery(), ct);
+        ConsentTemplateResponse result = await mediator.Send(new GetActiveConsentTemplateQuery(kind), ct);
         return Results.Ok(result);
     }
 

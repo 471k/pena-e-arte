@@ -6,7 +6,7 @@ import { CreditCard, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { useGetPaymentClientSecretQuery } from "../paymentsApi";
+import { useGetPaymentClientSecretQuery, useGetPaymentCapabilitiesQuery } from "../paymentsApi";
 
 // Lazily initialised so Stripe.js (and its iframe) only loads when this page
 // actually mounts, not whenever this module is bundled into the app.
@@ -113,6 +113,10 @@ export function DepositCheckoutPage() {
   const { data, isLoading, isError } = useGetPaymentClientSecretQuery(paymentId!, {
     skip: !paymentId || redirectStatus === "complete",
   });
+  const { data: capabilities } = useGetPaymentCapabilitiesQuery(undefined, {
+    skip: redirectStatus === "complete",
+  });
+  const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
 
   if (redirectStatus === "complete") {
     return (
@@ -164,7 +168,16 @@ export function DepositCheckoutPage() {
               </div>
             )}
 
-            {data?.clientSecret && (
+            {data?.clientSecret && !cardPaymentsAvailable && (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+                <p className="text-sm text-destructive">
+                  Card payments are temporarily unavailable for this link. Please contact the studio.
+                </p>
+              </div>
+            )}
+
+            {data?.clientSecret && cardPaymentsAvailable && (
               <Elements
                 stripe={getStripePromise()}
                 options={{

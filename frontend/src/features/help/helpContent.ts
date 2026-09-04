@@ -160,8 +160,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Fill in the \"Medical history & notes\" box (allergies, skin conditions, medications, etc.) — at least 10 characters.",
       "Optionally link the form to one of your upcoming appointments.",
       "Optionally paste a link to an attachment (photo or document).",
+      "Read the consent text shown, then tick \"I consent to sharing this medical/health information with the studio.\"",
       "Click \"Submit Intake Form\".",
     ],
+    warnings: ["You must tick the consent checkbox before you can submit — it can't be skipped, since this form contains sensitive health information."],
     relatedArticleIds: ["client-intake-list"],
   },
   {
@@ -252,7 +254,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Enter your card details in the payment box.",
       "Click \"Authorise deposit\".",
     ],
-    tips: ["Your card isn't charged immediately — it's authorised, and the studio captures the payment closer to your appointment. Payment is by card, or by cash arranged with the studio."],
+    tips: [
+      "Your card isn't charged immediately — it's authorised, and the studio captures the payment closer to your appointment. Payment is by card, or by cash arranged with the studio.",
+      "If card payments are temporarily unavailable, the page shows a message saying so — Cash always remains available, or you can contact the studio directly.",
+    ],
   },
   {
     id: "client-verify-email",
@@ -877,7 +882,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Create card payment\" or \"Record cash payment\".",
       "For card payments, copy the checkout link and send it to the client; for cash, it stays pending until you confirm receipt later.",
     ],
-    tips: ["If no deposit rule applies to the appointment, you'll need to type in the amount manually."],
+    tips: [
+      "If no deposit rule applies to the appointment, you'll need to type in the amount manually.",
+      "If card payments are temporarily unavailable, the \"Card\" option is disabled with an explanatory message — use \"Cash\" instead.",
+    ],
   },
   {
     id: "owner-cash-confirm",

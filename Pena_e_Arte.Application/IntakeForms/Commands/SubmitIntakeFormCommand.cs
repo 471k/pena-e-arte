@@ -5,8 +5,10 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.IntakeForms.Commands;
 
@@ -38,6 +40,15 @@ public class SubmitIntakeFormHandler(IAppDbContext db, ICurrentTenant tenant, IC
                 throw new NotFoundException(nameof(Appointment), req.AppointmentId.Value);
         }
 
+        List<ConsentTemplate> candidates = await db.ConsentTemplates
+            .Where(t => t.Kind == ConsentTemplateKind.IntakeFormConsent
+                        && t.IsActive
+                        && (t.StudioId == tenant.StudioId || t.StudioId == null))
+            .ToListAsync(ct);
+
+        ConsentTemplate? consentTemplate = ConsentTemplateResolver.ResolveActive(
+            candidates, tenant.StudioId, ConsentTemplateKind.IntakeFormConsent, DateTime.UtcNow);
+
         IntakeForm form = new()
         {
             StudioId = tenant.StudioId,
@@ -45,7 +56,10 @@ public class SubmitIntakeFormHandler(IAppDbContext db, ICurrentTenant tenant, IC
             AppointmentId = req.AppointmentId,
             FormData = req.FormData,
             FileUrl = req.FileUrl,
-            SubmittedAt = DateTime.UtcNow
+            SubmittedAt = DateTime.UtcNow,
+            ConsentTemplateId = consentTemplate?.Id,
+            ConsentTextSnapshot = consentTemplate?.BodyText,
+            ConsentedAt = DateTime.UtcNow
         };
 
         db.IntakeForms.Add(form);

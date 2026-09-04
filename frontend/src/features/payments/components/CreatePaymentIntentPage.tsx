@@ -25,6 +25,7 @@ import { useGetClientsQuery }              from "@/features/clients/clientsApi";
 import {
   useCreatePaymentIntentMutation,
   useDeclareCashDepositMutation,
+  useGetPaymentCapabilitiesQuery,
 }                                          from "../paymentsApi";
 import type { PaymentIntentResponse, PaymentResponse } from "../payment.types";
 import { SessionSplitsEditor }             from "./SessionSplitsEditor";
@@ -287,6 +288,9 @@ function ConfirmPanel({
   onCardCreated: (result: PaymentIntentResponse, amount: number) => void;
   onCashCreated: (result: PaymentResponse, amount: number) => void;
 }) {
+  const { data: capabilities } = useGetPaymentCapabilitiesQuery();
+  const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
+
   const [method, setMethod]         = useState<PaymentMethodChoice>("card");
   const [amount, setAmount]         = useState(
     appointment.depositAmount > 0 ? appointment.depositAmount : undefined as number | undefined
@@ -299,6 +303,10 @@ function ConfirmPanel({
   const isLoading = isLoadingCard || isLoadingCash;
   const noDepositRule = appointment.depositAmount === 0;
 
+  // Derived, not synced via effect — falls back to cash whenever card payments
+  // aren't available, whatever `method` currently holds (default or user-picked).
+  const effectiveMethod: PaymentMethodChoice = cardPaymentsAvailable ? method : "cash";
+
   function validate(): boolean {
     if (!amount || amount <= 0) {
       setAmountError("Enter a deposit amount greater than 0.");
@@ -309,9 +317,9 @@ function ConfirmPanel({
   }
 
   async function handleSubmit() {
-    if (method === "card" && !validate()) return;
+    if (effectiveMethod === "card" && !validate()) return;
 
-    if (method === "card") {
+    if (effectiveMethod === "card") {
       const result = await createIntent({
         appointmentId: appointment.id,
         clientId:      appointment.clientId,
@@ -355,26 +363,37 @@ function ConfirmPanel({
       <div className="space-y-1.5">
         <p className="text-sm font-medium">Payment method</p>
         <div className="grid grid-cols-2 gap-2">
-          {(["card", "cash"] as PaymentMethodChoice[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMethod(m)}
-              className={cn(
-                "flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
-                method === m
-                  ? "border-primary bg-primary/5 text-primary"
-                  : "hover:bg-muted/60 hover:border-muted-foreground/30"
-              )}
-            >
-              {m === "card"
-                ? <CreditCard className="h-4 w-4 shrink-0" />
-                : <Banknote    className="h-4 w-4 shrink-0" />}
-              {m === "card" ? "Card" : "Cash"}
-            </button>
-          ))}
+          {(["card", "cash"] as PaymentMethodChoice[]).map((m) => {
+            const disabled = m === "card" && !cardPaymentsAvailable;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => !disabled && setMethod(m)}
+                disabled={disabled}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
+                  disabled
+                    ? "opacity-50 cursor-not-allowed"
+                    : effectiveMethod === m
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "hover:bg-muted/60 hover:border-muted-foreground/30"
+                )}
+              >
+                {m === "card"
+                  ? <CreditCard className="h-4 w-4 shrink-0" />
+                  : <Banknote    className="h-4 w-4 shrink-0" />}
+                {m === "card" ? "Card" : "Cash"}
+              </button>
+            );
+          })}
         </div>
-        {method === "cash" && (
+        {!cardPaymentsAvailable && (
+          <p className="text-xs text-destructive pt-1">
+            Card payments are temporarily unavailable. Use the Cash option below.
+          </p>
+        )}
+        {cardPaymentsAvailable && effectiveMethod === "cash" && (
           <p className="text-xs text-muted-foreground pt-1">
             Records a pending cash payment. You will confirm receipt once collected.
           </p>
@@ -441,7 +460,7 @@ function ConfirmPanel({
             <Loader2 className="h-4 w-4 animate-spin" />
             Creating…
           </>
-        ) : method === "card" ? (
+        ) : effectiveMethod === "card" ? (
           <>
             <CreditCard className="h-4 w-4" />
             Create card payment{amount ? ` · ${fmtCurrency(amount)}` : ""}

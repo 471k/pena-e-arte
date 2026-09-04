@@ -227,10 +227,10 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | # | Feature | Domain Entities | Infrastructure | Scope |
 |---|---|---|---|---|
 | 01 | Appointment Booking + Deposits (incl. guest checkout) | `Appointment`, `DepositRule`, `BookingIntake` | Stripe (aggregator), Hangfire, Cloudflare R2 (guest-pending images) | Per-tenant (guest checkout: `AllowAnonymous`, see AllowAnonymous Exceptions table) |
-| 02 | Consultation & Consent Forms | `IntakeForm`, `ConsentForm` | Cloudflare R2 (PDF storage) | Per-tenant |
+| 02 | Consultation & Consent Forms | `IntakeForm` (consent-stamped: `ConsentTemplateId`/`ConsentTextSnapshot`/`ConsentedAt`, kind `ConsentTemplateKind.IntakeFormConsent`), `ConsentForm`, `ConsentTemplate` | Cloudflare R2 (PDF storage) | Per-tenant |
 | 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` | Cloudflare R2 (images), SignalR | Per-tenant |
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
-| 05 | Payments & Session Splits | `Payment`, `SessionSplit` | Stripe (aggregator, card) + Cash (manual) | Per-tenant |
+| 05 | Payments & Session Splits | `Payment`, `SessionSplit` | `IPaymentProvider` (card; `NullPaymentProvider` until POK lands, see ADR-0001 — `GET /api/v1/payments/capabilities` exposes `Capabilities.SupportsAuthCapture` so the UI gates on real backend state, not just an env-var proxy) + Cash (manual) | Per-tenant |
 | 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + Resend | Per-tenant |
 | 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth. Filters `IsActive && IsPublished`. | Platform-wide |
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |

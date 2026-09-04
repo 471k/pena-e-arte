@@ -31,7 +31,7 @@ public class SubmitIntakeFormHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_ReturnsIntakeFormResponse()
     {
-        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{\"allergies\":\"none\"}", null);
+        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{\"allergies\":\"none\"}", null, true);
 
         IntakeFormResponse result = await CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -48,7 +48,7 @@ public class SubmitIntakeFormHandlerTests
     {
         Guid clientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(clientId);
-        SubmitIntakeFormRequest req = new(clientId, appointmentId, "{\"health\":\"good\"}", null);
+        SubmitIntakeFormRequest req = new(clientId, appointmentId, "{\"health\":\"good\"}", null, true);
 
         IntakeFormResponse result = await CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -58,7 +58,7 @@ public class SubmitIntakeFormHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_PersistsFormToDb()
     {
-        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{\"allergies\":\"none\"}", null);
+        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{\"allergies\":\"none\"}", null, true);
 
         await CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -69,7 +69,7 @@ public class SubmitIntakeFormHandlerTests
     public async Task Handle_WithFileUrl_PersistsFileUrl()
     {
         const string fileUrl = "https://r2.example.com/form.pdf";
-        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{}", fileUrl);
+        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{}", fileUrl, true);
 
         IntakeFormResponse result = await CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -79,7 +79,7 @@ public class SubmitIntakeFormHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_SetsSubmittedAtToUtcNow()
     {
-        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{}", null);
+        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{}", null, true);
         DateTime before = DateTime.UtcNow;
 
         IntakeFormResponse result = await CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
@@ -90,7 +90,7 @@ public class SubmitIntakeFormHandlerTests
     [Fact]
     public async Task Handle_AppointmentDoesNotExist_ThrowsNotFoundException()
     {
-        SubmitIntakeFormRequest req = new(Guid.NewGuid(), Guid.NewGuid(), "{}", null);
+        SubmitIntakeFormRequest req = new(Guid.NewGuid(), Guid.NewGuid(), "{}", null, true);
 
         Func<Task> act = () => CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -104,7 +104,7 @@ public class SubmitIntakeFormHandlerTests
         Guid otherClientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(otherClientId);
 
-        SubmitIntakeFormRequest req = new(clientId, appointmentId, "{}", null);
+        SubmitIntakeFormRequest req = new(clientId, appointmentId, "{}", null, true);
 
         Func<Task> act = () => CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -120,7 +120,7 @@ public class SubmitIntakeFormHandlerTests
         Guid myClientId = await SeedClient(userId);
 
         // Request carries a different (spoofed) ClientId — handler must ignore it.
-        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{}", null);
+        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{}", null, true);
 
         IntakeFormResponse result = await CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -133,7 +133,7 @@ public class SubmitIntakeFormHandlerTests
         _currentUser.UserId.Returns(Guid.NewGuid());
         _currentUser.Role.Returns("client");
 
-        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{}", null);
+        SubmitIntakeFormRequest req = new(Guid.NewGuid(), null, "{}", null, true);
 
         Func<Task> act = () => CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -149,7 +149,7 @@ public class SubmitIntakeFormHandlerTests
         Guid myClientId = await SeedClient(userId);
         Guid appointmentId = await SeedAppointment(myClientId);
 
-        SubmitIntakeFormRequest req = new(myClientId, appointmentId, "{}", null);
+        SubmitIntakeFormRequest req = new(myClientId, appointmentId, "{}", null, true);
 
         IntakeFormResponse result = await CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 
@@ -167,7 +167,7 @@ public class SubmitIntakeFormHandlerTests
         Guid otherClientId = await SeedClient();
         Guid appointmentId = await SeedAppointment(otherClientId);
 
-        SubmitIntakeFormRequest req = new(myClientId, appointmentId, "{}", null);
+        SubmitIntakeFormRequest req = new(myClientId, appointmentId, "{}", null, true);
 
         Func<Task> act = () => CreateSut().Handle(new SubmitIntakeFormCommand(req), default);
 

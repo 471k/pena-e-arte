@@ -12,6 +12,7 @@ import { cn } from "@/shared/utils/cn";
 import {
   useCreateDepositPaymentMutation,
   useDeclareCashDepositMutation,
+  useGetPaymentCapabilitiesQuery,
 } from "@/features/payments/paymentsApi";
 
 const stripeKey: string | undefined = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -88,22 +89,34 @@ function CardTab({
   onError,
 }: Pick<PaymentMethodSelectorProps, "appointmentId" | "onSuccess" | "onError">) {
   const [createDeposit, { data, isLoading, isError, error }] = useCreateDepositPaymentMutation();
+  const { data: capabilities, isLoading: isLoadingCapabilities } = useGetPaymentCapabilitiesQuery();
   const requested = useRef(false);
   const stripePromise = getStripePromise();
+  const cardPaymentsAvailable = !!stripePromise && capabilities?.cardPaymentsAvailable !== false;
 
-  // Create (or resume) the deposit intent once when the card tab opens.
-  // The backend is idempotent — an unauthorized intent for this appointment is reused.
+  // Create (or resume) the deposit intent once when the card tab opens — but only once we
+  // know card payments are actually available; otherwise this would race capabilities and
+  // sometimes fire the request before the "unavailable" response comes back.
   useEffect(() => {
-    if (!stripePromise || requested.current) return;
+    if (isLoadingCapabilities || !cardPaymentsAvailable || requested.current) return;
     requested.current = true;
     void createDeposit({ appointmentId });
-  }, [appointmentId, createDeposit, stripePromise]);
+  }, [appointmentId, createDeposit, cardPaymentsAvailable, isLoadingCapabilities]);
 
-  if (!stripePromise) {
+  if (isLoadingCapabilities) {
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Preparing payment form…</span>
+      </div>
+    );
+  }
+
+  if (!cardPaymentsAvailable) {
     return (
       <p className="text-sm text-destructive py-4 text-center">
-        Card payments are not configured (missing Stripe publishable key).
-        Use the Cash option or contact the studio.
+        Card payments are temporarily unavailable. Use the Cash option below,
+        or contact the studio directly.
       </p>
     );
   }

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -9,7 +10,15 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
-public record ConfirmCashDepositCommand(Guid PaymentId) : IRequest<PaymentResponse>;
+// AuditStudioId left at its default (null) — AuditLogBehavior falls back to the caller's
+// ICurrentTenant.StudioId, always set for this ArtistAndAbove tenant-scoped command.
+public record ConfirmCashDepositCommand(Guid PaymentId)
+    : IRequest<PaymentResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.CashDepositConfirmed;
+    public string AuditTargetType => AuditTargetTypes.Payment;
+    public Guid AuditTargetId => PaymentId;
+}
 
 public class ConfirmCashDepositHandler(IAppDbContext db, ICurrentUser currentUser, ISender sender)
     : IRequestHandler<ConfirmCashDepositCommand, PaymentResponse>

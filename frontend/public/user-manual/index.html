@@ -1045,7 +1045,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Submit intake form</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>At <code>/forms/intake/new</code>, share medical history and health notes with your studio before a session — optionally linked to a specific upcoming appointment.</p>
+<p>At <code>/forms/intake/new</code>, share medical history and health notes with your studio before a session — optionally linked to a specific upcoming appointment. Because this form carries sensitive health information, you must tick a consent checkbox before you can submit it; the exact consent text you agreed to is saved with the form.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Submit intake form wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1066,6 +1066,7 @@ ol.steps li { margin: 6px 0; }
 <li>Write your <span class="step-title">Medical history &amp; notes</span> (allergies, skin conditions, medications) — minimum 10 characters.</li>
 <li>Optionally link it to an <span class="step-title">Appointment</span> from your pending/confirmed bookings.</li>
 <li>Optionally attach a file by pasting its URL.</li>
+<li>Read the consent text shown, then tick <span class="step-title">I consent to sharing this medical/health information with the studio</span> — required.</li>
 <li>Click <span class="step-title">Submit Intake Form</span>.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#client-intake-list">My intake forms</a>, <a href="#client-consent-sign">Sign consent form</a></div>
@@ -1235,7 +1236,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment.</p>
+<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment. If card payments are temporarily unavailable, the page shows a message instead of the card form — Cash always remains available at booking, or you can contact the studio directly.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2488,7 +2489,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Create payment</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/payments/new</code>: a 3-step flow — pick an appointment with a pending deposit, confirm the method and amount, then get a shareable card checkout link or a cash-pending record.</p>
+<p>At <code>/payments/new</code>: a 3-step flow — pick an appointment with a pending deposit, confirm the method and amount, then get a shareable card checkout link or a cash-pending record. If card payments are temporarily unavailable, the Card option is disabled with an explanatory message and Cash is used instead.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Create payment wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>

@@ -38,7 +38,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         SubmitIntakeFormHandler handler = new(db, TenantFor(tenantId), StaffUser(), _sender);
 
         IntakeFormResponse result = await handler.Handle(
-            new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, "{\"allergies\":\"none\"}", null)),
+            new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, "{\"allergies\":\"none\"}", null, true)),
             default);
 
         await using AppDbContext verify = fixture.CreateDbContext(tenantId);
@@ -55,7 +55,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
 
         await using AppDbContext dbA = fixture.CreateDbContext(tenantA);
         IntakeFormResponse result = await new SubmitIntakeFormHandler(dbA, TenantFor(tenantA), StaffUser(), _sender)
-            .Handle(new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, "{}", null)), default);
+            .Handle(new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, "{}", null, true)), default);
 
         await using AppDbContext dbB = fixture.CreateDbContext(tenantB);
         bool visible = await dbB.IntakeForms.AnyAsync(f => f.Id == result.Id);
@@ -224,7 +224,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         ConsentTemplateResponse result = await new GetActiveConsentTemplateHandler(db, TenantFor(tenantId))
-            .Handle(new GetActiveConsentTemplateQuery(), default);
+            .Handle(new GetActiveConsentTemplateQuery(ConsentTemplateKind.AppointmentConsent), default);
 
         result.BodyText.Should().Be("Studio-specific text");
     }
@@ -335,7 +335,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
         return await new SubmitIntakeFormHandler(db, TenantFor(tenantId), StaffUser(), _sender)
-            .Handle(new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, formData, null)), default);
+            .Handle(new SubmitIntakeFormCommand(new SubmitIntakeFormRequest(clientId, null, formData, null, true)), default);
     }
 
     private async Task<ConsentFormResponse> SignConsent(
