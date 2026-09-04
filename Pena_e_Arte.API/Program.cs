@@ -61,7 +61,20 @@ try
     // every pod running MigrateAsync() unguarded races on the same migration history table.
     // Production sets this to false and runs exactly one migration via a dedicated K8s Job
     // (k8s/base/migration-job.yaml) before the API Deployment rolls out.
-    if (builder.Configuration.GetValue("Migrations:ApplyOnStartup", defaultValue: true))
+    //
+    // Reused below for Hangfire's recurring-job registration too: Hangfire.MySql lazily
+    // auto-creates its own schema tables on first use, with no cross-process locking of its
+    // own — the exact same race MigrateAsync() would have had unguarded. Confirmed on this
+    // cluster's real first production deploy: two API replicas (plus a still-restarting stale
+    // pod from an earlier failed rollout) all called IRecurringJobManager.AddOrUpdate
+    // concurrently, one process's "tables already exist, skip install" check short-circuited
+    // before another process had finished creating every table, leaving
+    // hangfire_DistributedLock missing and the next AcquireDistributedLock call crashing with
+    // MySqlException. Fixed the same way as MigrateAsync(): runs once, in the migration Job
+    // only, never in an API replica.
+    bool isOneTimeSetupRun = builder.Configuration.GetValue("Migrations:ApplyOnStartup", defaultValue: true);
+
+    if (isOneTimeSetupRun)
     {
         using IServiceScope migrationScope = app.Services.CreateScope();
         AppDbContext migDb = migrationScope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -82,8 +95,9 @@ try
     // Seeding:Enabled.
     await StripeDemoSeeder.SeedAsync(app.Services, app.Configuration);
 
-    using (IServiceScope jobScope = app.Services.CreateScope())
+    if (isOneTimeSetupRun)
     {
+        using IServiceScope jobScope = app.Services.CreateScope();
         IRecurringJobManager recurringJobs = jobScope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
         recurringJobs.AddOrUpdate<IndustryReportJob>(
             "industry-report",
