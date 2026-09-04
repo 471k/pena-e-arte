@@ -50,12 +50,18 @@ data:
         replacement   = "/var/log/pods/*$1/*.log"
       }
 
-      # Staging pods are discovered automatically by the same cluster-wide (node-filtered,
-      # not namespace-filtered) discovery.kubernetes above — no separate DaemonSet/config
-      # needed per docs/infra/staging-environment.md's §2.3. These two rules add the same
-      # environment label Prometheus's scrape config carries, so Loki queries can filter the
-      # same way. Both regexes are fully anchored so "pena-e-arte" can't accidentally match
-      # the "pena-e-arte-staging" namespace as a substring.
+      // Staging pods are discovered automatically by the same cluster-wide (node-filtered,
+      // not namespace-filtered) discovery.kubernetes above — no separate DaemonSet/config
+      // needed per docs/infra/staging-environment.md section 2.3. These two rules add the
+      // same environment label the Prometheus scrape config carries, so Loki queries can
+      // filter the same way. Both regexes are fully anchored so pena-e-arte cannot
+      // accidentally match the pena-e-arte-staging namespace as a substring.
+      //
+      // Real bug found on this cluster during its actual first deploy: Alloy's River config
+      // language only supports double-slash and slash-star block comments, not the
+      // hash-prefixed style this file originally used throughout the whole block below the
+      // K8s-discovery rules above. Every hash-prefixed line crashed the collector with an
+      // illegal-character parse error before it ever reached anything else on that line.
       rule {
         source_labels = ["namespace"]
         regex         = "^pena-e-arte$"
