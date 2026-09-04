@@ -245,6 +245,17 @@ jobs:
       - name: Render manifests
         run: kubectl kustomize k8s/overlays/production > /tmp/rendered.yaml
 
+      # ConfigMaps have no ordering concerns (plain key/value data, safe to apply anytime,
+      # idempotent) — applied here for the same reason Secrets are populated imperatively
+      # above: the migration Job's envFrom needs pena-e-arte-api-config to already exist, and
+      # on a fresh cluster it never has (only "Apply manifests" below creates it otherwise,
+      # which runs after the Job). Real bug found on this repo's first-ever production deploy:
+      # CreateContainerConfigError, "configmap pena-e-arte-api-config not found" — every prior
+      # attempt never reached this step (blocked by the pre-self-hosted-runner firewall issue),
+      # so it went uncaught until connectivity was actually fixed.
+      - name: Apply ConfigMaps before migration Job
+        run: yq 'select(.kind == "ConfigMap")' /tmp/rendered.yaml | kubectl apply -f -
+
       - name: Run migration Job, then wait for completion
         run: |
           kubectl delete job pena-e-arte-migrate -n pena-e-arte --ignore-not-found
@@ -341,6 +352,11 @@ jobs:
 
       - name: Render manifests (staging)
         run: kubectl kustomize k8s/overlays/staging > /tmp/staging-rendered.yaml
+
+      # Same fix as production's "Apply ConfigMaps before migration Job" — see that step's
+      # comment for the real bug this was found from.
+      - name: Apply ConfigMaps before migration Job (staging)
+        run: yq 'select(.kind == "ConfigMap")' /tmp/staging-rendered.yaml | kubectl apply -f -
 
       - name: Run migration Job, then wait for completion (staging)
         run: |
