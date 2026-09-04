@@ -220,10 +220,20 @@ jobs:
             --from-literal=Vault__Token="${{ secrets.VAULT_TOKEN }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      # A ClusterIssuer's secretRef (letsencrypt-prod-dns01's Cloudflare API token) resolves
+      # against cert-manager's own "cluster resource namespace" (default: cert-manager itself),
+      # never the namespace of whatever Certificate/Ingress references the issuer — this is
+      # true regardless of which namespace ends up requesting a cert. Confirmed as a real bug
+      # on this cluster's actual first production deploy: the secret existed in pena-e-arte,
+      # the ClusterIssuer stayed permanently Ready=False ("failed to get secret
+      # cloudflare-api-token: not found"), and cert-manager doesn't proactively re-check a
+      # failed issuer once cached — only creating a fresh CertificateRequest (or restarting
+      # cert-manager) triggers a re-evaluation, so this bug was silent until an actual TLS cert
+      # was needed for real, not caught by any dry-run.
       - name: Populate cloudflare-api-token
         run: |
           kubectl create secret generic cloudflare-api-token \
-            -n pena-e-arte \
+            -n cert-manager \
             --from-literal=api-token="${{ secrets.CLOUDFLARE_API_TOKEN }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
