@@ -74,7 +74,16 @@ public static class InfrastructureServiceExtensions
             .UseRecommendedSerializerSettings()
             .UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
             {
-                TablesPrefix = "hangfire_"
+                TablesPrefix = "hangfire_",
+                // Hangfire.MySqlStorage 2.0.3's own installer defines hangfire_DistributedLock
+                // with NO primary key at all — DigitalOcean Managed MySQL enforces
+                // sql_require_primary_key=ON by default (most local/CI MySQL doesn't), which
+                // rejects that exact CREATE TABLE deterministically, every time, leaving the
+                // schema permanently stuck 3 tables short. Invisible to any test suite whose
+                // MySQL uses default settings. The corrected schema (a real migration, not this
+                // library) now owns table creation — see
+                // Migrations/20260904210000_AddHangfireSchema.cs. Found and fixed 2026-09-04.
+                PrepareSchemaIfNecessary = false
             })));
         services.AddHangfireServer();
 

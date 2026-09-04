@@ -12,6 +12,7 @@ using Pena_e_Arte.Infrastructure.Extensions;
 using Pena_e_Arte.Infrastructure.Hubs;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Infrastructure.Persistence;
+using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Infrastructure.Persistence.Seed;
 using Serilog;
 
@@ -62,16 +63,20 @@ try
     // Production sets this to false and runs exactly one migration via a dedicated K8s Job
     // (k8s/base/migration-job.yaml) before the API Deployment rolls out.
     //
-    // Reused below for Hangfire's recurring-job registration too: Hangfire.MySql lazily
-    // auto-creates its own schema tables on first use, with no cross-process locking of its
-    // own — the exact same race MigrateAsync() would have had unguarded. Confirmed on this
-    // cluster's real first production deploy: two API replicas (plus a still-restarting stale
-    // pod from an earlier failed rollout) all called IRecurringJobManager.AddOrUpdate
-    // concurrently, one process's "tables already exist, skip install" check short-circuited
-    // before another process had finished creating every table, leaving
-    // hangfire_DistributedLock missing and the next AcquireDistributedLock call crashing with
-    // MySqlException. Fixed the same way as MigrateAsync(): runs once, in the migration Job
-    // only, never in an API replica.
+    // Reused below for Hangfire's recurring-job registration too: runs once, via the
+    // migration Job only, never in an API replica — kept even though the schema itself no
+    // longer races (see Migrations/20260904203339_AddHangfireSchema.cs and
+    // MySqlStorageOptions.PrepareSchemaIfNecessary = false: Hangfire.MySqlStorage's own
+    // lazy table-creation, with no cross-process locking, is disabled entirely now).
+    // Original diagnosis from this cluster's first production deploy was incomplete — it
+    // looked like a pure multi-replica race (two API replicas calling
+    // IRecurringJobManager.AddOrUpdate concurrently, one process's "tables already exist"
+    // check short-circuiting before another finished), but a single replica, zero
+    // concurrency, hit the exact same missing-hangfire_DistributedLock failure on every
+    // retry — the real cause was the library's own Install.sql defining that table with no
+    // primary key at all, which DigitalOcean Managed MySQL's default
+    // sql_require_primary_key=ON rejects deterministically. Found 2026-09-04; see that
+    // migration's doc comment for the full story.
     bool isOneTimeSetupRun = builder.Configuration.GetValue("Migrations:ApplyOnStartup", defaultValue: true);
 
     if (isOneTimeSetupRun)
@@ -82,6 +87,17 @@ try
     }
 
     await SeedRolesAsync(app);
+
+    // Unconditional, unlike the rest of DataSeeder below — Free/Starter/Growth/Premium/Pro
+    // are baseline product data every environment needs, not demo data.
+    // RegisterSoloArtistCommand hard-depends on a Plan named "Free" existing; bundling this
+    // reconciler behind Seeding:Enabled (never true in production) left every real database
+    // with zero Plan rows and solo-artist registration permanently 500ing — found 2026-09-04.
+    using (IServiceScope planScope = app.Services.CreateScope())
+    {
+        IAppDbContext planDb = planScope.ServiceProvider.GetRequiredService<IAppDbContext>();
+        await DataSeeder.ReconcileCoreTiersAsync(planDb);
+    }
 
     // DataSeeder upserts demo accounts with known passwords (Password123) and, on a
     // fresh database, whole fake studios/subscriptions/appointments — must never run
