@@ -754,7 +754,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Register a studio</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (redirected to dashboard)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>A two-step wizard at <code>/register</code> that creates a brand-new studio and its owner account together. Step 1 collects the studio's identity, location, and business tax ID (NIPT); step 2 creates the owner's login, either by password or by continuing with Google/Apple.</p>
+<p>A two-step wizard at <code>/register</code> that creates a brand-new studio and its owner account together. Step 1 collects the studio's identity, location, and business tax ID (NIPT); step 2 creates the owner's login, either by password or by continuing with Google (an Apple option appears alongside it once Apple Sign-In is configured for this deployment).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Register studio wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -776,7 +776,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li><span class="step-title">Step 1 — Studio details:</span> Studio name (auto-generates a URL slug you can still edit), pick the studio's location on the map picker, and enter your business tax ID (NIPT) — one letter, 8 digits, one letter (e.g. L01234567A). This is used for invoicing and business verification and is never shown publicly.</li>
 <li>Click <span class="step-title">Next</span> to proceed to step 2.</li>
-<li><span class="step-title">Step 2 — Owner account:</span> enter the owner's email, then either set a password + confirm, or click a Google/Apple button to continue with OAuth instead (this replaces the password fields).</li>
+<li><span class="step-title">Step 2 — Owner account:</span> enter the owner's email, then either set a password + confirm, or click the Google button to continue with OAuth instead (this replaces the password fields; an Apple option appears alongside Google once Apple Sign-In is configured for this deployment).</li>
 <li>Submit to create the studio, create the owner account, sign in, and land on the Dashboard.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> a referral code in the URL (<code>?ref=CODE</code>) is applied automatically and can unlock a free month once you subscribe.</div>
@@ -787,7 +787,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Sign in</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗ (redirected)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>The sign-in form at <code>/login</code>, shared by every role — the app reads your role from the login response and sends you to the right home screen automatically. Supports "remember me", Google/Apple sign-in, and a <code>?redirect=</code> deep link back to wherever you came from.</p>
+<p>The sign-in form at <code>/login</code>, shared by every role — the app reads your role from the login response and sends you to the right home screen automatically. Supports "remember me", Google sign-in (Apple too, once configured for this deployment), and a <code>?redirect=</code> deep link back to wherever you came from.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Sign in wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -810,7 +810,7 @@ ol.steps li { margin: 6px 0; }
 <li>Enter <span class="step-title">Email</span> and <span class="step-title">Password</span>.</li>
 <li>Toggle <span class="step-title">Remember me</span> to stay signed in on this device (uses persistent storage instead of the current tab only).</li>
 <li>Click <span class="step-title">Forgot password?</span> if needed.</li>
-<li>Click <span class="step-title">Sign in</span>, or use the <span class="step-title">Google</span> / <span class="step-title">Apple</span> buttons instead.</li>
+<li>Click <span class="step-title">Sign in</span>, or use the <span class="step-title">Google</span> button instead (an <span class="step-title">Apple</span> button appears alongside it once Apple Sign-In is configured for this deployment).</li>
 <li>Links at the bottom lead to client sign-up or studio registration.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> too many failed sign-in attempts from the same device triggers a temporary lock — wait a few minutes before retrying.</div>
