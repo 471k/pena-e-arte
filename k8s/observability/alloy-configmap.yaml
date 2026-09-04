@@ -80,6 +80,18 @@ data:
     loki.source.file "pod_logs" {
       targets    = discovery.relabel.pod_logs.output
       forward_to = [loki.write.default.receiver]
+
+      // Without this, loki.source.file treats __path__ as a literal absolute path and
+      // stats it directly instead of glob-expanding it — the "*<pod_uid>/<container>/*.log"
+      // pattern above contains literal '*' characters no real filename has, so every single
+      // target failed with "no such file or directory", forever, for every pod on the node,
+      // since this collector was first deployed. Manually confirmed the identical glob
+      // resolves fine via a real shell (`ls /var/log/pods/*<uid>/api/*.log`) — the bug was
+      // never the pattern, only that Alloy was never told to treat it as one. Found
+      // 2026-09-04, a month after this file was first written and merged.
+      file_match {
+        enabled = true
+      }
     }
 
     loki.write "default" {
