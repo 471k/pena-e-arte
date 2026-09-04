@@ -22,6 +22,14 @@ spec:
         - name: frontend
           # Tag pinned by CD (kustomize edit set image) to the built github.sha.
           image: ghcr.io/471k/pena-e-arte-frontend:latest
+          # A manual `workflow_dispatch` redeploy with no new commit reuses the exact same
+          # `staging-<sha>` tag string. Without `Always`, a node that already pulled that tag
+          # once (e.g. an earlier failed run) never repulls it even after
+          # build-and-push-frontend-staging genuinely rebuilds+repushes under the same tag —
+          # confirmed concretely 2026-09-04: a rebuild with the correct
+          # VITE_STRIPE_PUBLISHABLE_KEY baked in was silently ignored until this was patched
+          # live and the pod restarted.
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:

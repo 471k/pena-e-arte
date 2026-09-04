@@ -275,6 +275,18 @@ jobs:
       - name: Apply manifests
         run: kubectl apply -f /tmp/rendered.yaml
 
+      # `kubectl apply` only triggers a rollout when the Deployment's pod spec actually
+      # differs from what's already applied. A Secret's *content* can change (e.g. a value
+      # populated for the first time, or rotated) with the Deployment's own YAML staying
+      # byte-identical — Kubernetes doesn't hot-reload envFrom Secret values into already-
+      # running containers, so `apply` alone silently leaves stale/empty env vars in place.
+      # Real bug found 2026-09-04 landing staging: pods kept crash-looping on an empty
+      # connection string for hours after the real secret was populated, because nothing
+      # ever restarted them. Frontend doesn't need this — it reads no runtime config,
+      # only build-time Vite env vars baked into the image itself.
+      - name: Force rollout to pick up current Secrets/ConfigMaps
+        run: kubectl rollout restart deployment/pena-e-arte-api -n pena-e-arte
+
       - name: Wait for rollout
         run: |
           kubectl rollout status deployment/pena-e-arte-api -n pena-e-arte --timeout=180s
@@ -376,6 +388,12 @@ jobs:
 
       - name: Apply manifests (staging)
         run: kubectl apply -f /tmp/staging-rendered.yaml
+
+      # Same fix as production's own "Force rollout to pick up current Secrets/ConfigMaps"
+      # step — see that step's comment for the real bug this was found from (staging hit it
+      # first, same day).
+      - name: Force rollout to pick up current Secrets/ConfigMaps (staging)
+        run: kubectl rollout restart deployment/pena-e-arte-api -n pena-e-arte-staging
 
       - name: Wait for rollout (staging)
         run: |
