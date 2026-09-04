@@ -45,13 +45,17 @@ spec:
               port: 8200
             initialDelaySeconds: 5
             periodSeconds: 10
+          # 256Mi was too tight — OOMKilled (exit 137) on this box's actual first boot,
+          # crashing near-instantly during Raft/boltdb initialization, confirmed via
+          # `kubectl describe pod` showing Started/Finished at the same second. Bumped
+          # to the smallest limit that survived a real cold start on this cluster.
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 192Mi
             limits:
               cpu: 500m
-              memory: 256Mi
+              memory: 384Mi
       volumes:
         - name: config
           configMap:
