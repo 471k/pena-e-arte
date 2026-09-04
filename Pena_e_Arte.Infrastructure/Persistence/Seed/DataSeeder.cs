@@ -233,7 +233,13 @@ public static class DataSeeder
     // Log, "Core plan reconciliation replaces one-time plan seed", for the reasoning and
     // for what an issuer should do instead (clone a new Plan row rather than editing one
     // of these five).
-    internal static async Task ReconcileCoreTiersAsync(IAppDbContext db)
+    //
+    // Public and called unconditionally from Program.cs, unlike the rest of this class —
+    // these five tiers are baseline product data every environment needs (RegisterSoloArtistCommand
+    // hard-depends on "Free" existing), not demo data. Bundling it behind Seeding:Enabled
+    // (never true in production) left every real production database with zero Plan rows and
+    // a permanently-broken solo-artist signup — found 2026-09-04.
+    public static async Task ReconcileCoreTiersAsync(IAppDbContext db)
     {
         CoreTier[] tiers =
         [
