@@ -146,6 +146,24 @@ try
             Cron.Daily(hour: 5)); // staggered after retention-purge (4am)
     }
 
+    // k8s/base/migration-job.yaml runs this exact image as a one-off Job (restartPolicy:
+    // Never) expecting the container to exit 0 once the block above finishes — but nothing
+    // above this point ever did that. Every code path below runs app.Run(), which blocks
+    // forever, so a migration Job that boots cleanly never completes; `kubectl wait
+    // --for=condition=complete` just times out. The only reason this looked like it worked in
+    // the past was almost certainly a startup exception being caught by this file's own
+    // top-level try/catch (below), logged as Fatal, and then falling off the end of Program.cs
+    // with a real exit code of 0 anyway — an accidental "success" that never actually proved
+    // migrations/seeding ran, is indistinguishable from a genuinely completed Job, and stops
+    // looking accidental the moment startup succeeds cleanly, as it does now. Found 2026-09-04
+    // when a real migration hung a live production deploy. Migrations__ExitAfterMigrate is set
+    // only by migration-job.yaml, never by the API Deployment's own ConfigMap.
+    if (builder.Configuration.GetValue<bool>("Migrations:ExitAfterMigrate"))
+    {
+        Log.Information("Migration Job: setup complete, exiting.");
+        return;
+    }
+
     // Without a configured TrustedProxyCidr, the .NET runtime's own forwarded-headers hardening
     // (see ForwardedHeadersOptionsBuilder) ignores X-Forwarded-For entirely, so the API sees only
     // the K3s/Nginx ingress IP and every client shares one rate-limit bucket. Setting

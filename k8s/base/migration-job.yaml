@@ -29,3 +29,9 @@ spec:
           env:
             - name: Migrations__ApplyOnStartup
               value: "true"
+            # Makes Program.cs return immediately after migrating/seeding/registering
+            # recurring jobs, instead of falling through to app.Run() and blocking forever —
+            # without this, this Job never exits and `kubectl wait --for=condition=complete`
+            # always times out on a clean boot. Never set on the API Deployment itself.
+            - name: Migrations__ExitAfterMigrate
+              value: "true"
