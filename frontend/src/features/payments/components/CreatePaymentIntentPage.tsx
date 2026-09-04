@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -303,11 +303,9 @@ function ConfirmPanel({
   const isLoading = isLoadingCard || isLoadingCash;
   const noDepositRule = appointment.depositAmount === 0;
 
-  // Default (and force) to the cash flow when card payments aren't available —
-  // never let the owner select a method that can't be completed.
-  useEffect(() => {
-    if (!cardPaymentsAvailable && method === "card") setMethod("cash");
-  }, [cardPaymentsAvailable, method]);
+  // Derived, not synced via effect — falls back to cash whenever card payments
+  // aren't available, whatever `method` currently holds (default or user-picked).
+  const effectiveMethod: PaymentMethodChoice = cardPaymentsAvailable ? method : "cash";
 
   function validate(): boolean {
     if (!amount || amount <= 0) {
@@ -319,9 +317,9 @@ function ConfirmPanel({
   }
 
   async function handleSubmit() {
-    if (method === "card" && !validate()) return;
+    if (effectiveMethod === "card" && !validate()) return;
 
-    if (method === "card") {
+    if (effectiveMethod === "card") {
       const result = await createIntent({
         appointmentId: appointment.id,
         clientId:      appointment.clientId,
@@ -377,7 +375,7 @@ function ConfirmPanel({
                   "flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
                   disabled
                     ? "opacity-50 cursor-not-allowed"
-                    : method === m
+                    : effectiveMethod === m
                     ? "border-primary bg-primary/5 text-primary"
                     : "hover:bg-muted/60 hover:border-muted-foreground/30"
                 )}
@@ -395,7 +393,7 @@ function ConfirmPanel({
             Card payments are temporarily unavailable. Use the Cash option below.
           </p>
         )}
-        {cardPaymentsAvailable && method === "cash" && (
+        {cardPaymentsAvailable && effectiveMethod === "cash" && (
           <p className="text-xs text-muted-foreground pt-1">
             Records a pending cash payment. You will confirm receipt once collected.
           </p>
@@ -462,7 +460,7 @@ function ConfirmPanel({
             <Loader2 className="h-4 w-4 animate-spin" />
             Creating…
           </>
-        ) : method === "card" ? (
+        ) : effectiveMethod === "card" ? (
           <>
             <CreditCard className="h-4 w-4" />
             Create card payment{amount ? ` · ${fmtCurrency(amount)}` : ""}
