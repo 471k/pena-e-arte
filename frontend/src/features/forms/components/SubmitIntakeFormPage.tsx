@@ -18,12 +18,19 @@ import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyAppointmentsQuery } from "@/features/appointments/appointmentsApi";
+import { useGetActiveConsentTemplateQuery } from "@/features/forms/consentFormsApi";
 import { useSubmitIntakeFormMutation } from "../intakeFormsApi";
 
+const DEFAULT_CONSENT_TEXT =
+  "By submitting this form, you consent to sharing your medical history and " +
+  "other health-related information you provide here with the studio, for the " +
+  "purpose of preparing for and conducting your tattoo session.";
+
 const schema = z.object({
-  formData:      z.string().min(10, "Please provide at least 10 characters"),
-  appointmentId: z.string().optional(),
-  fileUrl:       z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  formData:        z.string().min(10, "Please provide at least 10 characters"),
+  appointmentId:   z.string().optional(),
+  fileUrl:         z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  consentAccepted: z.boolean().refine((v) => v === true, "You must consent before submitting"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -38,6 +45,7 @@ export function SubmitIntakeFormPage() {
   const relevantAppointments = appointments?.filter(
     (a) => a.status === "Pending" || a.status === "Confirmed",
   );
+  const { data: activeTemplate } = useGetActiveConsentTemplateQuery({ kind: "IntakeFormConsent" });
   const [submitIntakeForm, { isLoading, isSuccess, isError, reset: resetMutation }] =
     useSubmitIntakeFormMutation();
 
@@ -47,15 +55,19 @@ export function SubmitIntakeFormPage() {
     handleSubmit,
     reset: resetForm,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({
+    resolver:      zodResolver(schema),
+    defaultValues: { consentAccepted: false },
+  });
 
   async function onSubmit(values: FormValues) {
     if (!user) return;
     const result = await submitIntakeForm({
-      clientId:      user.id,
-      formData:      values.formData,
-      appointmentId: values.appointmentId || null,
-      fileUrl:       values.fileUrl || null,
+      clientId:        user.id,
+      formData:        values.formData,
+      appointmentId:   values.appointmentId || null,
+      fileUrl:         values.fileUrl || null,
+      consentAccepted: values.consentAccepted,
     });
     if ("data" in result) resetForm();
   }
@@ -163,6 +175,28 @@ export function SubmitIntakeFormPage() {
             />
             {errors.fileUrl && (
               <p className="text-xs text-destructive">{errors.fileUrl.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Consent</p>
+            <div className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/20 p-3 text-xs text-foreground/90">
+              {activeTemplate?.bodyText || DEFAULT_CONSENT_TEXT}
+            </div>
+            <label htmlFor="consentAccepted" className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                id="consentAccepted"
+                type="checkbox"
+                disabled={isLoading}
+                {...register("consentAccepted")}
+                className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+              />
+              <span className="text-sm text-muted-foreground">
+                I consent to sharing this medical/health information with the studio.
+              </span>
+            </label>
+            {errors.consentAccepted && (
+              <p className="text-xs text-destructive">{errors.consentAccepted.message}</p>
             )}
           </div>
 

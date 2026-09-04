@@ -34,7 +34,7 @@ export function SignConsentFormPage() {
   const user = useCurrentUser();
 
   const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
-  const { data: activeTemplate } = useGetActiveConsentTemplateQuery();
+  const { data: activeTemplate } = useGetActiveConsentTemplateQuery({ kind: "AppointmentConsent" });
   const relevantAppointments = appointments?.filter(
     (a) => a.status === "Pending" || a.status === "Confirmed",
   );

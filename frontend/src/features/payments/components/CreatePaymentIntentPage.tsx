@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -25,6 +25,7 @@ import { useGetClientsQuery }              from "@/features/clients/clientsApi";
 import {
   useCreatePaymentIntentMutation,
   useDeclareCashDepositMutation,
+  useGetPaymentCapabilitiesQuery,
 }                                          from "../paymentsApi";
 import type { PaymentIntentResponse, PaymentResponse } from "../payment.types";
 import { SessionSplitsEditor }             from "./SessionSplitsEditor";
@@ -287,6 +288,9 @@ function ConfirmPanel({
   onCardCreated: (result: PaymentIntentResponse, amount: number) => void;
   onCashCreated: (result: PaymentResponse, amount: number) => void;
 }) {
+  const { data: capabilities } = useGetPaymentCapabilitiesQuery();
+  const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
+
   const [method, setMethod]         = useState<PaymentMethodChoice>("card");
   const [amount, setAmount]         = useState(
     appointment.depositAmount > 0 ? appointment.depositAmount : undefined as number | undefined
@@ -298,6 +302,12 @@ function ConfirmPanel({
 
   const isLoading = isLoadingCard || isLoadingCash;
   const noDepositRule = appointment.depositAmount === 0;
+
+  // Default (and force) to the cash flow when card payments aren't available —
+  // never let the owner select a method that can't be completed.
+  useEffect(() => {
+    if (!cardPaymentsAvailable && method === "card") setMethod("cash");
+  }, [cardPaymentsAvailable, method]);
 
   function validate(): boolean {
     if (!amount || amount <= 0) {
@@ -355,26 +365,37 @@ function ConfirmPanel({
       <div className="space-y-1.5">
         <p className="text-sm font-medium">Payment method</p>
         <div className="grid grid-cols-2 gap-2">
-          {(["card", "cash"] as PaymentMethodChoice[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMethod(m)}
-              className={cn(
-                "flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
-                method === m
-                  ? "border-primary bg-primary/5 text-primary"
-                  : "hover:bg-muted/60 hover:border-muted-foreground/30"
-              )}
-            >
-              {m === "card"
-                ? <CreditCard className="h-4 w-4 shrink-0" />
-                : <Banknote    className="h-4 w-4 shrink-0" />}
-              {m === "card" ? "Card" : "Cash"}
-            </button>
-          ))}
+          {(["card", "cash"] as PaymentMethodChoice[]).map((m) => {
+            const disabled = m === "card" && !cardPaymentsAvailable;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => !disabled && setMethod(m)}
+                disabled={disabled}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
+                  disabled
+                    ? "opacity-50 cursor-not-allowed"
+                    : method === m
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "hover:bg-muted/60 hover:border-muted-foreground/30"
+                )}
+              >
+                {m === "card"
+                  ? <CreditCard className="h-4 w-4 shrink-0" />
+                  : <Banknote    className="h-4 w-4 shrink-0" />}
+                {m === "card" ? "Card" : "Cash"}
+              </button>
+            );
+          })}
         </div>
-        {method === "cash" && (
+        {!cardPaymentsAvailable && (
+          <p className="text-xs text-destructive pt-1">
+            Card payments are temporarily unavailable. Use the Cash option below.
+          </p>
+        )}
+        {cardPaymentsAvailable && method === "cash" && (
           <p className="text-xs text-muted-foreground pt-1">
             Records a pending cash payment. You will confirm receipt once collected.
           </p>

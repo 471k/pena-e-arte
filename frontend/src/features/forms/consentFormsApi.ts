@@ -27,8 +27,8 @@ export const consentFormsApi = createApi({
       query: (id) => `consent-forms/${id}`,
       providesTags: (_result, _error, id) => [{ type: "ConsentForm", id }],
     }),
-    getActiveConsentTemplate: builder.query<ConsentTemplateResponse, void>({
-      query: () => "consent-forms/active-template",
+    getActiveConsentTemplate: builder.query<ConsentTemplateResponse, { kind: string }>({
+      query: ({ kind }) => ({ url: "consent-forms/active-template", params: { kind } }),
     }),
     signConsentForm: builder.mutation<ConsentFormResponse, SignConsentFormRequest>({
       query: (body) => ({ url: "consent-forms", method: "POST", body }),

@@ -21,7 +21,7 @@ public class SubmitIntakeFormValidatorTests
     }
 
     private static SubmitIntakeFormCommand ValidCommand() =>
-        new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, "{\"allergies\":\"none\"}", null));
+        new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, "{\"allergies\":\"none\"}", null, true));
 
     [Fact]
     public void Validate_ValidCommand_NoErrors()
@@ -33,21 +33,21 @@ public class SubmitIntakeFormValidatorTests
     public void Validate_ValidCommandWithFileUrl_NoErrors()
     {
         SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(
-            Guid.NewGuid(), null, "{}", ValidUrl));
+            Guid.NewGuid(), null, "{}", ValidUrl, true));
         _validator.TestValidate(cmd).ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
     public void Validate_EmptyClientId_HasError()
     {
-        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.Empty, null, "{}", null));
+        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.Empty, null, "{}", null, true));
         _validator.TestValidate(cmd).ShouldHaveValidationErrorFor(x => x.Request.ClientId);
     }
 
     [Fact]
     public void Validate_EmptyFormData_HasError()
     {
-        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, "", null));
+        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, "", null, true));
         _validator.TestValidate(cmd).ShouldHaveValidationErrorFor(x => x.Request.FormData);
     }
 
@@ -55,7 +55,7 @@ public class SubmitIntakeFormValidatorTests
     public void Validate_FormDataExceedsMaxLength_HasError()
     {
         string tooLong = new('x', 65536);
-        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, tooLong, null));
+        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, tooLong, null, true));
         _validator.TestValidate(cmd).ShouldHaveValidationErrorFor(x => x.Request.FormData);
     }
 
@@ -63,7 +63,7 @@ public class SubmitIntakeFormValidatorTests
     public void Validate_FileUrlExceedsMaxLength_HasError()
     {
         string tooLong = new('x', 1001);
-        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, "{}", tooLong));
+        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, "{}", tooLong, true));
         _validator.TestValidate(cmd).ShouldHaveValidationErrorFor(x => x.Request.FileUrl);
     }
 
@@ -74,7 +74,7 @@ public class SubmitIntakeFormValidatorTests
         _r2.IsR2Url(externalUrl).Returns(false);
 
         SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(
-            Guid.NewGuid(), null, "{}", externalUrl));
+            Guid.NewGuid(), null, "{}", externalUrl, true));
         _validator.TestValidate(cmd).ShouldHaveValidationErrorFor(x => x.Request.FileUrl);
     }
 
@@ -82,5 +82,12 @@ public class SubmitIntakeFormValidatorTests
     public void Validate_NullFileUrl_NoError()
     {
         _validator.TestValidate(ValidCommand()).ShouldNotHaveValidationErrorFor(x => x.Request.FileUrl);
+    }
+
+    [Fact]
+    public void Validate_ConsentNotAccepted_HasError()
+    {
+        SubmitIntakeFormCommand cmd = new(new SubmitIntakeFormRequest(Guid.NewGuid(), null, "{}", null, false));
+        _validator.TestValidate(cmd).ShouldHaveValidationErrorFor(x => x.Request.ConsentAccepted);
     }
 }
