@@ -10,6 +10,8 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { remindersApi } from "@/features/reminders/remindersApi";
+import { artistsApi } from "@/features/artists/artistsApi";
 import { SchedulePage } from "@/features/appointments/components/SchedulePage";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -77,6 +79,7 @@ const server = setupServer(
   http.delete("http://localhost/api/v1/appointments/:id", () =>
     new HttpResponse(null, { status: 204 }),
   ),
+  http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -92,8 +95,10 @@ function makeStore(role: Role = Role.Artist) {
       auth:                          authReducer,
       ui:                            uiReducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+      [remindersApi.reducerPath]:    remindersApi.reducer,
+      [artistsApi.reducerPath]:      artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(appointmentsApi.middleware),
+    middleware: (gd) => gd().concat(appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
@@ -365,5 +370,28 @@ describe("SchedulePage", () => {
     renderPage(Role.Artist);
     const card = await screen.findByText(/deposit:/i);
     expect(within(card.closest("[class]") as HTMLElement).getByText("Paid")).toBeInTheDocument();
+  });
+
+  // ── Quick Reminder ──────────────────────────────────────────────────────────
+
+  it("clicking 'Quick reminder' opens the reminder dialog in raw-contact mode", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("No appointments this week");
+
+    await user.click(screen.getByRole("button", { name: /quick reminder/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/send reminder/i)).toBeInTheDocument();
+    // Raw-contact mode shows the name/phone inputs since there's no linked appointment/client.
+    expect(within(dialog).getByLabelText(/^name$/i)).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/^phone$/i)).toBeInTheDocument();
+  });
+
+  it("owner does NOT see the 'Quick reminder' button (no artist-picker exists for the raw-contact path)", async () => {
+    renderPage(Role.Owner);
+    await screen.findByText("No appointments this week");
+
+    expect(screen.queryByRole("button", { name: /quick reminder/i })).not.toBeInTheDocument();
   });
 });

@@ -1,13 +1,14 @@
-import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, MessageSquareMore, BarChart3,
+  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
+import { SoloStudioPublishBanner } from "@/shared/components/SoloStudioPublishBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { Button } from "@/shared/components/ui/button";
 import { NavDrawer } from "@/shared/components/NavDrawer";
@@ -18,32 +19,84 @@ import { logout } from "@/features/auth/authSlice";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { NotificationBell } from "@/features/notifications";
+import { StudioJoinInviteBell } from "@/features/auth/components/StudioJoinInviteBell";
 import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
+import { useGetMyStudioConductReportsQuery } from "@/features/conduct-reports";
+import { MessagesNavBadge, useChatHub } from "@/features/messaging";
+
+const ONBOARDING_REDIRECT_KEY = "solo-owner-onboarding-redirect-done";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",       href: "/dashboard",  icon: <LayoutDashboard className="h-4 w-4" />, tourId: "owner-dashboard-nav" },
-  { label: "Schedule",        href: "/schedule",   icon: <CalendarDays    className="h-4 w-4" /> },
-  { label: "Artists",         href: "/artists",    icon: <Users           className="h-4 w-4" />, tourId: "owner-add-artist-nav" },
-  { label: "Clients",         href: "/clients",    icon: <UserSquare      className="h-4 w-4" /> },
-  { label: "Designs",         href: "/designs",    icon: <Palette         className="h-4 w-4" /> },
-  { label: "Payments",        href: "/payments",   icon: <CreditCard      className="h-4 w-4" /> },
-  { label: "Billing",         href: "/billing",    icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
-  { label: "Reports",         href: "/reports",    icon: <BarChart3       className="h-4 w-4" />, tourId: "owner-reports-nav" },
-  { label: "Studio Settings", href: "/studios/me", icon: <Settings        className="h-4 w-4" />, tourId: "owner-studio-profile-nav" },
+  { label: "Dashboard",        href: "/dashboard",         icon: <LayoutDashboard className="h-4 w-4" />, tourId: "owner-dashboard-nav" },
+  { label: "Schedule",         href: "/schedule",          icon: <CalendarDays    className="h-4 w-4" /> },
+  { label: "Artists",          href: "/artists",           icon: <Users           className="h-4 w-4" />, tourId: "owner-add-artist-nav" },
+  { label: "Clients",          href: "/clients",           icon: <UserSquare      className="h-4 w-4" /> },
+  { label: "Messages",         href: "/messages",          icon: <MessageCircle   className="h-4 w-4" />, tourId: "owner-messages-nav" },
+  { label: "Designs",          href: "/designs",           icon: <Palette         className="h-4 w-4" /> },
+  { label: "Payments",         href: "/payments",          icon: <CreditCard      className="h-4 w-4" /> },
+  { label: "Billing",          href: "/billing",           icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
+  { label: "Reports",          href: "/reports",           icon: <BarChart3       className="h-4 w-4" />, tourId: "owner-reports-nav" },
+  { label: "Conduct Reports",  href: "/conduct-reports",   icon: <ShieldAlert     className="h-4 w-4" />, tourId: "owner-conduct-reports-nav" },
+  { label: "Studio Settings",  href: "/studios/me",        icon: <Settings        className="h-4 w-4" />, tourId: "owner-studio-profile-nav" },
 ];
 
 export function OwnerLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const tenantId = useAppSelector((s) => s.auth.tenantId);
   useSignalR(tenantId);
+  useChatHub();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
   useGetSubscriptionQuery();
   const { data: studio } = useGetMyStudioQuery();
+  // Fires unconditionally for every owner (most won't have a profile yet — a normal 404 each
+  // load, exactly like ArtistLayout already does for every artist). RTK Query dedupes this
+  // against the same call ArtistListPage's "Become an artist" CTA makes via the shared
+  // "Artist" cache tag.
+  const { data: myArtist, isLoading: myArtistLoading } = useGetMyArtistQuery();
+
+  // Guided first step for a solo artist's owner account with no artist profile of their own
+  // yet: route them straight into the existing "Enable my artist profile" form instead of
+  // requiring them to find the Artists page. Fires once per browser session (sessionStorage
+  // guard) so it never fights a deliberate later visit to another page.
+  useEffect(() => {
+    if (!studio?.isSolo || myArtistLoading || myArtist) return;
+    if (location.pathname === "/artists") return;
+
+    let alreadyRedirected = false;
+    try {
+      alreadyRedirected = sessionStorage.getItem(ONBOARDING_REDIRECT_KEY) === "1";
+    } catch {
+      // sessionStorage unavailable — treat as not-yet-redirected
+    }
+    if (alreadyRedirected) return;
+
+    try {
+      sessionStorage.setItem(ONBOARDING_REDIRECT_KEY, "1");
+    } catch {
+      // ignore — worst case the redirect fires again this session
+    }
+    navigate("/artists?onboarding=1", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studio?.isSolo, myArtistLoading, myArtist]);
+  const { data: openConductReports } = useGetMyStudioConductReportsQuery({ status: "Open" });
+  const openConductReportCount = openConductReports?.length ?? 0;
+  const withBadges = NAV_ITEMS.map((item) =>
+    item.label === "Conduct Reports" ? { ...item, badge: openConductReportCount } : item,
+  );
+  const navItems: NavItem[] = myArtist
+    ? [
+        ...withBadges,
+        { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> },
+        { label: "My Earnings",  href: "/earnings",                icon: <Wallet    className="h-4 w-4" /> },
+      ]
+    : withBadges;
 
   function handleLogout() {
     dispatch(logout());
@@ -55,12 +108,13 @@ export function OwnerLayout() {
       <SuspensionBanner studio={studio} />
       <ReadOnlyBanner />
       <PlanLimitBanner />
+      <SoloStudioPublishBanner studio={studio} />
       <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">TattooOS</span>
 
         <nav className="hidden lg:flex ml-6 items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {NAV_ITEMS.map(({ label, href, icon, tourId }) => (
+          {navItems.map(({ label, href, icon, tourId, badge }) => (
             <NavLink
               key={href}
               to={href}
@@ -76,10 +130,15 @@ export function OwnerLayout() {
             >
               {icon}
               {label}
+              {!!badge && badge > 0 && (
+                <span className="ml-1 min-w-[1.25rem] rounded-full bg-destructive px-1 py-0.5 text-[10px] font-medium text-destructive-foreground text-center">
+                  {badge > 99 ? "99+" : badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
-        <NavDrawer navItems={NAV_ITEMS} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
+        <NavDrawer navItems={navItems} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
 
         <div className="ml-auto flex items-center gap-3">
           <Button
@@ -93,6 +152,8 @@ export function OwnerLayout() {
             <MessageSquareMore className="h-4 w-4" />
           </Button>
           <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
+          <MessagesNavBadge />
+          <StudioJoinInviteBell enabled={!!studio?.isSolo} />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

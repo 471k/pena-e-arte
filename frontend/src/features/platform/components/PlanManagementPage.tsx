@@ -88,7 +88,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
                   backing implementation (no API/webhook subsystem, no support-priority
                   routing). Matches PlanEditPage's toggle being hidden for the same reason. */}
             </div>
-            <p className="text-[11px] text-muted-foreground/70">
+            <p className="text-[11px] text-muted-foreground">
               {formatLimit(plan.maxArtists, "artists")} · {formatLimit(plan.maxAppointmentsPerMonth, "appts/mo")} ·{" "}
               {formatLimit(plan.maxStorageGb, "GB")}
             </p>
@@ -171,7 +171,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
               <p className="text-xs text-muted-foreground">No active subscribers. Safe to delete.</p>
             )}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-destructive font-medium">
+              <span className="text-xs text-destructive-text font-medium">
                 Delete &quot;{plan.name}&quot; permanently?
               </span>
               <Button
@@ -229,7 +229,7 @@ export function PlanManagementPage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">Failed to load plans.</p>
+          <p className="text-center text-sm text-destructive-text py-16">Failed to load plans.</p>
         )}
 
         {!isLoading && !isError && plans?.length === 0 && (
@@ -257,7 +257,7 @@ export function PlanManagementPage() {
             {/* Ghost tile — always last; CSS grid handles wrapping at every breakpoint */}
             <Link
               to="/platform/plans/new"
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/40 p-8 text-muted-foreground/40 hover:border-border/70 hover:text-muted-foreground/60 transition-colors cursor-pointer min-h-[100px]"
+              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/40 p-8 text-muted-foreground hover:border-border/70 hover:text-muted-foreground transition-colors cursor-pointer min-h-[100px]"
               aria-label="Add a new plan"
             >
               <Plus className="h-5 w-5" />

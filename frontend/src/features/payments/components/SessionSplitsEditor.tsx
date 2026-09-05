@@ -167,12 +167,12 @@ export function SessionSplitsEditor({ paymentId, paymentAmount, currentSplits }:
 
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Total</span>
-        <span className={totalMatches ? "font-medium" : "font-medium text-destructive"}>
+        <span className={totalMatches ? "font-medium" : "font-medium text-destructive-text"}>
           {formatCurrency(runningTotal)} / {formatCurrency(paymentAmount)}
         </span>
       </div>
       {!totalMatches && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-xs text-destructive-text">
           Splits must add up to {formatCurrency(paymentAmount)}.
         </p>
       )}

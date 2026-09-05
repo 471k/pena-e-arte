@@ -1,6 +1,6 @@
 export interface NotificationLogResponse {
   id:            string;
-  recipientId:   string;
+  recipientId:   string | null;
   recipientName: string | null;
   channel:       "Email" | "Sms" | "InApp";
   subject:     string | null;
@@ -25,7 +25,8 @@ export type NotificationType =
   | "PaymentRefunded"
   | "IntakeFormSubmitted"
   | "ConsentFormSigned"
-  | "DesignReviewed";
+  | "DesignReviewed"
+  | "MessageReceived";
 
 export type NotificationChannel = "Email" | "Sms";
 

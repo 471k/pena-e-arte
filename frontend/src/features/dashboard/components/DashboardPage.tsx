@@ -123,7 +123,8 @@ function SubscriptionBanner({ sub }: { sub: SubscriptionResponse }) {
 
 // ── today's schedule ──────────────────────────────────────────────────────
 
-function artistName(artistId: string, artists: ArtistResponse[]): string {
+function artistName(artistId: string | null, artists: ArtistResponse[]): string {
+  if (artistId === null) return "Unassigned";
   const a = artists.find((x) => x.id === artistId);
   return a ? `${a.firstName} ${a.lastName}` : "—";
 }
@@ -209,7 +210,7 @@ function TodaySection({
           )}
 
           {errorMessage && (
-            <p className="text-sm text-destructive py-4" role="alert">{errorMessage}</p>
+            <p className="text-sm text-destructive-text py-4" role="alert">{errorMessage}</p>
           )}
 
           {!isLoading && !isError && appointments?.length === 0 && (

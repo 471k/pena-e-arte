@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-redis
+  namespace: pena-e-arte
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: pena-e-arte-redis
+  template:
+    metadata:
+      labels:
+        app: pena-e-arte-redis
+    spec:
+      containers:
+        - name: redis
+          # Same tag as docker-compose.yml. No password, matching compose — accepted risk,
+          # see k8s/base/redis-pvc.yaml / Phase 5 note: nothing else shares this namespace
+          # today. Revisit if the cluster ever hosts a second workload.
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: pena-e-arte-redis-data

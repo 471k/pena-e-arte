@@ -23,7 +23,7 @@ public class GetNearbyStudiosHandler(IAppDbContext db)
         List<Studio> candidates = await db.Studios
             .IgnoreQueryFilters()
             .Where(s =>
-                s.IsActive &&
+                s.IsActive && s.IsPublished &&
                 s.Latitude >= query.Lat - latDelta && s.Latitude <= query.Lat + latDelta &&
                 s.Longitude >= query.Lng - lngDelta && s.Longitude <= query.Lng + lngDelta)
             .ToListAsync(ct);

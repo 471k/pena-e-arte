@@ -1,6 +1,7 @@
 using MediatR;
 using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Application.Studios.Queries;
+using Pena_e_Arte.Application.Studios.StudioJoinInvites;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +22,9 @@ public static class StudioEndpoints
         group.MapGet("/me", GetMyStudio).RequireAuthorization("ClientAndAbove");
         group.MapPut("/me", UpdateMyStudio).RequireAuthorization("OwnerOnly");
         group.MapGet("/me/audit-log", GetMyStudioAuditLog).RequireAuthorization("OwnerOnly");
+
+        // Owner: invite an independent solo artist to dissolve their solo studio and join here
+        group.MapPost("/me/join-invites", InviteSoloArtistToJoin).RequireAuthorization("OwnerOnly");
 
         // Owner: manage branding and slug for their studio
         group.MapPatch("{id:guid}/branding", UpdateBranding).RequireAuthorization("OwnerOnly");
@@ -167,6 +171,15 @@ public static class StudioEndpoints
         string fmt = format?.ToLowerInvariant() ?? "png";
         QrCodeResponse result = await mediator.Send(new GetStudioQrCodeQuery(id, fmt), ct);
         return Results.File(result.Data, result.ContentType, $"{result.Slug}-qr.{fmt}");
+    }
+
+    private static async Task<IResult> InviteSoloArtistToJoin(
+        CreateArtistRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        StudioJoinInviteResponse result = await mediator.Send(new InviteSoloArtistToJoinCommand(request), ct);
+        return Results.Created($"/api/v1/studios/me/join-invites/{result.Id}", result);
     }
 
     private static async Task<IResult> GetMyStudioAuditLog(

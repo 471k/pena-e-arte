@@ -12,6 +12,7 @@ public static class ReportEndpoints
             .RequireAuthorization();
 
         group.MapGet("/revenue-summary", GetRevenueSummary).RequireAuthorization("OwnerOnly");
+        group.MapGet("/my-earnings", GetMyEarnings).RequireAuthorization("ArtistAndAbove");
     }
 
     private static async Task<IResult> GetRevenueSummary(
@@ -21,6 +22,16 @@ public static class ReportEndpoints
         CancellationToken ct)
     {
         RevenueSummaryResponse result = await mediator.Send(new GetRevenueSummaryQuery(from, to), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetMyEarnings(
+        DateTime? from,
+        DateTime? to,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ArtistEarningsResponse result = await mediator.Send(new GetMyEarningsQuery(from, to), ct);
         return Results.Ok(result);
     }
 }

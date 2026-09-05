@@ -109,6 +109,31 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task GetUserRolesAsync_ExistingUser_ReturnsAssignedRoles()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+
+        (bool _, Guid userId, string[] _) = await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
+
+        IReadOnlyList<string> roles = await sut.GetUserRolesAsync(userId, default);
+
+        roles.Should().Contain("owner");
+    }
+
+    [Fact]
+    public async Task GetUserRolesAsync_NoSuchUser_ReturnsEmpty()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+
+        IReadOnlyList<string> roles = await sut.GetUserRolesAsync(Guid.NewGuid(), default);
+
+        roles.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task CreateUserAsync_ValidUser_AddsTenantIdClaim()
     {
         UserManager<IdentityUser> um = await BuildUserManagerAsync();
@@ -476,6 +501,37 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         success.Should().BeFalse();
         tokenInvalid.Should().BeFalse();
         emailTaken.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SwapRoleAsync_OwnerToArtist_RemovesOldRoleAndAddsNew()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        (_, Guid userId, _) = await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
+
+        await sut.SwapRoleAsync(userId, "owner", "artist", default);
+
+        IReadOnlyList<string> roles = await sut.GetUserRolesAsync(userId, default);
+        roles.Should().Contain("artist");
+        roles.Should().NotContain("owner");
+    }
+
+    [Fact]
+    public async Task SwapRoleAsync_CalledTwice_IsIdempotent()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        (_, Guid userId, _) = await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
+
+        await sut.SwapRoleAsync(userId, "owner", "artist", default);
+        Func<Task> act = () => sut.SwapRoleAsync(userId, "owner", "artist", default);
+
+        await act.Should().NotThrowAsync();
+        IReadOnlyList<string> roles = await sut.GetUserRolesAsync(userId, default);
+        roles.Should().BeEquivalentTo(["artist"]);
     }
 
     private static async Task<(string Email, Guid UserId)> CreateAndFetchUserAsync(

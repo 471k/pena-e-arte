@@ -1,5 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "@/app/store";
+import type { FileConductReportArgs, ReportableAppointment } from "@/features/conduct-reports/conductReports.types";
+import type { PresignUploadResponse } from "@/shared/api/filesApi";
+import type { SlotAvailabilityResponse } from "@/features/appointments/appointment.types";
 
 export interface PublicArtistSummary {
   artistId:        string;
@@ -12,26 +15,36 @@ export interface PublicArtistSummary {
   reviewCount:     number;
 }
 
+export interface PublicSocialLinkResponse {
+  platform:   string;
+  handle:     string;
+  isVerified: boolean;
+  profileUrl: string;
+}
+
 export interface PublicStudioResponse {
-  studioId:        string;
-  name:            string;
-  slug:            string;
-  city:            string;
-  description:     string | null;
-  coverImageUrl:   string | null;
-  phoneNumber:     string | null;
-  instagramHandle: string | null;
-  averageRating:   number | null;
-  reviewCount:     number;
-  galleryImages:   string[];
-  artists:         PublicArtistSummary[];
-  showBookingCta:  boolean;
+  studioId:       string;
+  name:           string;
+  slug:           string;
+  city:           string;
+  latitude:       number;
+  longitude:      number;
+  description:    string | null;
+  coverImageUrl:  string | null;
+  phoneNumber:    string | null;
+  averageRating:  number | null;
+  reviewCount:    number;
+  galleryImages:  string[];
+  artists:        PublicArtistSummary[];
+  showBookingCta: boolean;
+  socialLinks:    PublicSocialLinkResponse[];
 }
 
 export interface ArtistPortfolioImage {
   imageId:  string;
   imageUrl: string;
   style:    string | null;
+  category: string | null;
 }
 
 export interface PublicArtistResponse {
@@ -49,6 +62,7 @@ export interface PublicArtistResponse {
   studioSlug:      string;
   showBookingCta:  boolean;
   isOwnProfile:    boolean;
+  socialLinks:     PublicSocialLinkResponse[];
 }
 
 export interface SharedDesignResponse {
@@ -86,6 +100,7 @@ export interface PortfolioImageResponse {
   imageId:             string;
   imageUrl:            string;
   style:               string | null;   // nullable — untagged images are valid
+  category:            string | null;   // nullable — uncategorized images are valid; fresh/healed/design
   artistName:          string;
   artistSlug:          string;
   studioName:          string;
@@ -134,6 +149,63 @@ export interface ArtistInstagramPostResponse {
   isVisible:        boolean;
 }
 
+// ── Guest checkout booking (2026-08-31) ─────────────────────────────────────
+
+export interface PublicBookingArtistResponse {
+  artistId:        string;
+  name:            string;
+  avatarUrl:       string | null;
+  specializations: string | null;
+  hourlyRate:      number | null;
+}
+
+export interface PublicDepositRuleResponse {
+  name:          string;
+  amountFixed:   number | null;
+  amountPercent: number | null;
+}
+
+export interface PublicCheckSlotAvailabilityArgs {
+  slug:             string;
+  artistId?:        string;
+  date:             string;
+  durationMinutes:  number;
+}
+
+export interface CreateGuestAppointmentRequest {
+  firstName:       string;
+  lastName:        string;
+  email:           string;
+  phone:           string;
+  marketingOptIn:  boolean;
+  booking: {
+    artistId:        string | null;
+    clientId:        string;
+    date:            string;
+    durationMinutes: number;
+    notes:           string | null;
+    tattooDescription:          string;
+    safetyNotes?:               string | null;
+    desiredPlacementLocations?: string[];
+    referralSource?:            string | null;
+    referralSourceOther?:       string | null;
+    images?: { url: string; category: string }[];
+  };
+}
+
+// Deliberately the same shape whether the booking succeeded or the email collided with an
+// existing account (enumeration-resistance, 2026-09-01) — never assume `message` implies
+// success; disambiguation happens only via the email the guest receives.
+export interface GuestBookingAckResponse {
+  message: string;
+}
+
+export interface PresignGuestUploadArgs {
+  slug:        string;
+  contentType: string;
+  category:    "area" | "reference";
+}
+
 export interface PortfolioFeedArgs {
   lat?:      number;
   lng?:      number;
@@ -141,6 +213,7 @@ export interface PortfolioFeedArgs {
   page:      number;
   pageSize?: number;
   style?:    string;
+  category?: string;
   search?:   string;
 }
 
@@ -161,6 +234,7 @@ export const publicApi = createApi({
   tagTypes: [
     "PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios",
     "StudioReviews", "ArtistReviews", "PortfolioImageReviews", "PortfolioFeed",
+    "StudioReportableAppointments", "ArtistReportableAppointments",
   ],
   endpoints: (builder) => ({
     getPublicStudio: builder.query<PublicStudioResponse, string>({
@@ -184,14 +258,15 @@ export const publicApi = createApi({
       providesTags: ["NearbyStudios"],
     }),
     getPortfolioFeed: builder.query<PortfolioImageResponse[], PortfolioFeedArgs>({
-      query: ({ lat, lng, radiusKm, page, pageSize = 24, style, search }) => {
+      query: ({ lat, lng, radiusKm, page, pageSize = 24, style, category, search }) => {
         const params = new URLSearchParams();
         params.set("radiusKm", String(radiusKm));
         params.set("page",     String(page));
         params.set("pageSize", String(pageSize));
         if (lat != null) params.set("lat", String(lat));
         if (lng != null) params.set("lng", String(lng));
-        if (style)        params.set("style",  style);
+        if (style)        params.set("style",    style);
+        if (category)     params.set("category", category);
         if (search)       params.set("search", search);
         return `portfolio/feed?${params.toString()}`;
       },
@@ -253,6 +328,51 @@ export const publicApi = createApi({
     getArtistInstagramPosts: builder.query<ArtistInstagramPostResponse[], string>({
       query: (slug) => `artists/${slug}/instagram-posts`,
     }),
+    // Every real appointment the caller has with this studio/artist, regardless of status —
+    // deliberately NOT restricted to completed/unreported like the reviews equivalent above
+    // (see FileArtistConductReportCommand's doc comment for why).
+    getReportableStudioAppointments: builder.query<ReportableAppointment[], string>({
+      query: (slug) => `studios/${slug}/reports/reportable-appointments`,
+      providesTags: (_result, _err, slug) => [{ type: "StudioReportableAppointments", id: slug }],
+    }),
+    getReportableArtistAppointments: builder.query<ReportableAppointment[], string>({
+      query: (slug) => `artists/${slug}/reports/reportable-appointments`,
+      providesTags: (_result, _err, slug) => [{ type: "ArtistReportableAppointments", id: slug }],
+    }),
+    fileStudioConductReport: builder.mutation<void, { slug: string; body: FileConductReportArgs }>({
+      query: ({ slug, body }) => ({ url: `studios/${slug}/reports`, method: "POST", body }),
+    }),
+    fileArtistConductReport: builder.mutation<void, { slug: string; body: FileConductReportArgs }>({
+      query: ({ slug, body }) => ({ url: `artists/${slug}/reports`, method: "POST", body }),
+    }),
+
+    // ── Guest checkout booking ────────────────────────────────────────────
+    getPublicBookingArtists: builder.query<PublicBookingArtistResponse[], string>({
+      query: (slug) => `studios/${slug}/booking/artists`,
+    }),
+    checkPublicSlotAvailability: builder.query<SlotAvailabilityResponse, PublicCheckSlotAvailabilityArgs>({
+      query: ({ slug, artistId, date, durationMinutes }) => ({
+        url:    `studios/${slug}/booking/availability`,
+        params: { ...(artistId ? { artistId } : {}), date, durationMinutes },
+      }),
+      keepUnusedDataFor: 0,
+    }),
+    getPublicDepositRule: builder.query<PublicDepositRuleResponse | null, string>({
+      query: (slug) => `studios/${slug}/booking/deposit-rule`,
+    }),
+    createGuestAppointment: builder.mutation<
+      GuestBookingAckResponse,
+      { slug: string; body: CreateGuestAppointmentRequest }
+    >({
+      query: ({ slug, body }) => ({ url: `studios/${slug}/book`, method: "POST", body }),
+    }),
+    presignGuestUpload: builder.mutation<PresignUploadResponse, PresignGuestUploadArgs>({
+      query: ({ slug, contentType, category }) => ({
+        url:    `studios/${slug}/booking/presign`,
+        method: "POST",
+        body:   { contentType, category },
+      }),
+    }),
   }),
 });
 
@@ -272,4 +392,13 @@ export const {
   useGetPortfolioImageReviewsQuery,
   useCreatePortfolioImageReviewMutation,
   useGetArtistInstagramPostsQuery,
+  useGetReportableStudioAppointmentsQuery,
+  useGetReportableArtistAppointmentsQuery,
+  useFileStudioConductReportMutation,
+  useFileArtistConductReportMutation,
+  useGetPublicBookingArtistsQuery,
+  useCheckPublicSlotAvailabilityQuery,
+  useGetPublicDepositRuleQuery,
+  useCreateGuestAppointmentMutation,
+  usePresignGuestUploadMutation,
 } = publicApi;

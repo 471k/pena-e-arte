@@ -15,6 +15,8 @@ import { artistsApi } from "@/features/artists/artistsApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
+import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
+import { messagingApi } from "@/features/messaging/messagingApi";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -49,6 +51,12 @@ const server = setupServer(
   http.get("http://localhost/api/v1/onboarding/tour-status", () =>
     HttpResponse.json({ hasCompletedTour: true }),
   ),
+  http.get("http://localhost/api/v1/artists/me/conduct-reports", () =>
+    HttpResponse.json([]),
+  ),
+  http.get("http://localhost/api/v1/conversations/unread-count", () =>
+    HttpResponse.json(0),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -72,8 +80,13 @@ function makeStore(overrides: StoreOverrides = {}) {
       [artistsApi.reducerPath]:        artistsApi.reducer,
       [onboardingApi.reducerPath]:     onboardingApi.reducer,
       [authApi.reducerPath]:           authApi.reducer,
+      [conductReportsApi.reducerPath]: conductReportsApi.reducer,
+      [messagingApi.reducerPath]:      messagingApi.reducer,
     },
-    middleware: (gd) => gd().concat(notificationsApi.middleware, artistsApi.middleware, onboardingApi.middleware, authApi.middleware),
+    middleware: (gd) => gd().concat(
+      notificationsApi.middleware, artistsApi.middleware, onboardingApi.middleware,
+      authApi.middleware, conductReportsApi.middleware, messagingApi.middleware,
+    ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u2", email: "artist@ink.test" }, token: "fake", tenantId: "t1", role: "artist", pendingReferralCode: null } as any,
@@ -116,10 +129,11 @@ describe("ArtistLayout", () => {
     expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
-  it("renders the seven static artist nav links", () => {
+  it("renders the nine static artist nav links", () => {
     renderLayout();
     expect(screen.getByRole("link", { name: /^schedule$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^clients$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^messages$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^designs$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /intake forms/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /consent forms/i })).toBeInTheDocument();

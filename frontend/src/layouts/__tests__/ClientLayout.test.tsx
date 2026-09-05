@@ -13,6 +13,7 @@ import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
+import { messagingApi } from "@/features/messaging/messagingApi";
 import { ClientLayout } from "@/layouts/ClientLayout";
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -27,6 +28,9 @@ const server = setupServer(
   // Onboarding tour: complete by default so it doesn't interfere with unrelated assertions.
   http.get("http://localhost/api/v1/onboarding/tour-status", () =>
     HttpResponse.json({ hasCompletedTour: true }),
+  ),
+  http.get("http://localhost/api/v1/conversations/unread-count", () =>
+    HttpResponse.json(0),
   ),
 );
 
@@ -50,8 +54,11 @@ function makeStore(overrides: StoreOverrides = {}) {
       [notificationsApi.reducerPath]:  notificationsApi.reducer,
       [authApi.reducerPath]:           authApi.reducer,
       [onboardingApi.reducerPath]:     onboardingApi.reducer,
+      [messagingApi.reducerPath]:      messagingApi.reducer,
     },
-    middleware: (gd) => gd().concat(notificationsApi.middleware, authApi.middleware, onboardingApi.middleware),
+    middleware: (gd) => gd().concat(
+      notificationsApi.middleware, authApi.middleware, onboardingApi.middleware, messagingApi.middleware,
+    ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: "client", pendingReferralCode: null } as any,
@@ -91,9 +98,10 @@ describe("ClientLayout", () => {
     expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
-  it("renders all five client nav links", () => {
+  it("renders the client nav links", () => {
     renderLayout();
     expect(screen.getByRole("link", { name: /book appointment/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^messages$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /my designs/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /intake forms/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /consent forms/i })).toBeInTheDocument();

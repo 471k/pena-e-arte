@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  CalendarDays, Palette, FileText, ScrollText, User, PenLine, Building2,
+  CalendarDays, Palette, FileText, ScrollText, User, PenLine, Building2, MessageCircle,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -16,10 +16,12 @@ import { logout } from "@/features/auth/authSlice";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { NotificationBell } from "@/features/notifications";
 import { HelpMenu } from "@/features/help";
+import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Book Appointment", href: "/book",        icon: <CalendarDays className="h-4 w-4" />, tourId: "client-book-nav" },
   { label: "My Studios",       href: "/my-studios",  icon: <Building2    className="h-4 w-4" />, tourId: "client-my-studios-nav" },
+  { label: "Messages",         href: "/messages",    icon: <MessageCircle className="h-4 w-4" />, tourId: "client-messages-nav" },
   { label: "My Designs",       href: "/designs",       icon: <Palette      className="h-4 w-4" />, tourId: "client-designs-nav" },
   { label: "Intake Forms",     href: "/forms/intake",  icon: <FileText     className="h-4 w-4" /> },
   { label: "Consent Forms",    href: "/forms/consent", icon: <ScrollText   className="h-4 w-4" /> },
@@ -31,6 +33,7 @@ export function ClientLayout() {
   const navigate  = useNavigate();
   const tenantId  = useAppSelector((s) => s.auth.tenantId);
   useSignalR(tenantId);
+  useChatHub();
   const [navOpen, setNavOpen] = useState(false);
 
   function handleLogout() {
@@ -72,6 +75,7 @@ export function ClientLayout() {
 
         <div className="ml-auto flex items-center gap-3">
           <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
+          <MessagesNavBadge />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

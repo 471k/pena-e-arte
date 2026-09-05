@@ -220,7 +220,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
                 className={cn(errors.title && "border-destructive")}
               />
               {errors.title && (
-                <p className="text-xs text-destructive">{errors.title.message}</p>
+                <p className="text-xs text-destructive-text">{errors.title.message}</p>
               )}
             </div>
 
@@ -243,7 +243,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
                 className={cn("resize-none", errors.body && "border-destructive")}
               />
               {errors.body && (
-                <p className="text-xs text-destructive">{errors.body.message}</p>
+                <p className="text-xs text-destructive-text">{errors.body.message}</p>
               )}
             </div>
 
@@ -277,7 +277,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
                 disabled={attachments.length >= MAX_ATTACHMENTS || isLoading}
               />
               {attachmentError && (
-                <p className="text-xs text-destructive" role="alert">{attachmentError}</p>
+                <p className="text-xs text-destructive-text" role="alert">{attachmentError}</p>
               )}
               {attachments.length > 0 && (
                 <ul className="space-y-1.5 pt-1">

@@ -67,6 +67,9 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
   const anyLoading = cancelling || confirming || completing || markingNoShow;
 
+  // Attachments fall back to the deprecated flat imageUrls for pre-migration appointments.
+  const attachmentCount = appointment.attachments?.length ?? appointment.imageUrls?.length ?? 0;
+
   async function handleCancel() {
     if (!confirmCancel) { setConfirmCancel(true); return; }
     const result = await cancel(appointment.id);
@@ -112,20 +115,27 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             )}
             <span className="text-xs text-muted-foreground">{appointment.durationMinutes} min</span>
             <AppointmentStatusBadge status={appointment.status} />
+            {appointment.status === AppointmentStatus.Pending && appointment.artistId === null && (
+              <span className="text-[10px] font-medium uppercase tracking-wide rounded-full
+                               bg-amber-500/15 text-amber-600 px-1.5 py-0.5">
+                Needs artist
+              </span>
+            )}
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-1.5">
             <span>Deposit: {formatCurrency(appointment.depositAmount)}</span>
             <DepositStatusBadge status={appointment.depositStatus} />
           </div>
-          {appointment.notes && (
-            <p className="text-xs text-muted-foreground truncate">{appointment.notes}</p>
+          {(appointment.tattooDescription || appointment.notes) && (
+            <p className="text-xs text-muted-foreground truncate">
+              {appointment.tattooDescription || appointment.notes}
+            </p>
           )}
-          {!!appointment.imageUrls?.length && (
+          {attachmentCount > 0 && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <ImageIcon className="h-3 w-3" aria-hidden="true" />
               <span>
-                {appointment.imageUrls.length}{" "}
-                reference {appointment.imageUrls.length === 1 ? "image" : "images"}
+                {attachmentCount} {attachmentCount === 1 ? "image" : "images"}
               </span>
             </div>
           )}
@@ -136,7 +146,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             className="flex items-center gap-1.5 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
-            {isPending && (
+            {isPending && appointment.artistId !== null && (
               <Button
                 variant="outline"
                 size="sm"
@@ -205,7 +215,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
             {confirmCancel ? (
               <>
-                <span className="text-xs text-destructive">Cancel?</span>
+                <span className="text-xs text-destructive-text">Cancel?</span>
                 <Button
                   variant="destructive"
                   size="sm"

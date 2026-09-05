@@ -8,6 +8,7 @@ import type {
   CreatePaymentIntentRequest,
   UpdateSessionSplitsRequest,
   GetPaymentsParams,
+  PaymentCapabilitiesResponse,
 } from "./payment.types";
 
 export const paymentsApi = createApi({
@@ -75,6 +76,9 @@ export const paymentsApi = createApi({
     getPaymentClientSecret: builder.query<ClientSecretResponse, string>({
       query: (id) => `payments/${id}/client-secret`,
     }),
+    getPaymentCapabilities: builder.query<PaymentCapabilitiesResponse, void>({
+      query: () => "payments/capabilities",
+    }),
     downloadInvoice: builder.mutation<Blob, string>({
       query: (id) => ({
         url:             `payments/${id}/invoice`,
@@ -97,4 +101,5 @@ export const {
   useUpdateSessionSplitsMutation,
   useGetPaymentClientSecretQuery,
   useDownloadInvoiceMutation,
+  useGetPaymentCapabilitiesQuery,
 } = paymentsApi;

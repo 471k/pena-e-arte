@@ -23,6 +23,7 @@ public static class AppointmentEndpoints
         group.MapPatch("{id:guid}/complete", CompleteAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/no-show", MarkNoShow).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/reschedule", RescheduleAppointment).RequireAuthorization("ClientAndAbove");
+        group.MapPatch("{id:guid}/artist", AssignAppointmentArtist).RequireAuthorization("OwnerOnly");
         group.MapGet("{id:guid}/calendar.ics", GetIcs).RequireAuthorization("ClientAndAbove");
     }
 
@@ -118,8 +119,18 @@ public static class AppointmentEndpoints
         return Results.Content(icsContent, "text/calendar; charset=utf-8");
     }
 
+    private static async Task<IResult> AssignAppointmentArtist(
+        Guid id,
+        AssignAppointmentArtistRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AppointmentResponse result = await mediator.Send(new AssignAppointmentArtistCommand(id, request), ct);
+        return Results.Ok(result);
+    }
+
     private static async Task<IResult> CheckSlotAvailability(
-        Guid artistId,
+        Guid? artistId,
         DateTime date,
         int durationMinutes,
         ISender mediator,

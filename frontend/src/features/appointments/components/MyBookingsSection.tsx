@@ -104,7 +104,7 @@ function CancelArea({ appt, activeRule }: { appt: AppointmentResponse; activeRul
     return (
       <button
         type="button"
-        className="text-xs text-muted-foreground underline hover:text-destructive"
+        className="text-xs text-muted-foreground underline hover:text-destructive-text"
         onClick={() => setConfirming(true)}
       >
         Cancel appointment
@@ -255,7 +255,8 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
 
 // ── Booking row ───────────────────────────────────────────────────────────
 
-function artistName(artistId: string, artists: ArtistResponse[]): string {
+function artistName(artistId: string | null, artists: ArtistResponse[]): string {
+  if (artistId === null) return "Studio will assign an artist";
   const a = artists.find((x) => x.id === artistId);
   return a ? `${a.firstName} ${a.lastName}` : "—";
 }
@@ -350,7 +351,7 @@ export function MyBookingsSection() {
         )}
 
         {isError && (
-          <p className="py-4 text-sm text-destructive">
+          <p className="py-4 text-sm text-destructive-text">
             Couldn&apos;t load your bookings. Please refresh and try again.
           </p>
         )}

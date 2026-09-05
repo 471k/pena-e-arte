@@ -14,6 +14,7 @@ public class PortfolioImageConfiguration : TenantEntityConfiguration<PortfolioIm
 
         builder.Property(p => p.ImageUrl).HasMaxLength(2048).IsRequired();
         builder.Property(p => p.Style).HasMaxLength(50).IsRequired(false);
+        builder.Property(p => p.Category).HasMaxLength(20).IsRequired(false);
 
         builder.HasIndex(p => p.ArtistId)
                .HasDatabaseName("ix_portfolio_images_artist_id");

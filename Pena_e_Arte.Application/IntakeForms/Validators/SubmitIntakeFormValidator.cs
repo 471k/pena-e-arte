@@ -10,6 +10,9 @@ public class SubmitIntakeFormValidator : AbstractValidator<SubmitIntakeFormComma
     {
         RuleFor(x => x.Request.ClientId).NotEmpty();
         RuleFor(x => x.Request.FormData).NotEmpty().MaximumLength(65535);
+        RuleFor(x => x.Request.ConsentAccepted)
+            .Equal(true)
+            .WithMessage("You must consent before submitting.");
         RuleFor(x => x.Request.FileUrl)
             .MaximumLength(1000)
             .Must(url => r2.IsR2Url(url!))

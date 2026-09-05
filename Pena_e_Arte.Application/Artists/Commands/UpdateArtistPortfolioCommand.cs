@@ -42,6 +42,7 @@ public class UpdateArtistPortfolioHandler(IAppDbContext db, ICurrentUser current
             if (existingByUrl.TryGetValue(input.ImageUrl, out PortfolioImage? kept))
             {
                 kept.Style = input.Style;
+                kept.Category = input.Category;
             }
             else
             {
@@ -51,6 +52,7 @@ public class UpdateArtistPortfolioHandler(IAppDbContext db, ICurrentUser current
                     StudioId = artist.StudioId,
                     ImageUrl = input.ImageUrl,
                     Style = input.Style,
+                    Category = input.Category,
                 });
             }
         }

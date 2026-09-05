@@ -15,4 +15,6 @@ public record StudioResponse(
     DateTime? SlugLockedAt,
     string? PhoneNumber = null,
     string? InstagramHandle = null,
-    string? Nipt = null);
+    string? Nipt = null,
+    bool IsSolo = false,
+    bool IsPublished = true);

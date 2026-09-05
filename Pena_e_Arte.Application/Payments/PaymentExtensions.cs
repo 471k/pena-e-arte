@@ -5,6 +5,14 @@ namespace Pena_e_Arte.Application.Payments;
 
 internal static class PaymentExtensions
 {
+    /// <summary>
+    /// What a payment actually contributes to revenue/earnings: the full amount minus
+    /// whatever was refunded. A partial refund (e.g. a late self-cancellation with a
+    /// studio-configured partial-refund percentage) still leaves Status == Refunded — there
+    /// is no separate "PartiallyRefunded" status — so the retained portion must still count.
+    /// </summary>
+    internal static decimal RetainedAmount(this Payment p) => Math.Max(0m, p.Amount - (p.RefundedAmount ?? 0m));
+
     internal static PaymentResponse ToResponse(this Payment p, IEnumerable<SessionSplit>? splits = null) => new(
         p.Id, p.AppointmentId, p.Amount,
         p.Status.ToString(), p.Method.ToString(),

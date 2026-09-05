@@ -176,6 +176,9 @@ services:
       CloudflareR2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-}
       CloudflareR2__BucketName: ${R2_BUCKET_NAME:-}
       CloudflareR2__PublicUrl: ${R2_PUBLIC_URL:-}
+      CloudflareR2__BackupBucketName: ${R2_BACKUP_BUCKET_NAME:-}
+      CloudflareR2__BackupAccessKeyId: ${R2_BACKUP_ACCESS_KEY_ID:-}
+      CloudflareR2__BackupSecretAccessKey: ${R2_BACKUP_SECRET_ACCESS_KEY:-}
       Resend__ApiKey: ${RESEND_API_KEY:-}
       Resend__FromAddress: ${RESEND_FROM_ADDRESS:-}
       Resend__FromName: ${RESEND_FROM_NAME:-TattooOS}
@@ -189,6 +192,23 @@ services:
       Instagram__AppSecret: ${INSTAGRAM_APP_SECRET:-}
       Instagram__RedirectUri: ${INSTAGRAM_REDIRECT_URI:-}
       Instagram__TokenEncryptionKey: ${INSTAGRAM_TOKEN_ENCRYPTION_KEY:-}
+      # Social verification (studio Instagram + TikTok/Facebook/X/YouTube) — same
+      # config-gated-when-empty posture as Instagram above.
+      Social__StateSigningKey: ${SOCIAL_STATE_SIGNING_KEY:-}
+      Social__TikTok__ClientKey: ${TIKTOK_CLIENT_KEY:-}
+      Social__TikTok__ClientSecret: ${TIKTOK_CLIENT_SECRET:-}
+      Social__TikTok__RedirectUri: ${TIKTOK_REDIRECT_URI:-}
+      Social__Facebook__AppId: ${FACEBOOK_APP_ID:-}
+      Social__Facebook__AppSecret: ${FACEBOOK_APP_SECRET:-}
+      Social__Facebook__RedirectUri: ${FACEBOOK_REDIRECT_URI:-}
+      Social__X__ClientId: ${X_CLIENT_ID:-}
+      Social__X__ClientSecret: ${X_CLIENT_SECRET:-}
+      Social__X__RedirectUri: ${X_REDIRECT_URI:-}
+      Social__X__BearerToken: ${X_BEARER_TOKEN:-}
+      Social__YouTube__ClientId: ${YOUTUBE_CLIENT_ID:-}
+      Social__YouTube__ClientSecret: ${YOUTUBE_CLIENT_SECRET:-}
+      Social__YouTube__RedirectUri: ${YOUTUBE_REDIRECT_URI:-}
+      Social__YouTube__ApiKey: ${YOUTUBE_API_KEY:-}
       # Secrets backend (Vault). Empty by default; point at the local vault service
       # for container-parity testing of the ISecretsProvider path.
       Vault__Address: ${VAULT_ADDR:-}

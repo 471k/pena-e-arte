@@ -99,13 +99,13 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
 
             {/* Truncated ID with copy */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-foreground/50 font-mono" aria-label="Form ID">
+              <span className="text-xs text-foreground/65 font-mono" aria-label="Form ID">
                 {form.id.slice(0, 8)}…
               </span>
               <button
                 type="button"
                 onClick={() => copy(form.id)}
-                className="text-foreground/40 hover:text-foreground transition-colors"
+                className="text-foreground/65 hover:text-foreground transition-colors"
                 aria-label="Copy full form ID"
               >
                 {copied
@@ -138,7 +138,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
                 })}
               </Link>
               {form.artistName && (
-                <p className="text-xs text-foreground/55 mt-0.5">
+                <p className="text-xs text-foreground/65 mt-0.5">
                   {form.artistName}
                 </p>
               )}
@@ -209,7 +209,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
           <div className="grid grid-cols-2 gap-4">
             <DetailRow label="Created">
               <span>{formatDateTime(form.createdAt)}</span>
-              <p className="text-xs text-foreground/45 mt-0.5">
+              <p className="text-xs text-foreground/65 mt-0.5">
                 {formatRelativeTimeFromNow(form.createdAt)}
               </p>
             </DetailRow>
@@ -217,7 +217,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
             {form.signedAt && (
               <DetailRow label="Signed">
                 <span>{formatDateTime(form.signedAt)}</span>
-                <p className="text-xs text-foreground/45 mt-0.5">
+                <p className="text-xs text-foreground/65 mt-0.5">
                   {formatRelativeTimeFromNow(form.signedAt)}
                 </p>
               </DetailRow>
@@ -306,7 +306,7 @@ export function ConsentFormDetailPage() {
 
         {/* ── Generic error ── */}
         {isError && !isNotFound && (
-          <p className="text-center text-sm text-destructive py-16" role="alert">
+          <p className="text-center text-sm text-destructive-text py-16" role="alert">
             Failed to load consent form. Please try again.
           </p>
         )}

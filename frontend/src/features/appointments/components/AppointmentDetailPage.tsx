@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, Trash2, UserX,
+  ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, MessageCircle, Send, Trash2, UserRound, UserX,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -11,20 +11,28 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/shared/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/components/ui/select";
 import { Separator } from "@/shared/components/ui/separator";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
-import { AppointmentStatus, DepositStatus } from "../appointment.types";
+import { useGetArtistsQuery } from "@/features/artists/artistsApi";
+import { useAppSelector } from "@/app/hooks";
+import { useCreateConversationMutation } from "@/features/messaging";
+import { AppointmentStatus, AppointmentAttachmentCategory, DepositStatus, ReferralSource } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
+import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import {
   useGetAppointmentQuery,
   useCancelAppointmentMutation,
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
+  useAssignAppointmentArtistMutation,
 } from "../appointmentsApi";
 
 function formatDateTime(dateStr: string): string {
@@ -51,6 +59,37 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex justify-between items-center py-2 gap-4">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+const REFERRAL_SOURCE_LABELS: Record<string, string> = {
+  [ReferralSource.Instagram]:        "Instagram",
+  [ReferralSource.TikTok]:           "TikTok",
+  [ReferralSource.YouTube]:          "YouTube",
+  [ReferralSource.FriendsAndFamily]: "Friends & family",
+  [ReferralSource.Other]:            "Somewhere else",
+};
+
+function ImageGallery({ label, imageAlt, urls }: { label: string; imageAlt: string; urls: string[] }) {
+  if (urls.length === 0) return null;
+  return (
+    <div className="py-2 space-y-1.5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="grid grid-cols-4 gap-2">
+        {urls.map((url) => (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="block aspect-square rounded-md overflow-hidden
+                       border border-border/40 bg-muted/30"
+          >
+            <img src={url} alt={imageAlt} className="h-full w-full object-cover" />
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
@@ -84,17 +123,49 @@ export function AppointmentDetailPage() {
   const navigate     = useNavigate();
   const isArtistPlus = usePermission(Role.Artist);
   const canOwner     = usePermission(Role.Owner);
+  const role         = useAppSelector((s) => s.auth.role);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
 
   const { data: appt, isLoading, isError } = useGetAppointmentQuery(id ?? "", {
     skip: !id,
   });
 
+  const { data: artists } = useGetArtistsQuery(undefined, { skip: !canOwner });
+
   const [cancel,   { isLoading: cancelling   }] = useCancelAppointmentMutation();
   const [confirm,  { isLoading: confirming   }] = useConfirmAppointmentMutation();
   const [complete, { isLoading: completing   }] = useCompleteAppointmentMutation();
   const [noShow,   { isLoading: markingNoShow }] = useMarkNoShowMutation();
+  const [assignArtist, { isLoading: assigning }] = useAssignAppointmentArtistMutation();
+  const [createConversation, { isLoading: startingConversation }] = useCreateConversationMutation();
+
+  // Issuer can view this page but is not a valid messaging participant (see messaging
+  // Decision 1) — only artist/owner get the "Message client" entry point.
+  const canMessageClient = (role === Role.Artist || role === Role.Owner) && !!appt?.clientUserId;
+
+  async function handleMessageClient() {
+    if (!appt?.clientUserId) return;
+    try {
+      const conversation = await createConversation({ recipientUserId: appt.clientUserId }).unwrap();
+      navigate(`/messages?conversation=${conversation.id}`);
+    } catch {
+      toast.error("Failed to start conversation.");
+    }
+  }
+
+  // Attachments fall back to the deprecated flat imageUrls (all treated as Reference, matching
+  // its pre-Category-split meaning) for appointments created before this migration.
+  const attachments = appt?.attachments
+    ?? appt?.imageUrls?.map((url) => ({ url, category: AppointmentAttachmentCategory.Reference }))
+    ?? [];
+  const areaPhotoUrls = attachments
+    .filter((a) => a.category === AppointmentAttachmentCategory.AreaPhoto)
+    .map((a) => a.url);
+  const referenceUrls = attachments
+    .filter((a) => a.category === AppointmentAttachmentCategory.Reference)
+    .map((a) => a.url);
 
   const isTerminal  = appt ? TERMINAL_STATUSES.has(appt.status) : false;
   const isPending   = appt?.status === AppointmentStatus.Pending;
@@ -130,6 +201,12 @@ export function AppointmentDetailPage() {
     else                  toast.error("Failed to mark appointment as no-show.");
   }
 
+  async function handleAssignArtist(artistId: string) {
+    const result = await assignArtist({ id: appt!.id, body: { artistId } });
+    if ("data" in result) toast.success("Artist assigned.");
+    else                  toast.error("Failed to assign artist.");
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-3 px-6 py-3 border-b bg-background sticky top-0 z-10">
@@ -149,7 +226,7 @@ export function AppointmentDetailPage() {
       <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
         {(isError || !appt) && (
           <div className="flex flex-col items-center py-16 gap-3">
-            <p className="text-sm text-destructive">Appointment not found.</p>
+            <p className="text-sm text-destructive-text">Appointment not found.</p>
           </div>
         )}
 
@@ -173,6 +250,36 @@ export function AppointmentDetailPage() {
                     <Separator />
                   </>
                 )}
+                <Row
+                  label="Artist"
+                  value={
+                    canOwner ? (
+                      <Select value={appt.artistId ?? undefined} onValueChange={handleAssignArtist} disabled={assigning}>
+                        <SelectTrigger
+                          aria-label="Assigned artist"
+                          className="h-7 w-auto gap-1.5 border-none px-0 shadow-none text-sm ml-auto"
+                        >
+                          <SelectValue placeholder="Unassigned — pick an artist" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {artists?.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.firstName} {a.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : appt.artistName ? (
+                      appt.artistName
+                    ) : (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+                        Unassigned
+                      </span>
+                    )
+                  }
+                />
+                <Separator />
                 <Row label="Date &amp; time" value={formatDateTime(appt.date)} />
                 <Separator />
                 <Row label="Duration"  value={`${appt.durationMinutes} min`} />
@@ -188,35 +295,58 @@ export function AppointmentDetailPage() {
                     </span>
                   }
                 />
+                {appt.tattooDescription && (
+                  <>
+                    <Separator />
+                    <Row label="What they want" value={appt.tattooDescription} />
+                  </>
+                )}
+                {areaPhotoUrls.length > 0 && (
+                  <>
+                    <Separator />
+                    <ImageGallery label="Area photo" imageAlt="Area photo" urls={areaPhotoUrls} />
+                  </>
+                )}
                 {appt.notes && (
                   <>
                     <Separator />
                     <Row label="Notes" value={appt.notes} />
                   </>
                 )}
-                {!!appt.imageUrls?.length && (
+                {referenceUrls.length > 0 && (
+                  <>
+                    <Separator />
+                    <ImageGallery label="Reference images" imageAlt="Reference image" urls={referenceUrls} />
+                  </>
+                )}
+                {(appt.referralSource || appt.safetyNotes) && (
                   <>
                     <Separator />
                     <div className="py-2 space-y-1.5">
-                      <span className="text-sm text-muted-foreground">Reference images</span>
-                      <div className="grid grid-cols-4 gap-2">
-                        {appt.imageUrls.map((url) => (
-                          <a
-                            key={url}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block aspect-square rounded-md overflow-hidden
-                                       border border-border/40 bg-muted/30"
-                          >
-                            <img
-                              src={url}
-                              alt="Reference image"
-                              className="h-full w-full object-cover"
-                            />
-                          </a>
-                        ))}
-                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Intake
+                      </span>
+                      {appt.referralSource && (
+                        <Row
+                          label="How they heard about us"
+                          value={
+                            appt.referralSource === ReferralSource.Other && appt.referralSourceOther
+                              ? appt.referralSourceOther
+                              : REFERRAL_SOURCE_LABELS[appt.referralSource] ?? appt.referralSource
+                          }
+                        />
+                      )}
+                      {appt.safetyNotes && (
+                        <div
+                          role="alert"
+                          className="rounded-md border border-amber-800/40 bg-amber-950/20 px-3 py-2"
+                        >
+                          <p className="text-xs font-medium text-amber-400 mb-0.5">
+                            Anything else I should know
+                          </p>
+                          <p className="text-sm text-amber-200">{appt.safetyNotes}</p>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -242,6 +372,18 @@ export function AppointmentDetailPage() {
               </CardContent>
             </Card>
 
+            {canMessageClient && (
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                disabled={startingConversation}
+                onClick={handleMessageClient}
+              >
+                {startingConversation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                Message {appt.clientName ?? "client"}
+              </Button>
+            )}
+
             {/* P-09: Add to Calendar */}
             <a
               href={buildIcsUrl(appt.id)}
@@ -255,7 +397,7 @@ export function AppointmentDetailPage() {
 
             {isArtistPlus && !isTerminal && (
               <div className="flex flex-col gap-2">
-                {isPending && (
+                {isPending && appt.artistId !== null && (
                   <Button
                     className="w-full gap-2"
                     disabled={anyLoading}
@@ -264,6 +406,11 @@ export function AppointmentDetailPage() {
                     {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Confirm appointment
                   </Button>
+                )}
+                {isPending && appt.artistId === null && canOwner && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Assign an artist above before this can be confirmed.
+                  </p>
                 )}
 
                 {isConfirmed && (
@@ -286,6 +433,18 @@ export function AppointmentDetailPage() {
                   <CalendarClock className="h-4 w-4" />
                   Reschedule
                 </Button>
+
+                {appt.artistId !== null && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    disabled={anyLoading}
+                    onClick={() => setReminderDialogOpen(true)}
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Reminder
+                  </Button>
+                )}
 
                 {appt.depositStatus === DepositStatus.Pending && canOwner && (
                   <Button
@@ -316,7 +475,7 @@ export function AppointmentDetailPage() {
 
                 <Button
                   variant="ghost"
-                  className="w-full gap-2 text-destructive hover:text-destructive"
+                  className="w-full gap-2 text-destructive-text hover:text-destructive-text"
                   disabled={anyLoading}
                   onClick={() => setCancelDialogOpen(true)}
                 >
@@ -358,6 +517,15 @@ export function AppointmentDetailPage() {
           appointment={appt}
           open={rescheduleDialogOpen}
           onOpenChange={setRescheduleDialogOpen}
+        />
+      )}
+
+      {appt && (
+        <ReminderDialog
+          appointmentId={appt.id}
+          artistId={appt.artistId ?? undefined}
+          open={reminderDialogOpen}
+          onOpenChange={setReminderDialogOpen}
         />
       )}
     </div>

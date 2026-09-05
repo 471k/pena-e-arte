@@ -32,6 +32,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import { Badge } from "@/shared/components/ui/badge";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import {
   Dialog,
@@ -64,6 +68,8 @@ import { useGetDesignsQuery } from "@/features/designs/designsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
+import { InstagramTab } from "./InstagramTab";
+import { SocialLinksCard } from "@/features/social/components/SocialLinksCard";
 
 // Keep in sync with TattooStyle.cs constants on the backend.
 const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -75,6 +81,13 @@ const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "fineline",        label: "Fineline"        },
   { value: "neo-traditional", label: "Neo-Traditional" },
   { value: "japanese",        label: "Japanese"        },
+];
+
+// Keep in sync with PortfolioImageCategory.cs constants on the backend.
+const CATEGORY_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "fresh",  label: "Fresh Tattoo"  },
+  { value: "healed", label: "Healed Tattoo" },
+  { value: "design", label: "Design"        },
 ];
 
 const editSchema = z.object({
@@ -138,6 +151,12 @@ export function ArtistDetailPage() {
     if (ig === "connected") toast.success("Instagram connected successfully!");
     if (ig === "error")     toast.error("Instagram connection failed. Please try again.");
     if (ig === "denied")    toast.info("Instagram connection cancelled.");
+
+    const social = searchParams.get("social");
+    const platform = searchParams.get("platform");
+    if (social === "connected") toast.success(`${platform ?? "Account"} connected successfully!`);
+    if (social === "error")     toast.error(`${platform ?? "Account"} connection failed. Please try again.`);
+    if (social === "denied")    toast.info(`${platform ?? "Account"} connection cancelled.`);
   }, [searchParams]);
 
   const isOwnProfile = isArtistRole && artist?.userId != null && artist.userId === currentUserId;
@@ -206,7 +225,7 @@ export function ArtistDetailPage() {
     }
   }
 
-  function openImagePicker() {
+  function openImagePicker(category: string) {
     if (!id || !artist) return;
     const input = document.createElement("input");
     input.type = "file";
@@ -222,14 +241,15 @@ export function ArtistDetailPage() {
         return;
       }
       const images = [
-        ...artist.portfolioImages.map((p) => ({ imageUrl: p.imageUrl, style: p.style })),
-        { imageUrl: publicUrl, style: null },
+        ...artist.portfolioImages.map((p) => ({ imageUrl: p.imageUrl, style: p.style, category: p.category })),
+        { imageUrl: publicUrl, style: null, category },
       ];
       const result = await updatePortfolio({ id, images });
       if ("error" in result) {
         toast.error("Failed to save portfolio image.");
       } else {
-        toast.success("Image added to portfolio. Pick a style so it shows up under Discover filters.");
+        const label = CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category;
+        toast.success(`${label} added to portfolio. Pick a style so it shows up under Discover filters.`);
       }
     };
     document.body.appendChild(input);
@@ -240,7 +260,7 @@ export function ArtistDetailPage() {
     if (!id || !artist) return;
     const images = artist.portfolioImages
       .filter((p) => p.imageId !== imageId)
-      .map((p) => ({ imageUrl: p.imageUrl, style: p.style }));
+      .map((p) => ({ imageUrl: p.imageUrl, style: p.style, category: p.category }));
     const result = await updatePortfolio({ id, images });
     if ("error" in result) {
       toast.error("Failed to remove image.");
@@ -252,10 +272,24 @@ export function ArtistDetailPage() {
     const images = artist.portfolioImages.map((p) => ({
       imageUrl: p.imageUrl,
       style:    p.imageId === imageId ? style : p.style,
+      category: p.category,
     }));
     const result = await updatePortfolio({ id, images });
     if ("error" in result) {
       toast.error("Failed to update style.");
+    }
+  }
+
+  async function updateImageCategory(imageId: string, category: string | null) {
+    if (!id || !artist) return;
+    const images = artist.portfolioImages.map((p) => ({
+      imageUrl: p.imageUrl,
+      style:    p.style,
+      category: p.imageId === imageId ? category : p.category,
+    }));
+    const result = await updatePortfolio({ id, images });
+    if ("error" in result) {
+      toast.error("Failed to update category.");
     }
   }
 
@@ -277,7 +311,7 @@ export function ArtistDetailPage() {
   if (isError || !artist) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-sm text-destructive">Artist not found.</p>
+        <p className="text-sm text-destructive-text">Artist not found.</p>
         <Button variant="ghost" size="sm" onClick={() => navigate("/artists")}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Artists
@@ -310,10 +344,10 @@ export function ArtistDetailPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setDeleteOpen(true)}
-                className="gap-1.5 text-destructive hover:text-destructive"
+                className="gap-1.5 text-destructive-text hover:text-destructive-text"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Delete
+                {isOwnProfile ? "Stop working as an artist" : "Delete"}
               </Button>
             )}
           </div>
@@ -356,7 +390,7 @@ export function ArtistDetailPage() {
                   className={cn(errors.firstName && "border-destructive")}
                 />
                 {errors.firstName && (
-                  <p className="text-xs text-destructive">{errors.firstName.message}</p>
+                  <p className="text-xs text-destructive-text">{errors.firstName.message}</p>
                 )}
               </div>
 
@@ -368,7 +402,7 @@ export function ArtistDetailPage() {
                   className={cn(errors.lastName && "border-destructive")}
                 />
                 {errors.lastName && (
-                  <p className="text-xs text-destructive">{errors.lastName.message}</p>
+                  <p className="text-xs text-destructive-text">{errors.lastName.message}</p>
                 )}
               </div>
             </div>
@@ -382,7 +416,7 @@ export function ArtistDetailPage() {
                 className={cn(errors.email && "border-destructive")}
               />
               {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
+                <p className="text-xs text-destructive-text">{errors.email.message}</p>
               )}
             </div>
 
@@ -409,7 +443,7 @@ export function ArtistDetailPage() {
                 Used to calculate percentage-based booking deposits.
               </p>
               {errors.hourlyRate && (
-                <p className="text-xs text-destructive">{errors.hourlyRate.message}</p>
+                <p className="text-xs text-destructive-text">{errors.hourlyRate.message}</p>
               )}
             </div>
 
@@ -424,7 +458,7 @@ export function ArtistDetailPage() {
                 Used in the public portfolio URL: /artist/your-slug
               </p>
               {errors.slug && (
-                <p className="text-xs text-destructive">{errors.slug.message}</p>
+                <p className="text-xs text-destructive-text">{errors.slug.message}</p>
               )}
             </div>
 
@@ -447,6 +481,7 @@ export function ArtistDetailPage() {
               <TabsTrigger value="hours"      className="flex-1">Schedule</TabsTrigger>
               <TabsTrigger value="bookings"   className="flex-1">Bookings</TabsTrigger>
               <TabsTrigger value="designs"    className="flex-1">Designs</TabsTrigger>
+              <TabsTrigger value="social"     className="flex-1">Social</TabsTrigger>
             </TabsList>
 
             {/* Profile tab */}
@@ -458,7 +493,7 @@ export function ArtistDetailPage() {
                       <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="truncate">{artist.email}</span>
                     </div>
-                    {canManage && (
+                    {canManage && !isOwnProfile && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -520,20 +555,40 @@ export function ArtistDetailPage() {
             <TabsContent value="portfolio" className="mt-4">
               {canManagePortfolio && (
                 <div className="flex justify-end mb-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    disabled={isUploading || isSavingPf}
-                    onClick={openImagePicker}
-                  >
-                    {isUploading || isSavingPf ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ImagePlus className="h-3.5 w-3.5" />
-                    )}
-                    Add image
-                  </Button>
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={isUploading || isSavingPf}
+                      >
+                        {isUploading || isSavingPf ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ImagePlus className="h-3.5 w-3.5" />
+                        )}
+                        Add image
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {CATEGORY_OPTIONS.map(({ value, label }) => (
+                        <DropdownMenuItem
+                          key={value}
+                          onSelect={() => {
+                            // Deferred (not prevented — a prevented onSelect keeps the dropdown
+                            // open indefinitely): opening the native file picker synchronously
+                            // from a DropdownMenuItem select races the menu's own close/focus-
+                            // return behavior, the same class of overlay-interaction issue
+                            // documented elsewhere in this codebase for Dialog-based overlays.
+                            setTimeout(() => openImagePicker(value), 0);
+                          }}
+                        >
+                          {label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
 
@@ -542,13 +597,14 @@ export function ArtistDetailPage() {
                   <p className="text-sm font-medium">No portfolio images yet</p>
                   {canManagePortfolio && (
                     <p className="text-xs text-muted-foreground">
-                      Upload images and tag each with a style so they appear on the public discover feed and its style filters.
+                      Upload fresh tattoos, healed results, or designs, and tag each with a style so
+                      they appear on the public discover feed and its filters.
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="columns-2 md:columns-3 gap-3 space-y-3">
-                  {artist.portfolioImages.map(({ imageId, imageUrl, style }) => (
+                  {artist.portfolioImages.map(({ imageId, imageUrl, style, category }) => (
                     <div key={imageId} className="relative break-inside-avoid group space-y-1.5">
                       <div className="relative">
                         <img
@@ -568,7 +624,7 @@ export function ArtistDetailPage() {
                                      flex-col items-center justify-center gap-1 text-center px-2"
                         >
                           <p className="text-xs text-muted-foreground">Image unavailable</p>
-                          <p className="text-[10px] text-muted-foreground/60 break-all line-clamp-2">{imageUrl}</p>
+                          <p className="text-[10px] text-muted-foreground break-all line-clamp-2">{imageUrl}</p>
                         </div>
                         {canManagePortfolio && (
                           <button
@@ -582,28 +638,56 @@ export function ArtistDetailPage() {
                         )}
                       </div>
                       {canManagePortfolio ? (
-                        <Select
-                          value={style ?? "none"}
-                          onValueChange={(v) => void updateImageStyle(imageId, v === "none" ? null : v)}
-                        >
-                          <SelectTrigger
-                            aria-label="Tattoo style"
-                            className={cn("h-7 text-xs", !style && "text-muted-foreground")}
+                        <>
+                          <Select
+                            value={category ?? "none"}
+                            onValueChange={(v) => void updateImageCategory(imageId, v === "none" ? null : v)}
                           >
-                            <SelectValue placeholder="No style" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No style</SelectItem>
-                            {STYLE_OPTIONS.map(({ value, label }) => (
-                              <SelectItem key={value} value={value}>{label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : style ? (
-                        <p className="text-xs text-muted-foreground px-1">
-                          {STYLE_OPTIONS.find((s) => s.value === style)?.label ?? style}
-                        </p>
-                      ) : null}
+                            <SelectTrigger
+                              aria-label="Portfolio category"
+                              className={cn("h-7 text-xs", !category && "text-muted-foreground")}
+                            >
+                              <SelectValue placeholder="Uncategorized" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Uncategorized</SelectItem>
+                              {CATEGORY_OPTIONS.map(({ value, label }) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={style ?? "none"}
+                            onValueChange={(v) => void updateImageStyle(imageId, v === "none" ? null : v)}
+                          >
+                            <SelectTrigger
+                              aria-label="Tattoo style"
+                              className={cn("h-7 text-xs", !style && "text-muted-foreground")}
+                            >
+                              <SelectValue placeholder="No style" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No style</SelectItem>
+                              {STYLE_OPTIONS.map(({ value, label }) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
+                      ) : (
+                        <div className="space-y-0.5 px-1">
+                          {category && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category}
+                            </Badge>
+                          )}
+                          {style && (
+                            <p className="text-xs text-muted-foreground">
+                              {STYLE_OPTIONS.find((s) => s.value === style)?.label ?? style}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -695,6 +779,24 @@ export function ArtistDetailPage() {
                 </div>
               )}
             </TabsContent>
+
+            {/* Social tab — Instagram keeps its own dedicated photo-sync UI; the other
+                four platforms are verification-only, managed via SocialLinksCard. */}
+            <TabsContent value="social" className="mt-4 space-y-6">
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Instagram</h3>
+                <InstagramTab artistId={artist.id} canConnect={canManage} canManagePosts={isArtistRole} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Other platforms</h3>
+                <SocialLinksCard
+                  subjectType="Artist"
+                  subjectId={artist.id}
+                  platforms={["TikTok", "Facebook", "X", "YouTube"]}
+                  canManage={canManage}
+                />
+              </div>
+            </TabsContent>
           </Tabs>
         )}
       </main>
@@ -703,8 +805,14 @@ export function ArtistDetailPage() {
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {artist.firstName} {artist.lastName}?</DialogTitle>
-            <DialogDescription>This action cannot be undone.</DialogDescription>
+            <DialogTitle>
+              {isOwnProfile ? "Stop working as an artist?" : `Delete ${artist.firstName} ${artist.lastName}?`}
+            </DialogTitle>
+            <DialogDescription>
+              {isOwnProfile
+                ? "This removes your artist profile — your owner login and studio access are unaffected. This action cannot be undone."
+                : "This action cannot be undone."}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
@@ -722,10 +830,10 @@ export function ArtistDetailPage() {
               {isDeleting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting…
+                  {isOwnProfile ? "Removing…" : "Deleting…"}
                 </>
               ) : (
-                "Delete"
+                isOwnProfile ? "Stop working as an artist" : "Delete"
               )}
             </Button>
           </DialogFooter>

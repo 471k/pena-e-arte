@@ -107,4 +107,47 @@ public class DeleteArtistHandlerTests
 
         await act.Should().NotThrowAsync();
     }
+
+    [Fact]
+    public async Task Handle_ClientsAssignedToDeletedArtist_AreUnassigned()
+    {
+        Artist artist = await SeedArtist("rui@studio.com");
+        Client client = new()
+        {
+            StudioId = _studioId,
+            ArtistId = artist.Id,
+            FirstName = "Ana",
+            LastName = "Silva",
+            Email = "ana@c.com",
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(new DeleteArtistCommand(artist.Id), default);
+
+        _db.Clients.Single(c => c.Id == client.Id).ArtistId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ClientsAssignedToAnotherArtist_AreNotUnassigned()
+    {
+        Artist deletedArtist = await SeedArtist("rui@studio.com");
+        Artist otherArtist = await SeedArtist("other@studio.com");
+        Client client = new()
+        {
+            StudioId = _studioId,
+            ArtistId = otherArtist.Id,
+            FirstName = "Ana",
+            LastName = "Silva",
+            Email = "ana@c.com",
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(new DeleteArtistCommand(deletedArtist.Id), default);
+
+        _db.Clients.Single(c => c.Id == client.Id).ArtistId.Should().Be(otherArtist.Id);
+    }
 }
