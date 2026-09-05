@@ -8,4 +8,6 @@ public record ClientResponse(
     string Email,
     string? Phone,
     DateTime CreatedAt,
-    Guid? UserId);
+    Guid? UserId,
+    Guid? ArtistId = null,
+    string? ArtistName = null);

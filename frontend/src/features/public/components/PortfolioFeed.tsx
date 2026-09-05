@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bookmark, MapPin, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
+import { Badge }    from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ImageWithFallback } from "@/shared/components/ImageWithFallback";
 import { StarRating } from "@/shared/components/ui/StarRating";
@@ -22,6 +23,8 @@ import {
   useUnsaveImageMutation,
 } from "../savedImagesApi";
 import { ReviewSection } from "./ReviewSection";
+import { CategoryTabs } from "./CategoryTabs";
+import { CATEGORIES } from "./categoryConstants";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -221,6 +224,12 @@ function PortfolioLightbox({ images, currentIndex, token, onClose, onNavigate }:
                 </Link>
                 <p className="text-sm text-muted-foreground">{image.studioName}</p>
 
+                {image.category && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {CATEGORIES.find((c) => c.value === image.category)?.label ?? image.category}
+                  </Badge>
+                )}
+
                 {image.style && (
                   <span className="inline-block text-[10px] font-medium uppercase tracking-wider
                                    px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
@@ -305,8 +314,8 @@ function PortfolioTile({ image, isSaved, onOpen, onToggleSave, showBookmark }: T
                    flex flex-col items-center justify-center gap-1 text-center px-3"
         aria-label={`Image unavailable — ${image.artistName}`}
       >
-        <p className="text-xs text-muted-foreground/70">Image unavailable</p>
-        <p className="text-[10px] text-muted-foreground/50">{image.artistName}</p>
+        <p className="text-xs text-muted-foreground">Image unavailable</p>
+        <p className="text-[10px] text-muted-foreground">{image.artistName}</p>
       </div>
     );
   }
@@ -349,7 +358,7 @@ function PortfolioTile({ image, isSaved, onOpen, onToggleSave, showBookmark }: T
               <span className="text-white/60 text-[10px]">({image.imageReviewCount})</span>
             </div>
           )}
-          <span className="text-violet-300 text-xs font-medium">View tattoo →</span>
+          <span className="text-violet-800 dark:text-violet-300 text-xs font-medium">View tattoo →</span>
         </div>
       </button>
 
@@ -461,6 +470,7 @@ export function PortfolioFeed({
 }: PortfolioFeedProps) {
   const [page,          setPage]         = useState(1);
   const [activeStyle,   setActiveStyle]  = useState("");
+  const [activeCategory, setActiveCategory] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [allImages,     setAllImages]    = useState<PortfolioImageResponse[]>([]);
 
@@ -496,6 +506,7 @@ export function PortfolioFeed({
     radiusKm: effectiveRadiusKm,
     page,
     style:    activeStyle || undefined,
+    category: activeCategory || undefined,
     search:   keyword.trim() || undefined,
   };
 
@@ -533,6 +544,12 @@ export function PortfolioFeed({
     setAllImages([]);
   }
 
+  function handleCategoryChange(category: string) {
+    setActiveCategory(category);
+    setPage(1);
+    setAllImages([]);
+  }
+
   function handleToggleSave(imageId: string, isSaved: boolean) {
     if (!userId) return;
     if (isSaved) void unsaveImage(imageId);
@@ -541,6 +558,7 @@ export function PortfolioFeed({
 
   if (isLoading && page === 1) return (
     <div className="space-y-4">
+      <CategoryTabs activeCategory={activeCategory} onChange={handleCategoryChange} />
       <StyleChips activeStyle={activeStyle} onChange={handleStyleChange} />
       <PortfolioSkeleton />
     </div>
@@ -549,6 +567,7 @@ export function PortfolioFeed({
   if (isError && allImages.length === 0) {
     return (
       <div className="space-y-4">
+        <CategoryTabs activeCategory={activeCategory} onChange={handleCategoryChange} />
         <StyleChips activeStyle={activeStyle} onChange={handleStyleChange} />
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <div className="rounded-full bg-destructive/10 p-6">
@@ -571,7 +590,7 @@ export function PortfolioFeed({
           <button
             type="button"
             onClick={() => { setPage(1); setAllImages([]); }}
-            className="text-sm text-violet-400 hover:text-violet-300 underline
+            className="text-sm text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 underline
                        underline-offset-4 transition-colors"
           >
             Retry
@@ -584,6 +603,7 @@ export function PortfolioFeed({
   if (allImages.length === 0 && !isLoading) {
     return (
       <div className="space-y-4">
+        <CategoryTabs activeCategory={activeCategory} onChange={handleCategoryChange} />
         <StyleChips activeStyle={activeStyle} onChange={handleStyleChange} />
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <div className="rounded-full bg-muted/40 p-6">
@@ -605,14 +625,18 @@ export function PortfolioFeed({
                 ? `No tattoos matching "${keyword.trim()}"${useLocationScope ? ` in ${locationLabel}` : ""} found. Try a different search term${useLocationScope ? " or a wider area" : ""}.`
                 : nearOnly
                   ? "No artists with portfolio images found nearby. Try a larger radius or turn off the location filter."
-                  : activeStyle
-                    ? `No ${activeStyle} tattoos found. Try a different style or browse all.`
-                    : "Be among the first artists to show your work here."}
+                  : activeStyle && activeCategory
+                    ? `No ${activeStyle} ${CATEGORIES.find((c) => c.value === activeCategory)?.label.toLowerCase()} found. Try a different style or category, or browse all.`
+                    : activeStyle
+                      ? `No ${activeStyle} tattoos found. Try a different style or browse all.`
+                      : activeCategory
+                        ? `No ${CATEGORIES.find((c) => c.value === activeCategory)?.label.toLowerCase()} found. Try a different filter or browse all.`
+                        : "Be among the first artists to show your work here."}
             </p>
           </div>
           <Link
             to="/register"
-            className="text-sm text-violet-400 hover:text-violet-300 underline
+            className="text-sm text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 underline
                        underline-offset-4 transition-colors"
           >
             Register your studio →
@@ -626,6 +650,7 @@ export function PortfolioFeed({
 
   return (
     <div className="space-y-4">
+      <CategoryTabs activeCategory={activeCategory} onChange={handleCategoryChange} />
       <StyleChips activeStyle={activeStyle} onChange={handleStyleChange} />
 
       <MasonryGrid

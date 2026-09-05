@@ -12,7 +12,13 @@
   --color-secondary: hsl(240 4.8% 95.9%);
   --color-secondary-foreground: hsl(240 5.9% 10%);
   --color-muted: hsl(240 4.8% 95.9%);
-  --color-muted-foreground: hsl(240 3.8% 46.1%);
+  /* 42% lightness, not shadcn's stock 46.1% — measured 2026-09-05: at 46.1% this text
+     computes to 4.40:1 against bg-muted's own 95.9%-lightness background (just under
+     WCAG AA's 4.5:1), and 3.98:1 against the further-tinted bg-emerald-950/10 card
+     background used for e.g. MyStudiosPage's "current studio" card. 42% clears both
+     (5.10:1 and 4.62:1 respectively) with real margin. Dark mode's muted-foreground
+     already passes AA at its existing value, untouched. */
+  --color-muted-foreground: hsl(240 3.8% 42%);
   --color-accent: hsl(240 4.8% 95.9%);
   --color-accent-foreground: hsl(240 5.9% 10%);
   --color-destructive: hsl(0 84.2% 60.2%);
@@ -24,10 +30,23 @@
   --color-input: hsl(240 5.9% 58%);
   --color-ring: hsl(240 5.9% 10%);
   --radius: 0.5rem;
+  --font-sans: "Fraunces", sans-serif;
 }
 
+/* `@theme` only registers the DEFAULT (light) token values above and generates the
+   corresponding utility classes at build time — it cannot itself be conditionally scoped.
+   Tailwind v4 silently collapses a `@theme` block nested inside `@media` into the same
+   unconditional `:root` declaration as the outer one (last one in the source wins), which
+   means an EARLIER version of this dark-mode block that wrapped its overrides in `@theme`
+   compiled to a single hardcoded dark theme for every visitor regardless of their real
+   `prefers-color-scheme` — confirmed against the actual built CSS output (`dist/assets/*.css`
+   had exactly one `--color-background` declaration, unconditionally `#09090b`) while
+   fixing the accessibility.spec.ts contrast bugs this caused, 2026-09-05. The fix: override
+   the already-registered CSS custom properties directly on `:root` inside a plain `@media`
+   block — that's normal CSS variable cascade, doesn't need `@theme` a second time, and
+   actually respects the media query at runtime. */
 @media (prefers-color-scheme: dark) {
-  @theme {
+  :root {
     --color-background: hsl(240 10% 3.9%);
     --color-foreground: hsl(0 0% 98%);
     --color-card: hsl(240 10% 3.9%);
@@ -85,7 +104,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Fraunces", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

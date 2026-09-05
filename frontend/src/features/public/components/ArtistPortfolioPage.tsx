@@ -27,6 +27,12 @@ import { useStructuredData }       from "@/shared/utils/useStructuredData";
 import { ReviewSection }           from "./ReviewSection";
 import { PublicPageHeader }        from "./PublicPageHeader";
 import { useEffect } from "react";
+import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
+import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
+import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
+import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
+import { CategoryTabs } from "./CategoryTabs";
+import { CATEGORIES } from "./categoryConstants";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
 
@@ -122,7 +128,7 @@ function SpecializationChips({ value }: { value: string }) {
         <span
           key={tag}
           className="text-xs px-2.5 py-1 rounded-full
-                     bg-muted/60 text-muted-foreground/90
+                     bg-muted/60 text-muted-foreground
                      border border-border/50"
         >
           {tag}
@@ -148,7 +154,7 @@ function RatingSummary({
         <button
           type="button"
           onClick={onWriteReview}
-          className="text-xs text-violet-400 hover:text-violet-300 transition-colors
+          className="text-xs text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors
                      underline underline-offset-2"
         >
           Be the first to review
@@ -165,7 +171,7 @@ function RatingSummary({
       <button
         type="button"
         onClick={onWriteReview}
-        className="text-xs text-violet-400 hover:text-violet-300 transition-colors
+        className="text-xs text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors
                    underline underline-offset-2 ml-auto"
       >
         Leave a review
@@ -405,6 +411,9 @@ export function ArtistPortfolioPage() {
   const reviewsRef     = useRef<HTMLDivElement>(null);
   const [lightboxItem, setLightboxItem] = useState<LightboxItem | null>(null);
   const [activeStyle,  setActiveStyle]  = useState<string>("");
+  const [activeCategory, setActiveCategory] = useState<string>("");
+  const [reportOpen,   setReportOpen]   = useState(false);
+  const canFileReport  = useIsClientRole();
   const navigate       = useNavigate();
   const location       = useLocation();
 
@@ -432,6 +441,12 @@ export function ArtistPortfolioPage() {
     return STYLES.filter(({ value }) => seen.has(value));
   }, [artist]);
 
+  const availableCategories = useMemo(() => {
+    if (!artist) return [];
+    const seen = new Set(artist.portfolioImages.map((p) => p.category).filter(Boolean));
+    return CATEGORIES.filter(({ value }) => value !== "" && seen.has(value));
+  }, [artist]);
+
   function scrollToReviews() {
     reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -452,8 +467,12 @@ export function ArtistPortfolioPage() {
     );
   }
 
-  const bookUrl = `/book?studio=${artist.studioSlug}&artist=${artist.slug}`;
-  const ctaUrl  = token ? bookUrl : `/login?redirect=${encodeURIComponent(bookUrl)}`;
+  // Guest checkout (Decision #1/#13, 2026-08-31): /book itself branches on auth state, so an
+  // unauthenticated visitor goes straight there instead of a forced /login hop — mirrors the
+  // fix already applied to StudioPortfolioPage's own booking CTA. Found via manual browser
+  // verification, 2026-09-02: this page's CTA was never updated when the guest checkout
+  // feature shipped, so every anonymous visitor landing here was forced through login first.
+  const ctaUrl = `/book?studio=${artist.studioSlug}&artist=${artist.slug}`;
   const studioSlug = artist.studioSlug;
 
   function handleBack() {
@@ -461,11 +480,13 @@ export function ArtistPortfolioPage() {
     else navigate(`/s/${studioSlug}`);
   }
 
-  const visibleImages = activeStyle
-    ? artist.portfolioImages.filter((p) => p.style === activeStyle)
-    : artist.portfolioImages;
+  const visibleImages = artist.portfolioImages.filter((p) =>
+    (!activeStyle || p.style === activeStyle) &&
+    (!activeCategory || p.category === activeCategory)
+  );
 
   const activeStyleLabel = STYLES.find(({ value }) => value === activeStyle)?.label ?? activeStyle;
+  const activeCategoryLabel = CATEGORIES.find(({ value }) => value === activeCategory)?.label ?? activeCategory;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -541,7 +562,7 @@ export function ArtistPortfolioPage() {
             />
 
             {artist.bio && (
-              <p className="text-sm text-muted-foreground/90 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                 {artist.bio}
               </p>
             )}
@@ -557,6 +578,30 @@ export function ArtistPortfolioPage() {
                   €{artist.hourlyRate}/hr
                 </span>
               </p>
+            )}
+
+            {artist.socialLinks.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {artist.socialLinks.map((link) => {
+                  const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? AtSign;
+                  const label = SOCIAL_PLATFORM_LABEL[link.platform] ?? link.platform;
+                  return (
+                    <a
+                      key={link.platform}
+                      href={link.profileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-muted-foreground
+                                 hover:text-foreground transition-colors min-h-[44px]"
+                      aria-label={`${artist.name} on ${label}`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      @{link.handle}
+                      {link.isVerified && <VerifiedSocialBadge platform={label} />}
+                    </a>
+                  );
+                })}
+              </div>
             )}
 
             {artist.showBookingCta && (
@@ -601,6 +646,15 @@ export function ArtistPortfolioPage() {
                 )}
               </div>
 
+              {availableCategories.length > 1 && (
+                <CategoryTabs
+                  activeCategory={activeCategory}
+                  onChange={setActiveCategory}
+                  categories={[{ value: "", label: "All" }, ...availableCategories]}
+                  className="mb-4"
+                />
+              )}
+
               {availableStyles.length > 1 && (
                 <div
                   role="group"
@@ -632,7 +686,15 @@ export function ArtistPortfolioPage() {
                 images={visibleImages}
                 artistName={artist.name}
                 onImageClick={(item) => setLightboxItem(item)}
-                emptyMessage={activeStyle ? `No ${activeStyleLabel} images yet.` : undefined}
+                emptyMessage={
+                  activeStyle && activeCategory
+                    ? `No ${activeStyleLabel} ${activeCategoryLabel.toLowerCase()} yet.`
+                    : activeStyle
+                      ? `No ${activeStyleLabel} images yet.`
+                      : activeCategory
+                        ? `No ${activeCategoryLabel.toLowerCase()} yet.`
+                        : undefined
+                }
               />
             </section>
 
@@ -662,11 +724,32 @@ export function ArtistPortfolioPage() {
             <div ref={reviewsRef}>
               <ReviewSection slug={artist.slug} target="artist" token={token} />
             </div>
+
+            {canFileReport && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setReportOpen(true)}
+                  className="text-xs text-muted-foreground hover:text-muted-foreground
+                             underline underline-offset-2 transition-colors"
+                >
+                  Report this artist
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <footer className="py-4 text-center text-xs text-foreground/50 border-t mt-auto">
+      {canFileReport && (
+        <ConductReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          target={{ kind: "artist", slug: artist.slug, name: artist.name }}
+        />
+      )}
+
+      <footer className="py-4 text-center text-xs text-foreground/65 border-t mt-auto">
         <a
           href="https://tattooos.co"
           target="_blank"

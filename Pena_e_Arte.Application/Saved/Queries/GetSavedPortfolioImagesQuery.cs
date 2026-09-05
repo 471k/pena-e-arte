@@ -48,6 +48,7 @@ public class GetSavedPortfolioImagesHandler(IAppDbContext db)
                     ImageId: img.Id,
                     ImageUrl: img.ImageUrl,
                     Style: img.Style,
+                    Category: img.Category,
                     ArtistName: $"{artist.FirstName} {artist.LastName}".Trim(),
                     ArtistSlug: artist.Slug!,
                     StudioName: studio.Name,

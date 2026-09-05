@@ -11,4 +11,8 @@ public interface IJobScheduler
     void ScheduleDesignRevisionTimeout(Guid revisionId, DateTimeOffset enqueueAt);
     void TriggerIndustryReportNow();
     void EnqueueArtistInvite(string email, string firstName, Guid studioId);
+
+    string ScheduleManualReminder(Guid manualReminderId, DateTimeOffset sendAt);
+    void CancelJob(string jobId);
+    void EnqueueNewMessageEmail(Guid chatMessageId);
 }

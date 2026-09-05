@@ -215,7 +215,7 @@ export function FeedbackInboxPage() {
 
         {isError && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <p className="text-sm text-destructive">Failed to load feedback.</p>
+            <p className="text-sm text-destructive-text">Failed to load feedback.</p>
             <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
           </div>
         )}

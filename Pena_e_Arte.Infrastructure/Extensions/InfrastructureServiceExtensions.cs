@@ -6,12 +6,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.Infrastructure.Services.MailKit;
+using Pena_e_Arte.Infrastructure.Services.Social;
 using Resend;
 using StackExchange.Redis;
 using Twilio;
@@ -67,14 +69,25 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IConnectionMultiplexer>(
             ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
 
-        services.AddHangfire(config => config
+        services.AddHangfire((serviceProvider, config) => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             .UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
             {
-                TablesPrefix = "hangfire_"
-            })));
+                TablesPrefix = "hangfire_",
+                // Hangfire.MySqlStorage 2.0.3's own installer defines hangfire_DistributedLock
+                // with NO primary key at all — DigitalOcean Managed MySQL enforces
+                // sql_require_primary_key=ON by default (most local/CI MySQL doesn't), which
+                // rejects that exact CREATE TABLE deterministically, every time, leaving the
+                // schema permanently stuck 3 tables short. Invisible to any test suite whose
+                // MySQL uses default settings. The corrected schema (a real migration, not this
+                // library) now owns table creation — see
+                // Migrations/20260904210000_AddHangfireSchema.cs. Found and fixed 2026-09-04.
+                PrepareSchemaIfNecessary = false
+            }))
+            .UseFilter(new HangfireJobFailureLogFilter(
+                serviceProvider.GetRequiredService<ILogger<HangfireJobFailureLogFilter>>())));
         services.AddHangfireServer();
 
         services.AddSignalR();
@@ -111,14 +124,25 @@ public static class InfrastructureServiceExtensions
             services.AddSingleton<IAmazonS3>(
                 new AmazonS3Client(new BasicAWSCredentials(r2Opts.AccessKeyId, r2Opts.SecretAccessKey), s3Config));
             services.AddSingleton<IR2Service, R2Service>();
+
+            // Deliberately a SEPARATE credential from the primary IAmazonS3 above — see
+            // R2Options.BackupAccessKeyId's comment for why (R2ExportService downloads via the
+            // primary client and uploads via this one, so a misconfigured/compromised backup
+            // token can never touch the app's actual production storage path).
+            services.AddKeyedSingleton<IAmazonS3>("r2-backup",
+                new AmazonS3Client(new BasicAWSCredentials(r2Opts.BackupAccessKeyId, r2Opts.BackupSecretAccessKey), s3Config));
+            services.AddSingleton<IR2ExportService, R2ExportService>();
         }
         else
         {
             services.AddSingleton<IR2Service, NullR2Service>();
+            services.AddSingleton<IR2ExportService, NullR2ExportService>();
         }
+        services.AddTransient<R2ExportJob>();
 
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
         services.AddTransient<RetentionPurgeJob>();
+        services.AddTransient<GuestPendingUploadCleanupJob>();
 
         // Secrets backend (Vault by default — see docs/infra/ADR-0002-secrets-management.md).
         // Construction does not connect; a call resolves against Vault:Address at use time and
@@ -149,6 +173,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
         services.AddScoped<IPlanLimitService, PlanLimitService>();
+        services.AddScoped<IManualReminderQuotaService, ManualReminderQuotaService>();
         services.AddSingleton<IEmailRenderer, EmailRenderer>();
         services.AddSingleton<IAppSettings, AppSettings>();
 
@@ -158,6 +183,35 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IInstagramStateSigner, InstagramStateSigner>();
         services.AddScoped<IInstagramService, InstagramService>();
         services.AddTransient<InstagramSyncJob>();
+
+        // Social verification (Instagram/TikTok/Facebook/X/YouTube) — config-gated, see
+        // ISocialOAuthProvider.IsConfigured. Instagram's provider/checker wrap the
+        // InstagramOptions/IInstagramService already registered above rather than
+        // duplicating them.
+        services.Configure<SocialSigningOptions>(configuration.GetSection(SocialSigningOptions.Section));
+        services.Configure<TikTokOptions>(configuration.GetSection(TikTokOptions.Section));
+        services.Configure<FacebookOptions>(configuration.GetSection(FacebookOptions.Section));
+        services.Configure<XOptions>(configuration.GetSection(XOptions.Section));
+        services.Configure<YouTubeOptions>(configuration.GetSection(YouTubeOptions.Section));
+        services.AddHttpClient("TikTok");
+        services.AddHttpClient("Facebook");
+        services.AddHttpClient("X");
+        services.AddHttpClient("YouTube");
+        services.AddSingleton<ISocialOAuthStateSigner, SocialOAuthStateSigner>();
+
+        services.AddScoped<ISocialOAuthProvider, InstagramSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProvider, TikTokSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProvider, FacebookSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProvider, XSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProvider, YouTubeSocialOAuthProvider>();
+        services.AddScoped<ISocialOAuthProviderFactory, SocialOAuthProviderFactory>();
+
+        services.AddScoped<ISocialBioChecker, InstagramBioChecker>();
+        services.AddScoped<ISocialBioChecker, TikTokBioChecker>();
+        services.AddScoped<ISocialBioChecker, FacebookBioChecker>();
+        services.AddScoped<ISocialBioChecker, XBioChecker>();
+        services.AddScoped<ISocialBioChecker, YouTubeBioChecker>();
+        services.AddScoped<ISocialBioCheckerFactory, SocialBioCheckerFactory>();
 
         services.Configure<GoogleOptions>(configuration.GetSection(GoogleOptions.Section));
         services.Configure<AppleOptions>(configuration.GetSection(AppleOptions.Section));

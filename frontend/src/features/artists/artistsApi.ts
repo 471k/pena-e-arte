@@ -5,6 +5,7 @@ export interface ArtistPortfolioImage {
   imageId:  string;
   imageUrl: string;
   style:    string | null;
+  category: string | null;
 }
 
 export interface ArtistResponse {
@@ -28,6 +29,13 @@ export interface CreateArtistRequest {
   firstName:       string;
   lastName:        string;
   email:           string;
+  specializations: string | null;
+  hourlyRate:      number | null;
+}
+
+export interface CreateOwnArtistProfileRequest {
+  firstName:       string;
+  lastName:        string;
   specializations: string | null;
   hourlyRate:      number | null;
 }
@@ -101,6 +109,10 @@ export const artistsApi = createApi({
       query: (body) => ({ url: "artists", method: "POST", body }),
       invalidatesTags: ["Artist"],
     }),
+    createOwnArtistProfile: builder.mutation<ArtistResponse, CreateOwnArtistProfileRequest>({
+      query: (body) => ({ url: "artists/me", method: "POST", body }),
+      invalidatesTags: ["Artist"],
+    }),
     getArtists: builder.query<ArtistResponse[], string | undefined>({
       query: (search) => ({
         url: "artists",
@@ -118,7 +130,7 @@ export const artistsApi = createApi({
     }),
     updateArtistPortfolio: builder.mutation<
       ArtistResponse,
-      { id: string; images: { imageUrl: string; style: string | null }[] }
+      { id: string; images: { imageUrl: string; style: string | null; category: string | null }[] }
     >({
       query: ({ id, images }) => ({
         url:    `artists/${id}/portfolio-images`,
@@ -207,6 +219,7 @@ export const artistsApi = createApi({
 export const {
   useGetMyArtistQuery,
   useCreateArtistMutation,
+  useCreateOwnArtistProfileMutation,
   useGetArtistsQuery,
   useGetArtistByIdQuery,
   useUpdateArtistMutation,

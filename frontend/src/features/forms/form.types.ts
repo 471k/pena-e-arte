@@ -10,10 +10,11 @@ export interface IntakeFormResponse {
 }
 
 export interface SubmitIntakeFormRequest {
-  clientId:      string;
-  appointmentId: string | null;
-  formData:      string;
-  fileUrl:       string | null;
+  clientId:        string;
+  appointmentId:   string | null;
+  formData:        string;
+  fileUrl:         string | null;
+  consentAccepted: boolean;
 }
 
 export interface GetIntakeFormsParams {

@@ -5,7 +5,7 @@ export function getClientTourSteps(hasMultipleStudios: boolean): TourStep[] {
     {
       targetSelector: '[data-tour="client-book-nav"]',
       title: "Book an appointment",
-      body: "Request a tattoo appointment here — pick an artist, a date, and how long the session should be.",
+      body: "Request a tattoo appointment here — pick an artist, a date, and how long the session should be, or let the studio choose your artist for you.",
     },
   ];
 
@@ -18,6 +18,11 @@ export function getClientTourSteps(hasMultipleStudios: boolean): TourStep[] {
   }
 
   steps.push(
+    {
+      targetSelector: '[data-tour="client-messages-nav"]',
+      title: "Message your artist or the studio",
+      body: "Send a real-time message to your assigned or booked artist, or to the studio owner, right from here.",
+    },
     {
       targetSelector: '[data-tour="client-designs-nav"]',
       title: "Your designs",

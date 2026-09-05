@@ -125,4 +125,129 @@ public class CreateArtistHandlerTests
 
         await _planLimits.DidNotReceiveWithAnyArgs().InvalidateUsageCacheAsync(default, default);
     }
+
+    // ── Cross-tenant account reuse guard (2026-08-21) ──────────────────────────────
+
+    [Fact]
+    public async Task Handle_EmailBelongsToExistingOwnerAccount_ThrowsBusinessRuleViolationException()
+    {
+        const string email = "owner-of-another-studio@example.com";
+        Guid existingOwnerUserId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(existingOwnerUserId);
+        _identity.GetUserRolesAsync(existingOwnerUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "owner" });
+        _identity.GetTenantIdsAsync(existingOwnerUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { Guid.NewGuid() }); // owner's OWN studio — never this one
+
+        Func<Task> act = () => CreateSut()
+            .Handle(new CreateArtistCommand(new("New", "Artist", email, null)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage($"*{email}*");
+    }
+
+    [Fact]
+    public async Task Handle_EmailBelongsToExistingOwnerAccount_DoesNotPersistArtist()
+    {
+        const string email = "owner-of-another-studio@example.com";
+        Guid existingOwnerUserId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(existingOwnerUserId);
+        _identity.GetUserRolesAsync(existingOwnerUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "owner" });
+        _identity.GetTenantIdsAsync(existingOwnerUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { Guid.NewGuid() });
+
+        try { await CreateSut().Handle(new CreateArtistCommand(new("New", "Artist", email, null)), default); } catch { }
+
+        _db.Artists.Should().NotContain(a => a.Email == email);
+    }
+
+    [Fact]
+    public async Task Handle_EmailBelongsToExistingOwnerAccount_DoesNotEnqueueInviteEmail()
+    {
+        const string email = "owner-of-another-studio@example.com";
+        Guid existingOwnerUserId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(existingOwnerUserId);
+        _identity.GetUserRolesAsync(existingOwnerUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "owner" });
+        _identity.GetTenantIdsAsync(existingOwnerUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { Guid.NewGuid() });
+
+        try { await CreateSut().Handle(new CreateArtistCommand(new("New", "Artist", email, null)), default); } catch { }
+
+        _scheduler.DidNotReceiveWithAnyArgs().EnqueueArtistInvite(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_EmailBelongsToArtistAtDifferentStudio_ThrowsBusinessRuleViolationException()
+    {
+        const string email = "artist-at-another-studio@example.com";
+        Guid existingArtistUserId = Guid.NewGuid();
+        Guid otherStudioId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(existingArtistUserId);
+        _identity.GetUserRolesAsync(existingArtistUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "artist" });
+        _identity.GetTenantIdsAsync(existingArtistUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { otherStudioId }); // "artist" role, but for a DIFFERENT studio
+
+        Func<Task> act = () => CreateSut()
+            .Handle(new CreateArtistCommand(new("New", "Artist", email, null)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage($"*{email}*");
+    }
+
+    [Fact]
+    public async Task Handle_EmailBelongsToClientAccount_ThrowsBusinessRuleViolationException()
+    {
+        const string email = "client@example.com";
+        Guid existingClientUserId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(existingClientUserId);
+        _identity.GetUserRolesAsync(existingClientUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "client" });
+        _identity.GetTenantIdsAsync(existingClientUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { _studioId }); // even a client of THIS studio must not become its artist
+
+        Func<Task> act = () => CreateSut()
+            .Handle(new CreateArtistCommand(new("New", "Artist", email, null)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage($"*{email}*");
+    }
+
+    [Fact]
+    public async Task Handle_EmailBelongsToOrphanedArtistForThisStudio_ReusesExistingUserIdAndSucceeds()
+    {
+        const string email = "orphaned@studio.com";
+        Guid orphanedUserId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(orphanedUserId);
+        _identity.GetUserRolesAsync(orphanedUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "artist" });
+        _identity.GetTenantIdsAsync(orphanedUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { _studioId }); // artist role, SAME studio — genuine recovery case
+
+        ArtistResponse result = await CreateSut()
+            .Handle(new CreateArtistCommand(new("Recovered", "Artist", email, null)), default);
+
+        result.UserId.Should().Be(orphanedUserId);
+        _db.Artists.Should().ContainSingle(a => a.Email == email && a.UserId == orphanedUserId);
+    }
 }

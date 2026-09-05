@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Artists;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -8,7 +9,6 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
-using Pena_e_Arte.Domain.Utilities;
 
 namespace Pena_e_Arte.Application.Artists.Commands;
 
@@ -34,15 +34,7 @@ public class CreateArtistHandler(
         if (exists)
             throw new BusinessRuleViolationException($"An artist with email '{req.Email}' already exists in this studio.");
 
-        string baseSlug = SlugHelper.GenerateSlug($"{req.FirstName} {req.LastName}");
-        string slug = baseSlug;
-        int counter = 2;
-        // IgnoreQueryFilters: slug must be globally unique for public portfolio URLs
-        while (await db.Artists.IgnoreQueryFilters().AnyAsync(a => a.Slug == slug && a.DeletedAt == null, ct))
-        {
-            slug = $"{baseSlug}-{counter}";
-            counter++;
-        }
+        string slug = await ArtistSlugHelper.GenerateUniqueSlugAsync(db, req.FirstName, req.LastName, ct);
 
         // Create the Identity login account for the artist
         string tempPassword = $"Tmp!{Guid.NewGuid():N}";
@@ -55,11 +47,34 @@ public class CreateArtistHandler(
             if (!emailTaken)
                 throw new BusinessRuleViolationException($"Failed to create artist account: {string.Join(", ", errors)}");
 
-            // An Identity user exists with no linked artist (orphaned from a previous failed attempt).
-            // Recover by reusing the existing user's ID.
             Guid? existingId = await identity.GetUserIdByEmailAsync(req.Email, ct);
             if (existingId is null)
                 throw new BusinessRuleViolationException($"The email '{req.Email}' is already registered to another account. Each artist must have a unique email address.");
+
+            // The only safe reason for this email to already exist in Identity is a genuinely
+            // orphaned artist account: a previous CreateArtistCommand call for THIS studio got
+            // as far as creating the Identity user (already holding the "artist" role and this
+            // studio's tenant_id claim — see CreateUserAsync) but never made it to persisting
+            // the Artist row below, e.g. a crash between identity.CreateUserAsync and
+            // SaveChangesAsync. That case is safe to recover by reusing the existing user's ID.
+            //
+            // Any other case — the email belongs to an owner, client, or issuer account, or to
+            // an artist who already belongs to a DIFFERENT studio — must be rejected outright.
+            // Silently reusing that account's ID here would grant it artist access to this
+            // tenant's data without the account holder's consent or knowledge, violating tenant
+            // isolation (CLAUDE.md Non-Negotiable Rule #1). Only the "client" role supports
+            // belonging to more than one studio (see GenerateJwt's tenant-claim comment in
+            // IdentityService and architecture.md's "Multi-Studio Client View" entry) — artist
+            // and owner accounts are single-studio by design, so any cross-studio match here is
+            // always wrong.
+            IReadOnlyList<string> existingRoles = await identity.GetUserRolesAsync(existingId.Value, ct);
+            IReadOnlyList<Guid> existingTenantIds = await identity.GetTenantIdsAsync(existingId.Value, ct);
+            bool isOrphanedArtistForThisStudio =
+                existingRoles.Contains("artist") && existingTenantIds.Contains(tenant.StudioId);
+
+            if (!isOrphanedArtistForThisStudio)
+                throw new BusinessRuleViolationException(
+                    $"The email '{req.Email}' already belongs to an existing account and cannot be invited as an artist here.");
 
             userId = existingId.Value;
         }
@@ -93,7 +108,7 @@ public class CreateArtistHandler(
         new(a.Id, a.StudioId, a.UserId, a.FirstName, a.LastName, a.Email, a.Specializations, a.HourlyRate,
             a.IsActive, a.AvatarUrl,
             a.Portfolio.OrderByDescending(p => p.CreatedAt)
-                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl, p.Style))
+                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl, p.Style, p.Category))
                 .ToList(),
             a.Slug, a.CreatedAt, a.UpdatedAt);
 }

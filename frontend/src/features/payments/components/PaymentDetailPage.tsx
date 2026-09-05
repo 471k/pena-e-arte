@@ -77,7 +77,7 @@ function RefundSection({ paymentId }: { paymentId: string }) {
         variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
-        className="gap-1.5 text-destructive hover:text-destructive"
+        className="gap-1.5 text-destructive-text hover:text-destructive-text"
       >
         <RotateCcw className="h-3.5 w-3.5" />
         Refund

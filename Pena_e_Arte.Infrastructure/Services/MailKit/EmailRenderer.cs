@@ -12,6 +12,9 @@ public class EmailRenderer : IEmailRenderer
     private static readonly string _appointmentCreatedClientTemplate =
         LoadEmbeddedTemplate("AppointmentCreatedClient.html");
 
+    private static readonly string _appointmentArtistAssignedTemplate =
+        LoadEmbeddedTemplate("AppointmentArtistAssigned.html");
+
     private static readonly string _appointmentCreatedStudioTemplate =
         LoadEmbeddedTemplate("AppointmentCreatedStudio.html");
 
@@ -62,6 +65,25 @@ public class EmailRenderer : IEmailRenderer
         };
 
         return TemplateRenderer.Render(_confirmationTemplate, vars);
+    }
+
+    public string RenderAppointmentArtistAssigned(
+        string clientFirstName,
+        string artistFullName,
+        DateTime date,
+        string studioName,
+        bool showBranding)
+    {
+        Dictionary<string, string> vars = new()
+        {
+            ["client_first_name"] = clientFirstName,
+            ["artist_full_name"] = artistFullName,
+            ["appointment_date"] = date.ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture),
+            ["studio_name"] = studioName,
+            ["show_branding"] = showBranding.ToString().ToLowerInvariant(),
+        };
+
+        return TemplateRenderer.Render(_appointmentArtistAssignedTemplate, vars);
     }
 
     public string RenderAppointmentCreatedClient(
@@ -275,6 +297,30 @@ public class EmailRenderer : IEmailRenderer
         </html>
         """;
 
+    public string RenderStudioJoinInvite(string studioName, string city, string manageInvitesUrl) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>{System.Net.WebUtility.HtmlEncode(studioName)} wants you to join</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">You've been invited to join a studio</h1>
+          <p><strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>
+          {(string.IsNullOrWhiteSpace(city) ? "" : $"in {System.Net.WebUtility.HtmlEncode(city)} ")}
+          has invited you to join as an artist.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(manageInvitesUrl)}"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+            Log in to review this invite
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            Accepting closes your current solo studio (your data is kept, but it becomes
+            inaccessible to you as an owner) and makes you an artist at the new studio instead.
+            This invite expires in 14 days. If you were not expecting this, you can ignore this
+            email or decline it after logging in.
+          </p>
+        </body>
+        </html>
+        """;
+
     public string RenderPasswordReset(string resetUrl) =>
         $"""
         <!DOCTYPE html>
@@ -289,6 +335,51 @@ public class EmailRenderer : IEmailRenderer
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
             This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.
+          </p>
+        </body>
+        </html>
+        """;
+
+    public string RenderGuestBookingWelcome(string studioName, string setPasswordUrl, string confirmEmailUrl) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Your booking at {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Your booking request was sent!</h1>
+          <p><strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong> has received your booking request and
+          will confirm it soon. We've also created an account for you so you can manage this booking.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+            Set your password
+          </a>
+          <p>You can also confirm your email address separately:</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(confirmEmailUrl)}"
+             style="display:inline-block;background:#f3f4f6;color:#111827;padding:10px 20px;border-radius:6px;text-decoration:none;margin:8px 0">
+            Confirm email
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            Lost this email? Use "Forgot password" on the sign-in page any time with this email address to
+            regain access to your account.
+          </p>
+        </body>
+        </html>
+        """;
+
+    public string RenderGuestBookingEmailCollision(string studioName) =>
+        $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>Booking attempt at {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Booking attempt at {System.Net.WebUtility.HtmlEncode(studioName)}</h1>
+          <p>Someone tried to book an appointment at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>
+          using this email address, which already has an account on TattooOS.</p>
+          <p>If that was you, please sign in and book from there — your existing account already has
+          everything needed to manage a booking.</p>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            If you don't recognize this activity, no action is needed — nothing was booked or changed
+            on your account.
           </p>
         </body>
         </html>

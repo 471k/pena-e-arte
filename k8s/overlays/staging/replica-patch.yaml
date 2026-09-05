@@ -1,0 +1,19 @@
+# 1 replica for API and frontend, not production's 2 — production's replica count exists
+# specifically for the maxUnavailable:0 zero-downtime rollout guarantee a real checkout flow
+# needs; staging has no such requirement and 1 replica roughly halves its resource footprint
+# (see docs/infra/staging-environment.md and the §3.1 capacity gate).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-api
+  namespace: pena-e-arte
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-frontend
+  namespace: pena-e-arte
+spec:
+  replicas: 1

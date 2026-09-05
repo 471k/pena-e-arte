@@ -11,6 +11,12 @@ public class PortfolioImage : TenantEntity
     /// </summary>
     public string? Style { get; set; }
 
+    /// <summary>
+    /// Optional portfolio category tag. Values are app-controlled; see PortfolioImageCategory
+    /// constants. Max 20 chars. Null means uncategorized. Independent of Style.
+    /// </summary>
+    public string? Category { get; set; }
+
     // Navigation
     public Artist Artist { get; set; } = null!;
 }

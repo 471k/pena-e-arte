@@ -71,7 +71,7 @@ export function ContactPage() {
             {...register("name")}
             className={cn(errors.name && "border-destructive")}
           />
-          {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          {errors.name && <p className="text-xs text-destructive-text">{errors.name.message}</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -84,7 +84,7 @@ export function ContactPage() {
             {...register("email")}
             className={cn(errors.email && "border-destructive")}
           />
-          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+          {errors.email && <p className="text-xs text-destructive-text">{errors.email.message}</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -96,7 +96,7 @@ export function ContactPage() {
             {...register("message")}
             className={cn("resize-y", errors.message && "border-destructive")}
           />
-          {errors.message && <p className="text-xs text-destructive">{errors.message.message}</p>}
+          {errors.message && <p className="text-xs text-destructive-text">{errors.message.message}</p>}
         </div>
 
         <Button type="submit" disabled={isLoading}>

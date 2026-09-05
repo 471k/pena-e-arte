@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -9,7 +10,15 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
-public record RefundPaymentCommand(Guid PaymentId, decimal? Amount) : IRequest<PaymentResponse>;
+// AuditStudioId left at its default (null) — AuditLogBehavior falls back to the caller's
+// ICurrentTenant.StudioId, always set for this OwnerOnly tenant-scoped command.
+public record RefundPaymentCommand(Guid PaymentId, decimal? Amount)
+    : IRequest<PaymentResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.PaymentRefunded;
+    public string AuditTargetType => AuditTargetTypes.Payment;
+    public Guid AuditTargetId => PaymentId;
+}
 
 public class RefundPaymentHandler(
     IAppDbContext db,

@@ -10,6 +10,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
+import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 
 import { SubmitIntakeFormPage } from "@/features/forms/components/SubmitIntakeFormPage";
@@ -60,6 +61,13 @@ const PLAIN_TEXT_FORM: IntakeFormResponse = {
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
+const ACTIVE_INTAKE_CONSENT_TEMPLATE = {
+  id:       "tmpl-001",
+  kind:     "IntakeFormConsent",
+  version:  "1.0",
+  bodyText: "Studio-specific intake consent text.",
+};
+
 const server = setupServer(
   http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPOINTMENT])),
   http.post("http://localhost/api/v1/intake-forms", () => HttpResponse.json(SUBMITTED_FORM, { status: 201 })),
@@ -68,6 +76,9 @@ const server = setupServer(
     params.id === SUBMITTED_FORM.id
       ? HttpResponse.json(SUBMITTED_FORM)
       : HttpResponse.json(PLAIN_TEXT_FORM),
+  ),
+  http.get("http://localhost/api/v1/consent-forms/active-template", () =>
+    HttpResponse.json(ACTIVE_INTAKE_CONSENT_TEMPLATE),
   ),
 );
 
@@ -83,10 +94,14 @@ function makeStore(role: Role = Role.Client) {
       auth: authReducer,
       ui: uiReducer,
       [intakeFormsApi.reducerPath]: intakeFormsApi.reducer,
+      [consentFormsApi.reducerPath]: consentFormsApi.reducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
     },
     middleware: (gd) =>
-      gd().concat(intakeFormsApi.middleware).concat(appointmentsApi.middleware),
+      gd()
+        .concat(intakeFormsApi.middleware)
+        .concat(consentFormsApi.middleware)
+        .concat(appointmentsApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u-001", email: "test@test.com" },
@@ -136,6 +151,7 @@ describe("SubmitIntakeFormPage", () => {
     const user = userEvent.setup();
     renderWithRoute(<SubmitIntakeFormPage />);
     await user.type(screen.getByLabelText(/medical history/i), "short");
+    await user.click(screen.getByLabelText(/consent to sharing/i));
     await user.click(screen.getByRole("button", { name: /submit intake form/i }));
     expect(await screen.findByText(/at least 10 characters/i)).toBeInTheDocument();
   });
@@ -145,6 +161,7 @@ describe("SubmitIntakeFormPage", () => {
     renderWithRoute(<SubmitIntakeFormPage />);
     await user.type(screen.getByLabelText(/medical history/i), "No allergies of any kind.");
     await user.type(screen.getByLabelText(/attachment url/i), "not-a-url");
+    await user.click(screen.getByLabelText(/consent to sharing/i));
     await user.click(screen.getByRole("button", { name: /submit intake form/i }));
     expect(await screen.findByText(/must be a valid url/i)).toBeInTheDocument();
   });
@@ -160,6 +177,7 @@ describe("SubmitIntakeFormPage", () => {
     const user = userEvent.setup();
     renderWithRoute(<SubmitIntakeFormPage />);
     await user.type(screen.getByLabelText(/medical history/i), "No allergies of any kind.");
+    await user.click(screen.getByLabelText(/consent to sharing/i));
     await user.click(screen.getByRole("button", { name: /submit intake form/i }));
     expect(await screen.findByText("Intake form submitted!")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /submit another/i })).toBeInTheDocument();
@@ -169,10 +187,32 @@ describe("SubmitIntakeFormPage", () => {
     const user = userEvent.setup();
     renderWithRoute(<SubmitIntakeFormPage />);
     await user.type(screen.getByLabelText(/medical history/i), "No allergies of any kind.");
+    await user.click(screen.getByLabelText(/consent to sharing/i));
     await user.click(screen.getByRole("button", { name: /submit intake form/i }));
     await screen.findByText("Intake form submitted!");
     await user.click(screen.getByRole("button", { name: /submit another/i }));
     expect(screen.getByRole("button", { name: /submit intake form/i })).toBeInTheDocument();
+  });
+
+  it("shows a validation error and does not submit when the consent checkbox is unchecked", async () => {
+    let submitted = false;
+    server.use(
+      http.post("http://localhost/api/v1/intake-forms", () => {
+        submitted = true;
+        return HttpResponse.json(SUBMITTED_FORM, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithRoute(<SubmitIntakeFormPage />);
+    await user.type(screen.getByLabelText(/medical history/i), "No allergies of any kind.");
+    await user.click(screen.getByRole("button", { name: /submit intake form/i }));
+    expect(await screen.findByText(/must consent before submitting/i)).toBeInTheDocument();
+    expect(submitted).toBe(false);
+  });
+
+  it("renders the active consent template's body text", async () => {
+    renderWithRoute(<SubmitIntakeFormPage />);
+    expect(await screen.findByText(ACTIVE_INTAKE_CONSENT_TEMPLATE.bodyText)).toBeInTheDocument();
   });
 
   it("shows an error message when submission fails", async () => {
@@ -184,6 +224,7 @@ describe("SubmitIntakeFormPage", () => {
     const user = userEvent.setup();
     renderWithRoute(<SubmitIntakeFormPage />);
     await user.type(screen.getByLabelText(/medical history/i), "No allergies of any kind.");
+    await user.click(screen.getByLabelText(/consent to sharing/i));
     await user.click(screen.getByRole("button", { name: /submit intake form/i }));
     expect(await screen.findByText(/failed to submit/i)).toBeInTheDocument();
   });

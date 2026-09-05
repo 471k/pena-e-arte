@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pena-e-arte-vault
+  namespace: pena-e-arte
+spec:
+  # Headless (clusterIP: None) — required so the StatefulSet's raft cluster_addr can address
+  # the pod by stable DNS name (vault-0.pena-e-arte-vault...); still resolves fine as a plain
+  # client address too for the single-replica case. Internal-only: no Ingress host references
+  # this Service, matching Grafana's precedent (Phase 7) of not exposing an admin-capable
+  # surface publicly without a considered auth story.
+  clusterIP: None
+  selector:
+    app: pena-e-arte-vault
+  ports:
+    - name: http
+      port: 8200
+      targetPort: 8200
+    - name: cluster
+      port: 8201
+      targetPort: 8201

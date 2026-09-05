@@ -103,7 +103,7 @@ function StudioCard({ studio }: { studio: NearbyStudioResponse }) {
                 <span className="text-xs text-muted-foreground">({studio.reviewCount})</span>
               </>
             ) : (
-              <span className="text-xs text-muted-foreground/60 italic">No reviews yet</span>
+              <span className="text-xs text-muted-foreground italic">No reviews yet</span>
             )}
           </div>
 
@@ -360,9 +360,9 @@ export function DiscoverPage() {
                 </Link>
                 <Link to="/register"
                   className="text-xs font-medium px-3 py-2 rounded-md
-                             border-2 border-violet-500 text-violet-400
+                             border-2 border-violet-500 text-violet-700 dark:text-violet-400
                              bg-violet-500/5
-                             hover:bg-violet-500/15 hover:text-violet-300
+                             hover:bg-violet-500/15 hover:text-violet-800 dark:hover:text-violet-300
                              transition-colors
                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
                   Register studio
@@ -478,7 +478,7 @@ export function DiscoverPage() {
                     className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border
                                 transition-colors ${
                                   nearOnly
-                                    ? "bg-violet-600/20 border-violet-500/60 text-violet-300"
+                                    ? "bg-violet-600/20 border-violet-500/60 text-violet-800 dark:text-violet-300"
                                     : "border-border text-muted-foreground hover:text-foreground"
                                 }`}
                   >
@@ -496,8 +496,8 @@ export function DiscoverPage() {
               <button
                 type="button"
                 onClick={handleUseMyLocation}
-                className="flex items-center gap-1 text-xs text-violet-400
-                           hover:text-violet-300 transition-colors"
+                className="flex items-center gap-1 text-xs text-violet-700 dark:text-violet-400
+                           hover:text-violet-800 dark:hover:text-violet-300 transition-colors"
               >
                 <Locate className="h-3 w-3" aria-hidden="true" />
                 Use my location
@@ -507,7 +507,7 @@ export function DiscoverPage() {
         </div>
 
         {searchError && (
-          <p className="px-4 pb-2 text-xs text-destructive" role="alert">{searchError}</p>
+          <p className="px-4 pb-2 text-xs text-destructive-text" role="alert">{searchError}</p>
         )}
       </header>
 
@@ -526,13 +526,13 @@ export function DiscoverPage() {
             </p>
             <div className="flex items-center justify-center gap-3 pt-1">
               <Link to="/login"
-                className="text-sm text-violet-400 hover:text-violet-300 underline
+                className="text-sm text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 underline
                            underline-offset-4 transition-colors">
                 Sign in
               </Link>
               <span aria-hidden="true" className="text-border">·</span>
               <Link to="/client-register"
-                className="text-sm text-violet-400 hover:text-violet-300 underline
+                className="text-sm text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 underline
                            underline-offset-4 transition-colors">
                 Sign up as a client
               </Link>
@@ -603,7 +603,7 @@ export function DiscoverPage() {
                       <p className="text-sm text-muted-foreground">Try a larger radius.</p>
                     </div>
                     <Link to="/register"
-                      className="text-sm text-violet-400 hover:text-violet-300 underline underline-offset-4">
+                      className="text-sm text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 underline underline-offset-4">
                       Register your studio →
                     </Link>
                   </div>

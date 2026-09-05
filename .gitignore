@@ -1,3 +1,6 @@
+## Local-only source assets (uploaded to R2 by DataSeeder, not tracked here)
+tattoos_for_seeded_data/
+
 ## .NET
 bin/
 obj/

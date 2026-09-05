@@ -44,7 +44,7 @@ Data          MySQL 8.4 · EF Core 10 (Pomelo) · Redis
 
 Services      Stripe.net · Resend · Twilio · Hangfire · Cloudflare R2
 
-Infra         Docker · K3s · Nginx · GitHub Actions
+Infra         Docker · K3s · Traefik · GitHub Actions
               Cloudflare · Hetzner/AWS
               Grafana · Prometheus · Loki · Tempo
 ```

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,12 +6,12 @@ import { z } from "zod";
 import { toast } from "sonner";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import {
-  AlertCircle, Banknote, Check, CheckCircle2, ImageUp, Loader2, X,
+  AlertCircle, Banknote, Check, CheckCircle2, Loader2,
 } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
 import { Input }    from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { Label }    from "@/shared/components/ui/label";
+import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -19,8 +19,11 @@ import {
 import { useAppSelector }  from "@/app/hooks";
 import { useCurrentUser }  from "@/shared/hooks/useCurrentUser";
 import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
+import { useCategorizedImageUpload, ACCEPTED_IMAGE_TYPES } from "@/shared/hooks/useCategorizedImageUpload";
+import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import { cn }              from "@/shared/utils/cn";
 import { generateUuid }    from "@/shared/utils/uuid";
+import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
 import { Role }            from "@/shared/types/roles";
 import {
   useCreateAppointmentMutation,
@@ -33,8 +36,13 @@ import { useGetPublicStudioQuery }                from "@/features/public/public
 import { useEnsureActiveStudio }                  from "@/features/auth/useEnsureActiveStudio";
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
-import type { AppointmentResponse, CheckSlotAvailabilityParams }
-  from "../appointment.types";
+import { FieldLabel }                             from "./FieldLabel";
+import { TattooIntakeFields } from "./TattooIntakeFields";
+import { validateTattooIntake, type TattooIntakeValues } from "./tattooIntakeValidation";
+import { CategorizedImagesField } from "./CategorizedImagesField";
+import { DesiredPlacementField }                  from "./DesiredPlacementField";
+import { AppointmentAttachmentCategory } from "../appointment.types";
+import type { AppointmentResponse } from "../appointment.types";
 import type { ArtistResponse }      from "@/features/artists/artistsApi";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 
@@ -42,13 +50,8 @@ import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.t
 
 const VALID_DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480] as const;
 
-// Mirrors CreateAppointmentValidator.cs's MaxImageUrls / accepted content types.
+// Mirrors CreateAppointmentValidator.cs's MaxImageUrls.
 const MAX_REFERENCE_IMAGES = 6;
-const ACCEPTED_IMAGE_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png":  "png",
-  "image/webp": "webp",
-};
 
 const DURATION_OPTIONS: { value: number; label: string }[] = [
   { value: 30,  label: "30 min — Touch-up" },
@@ -66,7 +69,8 @@ const DURATION_OPTIONS: { value: number; label: string }[] = [
 // ── Schema ───────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  artistId:        z.string().min(1, "Select an artist"),
+  artistId:        z.string().nullable(),
+  bookAnyArtist:   z.boolean(),
   clientId:        z.string().min(1, "Select a client"),
   scheduledAt:     z.string().min(1, "Select date and time").refine(
     (v) => new Date(v) > new Date(),
@@ -78,30 +82,14 @@ const schema = z.object({
   ),
   depositRuleId:   z.string().nullable().optional(),
   notes:           z.string().optional(),
-});
+}).refine(
+  (data) => data.bookAnyArtist || (!!data.artistId && data.artistId.length > 0),
+  { message: "Select an artist", path: ["artistId"] },
+);
 
 type FormValues = z.infer<typeof schema>;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function FieldLabel({
-  htmlFor,
-  required = false,
-  children,
-}: {
-  htmlFor:   string;
-  required?: boolean;
-  children:  React.ReactNode;
-}) {
-  return (
-    <Label htmlFor={htmlFor} className="text-xs font-medium text-muted-foreground">
-      {children}
-      {required && (
-        <span aria-hidden="true" className="ml-0.5 text-destructive">*</span>
-      )}
-    </Label>
-  );
-}
 
 function ArtistAvatar({ artist }: { artist: ArtistResponse }) {
   const initials = `${artist.firstName[0] ?? ""}${artist.lastName[0] ?? ""}`.toUpperCase();
@@ -122,7 +110,7 @@ function ArtistAvatar({ artist }: { artist: ArtistResponse }) {
   return (
     <span
       aria-hidden="true"
-      className="h-6 w-6 rounded-full bg-violet-600/20 text-violet-400
+      className="h-6 w-6 rounded-full bg-violet-600/20 text-violet-700 dark:text-violet-400
                  text-[9px] font-semibold flex items-center justify-center shrink-0"
     >
       {initials}
@@ -197,98 +185,6 @@ function DepositPreview({
   );
 }
 
-interface ReferenceImage {
-  id:         string;
-  previewUrl: string;
-  status:     "uploading" | "done" | "error";
-  publicUrl:  string | null;
-}
-
-function ReferenceImagesField({
-  images,
-  error,
-  onPick,
-  onRemove,
-  disabled,
-}: {
-  images:   ReferenceImage[];
-  error:    string | null;
-  onPick:   (files: FileList | null) => void;
-  onRemove: (id: string) => void;
-  disabled: boolean;
-}) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const atLimit = images.length >= MAX_REFERENCE_IMAGES;
-
-  return (
-    <div className="space-y-1.5">
-      <FieldLabel htmlFor="referenceImages">Reference images</FieldLabel>
-      <div
-        role="button"
-        tabIndex={atLimit || disabled ? -1 : 0}
-        onClick={() => fileRef.current?.click()}
-        onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
-        className={cn(
-          "flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed",
-          "border-input bg-background px-4 py-5 text-xs text-muted-foreground text-center",
-          "cursor-pointer hover:border-ring hover:text-foreground transition-colors",
-          (atLimit || disabled) && "pointer-events-none opacity-50"
-        )}
-      >
-        <ImageUp className="h-5 w-5" aria-hidden="true" />
-        <span>Click to add photos — JPEG, PNG, or WebP (up to {MAX_REFERENCE_IMAGES})</span>
-      </div>
-      <input
-        ref={fileRef}
-        id="referenceImages"
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        multiple
-        className="sr-only"
-        onChange={(e) => { onPick(e.target.files); e.target.value = ""; }}
-        disabled={atLimit || disabled}
-      />
-      {error && (
-        <p className="text-xs text-destructive" role="alert">{error}</p>
-      )}
-      {images.length > 0 && (
-        <div className="grid grid-cols-4 gap-2 pt-1">
-          {images.map((img) => (
-            <div
-              key={img.id}
-              className="relative aspect-square rounded-md overflow-hidden border border-border/40 bg-muted/30"
-            >
-              <img src={img.previewUrl} alt="Reference image" className="h-full w-full object-cover" />
-              {img.status === "uploading" && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                  <Loader2 className="h-4 w-4 animate-spin text-white" aria-hidden="true" />
-                </div>
-              )}
-              {img.status === "error" && (
-                <div
-                  className="absolute inset-0 flex items-center justify-center bg-destructive/70"
-                  title="Upload failed"
-                >
-                  <AlertCircle className="h-4 w-4 text-white" aria-hidden="true" />
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => onRemove(img.id)}
-                aria-label="Remove image"
-                className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5
-                           text-white hover:bg-black/80 transition-colors"
-              >
-                <X className="h-3 w-3" aria-hidden="true" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BookAppointmentForm() {
@@ -346,68 +242,41 @@ export function BookAppointmentForm() {
   const [depositDone, setDepositDone] = useState<"paid" | "cash" | "skipped" | null>(null);
   const [artistSearch, setArtistSearch] = useState("");
 
-  // Reference images — uploaded to R2 as they're picked (same presign→PUT flow as
+  // Area photo + reference images — uploaded to R2 as they're picked (same presign→PUT flow as
   // Design revisions), before the appointment itself exists, so objects live under a
-  // per-form-session key rather than an appointment id.
+  // per-form-session key rather than an appointment id. Both optional here (unlike the guest
+  // form, which requires both — Decision #6/Part 6d note: not flipping this existing form's
+  // established optional-images expectation without an explicit go-ahead).
   const [uploadSessionId] = useState(() => generateUuid());
   const { upload: uploadImage } = usePresignedUpload();
-  const [images, setImages] = useState<ReferenceImage[]>([]);
-  const [imageError, setImageError] = useState<string | null>(null);
 
-  useEffect(() => () => {
-    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-    // Only revoke on unmount — not on every `images` change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function handlePickImages(fileList: FileList | null) {
-    if (!fileList || fileList.length === 0) return;
-    setImageError(null);
-
-    const room = MAX_REFERENCE_IMAGES - images.length;
-    const picked = Array.from(fileList);
-    if (picked.length > room) {
-      setImageError(`You can attach up to ${MAX_REFERENCE_IMAGES} reference images.`);
-    }
-
-    for (const file of picked.slice(0, Math.max(room, 0))) {
+  function buildUpload(category: AppointmentAttachmentCategory) {
+    return async (file: File) => {
       const ext = ACCEPTED_IMAGE_TYPES[file.type];
-      if (!ext) {
-        setImageError("Only JPEG, PNG, and WebP images are accepted.");
-        continue;
-      }
-
-      const id = generateUuid();
-      const previewUrl = URL.createObjectURL(file);
-      setImages((prev) => [...prev, { id, previewUrl, status: "uploading", publicUrl: null }]);
-
-      const objectKey = `appointments/pending/${uploadSessionId}/${Date.now()}-${id}.${ext}`;
-      const publicUrl = await uploadImage(file, objectKey);
-
-      setImages((prev) => prev.map((img) => {
-        if (img.id !== id) return img;
-        return publicUrl
-          ? { ...img, status: "done", publicUrl }
-          : { ...img, status: "error" };
-      }));
-    }
+      const objectKey = `appointments/pending/${uploadSessionId}/${category}/${Date.now()}-${generateUuid()}.${ext}`;
+      return uploadImage(file, objectKey);
+    };
   }
 
-  function handleRemoveImage(id: string) {
-    setImages((prev) => {
-      const target = prev.find((img) => img.id === id);
-      if (target) URL.revokeObjectURL(target.previewUrl);
-      return prev.filter((img) => img.id !== id);
-    });
-  }
+  const areaPhotos = useCategorizedImageUpload({
+    maxImages: MAX_REFERENCE_IMAGES,
+    upload:    buildUpload(AppointmentAttachmentCategory.AreaPhoto),
+  });
+  const referenceImages = useCategorizedImageUpload({
+    maxImages: MAX_REFERENCE_IMAGES,
+    upload:    buildUpload(AppointmentAttachmentCategory.Reference),
+  });
 
-  function clearImages() {
-    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-    setImages([]);
-    setImageError(null);
-  }
+  const anyImageUploading = areaPhotos.uploading || referenceImages.uploading;
 
-  const anyImageUploading = images.some((img) => img.status === "uploading");
+  // Booking-content intake fields — kept outside react-hook-form, same pattern the pre-existing
+  // image state already used, since these were added on top of an already-shipped schema.
+  const [intake, setIntake] = useState<TattooIntakeValues>({
+    tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
+  });
+  const [tattooDescriptionError, setTattooDescriptionError] = useState<string | null>(null);
+  const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
+  const [desiredPlacement, setDesiredPlacement] = useState<string[]>([]);
 
   const {
     register,
@@ -420,15 +289,17 @@ export function BookAppointmentForm() {
     resolver: zodResolver(schema),
     defaultValues: {
       artistId:        "",
+      bookAnyArtist:   false,
       durationMinutes: 60,
       clientId:        isClientRole ? (user?.id ?? "") : "",
       depositRuleId:   null,
     },
   });
 
-  const watchedArtistId    = useWatch({ control, name: "artistId" });
-  const watchedDate        = useWatch({ control, name: "scheduledAt" });
-  const watchedDuration    = useWatch({ control, name: "durationMinutes" });
+  const watchedArtistId      = useWatch({ control, name: "artistId" });
+  const watchedBookAnyArtist = useWatch({ control, name: "bookAnyArtist" });
+  const watchedDate          = useWatch({ control, name: "scheduledAt" });
+  const watchedDuration      = useWatch({ control, name: "durationMinutes" });
   const watchedDepositRuleId = useWatch({ control, name: "depositRuleId" });
 
   // Keep clientId current for client role
@@ -462,25 +333,9 @@ export function BookAppointmentForm() {
     [uniqueArtists, watchedArtistId],
   );
 
-  // Debounced slot-check args — all setState calls inside setTimeout to satisfy lint
-  const [debouncedCheck, setDebouncedCheck] =
-    useState<CheckSlotAvailabilityParams | null>(null);
-
-  useEffect(() => {
-    const delay = watchedArtistId && watchedDate && watchedDuration ? 600 : 0;
-    const timer = setTimeout(() => {
-      if (!watchedArtistId || !watchedDate || !watchedDuration) {
-        setDebouncedCheck(null);
-        return;
-      }
-      setDebouncedCheck({
-        artistId:        watchedArtistId,
-        date:            watchedDate,
-        durationMinutes: watchedDuration,
-      });
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [watchedArtistId, watchedDate, watchedDuration]);
+  const debouncedCheck = useDebouncedSlotCheckArgs(
+    watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration,
+  );
 
   const {
     data:       slotStatus,
@@ -492,31 +347,50 @@ export function BookAppointmentForm() {
   const activeRules = depositRules?.filter((r) => r.isActive) ?? [];
 
   async function onSubmit(values: FormValues) {
+    const { tattooDescriptionError, referralSourceOtherError } = validateTattooIntake(intake);
+    setTattooDescriptionError(tattooDescriptionError);
+    setReferralSourceOtherError(referralSourceOtherError);
+    if (tattooDescriptionError || referralSourceOtherError) return;
+
     const clientId = isClientRole ? (myClient?.id ?? values.clientId) : values.clientId;
-    const imageUrls = images
-      .filter((img) => img.status === "done" && img.publicUrl)
-      .map((img) => img.publicUrl!);
+    const images = [
+      ...areaPhotos.doneUrls().map((url) => ({ url, category: AppointmentAttachmentCategory.AreaPhoto })),
+      ...referenceImages.doneUrls().map((url) => ({ url, category: AppointmentAttachmentCategory.Reference })),
+    ];
     const result = await createAppointment({
-      artistId:        values.artistId,
+      artistId:        values.bookAnyArtist ? null : values.artistId,
       clientId,
       date:            new Date(values.scheduledAt).toISOString(),
       durationMinutes: values.durationMinutes,
+      // NOTE: depositRuleId is sent but ignored by the backend, which always auto-selects the
+      // single active DepositRule if any — a pre-existing mismatch, not fixed in this pass
+      // (see docs/claude/overnight-prompt-guest-checkout-booking-2026-08-31.md Part 6d).
       depositRuleId:   values.depositRuleId ?? null,
       notes:           values.notes || null,
-      ...(imageUrls.length > 0 ? { imageUrls } : {}),
+      tattooDescription:          intake.tattooDescription,
+      safetyNotes:                intake.safetyNotes || null,
+      desiredPlacementLocations:  desiredPlacement,
+      referralSource:             intake.referralSource || null,
+      referralSourceOther:        intake.referralSourceOther || null,
+      ...(images.length > 0 ? { images } : {}),
     });
     if ("data" in result) {
       toast.success("Appointment requested.");
       setBooked(result.data ?? null);
       resetForm({
         artistId:        "",
+        bookAnyArtist:   false,
         durationMinutes: 60,
         clientId:        isClientRole ? (myClient?.id ?? user?.id ?? "") : "",
         depositRuleId:   null,
       });
       setArtistSearch("");
-      setDebouncedCheck(null);
-      clearImages();
+      // No explicit debouncedCheck reset needed — useDebouncedSlotCheckArgs derives it from the
+      // same watched fields resetForm() above already clears, so it naturally settles to null.
+      areaPhotos.clear();
+      referenceImages.clear();
+      setIntake({ tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "" });
+      setDesiredPlacement([]);
     } else {
       const errMsg =
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
@@ -536,7 +410,7 @@ export function BookAppointmentForm() {
       <div
         role="alert"
         className="flex items-center gap-2 rounded-md border border-destructive/30
-                   bg-destructive/5 px-3 py-3 text-sm text-destructive"
+                   bg-destructive/5 px-3 py-3 text-sm text-destructive-text"
       >
         <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
         This studio couldn&apos;t be found.
@@ -549,7 +423,7 @@ export function BookAppointmentForm() {
       <div
         role="alert"
         className="flex items-center gap-2 rounded-md border border-destructive/30
-                   bg-destructive/5 px-3 py-3 text-sm text-destructive"
+                   bg-destructive/5 px-3 py-3 text-sm text-destructive-text"
       >
         <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
         {switchError ?? "Couldn't switch studios. Please try again."}
@@ -625,12 +499,20 @@ export function BookAppointmentForm() {
         <p className="text-sm font-medium">Appointment requested!</p>
         <p className="text-xs text-muted-foreground">
           {depositDone === "paid"
-            ? "Your deposit is authorised — the artist will confirm soon."
+            ? booked.artistId
+              ? "Your deposit is authorised — the artist will confirm soon."
+              : "Your deposit is authorised — the studio will assign an artist and confirm soon."
             : depositDone === "cash"
-            ? "Bring the deposit in cash to the studio. The artist will confirm soon."
+            ? booked.artistId
+              ? "Bring the deposit in cash to the studio. The artist will confirm soon."
+              : "Bring the deposit in cash to the studio. The studio will assign an artist and confirm soon."
             : depositDone === "skipped"
-            ? "The studio will contact you about the deposit. The artist will confirm soon."
-            : "The artist will confirm soon."}
+            ? booked.artistId
+              ? "The studio will contact you about the deposit. The artist will confirm soon."
+              : "The studio will contact you about the deposit and assign an artist soon."
+            : booked.artistId
+            ? "The artist will confirm soon."
+            : "The studio will assign an artist and confirm soon."}
         </p>
         <Button variant="outline" size="sm" onClick={startOver}>
           Book another
@@ -641,68 +523,95 @@ export function BookAppointmentForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <p className="text-xs text-muted-foreground/60">* Required</p>
+      {/* text-muted-foreground/75 ≈ 4.7:1 on the dark theme's #09090b background — passes WCAG
+          AA (measured 2026-09-05 while adding axe-core e2e coverage; /60 measured 3.38:1). */}
+      <p className="text-xs text-muted-foreground">* Required</p>
 
-      {/* Artist selector */}
-      <div className="space-y-1.5">
-        <FieldLabel htmlFor="artistId" required>Artist</FieldLabel>
+      {/* Let the studio choose */}
+      <div className="flex items-center justify-between rounded-md border border-border/40
+                      bg-muted/20 px-3 py-2">
+        <div>
+          <p className="text-xs font-medium">Let the studio choose my artist</p>
+          <p className="text-[11px] text-muted-foreground">
+            We&apos;ll confirm someone&apos;s available — the studio assigns your artist before
+            confirming.
+          </p>
+        </div>
         <Controller
           control={control}
-          name="artistId"
+          name="bookAnyArtist"
           render={({ field }) => (
-            <Select
-              disabled={loadingArtists}
-              value={field.value}
-              onValueChange={field.onChange}
-            >
-              <SelectTrigger
-                id="artistId"
-                aria-label="Select artist"
-                className={cn(errors.artistId && "border-destructive")}
-              >
-                {field.value && selectedArtist ? (
-                  <span className="flex items-center gap-2">
-                    <ArtistAvatar artist={selectedArtist} />
-                    <span>{selectedArtist.firstName} {selectedArtist.lastName}</span>
-                  </span>
-                ) : (
-                  <SelectValue placeholder={loadingArtists ? "Loading artists…" : "Choose an artist"} />
-                )}
-              </SelectTrigger>
-              <SelectContent>
-                <div className="px-2 pb-1.5 pt-1">
-                  <input
-                    type="text"
-                    placeholder="Search artists…"
-                    value={artistSearch}
-                    onChange={(e) => setArtistSearch(e.target.value)}
-                    className="w-full rounded-sm border-0 bg-muted/50 px-2 py-1
-                               text-xs placeholder:text-muted-foreground/60
-                               focus:outline-none focus:ring-1 focus:ring-ring"
-                    aria-label="Search artists"
-                  />
-                </div>
-                {filteredArtists.length === 0 ? (
-                  <div className="py-4 text-center text-xs text-muted-foreground">
-                    {artists?.length === 0
-                      ? "No artists configured for this studio."
-                      : "No artists match your search."}
-                  </div>
-                ) : (
-                  filteredArtists.map((a) => (
-                    <ArtistSelectItem key={a.id} artist={a} />
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <ToggleSwitch
+              checked={field.value}
+              onChange={() => field.onChange(!field.value)}
+              aria-label="Let the studio choose my artist"
+            />
           )}
         />
-        {errors.artistId && (
-          <p className="text-xs text-destructive" role="alert">
-            {errors.artistId.message}
-          </p>
-        )}
       </div>
+
+      {/* Artist selector */}
+      {!watchedBookAnyArtist && (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="artistId" required>Artist</FieldLabel>
+          <Controller
+            control={control}
+            name="artistId"
+            render={({ field }) => (
+              <Select
+                disabled={loadingArtists}
+                value={field.value ?? ""}
+                onValueChange={field.onChange}
+              >
+                <SelectTrigger
+                  id="artistId"
+                  aria-label="Select artist"
+                  className={cn(errors.artistId && "border-destructive")}
+                >
+                  {field.value && selectedArtist ? (
+                    <span className="flex items-center gap-2">
+                      <ArtistAvatar artist={selectedArtist} />
+                      <span>{selectedArtist.firstName} {selectedArtist.lastName}</span>
+                    </span>
+                  ) : (
+                    <SelectValue placeholder={loadingArtists ? "Loading artists…" : "Choose an artist"} />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  <div className="px-2 pb-1.5 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Search artists…"
+                      value={artistSearch}
+                      onChange={(e) => setArtistSearch(e.target.value)}
+                      className="w-full rounded-sm border-0 bg-muted/50 px-2 py-1
+                                 text-xs placeholder:text-muted-foreground
+                                 focus:outline-none focus:ring-1 focus:ring-ring"
+                      aria-label="Search artists"
+                    />
+                  </div>
+                  {filteredArtists.length === 0 ? (
+                    <div className="py-4 text-center text-xs text-muted-foreground">
+                      {artists?.length === 0
+                        ? "No artists configured for this studio."
+                        : "No artists match your search."}
+                    </div>
+                  ) : (
+                    filteredArtists.map((a) => (
+                      <ArtistSelectItem key={a.id} artist={a} />
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.artistId && (
+            <p className="text-xs text-destructive-text" role="alert">
+              {errors.artistId.message}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Client selector — visible for staff roles only */}
       {isStaffRole && (
@@ -731,7 +640,7 @@ export function BookAppointmentForm() {
             )}
           />
           {errors.clientId && (
-            <p className="text-xs text-destructive" role="alert">
+            <p className="text-xs text-destructive-text" role="alert">
               {errors.clientId.message}
             </p>
           )}
@@ -745,12 +654,12 @@ export function BookAppointmentForm() {
           <Input
             id="scheduledAt"
             type="datetime-local"
-            min={new Date().toISOString().slice(0, 16)}
+            min={toLocalDatetimeInputValue(new Date())}
             {...register("scheduledAt")}
             className={cn(errors.scheduledAt && "border-destructive")}
           />
           {errors.scheduledAt && (
-            <p className="text-xs text-destructive" role="alert">
+            <p className="text-xs text-destructive-text" role="alert">
               {errors.scheduledAt.message}
             </p>
           )}
@@ -783,7 +692,7 @@ export function BookAppointmentForm() {
             )}
           />
           {errors.durationMinutes && (
-            <p className="text-xs text-destructive" role="alert">
+            <p className="text-xs text-destructive-text" role="alert">
               {errors.durationMinutes.message}
             </p>
           )}
@@ -833,24 +742,52 @@ export function BookAppointmentForm() {
         </div>
       )}
 
+      {/* Tattoo description, referral source, safety notes — shared with guest checkout */}
+      <TattooIntakeFields
+        value={intake}
+        onChange={setIntake}
+        tattooDescriptionError={tattooDescriptionError ?? undefined}
+        referralSourceOtherError={referralSourceOtherError ?? undefined}
+      />
+
+      {/* Desired placement */}
+      <DesiredPlacementField locations={desiredPlacement} onChange={setDesiredPlacement} />
+
       {/* Notes */}
       <div className="space-y-1.5">
         <FieldLabel htmlFor="notes">Notes</FieldLabel>
         <Textarea
           id="notes"
-          rows={3}
-          placeholder="Style, size, placement, skin concerns…"
+          rows={2}
+          placeholder="Anything else for the studio?"
           {...register("notes")}
           className="resize-none"
         />
       </div>
 
-      {/* Reference images */}
-      <ReferenceImagesField
-        images={images}
-        error={imageError}
-        onPick={(files) => void handlePickImages(files)}
-        onRemove={handleRemoveImage}
+      {/* Area photo + reference images */}
+      <CategorizedImagesField
+        category={AppointmentAttachmentCategory.AreaPhoto}
+        label="Area photo"
+        helperText={`Click to add a photo of the area — JPEG, PNG, or WebP (up to ${MAX_REFERENCE_IMAGES})`}
+        required={false}
+        max={MAX_REFERENCE_IMAGES}
+        images={areaPhotos.images}
+        error={areaPhotos.error}
+        onPick={(files) => void areaPhotos.pick(files)}
+        onRemove={areaPhotos.remove}
+        disabled={isLoading}
+      />
+      <CategorizedImagesField
+        category={AppointmentAttachmentCategory.Reference}
+        label="Reference images"
+        helperText={`Click to add photos — JPEG, PNG, or WebP (up to ${MAX_REFERENCE_IMAGES})`}
+        required={false}
+        max={MAX_REFERENCE_IMAGES}
+        images={referenceImages.images}
+        error={referenceImages.error}
+        onPick={(files) => void referenceImages.pick(files)}
+        onRemove={referenceImages.remove}
         disabled={isLoading}
       />
 
@@ -869,7 +806,8 @@ export function BookAppointmentForm() {
         )}
       </Button>
 
-      <p className="text-center text-[11px] text-muted-foreground/60">
+      {/* text-muted-foreground/75 — see the "* Required" note above for the measured ratio. */}
+      <p className="text-center text-[11px] text-muted-foreground">
         Your artist will confirm availability within 24 hours.
       </p>
     </form>

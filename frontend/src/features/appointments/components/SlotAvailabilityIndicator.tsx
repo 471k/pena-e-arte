@@ -28,7 +28,7 @@ export function SlotAvailabilityIndicator({
   }
 
   return (
-    <p className="flex items-center gap-1.5 text-xs text-destructive" role="alert">
+    <p className="flex items-center gap-1.5 text-xs text-destructive-text" role="alert">
       <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
       {status.reason ?? "This slot is not available."}
     </p>

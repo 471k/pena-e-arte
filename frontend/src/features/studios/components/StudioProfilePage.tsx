@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useSearchParams } from "react-router-dom";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Building2, Loader2, Save } from "lucide-react";
@@ -19,8 +20,11 @@ import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 import { StudioClosuresCard } from "./StudioClosuresCard";
 import { StudioAuditLogCard } from "./StudioAuditLogCard";
+import { StudioSocialLinksCard } from "./StudioSocialLinksCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
 import { EmbedCodeCard } from "./EmbedCodeCard";
+import { PhoneInput } from "@/shared/components/ui/phone-input";
+import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 const NIPT_HELP = "NIPT format looks wrong — expected a letter, 8 digits, then a letter (e.g. L01234567A)";
 
@@ -29,8 +33,7 @@ const schema = z.object({
   city:            z.string().min(1, "City is required").max(200),
   latitude:        z.number({ message: "Must be a number" }).min(-90).max(90),
   longitude:       z.number({ message: "Must be a number" }).min(-180).max(180),
-  phoneNumber:     z.string().max(30, "Max 30 characters").optional(),
-  instagramHandle: z.string().max(60, "Max 60 characters").optional(),
+  phoneNumber:     z.string().refine(isValidE164Phone, PHONE_ERROR_MESSAGE).optional(),
   nipt: z
     .string()
     .trim()
@@ -85,6 +88,15 @@ export function StudioProfilePage() {
   const [updateStudio, { isLoading: saving, isSuccess }] = useUpdateMyStudioMutation();
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const social = searchParams.get("social");
+    const platform = searchParams.get("platform");
+    if (social === "connected") toast.success(`${platform ?? "Account"} connected successfully!`);
+    if (social === "error")     toast.error(`${platform ?? "Account"} connection failed. Please try again.`);
+    if (social === "denied")    toast.info(`${platform ?? "Account"} connection cancelled.`);
+  }, [searchParams]);
+
   const niptInputRef = useRef<HTMLInputElement | null>(null);
   const [niptBannerDismissed, setNiptBannerDismissed] = useState(
     () => sessionStorage.getItem("nipt-banner-dismissed") === "true",
@@ -114,7 +126,7 @@ export function StudioProfilePage() {
     }
   }
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isDirty } } =
+  const { register, handleSubmit, control, reset, watch, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const { ref: niptFieldRef, ...niptRegister } = register("nipt");
@@ -141,7 +153,6 @@ export function StudioProfilePage() {
         latitude:        studio.latitude,
         longitude:       studio.longitude,
         phoneNumber:     studio.phoneNumber ?? "",
-        instagramHandle: studio.instagramHandle ?? "",
         nipt:            studio.nipt ?? "",
       });
     }
@@ -251,14 +262,14 @@ export function StudioProfilePage() {
                     </Button>
                   </div>
                 )}
-                <span className="text-foreground/40">·</span>
+                <span className="text-foreground/65">·</span>
                 <span className="text-xs text-foreground/70">
                   Registered {new Date(studio.createdAt).toLocaleDateString("en-GB")}
                 </span>
               </div>
 
               {slugError && (
-                <p id="slug-error" className="text-xs text-destructive">{slugError}</p>
+                <p id="slug-error" className="text-xs text-destructive-text">{slugError}</p>
               )}
 
               {studio.slugLockedAt && (
@@ -280,41 +291,33 @@ export function StudioProfilePage() {
               <p className="text-sm text-green-600 mb-4">Changes saved.</p>
             )}
             {serverError && (
-              <p className="text-sm text-destructive mb-4">{serverError}</p>
+              <p className="text-sm text-destructive-text mb-4">{serverError}</p>
             )}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Studio name</Label>
                 <Input id="name" {...register("name")} aria-invalid={!!errors.name} />
-                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                {errors.name && <p className="text-xs text-destructive-text">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="phoneNumber">Phone number (optional)</Label>
-                <Input
-                  id="phoneNumber"
-                  type="tel"
-                  placeholder="+351 912 345 678"
-                  {...register("phoneNumber")}
-                  aria-invalid={!!errors.phoneNumber}
-                  aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
+                <Controller
+                  control={control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <PhoneInput
+                      id="phoneNumber"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      aria-invalid={!!errors.phoneNumber}
+                      aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
+                    />
+                  )}
                 />
                 {errors.phoneNumber && (
-                  <p id="phoneNumber-error" className="text-xs text-destructive">{errors.phoneNumber.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="instagramHandle">Instagram handle (optional)</Label>
-                <Input
-                  id="instagramHandle"
-                  placeholder="your_studio"
-                  {...register("instagramHandle")}
-                  aria-invalid={!!errors.instagramHandle}
-                  aria-describedby={errors.instagramHandle ? "instagramHandle-error" : undefined}
-                />
-                {errors.instagramHandle && (
-                  <p id="instagramHandle-error" className="text-xs text-destructive">{errors.instagramHandle.message}</p>
+                  <p id="phoneNumber-error" className="text-xs text-destructive-text">{errors.phoneNumber.message}</p>
                 )}
               </div>
 
@@ -342,7 +345,7 @@ export function StudioProfilePage() {
                       Used for invoicing and business verification. Format: one letter, 8 digits, one letter.
                     </p>
                     {errors.nipt && (
-                      <p className="text-xs text-destructive">{errors.nipt.message}</p>
+                      <p className="text-xs text-destructive-text">{errors.nipt.message}</p>
                     )}
                   </>
                 )}
@@ -386,6 +389,7 @@ export function StudioProfilePage() {
           </CardContent>
         </Card>
 
+        <StudioSocialLinksCard />
         <BrandingSettingsCard />
         <StudioClosuresCard />
         <QrCodeSection />

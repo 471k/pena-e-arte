@@ -9,6 +9,13 @@ public interface IEmailRenderer
         string? notes,
         bool showBranding);
 
+    string RenderAppointmentArtistAssigned(
+        string clientFirstName,
+        string artistFullName,
+        DateTime date,
+        string studioName,
+        bool showBranding);
+
     string RenderAppointmentCreatedClient(
         string clientFirstName,
         DateTime date,
@@ -67,7 +74,24 @@ public interface IEmailRenderer
 
     string RenderArtistInvite(string artistFirstName, string studioName, string setPasswordUrl);
 
+    string RenderStudioJoinInvite(string studioName, string city, string manageInvitesUrl);
+
     string RenderPasswordReset(string resetUrl);
+
+    /// <summary>
+    /// Sent once, immediately after a guest checkout booking, carrying BOTH a password-reset
+    /// link (Decision #2 — the guest's passwordless first booking; also doubles as their
+    /// account-recovery safety net if this email is delayed/lost) and the standard
+    /// email-confirmation link.
+    /// </summary>
+    string RenderGuestBookingWelcome(string studioName, string setPasswordUrl, string confirmEmailUrl);
+
+    /// <summary>
+    /// Sent instead of <see cref="RenderGuestBookingWelcome"/> when a guest-checkout email
+    /// collides with an existing platform account — the sole disambiguation channel now that
+    /// the HTTP response is identical either way (enumeration-resistance fix, 2026-09-01).
+    /// </summary>
+    string RenderGuestBookingEmailCollision(string studioName);
 
     string RenderChangeEmailConfirmation(string confirmUrl);
 

@@ -15,6 +15,7 @@ import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
+import { remindersApi } from "@/features/reminders/remindersApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi }          from "@/features/public";
 import { savedImagesApi }     from "@/features/public/savedImagesApi";
@@ -25,6 +26,9 @@ import { reviewsApi } from "@/features/reviews/reviewsApi";
 import { helpApi } from "@/features/help/helpApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
 import { reportsApi } from "@/features/reports/reportsApi";
+import { socialApi } from "@/features/social/socialApi";
+import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
+import { messagingApi } from "@/features/messaging/messagingApi";
 
 const appReducer = combineReducers({
   auth:          authReducer,
@@ -42,6 +46,7 @@ const appReducer = combineReducers({
   [consentFormsApi.reducerPath]:   consentFormsApi.reducer,
   [depositRulesApi.reducerPath]:   depositRulesApi.reducer,
   [notificationsApi.reducerPath]:  notificationsApi.reducer,
+  [remindersApi.reducerPath]:      remindersApi.reducer,
   [paymentsApi.reducerPath]:       paymentsApi.reducer,
   [publicApi.reducerPath]:         publicApi.reducer,
   [savedImagesApi.reducerPath]:    savedImagesApi.reducer,
@@ -52,6 +57,9 @@ const appReducer = combineReducers({
   [helpApi.reducerPath]:           helpApi.reducer,
   [onboardingApi.reducerPath]:     onboardingApi.reducer,
   [reportsApi.reducerPath]:        reportsApi.reducer,
+  [socialApi.reducerPath]:         socialApi.reducer,
+  [conductReportsApi.reducerPath]: conductReportsApi.reducer,
+  [messagingApi.reducerPath]:      messagingApi.reducer,
 });
 
 type AppState = ReturnType<typeof appReducer>;
@@ -112,6 +120,7 @@ export const store = configureStore({
       consentFormsApi.middleware,
       depositRulesApi.middleware,
       notificationsApi.middleware,
+      remindersApi.middleware,
       paymentsApi.middleware,
       publicApi.middleware,
       savedImagesApi.middleware,
@@ -122,6 +131,9 @@ export const store = configureStore({
       helpApi.middleware,
       onboardingApi.middleware,
       reportsApi.middleware,
+      socialApi.middleware,
+      conductReportsApi.middleware,
+      messagingApi.middleware,
     ),
 });
 

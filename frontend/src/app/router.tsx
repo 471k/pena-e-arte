@@ -18,7 +18,7 @@ import {
   ConsentFormDetailPage,
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
-import { ReportsPage } from "@/features/reports";
+import { ReportsPage, MyEarningsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
 import {
@@ -36,6 +36,8 @@ import {
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage } from "@/features/public";
+import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
+import { MessagesInboxPage } from "@/features/messaging";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
@@ -134,6 +136,17 @@ export const routes = [
     element: <AppRoot />,
     children: [
       { index: true, element: <IndexRedirect /> },
+      // /book is reachable unauthenticated (guest checkout, Decision #1) — sits outside the
+      // blanket auth RoleGuard below, but still gets AppLayout for an authenticated visit
+      // (AppLayout itself already falls back to a bare Outlet with no role, matching the
+      // guest page's own self-contained PublicPageHeader shell). BookPage internally
+      // preserves the pre-existing Client/Issuer-only restriction for authenticated users.
+      {
+        element: <AppLayout />,
+        children: [
+          { path: "book", element: <ErrorBoundary><BookPage /></ErrorBoundary> },
+        ],
+      },
       {
         element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
         children: [
@@ -141,11 +154,6 @@ export const routes = [
             element: <AppLayout />,
             children: [
               // ── Client ──────────────────────────────────────────────────────
-              {
-                path: "book",
-                element: <RoleGuard allowedRoles={[Role.Client, Role.Issuer]} />,
-                children: [{ index: true, element: <ErrorBoundary><BookPage /></ErrorBoundary> }],
-              },
               {
                 path: "my-studios",
                 element: <RoleGuard allowedRoles={[Role.Client]} />,
@@ -189,6 +197,7 @@ export const routes = [
                   { path: "feedback",          element: <ErrorBoundary><FeedbackInboxPage /></ErrorBoundary> },
                   { path: "help-insights",     element: <ErrorBoundary><HelpInsightsPage /></ErrorBoundary> },
                   { path: "audit-log",         element: <ErrorBoundary><AuditLogPage /></ErrorBoundary> },
+                  { path: "conduct-reports",   element: <ErrorBoundary><ConductReportInboxPage /></ErrorBoundary> },
                 ],
               },
 
@@ -336,6 +345,32 @@ export const routes = [
                 children: [
                   { index: true, element: <ErrorBoundary><ReportsPage /></ErrorBoundary> },
                 ],
+              },
+
+              // ── Artist (+ owner-as-artist): my earnings ─────────────────────
+              {
+                path: "earnings",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><MyEarningsPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner + Artist: conduct reports ─────────────────────────────
+              {
+                path: "conduct-reports",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><ConductReportsPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Shared: in-app messaging (client, artist, owner — not issuer, see
+              // messaging Decision 1) ─────────────────────────────────────────
+              {
+                path: "messages",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner]} />,
+                children: [{ index: true, element: <ErrorBoundary><MessagesInboxPage /></ErrorBoundary> }],
               },
 
               // ── Owner: payments ─────────────────────────────────────────────

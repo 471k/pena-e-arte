@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-api
+  namespace: pena-e-arte
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: pena-e-arte-api
+  template:
+    metadata:
+      labels:
+        app: pena-e-arte-api
+    spec:
+      containers:
+        - name: api
+          # Tag pinned by CD (kustomize edit set image) to the built github.sha — the
+          # base manifest's own tag is a placeholder never applied directly.
+          image: ghcr.io/471k/pena-e-arte-api:latest
+          # A manual `workflow_dispatch` redeploy with no new commit reuses the exact same
+          # tag string. Without `Always`, a node that already pulled that tag once (e.g. an
+          # earlier failed run) never repulls it even after a real rebuild+repush under the
+          # same tag — the node silently keeps serving stale content. Confirmed concretely
+          # for the frontend's staging build 2026-09-04; applied here too for the same
+          # tag-reuse exposure, not just where it was first observed.
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: pena-e-arte-api-config
+            - secretRef:
+                name: pena-e-arte-api-secrets
+          # 15s matches the Dockerfile's own HEALTHCHECK --start-period=15s.
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

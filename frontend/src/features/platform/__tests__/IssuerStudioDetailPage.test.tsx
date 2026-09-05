@@ -34,6 +34,8 @@ const STUDIO: StudioResponse = {
   phoneNumber:          null,
   instagramHandle:      null,
   nipt:                 null,
+  isSolo:               false,
+  isPublished:          true,
 };
 
 const SUB: PlatformSubscriptionResponse = {

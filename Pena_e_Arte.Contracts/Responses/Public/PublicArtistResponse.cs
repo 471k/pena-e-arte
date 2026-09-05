@@ -14,4 +14,5 @@ public record PublicArtistResponse(
     string StudioName,
     string StudioSlug,
     bool ShowBookingCta,
-    bool IsOwnProfile);
+    bool IsOwnProfile,
+    IReadOnlyList<PublicSocialLinkResponse> SocialLinks);

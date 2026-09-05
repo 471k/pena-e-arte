@@ -28,7 +28,7 @@ export function StudioAuditLogCard() {
         )}
 
         {isError && (
-          <p className="text-sm text-destructive">Failed to load recent activity.</p>
+          <p className="text-sm text-destructive-text">Failed to load recent activity.</p>
         )}
 
         {!isLoading && !isError && data && data.items.length === 0 && (

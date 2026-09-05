@@ -4,6 +4,7 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Link } from "react-router-dom";
 import { MapPin, PenLine } from "lucide-react";
 import { useGetStudioMapQuery } from "@/features/studios";
+import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
 
 const studioPin = divIcon({
   className: "",
@@ -81,6 +82,16 @@ export function StudioMapPage() {
                   >
                     View studio →
                   </a>
+                  {hasPinnedLocation(studio.latitude, studio.longitude) && (
+                    <a
+                      href={buildGoogleMapsDirectionsUrl(studio.latitude, studio.longitude)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-xs font-medium text-primary hover:underline"
+                    >
+                      Get directions →
+                    </a>
+                  )}
                 </div>
               </Popup>
             </Marker>
@@ -94,7 +105,7 @@ export function StudioMapPage() {
         )}
 
         {isError && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-background border border-destructive rounded-full px-4 py-1.5 text-xs text-destructive shadow-md">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-background border border-destructive rounded-full px-4 py-1.5 text-xs text-destructive-text shadow-md">
             Failed to load studios.
           </div>
         )}

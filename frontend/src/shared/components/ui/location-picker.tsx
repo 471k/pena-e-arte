@@ -222,7 +222,7 @@ export function LocationPicker({ value, onChange, error, className }: LocationPi
         <span
           className={cn(
             "flex items-center gap-1",
-            error && !label ? "text-destructive" : "text-muted-foreground"
+            error && !label ? "text-destructive-text" : "text-muted-foreground"
           )}
         >
           {resolving ? (
@@ -251,7 +251,7 @@ export function LocationPicker({ value, onChange, error, className }: LocationPi
 
       {/* Validation error when there's a pin but city is empty */}
       {error && label && (
-        <p className="text-xs text-destructive">{error}</p>
+        <p className="text-xs text-destructive-text">{error}</p>
       )}
     </div>
   );

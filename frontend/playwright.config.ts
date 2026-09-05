@@ -20,10 +20,25 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
+  // Two full projects, not one — this app has no manual light/dark toggle, it renders
+  // purely from `prefers-color-scheme` (see index.css), and Playwright's own default
+  // color scheme is "light". A single "chromium" project here previously meant every
+  // e2e run — locally and in CI — silently only ever exercised the light-mode styles;
+  // the entire dark theme (most of this app's real-world traffic, since Chromium/most
+  // OSes commonly default to dark) had zero coverage. That gap is exactly how a real
+  // bug (an earlier version of index.css's dark-mode `@theme` block using a construct
+  // Tailwind v4 silently collapses to unconditional, i.e. "dark for every visitor
+  // regardless of preference") went undetected until axe-core's contrast checks were
+  // added and happened to be run once under a real dark render. Two projects means
+  // both states are covered on every run from now on, in CI included.
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "chromium-light",
+      use: { ...devices["Desktop Chrome"], colorScheme: "light" },
+    },
+    {
+      name: "chromium-dark",
+      use: { ...devices["Desktop Chrome"], colorScheme: "dark" },
     },
   ],
   webServer: {
