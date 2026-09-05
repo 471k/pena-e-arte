@@ -148,7 +148,7 @@ export function StudioClosuresCard() {
                 maxLength={500}
               />
             </div>
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && <p className="text-xs text-destructive-text">{error}</p>}
             <div className="flex items-center gap-2">
               <Button size="sm" onClick={handleAdd} disabled={adding} className="gap-2">
                 {adding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

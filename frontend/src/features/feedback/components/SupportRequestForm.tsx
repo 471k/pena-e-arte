@@ -54,7 +54,7 @@ export function SupportRequestForm() {
           {...register("title")}
           className={cn(errors.title && "border-destructive")}
         />
-        {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+        {errors.title && <p className="text-xs text-destructive-text">{errors.title.message}</p>}
       </div>
 
       <div className="space-y-1.5">
@@ -67,7 +67,7 @@ export function SupportRequestForm() {
           {...register("body")}
           className={cn("resize-none", errors.body && "border-destructive")}
         />
-        {errors.body && <p className="text-xs text-destructive">{errors.body.message}</p>}
+        {errors.body && <p className="text-xs text-destructive-text">{errors.body.message}</p>}
       </div>
 
       <Button type="submit" size="sm" disabled={isLoading} className="w-full">

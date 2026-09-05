@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-alloy-config
+  namespace: monitoring
+data:
+  # Real translation, not a copy-paste of docker/observability/config.alloy: the compose
+  # version's loki.source.docker tails the Docker daemon's socket (/var/run/docker.sock),
+  # which doesn't exist under K3s's containerd runtime. Rather than binding to containerd's
+  # socket directly (no discovery.docker-equivalent component exists for it in Alloy), this
+  # uses Alloy's documented Kubernetes DaemonSet log-shipping pattern: discovery.kubernetes
+  # filtered to the local node (via the NODE_NAME downward-API env var) + loki.source.file
+  # tailing /var/log/pods/**, the kubelet-standardized log path that's identical regardless
+  # of container runtime (containerd, Docker, CRI-O) — this sidesteps the socket-path
+  # question entirely rather than guessing at one. Confirmed against Grafana's current Alloy
+  # docs (grafana.com/docs/alloy/latest/collect/logs-in-kubernetes/) at spec-writing time;
+  # verify empirically against the real cluster during actual Phase 7 execution per the
+  # original prompt's own standard.
+  config.alloy: |
+    discovery.kubernetes "pod" {
+      role = "pod"
+      selectors {
+        role  = "pod"
+        field = "spec.nodeName=" + env("NODE_NAME")
+      }
+    }
+
+    discovery.relabel "pod_logs" {
+      targets = discovery.kubernetes.pod.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+        separator     = "/"
+        target_label  = "__path__"
+        replacement   = "/var/log/pods/*$1/*.log"
+      }
+
+      // Staging pods are discovered automatically by the same cluster-wide (node-filtered,
+      // not namespace-filtered) discovery.kubernetes above — no separate DaemonSet/config
+      // needed per docs/infra/staging-environment.md section 2.3. These two rules add the
+      // same environment label the Prometheus scrape config carries, so Loki queries can
+      // filter the same way. Both regexes are fully anchored so pena-e-arte cannot
+      // accidentally match the pena-e-arte-staging namespace as a substring.
+      //
+      // Real bug found on this cluster during its actual first deploy: Alloy's River config
+      // language only supports double-slash and slash-star block comments, not the
+      // hash-prefixed style this file originally used throughout the whole block below the
+      // K8s-discovery rules above. Every hash-prefixed line crashed the collector with an
+      // illegal-character parse error before it ever reached anything else on that line.
+      rule {
+        source_labels = ["namespace"]
+        regex         = "^pena-e-arte$"
+        target_label  = "environment"
+        replacement   = "production"
+      }
+
+      rule {
+        source_labels = ["namespace"]
+        regex         = "^pena-e-arte-staging$"
+        target_label  = "environment"
+        replacement   = "staging"
+      }
+    }
+
+    loki.source.file "pod_logs" {
+      targets    = discovery.relabel.pod_logs.output
+      forward_to = [loki.write.default.receiver]
+
+      // Without this, loki.source.file treats __path__ as a literal absolute path and
+      // stats it directly instead of glob-expanding it — the "*<pod_uid>/<container>/*.log"
+      // pattern above contains literal '*' characters no real filename has, so every single
+      // target failed with "no such file or directory", forever, for every pod on the node,
+      // since this collector was first deployed. Manually confirmed the identical glob
+      // resolves fine via a real shell (`ls /var/log/pods/*<uid>/api/*.log`) — the bug was
+      // never the pattern, only that Alloy was never told to treat it as one. Found
+      // 2026-09-04, a month after this file was first written and merged.
+      file_match {
+        enabled = true
+      }
+    }
+
+    loki.write "default" {
+      endpoint {
+        url = "http://pena-e-arte-loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+      }
+    }

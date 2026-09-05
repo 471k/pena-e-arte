@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pena-e-arte-vault
+  namespace: pena-e-arte
+spec:
+  serviceName: pena-e-arte-vault
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pena-e-arte-vault
+  template:
+    metadata:
+      labels:
+        app: pena-e-arte-vault
+    spec:
+      hostname: vault-0
+      containers:
+        - name: vault
+          # Same tag as the local docker-compose.yml dev-mode service (this project's
+          # existing "pin the same tag as compose" convention).
+          image: hashicorp/vault:1.18
+          command: ["vault", "server", "-config=/vault/config/server.hcl"]
+          securityContext:
+            capabilities:
+              add: ["IPC_LOCK"]
+          ports:
+            - name: http
+              containerPort: 8200
+            - name: cluster
+              containerPort: 8201
+          env:
+            - name: VAULT_ADDR
+              value: "http://127.0.0.1:8200"
+          volumeMounts:
+            - name: config
+              mountPath: /vault/config
+            - name: data
+              mountPath: /vault/data
+          # No readinessProbe override — Vault's own default behavior (sealed = not ready)
+          # is the correct signal here. Do not mark this pod ready before it's unsealed.
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health?standbyok=true&sealedcode=200&uninitcode=200
+              port: 8200
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # 256Mi was too tight — OOMKilled (exit 137) on this box's actual first boot,
+          # crashing near-instantly during Raft/boltdb initialization, confirmed via
+          # `kubectl describe pod` showing Started/Finished at the same second. Bumped
+          # to the smallest limit that survived a real cold start on this cluster.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+      volumes:
+        - name: config
+          configMap:
+            name: pena-e-arte-vault-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

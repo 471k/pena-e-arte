@@ -2,14 +2,16 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 
 export interface ClientResponse {
-  id:        string;
-  studioId:  string;
-  firstName: string;
-  lastName:  string;
-  email:     string;
-  phone:     string | null;
-  createdAt: string;
-  userId:    string | null;
+  id:         string;
+  studioId:   string;
+  firstName:  string;
+  lastName:   string;
+  email:      string;
+  phone:      string | null;
+  createdAt:  string;
+  userId:     string | null;
+  artistId:   string | null;
+  artistName: string | null;
 }
 
 export interface ClientProfileResponse {
@@ -29,6 +31,11 @@ export interface CreateClientRequest {
   lastName:  string;
   email:     string;
   phone:     string | null;
+  artistId:  string;
+}
+
+export interface UpdateClientArtistRequest {
+  artistId: string | null;
 }
 
 export interface UpsertClientProfileRequest {
@@ -110,6 +117,20 @@ export const clientsApi = createApi({
     createClient: builder.mutation<ClientResponse, CreateClientRequest>({
       query: (body) => ({ url: "clients", method: "POST", body }),
       invalidatesTags: ["Client"],
+    }),
+    updateClientArtist: builder.mutation<
+      ClientResponse,
+      { clientId: string; body: UpdateClientArtistRequest }
+    >({
+      query: ({ clientId, body }) => ({
+        url: `clients/${clientId}/artist`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { clientId }) => [
+        { type: "Client", id: clientId },
+        "Client",
+      ],
     }),
     getClientProfile: builder.query<ClientProfileResponse | null, string>({
       query: (clientId) => `clients/${clientId}/profile`,
@@ -222,6 +243,7 @@ export const {
   useGetClientsQuery,
   useGetClientByIdQuery,
   useCreateClientMutation,
+  useUpdateClientArtistMutation,
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
   useUpdateBodyMapMutation,

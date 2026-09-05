@@ -43,6 +43,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             TenantSuspendedException => (StatusCodes.Status403Forbidden, ex.Message, "STUDIO_SUSPENDED"),
             SubscriptionRequiredException => (StatusCodes.Status402PaymentRequired, ex.Message, null),
             PlanLimitExceededException => (StatusCodes.Status403Forbidden, ex.Message, "PLAN_LIMIT_EXCEEDED"),
+            ManualReminderQuotaExceededException => (StatusCodes.Status429TooManyRequests, ex.Message, "MANUAL_REMINDER_QUOTA_EXCEEDED"),
             PasswordResetTokenInvalidException => (StatusCodes.Status422UnprocessableEntity, ex.Message, "RESET_TOKEN_INVALID"),
             ChangeEmailTokenInvalidException => (StatusCodes.Status422UnprocessableEntity, ex.Message, "CHANGE_EMAIL_TOKEN_INVALID"),
             BusinessRuleViolationException => (StatusCodes.Status422UnprocessableEntity, ex.Message, null),

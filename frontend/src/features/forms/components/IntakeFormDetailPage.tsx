@@ -198,7 +198,7 @@ export function IntakeFormDetailPage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">
+          <p className="text-center text-sm text-destructive-text py-16">
             Failed to load intake form. Please try again.
           </p>
         )}

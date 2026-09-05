@@ -43,10 +43,11 @@ const STUDIO: PublicStudioResponse = {
   name:            "Ink Soul",
   slug:            "test-studio",
   city:            "Porto",
+  latitude:        41.1579,
+  longitude:       -8.6291,
   description:     "Premier tattoo studio in Porto.",
   coverImageUrl:   "https://cdn.example.com/cover.jpg",
   phoneNumber:     "+351 912 345 678",
-  instagramHandle: "inksoultattoo",
   averageRating:   4.7,
   reviewCount:     12,
   galleryImages:   [
@@ -77,6 +78,9 @@ const STUDIO: PublicStudioResponse = {
     },
   ],
   showBookingCta: true,
+  socialLinks: [
+    { platform: "Instagram", handle: "inksoultattoo", isVerified: true, profileUrl: "https://instagram.com/inksoultattoo" },
+  ],
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -146,10 +150,11 @@ describe("StudioPortfolioPage", () => {
     expect(screen.getByRole("link", { name: "Book an Appointment" })).toBeInTheDocument();
   });
 
-  it("Book an Appointment links to /login redirect when unauthenticated", () => {
+  it("Book an Appointment links directly to /book when unauthenticated (guest checkout)", () => {
     renderPage(null);
     const link = screen.getByRole("link", { name: "Book an Appointment" });
-    expect(link.getAttribute("href")).toMatch(/\/login/);
+    expect(link.getAttribute("href")).toMatch(/^\/book\?studio=/);
+    expect(link.getAttribute("href")).not.toMatch(/\/login/);
   });
 
   it("Book an Appointment links directly to /book when authenticated", () => {
@@ -199,6 +204,29 @@ describe("StudioPortfolioPage", () => {
     renderPage();
     const igLink = screen.getByRole("link", { name: /instagram/i });
     expect(igLink).toHaveAttribute("href", "https://instagram.com/inksoultattoo");
+  });
+
+  it("renders 'Get Directions' link to Google Maps when coordinates are set", () => {
+    renderPage();
+    const link = screen.getByRole("link", { name: /get directions/i });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.google.com/maps/dir/?api=1&destination=41.1579%2C-8.6291",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("falls back to plain city text when the studio has no pinned location", () => {
+    mockUseGetPublicStudioQuery.mockReturnValue({
+      data: { ...STUDIO, latitude: 0, longitude: 0 },
+      isLoading: false,
+      isError: false,
+    });
+    renderPage();
+    expect(screen.queryByRole("link", { name: /get directions/i })).not.toBeInTheDocument();
+    // City appears in both the main content and the sidebar fallback text.
+    expect(screen.getAllByText(STUDIO.city).length).toBeGreaterThan(0);
   });
 
   it("renders gallery images when galleryImages is not empty", () => {

@@ -65,6 +65,25 @@ public class ForwardedHeadersTests
         (await response.Content.ReadAsStringAsync()).Should().Be("203.0.113.7");
     }
 
+    [Fact]
+    public async Task TrustedProxyCidrConfigured_TwoHopChainBothWithinCidr_RemoteIpIsRealClientNotFirstHop()
+    {
+        // Regression test for the K3s topology's two in-cluster proxy hops (Traefik, then the
+        // frontend Pod's own nginx) — see ForwardedHeadersOptionsBuilder's ForwardLimit: 2.
+        // With the old default ForwardLimit of 1, only the right-most entry gets processed and
+        // RemoteIpAddress would incorrectly resolve to "10.42.1.5" (the first hop) instead of
+        // the real client, defeating per-client rate limiting.
+        using IHost host = await BuildHost(trustedProxyCidr: "10.42.0.0/16", immediatePeer: "10.42.3.3");
+        using TestServer server = host.GetTestServer();
+        using HttpClient client = server.CreateClient();
+
+        HttpRequestMessage request = new(HttpMethod.Get, "/ip");
+        request.Headers.Add("X-Forwarded-For", "203.0.113.7, 10.42.1.5");
+        HttpResponseMessage response = await client.SendAsync(request);
+
+        (await response.Content.ReadAsStringAsync()).Should().Be("203.0.113.7");
+    }
+
     private static async Task<IHost> BuildHost(string? trustedProxyCidr, string immediatePeer)
     {
         Dictionary<string, string?> configValues = [];

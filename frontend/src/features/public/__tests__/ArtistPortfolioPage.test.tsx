@@ -44,8 +44,8 @@ const ARTIST: PublicArtistResponse = {
   bio:             "Specialises in neo-trad and blackwork.",
   profileImageUrl: null,
   portfolioImages: [
-    { imageId: "img-001", imageUrl: "https://cdn.example.com/port1.jpg", style: null },
-    { imageId: "img-002", imageUrl: "https://cdn.example.com/port2.jpg", style: null },
+    { imageId: "img-001", imageUrl: "https://cdn.example.com/port1.jpg", style: null, category: null },
+    { imageId: "img-002", imageUrl: "https://cdn.example.com/port2.jpg", style: null, category: null },
   ] satisfies ArtistPortfolioImage[],
   specializations: "Blackwork, Neo-Trad",
   hourlyRate:      120,
@@ -55,6 +55,9 @@ const ARTIST: PublicArtistResponse = {
   studioSlug:      "ink-soul",
   showBookingCta:  true,
   isOwnProfile:    false,
+  socialLinks: [
+    { platform: "Instagram", handle: "mariasilva.ink", isVerified: true, profileUrl: "https://instagram.com/mariasilva.ink" },
+  ],
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -182,13 +185,15 @@ describe("ArtistPortfolioPage", () => {
     expect(screen.getByRole("link", { name: /book an appointment/i })).toBeInTheDocument();
   });
 
-  it("book button redirects to login when not authenticated", () => {
+  // Guest checkout (Decision #1/#13, 2026-08-31): /book itself branches on auth state, so
+  // the CTA must link straight there for both authenticated and unauthenticated visitors —
+  // never through a forced /login hop. This page's CTA was missed when the guest checkout
+  // feature shipped and still forced login; found via manual browser verification, 2026-09-02.
+  it("book button links directly to booking when not authenticated (guest checkout)", () => {
     renderPage(null);
     const bookLink = screen.getByRole("link", { name: /book an appointment/i });
-    const href = bookLink.getAttribute("href") ?? "";
-    expect(href).toContain("/login");
-    // /book is URL-encoded in the redirect param
-    expect(decodeURIComponent(href)).toContain("/book");
+    expect(bookLink.getAttribute("href")).toMatch(/^\/book\?studio=/);
+    expect(bookLink.getAttribute("href")).not.toContain("/login");
   });
 
   it("book button links directly to booking when authenticated", () => {
@@ -299,6 +304,57 @@ describe("ArtistPortfolioPage", () => {
       renderPage(null);
       expect(screen.getByText("Artist not found.")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+    });
+  });
+
+  describe("category filtering", () => {
+    it("does not render category tabs when fewer than 2 distinct categories are present", () => {
+      renderPage();
+      expect(screen.queryByRole("group", { name: /filter by portfolio category/i })).not.toBeInTheDocument();
+    });
+
+    it("renders category tabs and filters images when >= 2 distinct categories are present", () => {
+      mockUseGetPublicArtistQuery.mockReturnValue({
+        data: {
+          ...ARTIST,
+          portfolioImages: [
+            { imageId: "img-fresh", imageUrl: "https://cdn.example.com/fresh.jpg", style: null, category: "fresh" },
+            { imageId: "img-design", imageUrl: "https://cdn.example.com/design.jpg", style: null, category: "design" },
+          ] satisfies ArtistPortfolioImage[],
+        },
+        isLoading: false,
+        isError: false,
+      });
+      renderPage();
+
+      const group = screen.getByRole("group", { name: /filter by portfolio category/i });
+      expect(group).toBeInTheDocument();
+
+      expect(screen.getAllByRole("button", { name: /view portfolio image/i })).toHaveLength(2);
+
+      fireEvent.click(screen.getByRole("radio", { name: "Designs" }));
+      expect(screen.getAllByRole("button", { name: /view portfolio image/i })).toHaveLength(1);
+    });
+
+    it("combines an active category with an active style filter", () => {
+      mockUseGetPublicArtistQuery.mockReturnValue({
+        data: {
+          ...ARTIST,
+          portfolioImages: [
+            { imageId: "img-1", imageUrl: "https://cdn.example.com/1.jpg", style: "blackwork", category: "fresh" },
+            { imageId: "img-2", imageUrl: "https://cdn.example.com/2.jpg", style: "realism", category: "fresh" },
+            { imageId: "img-3", imageUrl: "https://cdn.example.com/3.jpg", style: "blackwork", category: "design" },
+          ] satisfies ArtistPortfolioImage[],
+        },
+        isLoading: false,
+        isError: false,
+      });
+      renderPage();
+
+      fireEvent.click(screen.getByRole("radio", { name: "Fresh Tattoos" }));
+      fireEvent.click(screen.getByRole("radio", { name: "Blackwork" }));
+
+      expect(screen.getAllByRole("button", { name: /view portfolio image/i })).toHaveLength(1);
     });
   });
 });

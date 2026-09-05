@@ -70,6 +70,8 @@ public class RegisterStudioHandler(
             Latitude = req.Latitude,
             Longitude = req.Longitude,
             IsActive = true,
+            IsSolo = false,
+            IsPublished = true,
             TrialExpiresAt = trialEnd,
             PendingReferralCodeId = pendingReferralCodeId,
         };
@@ -100,6 +102,7 @@ public class RegisterStudioHandler(
             studio.ShowPlatformBranding,
             AllowBrandingRemoval: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
-            studio.SlugLockedAt, PhoneNumber: null, InstagramHandle: null, Nipt: studio.Nipt);
+            studio.SlugLockedAt, PhoneNumber: null, InstagramHandle: null, Nipt: studio.Nipt,
+            IsSolo: studio.IsSolo, IsPublished: studio.IsPublished);
     }
 }

@@ -5,12 +5,14 @@ public record PublicStudioResponse(
     string Name,
     string Slug,
     string City,
+    double Latitude,
+    double Longitude,
     string? Description,
     string? CoverImageUrl,
     string? PhoneNumber,
-    string? InstagramHandle,
     double? AverageRating,
     int ReviewCount,
     IReadOnlyList<string> GalleryImages,
     IReadOnlyList<PublicArtistSummary> Artists,
-    bool ShowBookingCta);
+    bool ShowBookingCta,
+    IReadOnlyList<PublicSocialLinkResponse> SocialLinks);

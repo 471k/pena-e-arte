@@ -104,6 +104,19 @@ methodology (Present/Partial/Missing verdicts, P0–P3 priority) — reuse that
 method for any smaller, single-feature benchmark check rather than inventing a
 new rubric each time.
 
+**Trust & Safety Reference Set** (added 2026-08-22, for client-initiated
+report/moderation features specifically): none of the vertical booking-SaaS
+comparators above publicly document a formal client-initiated "report this
+provider" trust & safety flow the way general two-sided marketplaces do —
+this is a genuine gap in the vertical benchmark set for this specific feature
+class, not a case of picking the wrong comparator. Use this set instead when
+building or reviewing a report/moderation feature:
+
+```
+Uber, Airbnb, Etsy, Upwork — category-taxonomy report flows with
+severity-gated escalation
+```
+
 ---
 
 ## Multi-Tenancy Architecture
@@ -164,6 +177,8 @@ DesignChangeRequested   client requested changes
 NotificationReceived    generic in-app notification
 SupportMessageReceived  new reply posted on a support ticket
 TrafficSnapshotUpdated  live visitor presence snapshot (TrafficHub, every 5s while ≥1 issuer connected)
+MessageReceived         new chat message posted in a conversation (pushed to both participants' user:{userId} groups)
+ConversationRead        the other participant marked the conversation read (read-receipt update)
 ```
 
 Always push from Infrastructure (Hangfire jobs or command handlers).
@@ -211,16 +226,16 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 
 | # | Feature | Domain Entities | Infrastructure | Scope |
 |---|---|---|---|---|
-| 01 | Appointment Booking + Deposits | `Appointment`, `DepositRule` | Stripe (aggregator), Hangfire | Per-tenant |
-| 02 | Consultation & Consent Forms | `IntakeForm`, `ConsentForm` | Cloudflare R2 (PDF storage) | Per-tenant |
+| 01 | Appointment Booking + Deposits (incl. guest checkout) | `Appointment`, `DepositRule`, `BookingIntake` | Stripe (aggregator), Hangfire, Cloudflare R2 (guest-pending images) | Per-tenant (guest checkout: `AllowAnonymous`, see AllowAnonymous Exceptions table) |
+| 02 | Consultation & Consent Forms | `IntakeForm` (consent-stamped: `ConsentTemplateId`/`ConsentTextSnapshot`/`ConsentedAt`, kind `ConsentTemplateKind.IntakeFormConsent`), `ConsentForm`, `ConsentTemplate` | Cloudflare R2 (PDF storage) | Per-tenant |
 | 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` | Cloudflare R2 (images), SignalR | Per-tenant |
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
-| 05 | Payments & Session Splits | `Payment`, `SessionSplit` | Stripe (aggregator, card) + Cash (manual) | Per-tenant |
+| 05 | Payments & Session Splits | `Payment`, `SessionSplit` | `IPaymentProvider` (card; `NullPaymentProvider` until POK lands, see ADR-0001 — `GET /api/v1/payments/capabilities` exposes `Capabilities.SupportsAuthCapture` so the UI gates on real backend state, not just an env-var proxy) + Cash (manual) | Per-tenant |
 | 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + Resend | Per-tenant |
-| 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth | Platform-wide |
+| 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth. Filters `IsActive && IsPublished`. | Platform-wide |
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
-| 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints | Platform-wide |
+| 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints. `GetPublicStudioQuery`/`/s/{slug}` filters `IsActive && IsPublished`; `GetPublicArtistQuery`/`/artist/{slug}` stays `IsActive`-only (see "IsActive vs IsPublished"). | Platform-wide |
 
 #### StudioPortfolioPage (`/s/{slug}`)
 
@@ -239,7 +254,9 @@ Contact:     PhoneNumber, InstagramHandle added by AddStudioContactInfo migratio
 Reviews:     Studio-level aggregate (AverageRating, ReviewCount) displayed under name.
              Per-artist aggregate shown on each artist card.
 Back nav:    "Browse studios" → /discover, min-h-[44px] touch target.
-CTA:         bg-violet-600 filled button. Unauthenticated → /login?redirect=/book?studio={slug}.
+CTA:         bg-violet-600 filled button. → /book?studio={slug} for every visitor, authenticated
+             or not — /book itself branches on auth state (guest checkout, 2026-08-31; previously
+             unauthenticated visitors were forced through /login first).
 ```
 
 #### ArtistPortfolioPage (`/artist/{slug}`)
@@ -265,6 +282,65 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
              per-post visibility toggle via PUT .../posts/{postId}/visibility; artist-side
              UI in features/artists/components/InstagramTab.tsx; public posts surfaced via
              GetPublicArtistInstagramPostsQuery on ArtistPortfolioPage.
+Social links: PublicArtistResponse.SocialLinks (see #36 Social Media Verification below) —
+             every verified/unverified Instagram/TikTok/Facebook/X/YouTube link renders here
+             with a VerifiedSocialBadge when IsVerified, sitting alongside the separate
+             Instagram-photos section above.
+```
+
+#### Social Media Verification (feature #36)
+
+```
+Entity:      SocialAccountLink (TenantEntity, no global query filter — same documented
+             exception as InstagramConnection). Polymorphic subject: SubjectType
+             (Artist|Studio) + SubjectId. For a Studio subject, StudioId == SubjectId
+             (self-referential — Studio itself carries no tenant filter). Unique index
+             on (SubjectType, SubjectId, Platform).
+Does NOT replace InstagramConnection: that entity keeps owning the artist photo-sync
+             lifecycle exactly as before. ExchangeInstagramCodeCommand gained one
+             additional block that upserts a matching SocialAccountLink row on success —
+             the only edit made to any file under Application/Instagram/ for this feature.
+OAuth:       ISocialOAuthProvider (BuildAuthorizationUrl/ExchangeCodeAsync/GetUsernameAsync/
+             IsConfigured) — one implementation per platform, registered via DI as
+             IEnumerable<ISocialOAuthProvider>, resolved by ISocialOAuthProviderFactory.
+             InstagramSocialOAuthProvider wraps the existing IInstagramService rather than
+             duplicating its HTTP calls. IsConfigured reports false (409 Conflict on
+             connect-url) when a platform's Infrastructure/Services/Social/SocialOptions.cs
+             OAuth client credentials are empty — this is how Facebook/X ship "built but
+             inactive" pending external app review / paid API tier (see Decisions Log).
+Manual check: ISocialBioChecker (BioContainsCodeAsync/IsSupported) — Instagram/Facebook use
+             Meta Graph API Business Discovery (officially sanctioned, not scraping;
+             Business/Creator accounts only — a personal account can't be verified this
+             way, or via OAuth, a real platform limitation). YouTube uses Data API v3
+             channel lookup by handle. X uses API v2 app-only user lookup. TikTok has
+             IsSupported == false — no suitable public-read API exists; OAuth is its only
+             verification route.
+State signer: ISocialOAuthStateSigner (Infrastructure/Services/Social/SocialOAuthStateSigner)
+             — same HMAC-SHA256 shape as IInstagramStateSigner but signs
+             (SubjectType, SubjectId, Platform) and uses a separate key
+             (Social:StateSigningKey, not Instagram:TokenEncryptionKey).
+             IInstagramStateSigner is unmodified — the artist-Instagram connect/callback
+             flow still uses it exclusively; the new signer is used by every other
+             platform/subject combination, including studio Instagram.
+Endpoints:   /api/v1/{artists|studios}/{id}/social/{platform}/{connect-url|handle|
+             request-code|verify-code|disconnect}, all OwnerOnly except GET / (artist
+             subject: ArtistAndAbove). Anonymous callback: see AllowAnonymous Exceptions.
+Token retention: Artist-subject OAuth links keep an encrypted token (for a future
+             periodic re-verification job — see Decisions Log); Studio-subject OAuth links
+             discard the token immediately after the identity check (no ongoing sync
+             need there).
+Public API:  PublicSocialLinkResponse (Platform, Handle, IsVerified, ProfileUrl — URL
+             built server-side). PublicArtistResponse/PublicStudioResponse both gained a
+             SocialLinks list. PublicStudioResponse stopped returning the old flat
+             InstagramHandle field — Studio.InstagramHandle itself is NOT dropped from the
+             schema (zero-downtime convention); existing values were backfilled into an
+             unverified SocialAccountLink row by the AddSocialAccountLinks migration.
+Frontend:    VerifiedSocialBadge (shared/components/) — same badge variant as
+             ReviewSection.tsx's "Verified client" badge. SocialLinksCard
+             (features/social/components/) — owner-facing, used both on
+             StudioSocialLinksCard (Studio Settings) and the artist detail page's new
+             "Social" tab (which also wired InstagramTab.tsx into the app for the first
+             time — it previously had no rendering call site anywhere).
 ```
 | 11 | Referral Code System | `ReferralCode`, `ReferralRedemption` | Stripe Billing discount coupon | Issuer-level |
 | 12 | Client Portable Profiles | `ClientProfile` cross-tenant read (opt-in) | `IgnoreQueryFilters` — issuer-scoped only | Cross-tenant (issuer) |
@@ -290,6 +366,11 @@ Instagram:   Full sync shipped (feat(api) commit f7e2962): OAuth connect
 | 32 | Structured Admin/Audit Log | `AuditLogEntry` (no tenant filter, `StudioId` nullable) | `IAuditableCommand` marker + `AuditLogBehavior` (MediatR pipeline) | Per-tenant (owner read), Issuer-level (cross-tenant read) |
 | 33 | NIPT Business Verification | `Studio.Nipt` | None — format validation only, no external registry call | Per-tenant (owner write), Issuer-level (read via existing `GetStudiosQuery`/`GetStudioByIdQuery`) |
 | 34 | Live Site Traffic Analytics | `TrafficEvent`, `TrafficDailyAggregate` (both no tenant filter, `StudioId` nullable) | Redis presence (`traffic:presence:*`) + `TrafficHub` SignalR + `TrafficBroadcastService` (5s), `TrafficRollupJob` (Hangfire daily), MaxMind GeoLite2 (`MaxMind.GeoIP2`) + `UAParser.Core`, `IgnoreQueryFilters()` — 41st approved usage | Issuer-level |
+| 35 | Manual Client Reminders | `ManualReminder` | Hangfire + Twilio (reused) + Redis (quota) | Per-tenant |
+| 36 | Social Media Verification | `SocialAccountLink` (polymorphic Artist/Studio subject, no tenant filter — same shape as `InstagramConnection`) | `ISocialOAuthProvider`/`ISocialOAuthProviderFactory` (5 platforms), `ISocialBioChecker`/`ISocialBioCheckerFactory` (4 of 5 — TikTok has no suitable public-read API), `ISocialOAuthStateSigner` (separate key from `IInstagramStateSigner`) | Per-tenant (Artist subject resolves the artist's real tenant; Studio subject is self-referential — `StudioId == SubjectId`) |
+| 37 | Client Conduct Reports | `ConductReport` (non-tenant, no query filter — same shape as `Review`/`FeedbackReport`/`AuditLogEntry`) | None — direct email alert for High severity, same `INotificationService.SendEmailAsync` path as the contact form | Per-tenant (owner read), Per-user (artist read, reporter identity redacted), Issuer-level (cross-tenant read + High-severity resolution) |
+| 38 | In-App Messaging | `Conversation`, `ChatMessage` (both `TenantEntity`, `DesignRevision`-shaped — ordinary per-studio query filter, not a `FeedbackReport`-style exception) | `ChatHub` SignalR hub (per-user `user:{id}` groups, no join-by-id), `IRealtimeNotifier.NotifyUserAsync`, `IJobScheduler.EnqueueNewMessageEmail` (Hangfire, debounced — see `IgnoreQueryFilters()` row #36) | Per-tenant (client↔artist, client↔owner, artist↔owner only — no issuer) |
+| 39 | Solo/Independent Artist Signup | `Studio.IsSolo`/`IsPublished` (Phase 1); `StudioJoinInvite` (Phase 6, issuer-shaped, no tenant filter) | `RegisterSoloArtistCommand` (auto-provisions `Studio`+`Subscription` on `Free` plan, no NIPT/city/coords); `IPlanLimitService` (existing `MaxArtists` enforcement, unchanged); `IIdentityService` role-swap for studio-join acceptance | Per-tenant (solo signup, publish-on-real-location); cross-tenant (Phase 6 studio-join invite/accept, dual-consent) |
 
 ### Client Self-Service Cancel/Reschedule + Owner Revenue Reporting + Structured Audit Log — 2026-07-21
 
@@ -712,6 +793,33 @@ attribute a visit to a specific studio, which is the entire point of this featur
   only by the separate `geoipupdate` refresh job. `GeoIpService` degrades to always-`null`
   gracefully (never throws) when `GeoIp:DatabasePath` is unset or unreadable, so the feature
   ships and functions (minus geography) even before the GeoIP file is provisioned.
+- **K8s `.mmdb` population — design, not yet implemented (2026-09-05)**: `docker-compose.yml`
+  mounts the GeoLite2-City/ASN `.mmdb` files as local bind volumes; no K8s equivalent exists
+  yet, so `k8s/base/api-configmap.yaml` deliberately leaves `GeoIp:DatabasePath`/
+  `GeoIp:AsnDatabasePath` unset in every cluster environment and the feature runs geography-
+  degraded (verified above — `GeoIpService` never throws on this). Two designs were
+  considered for closing this gap:
+  1. **Init-container on pod start** — a small init-container image (a plain `curl`/`sh`
+     step is enough, no custom build needed) downloads the current `.mmdb` files from
+     MaxMind's license-key-authenticated URL into an `emptyDir` shared with the main API
+     container, gated by a `GeoIp:AsnDatabasePath`/`DatabasePath` pointing at that mount.
+  2. **Recurring CronJob into a persistent volume** — a K8s `CronJob` (daily/weekly, matching
+     MaxMind's own GeoLite2 update cadence) runs `geoipupdate` into a small PVC (or an R2-
+     backed mount, consistent with how this project already treats R2 as its object store)
+     that both API replicas mount read-only.
+  **Recommendation: option 2 (CronJob + PVC).** An init-container re-downloads on *every* pod
+  restart/rollout — wasteful against MaxMind's rate limits and adds latency to every rollout
+  and autoscale event for a file that only actually changes weekly. A CronJob decouples the
+  refresh cadence from the pod lifecycle, matches the existing `TrafficRollupJob`-style
+  Hangfire/CronJob pattern this project already uses for scheduled maintenance, and needs no
+  new per-pod-start dependency. The `GeoIp:AsnDatabasePath`/`DatabasePath` MaxMind license key
+  goes in the same K8s Secret family as `pena-e-arte-api-secrets` (never in `api-configmap.yaml`
+  as plaintext, consistent with the Non-sensitive-config comment already in that file).
+  **Why the app doesn't need this to ship**: the degrade path above isn't a stopgap bug, it's
+  the designed behavior — Live Traffic Analytics ships and every other field on `TrafficEvent`
+  populates correctly with `GeoIp:*` unset; only geography/ASN columns stay `null` until this
+  is implemented, which is why this has stayed P3/low-priority since the original feature
+  shipped.
 - **UA parsing**: `UAParser.Core` (v4.0.5) — same `ua-parser` ruleset family Umami/Plausible/
   PostHog use. Note for future readers: this package's actual API surface differs from the
   classic `ua-parser-dotnet` shape assumed by early drafts of this feature — `ClientInfo`
@@ -851,19 +959,30 @@ Returns only published/active studios.
 
 ### IsActive vs IsPublished — intentional design decision
 
-The SP-02 spec referred to an `IsPublished` boolean on `Studio`. No such
-field exists or is planned. The public portfolio endpoints (`GetPublicStudioQuery`,
-`GetPublicArtistQuery`) and the studio map endpoint filter on `Studio.IsActive`
-instead.
+**Update 2026-08-26:** `Studio.IsPublished` now exists (see the Solo/Independent
+Artist Signup feature, Decisions Log below). This section previously said no such
+field existed or was planned; that changed the moment a feature needed a studio to
+be active-but-unlisted (exactly the trigger condition this section always said would
+justify adding it).
 
-This is **intentional**: `IsActive` already covers the intended behaviour —
-deactivated studios (suspended, manually disabled by issuer) do not appear in
-public-facing endpoints. A separate `IsPublished` field would add complexity
-without adding expressive power given the current subscription and trial model.
+`IsActive` and `IsPublished` are now both real, distinct fields:
 
-If a future feature requires a studio to be active but unlisted (e.g. soft-launch
-mode), add `IsPublished bool` to `Studio` at that time and update this section.
-Until then, do not add `IsPublished` to the entity or the EF Core config.
+- **`IsActive`** gates tenant access entirely. A deactivated studio's owner/artists
+  cannot use the app at all (suspended, manually disabled by issuer).
+- **`IsPublished`** gates listing in studio-directory surfaces only: Studio Map
+  (`GetStudioMapQuery`), `/discover`'s Studios tab (`GetNearbyStudiosQuery`), and
+  `StudioPortfolioPage` (`GetPublicStudioQuery`). Defaults to `true` for every
+  normally-registered studio; only starts `false` for an `IsSolo` studio
+  auto-provisioned with no real location yet, and flips to `true` automatically
+  the first time `UpdateMyStudioHandler` sees a real `City`/`Latitude`/`Longitude`.
+
+**`GetPublicArtistQuery` (`/artist/{slug}`) deliberately still filters on
+`IsActive` only, not `IsPublished`** — a solo artist must be publicly bookable
+from their own portfolio URL immediately, even before their studio is "published"
+to the directory surfaces above. Do not add an `IsPublished` check there.
+
+All three directory-surface queries filter on `IsActive && IsPublished` now — a
+suspended or unpublished studio never appears in any of them.
 
 ```
 GET /api/studios/map
@@ -972,12 +1091,22 @@ Never add a new one without updating this table and the Decisions Log.
 | 33 | `GetSharedDesignQuery` | Public design-share-token lookup, validated by token + expiry | Anonymous |
 | 34 | `CreateArtistReviewCommand`, `CreateStudioReviewCommand` | Cross-tenant artist/studio lookup for public review submission | Authenticated (any role) |
 | 35 | `GetStudioQrCodeQuery` | Public QR code endpoint — resolves slug for the portfolio URL the code points to | Anonymous |
-| 36 | `AppointmentReminderJob`, `DesignRevisionTimeoutJob`, `PaymentReconciliationJob`, `SendArtistInviteJob` | Hangfire background jobs run with no request/tenant scope at all — same class as `IndustryReportJob` (#3) | Hangfire job (system) |
+| 36 | `AppointmentReminderJob`, `DesignRevisionTimeoutJob`, `PaymentReconciliationJob`, `SendArtistInviteJob`, `ManualReminderJob`, `ChatNotificationJob`, `GuestPendingUploadCleanupJob` | Hangfire background jobs run with no request/tenant scope at all — same class as `IndustryReportJob` (#3) | Hangfire job (system) |
 | 37 | `DataSeeder` | Startup seed data — runs before any request or tenant scope exists | System (startup) |
 | 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
 | 39 | `GetHelpSearchInsightsHandler` | Cross-tenant aggregate of help search queries for the issuer product-insights view | IssuerOnly |
 | 40 | `GetSitemapUrlsHandler` | Public SEO sitemap — active studio/artist slugs across all tenants for `/sitemap.xml` | Anonymous |
 | 41 | `RecordTrafficEventHandler` | Cross-tenant artist-slug lookup to resolve `StudioId` for an anonymous `/artist/{slug}` traffic beacon, mirroring `RecordArtistView`'s own lookup (#13) | Anonymous |
+| 42 | `ExchangeSocialOAuthCodeHandler` (Artists + Studios) | Resolve the OAuth subject's real `StudioId` from an anonymous social-verification callback (studio Instagram, TikTok, Facebook, X, YouTube), and check the studio isn't suspended before writing a verified `SocialAccountLink`; subjectId is pre-authenticated via `ISocialOAuthStateSigner` HMAC before this handler runs — same shape as entry #22 for the artist-Instagram callback | Anonymous (state-signed) |
+| 43 | `FileArtistConductReportCommand`, `FileStudioConductReportCommand` | Cross-tenant artist/studio + appointment/client lookup for conduct-report filing — identical join shape to entry #34's review submission, minus the `Completed`/dedup filters (see Decisions Log, "Client Conduct Reports") | ClientOnly |
+| 44 | `GetReportableArtistAppointmentsQuery`, `GetReportableStudioAppointmentsQuery` | Cross-tenant appointment/client lookup for the report-filing appointment picker — identical join shape to entries #19/#20's `IsVerifiedBooking` checks | ClientOnly |
+| 45 | `ConductReportProjections` (Artists + Appointments) | Cross-tenant `Artist`/`Appointment` join to resolve `ArtistName`/`AppointmentDate` for display — needed because the issuer caller (`GetConductReportsHandler`) has no tenant set at all; harmless for the owner/artist callers since the outer `ConductReport` query is already scoped to their own `StudioId`/`ArtistId` before this join runs | Owner / Artist (own scope only) / IssuerOnly |
+| 46 | `CreateGuestAppointmentHandler` (Public/Commands) | Guest checkout: `Studio` slug lookup (same shape as #2), and cross-tenant `Client` lookup by email to link a studio-pre-created record (same shape as #28) | Anonymous |
+| 47 | `GetPublicBookingArtistsHandler` | `Studio` slug lookup + cross-tenant `Artist` list for the guest booking artist picker | Anonymous |
+| 48 | `CheckPublicSlotAvailabilityHandler` | `Studio` slug lookup for the public slot-availability preview (the actual availability queries run through entry #51) | Anonymous |
+| 49 | `GetPublicDepositRuleHandler` | `Studio` slug lookup + cross-tenant `DepositRule` lookup ("single active rule, if any" — same query `CreateAppointmentCoreAsync` itself runs) for the guest deposit-preview estimate | Anonymous |
+| 50 | `GetPresignedGuestUploadUrlHandler` | `Studio` slug lookup, scoping the server-constructed R2 key for anonymous image upload (Decision #10, guest-checkout prompt) | Anonymous |
+| 51 | `ArtistAvailabilityExtensions` (`IsAnyArtistAvailableAsync`, `CheckArtistScheduleAsync`, `CheckArtistSlotAvailabilityAsync`) + `CreateAppointmentCommand.CreateAppointmentCoreAsync` | Cross-tenant `Artist`/`ArtistSchedule`/`ArtistTimeOff`/`Appointment`/`StudioClosure`/`DepositRule` queries, every one explicitly scoped by an `studioId` parameter rather than the ambient tenant filter — required because these are shared by both an authenticated caller (`CreateAppointmentCommand`, `RescheduleAppointmentCommand`, `CheckSlotAvailabilityQuery` — real `ICurrentTenant.StudioId`) and an anonymous one (`CreateGuestAppointmentHandler`, `CheckPublicSlotAvailabilityHandler` — no JWT at all, `ICurrentTenant.StudioId` defaults to `Guid.Empty`). Found as a real bug during the guest-checkout prompt (2026-08-31): without `IgnoreQueryFilters()`, EF Core's global filter (`StudioId == tenant.StudioId`) still ANDs against the explicit predicate, silently zeroing every result for an anonymous caller regardless of the real studio — caught by a real-`AppDbContext` integration test (`GuestCheckoutBookingIntegrationTests`), not unit tests, since the unit-test `FakeDbContext` never registers query filters at all | Authenticated (`ClientAndAbove`) + Anonymous |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -985,6 +1114,13 @@ calls that had never been added to this table (documentation debt, not new code)
 was individually read and confirmed narrow/justified before being added; none constitute
 an unauthorized cross-tenant read. See "Full-App Master Audit — 2026-07-20" below for
 the full note on how this gap was found.
+
+`ConductReport` itself needs no `IgnoreQueryFilters()` entry anywhere — it has no query
+filter registered at all (same non-tenant shape as `Review`/`FeedbackReport`/`AuditLogEntry`),
+so there is nothing to bypass. Entries #43–#45 above exist for a different reason: genuinely
+new cross-tenant reads of *other*, filtered entities (`Artist`, `Appointment`) that the
+conduct-reports feature introduced. Don't mistake the absence of a `ConductReport` row for
+an oversight — it's deliberate.
 
 ---
 
@@ -1007,20 +1143,31 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/portfolio/{imageId}/reviews` | Public per-image review list | None — read-only, non-sensitive review content only |
 | `GET /api/v1/public/artists/{slug}/instagram-posts` | Public synced Instagram feed for artist portfolio | None — read-only, only `IsVisible` posts, no PII |
 | `GET /api/v1/instagram/callback` | Instagram OAuth redirect target, no JWT possible | Signed `state` param (HMAC-SHA256, `IInstagramStateSigner`) validated before trusting artistId |
+| `GET /api/v1/social/{platform}/callback` | Generic social OAuth redirect target (studio Instagram, TikTok, Facebook, X, YouTube) — no JWT possible | Signed `state` param (HMAC-SHA256, `ISocialOAuthStateSigner`, separate key from `IInstagramStateSigner`) validated before trusting subjectId; rate-limited (`public-write`) |
 | `GET /api/v1/public/studios/nearby` | Public geo search (DiscoverPage Studios tab) | None — read-only, non-sensitive studio info only |
 | `GET /api/v1/public/studios/{slug}/reviews` | Public studio review list | None — read-only, non-sensitive review content only |
 | `GET /api/v1/public/artists/{slug}/reviews` | Public artist review list | None — read-only, non-sensitive review content only |
 | `POST /api/v1/public/traffic/beacon` | Anonymous + authenticated traffic beacon (role/tenant read from JWT when present) | Rate-limited (`public-write`); no PII accepted in the request body — `Path`/`IsNavigation` only, visitor id via header, IP never persisted |
+| `POST /api/v1/public/studios/{slug}/book` | Guest checkout — books without a prior account | Rate-limited (`public-booking`, 8/5min/IP); duplicate-email rejected via `GetUserIdByEmailAsync` (409, `AccountAlreadyExistsException`); random server-generated password, never returned/logged; plan quota (`AppointmentsPerMonth`) still enforced |
+| `GET /api/v1/public/studios/{slug}/booking/artists` | Public artist list for the guest booking picker | None — read-only, non-sensitive (name/avatar/specializations/hourly rate) |
+| `GET /api/v1/public/studios/{slug}/booking/availability` | Public slot-availability check for guest booking | None — read-only boolean+reason, no PII |
+| `GET /api/v1/public/studios/{slug}/booking/deposit-rule` | Public deposit estimate for guest booking | None — read-only, single active rule's name/amounts only |
+| `POST /api/v1/public/studios/{slug}/booking/presign` | Anonymous image upload before a guest's account exists | Rate-limited (`public-booking`); image content-types only, no PDF; entire R2 key server-constructed, no client-supplied path component; orphan-cleanup job (`GuestPendingUploadCleanupJob`) |
 
-The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`, `/auth/oauth/*`,
-`/auth/forgot-password`, `/auth/reset-password`, `/auth/refresh`, `/auth/verify-email`)
+The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`,
+`/auth/register/solo-artist`, `/auth/oauth/*`, `/auth/forgot-password`,
+`/auth/reset-password`, `/auth/refresh`, `/auth/verify-email`)
 are anonymous by necessity (a caller cannot be authenticated before obtaining a token)
 and are covered by CLAUDE.md's blanket "no unprotected endpoints except `/auth` and
 `/health`" exception rather than needing individual rows here — this table exists for
 the non-obvious cases (cross-tenant reads, webhooks, signed tokens), not the login flow
-itself. All seven carry `"auth"` rate limiting except `reset-password`/`refresh`/
-`verify-email`, which predate the Redis rate-limiting feature and were out of scope for
-this audit (see "Full-App Master Audit — 2026-07-20" below).
+itself. `/auth/register/solo-artist` (added 2026-08-26 — see Feature Module Map,
+Solo/Independent Artist Signup) is registration-bootstrap in exactly the same sense as
+`/auth/register`: it creates its own studio/subscription/Identity user in one anonymous
+call rather than requiring one to already exist. All eight carry `"auth"` rate limiting
+except `reset-password`/`refresh`/`verify-email`, which predate the Redis rate-limiting
+feature and were out of scope for this audit (see "Full-App Master Audit — 2026-07-20"
+below).
 
 "No JWT auth" does not mean "unprotected" for webhook endpoints — the Stripe-Signature
 validation is the security mechanism. Always validate it before processing the event.
@@ -1555,6 +1702,8 @@ does not re-litigate them.
 | `platformApi` RTK Query slice | New `features/platform/platformApi.ts` for all issuer platform endpoints | Keeps issuer platform concerns isolated from billing/studio slices |
 | Payment model: aggregator vs marketplace | Aggregator (platform's own Stripe account collects all card payments) | Stripe Connect not available in platform country; aggregator avoids connected accounts entirely |
 | Client payment methods | Card (Stripe Payment Element) + Cash (manual) — no PayPal | Simplest model matching actual studio workflow; studios often accept cash deposits in person |
+| `Studio.IsPublished` | New bool, default `true`; `false` only on `IsSolo` creation | Lets a solo-artist studio be active (tenant access, bookable artist page) but excluded from directory surfaces until it has a real location — the exact case this section previously said would justify the field |
+| Solo-artist signup | `RegisterSoloArtistCommand` auto-provisions a `Studio{IsSolo=true, IsPublished=false}` + `Subscription` on the `Free` plan, `owner` role, no NIPT/city/coords required | Matches category standard (Fresha/Vagaro/Boulevard/GlossGenius all let a single-provider business start taking bookings without a formal multi-staff registration step) |
 | Cash payment flow | `DeclareCashDepositCommand` (client) → `ConfirmCashDepositCommand` (owner/artist) | Two-step prevents fraud; owner must physically confirm before status changes to Paid |
 | Cash subscription activation | `ActivateSubscriptionManuallyCommand` (IssuerOnly) | Issuer confirms cash payment out-of-band then activates in-platform; rare but necessary |
 | Studio payouts | Not handled by the platform — out of scope | Platform collects deposit; studio-to-artist split is an internal business matter |
@@ -1620,12 +1769,38 @@ does not re-litigate them.
 | Pomelo.EntityFrameworkCore.MySql 9.0.0 / EF Core 10.0.10 mismatch blocked local `dotnet run` — **fixed 2026-07-26, root cause traced to same-day commit `a9b3787`** | That commit (`chore: apply pending Dependabot version bumps ... EF Core Design ...`, PR #37, applied earlier the same day) bumped `Microsoft.EntityFrameworkCore.Design` in `Pena_e_Arte.API.csproj` from `9.*` to `10.*`, while every other EF-related package in the solution (`Microsoft.EntityFrameworkCore` in Application, `Microsoft.AspNetCore.Identity.EntityFrameworkCore` in Infrastructure, Pomelo itself) stayed on `9.*`. That commit's own message claimed "verified this does not leak `Microsoft.EntityFrameworkCore.Relational` 10.x into the runtime graph despite an NU1608 restore warning suggesting otherwise; all 311 integration tests still pass" — that claim was wrong for the one path it didn't test: a real `dotnet run` boot, where `Relational` *did* resolve to 10.0.10 and crashed `UseMySql` with `MissingMethodException`. (Integration tests apparently go through a different startup/host path that didn't hit this — worth someone confirming why, separately.) Checked NuGet directly before assuming a fix path: Pomelo still has no 10.x release (stable or prerelease), so "wait for upstream" was never actually available for PRs #27/#28 either. Fix: re-pinned `Microsoft.EntityFrameworkCore.Design` back to `9.*` (now resolves to `9.0.18`, current at time of fix) — Design is migrations/scaffolding tooling only, it doesn't need to lead the runtime EF Core version. `NU1608` warning is gone; confirmed by re-running the observability-stack verification (entry above) against the real `Pena_e_Arte.API` binary instead of the standalone harness: real traces (`GET /health/live`, `GET /metrics`) queryable in Tempo with `rootServiceName: "Pena_e_Arte.API"`, Prometheus's `pena-e-arte-api-host` target reporting `up == 1` against the real running app, real DataSeeder/StripeDemoSeeder/Hangfire output in the logs. | This was the harness workaround's own explicitly-flagged follow-up ("whoever unblocks Pomelo 10.x should re-verify") — done same-day once the actual root cause (a stray package pin from the very commit right before this branched off, not an actual Pomelo/EF Core incompatibility) was identified instead of just re-confirming the symptom. Also corrects [[project_dependabot_backlog]]'s "permanently blocked until Pomelo ships 10.x" framing: PRs #27/#28 (bumping `Microsoft.EntityFrameworkCore`/`Identity.EntityFrameworkCore` themselves to 10.x) are still correctly blocked — Pomelo genuinely has no 10.x release — but this specific runtime crash was caused by a different, already-merged package (`.Design`), not by #27/#28, and was fixable today without waiting on Pomelo at all. |
 | K3s production deployment — ingress controller corrected mid-Phase-0-execution (2026-07-26) | The entry directly below resolved the ingress controller to `ingress-nginx` (Traefik disabled at K3s install via `--disable traefik`), matching `CLAUDE.md`'s "Nginx" infra-stack line. That was wrong and got caught the same day, live, while actually executing Phase 0 on the real Hetzner box: the community `kubernetes/ingress-nginx` project (`kubernetes/ingress-nginx` on GitHub) was **archived 2026-03-24** — no further releases, bugfixes, or security patches, permanently. K3s had already been installed with Traefik disabled at that point but nothing further (cert-manager, manifests, workloads) had been layered on yet, so the fix was cheap: `k3s-uninstall.sh` on the box, then a clean reinstall of K3s **without** `--disable traefik`, keeping its bundled Traefik (actively maintained by Traefik Labs, purpose-built for K3s) as the ingress controller instead. Confirmed via K3s's own bundled add-ons reaching `Running` in `kube-system` post-reinstall. Consequences threaded through `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md`: the `Ingress` manifest's annotations changed from `nginx.ingress.kubernetes.io/*` (which Traefik silently ignores rather than erroring on — would have failed quietly) to `ingressClassName: traefik` plus the controller-agnostic `cert-manager.io/cluster-issuer`; the SignalR long-connection timeout question is left explicitly unresolved-by-design (Traefik has no direct per-Ingress equivalent of nginx's `proxy-read-timeout` annotation — its equivalents are cluster-wide static config or a `Middleware` CRD, and which one is actually needed should be confirmed empirically against a real connection during Phase 6, not guessed at spec time); Grafana's optional future basic-auth gate (if ever exposed publicly) would use a Traefik `BasicAuth` `Middleware` instead of an nginx annotation. **`CLAUDE.md`'s own infra-stack table still says "Nginx," not Traefik, as of this entry** — flagged explicitly, not corrected, since `CLAUDE.md` lives at the repo root, outside this consultation project's `docs/claude/`-only write scope; whoever runs Phases 1–10 of the referenced prompt should make that one-line edit too. | This is exactly the kind of "verify against the live, current state of the world before committing a recommendation" failure this project's own rules exist to catch — a same-day recommendation was wrong within the same day, caught only because Phase 0 was actually being executed live rather than the correction surfacing later during Phases 1–10 or, worse, in production. Nothing about the DigitalOcean/Hetzner/`SslMode=Required` resolutions in the entry below is affected — this correction is scoped to the ingress-controller decision only. |
 | K3s production deployment — Phase 0 provider decisions resolved (2026-07-26) | Follow-up to the entry directly below (logged first, chronologically earlier same day): the two money decisions that entry deliberately left open are now resolved. **VPS host: Hetzner** — cheapest at this scale, and checked directly against Hetzner's current site as part of resolving this: they have no first-party managed-database product, so "same provider as the DB" was never actually an available convenience to weigh against AWS either way. **Managed MySQL: DigitalOcean, engine 8.4** — DigitalOcean now defaults new clusters to MySQL 8.4 (an exact version match with `mysql:8.4`), confirmed current at resolution time (DigitalOcean's own migration notice: 8.0 clusters are on a forced-upgrade path to 8.4 starting Oct 2026). Also resolved as part of the same pass: **ingress controller is ingress-nginx**, with Traefik explicitly disabled at K3s install time (`--disable traefik`) rather than left ambiguous between the two, matching `CLAUDE.md`'s documented stack; and the production connection string requires **`SslMode=Required`** (DigitalOcean enforces TLS on managed connections; today's local `DB_CONNECTION_STRING` has no SSL parameters, so this is a real addition, not a copy-paste). `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md` §0/§2/§3/Phase 6 updated in place to reflect all four resolutions — no new dated file, since Phase 0 (provisioning) still hadn't been executed as of this update, only decided. | Unblocks Phase 0 of the referenced prompt — Phi can now actually provision the box and database instead of the prompt naming an open money decision. Region pairing recorded for latency: Hetzner Nuremberg/Falkenstein (Germany) + DigitalOcean Frankfurt (FRA1), both close to the app's Albania-based user base. |
-| K3s production deployment — spec'd, not yet executed (2026-07-26) | Full engineering-consultation audit of the production-deployment gap: `docker-compose.yml`/Dockerfiles/observability stack all work locally, but zero K8s manifests, zero CD step, and no live server existed anywhere despite `CLAUDE.md` naming K3s as the target orchestrator. Resolved via a clarifying pass with Phi: cluster not yet provisioned (VPS host — Hetzner vs. AWS — deliberately left open, a money decision, not decided here); MySQL will be a **managed** instance in production, not self-hosted (provider also deliberately left open — DigitalOcean/PlanetScale/AWS RDS candidates priced and compared, DigitalOcean recommended as the closest behavioral match to today's real-MySQL-protocol container, final pick is Phi's); observability stays **self-hosted in-cluster**, reusing `docker/observability/*` configs as ConfigMaps rather than switching to a managed service; TLS via cert-manager + Let's Encrypt using Cloudflare's **DNS-01** solver (not HTTP-01) against the `tattooos.co` zone, chosen for wildcard-cert support and no port-80-reachability requirement during issuance. Full phase-by-phase spec — including two problems found during the audit that needed precise, code-level fixes rather than just "add K8s YAML" — written to `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md` for a Claude Code session (main Engineering project, full repo write access) to execute once Phase 0's manual prerequisites (a human provisioning the actual VPS/K3s box, managed DB instance, and Cloudflare API token — none of which a coding session can do unattended) are complete. **Problem 1 — migration race condition:** `Program.cs` runs `AppDbContext.MigrateAsync()` unconditionally on every pod's startup; harmless at today's 1-replica scale, a real concurrent-migration race at the 2-replica rolling-update minimum this deployment requires for zero-downtime. Fix specified: a new `Migrations:ApplyOnStartup` config flag (default `true`, so local dev/`docker-compose.yml` behavior is untouched), set `false` on the K8s API Deployment, with a dedicated one-shot `batch/v1` Job (same image, flag left at its `true` default) run by the CD pipeline before each rollout. **Problem 2 — two-hop forwarded-headers bug:** the K3s topology this deployment introduces has *two* reverse-proxy hops in front of the API (ingress-nginx, then the frontend Pod's own nginx, which already same-origin-proxies `/api/`/`/hubs/` per `nginx.conf.template` — confirmed only one Ingress host is needed at all for exactly this reason), but `ForwardedHeadersOptionsBuilder.cs` (added in today's earlier security-remediation entry) never set `ForwardLimit`, which defaults to `1` — meaning even with `TrustedProxyCidr` correctly set to the cluster's Pod CIDR, only one hop would be stripped from `X-Forwarded-For` and `RemoteIpAddress` would resolve to the ingress pod's IP, not the real client's, silently defeating the per-client rate-limiting that config was added for in the first place. Fix specified: `ForwardLimit = 2`, plus a new `ForwardedHeadersTests.cs` case asserting the real client IP survives a real two-hop chain. Neither fix has been implemented yet — this entry records the spec, not a shipped change. No Help Menu/user-manual/onboarding-tour update needed: zero user-visible surface, stated explicitly in the prompt per CLAUDE.md rule #7's exception clause. Explicitly **not** covered by this spec, named rather than silently dropped: alerting/on-call routing, a public status page, retention tuning, autoscaling, multi-node/HA control plane, and a backup/DR runbook for whichever managed MySQL provider gets picked. | Closes the "Production/K3s rollout" and "CD pipeline" follow-ups this same log's observability entry (above) explicitly named as blocked on this landing. Alerting/on-call routing, public status page, and retention-cost tuning remain out of scope after this too — restated here so they don't quietly fall off the backlog now that the thing blocking them is unblocked. Full spec, exact manifests structure, exact code diffs, and the DigitalOcean/PlanetScale/AWS RDS pricing comparison: `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md`. |
+| K3s production deployment — spec'd, not yet executed (2026-07-26) | Full engineering-consultation audit of the production-deployment gap: `docker-compose.yml`/Dockerfiles/observability stack all work locally, but zero K8s manifests, zero CD step, and no live server existed anywhere despite `CLAUDE.md` naming K3s as the target orchestrator. Resolved via a clarifying pass with Phi: cluster not yet provisioned (VPS host — Hetzner vs. AWS — deliberately left open, a money decision, not decided here); MySQL will be a **managed** instance in production, not self-hosted (provider also deliberately left open — DigitalOcean/PlanetScale/AWS RDS candidates priced and compared, DigitalOcean recommended as the closest behavioral match to today's real-MySQL-protocol container, final pick is Phi's); observability stays **self-hosted in-cluster**, reusing `docker/observability/*` configs as ConfigMaps rather than switching to a managed service; TLS via cert-manager + Let's Encrypt using Cloudflare's **DNS-01** solver (not HTTP-01) against the `tattooos.co` zone, chosen for wildcard-cert support and no port-80-reachability requirement during issuance. Full phase-by-phase spec — including two problems found during the audit that needed precise, code-level fixes rather than just "add K8s YAML" — written to `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md` for a Claude Code session (main Engineering project, full repo write access) to execute once Phase 0's manual prerequisites (a human provisioning the actual VPS/K3s box, managed DB instance, and Cloudflare API token — none of which a coding session can do unattended) are complete. **Problem 1 — migration race condition:** `Program.cs` runs `AppDbContext.MigrateAsync()` unconditionally on every pod's startup; harmless at today's 1-replica scale, a real concurrent-migration race at the 2-replica rolling-update minimum this deployment requires for zero-downtime. Fix specified: a new `Migrations:ApplyOnStartup` config flag (default `true`, so local dev/`docker-compose.yml` behavior is untouched), set `false` on the K8s API Deployment, with a dedicated one-shot `batch/v1` Job (same image, flag left at its `true` default) run by the CD pipeline before each rollout. **Problem 2 — two-hop forwarded-headers bug:** the K3s topology this deployment introduces has *two* reverse-proxy hops in front of the API (ingress-nginx, then the frontend Pod's own nginx, which already same-origin-proxies `/api/`/`/hubs/` per `nginx.conf.template` — confirmed only one Ingress host is needed at all for exactly this reason), but `ForwardedHeadersOptionsBuilder.cs` (added in today's earlier security-remediation entry) never set `ForwardLimit`, which defaults to `1` — meaning even with `TrustedProxyCidr` correctly set to the cluster's Pod CIDR, only one hop would be stripped from `X-Forwarded-For` and `RemoteIpAddress` would resolve to the ingress pod's IP, not the real client's, silently defeating the per-client rate-limiting that config was added for in the first place. Fix specified: `ForwardLimit = 2`, plus a new `ForwardedHeadersTests.cs` case asserting the real client IP survives a real two-hop chain. **Executed 3 Sep 2026** (amending, not replacing, the spec recorded above): both code fixes
+landed (`Migrations:ApplyOnStartup` gate + `ForwardLimit = 2`, with their two tests), and the
+full `k8s/` manifest tree (base Deployments/Services/Ingress/ClusterIssuer/migration Job +
+observability namespace, 39 rendered resources, validated via `kubectl kustomize` client-side)
+plus `.github/workflows/cd.yml` were written in the same session that also executed
+`docs/claude/overnight-prompt-cd-k8s-vault-2026-09-03.md`'s Phase 8 replacement (self-hosted
+in-cluster Vault, not HCP — see that doc and ADR-0002's addendum) and Phase 9 correction
+(`cd.yml`'s frontend build-args use real `VITE_*` GitHub secrets, not `ci.yml`'s
+`pk_test_placeholder`/`placeholder` build-only values). One real deviation from this row's own
+"ingress-nginx, then the frontend Pod's own nginx" framing above: since Traefik replaced
+ingress-nginx same-day back in July (see this row's Choice cell), the actual two hops are
+Traefik + the frontend Pod, unchanged in effect. The Phase 7 Alloy DaemonSet config was written
+against Grafana's currently-documented `loki.source.kubernetes`-adjacent DaemonSet pattern
+(`discovery.kubernetes` node-filtered + `loki.source.file` over `/var/log/pods`, confirmed
+against current Alloy docs at write-time) rather than a raw containerd-socket bind, since no
+`discovery.docker`-equivalent component exists for containerd — flagged as a real translation
+decision, not a guess, still worth empirical verification against the real cluster per this
+prompt's own standard. `k8s/base/cluster-issuer.yaml`'s ACME contact email is a placeholder
+(`CHANGE-ME@tattooos.co`) — Phi must replace it before this manifest is ever applied.
+**Not done in this session, and the pipeline is not yet deployable as a result:** nothing was
+applied to the real cluster (no `kubectl apply`, no cert-manager install, no Vault
+init/unseal — see `docs/infra/vault-self-hosted-runbook.md`), the branch was not pushed, and
+most of the GitHub Actions secrets `cd.yml` needs still don't exist (full list in
+`docs/claude/overnight-prompt-cd-k8s-vault-2026-09-03.md` §5). This entry records what shipped
+to the repo, not a live production deploy. No Help Menu/user-manual/onboarding-tour update needed: zero user-visible surface, stated explicitly in the prompt per CLAUDE.md rule #7's exception clause. Explicitly **not** covered by this spec, named rather than silently dropped: alerting/on-call routing, a public status page, retention tuning, autoscaling, multi-node/HA control plane, and a backup/DR runbook for whichever managed MySQL provider gets picked. | Closes the "Production/K3s rollout" and "CD pipeline" follow-ups this same log's observability entry (above) explicitly named as blocked on this landing. Alerting/on-call routing, public status page, and retention-cost tuning remain out of scope after this too — restated here so they don't quietly fall off the backlog now that the thing blocking them is unblocked. Full spec, exact manifests structure, exact code diffs, and the DigitalOcean/PlanetScale/AWS RDS pricing comparison: `docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md`. |
+| Staging environment — spec'd + manifests/CD committed, not yet applied (2026-09-03) | Phi flagged that `test.tattooos.co` (a Cloudflare Tunnel to a laptop) isn't a real staging environment — it goes down on sleep/reboot/local Docker failure, and can't be relied on by Stripe's webhook servers or a future PSP reviewer. Full engineering-consultation spec written for a real, deployed `staging.tattooos.co`, designed to reuse — not fork — the exact `k8s/base/` manifests this same day's K3s-production-manifests/CD-pipeline/Vault work (merged to `main` via PR #80, row above) already produced: a `k8s/overlays/staging/` Kustomize overlay patches the identical base Deployment/Service/Ingress/Job files `overlays/production/` already patches, differing only in namespace (`pena-e-arte-staging`), replica count (1, not 2), resource sizing, image tag, and Ingress host. Key decisions: same K3s cluster/new namespace by default, not a second VPS, gated behind an empirical `kubectl describe nodes` capacity check run once production is actually deployed (a second small Hetzner box is the named, priced fallback if that check fails); staging's database is a second database + scoped user on the *same* DigitalOcean cluster production uses, not a second managed cluster (cost tradeoff named explicitly — shared compute/IO, acceptable for behavioral testing, not load testing); one shared, environment-labeled observability stack, not a duplicated Prometheus/Loki/Tempo/Grafana per namespace; a separate Cloudflare R2 bucket and a separate Stripe test-mode webhook endpoint (the test-mode key pair itself is reused from local dev — only the one webhook signing secret is genuinely new, tied to the new endpoint URL; narrowed from an original two-endpoint plan — see the same-day addendum below); Resend/Twilio left unconfigured on staging by default (avoids real emails/SMS firing against test data). **Real problem found during the audit, not just infra bookkeeping:** the frontend bakes `VITE_STRIPE_PUBLISHABLE_KEY`/`VITE_GOOGLE_CLIENT_ID`/`VITE_APPLE_CLIENT_ID`/`VITE_PUBLIC_URL` at Vite *build* time, not runtime (unlike the API, which reads config at runtime) — reusing production's frontend image on staging would silently serve production's live Stripe key and public URL to staging visitors. Fix specified: `cd.yml` gets a second, distinctly-tagged frontend build (`:staging-<sha>`) with staging's own build-args, the same class of fix the Sept 3 CD prompt (row above) already applied for the `ci.yml`-placeholder version of this identical bug. Also flagged, not built: a `noindex`/staging-banner (recommended, small); whether to gate staging behind BasicAuth (recommended: no — staging must stay reachable by Stripe's webhook servers and a PSP reviewer per Phi's own stated purpose); and reuse of the existing `letsencrypt-prod-dns01` `ClusterIssuer` for staging's cert too (cluster-scoped, so any namespace can reference it — the name is a real misnomer once staging uses it too, named rather than renamed, since renaming would touch a live production Ingress annotation for a cosmetic reason). **This audit also re-confirmed that `k8s/base/cluster-issuer.yaml`'s ACME contact email was still the literal placeholder `CHANGE-ME@tattooos.co`** at write-time — blocking certificate issuance for staging as much as for production, since both share the one issuer. **Addendum, same day:** PR #82 (`b64f5c7`) fixed this, setting the email to Phi's real address; PR #81 (`8bfb6ab`), also same day, made `StripeHealthCheck` optional so an unconfigured `Stripe:SecretKey` no longer fails K8s readiness. PR #81's commit message surfaced a further fact this staging plan didn't originally account for: Stripe isn't currently available for the platform's own Albania-registered entity, which is why Flow A (client card deposits) already moved off Stripe onto a placeholder `NullPaymentProvider` pending an alternative ("POK"); Flow B (`IStripeBillingService`, subscription billing) still calls Stripe.net directly and remains what this staging plan's webhook testing exercises — narrowed to `/api/v1/webhooks/stripe/billing` only, since `/api/v1/webhooks/stripe/connect` turned out to be orphaned code left from the pre-POK, Stripe-Connect-based Flow A (it dispatches Flow A commands that nothing can trigger anymore). **Phi confirmed (2026-09-03):** the Albania restriction is country-level, not Connect-specific — it blocks any live Stripe merchant account for this entity, so Flow B will need the same provider rethink Flow A already got before this platform could ever go live with Stripe billing directly; test-mode working locally doesn't indicate anything about live-mode eligibility. Staging itself is unaffected (it only ever needed test-mode Stripe for Flow B), so nothing in the staging plan changes — this is recorded so a future session doesn't re-derive it. **Also confirmed the same day, as a separate, standalone item — not staging-specific, and deliberately not patched mid-audit:** `DepositCheckoutPage.tsx`/`PaymentMethodSelector.tsx` still call Stripe Elements directly against the `NullPaymentProvider` backend, which fails closed by design (ADR-0001); needs its own fix/ticket once the POK (or other) provider decision lands. Full trace: `docs/claude/overnight-prompt-staging-environment-2026-09-03.md` §1. Full phase-by-phase spec — the Kustomize overlay structure, the exact `cd.yml` job additions (mirroring its real, already-committed ~35-key secret-population step), the capacity-check commands, and the complete new-secrets checklist — written to `docs/claude/overnight-prompt-staging-environment-2026-09-03.md` for a Claude Code session (main Engineering project, full repo write access) to execute once production has actually been deployed to the live cluster at least once (the row above's own `kubectl apply`/cert-manager-install/Vault-init/GitHub-secrets prerequisites, still outstanding as of this writing) and the staging-specific BLOCKING-MANUAL items are complete (a new Cloudflare DNS record, a second DigitalOcean database + user, a new R2 bucket, two new Stripe test-mode webhook endpoints, an OAuth redirect-URI addition). No Help Menu/user-manual/onboarding-tour update needed: zero user-visible surface, per CLAUDE.md rule #7's stated exception — staging itself has no real end users. **Same-day execution addendum:** `k8s/overlays/staging/` (Kustomize overlay: ingress/replica/resources/api-config/frontend-env/vault-exclude/namespace-exclude patches), the two `cd.yml` jobs (`build-and-push-frontend-staging`, `deploy-staging`, plus a `workflow_dispatch` input for on-demand staging-only redeploys), the observability additions (Prometheus staging scrape job, Alloy `environment` relabel rules, Grafana `environment` template variable on `api-overview.json`), the `IS_STAGING`-gated `X-Robots-Tag` header (`frontend/nginx.conf.template`, six locations — nginx omits `add_header` entirely on an empty value, so no `if`/`map` was needed), and the dismissable `StagingBanner` component (with a passing test) were all written and committed. Empirically confirmed against the real cluster (kubeconfig `~/.kube/hetzner-prod.yaml`, reachable) that this row's own premise still holds: only `kube-system` pods running, no `cert-manager` CRDs, no `pena-e-arte`/`monitoring`/`pena-e-arte-staging` namespaces — production has not been deployed yet, so §3.1's capacity check and §8's manual-verification steps genuinely could not run this session; `kubectl apply -k k8s/overlays/staging --dry-run=server` fails only on that missing prerequisite (`ClusterIssuer` CRD/namespace not found), not on the manifests themselves — `kubectl kustomize k8s/overlays/staging` renders cleanly and was spot-checked (1 replica, halved resources, zero StatefulSets, correct Ingress host). **Two real corrections found while building this, not assumed correct from the spec:** (1) Kustomize's `namespace:` transformer rewrites a `Namespace`-kind object's own `.metadata.name`, not just `.metadata.namespace` — naively including all three `Namespace` objects from `k8s/base/namespace.yaml` renamed `pena-e-arte` to `pena-e-arte-staging`, colliding with the real one; fixed via `namespace-exclude-patch.yaml` deleting the two objects staging doesn't own (see `docs/infra/staging-environment.md`). (2) The original spec's prose named the CD-populated Secret `pena-e-arte-staging-api-secrets` in places while its own §2.8 design says object names stay unprefixed (namespace isolation alone disambiguates) — these are incompatible since the base Deployments' `envFrom` references are unprefixed; resolved in favor of the unprefixed name, matching §2.8 and the validated render output. Vault was deliberately excluded from the staging overlay (`vault-exclude-patch.yaml`) — nothing in the staging spec calls for a second Vault instance, and `base/kustomization.yaml` would otherwise pull one in via `resources: [../../base]`. Full detail: `docs/infra/staging-environment.md`. | Gives Phi a stable, non-laptop-dependent environment to test Stripe webhooks, SignalR, and presence tracking against, and a URL a future PSP reviewer can actually open — the concrete gap `test.tattooos.co`'s Cloudflare-Tunnel-to-a-laptop setup couldn't close. Nothing here is live yet — this entry records what shipped to the repo, not a deployed environment, same standard the row above holds itself to; the same-cluster capacity gate and all manual-verification steps remain outstanding until production itself is deployed. The ACME-email placeholder this audit re-surfaced was resolved the same day (PR #82); see this row's addendum for that and the subsequent Stripe/Albania/Flow-A-vs-B finding, which narrowed but didn't block the staging plan. |
+| CD connectivity: self-hosted GitHub Actions runner, not dynamic IP allowlisting or a widened firewall rule (2026-09-04) | Confirmed live (5/5 attempted CD runs failed identically, `dial tcp 49.13.66.15:6443: i/o timeout`) that GitHub-hosted runners can never reach the cluster: the Hetzner firewall (`pena-e-arte-k3s-fw`) restricts `6443/tcp` to the operator's own IP by design (Phase 0 of the K3s deploy prompt), and GitHub-hosted runner IPs are never on that allowlist. Three long-term fixes were named, not silently picked: (1) self-hosted runner on the box itself, (2) dynamic Hetzner-API firewall allowlisting around each deploy, (3) opening 6443 to GitHub's published IP ranges. Phi chose (1). `cd.yml`'s `deploy`/`deploy-staging` jobs now run on `[self-hosted, pena-e-arte-prod]` instead of `ubuntu-latest`, reaching the K3s API over loopback (`127.0.0.1:6443` via a copy of `/etc/rancher/k3s/k3s.yaml`) — never crossing the firewall at all, needing no new secret. `build-and-push`/`build-and-push-frontend-staging` (GHCR pushes only, no cluster access) stay on `ubuntu-latest`, unaffected. **Public-repo risk named explicitly**: self-hosted runners are dangerous on public repos when a workflow can be triggered by a fork's `pull_request`; this one can't — `deploy`/`deploy-staging` only trigger via `workflow_run` (post-merge on `main`) or `workflow_dispatch` (requires write access) — a rule that must hold forever, documented in `docs/infra/self-hosted-runner-setup.md` as a standing constraint, not a one-time check. Setup could not be executed by this session (requires the passphrase-protected SSH key at `C:\Users\User\.ssh\hetzner-pena-e-arte`, never recorded anywhere a session could read it) — full step-by-step runbook written for Phi to run by hand: `docs/infra/self-hosted-runner-setup.md`. Cluster-side prerequisite work this same session actually completed while the runner decision was pending: cert-manager installed at pinned tag `v1.21.1` (3 pods confirmed `Running`), the `pena-e-arte`/`monitoring`/`pena-e-arte-staging` namespaces created for real (inert — no app resources), and `kubectl apply --dry-run=server` against both `k8s/base/` and `k8s/overlays/production/` passed clean, zero schema errors. | Matches the original Phase 0 K3s-deploy prompt's "never expose 6443 world-wide" stance — the alternatives either add a standing secret + firewall-mutation logic (dynamic allowlisting) or permanently widen the exposed range (GitHub IP ranges). No `VaultSharp`/application code touched. Manual maintenance burden (runner/OS updates, no automatic fallback if the runner is offline) accepted and named in the runbook, not silently assumed away. |
 | Security remediation (adversarial pass findings) — 2026-07-26 | Fixed the P0 cross-tenant SignalR authorization gap: `ScheduleHub`/`DesignHub`/`NotificationHub.JoinStudio` now validate the caller's `tenant_id` claim against the requested `studioId` (issuer role bypasses for cross-tenant support access), mirroring `SupportHub.JoinTicket`'s 2026-07-21 fix — the same defect existed in all three studio-scoped hubs and was never generalized past the one hub that got reviewed that day. Also: `ForwardedHeaders:TrustedProxyCidr` config added (optional, logs a warning when unset); rate limiting added to `reset-password`/`refresh`/`verify-email` (reused the existing `auth` policy — frontend's `usePresignedUpload`-adjacent `baseQuery.ts` refresh flow already single-flights via an in-tab lock, so 10/min is not a real constraint); Hangfire dashboard now gated by real HTTP Basic Auth (finally consuming the `Hangfire:DashboardUsername`/`Password` env vars docker-compose already required) with the issuer-JWT check kept as an additional layer; a startup-time fail-fast guard on `Jwt:SecretKey` length (≥32 bytes); R2 presigned-upload object keys now keep only the client's folder/purpose prefix and server-generate the file name (`Guid.NewGuid()` + extension derived from the validated `ContentType`); a new `billing` rate-limit policy (20/min, keyed per authenticated user id) on `CreatePaymentIntent`/`CreateDepositPayment`/`CaptureDeposit`/`RefundPayment`/`CreateCheckout`/`CreateCheckout/finalize`; and a CORS production-misconfiguration guard (throws if `Cors:AllowedOrigins` is empty and `IHostEnvironment.IsProduction()`, matching this same remediation's own JWT-guard precedent of failing loud rather than warning on a missing security-critical value — no pre-existing convention for this either way was found elsewhere in the codebase). **Two of the audit's own premises turned out to be stale or incomplete once checked against live behavior, not assumed correct:** (1) Finding 2's "KnownNetworks/KnownProxies empty means trust every proxy" no longer holds on this SDK — ASP.NET Core's `ForwardedHeadersMiddleware` shipped a security patch in .NET 8.0.17/9.0.6 (carried into this project's net10.0) that flips that default to "ignore the header entirely" instead; confirmed empirically via a TestServer probe (`tests/Pena_e_Arte.IntegrationTests/Middleware/ForwardedHeadersTests.cs`) before writing the fix, and via a Microsoft Learn breaking-changes doc. The real current-state gap is therefore the opposite of the audit's framing: without `TrustedProxyCidr` set, X-Forwarded-For isn't spoofable, but every real client behind the production ingress collapses onto the ingress's own IP for rate-limiting purposes — the original problem this middleware was added to solve in the first place. The fix (configurable `TrustedProxyCidr`) closes both framings regardless. (2) The `billing` policy's per-user-id partition key, as specified, would not have worked at all: `Program.cs` had `UseRateLimiter()` registered *before* `UseAuthentication()`, so `HttpContext.User` was never populated at partition-key-resolution time — verified via a throwaway TestServer probe showing `IsAuthenticated == false` inside the callback with that ordering. Reordered to `UseAuthentication → UseRateLimiter` (verified via the full `BillingRateLimitingTests` suite, run against the real `AddApiRateLimiting()` wiring, that the existing IP-keyed `auth`/`public-write`/`public-read` policies are unaffected by the reorder, and that separate users now correctly get separate buckets). Hangfire reachability (§2.2 item 1) was also verified empirically rather than assumed: the SPA's JWT lives in local/session storage and is only ever attached to `fetch`/XHR by `baseQuery.ts`, never on a top-level navigation, and there is no cookie-auth scheme registered, so `/hangfire` was confirmed completely unreachable by its intended operators before tonight — resolved by wiring real Basic Auth. K3s ingress topology (the other Finding 2 "confirm before assuming" item) could not be checked — no K8s manifests exist in this repo at all, K3s is managed outside it — so the code-level fix was implemented regardless rather than assumed-covered. R2/CDN `X-Content-Type-Options: nosniff` (Finding 6's second half) likewise could not be verified or set from this repo — flagged as an infra follow-up for whoever manages the Cloudflare R2/CDN configuration. Full findings, evidence, and severity in `docs/claude/security-audit-adversarial-2026-07-26.md`; phase-by-phase spec in `docs/claude/overnight-prompt-security-remediation-2026-07-26.md`. | Closes a genuine P0 (any authenticated user of any studio could join any other studio's real-time broadcast group and silently watch client names, appointment notes, design activity, consent/intake submissions, and payment/refund events) plus seven lower-severity defense-in-depth gaps identified by a dedicated end-to-end adversarial pass distinct from the routine role-scoped QA passes. No Help Menu/user-manual/onboarding-tour update needed for any of the eight fixes — every one is backend authorization/config hardening with zero user-visible surface change (stated per-phase during implementation, restated here). No frontend files were touched: all four real presign call sites (`BookAppointmentForm.tsx`, `ArtistDetailPage.tsx`, `UploadRevisionPage.tsx`, `FeedbackDialog.tsx`) already stored the server-returned `publicUrl` rather than reconstructing one, so the coordinated frontend change the source prompt anticipated for the R2 fix wasn't actually needed. |
 | Platform legal-entity disclosure + public policy surfaces (EPIC-0001 PENA-100/101/102) — 2026-07-31 | Brand stays "TattooOS" in the UI; the operating legal entity (`LEGAL_ENTITY_NAME` "Pena e Artë", `LEGAL_ENTITY_NIPT` "M12219042B") is disclosed in a new site-wide `SiteFooter.tsx`, sourced from a single `frontend/src/shared/constants/legalEntity.ts` module (also the source of truth for `SITE_TAGLINE`, mirrored literally into `index.html`'s `<title>`/meta since a static HTML file can't import a TS constant here). Dead `/privacy` `/terms` links (previously bounced to `/discover` by `CatchAllRedirect`) fixed by adding real `/privacy` `/terms` `/refund-policy` `/contact` routes plus a public `/` Home surface for unauthenticated visitors (`IndexRedirect` renders it instead of redirecting guests to `/discover`). Privacy/Terms carry a conditional `[LAWYER REVIEW REQUIRED]` banner gated on `HAS_FINAL_LEGAL_COPY`; Refund Policy is REAL copy derived from `DepositRule`/`DepositCalculator`/`ClientCancellationPolicy`/`AppointmentSelfServiceDefaults` (24h default window, forfeit-on-no-show, 0% default late-cancel refund) rather than aspirational text. Signup Terms/Privacy consent lines added to both register pages. `appsettings.json` gains empty `App:LegalEntityName`/`LegalEntityNipt` (env-var-later, unconsumed yet). | EU e-Commerce Directive Art. 5 + Albanian consumer/e-commerce trader-identification disclosure; PSP/MoR KYC reviewers check for exactly this brand-in-header / legal-entity-in-footer split. First two phases (of seven) of EPIC-0001 pre-implementation hardening; Phases 3–7 (consent versioning, retention/purge, secrets/Vault, `IPaymentProvider` refactor, CI gates) remain — see `docs/engineering/EPIC-0001-pre-implementation-hardening.md`'s Execution status note. Verified: `pnpm lint` 0 errors, `pnpm build` clean, affected `pnpm test` green; no backend C# touched, Flow B (`IStripeBillingService`/`StripeBillingService`/`StripeDiscountService`) byte-for-byte unchanged. |
 | Versioned consent + immutable snapshot (EPIC-0001 PENA-103) — 2026-07-31 | New `ConsentTemplate` entity models consent text with a Kind discriminator (`AppointmentConsent`, `CrossTenantProfileSharing`); it does NOT inherit `TenantEntity` and has NO query filter — nullable `StudioId` (null = platform default), authorized in handlers via `ConsentTemplateResolver`, exactly the `AuditLogEntry` pattern. `ConsentForm` and `ClientProfile` gain an immutable `*Snapshot` of the exact text agreed to, resolved server-side at signing/opt-in and never re-derived. `UpdatePortableProfileOptInCommand` became `IAuditableCommand` (was unaudited). **Corrected a false epic premise:** the portable-profile opt-in shares tattoo history + body map only — NOT Art. 9 medical notes/allergies (verified against `PortableClientProfile`) — so the kind is `CrossTenantProfileSharing` and all consent/Help/Privacy copy states this truthfully. | GDPR Art. 9/Art. 7 + Law 124/2024; immutable-snapshot consent is standard (DocuSign/HelloSign). Verified: dotnet build/format/test green (1446 unit + 328→330 integration across phases), pnpm green; migration additive, applied to a scratch DB. |
 | Two-stage retention purge + R2 delete + audited erasure (EPIC-0001 PENA-104) — 2026-07-31 | `RetentionPurgeJob` (registered in `Program.cs` via `IRecurringJobManager.AddOrUpdate`, Cron.Daily(4) — NOT `IJobScheduler`, which has no cron concept) soft-deletes consent forms past `App:RetentionDays:ConsentForms`, then hard-purges rows past the grace window, deleting the R2 object first via the NEW `IR2Service.DeleteAsync`. Retention numbers are configurable PLACEHOLDERS (open question §3.6). `RequestDataErasureCommand` (owner/support endpoint, `OwnerOnly`) soft-deletes a client's consent forms + profile immediately, audited with a DISTINCT action (`Client.DataErasureRequested`) from the automatic purge (which writes no audit row). No client-facing self-service erasure UI yet (open question §3.8). | GDPR Art. 5(1)(e)/Art. 17, NIST SP 800-53 SI-12; two-stage soft-delete/hard-purge mirrors S3 lifecycle. Verified: dotnet build/format/test green; new endpoint has `RequireAuthorization`. |
-| Per-tenant secrets: ISecretsProvider + local Vault dev mode (EPIC-0001 PENA-105) — 2026-07-31 | `ISecretsProvider` (fail-closed: throws, never returns null) with `VaultSecretsProvider` (VaultSharp, KV v2) as the default backend per CLAUDE.md rule 4; Vault runs in dev mode as a new `docker-compose.yml` service (NOT the production posture — no cluster exists yet). `StudioCredentialRef` (StudioId, Provider, SecretPath) is a Vault path/key POINTER with no value column (ADR-0001 Art. 4(g) scaffolding). A local `.githooks/pre-commit` gitleaks hook is the one scanning layer neither CI gitleaks nor push protection provides. The docker-compose Twilio/Instagram env gap (both live integrations ran with empty credentials in any composed deployment) was fixed at the same time. **Production backend resolved (1 Aug 2026): HCP Vault** (HashiCorp-managed) — not self-hosted Raft, not Infisical/Doppler; same `VaultSharp` client, no code change, only deploy-time config differs. Full rationale in `docs/infra/ADR-0002-secrets-management.md`; rotation steps in `docs/infra/secrets-rotation-runbook.md`. | OWASP ASVS V6, CWE-798, twelve-factor config; PCI DSS Req 3/6 for card-adjacent secrets. VaultSharp is the only new NuGet (pre-approved). Verified: dotnet build/format/test green (incl. Vault-backed + fail-closed tests); pre-commit hook proven to block a staged secret; docker compose config valid; Flow B unchanged. |
+| Per-tenant secrets: ISecretsProvider + local Vault dev mode (EPIC-0001 PENA-105) — 2026-07-31 | `ISecretsProvider` (fail-closed: throws, never returns null) with `VaultSecretsProvider` (VaultSharp, KV v2) as the default backend per CLAUDE.md rule 4; Vault runs in dev mode as a new `docker-compose.yml` service (NOT the production posture — no cluster exists yet). `StudioCredentialRef` (StudioId, Provider, SecretPath) is a Vault path/key POINTER with no value column (ADR-0001 Art. 4(g) scaffolding). A local `.githooks/pre-commit` gitleaks hook is the one scanning layer neither CI gitleaks nor push protection provides. The docker-compose Twilio/Instagram env gap (both live integrations ran with empty credentials in any composed deployment) was fixed at the same time. **Production backend resolved (1 Aug 2026): HCP Vault** (HashiCorp-managed) — not self-hosted Raft, not Infisical/Doppler; same `VaultSharp` client, no code change, only deploy-time config differs. **Reversed (3 Sep 2026): self-hosted single-node in-cluster Vault instead** — HCP Vault Secrets (the cheap tier this resolution assumed) shut down 1 Jul 2026; the only remaining HCP-managed option compatible with `VaultSharp` (HCP Vault Dedicated) starts at ~$1,150–1,200/mo, disproportionate for a mechanism nothing calls yet. Self-hosted now viable (unlike when first rejected) since the K3s cluster exists and already runs comparable stateful single-node workloads; accepted tradeoff is manual unseal after every pod restart, no auto-unseal, no HA — named explicitly, not silently dropped. Still zero code change, only `Vault:Address`/`Vault:Token` differ. See `k8s/base/vault-statefulset.yaml`, `docs/infra/vault-self-hosted-runbook.md`. Full rationale in `docs/infra/ADR-0002-secrets-management.md`; rotation steps in `docs/infra/secrets-rotation-runbook.md`. | OWASP ASVS V6, CWE-798, twelve-factor config; PCI DSS Req 3/6 for card-adjacent secrets. VaultSharp is the only new NuGet (pre-approved). Verified: dotnet build/format/test green (incl. Vault-backed + fail-closed tests); pre-commit hook proven to block a staged secret; docker compose config valid; Flow B unchanged. |
 | IPaymentProvider replaces IStripePaymentService (EPIC-0001 PENA-106) — 2026-07-31 | Deleted the Stripe-aggregator `IStripePaymentService`/`StripePaymentService` outright (Amendment A Findings 1/2 — the Article 4(g) exposure, deleted not migrated) and replaced with a provider-neutral `IPaymentProvider` (`CreatePaymentHoldAsync`/`CaptureAsync`/`CancelAsync`/`GetStatusAsync`/`RefundAsync`) + a `PaymentProviderCapabilities` companion so logic gates on capability, never assumes. `NullPaymentProvider` is the DI default (fails closed) until POK lands. `Payment.StripePaymentIntentId` → `ProviderReferenceId` (renamed across ~22 files/~74 sites) plus new `Provider`/`Currency` (ISO 4217, default "ALL")/`HoldExpiresAt`/`PlatformFeeAmount` (0% day-one, deliberately OUTSIDE `SessionSplit`'s exact-sum-to-Amount invariant — Amendment A Finding 4). Migration used `RenameColumn` (no data loss). `PaymentReconciliationJob` gained a third hold-expiry auto-release pass (no fourth job). `SessionSplit`/`UpdateSessionSplitsCommand` and Flow B (`IStripeBillingService`) are byte-for-byte unchanged. Flow-A card wording in Help/manual went provider-neutral; Flow-B billing kept as Stripe. | Architecture fitness function (Ford/Parsons) — NetArchTest.Rules is the .NET ArchUnit; ADR-0001 Consequence 3. PCI DSS SAQ-A scope preserved (card data never touches this infra). Verified: dotnet build/format clean; 1446 unit + 330 integration green (incl. the new arch + hold-expiry + PlatformFee-invariant tests); migration applied to a scratch DB; pnpm lint/build clean. |
 | Architecture fitness test + Help-sync check in CI (EPIC-0001 PENA-107) — 2026-07-31 | Extended `.github/workflows/ci.yml`: a fail-fast "Architecture fitness tests" step in the existing `backend` job (visible check for the no-platform-ledger rule), and a new `help-sync` job (separate from the hard-security `guardrails` job) that fails a PR touching a user-facing gated path (payments/forms/billing/studios/clients features, matching Application slices, or the ConsentForm/ConsentTemplate/ClientProfile/Payment entities) without updating a Help surface — reviewer-overridable via `[skip-help-sync]`. No duplicate gitleaks step (already present + push protection on). New `CONTRIBUTING.md` at repo root documents the CI gates, the pre-commit hook install, and the Definition of Done. | Fitness-function-in-CI is standard once an arch test exists; path-based doc-sync checks mirror larger OSS repos (Kubernetes PR bots), scoped for a solo founder. Both checks proven by real runs (arch test fails on an injected `PlatformLedger`; help-sync fails a gated-change-without-Help and passes with Help / override / non-gated). |
 | Live traffic analytics — GeoIP provider | MaxMind GeoLite2-City (`MaxMind.GeoIP2` v6.1.0), not DB-IP Lite | Free GeoLite2 signup completed (2026-08-04); MaxMind's better-maintained ruleset judged worth the account/license-key friction DB-IP Lite avoids; recurring refresh handled by a separate `geoipupdate` process/scheduled task outside the app's own request path |
@@ -1634,6 +1809,18 @@ does not re-litigate them.
 | Live traffic analytics — raw event retention | 35 days (`TrafficRollupJob` purge), daily aggregate kept indefinitely | Long enough for a rolling "top pages this month" breakdown without keeping raw per-visit rows forever; matches the reasoning `GetTrafficBreakdownQuery` needs raw `TrafficEvent` for device/browser/page dimensions that `TrafficDailyAggregate` doesn't carry |
 | Live traffic analytics — owner-facing scope | Deliberately not built this pass — issuer-only | No evidence any vertical-booking-SaaS competitor (Vagaro/Fresha/Boulevard/Mindbody/GlossGenius) exposes live site traffic to tenant owners; this is a general platform-admin pattern (Google Analytics Realtime/Plausible Live/Cloudflare Web Analytics/PostHog Live), not a booking-SaaS one — full backlog spec in the source prompt's §3.4 |
 | Live traffic analytics — full free-tier GeoIP integration (2026-08-05) | Added the second free MaxMind edition, `GeoLite2-ASN` (`GeoIp:AsnDatabasePath`, `GeoIpService` opens an independent `DatabaseReader` for it — one database missing/unavailable never blocks the other), plus every remaining field free on the existing `City()` lookup: subdivision ISO code, postal code, continent, lat/long, accuracy radius, timezone. Lat/long is surfaced on a new live-visitor world map (`react-leaflet`, live/≤60s presence only, no historical heatmap — zero new npm packages, mirrors `StudioMapPage.tsx`'s existing marker pattern) and ASN organization on a new aggregate-only "Top networks" breakdown card. Postal code/continent/timezone/accuracy-radius are captured and persisted on `TrafficEvent` but deliberately **never rendered anywhere** — postal code is materially more identifying than city and would break the existing Help-copy promise ("no visitor is ever identified... only role, rough location, and device") if shown per-visitor; the others simply have no UI need yet. **No backfill**: `TrafficEvent` never stored a raw IP (only a one-way SHA-256 hash), so every new column is `NULL` on all pre-2026-08-05 rows and only populates going forward. `GeoIP.conf`/`geoipupdate` needed no changes — it already pulled all three free editions. |
+| Manual Client Reminders (2026-08-21) | New `ManualReminder` entity (Hangfire-scheduled, `ManualReminderJob` mirrors `AppointmentReminderJob`) is purely additive to the existing automatic 48h/24h reminder pipeline — three-way recipient resolution (an appointment's linked client, an existing `Client` record, or a raw typed name+phone that creates no `Client` row at all). Deliberately bypasses `INotificationPreferenceService` (a deliberate one-off artist action shouldn't be silently swallowed by a stale studio-wide preference toggle). `Client.SmsOptOut` added and checked on every outbound SMS path (automatic and manual alike), but nothing sets it yet — the inbound Twilio STOP webhook that would is flagged out of scope, not silently dropped. `NotificationLog.RecipientId` widened `Guid` → `Guid?` and `NotificationRecipientType` gained `ExternalContact`, since a raw-contact reminder has no linked Client/Studio/Artist id — cascaded into `NotificationLogResponse`, `GetNotificationsQuery`'s recipient-name resolution, and the notification bell/list UI's fallback text ("External contact" instead of crashing on a null id). Per-artist quota: 20/day, Redis `INCR`+`EXPIRE` via `IManualReminderQuotaService` (mirrors `RedisFixedWindowRateLimiter`'s Lua-free `IDatabase` pattern, not `PlanLimitService`'s `IDistributedCache` pattern, since this needs atomic increment) — **fails closed** on a Redis outage, the opposite of `RedisFixedWindowRateLimiter`'s fail-open default, because this quota's entire purpose is bounding real Twilio SMS cost. `CreateManualReminderCommand.AuditTargetId` is a mutable property, not constructor-derived, since the audited `ManualReminder` row doesn't exist until the handler creates it — confirmed safe by reading `AuditLogBehavior.cs`: it reads `IAuditableCommand` properties only after `Handle()` returns. | Vertical-booking-SaaS current standard (CLAUDE.md rule 6) — Vagaro/Fresha/Boulevard all offer artist-initiated manual client messaging alongside automated reminders. Redis-backed quota on a freely-addressable, cost-bearing SMS endpoint follows the same "flag the gap, don't ship it silently" posture rule 6 already applies elsewhere. Verified: dotnet build/test green (1559 unit + 359 integration, up from 1532/346); pnpm tsc/lint/test green; app boots for real after the entity/DI/migration changes (not just green tests — `docs/claude/feedback_di_wiring_verification.md`'s standing lesson). Quota's real-Redis path isn't integration-tested — CI provisions MySQL only, matching the existing "every external service is NSubstitute-mocked at the handler level" convention (`ci.yml`); covered instead by `ManualReminderQuotaServiceTests` against a mocked `IDatabase`. |
+| "Get Directions" — Google Maps deep link on studio location surfaces (2026-08-20) | `PublicStudioResponse` gains `Latitude`/`Longitude` — previously only `City` was exposed on the public studio DTO, even though `Studio.Latitude`/`Longitude` already existed on the entity and were already public via `StudioMapItemResponse`/`GET /api/studios/map`. New `shared/utils/googleMaps.ts` (`buildGoogleMapsDirectionsUrl`, `hasPinnedLocation`) builds Google's documented `/maps/dir/?api=1&destination=lat,lng` URL — no API key, no new npm/NuGet package. Link added to `StudioPortfolioPage.tsx`'s sidebar (replacing the plain city text with an actionable link, same pattern as the phone/Instagram links directly above it) and to each pin's `Popup` in `StudioMapPage.tsx`. `StudioMeta`'s `TattooParlor` JSON-LD also gains an optional `geo: GeoCoordinates` block now that the data is available. Guarded on `hasPinnedLocation` — `(0, 0)` means unset, same sentinel convention `LocationPicker.hasInitial` already uses, since `RegisterStudioValidator` only range-checks `[-90,90]`/`[-180,180]` and doesn't reject the origin outright. No `AllowAnonymous Exceptions` table change — extends the response shape of an already-approved anonymous endpoint (`GET /api/v1/public/studios/{slug}`), doesn't add a new one. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — Fresha/Vagaro/Boulevard/GlossGenius studio-detail pages all surface a one-tap "Get Directions" to the studio's pinned location; this codebase already had the exact geodata and an identical, already-shipped marker pattern to copy from (`StudioMapPage.tsx`), it just wasn't wired to a client-facing deep link yet. Deliberately scoped to the two surfaces where a client is looking at one specific studio's location (profile page, map popup) — `DiscoverPage`'s Studios-tab card grid and `MyBookingsSection`'s per-appointment rows were considered and explicitly deferred as separate, larger gaps (studio location/directions on both). Verified: dotnet build/test green (52 unit + 9 integration Public-suite tests); pnpm tsc/lint/test green (211 tests across public/map/shared-utils); pnpm build clean. |
+| Solo-studio-join role/tenant swap — 2026-08-27 | `AcceptStudioJoinInviteCommand` is the first flow in this codebase where a user's Identity **role** changes, not just their active tenant: a solo artist's `owner` account becomes an `artist` account at a different studio. Added `IIdentityService.SwapRoleAsync(userId, oldRole, newRole, ct)` (idempotent per-half — a no-op if the old role isn't held / new role is already held), then reused the existing `RemoveTenantClaimAsync`/`EnsureTenantClaimAsync`/`IssueTokensForTenantAsync` trio the same way `SwitchStudioCommand` does. Also added `IPlanLimitService.EnsureWithinLimitAsync(Guid studioId, QuotaType, ct)` — an explicit-studioId overload — because the accept-time quota check must be scoped to the *inviting* studio while the caller's JWT still carries their old solo studio as the active tenant; `PlanLimitService`'s internal usage-counting queries were changed to `IgnoreQueryFilters()` + explicit `StudioId ==` comparisons (for both overloads) rather than relying on the ambient `ICurrentTenant`-driven global filter, which would have silently counted the wrong studio's usage under the new overload. `StudioJoinInvite` is deliberately not a `TenantEntity` (no query filter) — the invited party is not a member of the inviting studio's tenant until they accept — documented as a new approved `IgnoreQueryFilters()` case in `database.md`. The old solo studio is soft-closed (`IsActive = false`, new `Studio.ClosedAt`) — its data (appointments, clients, portfolio, payments) is retained, never deleted or cross-tenant-copied. | Tenant isolation (CLAUDE.md Rule #1) required proving, not just asserting, that the old studio becomes truly inaccessible after acceptance — verified by `AcceptStudioJoinInviteIntegrationTests` against a real MySQL + ASP.NET Identity stack: after accept, the user's `tenant_id` claim list no longer contains the old studio at all, and even a brand-new login (not just the tokens returned by Accept itself) can never resolve back to it or carry the `owner` role again. Reusing the generic `IQuotaCheckedCommand`/`PlanLimitBehavior` pipeline was considered and rejected — it resolves quota strictly against `ICurrentTenant.StudioId`, which is wrong at this exact moment in this exact flow. |
+| Owner-as-artist cross-tenant invite fix — 2026-08-21 | `CreateArtistHandler` now checks the existing account's role and tenant membership (new `IIdentityService.GetUserRolesAsync`, plus the already-existing `GetTenantIdsAsync`) before reusing an Identity user's ID on "email already taken." Only a genuinely orphaned artist account for the SAME studio is recovered; an owner, client, issuer, or an artist already belonging to a DIFFERENT studio now throws `BusinessRuleViolationException` instead. `GetUserRolesAsync` returns `IReadOnlyList<string>` via an explicit `.ToList()` — `UserManager.GetRolesAsync` returns `IList<string>`, which does not implicitly convert to `IReadOnlyList<string>` despite `List<T>` satisfying both at runtime; confirmed by a real compile error, not assumed. | Previously any existing account's Identity `UserId` was silently reused and linked as a brand-new `Artist` row in the inviting studio, with no role or tenant check — letting one studio's owner invite (by email) an owner, artist, or client account from a completely unrelated studio and silently gain an `Artist` record pointing at that account, without its holder's consent. Direct violation of CLAUDE.md Rule #1 (tenant isolation). Artist and owner accounts are single-studio by design — only `client` supports multi-studio membership (`GenerateJwt`'s tenant-claim comment; architecture.md's "Multi-Studio Client View" entry #23) — so this guard generalizes cleanly to every non-artist-same-studio case, not just the reported owner scenario. Verified: dotnet build/test green (14 unit + 28 integration Artist/Identity-suite tests, all new sub-cases covered — owner, cross-studio artist, same-studio client, and the genuine same-studio-orphan recovery path). |
+| Owner-as-artist dual role (self-service) — 2026-08-21 | Owner keeps a single "owner" Identity role — RBAC already treats owner as a superset of artist via the `ArtistAndAbove` policy (`AuthorizationExtensions.cs`), so no new role or JWT change is needed. New `CreateOwnArtistProfileCommand` (`POST /api/v1/artists/me`, `OwnerOnly`) creates an `Artist` row linked to the owner's own existing `UserId`/`Email` — no new Identity account, no role claim change, no invite email, no migration (`Artist.UserId` already nullable). Never calls `identity.CreateUserAsync`, `AddToRoleAsync`, or `scheduler.EnqueueArtistInvite` — it links an existing account, it never creates one, so it cannot interact with or regress the same-day cross-tenant-invite-reuse fix above. Added a role-based guard to `ResendArtistInviteCommand` (reusing `IIdentityService.GetUserRolesAsync` from that same fix) so it can never fire on the owner's own linked profile — there's no invite to resend. Owner's own artist seat counts against the plan's Artist quota (`IQuotaCheckedCommand`), same as any invited artist. `ArtistDetailPage.tsx`'s "Delete" relabels to "Stop working as an artist" only for the owner's own linked profile (`isOwnProfile`, already correctly computed via `usePermission(Role.Artist)`'s rank-based check) — the list-row Delete action stays generic, a deliberate scope boundary. Rejected a true multi-role-identity + role-switcher design as unnecessary given existing RBAC and much larger blast radius (JWT generation, every role-gated route guard, help/tour role-set assumptions) for no functional gain. | Matches the "linked profile" pattern `ArtistLayout` already uses for `myArtist`-conditional nav; keeps this additive rather than touching the JWT/role model; composes cleanly with the same-day cross-tenant-invite-reuse fix by construction, not by coincidence. Verified: dotnet build/test green (13 unit CreateOwnArtistProfile + 3 new ResendArtistInvite sub-cases, full suite unaffected); pnpm tsc clean. |
+| Studio-choice booking — 2026-08-21 | `Appointment.ArtistId`/`Artist` widened to nullable (`Guid?`/`Artist?`, one migration, zero-downtime — no existing row has a NULL, EF infers the now-optional FK from the CLR type same as `Client.ArtistId` already does). A client can toggle "let the studio choose" instead of picking an artist; `CreateAppointmentCommand` branches into a soft, no-lock "is any active artist free" advisory check (new `IAppDbContext.IsAnyArtistAvailableAsync` extension in `Application/Common/`, mirroring `ClientAccountExtensions.cs`'s shape — `Domain` can't depend on `IAppDbContext`, so this can't live in `Domain/Services` next to `DepositCalculator`). New `AssignAppointmentArtistCommand` (`PATCH /api/v1/appointments/{id}/artist`, `OwnerOnly`, mirrors `UpdateClientArtistCommand`'s roster-assignment precedent) does the real single-artist claim under `ISlotLocker`, with a fresh (deliberately duplicated, not shared-refactored) copy of the schedule/time-off/conflict validation `CreateAppointmentCommand` already has for its specific-artist path — minimizes risk to that already-working path over the small dedup win. No new `AppointmentStatus` value: "needs artist" is computed (`Status == Pending && ArtistId == null`), never stored. `ConfirmAppointmentCommand` now rejects confirming an unassigned appointment, server-side, matching this codebase's "never trust the frontend gate alone" convention. A deferred percent-rule deposit (`0` at booking time, no artist rate to compute from) recomputes automatically the moment an artist — and their hourly rate — is assigned; a fixed-rule deposit is untouched either way. `CreateManualReminderCommand.cs`, a file in the unrelated Reminders feature, needed a mandatory fix (an artist-role caller on an unassigned appointment gets the same 404 as "not yours"; an owner/issuer caller gets a clear `BusinessRuleViolationException`) since `appointment.Artist`/`ArtistId` going nullable broke it at compile time — not optional cleanup, the build would not compile without it. `GetRevenueSummaryQuery.cs` needed the same nullable-propagation treatment (a payment on a still-unassigned appointment is excluded from the per-artist revenue breakdown, same as any appointment id not found at all) — a second cross-feature break the source prompt's research pass missed. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — Fresha/Vagaro/Boulevard all support "any available provider" as a booking option alongside picking a specific one. No `ISlotLocker` claim at booking time for the studio-choice path (Decision #6 in the source prompt) because no specific resource is being reserved yet — the real claim happens exactly once, at assignment, under a real lock; avoids a phantom "reserved but for nobody" lock state. Verified: dotnet build/test green (1618 unit + 367 integration, up from 1580/363 — new `AssignAppointmentArtistHandlerTests`/`AssignAppointmentArtistValidatorTests`/`ConfirmAppointmentHandlerTests`/`AppointmentArtistEndpointAuthorizationTests` plus new cases across `CreateAppointmentHandlerTests`, `RescheduleAppointmentHandlerTests`, `CheckSlotAvailabilityHandlerTests`, `CreateManualReminderHandlerTests`); pnpm tsc/lint/test green; migration applied and app boots for real (`docs/claude/feedback_di_wiring_verification.md`'s standing lesson — two new MediatR-scanned handlers, `AssignAppointmentArtistHandler` and `SendAppointmentArtistAssignedNotificationHandler`). |
+| Social media verification — config-gated, partial-rollout-safe rollout (2026-08-22) | New `SocialAccountLink` entity is additive alongside `InstagramConnection` (which keeps owning artist photo sync unchanged — the only edit to that code is one extra block in `ExchangeInstagramCodeCommand` that also upserts a matching `SocialAccountLink` row, plus a matching clear in `DisconnectInstagramCommand`). All five platforms (Instagram, TikTok, Facebook, X, YouTube) get real, registered `ISocialOAuthProvider`/`ISocialBioChecker` implementations in this pass — a platform is never "missing code," only `IsConfigured`/`IsSupported == false` until real credentials exist, which the endpoints report as `409 Conflict`/`422` rather than a broken action. Facebook and X specifically ship with empty credentials by design (Meta App Review and a paid X API tier are external, human, non-code steps this session cannot complete) — this is the intended state, not a bug to fix later. TikTok/Facebook/X endpoint shapes were written from the current spec's best understanding of each platform's stable OAuth/API URLs, not re-verified against each platform's live developer docs in this session — flagged in each provider file's header comment; confirm before relying on them in production, same caution `feature-request-two-sided-referrals.md` already established for a pinned third-party SDK version. Platform credentials follow the existing `InstagramOptions`/`GoogleOptions`/`AppleOptions` precedent (`Configure<TOptions>` bound from an appsettings section, real values via env var) rather than `ISecretsProvider`/`StudioCredentialRef` — that mechanism is documented elsewhere in this file as per-STUDIO credential pointers with zero real consumers yet (ADR-0001 follow-up), the wrong scope for platform-wide OAuth app secrets. | Matches CLAUDE.md rule 6's benchmark: verified-social badges are standard on Vagaro/Fresha/Boulevard/GlossGenius-tier profiles for Instagram; TikTok/Facebook/X/YouTube verification goes beyond what those benchmarks do today, a deliberate above-benchmark investment made with the product owner's explicit sign-off in the source spec, not a silent scope-creep. Manual verification uses each platform's own official public-read API (Meta Graph API Business Discovery, YouTube Data API v3, X API v2) rather than scraping — a real ToS/reliability risk the source spec explicitly ruled out; TikTok has `IsSupported == false` because no such API exists for it, OAuth is its only route. Verified: dotnet build/test green (1633+ new Social-suite unit tests + 4 new `SocialVerificationIntegrationTests`, incl. the suspended-studio check written from day one per the source prompt — the exact bug class already fixed twice for the artist Instagram path); pnpm tsc/lint/test/build green (1899 tests); migration applied to a real dev DB including the `Studio.InstagramHandle` → `SocialAccountLink` backfill; app boots for real and the new endpoints route correctly (`docs/claude/feedback_di_wiring_verification.md`'s standing lesson). Deferred, not silently dropped: the periodic re-verification Hangfire job for OAuth-verified Artist-subject links (token is retained specifically to support this later), and dropping the now-unread `Studio.InstagramHandle` column (kept per the zero-downtime convention). |
+| In-App Messaging (2026-08-26) | New `Conversation`/`ChatMessage` entities follow the `DesignRevision` pattern — ordinary `TenantEntity` with a real `StudioId` query filter — deliberately NOT the `FeedbackReport`/`FeedbackMessage` non-tenant exception, since this is real per-studio data, not an issuer cross-tenant ticket system. New `ChatHub` auto-joins a personal `user:{userId}` SignalR group on connect instead of `SupportHub`/`ScheduleHub`'s join-a-resource-group-by-id model — a 1:1 conversation only ever has two already-authenticated participants, so there is no resource id a client could leak or guess, which sidesteps by construction the exact ownership-check bug class `SupportHub.JoinTicket` originally had (see the Support Escalation entry). Eligibility (who a client/artist/owner may message) is relationship-based — client↔their appointment/assigned artist, artist↔their appointment/assigned client, anyone↔the studio owner (resolved via `Studio.OwnerEmail` → `IIdentityService`, same indirection `RegisterOAuthUserHandler`'s owner-email-match already uses) — computed once in an internal `ConversationEligibility` helper shared by the read-side contacts query and the write-side create-conversation check, so the two can't drift (same reasoning as `FeedbackAccessGuard`). Scope is deliberately client↔artist, client↔owner, artist↔owner only — no client↔client, no artist↔artist, no issuer (issuer already has `FeedbackReport`/`SupportHub` for platform support). `POST /api/v1/conversations` is a get-or-create endpoint returning `200`, not `201` — a deliberate, commented-inline deviation from the "201 for a creating POST" convention, since the caller (a "message this person" button) never knows in advance whether a thread already exists. No `NotificationLog` row is written for a chat message — `ChatMessage` itself already durably stores the content and its own `ReadAt` read-state, so a second copy would be redundant; the only new notification surface is `NotificationType.MessageReceived`, Email-channel only (SMS is real per-send cost and would trip on every message in a live back-and-forth — matches the Manual Client Reminders entry's SMS-cost reasoning). The Email is debounced: `SendChatMessageHandler` counts prior unread messages already sent BY the current sender before inserting the new row, and only enqueues `ChatNotificationJob` (Hangfire) when that count is zero — **a real bug was caught and fixed here**: the first-written version of this count checked `SenderUserId != user.UserId` (unread messages from the *other* participant) instead of `== user.UserId` (unread messages from the *sender's own prior streak*), which is backwards for a debounce condition and was only caught because `SendChatMessageHandlerTests` asserted the email is NOT re-enqueued for a second message in the same streak — the test failed against the buggy code, not just against a hand-derived expectation. `ChatNotificationJob` needs `IgnoreQueryFilters()` for the same reason `ManualReminderJob`/`SendArtistInviteJob` already do (a Hangfire job has no `ICurrentTenant` HTTP-request scope to satisfy the query filter) — added to that existing approved-usages row (#36) rather than as a new row, since it's the same already-approved class of usage, not a new exception. Frontend `useChatHub` mirrors `useSignalR`'s always-on-per-layout mounting pattern (not `useSupportHub`'s per-thread-mount pattern), with `useSupportHub`'s two documented bugs (missed reconnect rejoin, self-echo double-refetch) built in from the start rather than discovered later — ChatHub's per-connection auto-join means there is no reconnect-rejoin bug class to begin with. `AppointmentDetailPage.tsx` (artist/owner/issuer-only route) gained a "Message [client]" button gated on role !== Issuer and a new `AppointmentResponse.ClientUserId` projection field. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — Vagaro/Fresha/Boulevard/GlossGenius-tier "message your provider" is a two-party, cross-role thread, not a group chat, matching the scope decided here. Flagged, not silently shipped: no attachments (Decision 7 — `FeedbackReport.AttachmentUrls`' R2 presign flow is the proven pattern to reuse later), no edit/delete (Decision 8), no typing indicators/presence (`TrafficHub` is the only precedent and is issuer-analytics-scoped, a materially different feature), no push notifications (B19 mobile/PWA is itself still missing). Verified: dotnet build/test green (1737 unit + 379 integration, up from 1714/377 — new `Messaging/*HandlerTests`, `ConversationTests`, `ChatMessageTests`, `GetConversationContactsHandlerTests` covering every eligibility branch, `MessagingEndpointAuthorizationTests` exercising the real ASP.NET Core auth pipeline); pnpm tsc/lint/test green (1929 tests, up from 1915 — new `useChatHub`/`ConversationThread`/`NewConversationDialog`/`MessagesInboxPage` tests plus extended `ClientLayout`/`ArtistLayout`/`OwnerLayout` suites); migration applied to a real dev DB; Help Menu (3 new articles), standalone manual (3 new sections + 2 existing appointment-detail sections updated), and all three non-issuer onboarding tours updated in the same change. |
+| In-App Messaging — post-merge `/code-review` findings fixed (2026-08-26) | A dedicated review pass on the entry above's diff found 10 real issues, all fixed same-day. **Security-adjacent:** `ConversationEligibility` never branched on the `issuer` role, so an issuer request fell through every client/artist/owner branch and still picked up the unconditional "owner is reachable by anyone" contact — added an explicit early-return for `issuer` (empty contact list, matches Decision 1). `GetConversationMessagesQuery`'s `before` cursor was resolved by `ChatMessage.Id` alone with no `ConversationId` check, letting a caller supply a real message id from a DIFFERENT conversation they have no access to and leak that conversation's message timing via the resulting page boundary — cursor lookup now scoped to `m.ConversationId == query.ConversationId`. **Correctness:** the client-role branch of `ConversationEligibility` was missing the `IsActive` filter the owner-role branch already had, so a client could still message an artist the studio had deactivated — added. `useChatHub`'s `ConversationRead` handler invalidated only the `["Conversation"]` tag, never the per-conversation `{type:"Messages", id}` tag `getMessages` is cached under, so a sender's open thread kept showing an unread checkmark after the recipient actually read it — fixed to invalidate both. **The debounce race** (`SendChatMessageHandler`'s email-trigger check had a window where two concurrent sends in the same conversation could both decide "I'm first" and both enqueue an email) went through two designs, not one. The first attempt added `Conversation.PendingNotificationSenderUserId` as an EF Core concurrency token, claimed via a **separate `IAppDbContext` from `IAppDbContextFactory`** (the same "several queries can't share one DbContext" mechanism `GetTrafficBreakdownQuery` already established) so a losing claim's exception couldn't touch the message-insert save. That still failed under a real concurrent-send test: EF Core includes a concurrency token's original value in the WHERE clause of *every* update to that row, not just updates that touch the token — so a SECOND concurrent request's own unrelated message-insert (via a third context that had loaded the conversation before the first request's claim committed) got its own `DbUpdateConcurrencyException` and would have failed to save its message entirely, a strictly worse failure mode than the duplicate email being fixed. Reverted (entity field, EF config, `IAppDbContextFactory` dependency, and the migration all backed out) in favor of a schema-free, single-context design: after inserting, ask "of every currently-unread message from this sender, is this one the earliest?" (`ORDER BY CreatedAt` over `ChatMessages`) — whichever message in a streak is earliest is definitionally the one that started it, so exactly one message per streak answers yes under sequential sends. This intentionally does not claim perfect atomicity under true concurrent sends (a pathological interleaving could still under- or double-count) — accepted as this debounce's residual risk given it is a UX nicety, not a delivery guarantee, and given the alternative (the concurrency-token design) was demonstrably worse, not better. **Missing test coverage** (`GetConversationsHandler`, `GetUnreadMessageCountHandler`, `CreateConversationValidator`, `SendChatMessageValidator` had none, a direct CLAUDE.md rule violation) closed with new test files for each. **Two N+1 query patterns** fixed: `GetConversationsHandler` went from ~2-3 queries per conversation (60-90 for a 30-conversation inbox) to one grouped unread-count query plus one batched per-role display-name lookup; `GetConversationContactsHandler` went from one existing-conversation query per eligible contact (50-200 for an owner's full contact list) to loading the caller's own conversations once and matching in memory. **Deliberately not fixed, flagged instead:** the review's 10th finding — `ConversationAccessGuard` is a third independent hand-rolled "load + authorize + throw Forbidden" guard class alongside `FeedbackAccessGuard` and `ConductReportAuthorizationGuard`, and could be generalized into a shared MediatR pipeline behavior — was judged out of proportion for this pass: unifying it would mean redesigning and re-touching two other already-shipped, already-tested features for a DRY win, with no test safety net sized for that broader refactor in this session. Left as-is, matching this feature's own explicit mandate to mirror `FeedbackAccessGuard`'s shape. | Every fix here follows a pattern already established elsewhere in this codebase rather than inventing a new one — batched projections over N+1 loops (the general EF Core anti-pattern this review class always flags), `IAppDbContextFactory` considered (not ultimately used) for the debounce fix via `GetTrafficBreakdownQuery`'s precedent. The debounce redesign is its own small lesson: the first fix was more "correct-looking" (real DB-level atomicity via a concurrency token) but wrong in practice, caught only because a real concurrent-send test was written for it rather than trusting the design on inspection — worth remembering next time a concurrency token looks like the obvious answer for a narrow field-level claim on a row that's also updated by unrelated code paths. Verified: dotnet build/test green (1761 unit + 379 integration, up from 1737/379 — new eligibility/cursor/validator/handler test coverage, including streak-ordering tests for the redesigned debounce check); pnpm tsc/lint/test green; no new migration needed (the reverted concurrency-token migration was removed, not left as dead schema). |
+| Country-code phone inputs — shared `PhoneInput` component (2026-08-26) | New `frontend/src/shared/components/ui/phone-input.tsx` (country-code `Select` + national-number `Input`, backed by `libphonenumber-js/min` for country/calling-code metadata, `AsYouType` formatting, and validity checks) replaces the plain `<Input type="tel">` on the three real phone-entry surfaces in the app: `CreateClientPage.tsx` (`Client.Phone`), `StudioProfilePage.tsx` (`Studio.PhoneNumber`), and `ReminderDialog.tsx`'s raw-contact path (`CreateManualReminderCommand.RecipientPhone`) — confirmed by reading every `phone`/`Phone` reference in `frontend/src/features/**`; everything else is a display-only surface. The component always emits a single E.164 string (no DB schema change — `Client.Phone`/`ManualReminder.RecipientPhone` are `varchar(20)`, already wide enough; `Studio.PhoneNumber` is `longtext`), and derives its initial country from an existing E.164 value or falls back to showing pre-existing legacy freeform data verbatim (not discarded) when it can't parse. Default country is Portugal (`PT`) — matches every pre-existing phone placeholder/test fixture in the codebase, not independently chosen. Backend gained a matching `Matches(E164Format)` FluentValidation rule (`^\+[1-9]\d{1,14}$`, the canonical ITU E.164 shape) in `CreateClientValidator`, `CreateManualReminderValidator`, and — this one previously had **no** phone rule at all — `UpdateMyStudioCommand.cs`'s `UpdateMyStudioValidator`. The regex is duplicated across the three validator classes rather than factored into a shared constant, mirroring this codebase's existing `NiptFormat` duplication between `RegisterStudioValidator` and `UpdateMyStudioValidator`. Motivating bug, not just cosmetics: `NotificationService.SendSmsAsync` passes the stored phone straight into Twilio's `PhoneNumber`, which requires E.164 — before this change nothing guaranteed that shape anywhere in the write path. `CreateManualReminderValidator`'s `RecipientPhone` rule needed an explicit `.Cascade(CascadeMode.Stop)` the source prompt's own code sample didn't include — without it, an empty raw-contact phone failed both `NotEmpty()` **and** `Matches()` simultaneously (two error messages for one empty field), caught by a test the prompt itself asked for ("confirm the two rules don't produce a confusing double message"), not assumed safe. `PhoneInput`'s internal prop-resync tracking uses `useState` (a state-tracked "last emitted" value, sentinel-seeded as `undefined`, never from the live `value` prop — this codebase's own established fix for exactly this sentinel-seeding bug class), not `useRef` as the source prompt's sample code used — mutating a ref during render is flagged as a hard ESLint error under this project's React Compiler lint rules (`react-hooks/refs`), confirmed by running lint, not assumed compatible. `PhoneCountryCode` is aliased to libphonenumber-js's own `CountryCode` literal-union type, not a bare `string` as the source prompt's sample had it — `pnpm tsc --noEmit` didn't catch the mismatch, but `pnpm build`'s `tsc -b` (stricter project-reference build) did, surfacing 8 real type errors; `flagEmoji` itself keeps a plain `string` parameter since it's a general-purpose case-insensitive transform (its own required test passes a lowercase, non-`CountryCode`-shaped input). New dependency: `libphonenumber-js` (`/min` entry point) — version resolved: `1.13.11`. `tsconfig.json`'s `lib` array needed no change (`ES2023` already covers `Intl.DisplayNames`) — verified before editing, not assumed. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — Fresha/Vagaro/Boulevard/GlossGenius-tier booking forms all use a country-code phone picker, not a bare text field, precisely because their SMS reminder pipelines (this app's own `NotificationService`/Twilio integration included) depend on E.164 input. No new UI-combobox dependency for the ~240-country dropdown — Radix `Select`'s built-in typeahead was judged sufficient, consistent with this codebase's "use the shadcn/Radix primitive before reaching for something heavier" convention. Verified: `dotnet build` clean, `dotnet test` on `Pena_e_Arte.UnitTests` green (1845 unit tests, up from 1834 — new `phoneCountries`/`phoneValidation`/`phone-input`/validator test coverage); integration tests not run in this session's sandbox (no local Redis — a pre-existing, already-documented environment gap unrelated to this change, not this feature's own regression); `pnpm tsc --noEmit` and `pnpm build` both clean; every changed/new frontend file individually confirmed lint-clean (`npx eslint <files>`) — a full-repo `eslint .` run crashed on this sandbox's available memory both before and after this change, an environment constraint (not a code issue) also hit earlier the same day on an unrelated PR, so CI's own lint run is the authoritative check; `pnpm vitest run` full suite green (1989 tests, up from 1963 — one unrelated pre-existing flake in `ConductReportInboxPage.test.tsx` during the full-suite run confirmed passing cleanly in isolation, a known class of noise in this sandbox's constrained-memory parallel test runs, not a real failure). |
+| `BookingIntake` vs `IntakeForm` naming (2026-08-31) | The guest-checkout booking prompt's spec named its new booking-content entity (tattoo description, desired placement, referral source, safety notes — 1:1 with `Appointment`) `IntakeForm`. That name was already taken by a real, shipped, different feature (`09ed943`, 2026-07-26): `IntakeForm` is `ClientId` + nullable `AppointmentId` + `FormData`/`FileUrl`/`SubmittedAt` — a studio-sent intake/consent-style form, with its own Commands/Queries, `FormEndpoints.cs`, and a frontend `features/forms` module. The spec's own Context section claimed `IntakeForm` "does not exist anywhere in the codebase," which was simply false and stale by five weeks. Renamed the new entity to `BookingIntake` (table `booking_intakes`) rather than either colliding with or retrofitting unrelated fields onto the existing `IntakeForm` — a "god entity" mixing two different domain concepts (a studio-sent form vs. booking-time intake) is worse than a longer name. The existing `IntakeForm` feature is completely untouched by this work. | Best-practice call, not a re-litigation of the guest-checkout product decision — only the entity's identity/name changed, not its purpose or shape. Verified via `git log` that the real `IntakeForm` predates this prompt; Feature Module Map row #02 ("Consultation & Consent Forms") already correctly lists it as implemented and was left unedited. |
+| Guest checkout `IgnoreQueryFilters()` requirement — every shared availability/booking query (2026-08-31) | `ArtistAvailabilityExtensions` (`IsAnyArtistAvailableAsync`, `CheckArtistScheduleAsync`, `CheckArtistSlotAvailabilityAsync`) and `CreateAppointmentCommand.CreateAppointmentCoreAsync` were extracted/reused for the guest-checkout booking prompt with an explicit `studioId` parameter, on the assumption that an explicit `.Where(x => x.StudioId == studioId)` predicate alone was sufficient to make them safe for an anonymous caller with no tenant JWT. That assumption was wrong: EF Core's global query filter (`HasQueryFilter(x => x.StudioId == tenant.StudioId)`) still applies in addition to any explicit predicate, and `ICurrentTenant.StudioId` defaults to `Guid.Empty` for an anonymous request (`CurrentTenantService`, never `SetTenant`'d) — so every query in both files silently returned zero rows for every guest request (always "unavailable," "no deposit rule," "artist not found") regardless of the real studio, until `IgnoreQueryFilters()` was added to each one (approved usage #51). Also fixed as the same class of bug, one level up: `CreateAppointmentCoreAsync`'s specific-artist path never checked `StudioClosures` before this extraction (only the any-artist path did) — closed as a side effect of sharing one chain, confirmed by the full existing `CreateAppointmentHandlerTests`/`CheckSlotAvailabilityHandlerTests` suites passing unchanged. | Caught by a new integration test class, `GuestCheckoutBookingIntegrationTests`, run against a real MySQL-backed `AppDbContext` with `ICurrentTenant.StudioId == Guid.Empty` (mirroring `PublicPortfolioIntegrationTests`' `fixture.CreateDbContext(Guid.Empty)` pattern) — **not** by unit tests against `FakeDbContext`, which never registers query filters at all and so cannot exercise this bug class. Any future shared query helper reused by both an authenticated and an anonymous/guest caller must be verified the same way — an explicit `studioId`/`tenantId` parameter is necessary but not sufficient; `IgnoreQueryFilters()` is also required, and only a real-context integration test proves it. |
 
 ---
 
@@ -3074,3 +3261,584 @@ requiring a PR, requiring status checks (`Backend — build, format, test`,
 requiring branches up to date, requiring conversation resolution, and enabling GitHub's native
 secret scanning + push protection under **Code security and analysis**. Do not enable force
 pushes or branch deletion on `main`.
+
+## Client Conduct Reports — 2026-08-22
+
+### What was built
+- `ConductReport` domain entity — non-tenant, same shape as `Review`/`FeedbackReport`/
+  `AuditLogEntry` (no EF Core query filter registered); `ForArtist`/`ForStudio` factories,
+  `UpdateStatus`, `IsReadableBy`.
+- `ReportCategory` and `ReportStatus` enums; `ReportCategoryClassifier` (static High/Standard
+  severity map, one source of truth).
+- `PlatformContacts.SupportEmail` — extracted from `SubmitContactRequestHandler`'s private
+  const, now shared with `ConductReportNotifier`.
+- MediatR: `FileArtistConductReportCommand`, `FileStudioConductReportCommand`,
+  `UpdateConductReportStatusCommand` (`IAuditableCommand`), `GetMyStudioConductReportsQuery`,
+  `GetMyConductReportsAsArtistQuery`, `GetConductReportsQuery`,
+  `GetReportableArtistAppointmentsQuery`, `GetReportableStudioAppointmentsQuery`.
+- `ConductReportAuthorizationGuard` (read + severity-gated write-permission checks) and
+  `ConductReportNotifier` (High-severity email alert) — both internal static helpers, not
+  DI-registered, matching `FeedbackAccessGuard`'s existing convention.
+- `ConductReportProjections` — shared join (Studios/Artists/Appointments) + response mapping
+  for all three read paths, with the redaction guarantee (`ToFullResponseAsync` vs
+  `ToRedactedResponseAsync`).
+- Migration `AddConductReports`.
+- Endpoints: `POST /api/v1/public/{artists,studios}/{slug}/reports` (ClientOnly),
+  `GET .../reports/reportable-appointments` (ClientOnly), `GET /api/v1/studios/me/conduct-reports`
+  (OwnerOnly), `GET /api/v1/artists/me/conduct-reports` (ArtistAndAbove),
+  `PATCH /api/v1/conduct-reports/{id}/status` (OwnerOnly, severity-gated in the handler),
+  `GET /api/v1/platform/conduct-reports` (IssuerOnly).
+- Frontend: `conductReports.types.ts`, `conductReportsApi.ts` (registered in `store.ts`),
+  `publicApi.ts` extended with the file/reportable-appointments endpoints,
+  `ConductReportDialog` wired into `ArtistPortfolioPage`/`StudioPortfolioPage` behind a
+  client-only gate, `ConductReportsPage` (owner/artist, role-branched) at `/conduct-reports`,
+  `ConductReportInboxPage` (issuer) at `/platform/conduct-reports`, nav items + open-count
+  badges in `OwnerLayout`/`ArtistLayout`/`IssuerLayout`.
+- Help sync: 4 new `helpContent.ts` articles (client, owner, artist, issuer), matching sections
+  in the standalone user manual, and a new onboarding-tour step for owner/artist/issuer.
+- Feature Module Map row #37; `IgnoreQueryFilters()` table entries #43–#45 (see below);
+  Trust & Safety Reference Set added to the Industry-Standard Benchmark Set.
+
+### Architecture decisions (restated as committed fact)
+- **Reporter identity is redacted server-side, never client-side.** `ConductReportProjections`
+  nulls `ReporterUserId`/`ReporterName` in `ToRedactedResponseAsync` before the response ever
+  leaves the handler — the artist-facing endpoint has no code path that can leak it. Verified
+  three ways: a unit test on the handler, a real-HTTP integration test asserting the raw JSON
+  string never contains the reporter's name or a populated `reporterUserId` field, and a
+  frontend test asserting the UI never renders it even if a (hypothetical, backend-can't-happen)
+  payload leak occurred.
+- **Severity is a static classification (`ReportCategoryClassifier`), not a stored column** —
+  one place to update if the taxonomy changes; both the email-alert gate and the
+  owner-vs-issuer status-change gate read from it.
+- **Filing eligibility deliberately does NOT require `AppointmentStatus.Completed`, and does
+  NOT dedup against existing reports on the same appointment** — the two places this diverges
+  from `Review`'s eligibility (`FileArtistConductReportHandler`/`FileStudioConductReportHandler`,
+  and `GetReportable{Artist,Studio}AppointmentsQuery`). Both deltas are covered by an explicit
+  "copy-paste guard" test that would fail if a future edit accidentally reintroduced either
+  filter.
+- **`ConductReport` needs no `IgnoreQueryFilters()` entry** — it has no query filter to bypass
+  in the first place (see the `IgnoreQueryFilters()` table's own note below its list). It DOES,
+  however, introduce three genuinely new call sites against *other*, filtered entities
+  (`Artist`, `Appointment`) — documented as table entries #43–#45, since the file's own rule
+  ("never add a new one without updating this table") applies to those regardless of what the
+  prompt that drove this feature said about `ConductReport` itself.
+- **`ConductReportNotifier` and `ConductReportAuthorizationGuard` are plain internal static
+  classes**, not DI-registered services, matching the observed convention: `FeedbackAccessGuard`
+  (this codebase's closest analog) is also a static helper with no DI registration in
+  `Program.cs`. Chose this over a DI-registered service for consistency, not because of any
+  functional requirement.
+- **`ConductReport.IsReadableBy` dropped the unused `userId` parameter** the prompt's own sketch
+  included — the method body never referenced it (Decision 5: the reporting client never reads
+  their own filed reports, so there's no "is this my own row" branch to check against). Kept
+  the simpler three-argument signature rather than carrying a dead parameter.
+
+### Judgment calls made
+- **Attachment-picker duplication vs. extraction (Part 8d)**: duplicated `FeedbackDialog.tsx`'s
+  attachment-picker block into `ConductReportDialog.tsx` rather than extracting a shared
+  component, with a comment pointing back at `FeedbackDialog.tsx` as the source of truth.
+  Extraction would have touched `FeedbackDialog.tsx` too, widening this feature's diff for a UI
+  block that wasn't otherwise changing — not worth it for a single second consumer.
+- **Client-role gating on the report trigger** (`ArtistPortfolioPage`/`StudioPortfolioPage`) uses
+  a direct `role === Role.Client` equality check, not `usePermission()` — `usePermission`'s rank
+  model only expresses "at least this role," which can't express the exact-match `ClientOnly`
+  policy this feature's filing endpoints enforce server-side. This is a deliberate, narrow
+  deviation from the "use `usePermission` for conditional UI" convention in `conventions.md`,
+  scoped to this one exact-match case.
+- **Issuer onboarding tour got a new step, unlike Feedback.** Every other issuer nav item
+  carrying a `tourId` in `IssuerLayout.tsx` has a matching step in `issuerTourSteps` — Feedback
+  is the only nav item that breaks that 1:1 pairing (it has no `tourId` and no tour step at
+  all). Treated the 1:1 pairing as the stronger, more concrete signal of intended behavior and
+  added a Conduct Reports step, rather than copying Feedback's apparent (and likely accidental)
+  omission.
+- **New tour steps were inserted immediately before each layout's existing "Need help?" closing
+  step**, not literally appended after it. A strict reading of "append" would put it after Help,
+  breaking the established "tour always ends on the help pointer" pattern all three tours
+  already have. Interpreted "append, don't insert mid-sequence" as "don't interleave between
+  arbitrary existing feature steps," not as "override the closing convention."
+- **`GetMyConductReportsAsArtistQuery` has no server-side status filter** (unlike
+  `GetMyStudioConductReportsQuery`/`GetConductReportsQuery`, which both accept `Status`) — the
+  artist's own open-count nav badge (`ArtistLayout.tsx`) filters the full result set
+  client-side instead. Not worth adding a query parameter for a list that's realistically small
+  (reports about one artist) just to save one client-side `.filter()`.
+
+### Deviations from the prompt
+- **`IgnoreQueryFilters()` table entries #43–#45 were added**, even though the prompt's Decision
+  7 said not to add a row for this feature. Read closely, that instruction was about
+  `ConductReport`'s own (non-existent) query filter specifically — it did not anticipate that
+  `FileArtistConductReportCommand`/`FileStudioConductReportCommand`,
+  `GetReportable{Artist,Studio}AppointmentsQuery`, and `ConductReportProjections` would each
+  introduce real, new `IgnoreQueryFilters()` calls against `Artist`/`Appointment`/`Studio`,
+  entities that *do* carry filters. The file's own standing rule ("never add a new one without
+  updating this table") is unconditional, so these three got documented rather than silently
+  omitted. The explicit "no entry needed" sentence the prompt asked for was still added, scoped
+  correctly to `ConductReport` itself.
+- **No `AttachmentPicker.tsx` extraction** — see Judgment calls above. The prompt explicitly
+  offered both options; duplication was chosen.
+- **The known `AuditStudioId` gap flagged in `UpdateConductReportStatusCommand`** (an
+  issuer-authored status change on a report with no tenant in scope gets `StudioId = null` on
+  its audit row, rather than the report's actual studio) was left exactly as the prompt
+  predicted — documented in a code comment on the command, not silently "fixed" with an
+  ad-hoc pattern. No new deviation here, just confirming it was verified, not just assumed.
+
+### Verification performed
+- Backend unit tests: 1713/1713 passing (up from a clean baseline before this feature — build
+  and full suite were green before any code was written).
+- Backend integration tests: 377/377 passing, including a real-HTTP
+  `ConductReportEndpointAuthorizationTests` suite that exercises the actual ASP.NET Core
+  authorization + MediatR/AuditLogBehavior pipeline end-to-end: artist read never exposes
+  reporter identity in the raw JSON body, owner attempting to resolve a High-severity report
+  gets a real 403, and an issuer's subsequent resolution both succeeds and writes a real
+  `AuditLogEntry` row with `Action == AuditActions.ConductReportStatusUpdated`.
+- The `AddConductReports` migration was applied to the local dev MySQL database and confirmed
+  to apply cleanly from a schema already at `20260822111309_AddSocialAccountLinks`.
+- Frontend: `pnpm exec tsc --noEmit` clean; full `pnpm vitest run` suite green — **131/131 test
+  files, 1915/1915 tests** — after three real fixes found only by running the full suite (see
+  below), not by the feature's own new tests, none of which render through a full layout tree
+  or through `ArtistPortfolioPage.tsx`'s import graph. Includes 16 new tests across
+  `ConductReportDialog`, `ConductReportsPage` (owner + artist views), and
+  `ConductReportInboxPage`, plus a rerun of `helpContent.test.ts` and
+  `useOnboardingTour.test.tsx` confirming the new articles/tour steps don't break existing
+  structural invariants.
+- **Bug 1 — missing barrel exports.** `features/conduct-reports/index.ts` only re-exported the
+  `conductReportsApi` object itself, not its generated hooks
+  (`useGetMyStudioConductReportsQuery`, `useGetMyConductReportsAsArtistQuery`,
+  `useGetPlatformConductReportsQuery`, `useUpdateConductReportStatusMutation`).
+  `OwnerLayout.tsx`/`ArtistLayout.tsx`/`IssuerLayout.tsx` all import their nav-badge hook from
+  that barrel (not from `conductReportsApi.ts` directly, unlike `ConductReportsPage.tsx`/
+  `ConductReportInboxPage.tsx`), so all three would have thrown
+  `TypeError: ... is not a function` and crashed the nav header in production the moment a
+  signed-in owner/artist/issuer rendered their layout. Fixed by adding the four hooks to the
+  barrel's export list.
+- **Bug 2 — pre-existing layout tests build their own minimal Redux store**, and none of the
+  three (`OwnerLayout.test.tsx`/`ArtistLayout.test.tsx`/`IssuerLayout.test.tsx`) included
+  `conductReportsApi`'s reducer/middleware — so even after Bug 1's fix, every test rendering
+  these layouts failed with `Middleware for RTK-Query API at reducerPath "conductReportsApi"
+  has not been added to the store` (58 test failures across the three files). Fixed by adding
+  `conductReportsApi` to each test's `makeStore()` and an MSW handler for the new
+  `GET .../conduct-reports` endpoint each layout now calls; also renamed each file's
+  now-stale "renders all N nav links" test title to match the new nav-item count (nine for
+  owner, eight for artist, eight for issuer).
+- **Bug 3 — duplicate `useState` import** in `ArtistPortfolioPage.tsx`: the file already
+  imported `useState` on line 1 (for its own `lightboxItem`/`activeStyle` state) before this
+  feature touched it; the edit adding the client-only report-trigger state added `useState` to
+  a *second*, pre-existing `import { useEffect } from "react"` further down the file instead of
+  reusing the existing import, producing a hard duplicate-declaration parse error
+  (`Identifier 'useState' has already been declared`). This broke Vite's transform for the
+  whole module, cascading to 10 failed test files across `features/public` and
+  `features/studios` that transitively load it — none of which are conduct-reports tests, which
+  is exactly why this class of syntax error can hide behind a feature's own passing test suite.
+  Fixed by removing `useState` from the second import.
+- Every one of these three bugs is precisely the class that a feature's own tests — however
+  thorough — cannot catch by construction (missing barrel exports and duplicate imports only
+  surface when something *else* imports the changed module; store-shape assumptions only
+  surface in tests that build their own store). This is why the full backend + frontend suites
+  were re-run to a clean, final state rather than stopping once the new tests were green.
+- No other pre-existing test failures were found — the baseline before this feature was fully
+  green on both backend and frontend.
+
+---
+
+## Guest Checkout Booking + BookingIntake — 2026-08-31
+
+Full implementation of `docs/claude/overnight-prompt-guest-checkout-booking-2026-08-31.md`, all
+Parts 1–8 (Domain/EF, Contracts, Application, API + governance docs, cleanup job, frontend guest
+form + shared intake fields + appointment-detail rendering, full test suite, Help Menu/manual/tour
+check). This section was originally written mid-implementation (backend-only); it's since been
+completed and this note updated in place rather than left stale.
+
+### What was built
+
+- New `BookingIntake` entity (`TenantEntity`, 1:1 `Appointment`) — `TattooDescription`,
+  `SafetyNotes`, `DesiredPlacement` (`BodyMap` value object, same JSON-column pattern as
+  `ClientProfile.BodyMap`), `ReferralSource` enum + `ReferralSourceOther`. See the Decisions Log
+  entry above for why this isn't named `IntakeForm` (that name was already taken by a real,
+  different, shipped feature — the spec's premise was stale).
+- `AppointmentAttachment.Category` (`AreaPhoto` | `Reference`, defaults `Reference` — existing
+  rows backfill correctly via the migration's `DEFAULT` clause, no separate backfill statement
+  needed on MySQL 8.4). `Client.MarketingOptIn` (bool, default false).
+- One migration (`AddBookingIntakeGuestBookingAndAttachmentCategory`), applied and verified
+  against the local MySQL 8.4 dev database (`DESCRIBE` output confirmed).
+- `CreateAppointmentRequest`/`AppointmentResponse` extended with the shared intake fields;
+  `ImageUrls` kept as a deprecated flat mirror of the `Reference`-category subset (not removed
+  outright, per Part 2's spec instruction) alongside the new `Attachments` field — a deliberate
+  deviation from the spec's "replaces" wording, so the not-yet-updated frontend (Part 6, separate
+  pass) doesn't silently lose its image gallery the moment this backend ships.
+- `CreateAppointmentCommand.CreateAppointmentCoreAsync` extracted (explicit `studioId`/`clientId`
+  params, no `ICurrentTenant` dependency) — shared by the existing authenticated handler and the
+  new `CreateGuestAppointmentHandler`.
+- `ArtistAvailabilityExtensions.CheckArtistScheduleAsync`/`CheckArtistSlotAvailabilityAsync`
+  extracted from `CheckSlotAvailabilityHandler`'s inline chain (studio-closure → schedule → hours
+  → time-off [→ conflict for the full variant]); `IsAnyArtistAvailableAsync` widened to take an
+  explicit `studioId`. All three, plus `CreateAppointmentCoreAsync`, needed `IgnoreQueryFilters()`
+  added throughout — see the "Guest checkout `IgnoreQueryFilters()` requirement" Decisions Log
+  entry above for the real bug this caught.
+- New anonymous surfaces: `POST /studios/{slug}/book` (`CreateGuestAppointmentCommand`),
+  `GET .../booking/artists`, `GET .../booking/availability`, `GET .../booking/deposit-rule`,
+  `POST .../booking/presign` — all under `PublicEndpoints.cs`, all in the `AllowAnonymous
+  Exceptions` table above. New `public-booking` rate-limit policy (8/5min/IP), applied to the
+  submit and presign endpoints.
+- `AccountAlreadyExistsException` → 409 `ACCOUNT_ALREADY_EXISTS` for a duplicate-email guest
+  booking attempt (Decision #3 — never silently attach a booking to an existing account without
+  proof of control).
+- Guest account provisioning mirrors `RegisterUserHandler`'s anonymous account+`Client`
+  linking pattern: a cryptographically random ≥28-char password (guaranteed upper/lower/digit,
+  Fisher-Yates shuffled) satisfies `InfrastructureServiceExtensions`' configured `PasswordOptions`
+  with margin, is used once to create the Identity user, then discarded — never logged, never
+  returned. One combined welcome email (`IEmailRenderer.RenderGuestBookingWelcome`, new method)
+  carries both a password-reset link (the guest's passwordless first-session recovery path) and
+  the standard email-confirmation link.
+- `GuestPendingUploadCleanupJob` (Hangfire, daily at 5am, staggered after `retention-purge`) sweeps
+  `appointments/guest-pending/` for objects older than 48h with no matching
+  `AppointmentAttachment.ImageUrl` — folded into `IgnoreQueryFilters()` entry #36's existing
+  multi-job row.
+
+### Architecture decisions confirmed or corrected against live source
+
+- **`IntakeForm` naming collision** — see the dedicated Decisions Log entry above.
+- **The `IgnoreQueryFilters()` gap** — see the dedicated Decisions Log entry above. This was the
+  most significant finding of this pass: a bug that made the entire guest booking core silently
+  non-functional (every availability check, artist lookup, deposit-rule lookup, and conflict
+  check would have failed or returned empty for every real guest request), invisible to every
+  existing unit test, caught only by writing a real-`AppDbContext` integration test specifically
+  because the fix's own correctness depended on it.
+- **Studio-closure check gap, closed as a side effect** — `CreateAppointmentHandler`'s specific-
+  artist path never checked `StudioClosures` before this extraction (only the any-artist path
+  did); sharing one chain with `CheckSlotAvailabilityHandler` closed it. No existing test
+  regressed, meaning there was no prior coverage for "closed studio + specific artist" on the
+  create path — accepted as a real, beneficial fix per this prompt's own explicit instruction, not
+  reverted to preserve byte-for-byte old behavior.
+- **Conflict-check timing preserved, not merged** — an earlier attempt at this extraction folded
+  the conflict check into the same shared method used pre-lock, which changed
+  `CreateAppointmentHandler`'s exception type for an already-conflicting slot from
+  `SlotAlreadyBookedException` to `BusinessRuleViolationException` (caught by
+  `Handle_TimeOverlap_ThrowsSlotAlreadyBookedException` failing). Split into
+  `CheckArtistScheduleAsync` (no conflict check, used pre-lock by `CreateAppointmentCoreAsync`)
+  and `CheckArtistSlotAvailabilityAsync` (adds the conflict check, used by the read-only preview
+  handlers) to preserve the original race-safety shape: the authoritative conflict check still
+  runs once, after the per-slot lock is acquired.
+
+### Deviations from the prompt
+
+- `ImageUrls` kept (deprecated) rather than removed outright — see above.
+- Nested command-validator composition (`SetValidator`) was specified but this codebase has no
+  existing precedent for it (verified via search); `CreateGuestAppointmentValidator` duplicates
+  the relevant booking-content rules against `x.Request.Booking.*` paths instead, matching this
+  codebase's existing "one self-contained validator per command" convention.
+- `CreateGuestAppointmentHandler` lives under `Pena_e_Arte.Application/Public/Commands/`, not a
+  new top-level feature folder — matches the existing `Public/Queries/` sibling.
+
+### Verification performed
+
+- `dotnet build`: clean, 0 errors, across every project.
+- `dotnet test` (full suite): 1856 unit + 388 integration, all passing, 0 failures — baseline
+  before this session was 1853 unit + 383 integration, also all passing.
+- New `GuestCheckoutBookingIntegrationTests` (5 tests, real MySQL-backed `AppDbContext` with
+  `ICurrentTenant.StudioId == Guid.Empty`, mirroring `PublicPortfolioIntegrationTests`'
+  `fixture.CreateDbContext(Guid.Empty)` pattern): specific-artist and any-artist public
+  availability checks, the public artist list, a full guest-booking happy path (asserts the
+  created `Client`/`Appointment`/`BookingIntake` rows directly against the database, not just the
+  response), and the duplicate-email 409 path.
+- Migration applied and schema verified against the local MySQL 8.4 dev database via `DESCRIBE`.
+- Rate limit policy, `dotnet ef migrations add` correctness, and the frontend-facing manual
+  end-to-end checklist items from the prompt's Definition of Done are **not yet verified** — no
+  frontend exists yet to exercise them through. Left for the Part 6/7/8 pass.
+
+### Parts 6, 7, 8 — frontend, tests, Help — 2026-08-31 (same day, continued session)
+
+Completes the feature. Frontend guest-checkout UI, full backend+frontend test coverage, and Help
+Menu/manual updates, on top of the Parts 1–5a backend above.
+
+**Part 6 (frontend):**
+- Extracted `TattooIntakeFields`, `CategorizedImagesField`, `DesiredPlacementField`, `FieldLabel`
+  out of `BookAppointmentForm.tsx` (Decision #8 — shared between the authenticated and guest
+  forms); `BookAppointmentForm.tsx` now renders two `CategorizedImagesField` instances (Area,
+  Reference — both optional there, per Part 6d) instead of the old single `ReferenceImagesField`.
+- New `frontend/src/features/booking/components/GuestBookAppointmentForm.tsx` — full guest
+  checkout form (identity fields, marketing opt-in, phone, artist/date/duration + availability
+  check, `TattooIntakeFields`, `DesiredPlacementField`, two `CategorizedImagesField` instances —
+  BOTH required here, per Decision #6), backed by a local `useGuestImageUpload` hook against the
+  new anonymous presign endpoint.
+- `publicApi.ts` extended in place (not a separate `publicBookingApi.ts` — it already covers every
+  other `/api/v1/public/` endpoint including write mutations, so extending it matched this
+  codebase's existing slice-boundary convention better than a new file) with the 5 new
+  booking endpoints and their types.
+- `BookPage.tsx` restructured: unauthenticated + `?studio=slug` → `GuestBookPage`; unauthenticated
+  + no slug → `NoStudioBookPage`; authenticated Client/Issuer → `AuthenticatedBookPage` (the
+  original JSX, unchanged); authenticated Artist/Owner → redirect to their own home, preserving the
+  pre-existing router-level restriction now that `/book` sits outside the blanket auth `RoleGuard`.
+- `router.tsx`: `/book` moved to a route wrapped only in `<AppLayout/>` (which already tolerates no
+  role, rendering a bare `Outlet`) instead of nested inside the auth `RoleGuard` — the minimal
+  change to make one route reachable both authenticated and anonymously without duplicating it.
+- `StudioPortfolioPage.tsx`'s CTA changed from `/login?redirect=/book?studio={slug}` to
+  `/book?studio={slug}` directly (Decision #13).
+
+**Part 7 (tests):** New backend unit tests — `GetPublicBookingArtistsHandlerTests`,
+`CheckPublicSlotAvailabilityHandlerTests`, `GetPublicDepositRuleHandlerTests`,
+`GetPresignedGuestUploadUrlHandlerTests` + its validator tests, `CreateGuestAppointmentValidatorTests`,
+`CreateGuestAppointmentHandlerTests` (including a log-inspection test asserting the generated
+password never appears in any `ILogger` call), `GuestPendingUploadCleanupJobTests`. New frontend
+tests — `TattooIntakeFields.test.tsx`, `CategorizedImagesField.test.tsx`,
+`DesiredPlacementField.test.tsx`, `GuestBookAppointmentForm.test.tsx`. Fixed the existing
+`BookPage.test.tsx` suite (which covers `BookAppointmentForm` too) for the new dual-category image
+shape (`imageUrls: string[]` → `images: {url, category}[]`) and the newly-required tattoo
+description field blocking submit until filled.
+
+**Part 8 (Help):** `helpContent.ts`'s `client-book-appointment` article updated for guest checkout,
+plus a new cross-linked `guest-booking-account-setup` article explaining the post-booking
+password-set flow. The standalone user manual (`index.html`) already covers guest checkout, the
+dual image categories, referral source, and desired placement in its Book section — verified by
+inspection, not assumed. Onboarding tours (`clientTour.ts`, `ownerTour.ts`, `artistTour.ts`) — none
+reference any selector inside `BookAppointmentForm.tsx`/`BookPage.tsx`/`AppointmentDetailPage.tsx`
+(confirmed via grep for `data-tour` in those files, which found none, and cross-checked against
+every tour file's `targetSelector` list) — no change needed, matching this codebase's own
+"confirmed no change needed, here's why" convention rather than a silent skip.
+
+**Deliberately not done, flagged not built:** `CreateClientPage.tsx`'s manual Add Client form was
+not given a `MarketingOptIn` checkbox (Part 6f) — the spec itself marks this "not required...low
+cost to include," and closing out the core feature took priority. A real, small, easy follow-up for
+a future pass, not a gap in this feature's own scope.
+
+**Verification:**
+- `dotnet build`: clean, 0 errors.
+- `dotnet test` (full suite, final): **1913 unit + 388 integration, all passing** — up from the
+  1853/383 baseline before this feature (+60 unit, +5 integration), and up from the 1856/388
+  reported after the Parts 1–5a backend pass alone (+57 more unit tests from Part 7).
+- `pnpm tsc --noEmit` and `pnpm build` (`tsc -b`, the stricter project-reference build): both clean.
+- `pnpm vitest run` (full suite, final): 2012 passed / 2032 total. Baseline before this feature was
+  1986/1998 (12 pre-existing failures, all `Test timed out in 10000ms` in interaction-heavy tests —
+  `ReminderDialog`, `StudioProfilePage`, `phone-input` — unrelated to this feature). This run added
+  20 failures across 8 files, all the identical `Test timed out in 10000ms` pattern under
+  concurrent system load (this sandbox has documented resource-contention flakiness when multiple
+  heavy test/build processes run at once) — including 3 of this feature's own new
+  `GuestBookAppointmentForm.test.tsx` tests and, tellingly, 4 failures in `CreateClientPage.test.tsx`,
+  a file this feature never touched. All 3 "failing" `GuestBookAppointmentForm` tests were
+  independently re-run in isolation (no concurrent load) immediately beforehand and passed cleanly
+  (13/13 in that file + `BookingWidget.test.tsx`) — confirming the full-suite failures are
+  environmental, not a real regression. `BookPage.test.tsx` (the file most changed by this feature,
+  covering both `BookAppointmentForm` and the restructured `BookPage`) had **zero failures** in
+  this final run.
+- Migration applied and schema verified against the local MySQL 8.4 dev database via `DESCRIBE`
+  (Part 1, unchanged since).
+- **Not verified this session**: live rate-limit behavior (`public-booking` 8/5min/IP — Redis is
+  not running in this dev environment, a pre-existing documented gap, not this feature's own), and
+  a real-browser manual click-through of the guest booking flow end-to-end. Both remain open items
+  from the prompt's own Definition of Done — flagged, not silently marked done.
+
+### Final closure pass — 2026-08-31 (same day, third session)
+
+The "2012/2032" full-suite number above undercounted — a clean, non-concurrent full re-run found
+**6 real, deterministic failures** the prior pass's "all environmental" conclusion missed (its
+claim that all 3 `GuestBookAppointmentForm` failures were purely load-induced was itself wrong for
+2 of them; only re-verified in true isolation, not just "immediately beforehand" alongside other
+heavy processes, does this actually settle):
+
+1. **`AppointmentDetailPage.tsx`'s new `ImageGallery` used the section label as each image's `alt`
+   text** (`alt="Reference images"`, plural) instead of the pre-existing singular `alt="Reference
+   image"` the existing test queried by — broke `AppointmentDetailPage.test.tsx`'s thumbnail-count
+   assertion. Fixed by giving `ImageGallery` a separate `imageAlt` prop, distinct from its section
+   `label`.
+2. **`AppointmentCard.tsx`'s attachment-count text changed from "N reference image(s)" to "N
+   image(s)"** (correct, since the count now spans both categories, not just Reference) but the
+   existing test still asserted the old wording — updated the test, not the (more accurate) new
+   copy.
+3. **`helpContent.ts`'s new `"body map"` keyword on the booking article** made it start matching a
+   `HelpMenu.test.tsx` search test that asserted the booking article would NOT appear for "body
+   map" (previously true, no longer true now that booking has its own body-map picker) — swapped
+   the test's negative assertion to a genuinely unrelated article (`client-leave-review`) instead of
+   removing the keyword, since a user searching "body map" while filling in the booking form
+   *should* find that article.
+4. **`StudioPortfolioPage.test.tsx` still asserted the pre-Decision-#13 `/login` redirect** for an
+   unauthenticated visitor — updated to assert the direct `/book?studio=` link.
+5–6. **Two `GuestBookAppointmentForm.test.tsx` tests (the full-submit and 409 paths) failed even in
+   a clean, single-file, no-concurrent-load re-run** — not purely environmental, contrary to the
+   prior pass's conclusion. These are this file's two heaviest interaction sequences (every
+   identity field + an artist `Select` + datetime + description + two real image uploads + submit +
+   an async wait) and were consistently landing at or past the 10s default under this sandbox's
+   already-documented CPU contention (see `src/test/setup.ts`'s `asyncUtilTimeout` comment, which
+   describes this exact class of issue and explicitly names per-test timeout bumps as the sanctioned
+   fallback for a test that's individually this heavy). Fixed with an explicit 20s timeout on both
+   `it()` calls, matching that documented convention rather than chasing a phantom Radix/jsdom
+   pointer-events bug that a defensive `document.body.style.pointerEvents` reset (also added, in
+   `beforeEach`/`afterEach`, as cheap insurance against the real, differently-shaped bug this
+   codebase's own "Gotcha: Dialog-based overlay opened from a DropdownMenuItem" note documents) did
+   not on its own resolve.
+
+**True final state, independently re-verified clean (not just claimed) after all six fixes:**
+- `dotnet build`: clean, 0 errors.
+- `dotnet test` (full suite): **1913 unit + 388 integration, all passing, 0 failures.**
+- `pnpm tsc --noEmit` and `pnpm build` (`tsc -b`): both clean.
+- `pnpm vitest run` (full suite, no scope filter): **2032 / 2032 passing, 0 failures.** This is a
+  stronger result than the pre-feature baseline itself (1986/1998, 12 pre-existing timeout
+  failures) — those 12 happened not to reproduce in this run (consistent with their established
+  load-dependent nature) rather than having been fixed by this feature.
+
+---
+
+## Guest Checkout Booking — full `/code-review` remediation — 2026-09-01
+
+A user-requested `/code-review` of the merged guest-checkout-booking feature (commit `a5cade1`)
+surfaced a large set of findings across multiple review angles. Fixed in two commits: `a768f68`
+(the first, more urgent pass) and the changes documented in this section (everything else the
+user explicitly asked to be fixed, including the two items the first pass had left as open policy
+questions).
+
+### `a768f68` — critical/high findings, fixed same session
+
+- **Critical**: `GuestBookAppointmentForm.tsx` sent `clientId: ""` — the backend's
+  `CreateAppointmentRequest.ClientId` is a non-nullable `Guid` bound straight from JSON with no
+  custom converter, so every real HTTP request would 400 before the handler ran. The integration/
+  unit tests didn't catch this because they construct the C# request object directly with
+  `Guid.Empty`, never exercising real JSON→Guid deserialization. Fixed: send a syntactically valid
+  placeholder GUID (the handler ignores this field entirely and resolves the real client
+  server-side).
+- **Regression, both guest AND authenticated flows**: switching `ArtistAvailabilityExtensions`
+  and `CreateAppointmentCoreAsync` to `IgnoreQueryFilters()` (required so the shared booking core
+  also works for anonymous callers with no tenant JWT) dropped the `DeletedAt == null` half of
+  the filter in 7 places, restoring it in only one (`IsAnyArtistAvailableAsync`'s candidate-artist
+  query). Confirmed exploitable, not theoretical, by checking `DeleteArtistCommand`/
+  `DeleteDepositRuleCommand` — both only set `DeletedAt`, never flip `IsActive`/similar. Fixed:
+  `DeletedAt == null` restored in all 7 (`CreateAppointmentCommand.cs` ×3,
+  `ArtistAvailabilityExtensions.cs` ×3, `GetPublicDepositRuleQuery.cs` ×1).
+- Guest bookings silently bypassed the `AppointmentsPerMonth` plan quota: `PlanLimitBehavior`'s
+  generic pipeline check resolves the plan via `ICurrentTenant.StudioId`, which stays `Guid.Empty`
+  for an anonymous request, so no subscription is ever found and enforcement no-ops. Fixed: an
+  explicit `planLimits.EnsureWithinLimitAsync(studio.Id, ...)` call in
+  `CreateGuestAppointmentHandler`, once the real studio is resolved, before any writes.
+- `public-booking` rate limit (8 req/5min/IP) was too tight for legitimate use — up to 6 images ×
+  2 categories = 12 presign calls + 1 submit is a real, non-abusive request pattern. Raised to 20.
+- `CheckPublicSlotAvailabilityQuery` (new anonymous endpoint) had no FluentValidation validator at
+  all, unlike its authenticated sibling `CheckSlotAvailabilityQuery` — added
+  `CheckPublicSlotAvailabilityValidator`, mirroring the sibling's rules.
+- Both image-upload hooks' unmount-cleanup effects closed over the `[]` `images` they had at
+  mount, so `URL.revokeObjectURL` never ran on a form abandoned after picking photos — fixed with
+  a ref that tracks the current value.
+- `datetime-local` `min` attributes were computed via `toISOString().slice(0, 16)` (UTC) instead
+  of local wall-clock time, shifting the effective minimum bookable time by the visitor's UTC
+  offset. Fixed with a new shared `toLocalDatetimeInputValue` helper.
+
+Verified: backend 1913 unit + 388 integration (unchanged counts, all passing); frontend 2032/2032.
+
+### This pass — the two open policy questions, plus every remaining lower-priority finding
+
+**Account enumeration — resolved, not just flagged.** The original duplicate-email design
+(Decision #3) rejected a colliding email with a distinct `409 AccountAlreadyExistsException` —
+correct in spirit (never silently attach a booking to an account the caller hasn't proven control
+of) but an account-enumeration oracle in practice: the response shape alone told an anonymous
+caller whether any given email has a platform account. Redesigned to mirror
+`ForgotPasswordHandler`'s existing, already-established pattern for exactly this problem: respond
+identically (`GuestBookingAckResponse`, one generic message) whether a new booking was created or
+the email collided; disambiguation happens only out-of-band, via a new
+`RenderGuestBookingEmailCollision` email ("someone tried to book using your email — log in if that
+was you"). `AccountAlreadyExistsException` removed entirely (no longer thrown anywhere).
+`CreateGuestAppointmentCommand`'s return type changed `AppointmentResponse` → `GuestBookingAckResponse`;
+the endpoint now returns `200 OK`, not `201 Created` (a `Location` header pointing at a
+real-or-not resource would itself leak which case occurred). Frontend's confirmation copy changed
+from an assertive "Appointment requested!" to generic "Check your email" — the old copy would have
+been a lie in the collision case, which defeats the entire point of the fix. **Residual, accepted
+risk, documented not hidden**: the two branches still differ in response *timing* (the real-booking
+path does materially more I/O — password hashing, multiple `SaveChanges` — than the collision
+path's single lookup + fire-and-forget email). Closing that would need artificial constant-time
+delays on every real booking; judged not worth the added latency given the primary vector (a
+direct, zero-effort response-shape check) is what this fix actually closes.
+
+**TOCTOU on the duplicate-email check — investigated, finding partially corrected, real gap
+closed.** The review flagged `GetUserIdByEmailAsync` (check) → `CreateUserAsync` (act) as
+non-atomic, claiming concurrent submissions with the same new email could create two Identity
+users sharing an email. Verified against the actual code before accepting the claim:
+`IdentityService.CreateUserAsync` sets `UserName = email`, and `AspNetUsers.UserNameIndex` (on
+`NormalizedUserName`) **is** a real unique database index (confirmed in the `InitialCreate`
+migration) — so a concurrent duplicate cannot actually create two accounts; the loser's
+`CreateAsync` fails at the database. The finding's core claim was wrong. What *is* real: before
+this fix, that failure surfaced as a raw `BusinessRuleViolationException` instead of degrading
+into the same graceful, enumeration-resistant ack as an up-front collision. Fixed: detect the
+"username already taken" `IdentityResult` error and route it through the identical
+collision-notice-email + generic-ack path.
+
+**`HourlyRate` on the public guest-artist-picker endpoint — decided, not left open.** The original
+spec flagged this as needing product-owner confirmation and shipped without getting it
+(`GetPublicBookingArtistsQuery` exposes `Artist.HourlyRate` to fully anonymous visitors). Decision:
+**keep it exposed.** Reasoning: (1) the number already reaches any client, authenticated or not,
+the moment they start a real booking — it's baked into `AppointmentResponse.DepositAmount`'s
+calculation today, so this only moves *when* the same number becomes visible, not *whether* it
+ever does; (2) matches the current vertical-booking-SaaS standard this codebase is held to
+(CLAUDE.md rule #6) — Fresha/Vagaro/Boulevard/GlossGenius all show service pricing to anonymous
+visitors before any signup, precisely so a visitor can decide whether to book at all. No code
+change; this closes the open question the original spec left unresolved.
+
+**Duplication cleanup** (all real, all fixed — not just flagged):
+- Studio-slug-resolution predicate (`Slug == x && IsActive && IsPublished`,
+  `IgnoreQueryFilters()`'d) was copy-pasted identically across 6 handlers, each individually
+  commented "same predicate as GetPublicStudioHandler" instead of sharing one implementation.
+  Extracted to `PublicStudioLookupExtensions.GetPublishedStudioBySlugAsync` — used by all 6,
+  including the original `GetPublicStudioHandler`.
+- The E.164 phone regex (`^\+[1-9]\d{1,14}$`) was independently redeclared as an identical private
+  field in 4 validators (`CreateClientValidator`, `CreateManualReminderValidator`,
+  `UpdateMyStudioValidator`, `CreateGuestAppointmentValidator`). Extracted to
+  `PhoneValidationRules.E164Format` (+ its error message), referenced by all 4.
+- `CreateAppointmentValidator` and `CreateGuestAppointmentValidator` independently redeclared the
+  same `ValidDurations`/`MaxImagesPerCategory`/`ValidImageCategories`/`ValidReferralSources`
+  constants (the `RuleFor` call sites themselves stay duplicated — this codebase has no nested-
+  command-validator composition convention, and the two commands wrap different outer types).
+  Extracted the constants only, to `BookingContentValidationRules`, shared by both.
+- `useCategorizedImageUpload` (authenticated form) and `useGuestImageUpload` (guest form) were
+  near-identical copies of the same picked-files queue/preview/status-tracking logic, differing
+  only in the actual upload call. Merged into one shared
+  `shared/hooks/useCategorizedImageUpload.ts`, parameterized by an injected
+  `upload: (file) => Promise<string | null>` — each form supplies its own presign mechanism as a
+  closure. Files within one batch now upload in parallel (`Promise.all`) instead of serially, a
+  side effect of the merge that also closes a separate, smaller efficiency finding (a guest
+  attaching several photos was waiting roughly N× one file's latency instead of ~1×).
+- The 600ms-debounced slot-availability-check effect (state + `setTimeout`, building
+  `CheckSlotAvailabilityParams` from watched form fields) was duplicated verbatim between both
+  forms, differing only in which RTK Query hook consumed the result. Extracted to
+  `shared/hooks/useDebouncedSlotCheckArgs.ts`.
+- The manual (non-react-hook-form) intake validation — required tattoo description, required
+  "where" when `ReferralSource` is `Other` — was duplicated in both forms' `onSubmit`. Extracted to
+  `validateTattooIntake`, exported alongside `TattooIntakeFields.tsx`.
+
+**Efficiency fixes**:
+- `GuestPendingUploadCleanupJob` loaded every `AppointmentAttachment.ImageUrl` for every tenant,
+  ever, just to check membership for a handful of candidate stale-upload keys — cost grew with
+  total platform history instead of with what the run was actually sweeping. Fixed: the DB query
+  is now filtered to the candidate URLs (`Where(a => candidateUrls.Contains(a.ImageUrl))`), pushing
+  the filter to SQL.
+- `IsAnyArtistAvailableAsync` ran 3 sequential queries (schedule, time-off, conflict) *per
+  candidate artist* in a loop — a pre-existing N+1 newly exposed to unauthenticated traffic via
+  the guest-checkout and public-availability-preview paths. Rewritten to batch: one query per
+  check across every candidate artist (schedule/time-off/conflict → 3 queries total, each
+  producing a `HashSet<Guid>` of matching artist ids), then an in-memory check for "any artist
+  clears all three" — same semantics, no longer N+1.
+
+**Investigated, confirmed no fix needed**: the frontend rendering the backend's raw `data.message`
+verbatim on a non-409 booking-submit failure was flagged as a latent PII/information-disclosure
+risk if a future error path ever included sensitive detail. Traced every exception type reachable
+from `POST /studios/{slug}/book` (`NotFoundException`, `PlanLimitExceededException`,
+`SlotAlreadyBookedException`, FluentValidation failures, `BusinessRuleViolationException` from an
+Identity `CreateUserAsync` failure) — each already returns a safe, backend-authored, non-PII
+string. Confirmed `ExceptionMiddleware.cs`'s default/unmapped case always returns the generic "An
+unexpected error occurred." for any exception without a specific mapping, never the raw exception
+detail — matching CLAUDE.md's own rule ("500 Internal — never expose exception detail to client").
+The frontend boundary is only as safe as what the backend puts in `data.message`, and the
+backend's own boundary already enforces this. No code change made.
+
+Two related lower-confidence findings on the same image-upload code, also investigated, also no
+fix needed: (1) calling `setImages` after a component unmounts mid-upload — React 18 no longer
+warns or errors on this (the "Can't perform a React state update on an unmounted component"
+warning was removed), so it's a wasted update with no visible effect, not a bug; (2) an image
+removed by the user while its upload is still in flight can land in R2 under a real key that never
+gets referenced by any `AppointmentAttachment` — this is precisely the scenario
+`GuestPendingUploadCleanupJob` (made more efficient above) already exists to sweep, by design
+(Decision #12 in the original spec), not a gap this pass needs to additionally guard against on
+the client side.
+
+**Explicitly out of scope, left alone**: findings against `GetMyEarningsQuery.cs`/
+`GetRevenueSummaryQuery.cs` (a duplicated 12-month trend-bucketing loop) and
+`reportsApi.ts`'s missing `from`/`to` date-range wiring belong to the separate, already-shipped
+"artist earnings/payout report" feature (`27a6f15`), not this one — a review angle scoped to "guest
+checkout" surfaced them as adjacent observations while reading nearby files, not as part of this
+feature's own diff. Noted here so they aren't lost, not fixed in this pass.
+
+Verified after every batch of changes (not just at the end): `dotnet build` clean throughout;
+final `dotnet test` — 1914 unit + 388 integration, all passing (the +1 vs. the `a768f68` count is
+the new `CreateGuestAppointmentHandlerTests` coverage for the enumeration-resistance redesign);
+`pnpm tsc --noEmit` and `pnpm build` clean throughout.

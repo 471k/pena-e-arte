@@ -16,6 +16,7 @@ public static class AuditActions
     public const string ReferralCodeReactivated = "ReferralCode.Reactivated";
     public const string ReferralCodeDeleted = "ReferralCode.Deleted";
     public const string AppointmentCancelled = "Appointment.Cancelled";
+    public const string AppointmentArtistAssigned = "Appointment.ArtistAssigned";
     public const string SessionSplitsUpdated = "SessionSplits.Updated";
     public const string ClientProfileCrossTenantOptedIn = "ClientProfile.CrossTenantOptedIn";
     public const string ClientProfileCrossTenantOptedOut = "ClientProfile.CrossTenantOptedOut";
@@ -23,6 +24,16 @@ public static class AuditActions
     /// <summary>Client-initiated (or support-initiated) right-to-erasure request. Distinct
     /// from the policy-driven automatic retention purge, which is not an audited command.</summary>
     public const string ClientDataErasureRequested = "Client.DataErasureRequested";
+
+    public const string ClientArtistReassigned = "Client.ArtistReassigned";
+
+    public const string ManualReminderSent = "ManualReminder.Sent";
+    public const string ManualReminderCancelled = "ManualReminder.Cancelled";
+
+    public const string ConductReportStatusUpdated = "ConductReport.StatusUpdated";
+
+    public const string PaymentRefunded = "Payment.Refunded";
+    public const string CashDepositConfirmed = "Payment.CashDepositConfirmed";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -36,4 +47,6 @@ public static class AuditTargetTypes
     public const string Payment = "Payment";
     public const string ClientProfile = "ClientProfile";
     public const string Client = "Client";
+    public const string ManualReminder = "ManualReminder";
+    public const string ConductReport = "ConductReport";
 }

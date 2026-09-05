@@ -469,7 +469,7 @@ export function PlatformReferralPage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">
+          <p className="text-center text-sm text-destructive-text py-16">
             Failed to load referral codes.
           </p>
         )}

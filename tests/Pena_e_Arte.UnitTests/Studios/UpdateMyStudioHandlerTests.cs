@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -18,7 +19,7 @@ public class UpdateMyStudioHandlerTests
 
     public UpdateMyStudioHandlerTests() => _tenant.StudioId.Returns(_studioId);
 
-    private UpdateMyStudioHandler CreateSut() => new(_db, _tenant);
+    private UpdateMyStudioHandler CreateSut() => new(_db, _tenant, NullLogger<UpdateMyStudioHandler>.Instance);
 
     private async Task SeedStudio()
     {
@@ -28,40 +29,44 @@ public class UpdateMyStudioHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidRequest_PersistsPhoneAndInstagram()
+    public async Task Handle_ValidRequest_PersistsPhone()
     {
         await SeedStudio();
-        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, "+351 912 345 678", "@my_studio");
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, "+351 912 345 678");
 
         StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
 
         result.PhoneNumber.Should().Be("+351 912 345 678");
-        result.InstagramHandle.Should().Be("my_studio");
         _db.Studios.Single(s => s.Id == _studioId).PhoneNumber.Should().Be("+351 912 345 678");
-        _db.Studios.Single(s => s.Id == _studioId).InstagramHandle.Should().Be("my_studio");
     }
 
     [Fact]
-    public async Task Handle_InstagramHandleWithLeadingAt_StripsAt()
+    public async Task Handle_InstagramHandleInRequest_IsIgnored()
     {
+        // Instagram is managed via SocialLinksCard/UpdateSocialHandleCommand now — this
+        // command must never write Studio.InstagramHandle, even if a caller still sends
+        // one, to avoid silently nulling the legacy column on every unrelated save.
         await SeedStudio();
-        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, null, "@handle");
+        Studio existing = _db.Studios.Single(s => s.Id == _studioId);
+        existing.InstagramHandle = "existing_handle";
+        await _db.SaveChangesAsync();
 
-        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, InstagramHandle: "@ignored");
 
-        result.InstagramHandle.Should().Be("handle");
+        await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        _db.Studios.Single(s => s.Id == _studioId).InstagramHandle.Should().Be("existing_handle");
     }
 
     [Fact]
-    public async Task Handle_EmptyPhoneAndInstagram_PersistsNull()
+    public async Task Handle_EmptyPhone_PersistsNull()
     {
         await SeedStudio();
-        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, "", "  ");
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, "");
 
         StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
 
         result.PhoneNumber.Should().BeNull();
-        result.InstagramHandle.Should().BeNull();
     }
 
     [Fact]
@@ -148,5 +153,74 @@ public class UpdateMyStudioHandlerTests
         StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
 
         result.Nipt.Should().Be("L01234567A");
+    }
+
+    [Fact]
+    public async Task Handle_SoloStudioRealCityAndCoordinates_AutoPublishes()
+    {
+        Studio studio = new()
+        {
+            Id = _studioId,
+            Name = "Jane Doe",
+            Slug = "jane-doe",
+            City = string.Empty,
+            IsSolo = true,
+            IsPublished = false,
+        };
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        UpdateStudioRequest req = new("Jane Doe", "Porto", 41.1, -8.6);
+
+        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        result.IsPublished.Should().BeTrue();
+        _db.Studios.Single(s => s.Id == _studioId).IsPublished.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_NonSoloStudio_IsPublishedStaysTrue()
+    {
+        Studio studio = new()
+        {
+            Id = _studioId,
+            Name = "Regular Studio",
+            Slug = "regular-studio",
+            City = "Lisbon",
+            IsSolo = false,
+            IsPublished = true,
+        };
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        UpdateStudioRequest req = new("Regular Studio", "Porto", 41.1, -8.6);
+
+        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        result.IsPublished.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_SoloStudioUpdatingOnlyPhoneNumber_StaysUnpublished()
+    {
+        Studio studio = new()
+        {
+            Id = _studioId,
+            Name = "Jane Doe",
+            Slug = "jane-doe",
+            City = string.Empty,
+            Latitude = 0,
+            Longitude = 0,
+            IsSolo = true,
+            IsPublished = false,
+        };
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        UpdateStudioRequest req = new("Jane Doe", string.Empty, 0, 0, "+351 912 345 678");
+
+        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        result.IsPublished.Should().BeFalse();
     }
 }

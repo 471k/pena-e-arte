@@ -56,6 +56,9 @@ vi.mock("@/features/studios/components/EmbedCodeCard", () => ({
 vi.mock("@/features/notifications/components/NotificationPreferencesCard", () => ({
   NotificationPreferencesCard: () => <div data-testid="notification-preferences-card" />,
 }));
+vi.mock("@/features/studios/components/StudioSocialLinksCard", () => ({
+  StudioSocialLinksCard: () => <div data-testid="studio-social-links-card" />,
+}));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -256,6 +259,44 @@ describe("StudioProfilePage — save behaviour", () => {
   });
 });
 
+describe("StudioProfilePage — phone number", () => {
+  it("typing an invalid phone number shows the phone error and disables further save via validation", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.type(screen.getByLabelText(/phone number/i), "912");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(await screen.findByText(/enter a valid phone number/i)).toBeInTheDocument();
+  });
+
+  // Typing a full phone number (AsYouType formatting on every keystroke) is heavy enough
+  // that this sandbox's known CPU-contention flakiness (see src/test/setup.ts's
+  // asyncUtilTimeout comment) can push it past the 10s default under load even though
+  // nothing is actually broken; confirmed by re-running in isolation with a raised
+  // timeout and watching it pass, 2026-09-05.
+  it("typing a valid phone number saves with the correct E.164 value", async () => {
+    let capturedPhone: unknown;
+    server.use(
+      http.put("http://localhost/api/v1/studios/me", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        capturedPhone = body.phoneNumber;
+        return HttpResponse.json(STUDIO);
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.type(screen.getByLabelText(/phone number/i), "912345678");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await screen.findByText(/changes saved/i);
+    expect(capturedPhone).toBe("+351912345678");
+  }, 20000);
+});
+
 describe("StudioProfilePage — location picker", () => {
   it("enables the save button after picking a new location", async () => {
     const user = userEvent.setup();
@@ -362,6 +403,11 @@ describe("StudioProfilePage — slug editing", () => {
     expect(screen.getByLabelText(/new studio url slug/i)).toBeInTheDocument();
   });
 
+  // Typing a long string char-by-char via userEvent (19 chars here) is heavy enough that
+  // this sandbox's known CPU-contention flakiness (see src/test/setup.ts's
+  // asyncUtilTimeout comment) can push it past the 10s default under load even though
+  // nothing is actually broken; confirmed by re-running in isolation with a raised
+  // timeout and watching it pass, 2026-09-05.
   it("shows validation error for invalid slug characters", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -371,7 +417,7 @@ describe("StudioProfilePage — slug editing", () => {
     await user.type(screen.getByLabelText(/new studio url slug/i), "UPPERCASE INVALID!");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
     expect(screen.getByText(/lowercase letters, numbers, and hyphens/i)).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("calls updateStudioSlug and shows success on valid slug", async () => {
     const patchSpy = vi.fn();
@@ -389,5 +435,5 @@ describe("StudioProfilePage — slug editing", () => {
     await user.type(screen.getByLabelText(/new studio url slug/i), "new-slug");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
     await waitFor(() => expect(patchSpy).toHaveBeenCalledWith({ newSlug: "new-slug" }));
-  });
+  }, 20000);
 });

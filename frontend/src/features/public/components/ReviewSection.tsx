@@ -30,7 +30,7 @@ function OwnerReplyForm({ reviewId }: { reviewId: string }) {
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="text-xs text-violet-400 hover:text-violet-300 transition-colors
+        className="text-xs text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors
                    underline underline-offset-2"
       >
         Reply
@@ -91,7 +91,7 @@ function ReviewCard({ review, canRespond }: { review: ReviewResponse; canRespond
             {review.isVerifiedBooking && (
               <span
                 className="inline-flex items-center gap-0.5
-                           text-[10px] font-medium text-violet-400
+                           text-[10px] font-medium text-violet-700 dark:text-violet-400
                            px-1.5 py-0.5 rounded-full
                            bg-violet-500/10 border border-violet-500/20"
                 title="This reviewer booked at this studio"
@@ -125,7 +125,7 @@ function ReviewCard({ review, canRespond }: { review: ReviewResponse; canRespond
               </span>
             )}
           </p>
-          <p className="text-sm text-muted-foreground/90 leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
             {review.ownerResponse}
           </p>
         </div>
@@ -358,7 +358,7 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
       />
 
       {error && (
-        <p className="text-xs text-destructive" role="alert">{error}</p>
+        <p className="text-xs text-destructive-text" role="alert">{error}</p>
       )}
 
       <Button

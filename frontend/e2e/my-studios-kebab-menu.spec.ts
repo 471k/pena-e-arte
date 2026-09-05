@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { makeJwt, mockAuthLogin } from "./helpers";
 
 // Regression coverage for a real-browser bug that vitest/jsdom cannot catch:
 // jsdom never applies actual CSS `pointer-events`, so a stuck
@@ -6,34 +7,7 @@ import { test, expect, type Page } from "@playwright/test";
 // (after opening the Sheet-based "Manage notifications" panel from one of its
 // items) only showed up when driven by a real Chromium engine.
 
-const MS_ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
-
-function makeJwt(role: string, sub: string, email: string): string {
-  const header  = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64");
-  const payload = Buffer.from(
-    JSON.stringify({
-      sub,
-      email,
-      given_name: email.split("@")[0],
-      tenant_id: "studio-aaa",
-      [MS_ROLE_CLAIM]: role,
-      exp: Math.floor(Date.now() / 1000) + 3600,
-    }),
-  ).toString("base64");
-  return `${header}.${payload}.fakesig`;
-}
-
-const CLIENT_TOKEN = makeJwt("client", "user-id-client", "ana@example.com");
-
-async function mockAuthLogin(page: Page, token: string) {
-  await page.route("**/api/v1/auth/login", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ accessToken: token, tokenType: "Bearer" }),
-    });
-  });
-}
+const CLIENT_TOKEN = makeJwt("client", "user-id-client", "ana@example.com", "studio-aaa");
 
 async function mockMyStudios(page: Page) {
   await page.route("**/api/v1/auth/my-studios", async (route) => {

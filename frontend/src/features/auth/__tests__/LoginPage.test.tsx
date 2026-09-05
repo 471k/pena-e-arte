@@ -500,9 +500,25 @@ describe("LoginPage — Remember me", () => {
 });
 
 describe("LoginPage — OAuth", () => {
-  it("renders Continue with Google and Continue with Apple buttons", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("renders the Continue with Google button", () => {
     renderPage();
     expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument();
+  });
+
+  // Apple Sign-In has no real client ID configured anywhere yet (deferred pending
+  // Apple Developer Program setup) — OAuthButtons hides the button rather than
+  // shipping one that renders normally and only fails when clicked.
+  it("hides the Continue with Apple button when VITE_APPLE_CLIENT_ID is not configured", () => {
+    vi.stubEnv("VITE_APPLE_CLIENT_ID", "");
+    renderPage();
+    expect(screen.queryByRole("button", { name: /continue with apple/i })).not.toBeInTheDocument();
+  });
+
+  it("renders the Continue with Apple button once VITE_APPLE_CLIENT_ID is configured", () => {
+    vi.stubEnv("VITE_APPLE_CLIENT_ID", "fake-apple-client-id");
+    renderPage();
     expect(screen.getByRole("button", { name: /continue with apple/i })).toBeInTheDocument();
   });
 

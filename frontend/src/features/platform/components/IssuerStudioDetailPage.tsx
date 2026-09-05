@@ -209,7 +209,7 @@ export function IssuerStudioDetailPage() {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-          <p className="text-sm text-destructive">Studio not found.</p>
+          <p className="text-sm text-destructive-text">Studio not found.</p>
           <Link to="/platform/studios" className="text-sm text-primary hover:underline mt-2 inline-block">
             ← Back to Studios
           </Link>
@@ -556,7 +556,7 @@ export function IssuerStudioDetailPage() {
                   {!anyExpanded && canCancel && (
                     <Button
                       size="sm" variant="outline"
-                      className="h-9 text-xs gap-1 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                      className="h-9 text-xs gap-1 text-destructive-text border-destructive/40 hover:bg-destructive/10 hover:text-destructive-text"
                       onClick={() => setConfirming(true)}>
                       <XCircle className="h-3.5 w-3.5" />
                       Cancel Subscription
@@ -631,7 +631,7 @@ export function IssuerStudioDetailPage() {
                 {/* Cancel subscription confirm */}
                 {confirming && (
                   <div className="flex flex-col gap-1.5 pt-2 border-t">
-                    <p className="text-xs text-destructive font-medium">Cancel subscription permanently?</p>
+                    <p className="text-xs text-destructive-text font-medium">Cancel subscription permanently?</p>
                     <p className="text-xs text-muted-foreground">
                       Billing ends immediately. Studio data is retained and the studio can re-subscribe at any time.
                     </p>

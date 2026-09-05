@@ -65,7 +65,7 @@ export function NotificationBell() {
             )}
 
             {isError && (
-              <p className="px-3 py-6 text-center text-xs text-destructive">
+              <p className="px-3 py-6 text-center text-xs text-destructive-text">
                 Failed to load notifications.
               </p>
             )}

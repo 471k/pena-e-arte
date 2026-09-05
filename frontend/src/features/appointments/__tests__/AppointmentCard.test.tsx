@@ -143,18 +143,43 @@ describe("AppointmentCard", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it("shows a reference-image count badge when the appointment has attachments", () => {
+  it("shows an image count badge when the appointment has attachments", () => {
+    // Count now covers both attachment categories combined (Area + Reference), not just
+    // "reference images" — imageUrls is the deprecated flat mirror, still supported as a
+    // fallback for pre-migration appointments.
     renderCard({ ...APPT_PENDING, imageUrls: ["https://cdn.example.com/1.png", "https://cdn.example.com/2.png"] });
-    expect(screen.getByText("2 reference images")).toBeInTheDocument();
+    expect(screen.getByText("2 images")).toBeInTheDocument();
   });
 
   it("uses singular 'image' for exactly one attachment", () => {
     renderCard({ ...APPT_PENDING, imageUrls: ["https://cdn.example.com/1.png"] });
-    expect(screen.getByText("1 reference image")).toBeInTheDocument();
+    expect(screen.getByText("1 image")).toBeInTheDocument();
   });
 
-  it("does NOT show the reference-image badge when there are no attachments", () => {
+  it("does NOT show the image count badge when there are no attachments", () => {
     renderCard(APPT_PENDING);
-    expect(screen.queryByText(/reference image/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d+ images?/i)).not.toBeInTheDocument();
+  });
+
+  // ── Needs artist (studio-choice booking) ────────────────────────────────────
+
+  it("shows the 'Needs artist' badge for a Pending appointment with no assigned artist", () => {
+    renderCard({ ...APPT_PENDING, artistId: null });
+    expect(screen.getByText(/needs artist/i)).toBeInTheDocument();
+  });
+
+  it("does NOT show the 'Needs artist' badge when an artist is assigned", () => {
+    renderCard(APPT_PENDING);
+    expect(screen.queryByText(/needs artist/i)).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the 'Needs artist' badge for a non-Pending unassigned appointment", () => {
+    renderCard({ ...APPT_COMPLETED, artistId: null });
+    expect(screen.queryByText(/needs artist/i)).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the Confirm button for a Pending appointment with no assigned artist", () => {
+    renderCard({ ...APPT_PENDING, artistId: null }, Role.Artist);
+    expect(screen.queryByRole("button", { name: /^confirm$/i })).not.toBeInTheDocument();
   });
 });

@@ -215,6 +215,46 @@ public class PlanLimitServiceTests
     }
 
     [Fact]
+    public async Task EnsureWithinLimitAsync_ExplicitStudioId_ChecksThatStudioNotCurrentTenant()
+    {
+        // Current tenant (ICurrentTenant.StudioId) is a different, unrelated studio with no
+        // subscription seeded at all — proves the explicit-studioId overload resolves the Plan
+        // and counts usage for the PASSED studio, not the ambient current tenant.
+        Guid otherStudioId = Guid.NewGuid();
+        await SeedPlanAndSubscription(new Plan { Name = "Starter", MaxArtists = 1 });
+
+        _db.Artists.Add(new Artist { StudioId = _studioId, FirstName = "A", LastName = "B", Email = "a@x.com" });
+        await _db.SaveChangesAsync();
+
+        Func<Task> act = () => CreateSut().EnsureWithinLimitAsync(_studioId, QuotaType.Artists, default);
+
+        await act.Should().ThrowAsync<PlanLimitExceededException>();
+
+        // The unrelated current-tenant studio (otherStudioId) has no subscription — the ordinary
+        // ICurrentTenant-scoped overload would find nothing to enforce for it.
+        _tenant.StudioId.Returns(otherStudioId);
+        Func<Task> ambientAct = () => CreateSut().EnsureWithinLimitAsync(QuotaType.Artists, default);
+        await ambientAct.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task EnsureWithinLimitAsync_ExplicitStudioId_DoesNotCountArtistsFromOtherStudios()
+    {
+        await SeedPlanAndSubscription(new Plan { Name = "Starter", MaxArtists = 1 });
+
+        // One artist at the target studio (at the limit) and one at a wholly different studio —
+        // the explicit-studioId overload must not let the unrelated studio's artist count toward
+        // this studio's limit.
+        _db.Artists.Add(new Artist { StudioId = _studioId, FirstName = "A", LastName = "B", Email = "a@x.com" });
+        _db.Artists.Add(new Artist { StudioId = Guid.NewGuid(), FirstName = "C", LastName = "D", Email = "c@x.com" });
+        await _db.SaveChangesAsync();
+
+        Func<Task> act = () => CreateSut().EnsureWithinLimitAsync(_studioId, QuotaType.Artists, default);
+
+        await act.Should().ThrowAsync<PlanLimitExceededException>().WithMessage("*1 artists*");
+    }
+
+    [Fact]
     public async Task GetUsageSnapshotAsync_NoSubscriptionForStudio_ReturnsNull()
     {
         PlanUsageSnapshot? result = await CreateSut().GetUsageSnapshotAsync(default);

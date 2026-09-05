@@ -1,0 +1,21 @@
+# Non-sensitive config only (Phase 8) — safe to commit, unlike pena-e-arte-api-secrets which
+# CD populates at deploy time from GitHub Actions secrets and is never written to k8s/ as YAML
+# with real values. GeoIp:* keys are deliberately left unset: neither this prompt nor the
+# earlier live-traffic-analytics prompt specs a K8s volume/PVC + population mechanism for the
+# GeoLite2 .mmdb files docker-compose.yml mounts locally — flagged as a real gap, not
+# silently built; the feature stays gracefully degraded (empty path) in production until
+# that's addressed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-api-config
+  namespace: pena-e-arte
+data:
+  Jwt__Issuer: "tattoos-prod"
+  Jwt__Audience: "tattoos-prod"
+  App__BaseUrl: "https://app.tattooos.co"
+  Cors__AllowedOrigins__0: "https://app.tattooos.co"
+  Migrations__ApplyOnStartup: "false"
+  Redis__ConnectionString: "pena-e-arte-redis:6379,connectTimeout=500,syncTimeout=500,abortConnect=false"
+  Resend__FromName: "TattooOS"
+  OpenTelemetry__OtlpEndpoint: "http://pena-e-arte-tempo.monitoring.svc.cluster.local:4317"

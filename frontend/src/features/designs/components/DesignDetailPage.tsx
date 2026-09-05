@@ -224,7 +224,7 @@ function RevisionCard({ revision, canReview, canDelete }: RevisionCardProps) {
                     className={cn("resize-none", errors.notes && "border-destructive")}
                   />
                   {errors.notes && (
-                    <p className="text-xs text-destructive">{errors.notes.message}</p>
+                    <p className="text-xs text-destructive-text">{errors.notes.message}</p>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -352,7 +352,7 @@ export function DesignDetailPage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">
+          <p className="text-center text-sm text-destructive-text py-16">
             Failed to load revisions. Please try again.
           </p>
         )}

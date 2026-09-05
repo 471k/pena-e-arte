@@ -52,6 +52,34 @@ public class GetStudioMapHandlerTests
     }
 
     [Fact]
+    public async Task Handle_UnpublishedSoloStudio_IsExcluded()
+    {
+        _db.Studios.Add(new Studio
+        {
+            Name = "Jane Doe",
+            Slug = "jane-doe",
+            City = string.Empty,
+            IsActive = true,
+            IsSolo = true,
+            IsPublished = false,
+        });
+        _db.Studios.Add(new Studio
+        {
+            Name = "Tinta Viva",
+            Slug = "tinta-viva",
+            City = "Lisboa",
+            IsActive = true,
+            IsSolo = false,
+            IsPublished = true,
+        });
+        await _db.SaveChangesAsync();
+
+        List<StudioMapItemResponse> result = await CreateSut().Handle(new GetStudioMapQuery(), default);
+
+        result.Should().ContainSingle(s => s.Slug == "tinta-viva");
+    }
+
+    [Fact]
     public async Task Handle_ResponseContainsExpectedFields()
     {
         _db.Studios.Add(new Studio

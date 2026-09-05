@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { remindersApi } from "@/features/reminders/remindersApi";
+import { artistsApi } from "@/features/artists/artistsApi";
 import { AppointmentDetailPage } from "@/features/appointments/components/AppointmentDetailPage";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -63,6 +65,13 @@ const APPT_NO_SHOW: AppointmentResponse = {
   depositStatus: "Forfeited",
 };
 
+const APPT_UNASSIGNED: AppointmentResponse = {
+  ...APPT_PENDING,
+  id: "appt-006",
+  artistId: null,
+  artistName: null,
+};
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -72,6 +81,7 @@ const server = setupServer(
     if (params.id === "appt-003") return HttpResponse.json(APPT_COMPLETED);
     if (params.id === "appt-004") return HttpResponse.json(APPT_CANCELLED);
     if (params.id === "appt-005") return HttpResponse.json(APPT_NO_SHOW);
+    if (params.id === "appt-006") return HttpResponse.json(APPT_UNASSIGNED);
     return HttpResponse.json({ message: "Not found" }, { status: 404 });
   }),
   http.delete("http://localhost/api/v1/appointments/:id", () =>
@@ -96,6 +106,17 @@ const server = setupServer(
   http.get("http://localhost/api/v1/appointments/check-slot", () =>
     HttpResponse.json({ available: true, reason: null }),
   ),
+  http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/artists", () => HttpResponse.json([
+    { id: "a-002", studioId: "s-001", firstName: "New", lastName: "Artist", slug: "new-artist", email: "new@a.com", specializations: null, hourlyRate: null, isActive: true },
+  ])),
+  http.patch("http://localhost/api/v1/appointments/:id/artist", async ({ params, request }) => {
+    const body = await request.json() as { artistId: string };
+    return HttpResponse.json({
+      ...APPT_PENDING, id: params.id as string,
+      artistId: body.artistId, artistName: "New Artist",
+    });
+  }),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -118,8 +139,10 @@ function makeStore(role: Role = Role.Artist) {
       auth:                          authReducer,
       ui:                            uiReducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+      [remindersApi.reducerPath]:    remindersApi.reducer,
+      [artistsApi.reducerPath]:      artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(appointmentsApi.middleware),
+    middleware: (gd) => gd().concat(appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
@@ -425,5 +448,60 @@ describe("AppointmentDetailPage", () => {
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to confirm appointment."));
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  // ── Send Reminder ───────────────────────────────────────────────────────────
+
+  it("artist sees 'Send Reminder' button for a non-terminal appointment", async () => {
+    renderPage("appt-001", Role.Artist);
+    expect(await screen.findByRole("button", { name: /send reminder/i })).toBeInTheDocument();
+  });
+
+  it("clicking 'Send Reminder' opens the reminder dialog scoped to this appointment", async () => {
+    const user = userEvent.setup();
+    renderPage("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /send reminder/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/send reminder/i)).toBeInTheDocument();
+    // Appointment-linked mode never shows the raw-contact name/phone inputs.
+    expect(within(dialog).queryByLabelText(/^name$/i)).not.toBeInTheDocument();
+  });
+
+  // ── Artist assignment ───────────────────────────────────────────────────────
+
+  it("owner sees an editable Artist select and assigning one calls the mutation and shows a success toast", async () => {
+    const user = userEvent.setup();
+    renderPage("appt-006", Role.Owner);
+
+    const trigger = await screen.findByLabelText(/assigned artist/i);
+    await user.click(trigger);
+    await user.click(await screen.findByRole("option", { name: /new artist/i }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Artist assigned."));
+  });
+
+  it("non-owner sees the artist's name as plain text, not a select", async () => {
+    renderPage("appt-001", Role.Artist);
+    await screen.findByText("90 min");
+    expect(screen.queryByLabelText(/assigned artist/i)).not.toBeInTheDocument();
+  });
+
+  it("non-owner sees amber 'Unassigned' when no artist is assigned", async () => {
+    renderPage("appt-006", Role.Artist);
+    expect(await screen.findByText(/unassigned/i)).toBeInTheDocument();
+  });
+
+  it("Confirm button is replaced with a hint when the appointment has no artist assigned", async () => {
+    renderPage("appt-006", Role.Owner);
+    await screen.findByText("90 min");
+    expect(screen.queryByRole("button", { name: /confirm appointment/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/assign an artist above before this can be confirmed/i)).toBeInTheDocument();
+  });
+
+  it("Send Reminder button is absent when the appointment has no artist assigned", async () => {
+    renderPage("appt-006", Role.Artist);
+    await screen.findByText("90 min");
+    expect(screen.queryByRole("button", { name: /send reminder/i })).not.toBeInTheDocument();
   });
 });

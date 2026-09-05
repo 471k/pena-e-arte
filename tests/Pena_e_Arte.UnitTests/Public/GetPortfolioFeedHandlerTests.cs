@@ -257,4 +257,56 @@ public class GetPortfolioFeedHandlerTests
         withBlankSearch.Select(r => r.ArtistSlug).Should()
             .BeEquivalentTo(withoutSearch.Select(r => r.ArtistSlug));
     }
+
+    [Fact]
+    public async Task Category_filter_returns_only_matching_images()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+
+        Artist artist = await SeedArtist(studioId, "ana-lima", "a@x.com", []);
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "fresh.jpg", Category = "fresh" });
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "design.jpg", Category = "design" });
+        await _db.SaveChangesAsync();
+
+        List<PortfolioImageResponse> result = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1, Category: "fresh"), CancellationToken.None);
+
+        result.Should().ContainSingle(r => r.ImageUrl == "fresh.jpg");
+    }
+
+    [Fact]
+    public async Task Category_and_style_filters_compose_as_AND()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+
+        Artist artist = await SeedArtist(studioId, "ana-lima", "a@x.com", []);
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "match.jpg", Style = "japanese", Category = "healed" });
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "wrong-category.jpg", Style = "japanese", Category = "fresh" });
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "wrong-style.jpg", Style = "blackwork", Category = "healed" });
+        await _db.SaveChangesAsync();
+
+        List<PortfolioImageResponse> result = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1, Style: "japanese", Category: "healed"), CancellationToken.None);
+
+        result.Should().ContainSingle(r => r.ImageUrl == "match.jpg");
+    }
+
+    [Fact]
+    public async Task No_category_filter_returns_all_categories_including_uncategorized()
+    {
+        Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
+
+        Artist artist = await SeedArtist(studioId, "ana-lima", "a@x.com", []);
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "fresh.jpg", Category = "fresh" });
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "uncategorized.jpg", Category = null });
+        await _db.SaveChangesAsync();
+
+        List<PortfolioImageResponse> result = await CreateSut().Handle(
+            new GetPortfolioFeedQuery(null, null, 50, 1), CancellationToken.None);
+
+        result.Should().HaveCount(2);
+    }
 }

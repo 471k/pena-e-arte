@@ -44,6 +44,13 @@ public class SendAftercareNotificationHandler(
             return;
         }
 
+        if (appointment.Artist is null)
+        {
+            logger.LogWarning("Appointment {@AppointmentId} has no assigned artist for aftercare notification",
+                appointment.Id);
+            return;
+        }
+
         string artistName = $"{appointment.Artist.FirstName} {appointment.Artist.LastName}";
         string body = emailRenderer.RenderAftercare(
             appointment.Client.FirstName, studio.Name, artistName, studio.ShowPlatformBranding);

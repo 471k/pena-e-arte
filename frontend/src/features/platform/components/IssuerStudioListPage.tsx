@@ -345,7 +345,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
             {!anyExpanded && canCancel && (
               <Button
                 size="sm" variant="outline"
-                className="h-7 text-xs gap-1 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                className="h-7 text-xs gap-1 text-destructive-text border-destructive/40 hover:bg-destructive/10 hover:text-destructive-text"
                 onClick={() => setConfirming(true)}>
                 <XCircle className="h-3.5 w-3.5" />
                 Cancel Subscription
@@ -423,7 +423,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
         {/* ── Cancel subscription confirm ──────────────────────────────── */}
         {confirming && (
           <div className="flex items-center gap-2 pt-1 border-t">
-            <span className="text-xs text-destructive font-medium">Cancel subscription permanently?</span>
+            <span className="text-xs text-destructive-text font-medium">Cancel subscription permanently?</span>
             <Button
               size="sm" variant="destructive" className="h-7 px-2 text-xs"
               disabled={cancelling_} onClick={handleCancel}
@@ -611,7 +611,7 @@ export function IssuerStudioListPage() {
         )}
 
         {studiosError && (
-          <p className="text-center text-sm text-destructive py-16">
+          <p className="text-center text-sm text-destructive-text py-16">
             Failed to load studios.
           </p>
         )}

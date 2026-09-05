@@ -12,6 +12,11 @@ export const artistTourSteps: TourStep[] = [
     body: "Find any client's profile, tattoo history, and forms here.",
   },
   {
+    targetSelector: '[data-tour="artist-messages-nav"]',
+    title: "Message a client or the studio owner",
+    body: "Send a real-time message to a client you have an appointment with, or to the studio owner, right from here.",
+  },
+  {
     targetSelector: '[data-tour="artist-create-design-button"]',
     title: "Upload a design",
     body: "Start a new design project here to upload artwork for a client to review.",
@@ -21,6 +26,16 @@ export const artistTourSteps: TourStep[] = [
     targetSelector: '[data-tour="artist-notifications-bell"]',
     title: "Notifications",
     body: "New bookings, form submissions, and other alerts show up here.",
+  },
+  {
+    targetSelector: '[data-tour="artist-earnings-nav"]',
+    title: "Your earnings",
+    body: "See what you've earned, month by month, and a breakdown of every payment behind it — including any session split the studio recorded.",
+  },
+  {
+    targetSelector: '[data-tour="artist-conduct-reports-nav"]',
+    title: "Reports about you",
+    body: "If a client ever files a conduct report about you, you can read it here — their identity is never shown to you.",
   },
   {
     targetSelector: '[data-tour="artist-help-button"]',

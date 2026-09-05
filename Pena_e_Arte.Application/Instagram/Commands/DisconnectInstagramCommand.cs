@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 
 namespace Pena_e_Arte.Application.Instagram.Commands;
@@ -23,8 +24,25 @@ public class DisconnectInstagramHandler(IAppDbContext db)
         {
             connection.IsActive = false;
             connection.UpdatedAt = DateTime.UtcNow;
-            await db.SaveChangesAsync(ct);
         }
+
+        SocialAccountLink? socialLink = await db.SocialAccountLinks.FirstOrDefaultAsync(
+            s => s.SubjectType == SocialLinkSubjectType.Artist
+              && s.SubjectId == request.ArtistId
+              && s.Platform == SocialPlatform.Instagram, ct);
+
+        if (socialLink is not null)
+        {
+            // Clears verification only — keeps Handle, mirrors DisconnectSocialAccountCommand.
+            socialLink.IsVerified = false;
+            socialLink.VerifiedAt = null;
+            socialLink.VerificationMethod = null;
+            socialLink.ExternalUserId = null;
+            socialLink.UpdatedAt = DateTime.UtcNow;
+        }
+
+        if (connection is not null || socialLink is not null)
+            await db.SaveChangesAsync(ct);
 
         return Unit.Value;
     }

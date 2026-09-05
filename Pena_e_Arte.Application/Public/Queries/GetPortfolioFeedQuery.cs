@@ -14,6 +14,7 @@ public record GetPortfolioFeedQuery(
     int Page,
     int PageSize = 24,
     string? Style = null,
+    string? Category = null,
     string? Search = null) : IRequest<List<PortfolioImageResponse>>;
 
 public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer redis)
@@ -65,6 +66,9 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
 
         if (!string.IsNullOrWhiteSpace(query.Style))
             imageQuery = imageQuery.Where(p => p.Style == query.Style);
+
+        if (!string.IsNullOrWhiteSpace(query.Category))
+            imageQuery = imageQuery.Where(p => p.Category == query.Category);
 
         // Known limitation: leading-wildcard Contains() across 4 columns can't use an index and
         // runs on every debounced keystroke from this unauthenticated public endpoint. Matches
@@ -160,6 +164,7 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
                     ImageId: x.Image.Id,
                     ImageUrl: x.Image.ImageUrl,
                     Style: x.Image.Style,
+                    Category: x.Image.Category,
                     ArtistName: $"{a.FirstName} {a.LastName}".Trim(),
                     ArtistSlug: a.Slug!,
                     StudioName: studio.Name,

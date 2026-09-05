@@ -31,11 +31,15 @@ public class AppDbContext(
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
+    public DbSet<BookingIntake> BookingIntakes => Set<BookingIntake>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
     public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     public DbSet<StudioNotificationPreference> StudioNotificationPreferences => Set<StudioNotificationPreference>();
     public DbSet<ClientNotificationPreference> ClientNotificationPreferences => Set<ClientNotificationPreference>();
+    public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     // --- Issuer-level (no tenant filter) ---
     public DbSet<Studio> Studios => Set<Studio>();
@@ -44,6 +48,12 @@ public class AppDbContext(
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
+
+    // --- Solo-artist studio-join invites (no tenant filter — the invited party is not a
+    //     member of the inviting studio's tenant until they accept; handlers resolve and
+    //     verify both sides explicitly, see InviteSoloArtistToJoinCommand /
+    //     AcceptStudioJoinInviteCommand) ---
+    public DbSet<StudioJoinInvite> StudioJoinInvites => Set<StudioJoinInvite>();
 
     // --- Cross-tenant public data (no tenant filter) ---
     public DbSet<Review> Reviews => Set<Review>();
@@ -55,6 +65,11 @@ public class AppDbContext(
     //     tenants; application handlers must verify ArtistId ownership via Artists) ---
     public DbSet<InstagramConnection> InstagramConnections => Set<InstagramConnection>();
     public DbSet<InstagramPost> InstagramPosts => Set<InstagramPost>();
+
+    // --- Social verification (polymorphic Artist-or-Studio subject, no tenant filter —
+    //     same documented exception as InstagramConnection above; handlers must filter
+    //     by (SubjectType, SubjectId) and verify tenant ownership explicitly) ---
+    public DbSet<SocialAccountLink> SocialAccountLinks => Set<SocialAccountLink>();
 
     // --- Platform feedback (no tenant filter — issuer reads across all studios) ---
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
@@ -69,6 +84,11 @@ public class AppDbContext(
     // --- Structured audit log (no tenant filter — StudioId nullable, platform-wide actions allowed) ---
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
+
+    // --- Trust & safety conduct reports (no tenant filter — same non-tenant shape as
+    //     Review/FeedbackReport/AuditLogEntry; target's studio is unrelated to the filing
+    //     client's own current tenant) ---
+    public DbSet<ConductReport> ConductReports => Set<ConductReport>();
 
     // --- Traffic analytics (no tenant filter — StudioId nullable, issuer-only cross-tenant reads) ---
     public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
@@ -106,10 +126,14 @@ public class AppDbContext(
         builder.Entity<Payment>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<SessionSplit>().HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<IntakeForm>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
+        builder.Entity<BookingIntake>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         builder.Entity<ConsentForm>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>().HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
+        builder.Entity<ManualReminder>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);
         builder.Entity<HelpSearchLog>().HasQueryFilter(h => h.StudioId == tenant.StudioId && h.DeletedAt == null);
         builder.Entity<StudioNotificationPreference>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+        builder.Entity<Conversation>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
+        builder.Entity<ChatMessage>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);
         // ClientNotificationPreference — NOT filtered, dual-keyed by (UserId, StudioId); see ClientNotificationPreferenceConfiguration.
 
         builder.Entity<SavedPortfolioImage>(b =>
@@ -254,6 +278,31 @@ public class AppDbContext(
             // for a studio is resolved explicitly in the handlers via ConsentTemplateResolver,
             // narrowing to `StudioId == tenant.StudioId || StudioId == null`, never a filter.
             entity.HasIndex(t => new { t.StudioId, t.Kind, t.IsActive });
+        });
+
+        builder.Entity<ConductReport>(entity =>
+        {
+            entity.ToTable("ConductReports");
+            entity.HasKey(r => r.Id);
+
+            entity.Property(r => r.Category).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(r => r.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(r => r.Reason).HasMaxLength(2000).IsRequired();
+            entity.Property(r => r.ReporterName).HasMaxLength(200).IsRequired();
+            entity.Property(r => r.ResolutionNote).HasMaxLength(2000);
+
+            // Same JSON column conversion as FeedbackReport.AttachmentUrls above.
+            entity.Property(r => r.AttachmentUrls)
+                  .HasConversion(
+                      v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                      v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
+                  .HasColumnType("json");
+
+            // No HasQueryFilter — deliberate, same rationale as AuditLogEntry above; the
+            // target's studio is unrelated to the filing client's own current tenant.
+            entity.HasIndex(r => r.StudioId);
+            entity.HasIndex(r => r.ArtistId);
+            entity.HasIndex(r => r.Status);
         });
     }
 }

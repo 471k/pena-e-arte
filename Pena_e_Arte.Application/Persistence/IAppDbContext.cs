@@ -24,11 +24,15 @@ public interface IAppDbContext
     DbSet<Payment> Payments { get; }
     DbSet<SessionSplit> SessionSplits { get; }
     DbSet<IntakeForm> IntakeForms { get; }
+    DbSet<BookingIntake> BookingIntakes { get; }
     DbSet<ConsentForm> ConsentForms { get; }
     DbSet<ConsentTemplate> ConsentTemplates { get; }
     DbSet<NotificationLog> NotificationLogs { get; }
     DbSet<StudioNotificationPreference> StudioNotificationPreferences { get; }
     DbSet<ClientNotificationPreference> ClientNotificationPreferences { get; }
+    DbSet<ManualReminder> ManualReminders { get; }
+    DbSet<Conversation> Conversations { get; }
+    DbSet<ChatMessage> ChatMessages { get; }
 
     // Issuer-level
     DbSet<Studio> Studios { get; }
@@ -37,6 +41,10 @@ public interface IAppDbContext
     DbSet<Subscription> Subscriptions { get; }
     DbSet<ReferralCode> ReferralCodes { get; }
     DbSet<ReferralRedemption> ReferralRedemptions { get; }
+
+    // Solo-artist studio-join invites — no tenant filter (invited party is not yet a
+    // member of the inviting studio's tenant; see AppDbContext)
+    DbSet<StudioJoinInvite> StudioJoinInvites { get; }
 
     // Cross-tenant public data
     DbSet<Review> Reviews { get; }
@@ -47,6 +55,9 @@ public interface IAppDbContext
     // Instagram — artist-scoped, no tenant filter (see AppDbContext)
     DbSet<InstagramConnection> InstagramConnections { get; }
     DbSet<InstagramPost> InstagramPosts { get; }
+
+    // Social verification — polymorphic subject (Artist or Studio), no tenant filter (see AppDbContext)
+    DbSet<SocialAccountLink> SocialAccountLinks { get; }
 
     // Platform feedback — no tenant filter (issuer reads across all studios)
     DbSet<FeedbackReport> FeedbackReports { get; }
@@ -61,6 +72,10 @@ public interface IAppDbContext
     // Structured audit log — no tenant filter (StudioId nullable, platform-wide actions allowed)
     DbSet<AuditLogEntry> AuditLogEntries { get; }
     DbSet<StudioCredentialRef> StudioCredentialRefs { get; }
+
+    // Trust & safety conduct reports — no tenant filter, same non-tenant shape as
+    // Review/FeedbackReport/AuditLogEntry (see AppDbContext)
+    DbSet<ConductReport> ConductReports { get; }
 
     // Traffic analytics — no tenant filter (StudioId nullable, issuer-only cross-tenant reads)
     DbSet<TrafficEvent> TrafficEvents { get; }

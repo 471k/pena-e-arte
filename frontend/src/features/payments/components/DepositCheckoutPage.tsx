@@ -6,7 +6,7 @@ import { CreditCard, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { useGetPaymentClientSecretQuery } from "../paymentsApi";
+import { useGetPaymentClientSecretQuery, useGetPaymentCapabilitiesQuery } from "../paymentsApi";
 
 // Lazily initialised so Stripe.js (and its iframe) only loads when this page
 // actually mounts, not whenever this module is bundled into the app.
@@ -77,7 +77,7 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
       {errorMsg && (
         <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2">
           <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-          <p className="text-sm text-destructive">{errorMsg}</p>
+          <p className="text-sm text-destructive-text">{errorMsg}</p>
         </div>
       )}
       <Button type="submit" className="w-full gap-2" disabled={!stripe || isProcessing}>
@@ -113,6 +113,10 @@ export function DepositCheckoutPage() {
   const { data, isLoading, isError } = useGetPaymentClientSecretQuery(paymentId!, {
     skip: !paymentId || redirectStatus === "complete",
   });
+  const { data: capabilities } = useGetPaymentCapabilitiesQuery(undefined, {
+    skip: redirectStatus === "complete",
+  });
+  const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
 
   if (redirectStatus === "complete") {
     return (
@@ -158,13 +162,22 @@ export function DepositCheckoutPage() {
             {isError && (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <AlertCircle className="h-8 w-8 text-destructive" />
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-destructive-text">
                   Payment not found or you don't have access to it.
                 </p>
               </div>
             )}
 
-            {data?.clientSecret && (
+            {data?.clientSecret && !cardPaymentsAvailable && (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+                <p className="text-sm text-destructive-text">
+                  Card payments are temporarily unavailable for this link. Please contact the studio.
+                </p>
+              </div>
+            )}
+
+            {data?.clientSecret && cardPaymentsAvailable && (
               <Elements
                 stripe={getStripePromise()}
                 options={{

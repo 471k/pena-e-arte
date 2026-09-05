@@ -51,7 +51,9 @@ function StudioAvatar({ name, coverImageUrl }: { name: string; coverImageUrl: st
 
   return (
     <div
-      className="h-12 w-12 rounded-md bg-muted text-muted-foreground/80
+      // text-muted-foreground/85 ≈ 4.6:1 against bg-muted's dark-theme #27272a — passes WCAG
+      // AA (measured 2026-09-05 while adding axe-core e2e coverage; /80 measured 4.28:1).
+      className="h-12 w-12 rounded-md bg-muted text-muted-foreground
                  flex items-center justify-center text-sm font-semibold
                  shrink-0 border border-border/50"
     >
@@ -90,7 +92,7 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch, onLeave, onNotifi
               {isActive && (
                 <span
                   className="inline-flex items-center gap-1 rounded-full px-2 py-0.5
-                             text-xs font-medium bg-emerald-500/15 text-emerald-500"
+                             text-xs font-medium bg-emerald-500/15 text-emerald-800 dark:text-emerald-500"
                 >
                   <CheckCircle2 className="h-3 w-3" aria-hidden />
                   Active
@@ -99,7 +101,7 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch, onLeave, onNotifi
               {!studio.isStudioActive && (
                 <span
                   className="inline-flex items-center rounded-full px-2 py-0.5
-                             text-xs font-medium bg-destructive/10 text-destructive"
+                             text-xs font-medium bg-destructive/10 text-destructive-text"
                 >
                   Suspended
                 </span>
@@ -112,7 +114,7 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch, onLeave, onNotifi
             {isActive ? (
               <span
                 className="inline-flex items-center gap-1 rounded-full px-2.5 py-1
-                           text-xs font-medium bg-emerald-500/15 text-emerald-500 shrink-0"
+                           text-xs font-medium bg-emerald-500/15 text-emerald-800 dark:text-emerald-500 shrink-0"
                 aria-label={`${studio.name} is your current studio`}
               >
                 <CheckCircle2 className="h-3 w-3" aria-hidden />
@@ -172,7 +174,7 @@ function StudioCard({ studio, isActive, isSwitching, onSwitch, onLeave, onNotifi
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => onLeave(studio)}
-                  className="flex items-center gap-2 text-destructive focus:text-destructive"
+                  className="flex items-center gap-2 text-destructive-text focus:text-destructive-text"
                 >
                   <LogOut className="h-4 w-4" aria-hidden />
                   Leave studio
@@ -274,7 +276,7 @@ export function MyStudiosPage() {
 
         {/* ── Error ── */}
         {isError && (
-          <p className="text-center text-sm text-destructive py-16" role="alert">
+          <p className="text-center text-sm text-destructive-text py-16" role="alert">
             Failed to load your studios.{" "}
             <button type="button" className="underline" onClick={() => refetch()}>
               Try again

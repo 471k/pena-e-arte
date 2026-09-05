@@ -82,6 +82,9 @@ const server = setupServer(
   http.post("http://localhost/api/v1/auth/register", () =>
     new HttpResponse(null, { status: 204 }),
   ),
+  http.post("http://localhost/api/v1/auth/register/solo-artist", () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
   http.post("http://localhost/api/v1/auth/login", () =>
     HttpResponse.json({ accessToken: makeFakeJwt("owner"), tokenType: "Bearer" }),
   ),
@@ -393,4 +396,108 @@ describe("RegisterStudioPage — step 2", () => {
 
     expect(await screen.findByText(/unable to reach the server/i)).toBeInTheDocument();
   }, 15_000);
+});
+
+describe("RegisterStudioPage — solo artist mode", () => {
+  async function switchToSoloMode(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: /i'm an independent artist/i }));
+  }
+
+  it("shows a registration-type toggle at step 1", () => {
+    renderPage();
+    expect(screen.getByRole("button", { name: /i run a studio/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /i'm an independent artist/i })).toBeInTheDocument();
+  });
+
+  it("switches to the minimal solo-artist form", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await switchToSoloMode(user);
+
+    expect(screen.getByRole("heading", { name: /register as an independent artist/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
+    // No studio-specific fields in solo mode
+    expect(screen.queryByLabelText(/studio name/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/business tax id/i)).not.toBeInTheDocument();
+  });
+
+  it("shows validation errors on empty submit", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await switchToSoloMode(user);
+    await user.click(screen.getByRole("button", { name: /create my account/i }));
+
+    expect(await screen.findByText(/first name is required/i)).toBeInTheDocument();
+  });
+
+  it("shows password-mismatch error when passwords differ", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await switchToSoloMode(user);
+    await user.type(screen.getByLabelText(/first name/i), "Jane");
+    await user.type(screen.getByLabelText(/last name/i), "Doe");
+    await user.type(screen.getByLabelText(/^email$/i), "jane@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "Different1!");
+    await user.click(screen.getByRole("button", { name: /create my account/i }));
+
+    expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
+  });
+
+  it("successful solo registration navigates to /dashboard and dispatches credentials", async () => {
+    const user  = userEvent.setup({ delay: null });
+    const store = renderPage();
+
+    await switchToSoloMode(user);
+    await user.type(screen.getByLabelText(/first name/i), "Jane");
+    await user.type(screen.getByLabelText(/last name/i), "Doe");
+    await user.type(screen.getByLabelText(/^email$/i), "jane@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /create my account/i }));
+
+    await screen.findByTestId("dashboard");
+
+    expect(store.getState().auth.role).toBe("owner");
+    expect(store.getState().auth.token).toBeTruthy();
+  });
+
+  it("shows server error when solo registration fails", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/auth/register/solo-artist", () =>
+        HttpResponse.json({ message: "Email already registered." }, { status: 409 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await switchToSoloMode(user);
+    await user.type(screen.getByLabelText(/first name/i), "Jane");
+    await user.type(screen.getByLabelText(/last name/i), "Doe");
+    await user.type(screen.getByLabelText(/^email$/i), "jane@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /create my account/i }));
+
+    expect(await screen.findByText("Email already registered.")).toBeInTheDocument();
+  }, 15_000);
+
+  it("switching back to studio mode restores the multi-step studio form", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await switchToSoloMode(user);
+    await user.click(screen.getByRole("button", { name: /i run a studio/i }));
+
+    expect(screen.getByRole("heading", { name: /register your studio/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/studio name/i)).toBeInTheDocument();
+  });
 });
