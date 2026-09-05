@@ -69,7 +69,7 @@ export function GoogleSignInButton({ onCredential, disabled = false }: GoogleSig
         ].filter(Boolean).join(" ")}
       />
       {status === "failed" && (
-        <p className="text-xs text-destructive text-center" role="alert">
+        <p className="text-xs text-destructive-text text-center" role="alert">
           Google Sign-In is unavailable right now. Please try again later or sign in with email.
         </p>
       )}

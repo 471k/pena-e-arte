@@ -4,4 +4,5 @@ public record SubmitIntakeFormRequest(
     Guid ClientId,
     Guid? AppointmentId,
     string FormData,
-    string? FileUrl);
+    string? FileUrl,
+    bool ConsentAccepted);

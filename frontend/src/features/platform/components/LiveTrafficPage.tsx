@@ -216,7 +216,7 @@ function BreakdownCard({
         {busy ? (
           <div className="h-24 rounded bg-muted animate-pulse" />
         ) : error ? (
-          <p className="text-center text-xs text-destructive py-6" role="alert">{errorLabel}</p>
+          <p className="text-center text-xs text-destructive-text py-6" role="alert">{errorLabel}</p>
         ) : !items ? null : (
           <CountList items={items} emptyLabel={emptyLabel} />
         )}
@@ -277,7 +277,7 @@ export function LiveTrafficPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-4 space-y-6">
         {snapshotError && (
-          <p className="text-center text-sm text-destructive py-4" role="alert">
+          <p className="text-center text-sm text-destructive-text py-4" role="alert">
             Failed to load live traffic.
           </p>
         )}
@@ -362,7 +362,7 @@ export function LiveTrafficPage() {
             {historyBusy ? (
               <div className="h-[130px] rounded bg-muted animate-pulse" />
             ) : historyError ? (
-              <p className="h-[130px] flex items-center justify-center text-xs text-destructive" role="alert">
+              <p className="h-[130px] flex items-center justify-center text-xs text-destructive-text" role="alert">
                 Couldn't load traffic trend — try refreshing.
               </p>
             ) : !history || history.dataPoints.length === 0 ? (

@@ -15,14 +15,16 @@ import { MyProfilePage } from "@/features/clients/components/MyProfilePage";
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const ME: ClientResponse = {
-  id:        "cccc0001-0000-0000-0000-000000000001",
-  studioId:  "stud-0001",
-  firstName: "Ana",
-  lastName:  "Ferreira",
-  email:     "ana.ferreira@ink-soul.test",
-  phone:     "+351 912 111 222",
-  createdAt: "2024-01-10T09:00:00.000Z",
-  userId:    "u1",
+  id:         "cccc0001-0000-0000-0000-000000000001",
+  studioId:   "stud-0001",
+  firstName:  "Ana",
+  lastName:   "Ferreira",
+  email:      "ana.ferreira@ink-soul.test",
+  phone:      "+351 912 111 222",
+  createdAt:  "2024-01-10T09:00:00.000Z",
+  userId:     "u1",
+  artistId:   null,
+  artistName: null,
 };
 
 const PROFILE: ClientProfileResponse = {

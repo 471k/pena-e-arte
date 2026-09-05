@@ -227,12 +227,12 @@ export function LoginPage() {
                 Don't have an account?{" "}
                 <Link
                   to={clientRegisterUrl}
-                  className="underline underline-offset-4 text-violet-400 hover:text-violet-300 py-2 inline-block"
+                  className="underline underline-offset-4 text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 py-2 inline-block"
                 >
                   Sign up
                 </Link>
               </div>
-              <div className="mt-1 text-center text-xs text-foreground/50">
+              <div className="mt-1 text-center text-xs text-foreground/65">
                 Registering a studio instead?{" "}
                 <Link
                   to="/register"
@@ -246,7 +246,7 @@ export function LoginPage() {
         </div>
 
         {/* Legal footer — pinned to viewport bottom */}
-        <footer className="absolute bottom-6 left-0 right-0 text-center text-xs text-foreground/55">
+        <footer className="absolute bottom-6 left-0 right-0 text-center text-xs text-foreground/65">
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
             <a href="/privacy" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
               Privacy Policy

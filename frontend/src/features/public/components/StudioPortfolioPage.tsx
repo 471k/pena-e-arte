@@ -22,16 +22,21 @@ import { StarRating }              from "@/shared/components/ui/StarRating";
 import { useAppSelector }          from "@/app/hooks";
 import { useGetPublicStudioQuery } from "../publicApi";
 import type { PublicArtistSummary } from "../publicApi";
+import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
+import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { useDocumentMeta }          from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }        from "@/shared/utils/useStructuredData";
+import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
 import { ReviewSection }            from "./ReviewSection";
 import { PublicPageHeader }         from "./PublicPageHeader";
+import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
+import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 
 function StudioMeta({
-  name, slug, description, coverImageUrl, city, averageRating, reviewCount,
+  name, slug, description, coverImageUrl, city, latitude, longitude, averageRating, reviewCount,
 }: {
   name: string; slug: string; description: string | null; coverImageUrl: string | null;
-  city: string; averageRating: number | null; reviewCount: number;
+  city: string; latitude: number; longitude: number; averageRating: number | null; reviewCount: number;
 }) {
   useDocumentMeta({
     title:       `${name} — Book a Tattoo on TattooOS`,
@@ -47,6 +52,9 @@ function StudioMeta({
     url:           `https://tattooos.co/s/${slug}`,
     image:         coverImageUrl ?? undefined,
     address:       { "@type": "PostalAddress", addressLocality: city },
+    ...(hasPinnedLocation(latitude, longitude)
+      ? { geo: { "@type": "GeoCoordinates", latitude, longitude } }
+      : {}),
     ...(reviewCount > 0
       ? { aggregateRating: { "@type": "AggregateRating", ratingValue: averageRating, reviewCount } }
       : {}),
@@ -215,8 +223,10 @@ export function StudioPortfolioPage() {
   const role           = useAppSelector((s) => s.auth.role);
   const tenantId       = useAppSelector((s) => s.auth.tenantId);
   const [lightboxUrl,  setLightboxUrl] = useState<string | null>(null);
+  const [reportOpen,   setReportOpen]  = useState(false);
   const navigate       = useNavigate();
   const location       = useLocation();
+  const canFileReport = useIsClientRole();
 
   // React Router gives the very first history entry key "default" — anything
   // navigated to from within the app gets a real key. Only that case has
@@ -247,10 +257,9 @@ export function StudioPortfolioPage() {
     );
   }
 
-  const bookUrl = `/book?studio=${studio.slug}`;
-  const ctaUrl  = token
-    ? bookUrl
-    : `/login?redirect=${encodeURIComponent(bookUrl)}&studioId=${studio.studioId}`;
+  // Guest checkout (Decision #1/#13, 2026-08-31): /book itself now branches on auth state,
+  // so an unauthenticated visitor goes straight there instead of a forced /login hop.
+  const ctaUrl = `/book?studio=${studio.slug}`;
   const canRespond = role === "owner" && tenantId === studio.studioId;
 
   return (
@@ -261,6 +270,8 @@ export function StudioPortfolioPage() {
         description={studio.description}
         coverImageUrl={studio.coverImageUrl}
         city={studio.city}
+        latitude={studio.latitude}
+        longitude={studio.longitude}
         averageRating={studio.averageRating}
         reviewCount={studio.reviewCount}
       />
@@ -338,7 +349,7 @@ export function StudioPortfolioPage() {
               )}
 
               {studio.description && (
-                <p className="text-sm text-muted-foreground/90 leading-relaxed">
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   {studio.description}
                 </p>
               )}
@@ -411,6 +422,19 @@ export function StudioPortfolioPage() {
             )}
 
             <ReviewSection slug={studio.slug} target="studio" token={token} canRespond={canRespond} />
+
+            {canFileReport && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setReportOpen(true)}
+                  className="text-xs text-muted-foreground hover:text-muted-foreground
+                             underline underline-offset-2 transition-colors"
+                >
+                  Report this studio
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right: sticky sidebar */}
@@ -439,34 +463,54 @@ export function StudioPortfolioPage() {
                 </a>
               )}
 
-              {studio.instagramHandle && (
+              {studio.socialLinks.map((link) => {
+                const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? AtSign;
+                const label = SOCIAL_PLATFORM_LABEL[link.platform] ?? link.platform;
+                return (
+                  <a
+                    key={link.platform}
+                    href={link.profileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-muted-foreground
+                               hover:text-foreground transition-colors min-h-[44px]"
+                    aria-label={`${studio.name} on ${label}`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    @{link.handle}
+                    {link.isVerified && <VerifiedSocialBadge platform={label} />}
+                  </a>
+                );
+              })}
+
+              {hasPinnedLocation(studio.latitude, studio.longitude) ? (
                 <a
-                  href={`https://instagram.com/${studio.instagramHandle.replace(/^@/, "")}`}
+                  href={buildGoogleMapsDirectionsUrl(studio.latitude, studio.longitude)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm text-muted-foreground
                              hover:text-foreground transition-colors min-h-[44px]"
-                  aria-label={`${studio.name} on Instagram`}
+                  aria-label={`Get directions to ${studio.name} in ${studio.city} — opens Google Maps`}
                 >
-                  <AtSign className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  @{studio.instagramHandle.replace(/^@/, "")}
+                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Get Directions — {studio.city}
                 </a>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  {studio.city}
+                </div>
               )}
-
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {studio.city}
-              </div>
             </div>
 
-            <p className="text-xs text-muted-foreground/60 text-center px-1">
+            <p className="text-xs text-muted-foreground text-center px-1">
               Booking requests go directly to the studio.
             </p>
           </aside>
         </div>
       </div>
 
-      <footer className="py-4 text-center text-xs text-foreground/50 border-t mt-auto">
+      <footer className="py-4 text-center text-xs text-foreground/65 border-t mt-auto">
         <a
           href="https://tattooos.co"
           target="_blank"
@@ -476,6 +520,14 @@ export function StudioPortfolioPage() {
           Powered by TattooOS
         </a>
       </footer>
+
+      {canFileReport && (
+        <ConductReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          target={{ kind: "studio", slug: studio.slug, name: studio.name }}
+        />
+      )}
     </div>
   );
 }

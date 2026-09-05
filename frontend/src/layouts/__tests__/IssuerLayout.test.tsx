@@ -13,6 +13,7 @@ import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { feedbackApi } from "@/features/feedback/feedbackApi";
 import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
+import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
 import { IssuerLayout } from "@/layouts/IssuerLayout";
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -22,6 +23,9 @@ const server = setupServer(
     HttpResponse.json([]),
   ),
   http.get("http://localhost/api/v1/platform/feedback", () =>
+    HttpResponse.json([]),
+  ),
+  http.get("http://localhost/api/v1/platform/conduct-reports", () =>
     HttpResponse.json([]),
   ),
   // Onboarding tour: complete by default so it doesn't interfere with unrelated assertions.
@@ -45,8 +49,9 @@ function makeStore() {
       [feedbackApi.reducerPath]:       feedbackApi.reducer,
       [onboardingApi.reducerPath]:     onboardingApi.reducer,
       [authApi.reducerPath]:           authApi.reducer,
+      [conductReportsApi.reducerPath]: conductReportsApi.reducer,
     },
-    middleware: (gd) => gd().concat(notificationsApi.middleware, feedbackApi.middleware, onboardingApi.middleware, authApi.middleware),
+    middleware: (gd) => gd().concat(notificationsApi.middleware, feedbackApi.middleware, onboardingApi.middleware, authApi.middleware, conductReportsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u4", email: "issuer@platform.test" }, token: "fake", tenantId: null, role: "issuer", pendingReferralCode: null } as any,
@@ -68,6 +73,7 @@ function renderLayout(initialPath = "/platform") {
             <Route path="/platform/referrals"      element={<div data-testid="outlet" />} />
             <Route path="/platform/reports"        element={<div data-testid="outlet" />} />
             <Route path="/platform/feedback"       element={<div data-testid="outlet" />} />
+            <Route path="/platform/conduct-reports" element={<div data-testid="outlet" />} />
             <Route path="/notifications"           element={<div data-testid="outlet" />} />
           </Route>
           <Route path="/login" element={<div data-testid="login-page" />} />
@@ -93,7 +99,7 @@ describe("IssuerLayout", () => {
     expect(screen.queryByText("TattooOS")).not.toBeInTheDocument();
   });
 
-  it("renders all seven issuer nav links (Notifications moved to bell icon)", () => {
+  it("renders all eight issuer nav links (Notifications moved to bell icon)", () => {
     renderLayout();
     expect(screen.getByRole("link", { name: /^dashboard$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^studios$/i })).toBeInTheDocument();

@@ -112,7 +112,7 @@ export function AuditLogPage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16" role="alert">
+          <p className="text-center text-sm text-destructive-text py-16" role="alert">
             Failed to load the audit log.{" "}
             <button type="button" className="underline" onClick={() => refetch()}>
               Try again

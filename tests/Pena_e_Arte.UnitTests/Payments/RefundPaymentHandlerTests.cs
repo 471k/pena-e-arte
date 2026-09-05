@@ -133,6 +133,17 @@ public class RefundPaymentHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
+    [Fact]
+    public void RefundPaymentCommand_IsAuditableForPaymentRefunded()
+    {
+        Guid paymentId = Guid.NewGuid();
+        IAuditableCommand command = new RefundPaymentCommand(paymentId, null);
+
+        command.AuditAction.Should().Be("Payment.Refunded");
+        command.AuditTargetType.Should().Be("Payment");
+        command.AuditTargetId.Should().Be(paymentId);
+    }
+
     private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio

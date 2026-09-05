@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pena-e-arte-migrate
+  namespace: pena-e-arte
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          # Same image as the API Deployment, tag pinned by CD alongside it. No
+          # Migrations__ApplyOnStartup override here — it defaults to true (appsettings.json),
+          # so this Job's own boot performs exactly one migration run. CD applies and waits for
+          # this Job to complete BEFORE rolling out the API Deployment (which runs with
+          # Migrations__ApplyOnStartup=false via the ConfigMap), so N replicas never race the
+          # same migration history table.
+          image: ghcr.io/471k/pena-e-arte-api:latest
+          envFrom:
+            - configMapRef:
+                name: pena-e-arte-api-config
+            - secretRef:
+                name: pena-e-arte-api-secrets
+          # pena-e-arte-api-config sets Migrations__ApplyOnStartup=false for the API
+          # Deployment (§ below) — explicitly override it back to true here so this Job (and
+          # only this Job) performs the one controlled migration run. env: entries take
+          # precedence over envFrom: entries with the same name.
+          env:
+            - name: Migrations__ApplyOnStartup
+              value: "true"
+            # Makes Program.cs return immediately after migrating/seeding/registering
+            # recurring jobs, instead of falling through to app.Run() and blocking forever —
+            # without this, this Job never exits and `kubectl wait --for=condition=complete`
+            # always times out on a clean boot. Never set on the API Deployment itself.
+            - name: Migrations__ExitAfterMigrate
+              value: "true"

@@ -115,6 +115,99 @@ public class RescheduleAppointmentHandlerTests
         await act.Should().ThrowAsync<SlotAlreadyBookedException>();
     }
 
+    // ── Studio-choice (unassigned) reschedule ───────────────────────────────
+
+    private Guid SeedActiveArtistWithFullSchedule()
+    {
+        Artist artist = new()
+        {
+            StudioId = _studioId,
+            FirstName = "Any",
+            LastName = "Artist",
+            Email = $"{Guid.NewGuid()}@artist.test",
+        };
+        _db.Artists.Add(artist);
+        _db.SaveChanges();
+
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+        {
+            _db.ArtistSchedules.Add(new ArtistSchedule
+            {
+                ArtistId = artist.Id,
+                StudioId = _studioId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsAvailable = true,
+            });
+        }
+        _db.SaveChanges();
+        return artist.Id;
+    }
+
+    private async Task<Guid> SeedUnassignedAppointment(AppointmentStatus status, DateTime date)
+    {
+        Appointment appointment = new()
+        {
+            StudioId = _studioId,
+            ArtistId = null,
+            ClientId = Guid.NewGuid(),
+            Date = date,
+            EndDate = date.AddHours(1),
+            DurationMinutes = 60,
+            Status = status,
+            DepositStatus = DepositStatus.Pending,
+        };
+        _db.Appointments.Add(appointment);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        return appointment.Id;
+    }
+
+    [Fact]
+    public async Task Handle_UnassignedAppointment_ArtistAvailableAtNewTime_Succeeds()
+    {
+        SeedActiveArtistWithFullSchedule();
+        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.AddDays(2));
+        DateTime newDate = DateTime.UtcNow.AddDays(5);
+
+        var result = await CreateSut().Handle(
+            new RescheduleAppointmentCommand(id, new RescheduleAppointmentRequest(newDate, 60, null)), default);
+
+        result.Date.Should().Be(newDate);
+        result.ArtistId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_UnassignedAppointment_NoArtistAvailableAtNewTime_ThrowsSlotAlreadyBookedException()
+    {
+        // No active artist seeded at all — nothing is ever available.
+        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.AddDays(2));
+        DateTime newDate = DateTime.UtcNow.AddDays(5);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new RescheduleAppointmentCommand(id, new RescheduleAppointmentRequest(newDate, 60, null)), default);
+
+        await act.Should().ThrowAsync<SlotAlreadyBookedException>();
+    }
+
+    [Fact]
+    public async Task Handle_TwoUnassignedAppointmentsAtOverlappingTimes_DoNotSpuriouslyConflict()
+    {
+        // Regression: a.ArtistId == appointment.ArtistId (both null) must never be used as a
+        // literal comparison — two different unassigned appointments overlapping in time is
+        // not a real conflict, since neither has actually claimed an artist resource yet.
+        SeedActiveArtistWithFullSchedule();
+        DateTime date = DateTime.UtcNow.AddDays(5);
+        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.AddDays(2));
+        await SeedUnassignedAppointment(AppointmentStatus.Pending, date);
+
+        var result = await CreateSut().Handle(
+            new RescheduleAppointmentCommand(id, new RescheduleAppointmentRequest(date, 60, null)), default);
+
+        result.Date.Should().Be(date);
+    }
+
     // ── Client self-reschedule ───────────────────────────────────────────────
 
     private Guid SeedClientAsCurrentUser()

@@ -183,6 +183,16 @@ public class IdentityService(
         return Guid.TryParse(user.Id, out Guid id) ? id : null;
     }
 
+    public async Task<IReadOnlyList<string>> GetUserRolesAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return [];
+        // GetRolesAsync returns IList<string>, which does not implicitly convert to
+        // IReadOnlyList<string> despite List<T> satisfying both at runtime.
+        IList<string> roles = await userManager.GetRolesAsync(user);
+        return roles.ToList();
+    }
+
     public async Task<string?> GetUserDisplayNameAsync(string email, CancellationToken ct)
     {
         IdentityUser? user = await userManager.FindByEmailAsync(email);
@@ -334,6 +344,18 @@ public class IdentityService(
         await userManager.SetUserNameAsync(user, newEmail);
 
         return (true, [], false, false);
+    }
+
+    public async Task SwapRoleAsync(Guid userId, string oldRole, string newRole, CancellationToken ct)
+    {
+        IdentityUser user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException($"User {userId} not found.");
+
+        if (await userManager.IsInRoleAsync(user, oldRole))
+            await userManager.RemoveFromRoleAsync(user, oldRole);
+
+        if (!await userManager.IsInRoleAsync(user, newRole))
+            await userManager.AddToRoleAsync(user, newRole);
     }
 
     private async Task<Guid?> ReadActiveTenantIdAsync(IdentityUser user)

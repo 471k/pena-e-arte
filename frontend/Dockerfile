@@ -20,7 +20,8 @@ RUN pnpm build
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 
 ENV BACKEND_HOST=api \
-    BACKEND_PORT=8080
+    BACKEND_PORT=8080 \
+    IS_STAGING=""
 
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /src/dist /usr/share/nginx/html

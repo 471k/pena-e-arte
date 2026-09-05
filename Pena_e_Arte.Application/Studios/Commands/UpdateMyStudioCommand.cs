@@ -2,6 +2,8 @@ using System.Text.RegularExpressions;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -12,7 +14,7 @@ namespace Pena_e_Arte.Application.Studios.Commands;
 
 public record UpdateMyStudioCommand(UpdateStudioRequest Request) : IRequest<StudioResponse>;
 
-public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
+public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILogger<UpdateMyStudioHandler> logger)
     : IRequestHandler<UpdateMyStudioCommand, StudioResponse>
 {
     public async Task<StudioResponse> Handle(UpdateMyStudioCommand command, CancellationToken ct)
@@ -27,8 +29,13 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
         studio.Longitude = command.Request.Longitude;
         studio.PhoneNumber = string.IsNullOrWhiteSpace(command.Request.PhoneNumber)
                                   ? null : command.Request.PhoneNumber.Trim();
-        studio.InstagramHandle = string.IsNullOrWhiteSpace(command.Request.InstagramHandle)
-                                  ? null : command.Request.InstagramHandle.Trim().TrimStart('@');
+
+        // InstagramHandle is deliberately NOT written here anymore. The frontend form no
+        // longer collects it (Instagram is now managed via SocialLinksCard →
+        // UpdateSocialHandleCommand, writing to SocialAccountLink), so
+        // UpdateStudioRequest.InstagramHandle is always null/omitted on every real call —
+        // writing it unconditionally would silently null out the legacy column (kept only
+        // for its one-time SocialAccountLink backfill history) on every unrelated save.
 
         if (!string.IsNullOrWhiteSpace(command.Request.Nipt))
         {
@@ -49,6 +56,17 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             studio.Nipt = normalizedNipt;
         }
 
+        // (0, 0) as "location not yet set" is a deliberate, cheap sentinel — real-world
+        // coordinates landing exactly on Null Island are not a realistic false-positive
+        // for this product's userbase. One-way transition: this handler never un-publishes.
+        if (studio.IsSolo && !studio.IsPublished &&
+            !string.IsNullOrWhiteSpace(studio.City) &&
+            (studio.Latitude != 0 || studio.Longitude != 0))
+        {
+            studio.IsPublished = true;
+            logger.LogInformation("Solo studio {@StudioId} auto-published on real location", studio.Id);
+        }
+
         await db.SaveChangesAsync(ct);
 
         return new StudioResponse(
@@ -57,7 +75,8 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             studio.ShowPlatformBranding,
             AllowBrandingRemoval: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
-            studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt);
+            studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
+            studio.IsSolo, studio.IsPublished);
     }
 }
 
@@ -71,6 +90,10 @@ public class UpdateMyStudioValidator : AbstractValidator<UpdateMyStudioCommand>
         RuleFor(x => x.Request.City).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Request.Latitude).InclusiveBetween(-90, 90);
         RuleFor(x => x.Request.Longitude).InclusiveBetween(-180, 180);
+        RuleFor(x => x.Request.PhoneNumber)
+            .Matches(PhoneValidationRules.E164Format)
+            .WithMessage(PhoneValidationRules.E164ErrorMessage)
+            .When(x => !string.IsNullOrWhiteSpace(x.Request.PhoneNumber));
         RuleFor(x => x.Request.Nipt)
             .Length(10)
             .Must(n => NiptFormat.IsMatch(n!.Trim().ToUpperInvariant()))

@@ -52,6 +52,28 @@ public class GetNearbyStudiosHandlerTests
     }
 
     [Fact]
+    public async Task Unpublished_solo_studios_excluded()
+    {
+        _db.Studios.Add(new Studio
+        {
+            Name = "Jane Doe",
+            Slug = "jane-doe",
+            City = string.Empty,
+            Latitude = 38.7169,
+            Longitude = -9.1395,
+            IsActive = true,
+            IsSolo = true,
+            IsPublished = false,
+        });
+        await _db.SaveChangesAsync();
+
+        List<NearbyStudioResponse> result = await CreateSut().Handle(
+            new GetNearbyStudiosQuery(38.7169, -9.1395, 50), CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ArtistCount_reflects_published_artists_in_studio()
     {
         Guid studioId = Guid.NewGuid();

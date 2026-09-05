@@ -3,6 +3,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Contact.Commands;
@@ -19,9 +20,6 @@ public class SubmitContactRequestHandler(
     ILogger<SubmitContactRequestHandler> logger)
     : IRequestHandler<SubmitContactRequestCommand, Unit>
 {
-    // Founder-confirmed public support inbox (2026-08-01). Not a secret.
-    private const string SupportEmail = "support@tattooos.co";
-
     public async Task<Unit> Handle(SubmitContactRequestCommand command, CancellationToken ct)
     {
         SubmitContactRequest req = command.Request;
@@ -38,7 +36,7 @@ public class SubmitContactRequestHandler(
 
         // Reply-To = submitter so support can reply straight back to them.
         await notifications.SendEmailAsync(
-            to: SupportEmail,
+            to: PlatformContacts.SupportEmail,
             subject: $"Contact form: {req.Name}",
             body: body,
             replyTo: req.Email,

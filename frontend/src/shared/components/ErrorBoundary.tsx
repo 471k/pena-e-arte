@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
           role="alert"
           className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-8 text-center"
         >
-          <p className="text-lg font-semibold text-destructive">Something went wrong</p>
+          <p className="text-lg font-semibold text-destructive-text">Something went wrong</p>
           <p className="text-sm text-muted-foreground">
             {this.state.error?.message ?? "An unexpected error occurred."}
           </p>

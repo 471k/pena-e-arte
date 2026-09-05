@@ -245,7 +245,7 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
                   className={cn("resize-none", errors.description && "border-destructive")}
                 />
                 {errors.description && (
-                  <p className="text-xs text-destructive">{errors.description.message}</p>
+                  <p className="text-xs text-destructive-text">{errors.description.message}</p>
                 )}
               </div>
 
@@ -280,7 +280,7 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
                   )}
                 />
                 {errors.bodyLocation && (
-                  <p className="text-xs text-destructive">{errors.bodyLocation.message}</p>
+                  <p className="text-xs text-destructive-text">{errors.bodyLocation.message}</p>
                 )}
               </div>
 
@@ -309,7 +309,7 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
                     )}
                   />
                   {errors.artistId && (
-                    <p className="text-xs text-destructive">{errors.artistId.message}</p>
+                    <p className="text-xs text-destructive-text">{errors.artistId.message}</p>
                   )}
                 </div>
 
@@ -322,7 +322,7 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
                     className={cn(errors.completedAt && "border-destructive")}
                   />
                   {errors.completedAt && (
-                    <p className="text-xs text-destructive">{errors.completedAt.message}</p>
+                    <p className="text-xs text-destructive-text">{errors.completedAt.message}</p>
                   )}
                 </div>
               </div>
@@ -378,7 +378,7 @@ export function TattooHistorySection({ clientId }: TattooHistorySectionProps) {
           )}
 
           {isError && (
-            <p className="text-sm text-destructive text-center py-4">
+            <p className="text-sm text-destructive-text text-center py-4">
               Failed to load tattoo records.
             </p>
           )}

@@ -84,7 +84,7 @@ export function MyProfilePage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">
+          <p className="text-center text-sm text-destructive-text py-16">
             Failed to load profile. Please try again.
           </p>
         )}

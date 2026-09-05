@@ -20,14 +20,16 @@ import type { PaymentIntentResponse, PaymentResponse } from "@/features/payments
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const CLIENT: ClientResponse = {
-  id:        "c-001",
-  studioId:  "s-001",
-  firstName: "Maria",
-  lastName:  "Silva",
-  email:     "maria@example.com",
-  phone:     null,
-  createdAt: "2026-01-01T00:00:00Z",
-  userId:    null,
+  id:         "c-001",
+  studioId:   "s-001",
+  firstName:  "Maria",
+  lastName:   "Silva",
+  email:      "maria@example.com",
+  phone:      null,
+  createdAt:  "2026-01-01T00:00:00Z",
+  userId:     null,
+  artistId:   null,
+  artistName: null,
 };
 
 const CLIENT_2: ClientResponse = {
@@ -100,6 +102,9 @@ const server = setupServer(
   ),
   http.put("http://localhost/api/v1/payments/:id/splits", ({ params }) =>
     HttpResponse.json({ ...CASH_RESULT, id: params.id as string }),
+  ),
+  http.get("http://localhost/api/v1/payments/capabilities", () =>
+    HttpResponse.json({ cardPaymentsAvailable: true }),
   ),
 );
 
@@ -391,5 +396,22 @@ describe("CreatePaymentIntentPage", () => {
     await screen.findByText(/cash payment recorded/i);
     expect(screen.getByText("No session splits defined.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add splits/i })).toBeInTheDocument();
+  });
+
+  // ── Capabilities guard ───────────────────────────────────────────────────────
+
+  it("disables the Card method and shows 'temporarily unavailable' when capabilities say card is unavailable", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments/capabilities", () =>
+        HttpResponse.json({ cardPaymentsAvailable: false }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByText("Maria Silva"));
+    await screen.findByText(/selected appointment/i);
+    expect(await screen.findByText(/card payments are temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^card$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /record cash payment/i })).toBeInTheDocument();
   });
 });

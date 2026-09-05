@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-prometheus-config
+  namespace: monitoring
+data:
+  # Translated from docker/observability/prometheus.yml, with one required edit: the compose
+  # config's dual "-container"/"-host" targets (for the containerized-vs-dotnet-run dev
+  # topologies) collapse to a single target here — there is no "host" topology in production.
+  # Intentional simplification, not an oversight.
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: "pena-e-arte-api"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["pena-e-arte-api.pena-e-arte.svc.cluster.local:8080"]
+            labels:
+              service: "pena-e-arte-api"
+              environment: "production"
+
+      # Staging as an additional scrape target on this same shared Prometheus, not a second
+      # Prometheus in a duplicated per-namespace stack (see docs/infra/staging-environment.md
+      # — one observability stack, environment-labeled, is the whole point of §2.3). The
+      # environment label is what lets api-overview.json's one dashboard filter between the
+      # two rather than needing a forked copy.
+      - job_name: "pena-e-arte-api-staging"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["pena-e-arte-api.pena-e-arte-staging.svc.cluster.local:8080"]
+            labels:
+              service: "pena-e-arte-api"
+              environment: "staging"

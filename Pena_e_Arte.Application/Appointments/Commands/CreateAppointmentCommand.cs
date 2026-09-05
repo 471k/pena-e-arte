@@ -9,6 +9,7 @@ using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Domain.Services;
+using Pena_e_Arte.Domain.ValueObjects;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
@@ -47,64 +48,97 @@ public class CreateAppointmentHandler(
             clientId = req.ClientId;
         }
 
+        return await CreateAppointmentCoreAsync(
+            db, tenant.StudioId, clientId, req, slotLocker, jobs, realtime, sender, planLimits, ct);
+    }
+
+    /// <summary>
+    /// Shared appointment-creation core: artist validation, slot lock, conflict check, deposit
+    /// calc, Appointment + BookingIntake + categorized Attachments construction, save, reminder
+    /// scheduling, realtime notify, created-notification send. Called by both the authenticated
+    /// handler above (after resolving clientId from the JWT/request) and
+    /// CreateGuestAppointmentHandler (Public/Commands) after provisioning a new guest Client.
+    /// Takes studioId explicitly rather than reading ICurrentTenant — the guest caller has no
+    /// ambient tenant scope (no JWT) — same shape GetPublicStudioQuery and friends already use
+    /// for every other public handler.
+    /// </summary>
+    internal static async Task<AppointmentResponse> CreateAppointmentCoreAsync(
+        IAppDbContext db,
+        Guid studioId,
+        Guid clientId,
+        CreateAppointmentRequest req,
+        ISlotLocker slotLocker,
+        IJobScheduler jobs,
+        IRealtimeNotifier realtime,
+        ISender sender,
+        IPlanLimitService planLimits,
+        CancellationToken ct)
+    {
         DateTime requestEnd = req.Date.AddMinutes(req.DurationMinutes);
 
-        // Validate the artist up front (clean 404 instead of an FK violation),
-        // and load the hourly rate that percent deposit rules are based on.
-        Artist artist = await db.Artists
-            .FirstOrDefaultAsync(a => a.Id == req.ArtistId, ct)
-            ?? throw new NotFoundException(nameof(Artist), req.ArtistId);
+        Artist? artist = null;
+        if (req.ArtistId is Guid artistId)
+        {
+            // IgnoreQueryFilters(): this core is shared with the anonymous guest-booking path,
+            // which has no ambient tenant scope — see ArtistAvailabilityExtensions' doc comment
+            // for why every query here must bypass the (Guid.Empty-scoped, for an anonymous
+            // caller) global filter in favor of the explicit studioId predicate.
+            artist = await db.Artists.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(a => a.StudioId == studioId && a.DeletedAt == null && a.Id == artistId, ct)
+                ?? throw new NotFoundException(nameof(Artist), artistId);
 
-        // Check artist schedule: the day must be a working day and the time within working hours
-        DayOfWeek requestDay = req.Date.DayOfWeek;
-        TimeSpan requestStart = req.Date.TimeOfDay;
-        TimeSpan requestEndTime = requestEnd.TimeOfDay;
+            (bool available, string? reason) = await db.CheckArtistScheduleAsync(
+                studioId, artistId, req.Date, req.DurationMinutes, ct);
 
-        var scheduleEntry = await db.ArtistSchedules
-            .Where(s => s.ArtistId == req.ArtistId && s.DayOfWeek == requestDay && s.IsAvailable)
-            .FirstOrDefaultAsync(ct);
+            if (!available)
+                throw new BusinessRuleViolationException(reason ?? "The artist is not available at that time.");
+        }
+        else
+        {
+            // ── Studio-choice path. Soft "someone can do this" check; no specific artist
+            // resource is claimed here — the real per-artist claim happens in
+            // AssignAppointmentArtistCommand. ──
+            bool anyoneAvailable = await db.IsAnyArtistAvailableAsync(studioId, req.Date, req.DurationMinutes, ct);
 
-        if (scheduleEntry is null)
-            throw new BusinessRuleViolationException($"The artist is not available on {requestDay}.");
+            if (!anyoneAvailable)
+                throw new BusinessRuleViolationException(
+                    "No artist is available at that date and time. Please choose a different slot.");
+        }
 
-        if (requestStart < scheduleEntry.StartTime || requestEndTime > scheduleEntry.EndTime)
-            throw new BusinessRuleViolationException(
-                $"Appointment time is outside the artist's working hours ({scheduleEntry.StartTime:hh\\:mm}–{scheduleEntry.EndTime:hh\\:mm}).");
+        bool locked = req.ArtistId is Guid lockArtistId
+            && await slotLocker.TryAcquireLockAsync(studioId, lockArtistId, req.Date, ct);
 
-        bool onTimeOff = await db.ArtistTimeOffs.AnyAsync(
-            t => t.ArtistId == req.ArtistId &&
-                 t.StartDate <= req.Date.Date &&
-                 t.EndDate >= req.Date.Date, ct);
-
-        if (onTimeOff)
-            throw new BusinessRuleViolationException("The artist is on leave on the requested date.");
-
-        bool locked = await slotLocker.TryAcquireLockAsync(tenant.StudioId, req.ArtistId, req.Date, ct);
-        if (!locked) throw new SlotAlreadyBookedException();
+        if (req.ArtistId is not null && !locked) throw new SlotAlreadyBookedException();
 
         try
         {
-            bool conflict = await db.Appointments.AnyAsync(a =>
-                a.ArtistId == req.ArtistId &&
-                a.Date < requestEnd &&
-                a.EndDate > req.Date &&
-                a.Status != AppointmentStatus.Cancelled, ct);
+            if (req.ArtistId is Guid checkArtistId)
+            {
+                bool conflict = await db.Appointments.IgnoreQueryFilters().AnyAsync(a =>
+                    a.StudioId == studioId &&
+                    a.DeletedAt == null &&
+                    a.ArtistId == checkArtistId &&
+                    a.Date < requestEnd &&
+                    a.EndDate > req.Date &&
+                    a.Status != AppointmentStatus.Cancelled, ct);
 
-            if (conflict) throw new SlotAlreadyBookedException();
+                if (conflict) throw new SlotAlreadyBookedException();
+            }
 
             // Single-active is enforced by the deposit rule handlers; ordering by
             // UpdatedAt keeps selection deterministic even against legacy data.
             DepositRule? rule = await db.DepositRules
-                .Where(r => r.IsActive)
+                .IgnoreQueryFilters()
+                .Where(r => r.StudioId == studioId && r.DeletedAt == null && r.IsActive)
                 .OrderByDescending(r => r.UpdatedAt)
                 .FirstOrDefaultAsync(ct);
 
-            decimal depositAmount = DepositCalculator.Calculate(rule, artist.HourlyRate, req.DurationMinutes);
+            decimal depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
 
             Appointment appointment = new()
             {
-                StudioId = tenant.StudioId,
-                ArtistId = req.ArtistId,
+                StudioId = studioId,
+                ArtistId = artist?.Id,
                 ClientId = clientId,
                 Date = req.Date,
                 EndDate = requestEnd,
@@ -115,13 +149,26 @@ public class CreateAppointmentHandler(
                 Notes = req.Notes
             };
 
-            foreach (string imageUrl in req.ImageUrls ?? [])
+            appointment.Intake = new BookingIntake
+            {
+                StudioId = studioId,
+                TattooDescription = req.TattooDescription,
+                SafetyNotes = req.SafetyNotes,
+                DesiredPlacement = new BodyMap { Locations = req.DesiredPlacementLocations?.ToList() ?? [] },
+                ReferralSource = req.ReferralSource is null
+                    ? null
+                    : Enum.Parse<ReferralSource>(req.ReferralSource),
+                ReferralSourceOther = req.ReferralSourceOther,
+            };
+
+            foreach (AppointmentImageRequest image in req.Images ?? [])
             {
                 appointment.Attachments.Add(new AppointmentAttachment
                 {
-                    StudioId = tenant.StudioId,
-                    ImageUrl = imageUrl,
-                    UploadedAt = DateTime.UtcNow
+                    StudioId = studioId,
+                    ImageUrl = image.Url,
+                    UploadedAt = DateTime.UtcNow,
+                    Category = Enum.Parse<AppointmentAttachmentCategory>(image.Category),
                 });
             }
 
@@ -139,7 +186,7 @@ public class CreateAppointmentHandler(
             await db.SaveChangesAsync(ct);
 
             AppointmentResponse response = Map(appointment);
-            await realtime.NotifyStudioAsync(tenant.StudioId, "AppointmentCreated", response, ct);
+            await realtime.NotifyStudioAsync(studioId, "AppointmentCreated", response, ct);
 
             await sender.Send(new SendAppointmentCreatedNotificationCommand(appointment.Id), ct);
 
@@ -147,19 +194,39 @@ public class CreateAppointmentHandler(
         }
         finally
         {
-            await slotLocker.ReleaseLockAsync(tenant.StudioId, req.ArtistId, req.Date, ct);
+            if (req.ArtistId is Guid unlockArtistId)
+                await slotLocker.ReleaseLockAsync(studioId, unlockArtistId, req.Date, ct);
         }
     }
 
-    internal static AppointmentResponse Map(Appointment a, string? clientName = null) => new(
-        a.Id, a.StudioId, a.ArtistId, a.ClientId,
-        a.Date, a.EndDate, a.DurationMinutes,
-        a.Status.ToString(), a.DepositStatus.ToString(),
-        a.DepositAmount, a.Notes, a.CreatedAt,
-        a.CancellationReason?.ToString(),
-        a.AftercareSentAt,
-        clientName,
-        // Empty (not necessarily accurate) unless the caller eager-loaded
-        // .Include(a => a.Attachments) — see GetAppointmentQuery.
-        a.Attachments.OrderBy(x => x.UploadedAt).Select(x => x.ImageUrl).ToList());
+    internal static AppointmentResponse Map(
+        Appointment a, string? clientName = null, string? artistName = null, Guid? clientUserId = null)
+    {
+        List<AppointmentAttachmentResponse> attachments = a.Attachments
+            .OrderBy(x => x.UploadedAt)
+            .Select(x => new AppointmentAttachmentResponse(x.ImageUrl, x.Category.ToString()))
+            .ToList();
+
+        return new(
+            a.Id, a.StudioId, a.ArtistId, a.ClientId,
+            a.Date, a.EndDate, a.DurationMinutes,
+            a.Status.ToString(), a.DepositStatus.ToString(),
+            a.DepositAmount, a.Notes, a.CreatedAt,
+            a.CancellationReason?.ToString(),
+            a.AftercareSentAt,
+            clientName,
+            // Deprecated flat mirror of the Reference-category subset — see AppointmentResponse.
+            // Empty (not necessarily accurate) unless the caller eager-loaded
+            // .Include(a => a.Attachments) — see GetAppointmentQuery.
+            a.Attachments.Where(x => x.Category == AppointmentAttachmentCategory.Reference)
+                .OrderBy(x => x.UploadedAt).Select(x => x.ImageUrl).ToList(),
+            artistName,
+            clientUserId,
+            a.Intake?.TattooDescription,
+            a.Intake?.SafetyNotes,
+            a.Intake?.DesiredPlacement.Locations,
+            a.Intake?.ReferralSource?.ToString(),
+            a.Intake?.ReferralSourceOther,
+            attachments);
+    }
 }

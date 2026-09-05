@@ -11,43 +11,50 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { clientsApi } from "@/features/clients/clientsApi";
 import type { ClientResponse } from "@/features/clients/clientsApi";
+import { artistsApi } from "@/features/artists/artistsApi";
 import { ClientListPage } from "@/features/clients/components/ClientListPage";
 import { Role } from "@/shared/types/roles";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const ANA: ClientResponse = {
-  id:        "cccc0001-0000-0000-0000-000000000001",
-  studioId:  "stud-0001",
-  firstName: "Ana",
-  lastName:  "Ferreira",
-  email:     "ana.ferreira@ink-soul.test",
-  phone:     "+351 912 111 222",
-  createdAt: "2024-01-10T09:00:00.000Z",
-  userId:    null,
+  id:         "cccc0001-0000-0000-0000-000000000001",
+  studioId:   "stud-0001",
+  firstName:  "Ana",
+  lastName:   "Ferreira",
+  email:      "ana.ferreira@ink-soul.test",
+  phone:      "+351 912 111 222",
+  createdAt:  "2024-01-10T09:00:00.000Z",
+  userId:     null,
+  artistId:   null,
+  artistName: null,
 };
 
 const CLIENTS: ClientResponse[] = [
   ANA,
   {
-    id:        "cccc0002-0000-0000-0000-000000000002",
-    studioId:  "stud-0001",
-    firstName: "Bruno",
-    lastName:  "Santos",
-    email:     "bruno.santos@ink-soul.test",
-    phone:     null,
-    createdAt: "2024-02-14T09:00:00.000Z",
-    userId:    null,
+    id:         "cccc0002-0000-0000-0000-000000000002",
+    studioId:   "stud-0001",
+    firstName:  "Bruno",
+    lastName:   "Santos",
+    email:      "bruno.santos@ink-soul.test",
+    phone:      null,
+    createdAt:  "2024-02-14T09:00:00.000Z",
+    userId:     null,
+    artistId:   null,
+    artistName: null,
   },
   {
-    id:        "cccc0003-0000-0000-0000-000000000003",
-    studioId:  "stud-0001",
-    firstName: "Carla",
-    lastName:  "Nunes",
-    email:     "carla.nunes@ink-soul.test",
-    phone:     "+351 963 333 444",
-    createdAt: "2024-03-20T09:00:00.000Z",
-    userId:    null,
+    id:         "cccc0003-0000-0000-0000-000000000003",
+    studioId:   "stud-0001",
+    firstName:  "Carla",
+    lastName:   "Nunes",
+    email:      "carla.nunes@ink-soul.test",
+    phone:      "+351 963 333 444",
+    createdAt:  "2024-03-20T09:00:00.000Z",
+    userId:     null,
+    artistId:   null,
+    artistName: null,
   },
 ];
 
@@ -64,6 +71,7 @@ const server = setupServer(
       : CLIENTS;
     return HttpResponse.json(list);
   }),
+  http.get("http://localhost/api/v1/artists", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -78,8 +86,9 @@ function makeStore(role: Role = Role.Owner) {
       auth: authReducer,
       ui:   uiReducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
+      [artistsApi.reducerPath]: artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(clientsApi.middleware),
+    middleware: (gd) => gd().concat(clientsApi.middleware, artistsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@ink-soul.test" }, token: "fake", tenantId: "t1", role } as any,

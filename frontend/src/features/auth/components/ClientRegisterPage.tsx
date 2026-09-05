@@ -269,7 +269,7 @@ export function ClientRegisterPage() {
             </CardContent>
           </Card>
 
-          <p className="text-center text-sm text-foreground/40">
+          <p className="text-center text-sm text-foreground/65">
             Registering a studio instead?{" "}
             <Link
               to="/register"

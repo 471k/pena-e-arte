@@ -97,7 +97,7 @@ export function FileUploadField({
         disabled={busy}
       />
       {displayError && (
-        <p className="text-xs text-destructive">{displayError}</p>
+        <p className="text-xs text-destructive-text">{displayError}</p>
       )}
     </div>
   );

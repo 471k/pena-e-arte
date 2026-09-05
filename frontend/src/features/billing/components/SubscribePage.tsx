@@ -247,7 +247,7 @@ export function SubscribePage() {
         )}
 
         {plansError && (
-          <p className="text-sm text-destructive">Failed to load plans. Please try again.</p>
+          <p className="text-sm text-destructive-text">Failed to load plans. Please try again.</p>
         )}
 
         {!loadingPlans && !plansError && plans.length === 0 && (
@@ -305,7 +305,7 @@ export function SubscribePage() {
         )}
 
         {submitError && (
-          <p className="text-sm text-destructive">{submitError}</p>
+          <p className="text-sm text-destructive-text">{submitError}</p>
         )}
 
         {!hasPendingChange && (

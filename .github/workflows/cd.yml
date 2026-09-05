@@ -1,0 +1,421 @@
+name: CD
+
+# Triggers only after ci.yml's checks pass on main (workflow_run, not a bare push — avoids
+# racing CI). Additive to ci.yml, which stays untouched (its docker-build job still only
+# validates that the images build; this workflow is the first thing that pushes anywhere).
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      redeploy_staging_only:
+        description: >-
+          Redeploy staging only (rebuild the staging-tagged frontend image and re-apply
+          k8s/overlays/staging) without a throwaway commit to main. Manual dispatch never
+          touches production — build-and-push/deploy (production) only ever run via the
+          workflow_run trigger above.
+        type: boolean
+        default: true
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    name: Build and push images to GHCR
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Pena_e_Arte.API/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/471k/pena-e-arte-api:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/471k/pena-e-arte-api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/471k/pena-e-arte-frontend:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/471k/pena-e-arte-frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          # Real production values, NOT ci.yml's docker-build placeholders
+          # (pk_test_placeholder / placeholder / http://localhost:8081) — those are correct
+          # for that job's build-only validation but would silently ship a broken Stripe
+          # checkout, broken Google/Apple sign-in, and a wrong self-referential public URL
+          # baked into the client bundle if reused here. VITE_STRIPE_PUBLISHABLE_KEY,
+          # VITE_GOOGLE_CLIENT_ID, and VITE_APPLE_CLIENT_ID are client-exposed (visible in the
+          # shipped JS via view-source) — kept as repo secrets anyway for consistency with
+          # this deployment's uniform secret-sourcing pattern, a minor judgment call.
+          build-args: |
+            VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+            VITE_CONTACT_EMAIL=support@tattooos.co
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+            VITE_APPLE_CLIENT_ID=${{ secrets.VITE_APPLE_CLIENT_ID }}
+            VITE_PUBLIC_URL=https://app.tattooos.co
+
+  build-and-push-frontend-staging:
+    name: Build and push staging-tagged frontend image
+    # Runs on the normal push-to-main flow (right alongside build-and-push, independently —
+    # it builds a DIFFERENT image tag, so there's nothing to serialize) and on manual dispatch
+    # (§2.5's on-demand staging redeploy). Never gated on build-and-push's own success/failure.
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push staging frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          # Exact-sha tag only, no floating "staging-latest" — deploy-staging always deploys
+          # by exact sha, same discipline as production's own image tagging.
+          tags: ghcr.io/471k/pena-e-arte-frontend:staging-${{ env.SHA }}
+          cache-from: type=gha,scope=frontend-staging
+          cache-to: type=gha,mode=max,scope=frontend-staging
+          # Staging's OWN build-args — the real bug this exists to prevent: reusing
+          # production's frontend image on staging would silently bake in production's live
+          # Stripe publishable key / OAuth client IDs / public URL (Vite resolves these at
+          # BUILD time, unlike the API, which reads config at runtime — see
+          # docs/infra/staging-environment.md). VITE_STRIPE_PUBLISHABLE_KEY here is staging's
+          # own TEST-mode key (STAGING_STRIPE_PUBLISHABLE_KEY), not production's live key.
+          # VITE_GOOGLE_CLIENT_ID/VITE_APPLE_CLIENT_ID reuse the same OAuth clients production
+          # uses (staging.tattooos.co added as an extra authorized origin/redirect on those
+          # existing clients — BLOCKING-MANUAL, see docs/infra/staging-environment.md).
+          build-args: |
+            VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.STAGING_STRIPE_PUBLISHABLE_KEY }}
+            VITE_CONTACT_EMAIL=support@tattooos.co
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+            VITE_APPLE_CLIENT_ID=${{ secrets.VITE_APPLE_CLIENT_ID }}
+            VITE_PUBLIC_URL=https://staging.tattooos.co
+
+  deploy:
+    name: Deploy to K3s
+    needs: build-and-push
+    # Self-hosted, on the K3s node itself — see docs/infra/self-hosted-runner-setup.md.
+    # Every prior run on ubuntu-latest failed identically at the first kubectl call
+    # (`dial tcp 49.13.66.15:6443: i/o timeout`): the Hetzner firewall restricts 6443/tcp to the
+    # operator's own IP, and GitHub-hosted runners use ephemeral IPs nowhere on that allowlist.
+    # Running on the node itself reaches the API server over loopback, never crossing that
+    # firewall at all — kubectl already has a working ~/.kube/config for the github-runner user
+    # (copied from /etc/rancher/k3s/k3s.yaml, pointed at 127.0.0.1), so no "write kubeconfig from
+    # KUBE_CONFIG secret" step is needed here (KUBE_CONFIG stays in use for the operator's own
+    # local kubectl).
+    runs-on: [self-hosted, pena-e-arte-prod]
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # cert-manager itself (the CRDs + controller) is a one-time cluster bootstrap step —
+      # `kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
+      # <pinned-tag>/cert-manager.yaml` — done once by hand against the real cluster, not
+      # re-applied by this job on every deploy (Phase 6). Without it, this workflow's
+      # ClusterIssuer/Ingress cert-manager.io/v1 resources will fail to reconcile.
+
+      # Must run before the secret-population steps below, not after "Apply manifests" —
+      # on a fresh cluster, `kubectl create secret ... -n pena-e-arte` fails outright if the
+      # pena-e-arte namespace doesn't exist yet, and namespace.yaml's own three Namespace
+      # objects only get applied as part of "Apply manifests" further down. Idempotent on
+      # every later run (namespaces already exist by then).
+      - name: Ensure namespaces exist
+        run: kubectl apply -f k8s/base/namespace.yaml
+
+      - name: Populate pena-e-arte-api-secrets
+        run: |
+          kubectl create secret generic pena-e-arte-api-secrets \
+            -n pena-e-arte \
+            --from-literal=ConnectionStrings__Default="${{ secrets.PROD_DB_CONNECTION_STRING }}" \
+            --from-literal=Jwt__SecretKey="${{ secrets.JWT_SECRET_KEY }}" \
+            --from-literal=Stripe__SecretKey="${{ secrets.STRIPE_SECRET_KEY }}" \
+            --from-literal=Stripe__PublishableKey="${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
+            --from-literal=Stripe__WebhookSecretBilling="${{ secrets.STRIPE_WEBHOOK_SECRET_BILLING }}" \
+            --from-literal=Stripe__WebhookSecretConnect="${{ secrets.STRIPE_WEBHOOK_SECRET_CONNECT }}" \
+            --from-literal=CloudflareR2__AccountId="${{ secrets.R2_ACCOUNT_ID }}" \
+            --from-literal=CloudflareR2__AccessKeyId="${{ secrets.R2_ACCESS_KEY_ID }}" \
+            --from-literal=CloudflareR2__SecretAccessKey="${{ secrets.R2_SECRET_ACCESS_KEY }}" \
+            --from-literal=CloudflareR2__BucketName="${{ secrets.R2_BUCKET_NAME }}" \
+            --from-literal=CloudflareR2__PublicUrl="${{ secrets.R2_PUBLIC_URL }}" \
+            --from-literal=CloudflareR2__BackupBucketName="${{ secrets.R2_BACKUP_BUCKET_NAME }}" \
+            --from-literal=CloudflareR2__BackupAccessKeyId="${{ secrets.R2_BACKUP_ACCESS_KEY_ID }}" \
+            --from-literal=CloudflareR2__BackupSecretAccessKey="${{ secrets.R2_BACKUP_SECRET_ACCESS_KEY }}" \
+            --from-literal=Resend__ApiKey="${{ secrets.RESEND_API_KEY }}" \
+            --from-literal=Resend__FromAddress="${{ secrets.RESEND_FROM_ADDRESS }}" \
+            --from-literal=Twilio__AccountSid="${{ secrets.TWILIO_ACCOUNT_SID }}" \
+            --from-literal=Twilio__AuthToken="${{ secrets.TWILIO_AUTH_TOKEN }}" \
+            --from-literal=Twilio__FromNumber="${{ secrets.TWILIO_FROM_NUMBER }}" \
+            --from-literal=Instagram__AppId="${{ secrets.INSTAGRAM_APP_ID }}" \
+            --from-literal=Instagram__AppSecret="${{ secrets.INSTAGRAM_APP_SECRET }}" \
+            --from-literal=Instagram__RedirectUri="${{ secrets.INSTAGRAM_REDIRECT_URI }}" \
+            --from-literal=Instagram__TokenEncryptionKey="${{ secrets.INSTAGRAM_TOKEN_ENCRYPTION_KEY }}" \
+            --from-literal=Social__StateSigningKey="${{ secrets.SOCIAL_STATE_SIGNING_KEY }}" \
+            --from-literal=Social__TikTok__ClientKey="${{ secrets.TIKTOK_CLIENT_KEY }}" \
+            --from-literal=Social__TikTok__ClientSecret="${{ secrets.TIKTOK_CLIENT_SECRET }}" \
+            --from-literal=Social__TikTok__RedirectUri="${{ secrets.TIKTOK_REDIRECT_URI }}" \
+            --from-literal=Social__Facebook__AppId="${{ secrets.FACEBOOK_APP_ID }}" \
+            --from-literal=Social__Facebook__AppSecret="${{ secrets.FACEBOOK_APP_SECRET }}" \
+            --from-literal=Social__Facebook__RedirectUri="${{ secrets.FACEBOOK_REDIRECT_URI }}" \
+            --from-literal=Social__X__ClientId="${{ secrets.X_CLIENT_ID }}" \
+            --from-literal=Social__X__ClientSecret="${{ secrets.X_CLIENT_SECRET }}" \
+            --from-literal=Social__X__RedirectUri="${{ secrets.X_REDIRECT_URI }}" \
+            --from-literal=Social__X__BearerToken="${{ secrets.X_BEARER_TOKEN }}" \
+            --from-literal=Social__YouTube__ClientId="${{ secrets.YOUTUBE_CLIENT_ID }}" \
+            --from-literal=Social__YouTube__ClientSecret="${{ secrets.YOUTUBE_CLIENT_SECRET }}" \
+            --from-literal=Social__YouTube__RedirectUri="${{ secrets.YOUTUBE_REDIRECT_URI }}" \
+            --from-literal=Social__YouTube__ApiKey="${{ secrets.YOUTUBE_API_KEY }}" \
+            --from-literal=Google__ClientId="${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
+            --from-literal=Apple__ClientId="${{ secrets.VITE_APPLE_CLIENT_ID }}" \
+            --from-literal=Hangfire__DashboardUsername="${{ secrets.HANGFIRE_DASHBOARD_USERNAME }}" \
+            --from-literal=Hangfire__DashboardPassword="${{ secrets.HANGFIRE_DASHBOARD_PASSWORD }}" \
+            --from-literal=ForwardedHeaders__TrustedProxyCidr="${{ secrets.FORWARDED_HEADERS_TRUSTED_PROXY_CIDR }}" \
+            --from-literal=Vault__Address="${{ secrets.VAULT_ADDR }}" \
+            --from-literal=Vault__Token="${{ secrets.VAULT_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      # A ClusterIssuer's secretRef (letsencrypt-prod-dns01's Cloudflare API token) resolves
+      # against cert-manager's own "cluster resource namespace" (default: cert-manager itself),
+      # never the namespace of whatever Certificate/Ingress references the issuer — this is
+      # true regardless of which namespace ends up requesting a cert. Confirmed as a real bug
+      # on this cluster's actual first production deploy: the secret existed in pena-e-arte,
+      # the ClusterIssuer stayed permanently Ready=False ("failed to get secret
+      # cloudflare-api-token: not found"), and cert-manager doesn't proactively re-check a
+      # failed issuer once cached — only creating a fresh CertificateRequest (or restarting
+      # cert-manager) triggers a re-evaluation, so this bug was silent until an actual TLS cert
+      # was needed for real, not caught by any dry-run.
+      - name: Populate cloudflare-api-token
+        run: |
+          kubectl create secret generic cloudflare-api-token \
+            -n cert-manager \
+            --from-literal=api-token="${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Populate pena-e-arte-grafana-admin
+        run: |
+          kubectl create secret generic pena-e-arte-grafana-admin \
+            -n monitoring \
+            --from-literal=admin-user="${{ secrets.PROD_GRAFANA_ADMIN_USER }}" \
+            --from-literal=admin-password="${{ secrets.PROD_GRAFANA_ADMIN_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      # Reuses the same RESEND_API_KEY/RESEND_FROM_ADDRESS GitHub secrets pena-e-arte-api-secrets
+      # already uses for transactional email — same Resend account, no new external credential.
+      # A second K8s Secret (not a reference to pena-e-arte-api-secrets) because Secrets are
+      # namespace-scoped and Grafana lives in `monitoring`, not `pena-e-arte`; K8s has no
+      # cross-namespace secretKeyRef. Resend's SMTP relay (smtp.resend.com, username literally
+      # "resend") is what lets Grafana's built-in email contact point — which only ever speaks
+      # SMTP, never a provider API — send through the same Resend account as the app.
+      - name: Populate pena-e-arte-grafana-smtp
+        run: |
+          kubectl create secret generic pena-e-arte-grafana-smtp \
+            -n monitoring \
+            --from-literal=smtp-password="${{ secrets.RESEND_API_KEY }}" \
+            --from-literal=smtp-from-address="${{ secrets.RESEND_FROM_ADDRESS }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Pin image tags
+        working-directory: k8s/overlays/production
+        run: |
+          kustomize edit set image \
+            ghcr.io/471k/pena-e-arte-api=ghcr.io/471k/pena-e-arte-api:${SHA} \
+            ghcr.io/471k/pena-e-arte-frontend=ghcr.io/471k/pena-e-arte-frontend:${SHA}
+
+      - name: Render manifests
+        run: kubectl kustomize k8s/overlays/production > /tmp/rendered.yaml
+
+      # ConfigMaps have no ordering concerns (plain key/value data, safe to apply anytime,
+      # idempotent) — applied here for the same reason Secrets are populated imperatively
+      # above: the migration Job's envFrom needs pena-e-arte-api-config to already exist, and
+      # on a fresh cluster it never has (only "Apply manifests" below creates it otherwise,
+      # which runs after the Job). Real bug found on this repo's first-ever production deploy:
+      # CreateContainerConfigError, "configmap pena-e-arte-api-config not found" — every prior
+      # attempt never reached this step (blocked by the pre-self-hosted-runner firewall issue),
+      # so it went uncaught until connectivity was actually fixed.
+      - name: Apply ConfigMaps before migration Job
+        run: yq 'select(.kind == "ConfigMap")' /tmp/rendered.yaml | kubectl apply -f -
+
+      - name: Run migration Job, then wait for completion
+        run: |
+          kubectl delete job pena-e-arte-migrate -n pena-e-arte --ignore-not-found
+          yq 'select(.kind == "Job")' /tmp/rendered.yaml | kubectl apply -f -
+          kubectl wait --for=condition=complete job/pena-e-arte-migrate -n pena-e-arte --timeout=120s
+
+      - name: Apply manifests
+        run: kubectl apply -f /tmp/rendered.yaml
+
+      # `kubectl apply` only triggers a rollout when the Deployment's pod spec actually
+      # differs from what's already applied. A Secret's *content* can change (e.g. a value
+      # populated for the first time, or rotated) with the Deployment's own YAML staying
+      # byte-identical — Kubernetes doesn't hot-reload envFrom Secret values into already-
+      # running containers, so `apply` alone silently leaves stale/empty env vars in place.
+      # Real bug found 2026-09-04 landing staging: pods kept crash-looping on an empty
+      # connection string for hours after the real secret was populated, because nothing
+      # ever restarted them. Frontend doesn't need this — it reads no runtime config,
+      # only build-time Vite env vars baked into the image itself.
+      - name: Force rollout to pick up current Secrets/ConfigMaps
+        run: kubectl rollout restart deployment/pena-e-arte-api -n pena-e-arte
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/pena-e-arte-api -n pena-e-arte --timeout=180s
+          kubectl rollout status deployment/pena-e-arte-frontend -n pena-e-arte --timeout=180s
+
+  deploy-staging:
+    name: Deploy to K3s (staging)
+    needs: [deploy, build-and-push-frontend-staging]
+    # `needs: [deploy, ...]` alone would skip this job on manual dispatch, since `deploy`
+    # never runs outside the workflow_run path (its result is "skipped", not "success") — so
+    # this explicitly allows deploy/skipped through, but never deploy/failure. On the normal
+    # push-to-main flow this still means staging only lands after production's migration Job
+    # and rollout succeed (§2.5) — a real production deploy failure blocks staging too.
+    if: |
+      always() &&
+      needs.build-and-push-frontend-staging.result == 'success' &&
+      (needs.deploy.result == 'success' || needs.deploy.result == 'skipped')
+    # Separate concurrency group from cd-production — a staging-only manual redeploy must
+    # never queue behind, or get cancelled by, a production deploy, and a staging deploy
+    # failure/hang must never block a subsequent production deploy from running.
+    concurrency:
+      group: cd-staging
+      cancel-in-progress: false
+    # Same reasoning as `deploy` above — self-hosted, on the K3s node itself, no kubeconfig
+    # secret needed. See docs/infra/self-hosted-runner-setup.md.
+    runs-on: [self-hosted, pena-e-arte-prod]
+    env:
+      SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+
+      # Same fix as `deploy`'s own "Ensure namespaces exist" step, and independently needed
+      # here too: `deploy-staging` can run via workflow_dispatch even if `deploy` has never
+      # once succeeded (its own `if:` above only requires deploy's result to be success-or-
+      # skipped, and it's always "skipped" on manual dispatch) — so this can't actually rely
+      # on `deploy` having created pena-e-arte-staging first. cert-manager itself is still a
+      # one-time manual cluster bootstrap (see `deploy`'s own comment) — if this job fails on
+      # a missing cert-manager CRD, that's the real remaining prerequisite, not the namespace.
+      - name: Ensure namespaces exist
+        run: kubectl apply -f k8s/base/namespace.yaml
+
+      # Object names are IDENTICAL to production's (pena-e-arte-api-secrets,
+      # pena-e-arte-api-config) — namespace isolation alone disambiguates them, matching
+      # k8s/overlays/staging/kustomization.yaml's own "no namePrefix needed" design (see that
+      # file's comment). Deliberately NOT pena-e-arte-staging-api-secrets: the base
+      # Deployments' envFrom references are unprefixed, so a prefixed Secret name here would
+      # silently fail to resolve.
+      - name: Populate pena-e-arte-api-secrets (staging)
+        run: |
+          kubectl create secret generic pena-e-arte-api-secrets \
+            -n pena-e-arte-staging \
+            --from-literal=ConnectionStrings__Default="${{ secrets.STAGING_DB_CONNECTION_STRING }}" \
+            --from-literal=Jwt__SecretKey="${{ secrets.JWT_SECRET_KEY }}" \
+            --from-literal=Stripe__SecretKey="${{ secrets.STAGING_STRIPE_SECRET_KEY }}" \
+            --from-literal=Stripe__PublishableKey="${{ secrets.STAGING_STRIPE_PUBLISHABLE_KEY }}" \
+            --from-literal=Stripe__WebhookSecretBilling="${{ secrets.STAGING_STRIPE_WEBHOOK_SECRET_BILLING }}" \
+            --from-literal=CloudflareR2__AccountId="${{ secrets.STAGING_R2_ACCOUNT_ID }}" \
+            --from-literal=CloudflareR2__AccessKeyId="${{ secrets.STAGING_R2_ACCESS_KEY_ID }}" \
+            --from-literal=CloudflareR2__SecretAccessKey="${{ secrets.STAGING_R2_SECRET_ACCESS_KEY }}" \
+            --from-literal=CloudflareR2__BucketName="${{ secrets.STAGING_R2_BUCKET_NAME }}" \
+            --from-literal=CloudflareR2__PublicUrl="${{ secrets.STAGING_R2_PUBLIC_URL }}" \
+            --from-literal=Google__ClientId="${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
+            --from-literal=Apple__ClientId="${{ secrets.VITE_APPLE_CLIENT_ID }}" \
+            --from-literal=Hangfire__DashboardUsername="${{ secrets.HANGFIRE_DASHBOARD_USERNAME }}" \
+            --from-literal=Hangfire__DashboardPassword="${{ secrets.HANGFIRE_DASHBOARD_PASSWORD }}" \
+            --from-literal=ForwardedHeaders__TrustedProxyCidr="${{ secrets.FORWARDED_HEADERS_TRUSTED_PROXY_CIDR }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          # Deliberately NOT set on staging (§2.7/§6 of the staging spec — left unset, app's
+          # existing config-gating pattern handles it): Resend, Twilio, Instagram, the
+          # TikTok/Facebook/X/YouTube social-verification block, Stripe Connect webhook
+          # secret (no /connect endpoint registered for staging), Vault__Address/Vault__Token
+          # (no staging Vault instance — see k8s/overlays/staging/vault-exclude-patch.yaml;
+          # pointing staging at PRODUCTION's Vault address/token would be a real cross-
+          # environment credential leak, not a harmless no-op, so this is omitted rather than
+          # reused). CloudflareR2__BackupBucketName also stays unset on staging — backing up
+          # staging's throwaway data isn't worth a second bucket; R2ExportService no-ops when
+          # empty (see docs/infra/backup-dr-runbook.md).
+
+      - name: Pin image tags (staging)
+        working-directory: k8s/overlays/staging
+        run: |
+          kustomize edit set image \
+            ghcr.io/471k/pena-e-arte-api=ghcr.io/471k/pena-e-arte-api:${SHA} \
+            ghcr.io/471k/pena-e-arte-frontend=ghcr.io/471k/pena-e-arte-frontend:staging-${SHA}
+
+      - name: Render manifests (staging)
+        run: kubectl kustomize k8s/overlays/staging > /tmp/staging-rendered.yaml
+
+      # Same fix as production's "Apply ConfigMaps before migration Job" — see that step's
+      # comment for the real bug this was found from.
+      - name: Apply ConfigMaps before migration Job (staging)
+        run: yq 'select(.kind == "ConfigMap")' /tmp/staging-rendered.yaml | kubectl apply -f -
+
+      - name: Run migration Job, then wait for completion (staging)
+        run: |
+          kubectl delete job pena-e-arte-migrate -n pena-e-arte-staging --ignore-not-found
+          yq 'select(.kind == "Job")' /tmp/staging-rendered.yaml | kubectl apply -f -
+          kubectl wait --for=condition=complete job/pena-e-arte-migrate -n pena-e-arte-staging --timeout=120s
+
+      - name: Apply manifests (staging)
+        run: kubectl apply -f /tmp/staging-rendered.yaml
+
+      # Same fix as production's own "Force rollout to pick up current Secrets/ConfigMaps"
+      # step — see that step's comment for the real bug this was found from (staging hit it
+      # first, same day).
+      - name: Force rollout to pick up current Secrets/ConfigMaps (staging)
+        run: kubectl rollout restart deployment/pena-e-arte-api -n pena-e-arte-staging
+
+      - name: Wait for rollout (staging)
+        run: |
+          kubectl rollout status deployment/pena-e-arte-api -n pena-e-arte-staging --timeout=180s
+          kubectl rollout status deployment/pena-e-arte-frontend -n pena-e-arte-staging --timeout=180s

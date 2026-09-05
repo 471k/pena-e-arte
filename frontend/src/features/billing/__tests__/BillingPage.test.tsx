@@ -74,6 +74,8 @@ const ACTIVE_STUDIO: StudioResponse = {
   phoneNumber:          null,
   instagramHandle:      null,
   nipt:                 null,
+  isSolo:               false,
+  isPublished:          true,
 };
 
 const SUSPENDED_STUDIO: StudioResponse = { ...ACTIVE_STUDIO, isActive: false };

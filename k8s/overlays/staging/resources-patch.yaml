@@ -1,0 +1,71 @@
+# Originally halved CPU/memory requests+limits vs. production's base defaults (§2.8) — still
+# enough for real behavioral testing (webhooks, SignalR, presence), not sized for load. Directly
+# helps the same-cluster capacity gate in docs/infra/staging-environment.md.
+#
+# API's CPU limit raised 250m -> 750m (2026-09-05, see docs/infra/load-test-baseline-2026-09-03.md):
+# a k6 baseline at only ~50 concurrent VUs made the pod so CPU-starved its own liveness probe
+# timed out, and Kubernetes killed/restarted it mid-test — confirmed via kubectl describe
+# (`Liveness probe failed: context deadline exceeded`) and independently via Prometheus
+# (`up` sampled 0 during the exact window). Checked real node capacity before picking new
+# numbers (`kubectl top nodes`): actual CPU usage across the whole node was only ~7% (146m of
+# ~2000m) — the 250m *limit* was artificially throttling this pod under CFS quota enforcement
+# even though the physical node had plenty of spare cycles, so raising it is low-risk. Memory
+# is the genuinely tight resource on this box (measured 80% used, ~700-800Mi real headroom
+# across the whole shared cluster) — bumped its limit more conservatively, 256Mi -> 384Mi, not
+# all the way to production's 512Mi, to leave real margin for production/monitoring. Requests
+# (what the scheduler actually reserves) bumped only slightly, 50m/128Mi -> 75m/160Mi. Replica
+# count deliberately untouched (still 1, see replica-patch.yaml) — the failure was per-pod
+# resource starvation, not a need for redundancy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-api
+  namespace: pena-e-arte
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          resources:
+            requests:
+              cpu: 75m
+              memory: 160Mi
+            limits:
+              cpu: 750m
+              memory: 384Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-frontend
+  namespace: pena-e-arte
+spec:
+  template:
+    spec:
+      containers:
+        - name: frontend
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 125m
+              memory: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-redis
+  namespace: pena-e-arte
+spec:
+  template:
+    spec:
+      containers:
+        - name: redis
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 125m
+              memory: 128Mi

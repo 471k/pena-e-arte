@@ -27,4 +27,5 @@ public class Artist : TenantEntity
     public ICollection<PortfolioImage> Portfolio { get; set; } = [];
     public ICollection<ArtistSchedule> Schedule { get; set; } = [];
     public ICollection<ArtistTimeOff> TimeOff { get; set; } = [];
+    public ICollection<Client> Clients { get; set; } = [];
 }

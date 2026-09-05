@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Activity, BarChart3, Building2, CreditCard, HelpCircle, LayoutDashboard, MessageSquare, PenLine, Receipt, ScrollText, Share2 } from "lucide-react";
+import { Activity, BarChart3, Building2, CreditCard, HelpCircle, LayoutDashboard, MessageSquare, PenLine, Receipt, ScrollText, Share2, ShieldAlert } from "lucide-react";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { NavDrawer } from "@/shared/components/NavDrawer";
 import { shouldOpenNavDrawerForTourStep } from "@/shared/utils/shouldOpenNavDrawerForTourStep";
@@ -10,19 +10,21 @@ import { logout } from "@/features/auth/authSlice";
 import { cn } from "@/shared/utils/cn";
 import { NotificationBell } from "@/features/notifications";
 import { useGetFeedbackReportsQuery } from "@/features/feedback";
+import { useGetPlatformConductReportsQuery } from "@/features/conduct-reports";
 import { HelpMenu } from "@/features/help";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",     href: "/platform",               icon: <LayoutDashboard className="h-4 w-4" />, tourId: "issuer-dashboard-nav", end: true },
-  { label: "Live Traffic",  href: "/platform/traffic",       icon: <Activity        className="h-4 w-4" />, tourId: "issuer-traffic-nav" },
-  { label: "Studios",       href: "/platform/studios",       icon: <Building2       className="h-4 w-4" />, tourId: "issuer-studios-nav" },
-  { label: "Plans",         href: "/platform/plans",         icon: <CreditCard      className="h-4 w-4" />, tourId: "issuer-plans-nav" },
-  { label: "Subscriptions", href: "/platform/subscriptions", icon: <Receipt         className="h-4 w-4" />, tourId: "issuer-subscriptions-nav" },
-  { label: "Referrals",     href: "/platform/referrals",     icon: <Share2          className="h-4 w-4" /> },
-  { label: "Reports",       href: "/platform/reports",       icon: <BarChart3       className="h-4 w-4" /> },
-  { label: "Feedback",      href: "/platform/feedback",      icon: <MessageSquare   className="h-4 w-4" /> },
-  { label: "Help Insights", href: "/platform/help-insights", icon: <HelpCircle      className="h-4 w-4" /> },
-  { label: "Audit Log",     href: "/platform/audit-log",     icon: <ScrollText      className="h-4 w-4" />, tourId: "issuer-audit-log-nav" },
+  { label: "Dashboard",        href: "/platform",                  icon: <LayoutDashboard className="h-4 w-4" />, tourId: "issuer-dashboard-nav", end: true },
+  { label: "Live Traffic",     href: "/platform/traffic",          icon: <Activity        className="h-4 w-4" />, tourId: "issuer-traffic-nav" },
+  { label: "Studios",          href: "/platform/studios",          icon: <Building2       className="h-4 w-4" />, tourId: "issuer-studios-nav" },
+  { label: "Plans",            href: "/platform/plans",            icon: <CreditCard      className="h-4 w-4" />, tourId: "issuer-plans-nav" },
+  { label: "Subscriptions",    href: "/platform/subscriptions",    icon: <Receipt         className="h-4 w-4" />, tourId: "issuer-subscriptions-nav" },
+  { label: "Referrals",        href: "/platform/referrals",        icon: <Share2          className="h-4 w-4" /> },
+  { label: "Reports",          href: "/platform/reports",          icon: <BarChart3       className="h-4 w-4" /> },
+  { label: "Feedback",         href: "/platform/feedback",         icon: <MessageSquare   className="h-4 w-4" /> },
+  { label: "Conduct Reports",  href: "/platform/conduct-reports",  icon: <ShieldAlert     className="h-4 w-4" />, tourId: "issuer-conduct-reports-nav" },
+  { label: "Help Insights",    href: "/platform/help-insights",    icon: <HelpCircle      className="h-4 w-4" /> },
+  { label: "Audit Log",        href: "/platform/audit-log",        icon: <ScrollText      className="h-4 w-4" />, tourId: "issuer-audit-log-nav" },
 ];
 
 export function IssuerLayout() {
@@ -31,9 +33,13 @@ export function IssuerLayout() {
   const [navOpen, setNavOpen] = useState(false);
   const { data: openFeedback } = useGetFeedbackReportsQuery({ status: "Open" });
   const openCount = openFeedback?.length ?? 0;
-  const navItems: NavItem[] = NAV_ITEMS.map((item) =>
-    item.label === "Feedback" ? { ...item, badge: openCount } : item,
-  );
+  const { data: openConductReports } = useGetPlatformConductReportsQuery({ status: "Open" });
+  const openConductReportCount = openConductReports?.length ?? 0;
+  const navItems: NavItem[] = NAV_ITEMS.map((item) => {
+    if (item.label === "Feedback") return { ...item, badge: openCount };
+    if (item.label === "Conduct Reports") return { ...item, badge: openConductReportCount };
+    return item;
+  });
 
   function handleLogout() {
     dispatch(logout());

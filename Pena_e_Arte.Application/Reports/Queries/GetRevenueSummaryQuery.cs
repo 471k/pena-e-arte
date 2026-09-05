@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -33,8 +34,6 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
             .Where(p => (p.Status == PaymentStatus.Paid || p.Status == PaymentStatus.Refunded) && p.PaidAt != null)
             .ToListAsync(ct);
 
-        static decimal RetainedAmount(Payment p) => Math.Max(0m, p.Amount - (p.RefundedAmount ?? 0m));
-
         List<MonthlyRevenuePoint> monthlyTrend = new(12);
         for (int i = 11; i >= 0; i--)
         {
@@ -43,7 +42,7 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
 
             decimal revenue = collectedPayments
                 .Where(p => p.PaidAt!.Value >= monthStart && p.PaidAt!.Value < monthEnd)
-                .Sum(RetainedAmount);
+                .Sum(p => p.RetainedAmount());
 
             monthlyTrend.Add(new MonthlyRevenuePoint(monthStart.ToString("yyyy-MM"), revenue));
         }
@@ -59,7 +58,7 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
             return new RevenueSummaryResponse(monthlyTrend, []);
 
         List<Guid> appointmentIds = periodPayments.Select(p => p.AppointmentId).Distinct().ToList();
-        Dictionary<Guid, Guid> artistIdByAppointment = await db.Appointments
+        Dictionary<Guid, Guid?> artistIdByAppointment = await db.Appointments
             .Where(a => appointmentIds.Contains(a.Id))
             .Select(a => new { a.Id, a.ArtistId })
             .ToDictionaryAsync(a => a.Id, a => a.ArtistId, ct);
@@ -67,10 +66,13 @@ public class GetRevenueSummaryHandler(IAppDbContext db)
         Dictionary<Guid, decimal> revenueByArtist = new();
         foreach (Payment payment in periodPayments)
         {
-            if (!artistIdByAppointment.TryGetValue(payment.AppointmentId, out Guid artistId))
+            // Unassigned (studio-choice, not yet assigned) appointments have no artist to
+            // attribute revenue to — excluded from the per-artist breakdown, same as any
+            // other appointment whose id isn't found at all.
+            if (!artistIdByAppointment.TryGetValue(payment.AppointmentId, out Guid? artistId) || artistId is null)
                 continue;
 
-            revenueByArtist[artistId] = revenueByArtist.GetValueOrDefault(artistId) + RetainedAmount(payment);
+            revenueByArtist[artistId.Value] = revenueByArtist.GetValueOrDefault(artistId.Value) + payment.RetainedAmount();
         }
 
         Dictionary<Guid, string> artistNames = await db.Artists

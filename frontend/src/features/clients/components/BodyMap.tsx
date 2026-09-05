@@ -146,7 +146,7 @@ export function BodyMap({ locations, readOnly = false, onChange }: BodyMapProps)
                   fontSize: "6.5px",
                   fill: on ? "var(--color-primary-foreground)" : "var(--color-muted-foreground)",
                   pointerEvents: "none",
-                  fontFamily: "system-ui, sans-serif",
+                  fontFamily: "Fraunces, sans-serif",
                 }}
               >
                 {zone.svgLabel}

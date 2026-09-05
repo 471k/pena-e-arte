@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter }   from "react-router-dom";
 import { Provider }       from "react-redux";
@@ -42,6 +42,7 @@ const IMAGES: PortfolioImageResponse[] = [
     imageId:            "img-001",
     imageUrl:           "https://example.com/tattoo1.jpg",
     style:              "blackwork",
+    category:           "fresh",
     artistName:         "Ana Lima",
     artistSlug:         "ana-lima",
     studioName:         "Black Ink Lisbon",
@@ -57,6 +58,7 @@ const IMAGES: PortfolioImageResponse[] = [
     imageId:            "img-002",
     imageUrl:           "https://example.com/tattoo2.jpg",
     style:              null,
+    category:           null,
     artistName:         "João Costa",
     artistSlug:         "joao-costa",
     studioName:         "Dark Arts Porto",
@@ -239,17 +241,19 @@ describe("PortfolioFeed", () => {
 
   it("'All' chip is selected by default", () => {
     renderFeed();
-    const allChip = screen.getByRole("radio", { name: /^all$/i });
+    const styleGroup = screen.getByRole("group", { name: /filter by tattoo style/i });
+    const allChip = within(styleGroup).getByRole("radio", { name: /^all$/i });
     expect(allChip).toHaveAttribute("aria-checked", "true");
   });
 
   it("clicking a style chip deselects 'All'", async () => {
     const user = userEvent.setup();
     renderFeed();
-    const blackworkChip = screen.getByRole("radio", { name: /blackwork/i });
+    const styleGroup = screen.getByRole("group", { name: /filter by tattoo style/i });
+    const blackworkChip = within(styleGroup).getByRole("radio", { name: /blackwork/i });
     await user.click(blackworkChip);
     expect(blackworkChip).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("radio", { name: /^all$/i })).toHaveAttribute("aria-checked", "false");
+    expect(within(styleGroup).getByRole("radio", { name: /^all$/i })).toHaveAttribute("aria-checked", "false");
   });
 
   it("clicking a style chip sends the style param in the feed request", async () => {
@@ -422,9 +426,70 @@ describe("PortfolioFeed — style chips accessibility", () => {
       expect(screen.queryByLabelText("Loading portfolio")).not.toBeInTheDocument()
     );
 
-    const chips = screen.getAllByRole("radio");
+    const styleGroup = screen.getByRole("group", { name: /filter by tattoo style/i });
+    const chips = within(styleGroup).getAllByRole("radio");
     chips.forEach((chip) => {
       expect(chip.className).toContain("min-h-[44px]");
     });
+  });
+});
+
+describe("PortfolioFeed — category tabs", () => {
+  it("category tab group has accessible label", async () => {
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    expect(screen.getByRole("group", { name: /filter by portfolio category/i })).toBeInTheDocument();
+  });
+
+  it("'All' tab is selected by default", async () => {
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    const categoryGroup = screen.getByRole("group", { name: /filter by portfolio category/i });
+    const allTab = within(categoryGroup).getByRole("radio", { name: /^all$/i });
+    expect(allTab).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("selecting a category tab calls the feed query with the category arg and resets accumulated images", async () => {
+    const user      = userEvent.setup();
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderFeed();
+    const categoryGroup = await screen.findByRole("group", { name: /filter by portfolio category/i });
+    await user.click(within(categoryGroup).getByRole("radio", { name: /healed tattoos/i }));
+    await screen.findByText(/no portfolio work yet/i);
+    expect(capturedUrl).toContain("category=healed");
+    expect(capturedUrl).toContain("page=1");
+  });
+
+  it("combining a category tab and a style chip sends both params", async () => {
+    const user      = userEvent.setup();
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/public/portfolio/feed", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderFeed();
+    const categoryGroup = await screen.findByRole("group", { name: /filter by portfolio category/i });
+    await user.click(within(categoryGroup).getByRole("radio", { name: /fresh tattoos/i }));
+    await user.click(screen.getByRole("radio", { name: /blackwork/i }));
+    await screen.findByText(/no portfolio work yet/i);
+    expect(capturedUrl).toContain("category=fresh");
+    expect(capturedUrl).toContain("style=blackwork");
+  });
+
+  it("lightbox shows the category badge when present", async () => {
+    const user = userEvent.setup();
+    renderFeed();
+    await screen.findByLabelText(/Tattoo by Ana Lima/i);
+    await user.click(screen.getByLabelText(/Tattoo by Ana Lima/i));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/fresh tattoos/i)).toBeInTheDocument();
   });
 });

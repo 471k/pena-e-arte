@@ -64,14 +64,34 @@ public class CreateClientValidatorTests
     }
 
     [Fact]
-    public void Validate_PhoneAtMaxLength_IsValid()
+    public void Validate_ValidE164Phone_IsValid()
     {
-        _sut.ShouldBeValid(Command("Ana", "Costa", "a@b.com", new('9', 20)));
+        _sut.ShouldBeValid(Command("Ana", "Costa", "a@b.com", "+351912345678"));
+    }
+
+    [Fact]
+    public void Validate_NationalFormatPhoneWithNoPlus_FailsOnPhone()
+    {
+        _sut.ShouldFailOn(Command("Ana", "Costa", "a@b.com", "912345678"), "Request.Phone");
+    }
+
+    [Fact]
+    public void Validate_NonPhoneShapedString_FailsOnPhone()
+    {
+        _sut.ShouldFailOn(Command("Ana", "Costa", "a@b.com", "not a phone"), "Request.Phone");
+    }
+
+    [Fact]
+    public void Validate_EmptyArtistId_FailsOnArtistId()
+    {
+        _sut.ShouldFailOn(
+            new CreateClientCommand(new CreateClientRequest("Ana", "Costa", "a@b.com", null, Guid.Empty)),
+            "Request.ArtistId");
     }
 
     private static CreateClientCommand ValidCommand() =>
         Command("Ana", "Costa", "ana@example.com", "+351911000000");
 
     private static CreateClientCommand Command(string first, string last, string email, string? phone) =>
-        new(new CreateClientRequest(first, last, email, phone));
+        new(new CreateClientRequest(first, last, email, phone, Guid.NewGuid()));
 }
