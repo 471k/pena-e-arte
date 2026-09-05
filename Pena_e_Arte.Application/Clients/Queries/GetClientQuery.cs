@@ -15,11 +15,12 @@ public class GetClientHandler(IAppDbContext db)
     public async Task<ClientResponse> Handle(GetClientQuery query, CancellationToken ct)
     {
         Domain.Entities.Client? client = await db.Clients
+            .Include(c => c.Artist)
             .FirstOrDefaultAsync(c => c.Id == query.ClientId, ct);
 
         if (client is null)
             throw new NotFoundException(nameof(Domain.Entities.Client), query.ClientId);
 
-        return CreateClientHandler.Map(client);
+        return CreateClientHandler.Map(client, client.Artist);
     }
 }

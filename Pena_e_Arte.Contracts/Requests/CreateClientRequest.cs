@@ -4,4 +4,5 @@ public record CreateClientRequest(
     string FirstName,
     string LastName,
     string Email,
-    string? Phone);
+    string? Phone,
+    Guid ArtistId);

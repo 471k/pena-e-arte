@@ -71,3 +71,43 @@ pointed at an HCP address).
 
 Production Vault cluster, K3s manifests, cloud secrets-manager account creation, and issuing any
 real POK/easyPos/Polar credential. Those are separate, later work.
+
+---
+
+## Addendum — 3 Sep 2026: production backend reversed — self-hosted in-cluster Vault, not HCP Vault
+
+The 1 Aug 2026 resolution above named HCP Vault (HashiCorp-managed) as the production backend
+without pricing it concretely. Investigating that gap during a follow-up engineering-consultation
+session found: (a) **HCP Vault Secrets** — the low-cost, KV-only managed product, and the one
+implicitly assumed by the "paid managed service" framing in this ADR's original comparison
+table — **shut down 1 July 2026** and is no longer available at any price. (b) The only
+remaining HCP-managed product compatible with this app's existing `VaultSharp`/
+`TokenAuthMethodInfo`/KV-v2 integration is **HCP Vault Dedicated**, which starts at roughly
+**$1,150–1,200/month for the smallest production tier, plus ~$73/month per authenticated
+client** — about 75–80x the cost of the managed MySQL instance this same deployment already
+uses, for a mechanism (`ISecretsProvider`) that no code path calls yet.
+
+**Revised decision:** run Vault **self-hosted inside the existing K3s cluster** instead of any
+HCP-managed product. Unlike when this ADR originally rejected self-hosted Vault ("disproportionate
+ops burden for a solo founder" — true at the time, when no cluster existed at all), a K3s cluster
+now exists and already runs comparable single-node stateful workloads (the observability stack's
+Prometheus/Loki/Tempo, each with their own PVC). The ops burden this ADR originally named —
+unsealing, HA, backup — is accepted here as an **explicit, named tradeoff, not silently
+dropped**: real Raft-backed persistent storage (data survives pod restarts, unlike the
+`docker-compose.yml` dev-mode service), a **single node, manually unsealed** (no cloud-KMS
+auto-unseal — that would reintroduce both cost and a new external dependency this decision is
+explicitly trying to avoid), with **no high availability**. After any Vault pod restart, Vault
+re-seals and every `ISecretsProvider` call fails closed until a human runs `vault operator
+unseal` three times against the pod (`docs/infra/vault-self-hosted-runbook.md`). This has zero
+functional impact today — nothing in the codebase calls `ISecretsProvider` in a live request
+path — but it is a real operational gap that must be resolved (auto-unseal via a cloud KMS, or a
+documented on-call runbook) before the per-tenant-credentials feature this mechanism exists for
+actually ships and starts depending on Vault being reachable.
+
+No `VaultSharp` code changes — same as this ADR's original point about HCP Vault: only
+`Vault:Address`/`Vault:Token` config differs. `Vault:Address` becomes the in-cluster Service DNS
+name (`http://pena-e-arte-vault.pena-e-arte.svc.cluster.local:8200`); `Vault:Token` becomes a
+scoped, non-root token generated during the manual init runbook, never the root token.
+
+See `k8s/base/vault-statefulset.yaml`, `vault-service.yaml`, `vault-configmap.yaml`, and
+`docs/infra/vault-self-hosted-runbook.md`.

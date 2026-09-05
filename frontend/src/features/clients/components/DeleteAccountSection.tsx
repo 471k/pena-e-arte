@@ -46,7 +46,7 @@ export function DeleteAccountSection() {
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-destructive" />
-          <h3 className="text-sm font-medium text-destructive">Delete my account</h3>
+          <h3 className="text-sm font-medium text-destructive-text">Delete my account</h3>
         </div>
         <p className="text-xs text-muted-foreground">
           Permanently delete your account and personal data (your profile, body map, and consent

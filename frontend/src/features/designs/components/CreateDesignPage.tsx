@@ -95,7 +95,7 @@ export function CreateDesignPage() {
               ))}
             </select>
             {errors.clientId && (
-              <p className="text-xs text-destructive">{errors.clientId.message}</p>
+              <p className="text-xs text-destructive-text">{errors.clientId.message}</p>
             )}
           </div>
 
@@ -117,7 +117,7 @@ export function CreateDesignPage() {
               ))}
             </select>
             {errors.artistId && (
-              <p className="text-xs text-destructive">{errors.artistId.message}</p>
+              <p className="text-xs text-destructive-text">{errors.artistId.message}</p>
             )}
           </div>
 
@@ -130,7 +130,7 @@ export function CreateDesignPage() {
               className={cn(errors.title && "border-destructive")}
             />
             {errors.title && (
-              <p className="text-xs text-destructive">{errors.title.message}</p>
+              <p className="text-xs text-destructive-text">{errors.title.message}</p>
             )}
           </div>
 
@@ -144,7 +144,7 @@ export function CreateDesignPage() {
               className={TEXTAREA_CLS}
             />
             {errors.description && (
-              <p className="text-xs text-destructive">{errors.description.message}</p>
+              <p className="text-xs text-destructive-text">{errors.description.message}</p>
             )}
           </div>
 

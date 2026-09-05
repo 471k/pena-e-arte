@@ -67,3 +67,7 @@ export interface GetPaymentsParams {
 export interface ClientSecretResponse {
   clientSecret: string;
 }
+
+export interface PaymentCapabilitiesResponse {
+  cardPaymentsAvailable: boolean;
+}

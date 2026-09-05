@@ -142,7 +142,7 @@ export function DepositRuleDetailPage() {
   if (isError || !rule) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-sm text-destructive">Deposit rule not found.</p>
+        <p className="text-sm text-destructive-text">Deposit rule not found.</p>
         <Button variant="ghost" size="sm" onClick={() => navigate("/deposit-rules")}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Deposit Rules
@@ -176,7 +176,7 @@ export function DepositRuleDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => setMode("confirm-delete")}
-              className="gap-1.5 text-destructive hover:text-destructive"
+              className="gap-1.5 text-destructive-text hover:text-destructive-text"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
@@ -259,7 +259,7 @@ export function DepositRuleDetailPage() {
                 className={cn(errors.name && "border-destructive")}
               />
               {errors.name && (
-                <p className="text-xs text-destructive">{errors.name.message}</p>
+                <p className="text-xs text-destructive-text">{errors.name.message}</p>
               )}
             </div>
 
@@ -290,7 +290,7 @@ export function DepositRuleDetailPage() {
                 className={cn(errors.amount && "border-destructive")}
               />
               {errors.amount && (
-                <p className="text-xs text-destructive">{errors.amount.message}</p>
+                <p className="text-xs text-destructive-text">{errors.amount.message}</p>
               )}
             </div>
 
@@ -308,7 +308,7 @@ export function DepositRuleDetailPage() {
                 className={cn(errors.cancellationWindowHours && "border-destructive")}
               />
               {errors.cancellationWindowHours && (
-                <p className="text-xs text-destructive">{errors.cancellationWindowHours.message}</p>
+                <p className="text-xs text-destructive-text">{errors.cancellationWindowHours.message}</p>
               )}
               <p className="text-xs text-muted-foreground">
                 How much notice a client must give to cancel without forfeiting their deposit.
@@ -328,7 +328,7 @@ export function DepositRuleDetailPage() {
                 className={cn(errors.refundPercentOnLateCancel && "border-destructive")}
               />
               {errors.refundPercentOnLateCancel && (
-                <p className="text-xs text-destructive">{errors.refundPercentOnLateCancel.message}</p>
+                <p className="text-xs text-destructive-text">{errors.refundPercentOnLateCancel.message}</p>
               )}
               <p className="text-xs text-muted-foreground">
                 What percentage of the deposit to refund if a client cancels within the notice

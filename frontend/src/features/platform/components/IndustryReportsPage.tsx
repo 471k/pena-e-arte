@@ -68,7 +68,7 @@ function ReportRow({ report }: ReportRowProps) {
           <p className="text-xs text-muted-foreground">
             Generated {formatDate(report.generatedAt)}
             {" · "}
-            <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/70">
+            <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
               JSON
             </span>
           </p>
@@ -150,7 +150,7 @@ function GenerateTriggerButton() {
 
   if (error) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-destructive">
+      <div className="flex items-center gap-1.5 text-xs text-destructive-text">
         Failed to queue — try again
       </div>
     );
@@ -177,7 +177,7 @@ function GenerateTriggerButton() {
 
 function DimensionCell({ current, max }: { current: number; max: number | null }) {
   if (max === null) {
-    return <span className="text-muted-foreground/60">Unlimited</span>;
+    return <span className="text-muted-foreground">Unlimited</span>;
   }
   const pct = max > 0 ? current / max : 0;
   return (
@@ -207,7 +207,7 @@ function PlanUsageReportSection() {
       )}
 
       {isError && (
-        <p className="text-center text-sm text-destructive py-8">Failed to load plan usage report.</p>
+        <p className="text-center text-sm text-destructive-text py-8">Failed to load plan usage report.</p>
       )}
 
       {!isLoading && !isError && data && data.studios.length === 0 && (
@@ -289,7 +289,7 @@ export function IndustryReportsPage() {
 
         {/* ── Error ───────────────────────────────────────────────── */}
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">
+          <p className="text-center text-sm text-destructive-text py-16">
             Failed to load reports.
           </p>
         )}

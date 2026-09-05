@@ -9,7 +9,11 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
-import type { PaymentResponse, PaymentIntentResponse } from "@/features/payments/payment.types";
+import type {
+  PaymentResponse,
+  PaymentIntentResponse,
+  PaymentCapabilitiesResponse,
+} from "@/features/payments/payment.types";
 
 // ── Stripe mock ────────────────────────────────────────────────────────────────
 // Stripe Elements require a real browser context; mock the entire module.
@@ -54,6 +58,8 @@ const CASH_PAYMENT: PaymentResponse = {
   appointmentDate:       null,
 };
 
+const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true };
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -64,6 +70,10 @@ const server = setupServer(
   http.post(
     "http://localhost/api/v1/payments/cash",
     () => HttpResponse.json(CASH_PAYMENT),
+  ),
+  http.get(
+    "http://localhost/api/v1/payments/capabilities",
+    () => HttpResponse.json(CAPABILITIES_AVAILABLE),
   ),
 );
 
@@ -205,5 +215,24 @@ describe("PaymentMethodSelector", () => {
     await vi.waitFor(() => {
       expect(onError).toHaveBeenCalledOnce();
     });
+  });
+
+  it("shows 'temporarily unavailable' and never creates a deposit intent when capabilities say card is unavailable", async () => {
+    let depositRequested = false;
+    server.use(
+      http.get("http://localhost/api/v1/payments/capabilities", () =>
+        HttpResponse.json({ cardPaymentsAvailable: false }),
+      ),
+      http.post("http://localhost/api/v1/payments/deposit", () => {
+        depositRequested = true;
+        return HttpResponse.json(INTENT_RESP);
+      }),
+    );
+
+    renderSelector();
+
+    expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("stripe-payment-element")).not.toBeInTheDocument();
+    expect(depositRequested).toBe(false);
   });
 });

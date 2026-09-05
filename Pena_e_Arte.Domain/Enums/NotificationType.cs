@@ -11,4 +11,5 @@ public enum NotificationType
     ConsentFormSigned,
     DesignReviewed,
     Aftercare,
+    MessageReceived, // in-app messaging — Email channel only, see architecture.md Decisions Log
 }

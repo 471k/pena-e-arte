@@ -17,6 +17,7 @@ public static class ClientEndpoints
         group.MapGet("/", GetClients).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/", CreateClient).RequireAuthorization("ArtistAndAbove");
         group.MapGet("{clientId:guid}", GetClientById).RequireAuthorization("ArtistAndAbove");
+        group.MapPatch("{clientId:guid}/artist", UpdateClientArtist).RequireAuthorization("OwnerOnly");
 
         group.MapGet("{clientId:guid}/profile", GetClientProfile).RequireAuthorization("ArtistAndAbove");
         group.MapPut("{clientId:guid}/profile", UpsertClientProfile).RequireAuthorization("ArtistAndAbove");
@@ -111,6 +112,16 @@ public static class ClientEndpoints
     {
         ClientResponse result = await mediator.Send(new CreateClientCommand(request), ct);
         return Results.Created($"/api/v1/clients/{result.Id}", result);
+    }
+
+    private static async Task<IResult> UpdateClientArtist(
+        Guid clientId,
+        UpdateClientArtistRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ClientResponse result = await mediator.Send(new UpdateClientArtistCommand(clientId, request), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetClientProfile(

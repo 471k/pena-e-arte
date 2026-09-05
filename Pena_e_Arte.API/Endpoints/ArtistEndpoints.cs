@@ -16,6 +16,7 @@ public static class ArtistEndpoints
         group.MapGet("/", GetArtists).RequireAuthorization("ClientAndAbove");
         group.MapGet("me", GetMyArtist).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/", CreateArtist).RequireAuthorization("OwnerOnly");
+        group.MapPost("me", CreateOwnArtistProfile).RequireAuthorization("OwnerOnly");
         group.MapGet("{id:guid}", GetArtist).RequireAuthorization("ClientAndAbove");
         group.MapPut("{id:guid}", UpdateArtist).RequireAuthorization("ArtistAndAbove");
         group.MapPut("{id:guid}/portfolio-images", UpdatePortfolio).RequireAuthorization("ArtistAndAbove");
@@ -51,6 +52,15 @@ public static class ArtistEndpoints
         CancellationToken ct)
     {
         ArtistResponse result = await mediator.Send(new CreateArtistCommand(request), ct);
+        return Results.Created($"/api/v1/artists/{result.Id}", result);
+    }
+
+    private static async Task<IResult> CreateOwnArtistProfile(
+        CreateOwnArtistProfileRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ArtistResponse result = await mediator.Send(new CreateOwnArtistProfileCommand(request), ct);
         return Results.Created($"/api/v1/artists/{result.Id}", result);
     }
 

@@ -65,11 +65,11 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
   // Excludes the appointment's own current slot from counting as a "conflict" by construction: the
   // backend's conflict check already excludes `a.Id != command.AppointmentId`, so re-submitting the
   // unchanged slot correctly reports available.
-  const [debouncedCheck, setDebouncedCheck] = useState<{ artistId: string; date: string; durationMinutes: number } | null>(null);
+  const [debouncedCheck, setDebouncedCheck] = useState<{ artistId?: string; date: string; durationMinutes: number } | null>(null);
   useEffect(() => {
     if (!open || !newDate || !newDuration) return;
     const timer = setTimeout(() => {
-      setDebouncedCheck({ artistId: appointment.artistId, date: new Date(newDate).toISOString(), durationMinutes: newDuration });
+      setDebouncedCheck({ artistId: appointment.artistId ?? undefined, date: new Date(newDate).toISOString(), durationMinutes: newDuration });
     }, 600);
     return () => clearTimeout(timer);
   }, [open, newDate, newDuration, appointment.artistId]);

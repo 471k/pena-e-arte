@@ -1,0 +1,2 @@
+# Reuses the monitoring namespace already declared in k8s/base/namespace.yaml — kept as a
+# separate file per the Phase 1 scaffold for clarity, not a second Namespace object.

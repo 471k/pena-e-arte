@@ -14,6 +14,10 @@ public class AppointmentAttachmentConfiguration : TenantEntityConfiguration<Appo
 
         builder.Property(a => a.ImageUrl).HasMaxLength(2048).IsRequired();
         builder.Property(a => a.UploadedAt).IsRequired();
+        builder.Property(a => a.Category)
+               .HasConversion<string>()
+               .HasMaxLength(16)
+               .HasDefaultValue(Domain.Enums.AppointmentAttachmentCategory.Reference);
 
         builder.HasIndex(a => a.AppointmentId)
                .HasDatabaseName("ix_appointment_attachments_appointment_id");

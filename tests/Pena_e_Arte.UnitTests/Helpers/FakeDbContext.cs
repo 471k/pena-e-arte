@@ -25,21 +25,25 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
+    public DbSet<BookingIntake> BookingIntakes => Set<BookingIntake>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
     public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     public DbSet<StudioNotificationPreference> StudioNotificationPreferences => Set<StudioNotificationPreference>();
     public DbSet<ClientNotificationPreference> ClientNotificationPreferences => Set<ClientNotificationPreference>();
+    public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
     public DbSet<Studio> Studios => Set<Studio>();
     public DbSet<Plan> Plans => Set<Plan>();
     public DbSet<PlanPrice> PlanPrices => Set<PlanPrice>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
+    public DbSet<StudioJoinInvite> StudioJoinInvites => Set<StudioJoinInvite>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<SavedPortfolioImage> SavedPortfolioImages => Set<SavedPortfolioImage>();
     public DbSet<InstagramConnection> InstagramConnections => Set<InstagramConnection>();
     public DbSet<InstagramPost> InstagramPosts => Set<InstagramPost>();
+    public DbSet<SocialAccountLink> SocialAccountLinks => Set<SocialAccountLink>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();
@@ -48,6 +52,9 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
     public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
     public DbSet<StudioCredentialRef> StudioCredentialRefs => Set<StudioCredentialRef>();
+    public DbSet<ConductReport> ConductReports => Set<ConductReport>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,10 +81,23 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
         modelBuilder.Entity<ClientProfile>()
             .OwnsOne(cp => cp.BodyMap);
 
+        modelBuilder.Entity<BookingIntake>()
+            .HasOne(i => i.Appointment)
+            .WithOne(a => a.Intake)
+            .HasForeignKey<BookingIntake>(i => i.AppointmentId);
+
+        modelBuilder.Entity<BookingIntake>()
+            .OwnsOne(i => i.DesiredPlacement);
+
         modelBuilder.Entity<ReferralCode>()
             .HasOne(r => r.Studio)
             .WithMany()
             .HasForeignKey(r => r.StudioId);
+
+        modelBuilder.Entity<StudioJoinInvite>()
+            .HasOne(i => i.Studio)
+            .WithMany()
+            .HasForeignKey(i => i.StudioId);
 
         modelBuilder.Entity<ReferralCode>()
             .HasMany(r => r.Redemptions)
@@ -125,6 +145,11 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasMany(a => a.Attachments)
             .WithOne(a => a.Appointment)
             .HasForeignKey(a => a.AppointmentId);
+
+        modelBuilder.Entity<Conversation>()
+            .HasMany(c => c.Messages)
+            .WithOne()
+            .HasForeignKey(m => m.ConversationId);
     }
 
     public static FakeDbContext Create() => Create(Guid.NewGuid().ToString());

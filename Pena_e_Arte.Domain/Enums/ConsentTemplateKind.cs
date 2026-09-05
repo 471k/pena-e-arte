@@ -22,4 +22,8 @@ public enum ConsentTemplateKind
     /// it is not. Named accordingly so the consent copy stays truthful.
     /// </summary>
     CrossTenantProfileSharing,
+
+    /// <summary>Consent to submit free-text medical/tattoo-history data via the intake form
+    /// (Law 124/2024 (Albania) / GDPR Art. 9 special-category data).</summary>
+    IntakeFormConsent,
 }

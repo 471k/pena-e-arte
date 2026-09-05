@@ -126,7 +126,7 @@ export function TattooRecordDetailPage() {
   if (isError || !record) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-sm text-destructive">Tattoo record not found.</p>
+        <p className="text-sm text-destructive-text">Tattoo record not found.</p>
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
@@ -158,7 +158,7 @@ export function TattooRecordDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => setMode("confirm-delete")}
-              className="gap-1.5 text-destructive hover:text-destructive"
+              className="gap-1.5 text-destructive-text hover:text-destructive-text"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
@@ -259,7 +259,7 @@ export function TattooRecordDetailPage() {
                 )}
               />
               {errors.description && (
-                <p className="text-xs text-destructive">{errors.description.message}</p>
+                <p className="text-xs text-destructive-text">{errors.description.message}</p>
               )}
             </div>
 
@@ -286,7 +286,7 @@ export function TattooRecordDetailPage() {
                 </optgroup>
               </select>
               {errors.bodyLocation && (
-                <p className="text-xs text-destructive">{errors.bodyLocation.message}</p>
+                <p className="text-xs text-destructive-text">{errors.bodyLocation.message}</p>
               )}
             </div>
 
@@ -299,7 +299,7 @@ export function TattooRecordDetailPage() {
                 className={cn(errors.completedAt && "border-destructive")}
               />
               {errors.completedAt && (
-                <p className="text-xs text-destructive">{errors.completedAt.message}</p>
+                <p className="text-xs text-destructive-text">{errors.completedAt.message}</p>
               )}
             </div>
 

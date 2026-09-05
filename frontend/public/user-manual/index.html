@@ -271,6 +271,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#guest-portfolio-feed" data-nav-link>Portfolio feed widget</a></li>
           <li><a href="#guest-shared-design" data-nav-link>Shared design link</a></li>
           <li><a href="#guest-embed" data-nav-link>Embedded booking widget</a></li>
+          <li><a href="#client-book" data-nav-link>Book an appointment (guest checkout, no account needed)</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -318,6 +319,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#client-verify-email" data-nav-link>Verify email</a></li>
           <li><a href="#client-change-password" data-nav-link>Change password</a></li>
           <li><a href="#client-change-email" data-nav-link>Change email</a></li>
+          <li><a href="#client-messaging" data-nav-link>Messages</a></li>
         </ul>
       </div>
     </div>
@@ -328,6 +330,7 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list">
           <li><a href="#artist-schedule" data-nav-link>Weekly schedule</a></li>
           <li><a href="#artist-appointment-detail" data-nav-link>Appointment detail</a></li>
+          <li><a href="#artist-messaging" data-nav-link>Messages</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -355,6 +358,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#artist-consent-view" data-nav-link>View consent forms</a></li>
           <li><a href="#artist-profile" data-nav-link>My portfolio profile</a></li>
           <li><a href="#artist-notifications" data-nav-link>Notifications</a></li>
+          <li><a href="#artist-earnings" data-nav-link>My Earnings</a></li>
         </ul>
       </div>
     </div>
@@ -365,6 +369,7 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list">
           <li><a href="#owner-dashboard" data-nav-link>Dashboard</a></li>
           <li><a href="#owner-setup-checklist" data-nav-link>Setup checklist</a></li>
+          <li><a href="#owner-solo-studio" data-nav-link>Solo studio &amp; Free plan</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -372,7 +377,10 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-artists" data-nav-link>Artist list</a></li>
           <li><a href="#owner-create-artist" data-nav-link>Add artist</a></li>
+          <li><a href="#owner-become-artist" data-nav-link>Enable your own artist profile</a></li>
           <li><a href="#owner-artist-detail" data-nav-link>Artist detail</a></li>
+          <li><a href="#owner-invite-solo-artist" data-nav-link>Invite a solo artist to join</a></li>
+          <li><a href="#owner-accept-join-invite" data-nav-link>Accept/decline a join invite</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -403,6 +411,7 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-schedule" data-nav-link>Schedule</a></li>
           <li><a href="#owner-appointment-detail" data-nav-link>Appointment detail</a></li>
+          <li><a href="#owner-messaging" data-nav-link>Messages</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -426,6 +435,8 @@ ol.steps li { margin: 6px 0; }
         <button class="nav-section-toggle" aria-expanded="false">Studio settings</button>
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-studio-profile" data-nav-link>Studio profile</a></li>
+          <li><a href="#owner-publish-studio" data-nav-link>Publish your studio</a></li>
+          <li><a href="#owner-social-verification" data-nav-link>Verify social media accounts</a></li>
           <li><a href="#owner-branding" data-nav-link>Branding</a></li>
           <li><a href="#owner-embed" data-nav-link>Embed code</a></li>
           <li><a href="#owner-referral" data-nav-link>Referral programme</a></li>
@@ -438,6 +449,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#owner-notifications-prefs" data-nav-link>Notification preferences</a></li>
           <li><a href="#owner-billing" data-nav-link>Billing</a></li>
           <li><a href="#owner-subscribe" data-nav-link>Choose / change plan</a></li>
+          <li><a href="#owner-solo-upgrade" data-nav-link>Grow beyond one artist</a></li>
           <li><a href="#owner-reports" data-nav-link>Revenue reports</a></li>
         </ul>
       </div>
@@ -538,6 +550,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Search by style or artist</span> in the new keyword box — matches tattoo style tags, artist names, and artist specializations, and searches every studio regardless of your current location.</li>
 <li><span class="step-title">Search a city</span> in the location box to look up a different location instead — combine it with a keyword search and the "Near me" toggle (below) turned on to see only that style or artist in that specific area.</li>
 <li><span class="step-title">Switch tabs</span> between <em>Portfolio</em> (photo feed) and <em>Studios</em> (grid of nearby studios with ratings, distance, and artist count).</li>
+<li><span class="step-title">Filter by category</span> using the Fresh Tattoos / Healed Tattoos / Designs tabs above the style chips — combine with a style filter for a narrower result.</li>
 <li><span class="step-title">Filter by style</span> using the chip row (Blackwork, Realism, Traditional, etc.) — Portfolio tab only.</li>
 <li><span class="step-title">Toggle "Near me"</span> to widen the search beyond your immediate area.</li>
 <li><span class="step-title">Click a photo</span> to open it full-size with reviews and a "Book with [artist]" button; click a studio card to open its full profile.</li>
@@ -562,9 +575,10 @@ ol.steps li { margin: 6px 0; }
 <circle cx="340" cy="240" r="6" fill="#0f172a" stroke="currentColor"/>
 <circle cx="500" cy="150" r="6" fill="#0f172a" stroke="currentColor"/>
 <circle cx="440" cy="330" r="6" fill="#0f172a" stroke="currentColor"/>
-<rect x="350" y="250" width="150" height="60" rx="4" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-opacity="0.2"/>
+<rect x="350" y="250" width="150" height="75" rx="4" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-opacity="0.2"/>
 <text x="360" y="270" font-size="10" font-weight="700">Ink &amp; Soul Studio</text>
 <text x="360" y="285" font-size="9" fill-opacity="0.6">Lisbon · View studio →</text>
+<text x="360" y="298" font-size="9" fill-opacity="0.6">Get directions →</text>
 <text x="600" y="440" font-size="9" fill-opacity="0.5">Map tiles © OpenStreetMap</text>
 </svg>
 </figure>
@@ -572,7 +586,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Pan and zoom the map like any web map.</li>
-<li><span class="step-title">Click a pin</span> to open a popup with the studio's name, city, and a "View studio" link.</li>
+<li><span class="step-title">Click a pin</span> to open a popup with the studio's name, city, a "View studio" link, and a "Get directions" link that opens Google Maps.</li>
 <li>Use <span class="step-title">List view</span> in the header to switch back to the Discover feed instead.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#guest-discover">Discover feed</a>, <a href="#guest-studio-portfolio">Studio profile page</a></div>
@@ -582,7 +596,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Studio profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (own studio, reply to reviews)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details in the sidebar.</p>
+<p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details — phone, social media links, and a "Get Directions" link to Google Maps — in the sidebar. A social link shows a green "Verified" badge when the studio has proven it owns that account.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile page wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -601,7 +615,7 @@ ol.steps li { margin: 6px 0; }
 <text x="20" y="440" font-size="12" font-weight="700">Reviews</text>
 <rect x="520" y="140" width="220" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <rect x="536" y="156" width="188" height="30" rx="4" fill="#7c3aed"/><text x="590" y="176" font-size="10" fill="#fff">Book an Appointment</text>
-<text x="536" y="210" font-size="9" fill-opacity="0.6">📞 phone · @instagram · city</text>
+<text x="536" y="210" font-size="9" fill-opacity="0.6">📞 phone · @handle ✓ · 🧭 Get Directions</text>
 <text x="600" y="120" font-size="10" fill-opacity="0.7">Sticky sidebar</text>
 <line x1="595" y1="125" x2="620" y2="140" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="3,3"/>
 </svg>
@@ -614,9 +628,10 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Artists</span> grid — click any artist card to open their own profile page.</li>
 <li><span class="step-title">Portfolio</span> masonry gallery — click a photo to open it full-size in a lightbox.</li>
 <li><span class="step-title">Reviews</span> section at the bottom, with a form to leave your own review (sign-in required, and you need a completed appointment at this studio).</li>
-<li>In the sidebar: <span class="step-title">Book an Appointment</span> button (sends signed-out visitors to sign in first), phone number, Instagram handle, and city.</li>
+<li>In the sidebar: <span class="step-title">Book an Appointment</span> button (takes signed-out visitors straight to a guest checkout booking form for this studio — no sign-in required), phone number, verified social media links (Instagram, TikTok, Facebook, X, YouTube — whichever the studio has set up), and a <span class="step-title">Get Directions</span> link that opens the studio's pinned location in Google Maps.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> the studio owner can reply publicly to any review directly from this same page when signed in.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> "Get Directions" opens Google Maps in a new tab — on a phone, this hands off straight to the Google Maps app if it's installed.</div>
 <div class="callout callout-tip"><strong>Reviews aren't one-and-done:</strong> you can leave a new review every time you have a completed appointment at a studio — it's not capped to one review per client, ever. Pick which visit you're reviewing if you have more than one eligible one.</div>
 <div class="crosslinks">See also: <a href="#guest-artist-portfolio">Artist profile page</a>, <a href="#client-book">Book an appointment</a></div>
 </section>
@@ -625,7 +640,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Artist profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own profile shows a completion nudge)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>An individual artist's public page at <code>/artist/&lt;slug&gt;</code>: profile photo, bio, specialties, hourly rate, a filterable portfolio grid, connected Instagram posts, and reviews. Viewing the page records a "view" used to help rank the discovery feed.</p>
+<p>An individual artist's public page at <code>/artist/&lt;slug&gt;</code>: profile photo, bio, specialties, hourly rate, verified social media links, a filterable portfolio grid, connected Instagram posts, and reviews. Viewing the page records a "view" used to help rank the discovery feed.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist profile page wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -653,14 +668,14 @@ ol.steps li { margin: 6px 0; }
 <text x="90" y="330" font-size="8" fill-opacity="0.5">(own profile only)</text>
 </svg>
 </figure>
-<figcaption>Artist profile — style filter chips reflect only styles present in that artist's own work</figcaption>
+<figcaption>Artist profile — category tabs and style filter chips reflect only categories/styles present in that artist's own work</figcaption>
 <h3>Steps (in page order)</h3>
 <ol class="steps">
 <li><span class="step-title">Profile strength nudge</span> — shown only when viewing your own profile as an artist, listing missing fields (bio, photo, specialties, portfolio, rate).</li>
 <li>Avatar, name, studio link, star rating, bio, specialty chips, hourly rate.</li>
 <li><span class="step-title">Book an Appointment</span> button (also pinned to the bottom of the screen on mobile).</li>
-<li><span class="step-title">Portfolio</span> grid with style filter chips — click any photo for a lightbox with per-photo reviews.</li>
-<li><span class="step-title">Instagram</span> section (only shown if the artist connected an account and has visible posts).</li>
+<li><span class="step-title">Portfolio</span> grid with category tabs (Fresh Tattoos / Healed Tattoos / Designs, shown only when the artist has at least 2 categories tagged) and style filter chips — click any photo for a lightbox with per-photo reviews.</li>
+<li><span class="step-title">Social links</span> next to the artist's name — Instagram, TikTok, Facebook, X, YouTube, whichever they've verified — plus an <span class="step-title">Instagram</span> photo section (only shown if the artist connected an account and has visible posts).</li>
 <li><span class="step-title">Reviews</span> at the bottom, with a form to leave one (requires a completed appointment with this artist).</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> reviews can be left against the whole artist, a specific tattoo photo, or the whole studio — each has its own review thread. Studio/artist reviews require a completed appointment and can be repeated each time you visit again; tattoo-photo reviews are a one-time review per photo (photos aren't tied to a specific booking).</div>
@@ -692,6 +707,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Browse the masonry grid; each tile shows the artist name, studio, and rating.</li>
+<li><span class="step-title">Filter by category</span> using the Fresh Tattoos / Healed Tattoos / Designs tabs above the style chips.</li>
 <li><span class="step-title">Filter by style</span> using the chip row above the grid.</li>
 <li><span class="step-title">Click a photo</span> to open the lightbox with reviews for that specific tattoo and quick links to book or view the artist.</li>
 <li>Use <span class="step-title">← / →</span> or the on-image arrows to move between photos without closing the lightbox.</li>
@@ -738,7 +754,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Register a studio</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (redirected to dashboard)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>A two-step wizard at <code>/register</code> that creates a brand-new studio and its owner account together. Step 1 collects the studio's identity, location, and business tax ID (NIPT); step 2 creates the owner's login, either by password or by continuing with Google/Apple.</p>
+<p>A two-step wizard at <code>/register</code> that creates a brand-new studio and its owner account together. Step 1 collects the studio's identity, location, and business tax ID (NIPT); step 2 creates the owner's login, either by password or by continuing with Google (an Apple option appears alongside it once Apple Sign-In is configured for this deployment).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Register studio wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -760,7 +776,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li><span class="step-title">Step 1 — Studio details:</span> Studio name (auto-generates a URL slug you can still edit), pick the studio's location on the map picker, and enter your business tax ID (NIPT) — one letter, 8 digits, one letter (e.g. L01234567A). This is used for invoicing and business verification and is never shown publicly.</li>
 <li>Click <span class="step-title">Next</span> to proceed to step 2.</li>
-<li><span class="step-title">Step 2 — Owner account:</span> enter the owner's email, then either set a password + confirm, or click a Google/Apple button to continue with OAuth instead (this replaces the password fields).</li>
+<li><span class="step-title">Step 2 — Owner account:</span> enter the owner's email, then either set a password + confirm, or click the Google button to continue with OAuth instead (this replaces the password fields; an Apple option appears alongside Google once Apple Sign-In is configured for this deployment).</li>
 <li>Submit to create the studio, create the owner account, sign in, and land on the Dashboard.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> a referral code in the URL (<code>?ref=CODE</code>) is applied automatically and can unlock a free month once you subscribe.</div>
@@ -771,7 +787,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Sign in</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗ (redirected)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>The sign-in form at <code>/login</code>, shared by every role — the app reads your role from the login response and sends you to the right home screen automatically. Supports "remember me", Google/Apple sign-in, and a <code>?redirect=</code> deep link back to wherever you came from.</p>
+<p>The sign-in form at <code>/login</code>, shared by every role — the app reads your role from the login response and sends you to the right home screen automatically. Supports "remember me", Google sign-in (Apple too, once configured for this deployment), and a <code>?redirect=</code> deep link back to wherever you came from.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Sign in wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -794,7 +810,7 @@ ol.steps li { margin: 6px 0; }
 <li>Enter <span class="step-title">Email</span> and <span class="step-title">Password</span>.</li>
 <li>Toggle <span class="step-title">Remember me</span> to stay signed in on this device (uses persistent storage instead of the current tab only).</li>
 <li>Click <span class="step-title">Forgot password?</span> if needed.</li>
-<li>Click <span class="step-title">Sign in</span>, or use the <span class="step-title">Google</span> / <span class="step-title">Apple</span> buttons instead.</li>
+<li>Click <span class="step-title">Sign in</span>, or use the <span class="step-title">Google</span> button instead (an <span class="step-title">Apple</span> button appears alongside it once Apple Sign-In is configured for this deployment).</li>
 <li>Links at the bottom lead to client sign-up or studio registration.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> too many failed sign-in attempts from the same device triggers a temporary lock — wait a few minutes before retrying.</div>
@@ -887,40 +903,47 @@ ol.steps li { margin: 6px 0; }
 <section id="client-book" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Book an appointment</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The client's home screen at <code>/book</code>. Request a new appointment with an artist at your currently active studio, and see your upcoming and past bookings below the form. If you don't belong to a studio yet, you're pointed to Discover instead.</p>
+<tr><td>Guest</td><td>✓ (guest checkout — no account needed to book)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>The client's home screen at <code>/book</code>. Request a new appointment with an artist at your currently active studio, and see your upcoming and past bookings below the form. If you don't belong to a studio yet, you're pointed to Discover instead. <strong>An unauthenticated visitor arriving from a studio's public page (e.g. <code>/book?studio=&lt;slug&gt;</code>) sees a guest checkout version of this same form instead</strong> — no sign-up step first; an account is created automatically as part of the booking.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Book appointment wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="10" font-weight="700">Book · My Studios · My Designs · Intake · Consent · Profile</text>
 <rect x="260" y="60" width="240" height="330" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="280" y="88" font-size="12" font-weight="700">Book an appointment</text>
-<text x="280" y="112" font-size="9" fill-opacity="0.6">Artist</text><rect x="280" y="118" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="112" font-size="9" fill-opacity="0.6">Artist</text><rect x="280" y="118" width="140" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="428" y="118" width="52" height="20" rx="10" fill="currentColor" fill-opacity="0.08"/><text x="454" y="131" font-size="7" text-anchor="middle" fill-opacity="0.55">Studio picks</text>
 <text x="280" y="150" font-size="9" fill-opacity="0.6">Date &amp; time</text><rect x="280" y="156" width="95" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="385" y="150" font-size="9" fill-opacity="0.6">Session length</text><rect x="385" y="156" width="95" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="192" font-size="8" fill-opacity="0.6">✓ Slot available</text>
 <text x="280" y="212" font-size="9" fill-opacity="0.6">Deposit rule</text><rect x="280" y="218" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="250" font-size="9" fill-opacity="0.6">Notes</text><rect x="280" y="256" width="200" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="298" font-size="9" fill-opacity="0.6">Reference images</text><rect x="280" y="304" width="200" height="40" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3"/><text x="330" y="328" font-size="8" fill-opacity="0.5">Click to add photos (up to 6)</text>
+<text x="280" y="298" font-size="9" fill-opacity="0.6">Area photo · Reference images</text><rect x="280" y="304" width="200" height="40" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3"/><text x="330" y="328" font-size="8" fill-opacity="0.5">Click to add photos (up to 6 each)</text>
 <rect x="280" y="358" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="375" font-size="10" fill="#fff">Request Appointment</text>
 <text x="280" y="420" font-size="11" font-weight="700">My Bookings</text>
 </svg>
 </figure>
-<figcaption>Book — fields appear in this order: artist, date/time, duration, deposit rule, notes, reference images</figcaption>
+<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), date/time, duration, deposit rule, tattoo description, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
-<li>Pick an <span class="step-title">Artist</span> (searchable dropdown).</li>
+<li><strong>Guest checkout only</strong> — if you're not signed in, fill in your <span class="step-title">First name</span>, <span class="step-title">Last name</span>, <span class="step-title">Email</span>, and <span class="step-title">Phone</span>, and optionally toggle <span class="step-title">Sign up for news and updates</span>. An account is created for you as part of submitting the booking — see the callout below.</li>
+<li>Pick an <span class="step-title">Artist</span> (searchable dropdown), or toggle <span class="step-title">Let the studio choose my artist</span> to skip picking one — the artist selector hides and the studio assigns someone before confirming.</li>
 <li>Choose a <span class="step-title">Date &amp; time</span> and a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
-<li>If the studio has an active deposit rule, choose it and see the estimated deposit amount.</li>
-<li>Add optional <span class="step-title">Notes</span> (style, size, placement, skin concerns).</li>
-<li>Optionally attach up to 6 <span class="step-title">Reference images</span> (JPEG, PNG, or WebP) — click the box to pick photos, each uploads immediately and shows a thumbnail with a remove (×) button.</li>
+<li>If the studio has an active deposit rule, an estimated deposit amount is shown (signed-in clients can also pick the rule).</li>
+<li>Describe <span class="step-title">What are you looking to get done?</span> (required), optionally pick <span class="step-title">How did you hear about us?</span> (with a free-text field if you pick "Somewhere else"), and add any <span class="step-title">Safety notes</span> (medical conditions, allergies, medications, skin concerns).</li>
+<li>Use the <span class="step-title">Desired placement</span> body map to mark where you want the tattoo.</li>
+<li>Attach an <span class="step-title">Area photo</span> (a photo of the body area) and <span class="step-title">Reference images</span> (style/inspiration photos) — JPEG, PNG, or WebP, up to 6 each. Guest checkout requires both; already signed in, both stay optional.</li>
+<li>Add optional <span class="step-title">Notes</span> for anything else that doesn't fit the fields above (signed-in clients only).</li>
 <li>Click <span class="step-title">Request Appointment</span> (disabled while any image is still uploading).</li>
-<li>If a deposit is required, you're immediately offered <span class="step-title">Card</span> or <span class="step-title">Cash</span> to secure the slot (or you can defer it).</li>
-<li>Your existing bookings are listed below the form.</li>
+<li>If you're already signed in and a deposit is required, you're immediately offered <span class="step-title">Card</span> or <span class="step-title">Cash</span> to secure the slot (or you can defer it).</li>
+<li>Your existing bookings are listed below the form (once signed in).</li>
 <li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it — you'll see whether it's a full refund or a partial/forfeited one before confirming, then click <span class="step-title">Yes, cancel</span>.</li>
 <li>Click <span class="step-title">Reschedule</span> to move the same booking to a new date, time, or duration (only enabled with enough notice — otherwise contact the studio directly).</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first (or, if you're not signed in, takes you straight to that studio's guest checkout form).</div>
+<div class="callout callout-tip"><strong>Guest checkout — what happens after you submit:</strong> you'll receive one email with a link to set your password and a link to confirm your email. Set your password, then sign in to see the booking under My Bookings and manage it. Lost the email or never got it? Use "Forgot password" on the login page with the same email address any time — no separate resend needed.</div>
+<div class="callout callout-warn"><strong>Guest checkout — one account per email:</strong> if the email you enter already has an account on the platform, the booking is rejected with a message to sign in first instead — it's never silently attached to someone else's existing account.</div>
+<div class="callout callout-tip"><strong>Let the studio choose:</strong> if you don't have an artist preference, toggle this on instead of picking one. You won't know who your artist is until the studio assigns one — you'll get an email the moment they do, and the appointment still needs the studio's confirmation either way.</div>
 <div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled.</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
 </section>
@@ -1022,7 +1045,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Submit intake form</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
-<p>At <code>/forms/intake/new</code>, share medical history and health notes with your studio before a session — optionally linked to a specific upcoming appointment.</p>
+<p>At <code>/forms/intake/new</code>, share medical history and health notes with your studio before a session — optionally linked to a specific upcoming appointment. Because this form carries sensitive health information, you must tick a consent checkbox before you can submit it; the exact consent text you agreed to is saved with the form.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Submit intake form wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1043,6 +1066,7 @@ ol.steps li { margin: 6px 0; }
 <li>Write your <span class="step-title">Medical history &amp; notes</span> (allergies, skin conditions, medications) — minimum 10 characters.</li>
 <li>Optionally link it to an <span class="step-title">Appointment</span> from your pending/confirmed bookings.</li>
 <li>Optionally attach a file by pasting its URL.</li>
+<li>Read the consent text shown, then tick <span class="step-title">I consent to sharing this medical/health information with the studio</span> — required.</li>
 <li>Click <span class="step-title">Submit Intake Form</span>.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#client-intake-list">My intake forms</a>, <a href="#client-consent-sign">Sign consent form</a></div>
@@ -1212,7 +1236,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment.</p>
+<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment. If card payments are temporarily unavailable, the page shows a message instead of the card form — Cash always remains available at booking, or you can contact the studio directly.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1314,11 +1338,72 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#client-change-password">Change password</a></div>
 </section>
 
+<section id="client-report" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Report an artist or studio</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own real appointment required)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>On a studio's page (<code>/s/{slug}</code>) or an artist's page (<code>/artist/{slug}</code>), below Reviews: a quiet "Report this artist" / "Report this studio" link opens a form to flag a serious issue — scam, sexual misconduct, unsafe hygiene practices, harassment, discrimination, or poor service — for our platform team to review. This is not a public review; it is never shown on the page.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 300" role="img" aria-label="Report dialog wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="21" font-size="10" font-weight="700">Report this artist</text>
+<text x="16" y="56" font-size="8" fill-opacity="0.6">Category</text><rect x="16" y="62" width="300" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="24" y="76" font-size="8">● Sexual misconduct or abuse</text>
+<text x="16" y="100" font-size="8" fill-opacity="0.6">Which visit does this relate to?</text><rect x="16" y="106" width="300" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="24" y="120" font-size="8">1 Aug 2026 — Completed</text>
+<text x="16" y="144" font-size="8" fill-opacity="0.6">What happened?</text><rect x="16" y="150" width="700" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="16" y="222" width="700" height="40" rx="6" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="4 3"/><text x="180" y="246" font-size="8" fill-opacity="0.6">Add a screenshot or short video (up to 3)</text>
+<rect x="616" y="272" width="100" height="20" rx="4" fill="#7c3aed"/><text x="632" y="286" font-size="8" fill="#fff">Submit Report</text>
+</svg>
+</figure>
+<figcaption>Report dialog — category, appointment picker, reason, optional evidence</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click <span class="step-title">Report this artist</span> / <span class="step-title">Report this studio</span> below the Reviews section.</li>
+<li>Pick a <span class="step-title">Category</span> — a small amber dot marks the five categories that are escalated immediately.</li>
+<li>Pick <span class="step-title">Which visit does this relate to?</span> — every real appointment you have there is listed, whatever its status.</li>
+<li>Describe <span class="step-title">What happened?</span> in at least 20 characters, and optionally attach up to 3 screenshots or short video clips as evidence.</li>
+<li>Click <span class="step-title">Submit Report</span>.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, and Discrimination are escalated immediately to the platform team's inbox by email, on top of the normal in-app review.</div>
+<div class="callout callout-warn"><strong>Note:</strong> there is no "my reports" list — once submitted you won't see it again, but it has been received.</div>
+<div class="crosslinks">See also: <a href="#guest-artist-portfolio">Guest: artist profile page</a>, <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
+</section>
+
+<section id="client-messaging" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Messages</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own booked/assigned artist, and the studio owner)</td></tr><tr><td>Artist</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Owner</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<p>At <code>/messages</code>: real-time, two-party threads with your booked or assigned artist, or with the studio owner. Delivered instantly over a live connection while the app is open; if the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 420" role="img" aria-label="Messages wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Messages</text>
+<rect x="616" y="10" width="120" height="20" rx="4" fill="#7c3aed"/><text x="628" y="24" font-size="8" fill="#fff">New message</text>
+<rect x="16" y="56" width="220" height="340" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<rect x="24" y="66" width="204" height="48" rx="6" fill="currentColor" fill-opacity="0.06"/><text x="34" y="84" font-size="9" font-weight="700">Marco Ink</text><text x="34" y="98" font-size="8" fill-opacity="0.6">See you Thursday!</text>
+<text x="34" y="146" font-size="9" font-weight="700" fill-opacity="0.7">Studio Owner</text><text x="34" y="160" font-size="8" fill-opacity="0.5">Thanks for booking</text>
+<rect x="252" y="56" width="488" height="300" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<rect x="266" y="72" width="200" height="30" rx="6" fill="currentColor" fill-opacity="0.08"/><text x="276" y="91" font-size="8">Hey, looking forward to it!</text>
+<rect x="474" y="112" width="200" height="30" rx="6" fill="#7c3aed" fill-opacity="0.8"/><text x="484" y="131" font-size="8" fill="#fff">See you Thursday!</text>
+<rect x="266" y="368" width="440" height="36" rx="6" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15"/><text x="278" y="390" font-size="8" fill-opacity="0.5">Type a message…</text>
+</svg>
+</figure>
+<figcaption>Messages — conversation list on the left, active thread on the right</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Messages</span> from the nav.</li>
+<li>Click <span class="step-title">New message</span> and pick a contact — only your booked/assigned artist and the studio owner are listed.</li>
+<li>Or click an existing thread in the conversation list.</li>
+<li>Type your message and press Enter, or click the send button.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> if you don't have a linked artist yet, you can still always reach the studio owner.</div>
+<div class="crosslinks">See also: <a href="#client-book-appointment">Book an appointment</a></div>
+</section>
+
 <section id="artist-schedule" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Weekly schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (all artists)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card.</p>
+<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card. A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Weekly schedule wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1338,6 +1423,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Use <span class="step-title">‹ ›</span> to move between weeks, or <span class="step-title">Today</span> to jump back to the current week.</li>
 <li>Click an appointment card to open its full detail, or use the inline <span class="step-title">Confirm</span> / <span class="step-title">Complete</span> / no-show / cancel buttons directly on the card.</li>
+<li>Click the <span class="step-title">Quick Reminder</span> button (message icon, top right) to send a one-off SMS to a typed-in name and phone number (choose the country, then type the number) — no appointment or client record required.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-appointment-detail">Appointment detail</a>, <a href="#owner-schedule">Owner: schedule</a></div>
 </section>
@@ -1346,7 +1432,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Appointment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, any client-attached reference images, and aftercare status once completed, plus every status-change action.</p>
+<p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, any client-attached reference images, and aftercare status once completed, plus every status-change action and a <strong>Send Reminder</strong> button.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Appointment detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1372,9 +1458,11 @@ ol.steps li { margin: 6px 0; }
 <li>If the client attached reference images when booking, click any thumbnail to open the full-size photo in a new tab.</li>
 <li>Download the <span class="step-title">.ics calendar file</span> if you want it in your own calendar app.</li>
 <li>Depending on status: <span class="step-title">Confirm</span> (from Requested), <span class="step-title">Mark as complete</span> (from Confirmed), <span class="step-title">Charge deposit</span> (owner only, if pending), <span class="step-title">Mark no-show</span>, or <span class="step-title">Cancel</span>.</li>
+<li>Click <span class="step-title">Send Reminder</span> to text the client now or schedule it for later — separate from the studio's automatic 48h/24h reminders.</li>
+<li>Click <span class="step-title">Message [client name]</span> to start or continue a real-time chat thread with the client, if they have a linked login.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> cancelling an appointment cannot be undone.</div>
-<div class="crosslinks">See also: <a href="#artist-schedule">Weekly schedule</a>, <a href="#owner-payment-detail">Owner: payment detail</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
+<div class="crosslinks">See also: <a href="#artist-schedule">Weekly schedule</a>, <a href="#owner-payment-detail">Owner: payment detail</a>, <a href="#ref-appointment-statuses">Appointment statuses</a>, <a href="#artist-messaging">Artist: messages</a>, <a href="#owner-messaging">Owner: messages</a></div>
 </section>
 
 <section id="artist-clients" data-role="artist">
@@ -1404,7 +1492,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (can add/edit profile info)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/clients/&lt;id&gt;</code>: contact info, medical/health profile, body map, tattoo history, forms, and appointments for one client, in tabs.</p>
+<p>At <code>/clients/&lt;id&gt;</code>: contact info, medical/health profile, body map, tattoo history, forms, and appointments for one client, in tabs, plus a <strong>Send Reminder</strong> button. The artist assigned to the client is shown near the top of the profile (read-only for this role — only owners can reassign it).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Client detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1428,6 +1516,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Cross-Studio</span> tab (if present) shows tattoo history the client has chosen to share from other studios.</li>
 <li><span class="step-title">Forms</span> tab lists the client's intake and consent forms.</li>
 <li><span class="step-title">Appointments</span> tab lists this client's bookings.</li>
+<li>Click <span class="step-title">Send Reminder</span> (top right) to text this client now or schedule it for later.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-tattoo-record">Tattoo record detail</a>, <a href="#client-profile">Client: my profile</a></div>
 </section>
@@ -1641,7 +1730,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> My portfolio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗ (public version at <a href="#guest-artist-portfolio">/artist/slug</a>)</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own; edits bio, rate, portfolio)</td></tr><tr><td>Owner</td><td>✓ (any artist at the studio)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with four tabs — Profile, Portfolio, Schedule, and Designs — reached from "My Portfolio" in the artist's own top navigation.</p>
+<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with five tabs — Profile, Portfolio, Schedule, Designs, and Social — reached from "My Portfolio" in the artist's own top navigation.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist portfolio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1659,13 +1748,14 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Click <span class="step-title">Edit</span> to update name, email, specializations, hourly rate, and public profile slug.</li>
-<li><span class="step-title">Portfolio</span> tab — add or remove photos shown on your public artist page. Each image has its own style dropdown (Traditional, Realism, Blackwork, etc.) — tag it so the photo appears when a client filters the public Discover page by that style.</li>
+<li><span class="step-title">Portfolio</span> tab — add or remove photos shown on your public artist page. Click "Add image" and choose Fresh Tattoo, Healed Tattoo, or Design to upload and tag a photo's category in one step, or use the category dropdown on any existing image to relabel it. Each image also has its own style dropdown (Traditional, Realism, Blackwork, etc.) — tag it so the photo appears when a client filters the public Discover page by that style.</li>
 <li><span class="step-title">Schedule</span> tab — your upcoming appointments.</li>
 <li><span class="step-title">Designs</span> tab — designs you've created.</li>
+<li><span class="step-title">Social</span> tab — connect/verify Instagram (also used for photo sync), plus verify TikTok, Facebook, X, and YouTube. See <a href="#owner-social-verification">Verify social media accounts</a>.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> your hourly rate is used to calculate percentage-based deposit rules at booking time.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> Discover's style filters match each image's own style tag, not the "Specializations" text on your profile — an untagged image stays in your portfolio but won't show up under any style filter.</div>
-<div class="crosslinks">See also: <a href="#guest-artist-portfolio">Guest: artist profile page</a>, <a href="#owner-artist-detail">Owner: artist detail</a></div>
+<div class="callout callout-tip"><strong>Tip:</strong> Discover's category tabs and style filters both match an image's own tags, not the "Specializations" text on your profile — an uncategorized or untagged image stays in your portfolio but won't show up under either filter.</div>
+<div class="crosslinks">See also: <a href="#guest-artist-portfolio">Guest: artist profile page</a>, <a href="#owner-artist-detail">Owner: artist detail</a>, <a href="#owner-social-verification">Verify social media accounts</a></div>
 </section>
 
 <section id="artist-notifications" data-role="artist">
@@ -1693,6 +1783,65 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">View all</span> to open the complete filterable log.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-notifications-log">Owner: notification log</a></div>
+</section>
+
+<section id="artist-conduct-reports" data-role="artist">
+<h2><span class="role-badge role-artist">Artist</span> Reports about me</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own reports, redacted)</td></tr><tr><td>Owner</td><td>✗ (uses the studio-wide Conduct Reports page instead)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>At <code>/conduct-reports</code>: every conduct report a client has filed about you specifically — category, description, and which appointment it relates to. An open-count badge appears next to "Reports About Me" in the nav.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Reports About Me</span> from the nav.</li>
+<li>Click a card to expand it and read the full description.</li>
+</ol>
+<div class="callout callout-tip"><strong>Note:</strong> the reporting client's name, email, and account are never shown here — only the studio owner and Pena e Artë platform staff can see who filed a report.</div>
+<div class="crosslinks">See also: <a href="#owner-conduct-reports">Owner: conduct reports</a></div>
+</section>
+
+<section id="artist-messaging" data-role="artist">
+<h2><span class="role-badge role-artist">Artist</span> Messages</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Artist</td><td>✓ (own booked/assigned clients, and the studio owner)</td></tr><tr><td>Owner</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<p>At <code>/messages</code>, and from a "Message [client name]" button on an appointment's detail page: real-time, two-party threads with a client you have an appointment with or who's assigned to you, or with the studio owner. If the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Messages</span> from the nav, or click <span class="step-title">Message [client name]</span> on an appointment's detail page.</li>
+<li>Click <span class="step-title">New message</span> and pick a client or the studio owner.</li>
+<li>Or click an existing thread in the conversation list.</li>
+<li>Type your message and press Enter, or click the send button — replies arrive live without reloading.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a></div>
+</section>
+
+<section id="artist-earnings" data-role="artist">
+<h2><span class="role-badge role-artist">Artist</span> My Earnings</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own earnings only)</td></tr><tr><td>Owner</td><td>✓ (only if they've also enabled their own artist profile — their own earnings only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>At <code>/earnings</code>: your own earnings trend for the last 12 months, plus every payment from the last 30 days that contributed, with the client, appointment date, and amount. If the studio recorded a session split for a payment (for example, your cut vs. a studio fee), it's shown under that payment exactly as the studio entered it — this page doesn't guess which part of a split is "yours."</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 420" role="img" aria-label="My Earnings wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">My Earnings</text>
+<rect x="20" y="60" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="82" font-size="10" font-weight="700">Earnings trend (last 12 months)</text>
+<polyline points="60,190 150,175 240,180 330,150 420,160 510,120 600,135 690,100" fill="none" stroke="#7c3aed" stroke-width="2"/>
+<rect x="20" y="236" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="258" font-size="10" font-weight="700">Payments (last 30 days)</text>
+<text x="40" y="284" font-size="9" fill-opacity="0.7">Besa Klienti — 15 Jul 2026</text><text x="700" y="284" font-size="9" text-anchor="end">€380.00</text>
+<text x="52" y="298" font-size="7" fill-opacity="0.5">Artist cut</text><text x="700" y="298" font-size="7" text-anchor="end" fill-opacity="0.5">€300.00</text>
+<text x="52" y="310" font-size="7" fill-opacity="0.5">Studio fee</text><text x="700" y="310" font-size="7" text-anchor="end" fill-opacity="0.5">€80.00</text>
+</svg>
+</figure>
+<figcaption>My Earnings — earnings trend chart above, payment breakdown below</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>View the <span class="step-title">Earnings trend</span> chart — hover a point for that month's exact figure.</li>
+<li>Scroll to the <span class="step-title">Payments</span> list for the last 30 days, sorted most recent first.</li>
+<li>If a payment has a session split, its line items appear indented under that payment.</li>
+</ol>
+<div class="callout callout-tip"><strong>Note:</strong> only fully paid or partially-refunded-and-retained payments count — the same rule the studio's own revenue report uses.</div>
+<div class="crosslinks">See also: <a href="#owner-reports">Owner: revenue reports</a>, <a href="#owner-become-artist">Owner: enable your own artist profile</a></div>
 </section>
 
 <section id="owner-dashboard" data-role="owner">
@@ -1752,6 +1901,33 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-create-deposit-rule">Create deposit rule</a></div>
 </section>
 
+<section id="owner-solo-studio" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Solo studio &amp; Free plan</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>If you signed up from <code>/register</code>'s "I'm an independent artist" option instead of registering a studio, TattooOS auto-created a studio for you behind the scenes — no business tax ID (NIPT) or studio address required up front.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Solo studio and Free plan wireframe">
+<rect x="230" y="120" width="300" height="160" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="246" y="146" font-size="11" font-weight="700">Free plan</text>
+<text x="246" y="168" font-size="9" fill-opacity="0.7">1 artist seat</text>
+<text x="246" y="186" font-size="9" fill-opacity="0.7">15 appointments / month</text>
+<text x="246" y="204" font-size="9" fill-opacity="0.7">50 notifications / month</text>
+<text x="246" y="222" font-size="9" fill-opacity="0.7">1 GB storage</text>
+<text x="246" y="248" font-size="8" fill-opacity="0.55">Active immediately — no trial, no card</text>
+</svg>
+</figure>
+<figcaption>Solo studio — on the Free plan from the moment you sign up</figcaption>
+<h3>What "solo" means</h3>
+<ol class="steps">
+<li>Your studio is fully functional immediately — you can finish your own artist profile and start taking bookings before adding any business details.</li>
+<li>A NIPT is entirely optional for a solo studio, even once you accept card or cash payments. Add one later from Studio Settings only if you choose to.</li>
+<li>Your studio stays hidden from the Studio Map and Discover until it has a real city and location — see <a href="#owner-publish-studio">Publish your studio</a>. Your own artist page is public and bookable the whole time regardless.</li>
+<li>"Solo" is just a label (it doesn't restrict anything) and disappears automatically once you upgrade off the Free plan — see <a href="#owner-solo-upgrade">Grow beyond one artist</a>.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-become-artist">Enable your own artist profile</a>, <a href="#owner-publish-studio">Publish your studio</a>, <a href="#owner-solo-upgrade">Grow beyond one artist</a></div>
+</section>
+
 <section id="owner-artists" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Artist list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -1776,7 +1952,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click a row to view/edit that artist, or use the row's <span class="step-title">Delete</span> action (with confirm).</li>
 <li>Click <span class="step-title">New Artist</span> to add one.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-artist-detail">Artist detail</a></div>
+<div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-become-artist">Enable your own artist profile</a>, <a href="#owner-artist-detail">Artist detail</a></div>
 </section>
 
 <section id="owner-create-artist" data-role="owner">
@@ -1807,6 +1983,90 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Create Artist</span> — you land on their new detail page.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-artist-detail">Artist detail</a></div>
+</section>
+
+<section id="owner-become-artist" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Enable your own artist profile</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>If you also tattoo yourself, at <code>/artists</code> you can link your existing owner login as a bookable artist — no new email, password, or invite email, and no second account.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Enable your own artist profile wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="10" font-weight="700">‹ Artists</text>
+<rect x="260" y="60" width="240" height="230" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="280" y="88" font-size="12" font-weight="700">Enable my artist profile</text>
+<text x="280" y="108" font-size="9" fill-opacity="0.6">First name</text><rect x="280" y="114" width="90" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="380" y="108" font-size="9" fill-opacity="0.6">Last name</text><rect x="380" y="114" width="100" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="150" font-size="9" fill-opacity="0.6">Specializations (optional)</text><rect x="280" y="156" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="188" font-size="9" fill-opacity="0.6">Hourly rate (€, optional)</text><rect x="280" y="194" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="280" y="228" width="200" height="26" rx="4" fill="#7c3aed"/><text x="292" y="245" font-size="9" fill="#fff">Enable my artist profile</text>
+</svg>
+</figure>
+<figcaption>Enable your own artist profile — no Email field, since it's your own account's email</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Go to Artists.</li>
+<li>Click <span class="step-title">Enable my artist profile</span> in the banner near the top of the list (only shown if you don't already have one).</li>
+<li>Enter your first and last name, and optionally specializations and an hourly rate.</li>
+<li>Click <span class="step-title">Enable my artist profile</span> — you land on your new artist detail page.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get "My Portfolio" and "My Earnings" shortcuts in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
+<div class="crosslinks">See also: <a href="#owner-artists">Artist list</a>, <a href="#owner-artist-detail">Artist detail</a></div>
+</section>
+
+<section id="owner-invite-solo-artist" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Invite a solo artist to join</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>At <code>/artists/new</code>: if the artist you're trying to invite already runs their own independent solo studio, a normal invite fails ("already belongs to an existing account"). Instead of a dead end, send them a request to join your studio.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Invite a solo artist wireframe">
+<rect x="240" y="120" width="280" height="130" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="256" y="146" font-size="10" fill-opacity="0.7">That email already belongs to an</text>
+<text x="256" y="160" font-size="10" fill-opacity="0.7">existing account and can't be invited directly.</text>
+<rect x="256" y="180" width="248" height="26" rx="4" fill="currentColor" fill-opacity="0.08"/>
+<text x="264" y="197" font-size="9">Send a request to join instead</text>
+</svg>
+</figure>
+<figcaption>New Artist form — the fallback shown after an "already taken" email</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Fill in the New Artist form as usual and submit.</li>
+<li>If the email belongs to an independent artist's own solo studio, click <span class="step-title">Send a request to join instead</span>.</li>
+<li>The artist is notified and can accept or decline next time they sign in — you'll see nothing further from your side until they respond.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> this only works for an email that belongs to another solo studio's owner account — any other existing account (a different studio's artist, a client, etc.) still can't be invited this way.</div>
+<div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-accept-join-invite">Accept/decline a join invite</a>, <a href="#owner-solo-studio">Solo studio &amp; Free plan</a></div>
+</section>
+
+<section id="owner-accept-join-invite" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Accept/decline a studio join invite</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studio owners)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>If another studio invites your independent artist account to join them, a small mail icon with a badge count appears in the header, next to the notification bell — it only shows up when you have a pending invite.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Studio join invite wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<circle cx="700" cy="20" r="9" fill="currentColor" fill-opacity="0.1"/><text x="696" y="24" font-size="9">✉</text>
+<circle cx="707" cy="13" r="6" fill="#7c3aed"/><text x="704" y="16" font-size="7" fill="#fff">1</text>
+<rect x="480" y="50" width="260" height="90" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="496" y="72" font-size="9">Ink Collective in Lisbon wants</text>
+<text x="496" y="86" font-size="9">you to join as an artist.</text>
+<rect x="496" y="98" width="60" height="20" rx="4" fill="#7c3aed"/><text x="508" y="112" font-size="8" fill="#fff">Accept</text>
+<rect x="564" y="98" width="60" height="20" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="578" y="112" font-size="8">Decline</text>
+</svg>
+</figure>
+<figcaption>Studio join invites — the mail icon only appears when you have a pending invite</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click the mail icon to see which studio invited you.</li>
+<li>Click <span class="step-title">Accept</span> or <span class="step-title">Decline</span>.</li>
+<li>Accepting shows a confirmation dialog first, explaining that this closes your current solo studio — read it, since it can't be undone from within the invite.</li>
+<li>After confirming, you're signed back in automatically as an artist at the new studio.</li>
+</ol>
+<div class="callout callout-warn"><strong>Warning:</strong> accepting permanently closes your current solo studio — you stop being its owner and lose access, though none of its data (appointments, clients, portfolio, payments) is deleted. Declining has no side effects at all.</div>
+<div class="crosslinks">See also: <a href="#owner-invite-solo-artist">Invite a solo artist to join</a>, <a href="#owner-solo-studio">Solo studio &amp; Free plan</a></div>
 </section>
 
 <section id="owner-artist-detail" data-role="owner">
@@ -1854,6 +2114,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Search by name/email, click a row to view detail, or click <span class="step-title">New Client</span> to add one manually.</li>
+<li>Use the <span class="step-title">Artist</span> filter dropdown to narrow the list to one artist's clients, or "Unassigned" for clients with no artist yet.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-create-client">Add client</a>, <a href="#owner-client-detail">Client detail</a></div>
 </section>
@@ -1872,17 +2133,20 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="108" font-size="9" fill-opacity="0.6">First name</text><rect x="280" y="114" width="90" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="380" y="108" font-size="9" fill-opacity="0.6">Last name</text><rect x="380" y="114" width="100" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="150" font-size="9" fill-opacity="0.6">Email</text><rect x="280" y="156" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="188" font-size="9" fill-opacity="0.6">Phone (optional)</text><rect x="280" y="194" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<rect x="280" y="226" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="243" font-size="10" fill="#fff">Create Client</text>
+<text x="280" y="180" font-size="9" fill-opacity="0.6">Artist</text><rect x="280" y="186" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="210" font-size="9" fill-opacity="0.6">Phone (optional)</text><rect x="280" y="216" width="45" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="286" y="230" font-size="8">🇵🇹+351</text><rect x="330" y="216" width="150" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<rect x="280" y="248" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="265" font-size="10" fill="#fff">Create Client</text>
 </svg>
 </figure>
-<figcaption>Add client — fields in order: first/last name, email, phone</figcaption>
+<figcaption>Add client — fields in order: first/last name, email, artist, phone</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li>Enter <span class="step-title">First name</span>, <span class="step-title">Last name</span>, <span class="step-title">Email</span>.</li>
-<li>Optionally add a <span class="step-title">Phone</span> number.</li>
+<li>Choose the <span class="step-title">Artist</span> this client belongs to.</li>
+<li>Optionally add a <span class="step-title">Phone</span> number — choose the country from the dropdown (defaults to Portugal), then type the number.</li>
 <li>Click <span class="step-title">Create Client</span>.</li>
 </ol>
+<div class="callout callout-tip"><strong>Note:</strong> if you're an artist adding your own client (via <a href="#artist-clients">the artist client list</a>), the Artist field doesn't appear at all — the client is assigned to you automatically.</div>
 <div class="crosslinks">See also: <a href="#owner-client-detail">Client detail</a></div>
 </section>
 
@@ -1890,7 +2154,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs.</p>
+<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. The one difference: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner client detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2051,12 +2315,16 @@ ol.steps li { margin: 6px 0; }
 <text x="20" y="100" font-size="11" font-weight="700">Mon 1 Jul</text>
 <rect x="20" y="108" width="500" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="30" y="127" font-size="9">10:00 – Jane Doe · Elena Martins · 60 min</text>
+<rect x="20" y="146" width="500" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="30" y="165" font-size="9">14:00 – Marco Rossi · 90 min</text>
+<rect x="440" y="152" width="70" height="18" rx="9" fill="#f59e0b" fill-opacity="0.15"/><text x="475" y="165" font-size="7" text-anchor="middle" fill="#b45309">Needs artist</text>
 </svg>
 </figure>
-<figcaption>Owner schedule — same weekly-list layout, studio-wide scope</figcaption>
+<figcaption>Owner schedule — same weekly-list layout, studio-wide scope; unassigned studio-choice bookings show a "Needs artist" badge</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Navigate weeks, click any appointment for full detail or use inline status actions.</li>
+<li>A <span class="step-title">Needs artist</span> badge marks a Pending appointment where the client let the studio choose — open it and assign an artist before it can be confirmed.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-schedule">Artist: weekly schedule</a>, <a href="#owner-appointment-detail">Appointment detail</a></div>
 </section>
@@ -2065,24 +2333,27 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Appointment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (plus Charge deposit)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>Same page as <a href="#artist-appointment-detail">the artist's appointment detail</a>, at <code>/appointments/&lt;id&gt;</code> — owners additionally see a <span class="step-title">Charge deposit</span> button whenever the deposit is still pending.</p>
+<p>Same page as <a href="#artist-appointment-detail">the artist's appointment detail</a>, at <code>/appointments/&lt;id&gt;</code> — owners additionally see a <span class="step-title">Charge deposit</span> button whenever the deposit is still pending, and an editable <span class="step-title">Artist</span> dropdown for assigning who does the work.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner appointment detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="11" font-weight="700">‹ Appointment</text>
 <rect x="260" y="60" width="240" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="272" y="82" font-size="9">Client: Jane Doe</text>
-<text x="272" y="100" font-size="9">Deposit: €50.00 · Pending</text>
+<text x="272" y="100" font-size="9">Artist: Unassigned — pick an artist ▾</text>
+<text x="272" y="118" font-size="9">Deposit: €50.00 · Pending</text>
 <rect x="260" y="270" width="240" height="26" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="290" y="287" font-size="9">💳 Charge deposit</text>
 </svg>
 </figure>
-<figcaption>Owner appointment detail — Charge deposit routes into the payment-creation flow</figcaption>
+<figcaption>Owner appointment detail — the Artist row is an editable dropdown; Charge deposit routes into the payment-creation flow</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Same status actions as the artist view.</li>
+<li>If the client let the studio choose, the <span class="step-title">Artist</span> row is a dropdown reading "Unassigned — pick an artist" — select one to assign them. The client is emailed, and a deferred percentage-based deposit becomes payable once an artist (and their hourly rate) is known.</li>
 <li>Click <span class="step-title">Charge deposit</span> to jump straight into <a href="#owner-create-payment">creating a payment</a> pre-filled for this appointment.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a>, <a href="#owner-create-payment">Create payment</a></div>
+<div class="callout callout-warn"><strong>Confirm is blocked until assigned:</strong> a studio-choice booking can't be confirmed — by either the UI or the server — until you've picked an artist. Sending a manual reminder is blocked the same way.</div>
+<div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#owner-messaging">Owner: messages</a></div>
 </section>
 
 <section id="owner-intake-list" data-role="owner">
@@ -2218,7 +2489,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Create payment</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/payments/new</code>: a 3-step flow — pick an appointment with a pending deposit, confirm the method and amount, then get a shareable card checkout link or a cash-pending record.</p>
+<p>At <code>/payments/new</code>: a 3-step flow — pick an appointment with a pending deposit, confirm the method and amount, then get a shareable card checkout link or a cash-pending record. If card payments are temporarily unavailable, the Card option is disabled with an explanatory message and Cash is used instead.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Create payment wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2250,7 +2521,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>The studio settings hub at <code>/studios/me</code>: name, phone, Instagram, business tax ID (NIPT), location, and URL slug at the top, followed by branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
+<p>The studio settings hub at <code>/studios/me</code>: name, phone, business tax ID (NIPT), location, and URL slug at the top, followed by a Social Media card, then branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2260,7 +2531,7 @@ ol.steps li { margin: 6px 0; }
 <rect x="260" y="90" width="240" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="280" y="112" font-size="11" font-weight="700">Studio details</text>
 <text x="280" y="130" font-size="8" fill-opacity="0.6">Studio name</text><rect x="280" y="136" width="200" height="18" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="164" font-size="8" fill-opacity="0.6">Phone · Instagram</text>
+<text x="280" y="164" font-size="8" fill-opacity="0.6">Phone (country + number) · Instagram</text>
 <text x="280" y="184" font-size="8" fill-opacity="0.6">Location (map picker)</text>
 <rect x="280" y="190" width="200" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <rect x="260" y="300" width="240" height="24" rx="4" fill="currentColor" fill-opacity="0.03"/><text x="272" y="316" font-size="8">Branding</text>
@@ -2271,12 +2542,71 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps (in page order)</h3>
 <ol class="steps">
 <li>Edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
-<li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span>, <span class="step-title">Instagram handle</span>, and <span class="step-title">Location</span> (drag the map pin), then <span class="step-title">Save changes</span>.</li>
+<li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span> (choose the country, then type the number), and <span class="step-title">Location</span> (drag the map pin), then <span class="step-title">Save changes</span>.</li>
 <li>If you haven't added your <span class="step-title">Business tax ID (NIPT)</span> yet, a banner prompts you to add it — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, the field becomes read-only; contact support to change it. It's never shown to clients.</li>
-<li>Below: <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
+<li>Below: <a href="#owner-social-verification">Social Media</a> (connect/verify Instagram, TikTok, Facebook, X, YouTube), <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully.</div>
-<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#issuer-audit-log">Issuer: audit log</a></div>
+<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#issuer-audit-log">Issuer: audit log</a>, <a href="#owner-social-verification">Verify social media accounts</a></div>
+</section>
+
+<section id="owner-publish-studio" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Publish your studio</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>A solo studio (see <a href="#owner-solo-studio">Solo studio &amp; Free plan</a>) starts hidden from the Studio Map, the /discover Studios tab, and its own public studio page — until it has a real city and location on file.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Publish your studio wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.08"/>
+<text x="16" y="22" font-size="9">Finish setting up your studio — add a real city and location in Studio Settings.</text>
+<rect x="700" y="8" width="18" height="18" rx="3" fill="currentColor" fill-opacity="0.06"/><text x="705" y="20" font-size="10">×</text>
+<rect x="260" y="90" width="240" height="120" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="276" y="112" font-size="9" fill-opacity="0.6">City</text><rect x="276" y="118" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="276" y="152" font-size="9" fill-opacity="0.6">Location (drag map pin)</text><rect x="276" y="158" width="200" height="36" rx="4" fill="currentColor" fill-opacity="0.05"/>
+</svg>
+</figure>
+<figcaption>The banner reappears each login until a real city/location is saved</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Go to Studio Settings.</li>
+<li>Fill in your real <span class="step-title">City</span> and drag the map pin to your real <span class="step-title">Location</span>.</li>
+<li><span class="step-title">Save changes</span> — publishing happens automatically the moment a real city and location are saved. There's no separate "Publish" button.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> your own artist page stays public and bookable the whole time, even before your studio is published — clients who already have your link can always book you.</div>
+<div class="crosslinks">See also: <a href="#owner-solo-studio">Solo studio &amp; Free plan</a>, <a href="#owner-studio-profile">Studio profile</a></div>
+</section>
+
+<section id="owner-social-verification" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Verify social media accounts</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own profile's four non-Instagram platforms; Instagram stays on the Social tab's own Connect flow)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<p>The "Social Media" card (Studio Settings) and the artist profile's "Social" tab both use the same mechanism: connect or verify Instagram, TikTok, Facebook, X, and YouTube accounts, so clients see a green "Verified" checkmark next to the handle wherever it's shown — proof it's really the account it claims to be, not something anyone could type into a form.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 220" role="img" aria-label="Social Media card wireframe">
+<rect width="760" height="30" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="20" font-size="10" font-weight="700">Social Media</text>
+<rect x="16" y="40" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="28" y="61" font-size="9">Instagram   @inkbyana ✓ Verified</text>
+<rect x="16" y="80" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="28" y="101" font-size="9">TikTok      [ handle input ]           Connect</text>
+<rect x="16" y="120" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="28" y="141" font-size="9">YouTube     [ handle input ]  Get verification code</text>
+<rect x="16" y="160" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="28" y="181" font-size="9">Facebook    Not available yet</text>
+</svg>
+</figure>
+<figcaption>Social Media — one row per platform; verified rows show a badge and Disconnect, unverified rows show Connect or a code flow</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>For Instagram or TikTok: click <span class="step-title">Connect</span> and sign in on the platform's own page. This proves ownership directly — no code to copy.</li>
+<li>For Facebook, X, or YouTube (or any account that can't or won't use Connect): type the handle, then click <span class="step-title">Get verification code</span>. Add the code shown to that platform's bio, then click <span class="step-title">I've added it — Verify</span>. It can take a minute to propagate before Verify finds it.</li>
+<li>Once verified, a green <span class="step-title">Verified</span> badge appears next to the handle everywhere it's shown, including the public studio/artist page.</li>
+<li><span class="step-title">Disconnect</span> keeps the handle displayed but removes the Verified badge.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> a green check means TattooOS has directly confirmed this is the same account — not something anyone else could type in.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> changing a handle after it's verified removes the badge until it's re-verified — the old proof only covered the previous handle.</div>
+<div class="callout callout-warn"><strong>Note:</strong> "Not available yet" means that platform isn't connected on this server — this isn't something you can fix from Settings.</div>
+<div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile</a>, <a href="#artist-profile">Artist: my portfolio profile</a>, <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
 </section>
 
 <section id="owner-branding" data-role="owner">
@@ -2467,6 +2797,30 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#owner-billing">Billing</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
 </section>
 
+<section id="owner-solo-upgrade" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Grow beyond one artist</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<p>The Free plan (what every solo studio starts on) allows exactly one artist seat. Here's what happens when you try to add a second, and how to unlock more.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Grow beyond one artist wireframe">
+<rect x="240" y="120" width="280" height="110" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="256" y="146" font-size="10" fill-opacity="0.7">This studio's plan allows up to 1</text>
+<text x="256" y="160" font-size="10" fill-opacity="0.7">artists. Upgrade the plan to continue.</text>
+<rect x="256" y="180" width="140" height="24" rx="4" fill="#7c3aed"/><text x="270" y="196" font-size="9" fill="#fff">Upgrade plan</text>
+</svg>
+</figure>
+<figcaption>Adding a second artist on the Free plan is blocked automatically</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Try to invite a second artist from the Artists page — on the Free plan, this is blocked automatically with a message explaining your plan's limit.</li>
+<li>Go to Billing and choose a paid plan to raise (or remove) the artist-seat limit.</li>
+<li>Invite your second artist — no other setup needed.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> upgrading off the Free plan also quietly stops describing your studio as "solo" — this is cosmetic only and doesn't change what you can already do or your studio's Map/Discover visibility.</div>
+<div class="crosslinks">See also: <a href="#owner-solo-studio">Solo studio &amp; Free plan</a>, <a href="#owner-billing">Billing</a>, <a href="#owner-create-artist">Add artist</a></div>
+</section>
+
 <section id="owner-reports" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Revenue reports</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -2492,6 +2846,50 @@ ol.steps li { margin: 6px 0; }
 <li>Scroll to <span class="step-title">Revenue by artist</span> for a table sorted highest-earning artist first.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-billing">Billing</a>, <a href="#owner-payments">Track deposits and payments</a></div>
+</section>
+
+<section id="owner-conduct-reports" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Conduct reports</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (can file one; never sees a list)</td></tr><tr><td>Artist</td><td>✗ (uses the redacted "Reports About Me" page instead)</td></tr><tr><td>Owner</td><td>✓ (own studio)</td></tr><tr><td>Issuer</td><td>✓ (every studio, via the platform inbox)</td></tr></table>
+<p>At <code>/conduct-reports</code>: every trust &amp; safety report a client has filed about your studio or one of your artists, with an open-count badge in the nav. Standard-severity reports (Poor service quality, Other) can be resolved here directly. High-severity reports (Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, Discrimination) are shown in full — including who filed them — but locked to platform-only resolution.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 200" role="img" aria-label="Conduct reports wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="21" font-size="10" font-weight="700">Conduct Reports</text>
+<rect x="16" y="46" width="700" height="60" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<rect x="28" y="58" width="80" height="14" rx="7" fill="#ef4444" fill-opacity="0.3"/><text x="34" y="68" font-size="7">High severity</text>
+<rect x="112" y="58" width="35" height="14" rx="7" fill="#3b82f6" fill-opacity="0.3"/><text x="118" y="68" font-size="7">Open</text>
+<text x="28" y="88" font-size="9" font-weight="700">Sexual misconduct or abuse</text>
+<text x="28" y="100" font-size="8" fill-opacity="0.5">About Maria Silva · 2 Aug 2026 · Reported by Jane Doe</text>
+<rect x="16" y="118" width="700" height="30" rx="6" fill="currentColor" fill-opacity="0.03"/><text x="28" y="137" font-size="8" fill-opacity="0.6">Escalated to platform review — only Pena e Artë staff can close this report.</text>
+</svg>
+</figure>
+<figcaption>Conduct reports — a High-severity card shown expanded, with its locked resolution notice</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Conduct Reports</span> from the nav.</li>
+<li>Click a card to expand it and read the full description and category.</li>
+<li>For a Standard-severity report, click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
+<li>A High-severity report shows escalation copy instead of status buttons — there is nothing to click; Pena e Artë platform staff resolve it.</li>
+</ol>
+<div class="callout callout-tip"><strong>Note:</strong> High-severity reports are locked to platform-only resolution deliberately — an owner resolving a serious report about their own artist would be a conflict of interest.</div>
+<div class="crosslinks">See also: <a href="#artist-conduct-reports">Artist: reports about me</a>, <a href="#issuer-conduct-reports">Issuer: conduct reports</a></div>
+</section>
+
+<section id="owner-messaging" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Messages</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Artist</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Owner</td><td>✓ (any artist or client at the studio)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<p>At <code>/messages</code>, and from a "Message [client name]" button on an appointment's detail page: real-time, two-party threads with any artist or client at your studio — the owner is the only role with no messaging restrictions. If the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Messages</span> from the nav, or click <span class="step-title">Message [client name]</span> on an appointment's detail page.</li>
+<li>Click <span class="step-title">New message</span> and pick any artist or client at your studio.</li>
+<li>Or click an existing thread in the conversation list.</li>
+<li>Type your message and press Enter, or click the send button — replies arrive live without reloading.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a></div>
 </section>
 
 <section id="issuer-dashboard" data-role="issuer">
@@ -2726,6 +3124,34 @@ ol.steps li { margin: 6px 0; }
 <li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#issuer-dashboard">Platform overview</a></div>
+</section>
+
+<section id="issuer-conduct-reports" data-role="issuer">
+<h2><span class="role-badge role-issuer">Issuer</span> Conduct reports</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (own studio only, via the owner Conduct Reports page)</td></tr><tr><td>Issuer</td><td>✓ (every studio)</td></tr></table>
+<p>At <code>/platform/conduct-reports</code>: the cross-tenant inbox for every trust &amp; safety report filed on the platform, filterable by status, category, or studio. Unlike the owner's own Conduct Reports page, status controls here are never locked — the issuer can resolve a report of any severity, including the High-severity categories (Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, Discrimination) an owner cannot touch.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 200" role="img" aria-label="Issuer conduct reports wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="21" font-size="10" font-weight="700">Conduct Reports (7)</text>
+<rect x="16" y="46" width="700" height="60" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<rect x="28" y="58" width="80" height="14" rx="7" fill="#ef4444" fill-opacity="0.3"/><text x="34" y="68" font-size="7">High severity</text>
+<rect x="112" y="58" width="35" height="14" rx="7" fill="#3b82f6" fill-opacity="0.3"/><text x="118" y="68" font-size="7">Open</text>
+<text x="28" y="88" font-size="9" font-weight="700">Sexual misconduct or abuse</text>
+<text x="28" y="100" font-size="8" fill-opacity="0.5">Ink Studio · About Maria Silva · 2 Aug 2026 · Reported by Jane Doe</text>
+<rect x="16" y="118" width="700" height="30" rx="6" fill="currentColor" fill-opacity="0.03"/><text x="28" y="137" font-size="8" fill-opacity="0.6">[ Open ] [ Reviewing ] [ Resolved ] [ Dismissed ] — always enabled for the issuer</text>
+</svg>
+</figure>
+<figcaption>Issuer conduct reports — filters above the list; status buttons stay enabled regardless of severity</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Conduct Reports</span> from the platform nav.</li>
+<li>Filter by status and/or category.</li>
+<li>Click a card to expand it and read the full description, including the reporter's identity.</li>
+<li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-conduct-reports">Owner: conduct reports</a>, <a href="#issuer-feedback">Feedback inbox</a></div>
 </section>
 
 <section id="issuer-help-insights" data-role="issuer">

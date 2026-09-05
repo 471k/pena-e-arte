@@ -2,6 +2,7 @@ using FluentAssertions;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Public;
@@ -17,8 +18,13 @@ public class GetPublicStudioHandlerTests
         Name = "Test Studio",
         Slug = slug,
         City = "Porto",
+        Latitude = 41.1579,
+        Longitude = -8.6291,
         IsActive = active,
         PhoneNumber = "+351 912 000 000",
+        // Legacy free-text column — kept in the DB per the zero-downtime migration
+        // convention, but no longer read by the public response (see SocialAccountLink
+        // and the Handle_ActiveStudio_ReturnsContactFieldsAndVerifiedSocialLinks test).
         InstagramHandle = "teststudio",
     };
 
@@ -40,6 +46,19 @@ public class GetPublicStudioHandlerTests
     {
         foreach (string url in urls)
             _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = artist.StudioId, ImageUrl = url });
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task AddCategorizedPortfolioImage(Artist artist, string url, string? category, DateTime createdAt)
+    {
+        _db.PortfolioImages.Add(new PortfolioImage
+        {
+            ArtistId = artist.Id,
+            StudioId = artist.StudioId,
+            ImageUrl = url,
+            Category = category,
+            CreatedAt = createdAt,
+        });
         await _db.SaveChangesAsync();
     }
 
@@ -65,6 +84,21 @@ public class GetPublicStudioHandlerTests
     }
 
     [Fact]
+    public async Task Handle_UnpublishedSoloStudio_ReturnsNull()
+    {
+        Studio studio = MakeStudio();
+        studio.IsSolo = true;
+        studio.IsPublished = false;
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_ActiveStudio_ReturnsStudioWithContactFields()
     {
         Studio studio = MakeStudio();
@@ -76,7 +110,46 @@ public class GetPublicStudioHandlerTests
 
         result.Should().NotBeNull();
         result!.PhoneNumber.Should().Be("+351 912 000 000");
-        result.InstagramHandle.Should().Be("teststudio");
+        result.Latitude.Should().Be(41.1579);
+        result.Longitude.Should().Be(-8.6291);
+    }
+
+    [Fact]
+    public async Task Handle_VerifiedSocialLink_ReturnedInSocialLinksNotLegacyField()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        _db.SocialAccountLinks.Add(new SocialAccountLink
+        {
+            StudioId = studio.Id,
+            SubjectType = SocialLinkSubjectType.Studio,
+            SubjectId = studio.Id,
+            Platform = SocialPlatform.Instagram,
+            Handle = "teststudio",
+            IsVerified = true,
+        });
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.SocialLinks.Should().ContainSingle(s =>
+            s.Platform == "Instagram" && s.Handle == "teststudio" && s.IsVerified);
+    }
+
+    [Fact]
+    public async Task Handle_NoSocialLinks_SocialLinksIsEmpty()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.SocialLinks.Should().BeEmpty();
     }
 
     [Fact]
@@ -254,6 +327,54 @@ public class GetPublicStudioHandlerTests
 
         result!.Artists.Should().ContainSingle(a => a.Slug == "active-artist");
         result.Artists.Should().NotContain(a => a.Slug == "deleted-artist");
+    }
+
+    [Fact]
+    public async Task Handle_GalleryImages_PrefersNonDesignOverDesignImages()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        Artist artist = MakeArtist(studio.Id, "artist-a");
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+
+        DateTime now = DateTime.UtcNow;
+        await AddCategorizedPortfolioImage(artist, "fresh-1", "fresh", now.AddMinutes(-1));
+        await AddCategorizedPortfolioImage(artist, "fresh-2", "fresh", now.AddMinutes(-2));
+        await AddCategorizedPortfolioImage(artist, "design-1", "design", now);
+        await AddCategorizedPortfolioImage(artist, "design-2", "design", now.AddMinutes(-3));
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.GalleryImages.Should().HaveCount(3);
+        result.GalleryImages.Should().Contain(["fresh-1", "fresh-2", "design-1"]);
+        result.GalleryImages.Should().NotContain("design-2");
+    }
+
+    [Fact]
+    public async Task Handle_GalleryImages_ArtistWithOnlyDesignImages_FallsBackToDesigns()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        Artist artist = MakeArtist(studio.Id, "artist-a");
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+
+        DateTime now = DateTime.UtcNow;
+        await AddCategorizedPortfolioImage(artist, "design-1", "design", now);
+        await AddCategorizedPortfolioImage(artist, "design-2", "design", now.AddMinutes(-1));
+        await AddCategorizedPortfolioImage(artist, "design-3", "design", now.AddMinutes(-2));
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.GalleryImages.Should().HaveCount(3);
+        result.GalleryImages.Should().Contain(["design-1", "design-2", "design-3"]);
     }
 }
 

@@ -12,7 +12,7 @@ public class GetStudioMapHandler(IAppDbContext db)
 {
     public async Task<List<StudioMapItemResponse>> Handle(GetStudioMapQuery query, CancellationToken ct) =>
         await db.Studios
-            .Where(s => s.IsActive)
+            .Where(s => s.IsActive && s.IsPublished)
             .Select(s => new StudioMapItemResponse(s.Id, s.Name, s.Slug, s.Latitude, s.Longitude, s.City))
             .ToListAsync(ct);
 }

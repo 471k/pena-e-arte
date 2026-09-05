@@ -10,7 +10,7 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { DepositCheckoutPage } from "@/features/payments/components/DepositCheckoutPage";
-import type { ClientSecretResponse } from "@/features/payments/payment.types";
+import type { ClientSecretResponse, PaymentCapabilitiesResponse } from "@/features/payments/payment.types";
 
 // ── Stripe mock ────────────────────────────────────────────────────────────────
 // Stripe Elements require a real browser environment; mock the whole module.
@@ -35,6 +35,8 @@ const SECRET_RESP: ClientSecretResponse = {
   clientSecret: "pi_test_secret_xyz",
 };
 
+const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true };
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -42,6 +44,9 @@ const server = setupServer(
     if (params.id === "pay-001") return HttpResponse.json(SECRET_RESP);
     return HttpResponse.json({ message: "Not found" }, { status: 404 });
   }),
+  http.get("http://localhost/api/v1/payments/capabilities", () =>
+    HttpResponse.json(CAPABILITIES_AVAILABLE),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -168,5 +173,18 @@ describe("DepositCheckoutPage", () => {
   it("success state works even when ?amount is also present", async () => {
     renderPage("pay-001", "?status=complete&amount=75.00+EUR");
     expect(await screen.findByText(/deposit authorised/i)).toBeInTheDocument();
+  });
+
+  // ── Capabilities guard ───────────────────────────────────────────────────────
+
+  it("shows an unavailable message instead of the Stripe form when card payments are unavailable", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments/capabilities", () =>
+        HttpResponse.json({ cardPaymentsAvailable: false }),
+      ),
+    );
+    renderPage("pay-001");
+    expect(await screen.findByText(/temporarily unavailable for this link/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("stripe-payment-element")).not.toBeInTheDocument();
   });
 });

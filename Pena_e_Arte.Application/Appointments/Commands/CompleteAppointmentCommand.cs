@@ -29,6 +29,10 @@ public class CompleteAppointmentHandler(
             throw new BusinessRuleViolationException(
                 $"Cannot complete an appointment with status {appointment.Status}.");
 
+        if (appointment.ArtistId is null)
+            throw new BusinessRuleViolationException(
+                "Assign an artist before completing this appointment.");
+
         appointment.Status = AppointmentStatus.Completed;
         appointment.UpdatedAt = DateTime.UtcNow;
 

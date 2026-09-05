@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-loki
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: pena-e-arte-loki
+  template:
+    metadata:
+      labels:
+        app: pena-e-arte-loki
+    spec:
+      containers:
+        - name: loki
+          image: grafana/loki:3.7.4
+          ports:
+            - containerPort: 3100
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki/local-config.yaml
+              subPath: loki-config.yml
+            - name: data
+              mountPath: /loki
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: pena-e-arte-loki-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: pena-e-arte-loki-data

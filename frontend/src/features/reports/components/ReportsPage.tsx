@@ -31,7 +31,7 @@ export function ReportsPage() {
 
         {isError && (
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <p className="text-sm text-destructive">Failed to load revenue report.</p>
+            <p className="text-sm text-destructive-text">Failed to load revenue report.</p>
             <button
               type="button"
               onClick={() => refetch()}

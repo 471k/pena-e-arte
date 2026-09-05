@@ -37,6 +37,14 @@ public interface IIdentityService
     Task<Guid?> GetUserIdByEmailAsync(string email, CancellationToken ct);
 
     /// <summary>
+    /// Returns the Identity roles held by the given user (e.g. "owner", "artist", "client",
+    /// "issuer"). Empty if no such user exists. This app's own flows only ever assign a user
+    /// one role, but Identity itself does not prevent more than one, so callers should not
+    /// assume a single-element result.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetUserRolesAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
     /// Returns the user's given-name Identity claim (set at registration when provided),
     /// or null if no account exists for the email or no such claim was ever set.
     /// </summary>
@@ -108,4 +116,16 @@ public interface IIdentityService
     /// </summary>
     Task<(bool Success, string[] Errors, bool TokenInvalid, bool EmailTaken)> ConfirmChangeEmailAsync(
         Guid userId, string newEmail, string token, CancellationToken ct);
+
+    /// <summary>
+    /// Removes <paramref name="oldRole"/> and adds <paramref name="newRole"/> for the given user —
+    /// for the one flow in this codebase where a user's role itself changes, not just their active
+    /// tenant (a solo artist's owner account becoming an artist account when they accept a
+    /// StudioJoinInvite; see AcceptStudioJoinInviteCommand). Idempotent with respect to each half:
+    /// a no-op if the user does not currently hold <paramref name="oldRole"/>/already holds
+    /// <paramref name="newRole"/>. Does not touch tenant_id claims or issued tokens — the caller
+    /// must still call EnsureTenantClaimAsync/RemoveTenantClaimAsync/IssueTokensForTenantAsync
+    /// separately, same as every other tenant-claim change in this codebase.
+    /// </summary>
+    Task SwapRoleAsync(Guid userId, string oldRole, string newRole, CancellationToken ct);
 }

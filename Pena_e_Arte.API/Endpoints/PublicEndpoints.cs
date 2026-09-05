@@ -2,13 +2,17 @@ using System.Security.Claims;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Appointments.Queries;
+using Pena_e_Arte.Application.ConductReports.Commands;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Public.Commands;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Application.Reviews.Commands;
 using Pena_e_Arte.Application.Traffic.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Contracts.Responses.Public;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 using StackExchange.Redis;
 
@@ -38,6 +42,14 @@ public static class PublicEndpoints
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-read");
         group.MapGet("/artists/{slug}/reviews/eligible-appointments", GetReviewableArtistAppointments)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-read");
+        group.MapPost("/artists/{slug}/reports", FileArtistConductReport)
+             .RequireAuthorization("ClientOnly").RequireRateLimiting("public-write");
+        group.MapPost("/studios/{slug}/reports", FileStudioConductReport)
+             .RequireAuthorization("ClientOnly").RequireRateLimiting("public-write");
+        group.MapGet("/artists/{slug}/reports/reportable-appointments", GetReportableArtistAppointments)
+             .RequireAuthorization("ClientOnly").RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/reports/reportable-appointments", GetReportableStudioAppointments)
+             .RequireAuthorization("ClientOnly").RequireRateLimiting("public-read");
         group.MapPost("/artists/{slug}/view", RecordArtistView)
              .AllowAnonymous().RequireRateLimiting("public-write");
         group.MapGet("/portfolio/feed", GetPortfolioFeed).AllowAnonymous().RequireRateLimiting("public-read");
@@ -48,6 +60,17 @@ public static class PublicEndpoints
              .AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/traffic/beacon", RecordTrafficBeacon)
              .AllowAnonymous().RequireRateLimiting("public-write");
+
+        group.MapPost("/studios/{slug}/book", CreateGuestAppointment)
+             .AllowAnonymous().RequireRateLimiting("public-booking");
+        group.MapGet("/studios/{slug}/booking/artists", GetPublicBookingArtists)
+             .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/booking/availability", CheckPublicSlotAvailability)
+             .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/booking/deposit-rule", GetPublicDepositRule)
+             .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapPost("/studios/{slug}/booking/presign", GetPresignedGuestUploadUrl)
+             .AllowAnonymous().RequireRateLimiting("public-booking");
     }
 
     private static async Task<IResult> GetSitemap(
@@ -192,6 +215,79 @@ public static class PublicEndpoints
         return Results.Ok(result);
     }
 
+    private static bool TryParseReportCategory(string raw, out ReportCategory category) =>
+        Enum.TryParse(raw, ignoreCase: true, out category) && Enum.IsDefined(category);
+
+    private static async Task<IResult> FileArtistConductReport(
+        string slug,
+        FileArtistConductReportRequest body,
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        if (!TryParseReportCategory(body.Category, out ReportCategory category))
+            return Results.BadRequest("Unrecognized category.");
+
+        Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        string reporterName = user.FindFirstValue(ClaimTypes.Name)
+                           ?? user.FindFirstValue(ClaimTypes.GivenName)
+                           ?? "Anonymous";
+
+        await mediator.Send(
+            new FileArtistConductReportCommand(
+                slug, body.AppointmentId, reporterId, reporterName, category, body.Reason,
+                body.AttachmentUrls),
+            ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> FileStudioConductReport(
+        string slug,
+        FileStudioConductReportRequest body,
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        if (!TryParseReportCategory(body.Category, out ReportCategory category))
+            return Results.BadRequest("Unrecognized category.");
+
+        Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        string reporterName = user.FindFirstValue(ClaimTypes.Name)
+                           ?? user.FindFirstValue(ClaimTypes.GivenName)
+                           ?? "Anonymous";
+
+        await mediator.Send(
+            new FileStudioConductReportCommand(
+                slug, body.AppointmentId, reporterId, reporterName, category, body.Reason,
+                body.AttachmentUrls),
+            ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetReportableArtistAppointments(
+        string slug,
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        List<ReportableAppointmentResponse> result =
+            await mediator.Send(new GetReportableArtistAppointmentsQuery(slug, reporterId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetReportableStudioAppointments(
+        string slug,
+        ClaimsPrincipal user,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        Guid reporterId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        List<ReportableAppointmentResponse> result =
+            await mediator.Send(new GetReportableStudioAppointmentsQuery(slug, reporterId), ct);
+        return Results.Ok(result);
+    }
+
     private static async Task<IResult> RecordArtistView(
         string slug,
         IAppDbContext db,
@@ -229,13 +325,14 @@ public static class PublicEndpoints
         int page = 1,
         int pageSize = 24,
         string? style = null,
+        string? category = null,
         string? search = null)
     {
         if (pageSize is < 1 or > 100) pageSize = 24;
         if (!string.IsNullOrWhiteSpace(search) && search.Length > 100) search = search[..100];
 
         List<PortfolioImageResponse> result = await mediator.Send(
-            new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize, style, search), ct);
+            new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize, style, category, search), ct);
         return Results.Ok(result);
     }
 
@@ -389,6 +486,63 @@ public static class PublicEndpoints
     {
         byte[] bytes = System.Text.Encoding.UTF8.GetBytes(ip.ToString() + (pepper ?? ""));
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static async Task<IResult> CreateGuestAppointment(
+        string slug,
+        CreateGuestAppointmentRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        // 200, not 201 — the ack is deliberately identical whether a real appointment was
+        // created or the email collided with an existing account (enumeration-resistance,
+        // 2026-09-01); a Location header pointing at a real-or-not resource would itself leak
+        // which case occurred.
+        GuestBookingAckResponse result = await mediator.Send(new CreateGuestAppointmentCommand(slug, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetPublicBookingArtists(
+        string slug,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        IReadOnlyList<PublicBookingArtistResponse> result =
+            await mediator.Send(new GetPublicBookingArtistsQuery(slug), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CheckPublicSlotAvailability(
+        string slug,
+        Guid? artistId,
+        DateTime date,
+        int durationMinutes,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        SlotAvailabilityResult result = await mediator.Send(
+            new CheckPublicSlotAvailabilityQuery(slug, artistId, date, durationMinutes), ct);
+        return Results.Ok(new SlotAvailabilityResponse(result.Available, result.Reason));
+    }
+
+    private static async Task<IResult> GetPublicDepositRule(
+        string slug,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        PublicDepositRuleResponse? result = await mediator.Send(new GetPublicDepositRuleQuery(slug), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetPresignedGuestUploadUrl(
+        string slug,
+        PresignGuestUploadRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        PresignUploadResponse result =
+            await mediator.Send(new GetPresignedGuestUploadUrlQuery(slug, request), ct);
+        return Results.Ok(result);
     }
 }
 

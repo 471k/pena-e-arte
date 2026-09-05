@@ -4,7 +4,7 @@ namespace Pena_e_Arte.Domain.Entities;
 
 public class Appointment : TenantEntity
 {
-    public Guid ArtistId { get; set; }
+    public Guid? ArtistId { get; set; }
     public Guid ClientId { get; set; }
     public DateTime Date { get; set; }
     public DateTime EndDate { get; set; }
@@ -20,10 +20,14 @@ public class Appointment : TenantEntity
     public string? ReminderJobId48h { get; set; }
     public string? ReminderJobId24h { get; set; }
 
-    public Artist Artist { get; set; } = null!;
+    public Artist? Artist { get; set; }
     public Client Client { get; set; } = null!;
 
     // Reference images the client attached when requesting the appointment.
     // Empty (not null) when not eagerly loaded via .Include(a => a.Attachments).
     public ICollection<AppointmentAttachment> Attachments { get; set; } = new List<AppointmentAttachment>();
+
+    // Booking-content intake (tattoo description, desired placement, referral source).
+    // Null for appointments created before this feature; every new booking has one.
+    public BookingIntake? Intake { get; set; }
 }

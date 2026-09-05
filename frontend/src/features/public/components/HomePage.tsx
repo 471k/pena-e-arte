@@ -22,7 +22,7 @@ export function HomePage() {
         </Link>
         <Link
           to="/register"
-          className="rounded-md border-2 border-violet-500 bg-violet-500/5 px-4 py-2 text-sm font-medium text-violet-400 transition-colors hover:bg-violet-500/15 hover:text-violet-300"
+          className="rounded-md border-2 border-violet-500 bg-violet-500/5 px-4 py-2 text-sm font-medium text-violet-700 dark:text-violet-400 transition-colors hover:bg-violet-500/15 hover:text-violet-800 dark:hover:text-violet-300"
         >
           Register your studio
         </Link>

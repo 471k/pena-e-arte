@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# monitoring Namespace is declared once in k8s/base/namespace.yaml — observability/namespace.yaml
+# is a doc-only placeholder (not a real resource) and is intentionally not listed below.
+resources:
+  - prometheus-configmap.yaml
+  - prometheus-deployment.yaml
+  - prometheus-service.yaml
+  - prometheus-pvc.yaml
+  - loki-configmap.yaml
+  - loki-deployment.yaml
+  - loki-service.yaml
+  - loki-pvc.yaml
+  - tempo-configmap.yaml
+  - tempo-deployment.yaml
+  - tempo-service.yaml
+  - tempo-pvc.yaml
+  - alloy-configmap.yaml
+  - alloy-daemonset.yaml
+  - grafana-configmap.yaml
+  - grafana-alerting-configmap.yaml
+  - grafana-deployment.yaml
+  - grafana-service.yaml
+  - grafana-pvc.yaml

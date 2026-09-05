@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pena-e-arte
+  namespace: pena-e-arte
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod-dns01
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: ["app.tattooos.co"] # confirmed against the real Cloudflare DNS record, Phase 0 step 4
+      secretName: pena-e-arte-tls
+  rules:
+    - host: app.tattooos.co
+      http:
+        paths:
+          # frontend nginx is already a same-origin reverse proxy for /api/ and /hubs/
+          # (frontend/nginx.conf.template) — no second Ingress host needed.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pena-e-arte-frontend
+                port: { number: 8080 }

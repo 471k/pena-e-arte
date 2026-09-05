@@ -1,8 +1,10 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Social;
 using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Application.Public.Queries;
 
@@ -41,6 +43,17 @@ public class GetPublicArtistHandler(IAppDbContext db)
         bool isOwnProfile = query.CurrentUserId.HasValue
                          && artist.UserId == query.CurrentUserId;
 
+        // Approved: public portfolio query — same class as the other reads in this handler.
+        List<SocialAccountLink> artistSocialLinks = await db.SocialAccountLinks
+            .Where(s => s.SubjectType == SocialLinkSubjectType.Artist && s.SubjectId == artist.Id)
+            .OrderBy(s => s.Platform)
+            .ToListAsync(ct);
+
+        IReadOnlyList<PublicSocialLinkResponse> socialLinks = artistSocialLinks
+            .Select(s => new PublicSocialLinkResponse(
+                s.Platform.ToString(), s.Handle, s.IsVerified, SocialProfileUrlBuilder.Build(s.Platform, s.Handle)))
+            .ToList();
+
         return new PublicArtistResponse(
             artist.Id,
             $"{artist.FirstName} {artist.LastName}",
@@ -49,7 +62,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
             artist.ProfileImageUrl,
             artist.Portfolio
                 .OrderByDescending(p => p.CreatedAt)
-                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl, p.Style))
+                .Select(p => new ArtistPortfolioImageResponse(p.Id, p.ImageUrl, p.Style, p.Category))
                 .ToList(),
             artist.Specializations,
             artist.HourlyRate,
@@ -58,6 +71,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
             studio.Name,
             studio.Slug,
             ShowBookingCta: true,
-            isOwnProfile);
+            isOwnProfile,
+            socialLinks);
     }
 }

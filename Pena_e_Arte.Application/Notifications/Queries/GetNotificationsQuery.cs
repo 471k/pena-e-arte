@@ -67,7 +67,7 @@ public class GetNotificationsHandler(IAppDbContext db, ICurrentUser currentUser)
         Dictionary<Guid, string> names = await ResolveRecipientNamesAsync(logs, ct);
 
         return logs
-            .Select(n => Map(n, names.GetValueOrDefault(n.RecipientId)))
+            .Select(n => Map(n, n.RecipientId.HasValue ? names.GetValueOrDefault(n.RecipientId.Value) : null))
             .ToList();
     }
 
@@ -78,20 +78,20 @@ public class GetNotificationsHandler(IAppDbContext db, ICurrentUser currentUser)
         List<NotificationLog> logs, CancellationToken ct)
     {
         List<Guid> clientIds = logs
-            .Where(n => n.RecipientType == NotificationRecipientType.Client)
-            .Select(n => n.RecipientId)
+            .Where(n => n.RecipientType == NotificationRecipientType.Client && n.RecipientId.HasValue)
+            .Select(n => n.RecipientId!.Value)
             .Distinct()
             .ToList();
 
         List<Guid> studioIds = logs
-            .Where(n => n.RecipientType == NotificationRecipientType.Studio)
-            .Select(n => n.RecipientId)
+            .Where(n => n.RecipientType == NotificationRecipientType.Studio && n.RecipientId.HasValue)
+            .Select(n => n.RecipientId!.Value)
             .Distinct()
             .ToList();
 
         List<Guid> artistIds = logs
-            .Where(n => n.RecipientType == NotificationRecipientType.Artist)
-            .Select(n => n.RecipientId)
+            .Where(n => n.RecipientType == NotificationRecipientType.Artist && n.RecipientId.HasValue)
+            .Select(n => n.RecipientId!.Value)
             .Distinct()
             .ToList();
 
