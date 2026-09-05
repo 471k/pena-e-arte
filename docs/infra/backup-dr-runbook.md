@@ -19,14 +19,22 @@ change in Settings — the number comes from the tier itself).
 
 ## What does NOT back up automatically today
 
-- **Cloudflare R2 (portfolio images, consent-form PDFs, other uploads).** R2 object versioning
-  status on the production bucket: **unconfirmed as of 2026-09-05** — check Cloudflare dashboard
-  → R2 → the production bucket → Settings → "Object versioning." If disabled, recommendation:
-  **enable versioning** rather than build a scheduled export job. The bucket's likely size
-  (portfolio images + consent PDFs, not video or bulk data) makes versioning's storage overhead
-  minimal, and it protects against the actual realistic failure mode here (accidental
-  overwrite/delete of a specific object) far more directly than a periodic full-bucket export
-  would, with far less to build and maintain.
+- **Cloudflare R2 (portfolio images, consent-form PDFs, other uploads).** **Corrected 2026-09-05
+  — the original operational-hardening prompt's premise here was wrong.** It assumed R2 supports
+  S3-style object versioning as a toggle; checked directly against the real `pena-e-arte-prod`
+  bucket's Settings page (Cloudflare dashboard → R2 → bucket → Settings) and no such feature
+  exists there at all — the available settings are Custom Domains, CORS Policy, Object Lifecycle
+  Rules, **Bucket Lock Rules**, Event Notifications, Data Access Logs, On Demand Migration,
+  Local Uploads, and Default Storage Class. R2 does not offer per-object version history today.
+  The closest native feature, **Bucket Lock Rules** (currently none configured on this bucket),
+  is a retention/immutability lock (prevents overwrite/delete for a fixed period) rather than
+  version history — it protects against *deletion* but doesn't let you recover a prior version
+  of an object that was legitimately overwritten. **Recommendation: a scheduled export job**
+  (e.g. a Hangfire `CronJob`/recurring job, matching the existing `TrafficRollupJob` pattern,
+  copying new/changed objects to a second bucket or into cold storage on a schedule) is the
+  realistic option here, not "flip on versioning" as the original prompt assumed. Not
+  implemented in this pass — this is a real gap, named rather than silently left unaddressed,
+  and left as a follow-up given it's genuine design/build work, not a checkbox.
 - **Vault's Raft/boltdb state** (`vault-0`'s PVC, `pena-e-arte` namespace). This is real,
   unbacked-up data as of 2026-09-05 — `vault-0` has already been through one real cold boot on
   this cluster (initially OOMKilled at a 256Mi limit, confirmed via `kubectl describe`, then
