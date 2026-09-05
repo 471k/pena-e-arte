@@ -136,8 +136,10 @@ describe("GuestBookAppointmentForm", () => {
     expect(mockCreateGuestAppointment).not.toHaveBeenCalled();
     // Same sandbox CPU-contention timeout class as the two tests below (src/test/setup.ts's
     // asyncUtilTimeout comment) — this one's identity+artist-Select+datetime interaction
-    // sequence is heavy enough to occasionally cross the 10s default under load.
-  }, 20000);
+    // sequence is heavy enough to occasionally cross the 10s default under load. Bumped
+    // 20000 -> 40000 (2026-09-05): 20s itself proved insufficient on a slower/more-loaded
+    // machine — not a hang, the same sequence just genuinely takes longer there.
+  }, 40000);
 
   it("submits successfully once every field and both required images are filled", async () => {
     // The component's result branching checks `"data" in result` on the awaited mutation call
@@ -168,7 +170,7 @@ describe("GuestBookAppointmentForm", () => {
     // field + an artist Select + two real image uploads + submit), and this sandbox's known
     // CPU-contention flakiness (see src/test/setup.ts's asyncUtilTimeout comment) pushes it
     // past the 10s default under load even though nothing is actually broken.
-  }, 20000);
+  }, 40000);
 
   // Enumeration-resistance (2026-09-01, /code-review finding): the backend now returns the
   // exact same ack whether a new booking was created or the email collided with an existing
@@ -191,5 +193,5 @@ describe("GuestBookAppointmentForm", () => {
 
     expect(await screen.findByText("Check your email")).toBeInTheDocument();
     expect(screen.queryByText(/already exists/i)).not.toBeInTheDocument();
-  }, 20000);
+  }, 40000);
 });

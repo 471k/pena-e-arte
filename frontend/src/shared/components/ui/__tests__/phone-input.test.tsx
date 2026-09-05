@@ -69,6 +69,11 @@ describe("PhoneInput", () => {
     expect(isValidPhoneNumber(lastValue)).toBe(false);
   });
 
+  // Typing 10 digits then opening and searching a long country Select list is heavy
+  // enough that this sandbox's known CPU-contention flakiness (see src/test/setup.ts's
+  // asyncUtilTimeout comment) can push it past the 10s default under load even though
+  // nothing is actually broken; confirmed by re-running in isolation with a raised
+  // timeout and watching it pass, 2026-09-05.
   it("re-emits onChange with the new country's calling code applied to already-typed digits", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -82,7 +87,7 @@ describe("PhoneInput", () => {
 
     const lastValue = onChange.mock.calls.at(-1)?.[0] as string;
     expect(lastValue.startsWith("+44")).toBe(true);
-  });
+  }, 20000);
 
   it("puts aria-invalid and aria-describedby on the national input, not the select", () => {
     render(
