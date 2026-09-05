@@ -793,6 +793,33 @@ attribute a visit to a specific studio, which is the entire point of this featur
   only by the separate `geoipupdate` refresh job. `GeoIpService` degrades to always-`null`
   gracefully (never throws) when `GeoIp:DatabasePath` is unset or unreadable, so the feature
   ships and functions (minus geography) even before the GeoIP file is provisioned.
+- **K8s `.mmdb` population — design, not yet implemented (2026-09-05)**: `docker-compose.yml`
+  mounts the GeoLite2-City/ASN `.mmdb` files as local bind volumes; no K8s equivalent exists
+  yet, so `k8s/base/api-configmap.yaml` deliberately leaves `GeoIp:DatabasePath`/
+  `GeoIp:AsnDatabasePath` unset in every cluster environment and the feature runs geography-
+  degraded (verified above — `GeoIpService` never throws on this). Two designs were
+  considered for closing this gap:
+  1. **Init-container on pod start** — a small init-container image (a plain `curl`/`sh`
+     step is enough, no custom build needed) downloads the current `.mmdb` files from
+     MaxMind's license-key-authenticated URL into an `emptyDir` shared with the main API
+     container, gated by a `GeoIp:AsnDatabasePath`/`DatabasePath` pointing at that mount.
+  2. **Recurring CronJob into a persistent volume** — a K8s `CronJob` (daily/weekly, matching
+     MaxMind's own GeoLite2 update cadence) runs `geoipupdate` into a small PVC (or an R2-
+     backed mount, consistent with how this project already treats R2 as its object store)
+     that both API replicas mount read-only.
+  **Recommendation: option 2 (CronJob + PVC).** An init-container re-downloads on *every* pod
+  restart/rollout — wasteful against MaxMind's rate limits and adds latency to every rollout
+  and autoscale event for a file that only actually changes weekly. A CronJob decouples the
+  refresh cadence from the pod lifecycle, matches the existing `TrafficRollupJob`-style
+  Hangfire/CronJob pattern this project already uses for scheduled maintenance, and needs no
+  new per-pod-start dependency. The `GeoIp:AsnDatabasePath`/`DatabasePath` MaxMind license key
+  goes in the same K8s Secret family as `pena-e-arte-api-secrets` (never in `api-configmap.yaml`
+  as plaintext, consistent with the Non-sensitive-config comment already in that file).
+  **Why the app doesn't need this to ship**: the degrade path above isn't a stopgap bug, it's
+  the designed behavior — Live Traffic Analytics ships and every other field on `TrafficEvent`
+  populates correctly with `GeoIp:*` unset; only geography/ASN columns stay `null` until this
+  is implemented, which is why this has stayed P3/low-priority since the original feature
+  shipped.
 - **UA parsing**: `UAParser.Core` (v4.0.5) — same `ua-parser` ruleset family Umami/Plausible/
   PostHog use. Note for future readers: this package's actual API surface differs from the
   classic `ua-parser-dotnet` shape assumed by early drafts of this feature — `ClientInfo`

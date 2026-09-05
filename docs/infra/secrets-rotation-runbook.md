@@ -2,6 +2,13 @@
 
 **Owner:** Phi · **Related:** `docs/infra/ADR-0002-secrets-management.md`, EPIC-0001 Phase 5
 
+**First real drill: proposed 2026-09-19.** This runbook has existed but never been exercised
+end-to-end. Proposed first drill: rotate a low-stakes secret (Resend API key or the Hangfire
+dashboard credentials — either has an easy, safe rollback and no user-facing blast radius if
+something goes wrong) live, with Phi present, following the General procedure below exactly as
+written to see whether it actually holds up in practice. Not scheduled as an automated reminder
+per Phi's 2026-09-05 decision — noted here as the next real step instead.
+
 Rotating a secret = issue a new value at the provider, update it wherever the app reads it,
 redeploy/restart, then revoke the old value. **This is a founder action** — an automated session
 cannot rotate live values (no access to the real `.env` or the external accounts). Do these in
@@ -40,7 +47,18 @@ protection all guard against it, but do not rely on them as your only line).
 | Instagram token-encryption key | `INSTAGRAM_TOKEN_ENCRYPTION_KEY` | Self-generated | Rotating this re-keys stored Instagram tokens — plan a re-encryption/reconnect step; do not rotate casually. |
 | Vault token | `VAULT_TOKEN` (prod) | Vault (revoke + issue new AppRole/token) | Local dev-mode uses the root dev token (`VAULT_DEV_ROOT_TOKEN`), never used in production. |
 | Hangfire dashboard creds | `HANGFIRE_DASHBOARD_USERNAME`, `HANGFIRE_DASHBOARD_PASSWORD` | Self-generated | Basic-auth for `/hangfire`; rotate like any password. |
-| Grafana admin password | `GRAFANA_ADMIN_PASSWORD` | Self-generated | Local observability stack only. |
+| Grafana admin password | `PROD_GRAFANA_ADMIN_USER`, `PROD_GRAFANA_ADMIN_PASSWORD` | Self-generated | **Corrected 2026-09-05** — this row previously said `GRAFANA_ADMIN_PASSWORD` / "local observability stack only," which went stale once the production `monitoring` namespace shipped (Phase 7); these are the real production Grafana admin credentials. |
+| Grafana alert-email SMTP password | reuses `RESEND_API_KEY` | Resend Dashboard → API Keys | **Added 2026-09-05** — Grafana's alerting email contact point authenticates via Resend's SMTP relay using the same key as the app's transactional email (materialized into a second K8s Secret, `pena-e-arte-grafana-smtp`, since Secrets don't cross namespaces). Rotating `RESEND_API_KEY` per the row below also rotates this — no separate step needed, but redeploy Grafana (`kubectl rollout restart deployment/pena-e-arte-grafana -n monitoring`) too, since it doesn't watch the Secret for changes. |
+| Production DB connection string | `PROD_DB_CONNECTION_STRING` | DigitalOcean → `pena-e-arte-prod-db` → reset user password, or rotate via Users & Databases | Contains the DB password inline (MySQL connection-string format) — treat rotation of this the same as a password rotation. |
+| Staging DB connection string | `STAGING_DB_CONNECTION_STRING` | Same DigitalOcean cluster, staging's own user/database | Same handling as the production connection string above. |
+| Cloudflare API token (DNS-01 solver) | `CLOUDFLARE_API_TOKEN` | Cloudflare Dashboard → API Tokens | Used by `cert-manager`'s `letsencrypt-prod-dns01` ClusterIssuer, lives in the `cert-manager` namespace (not `pena-e-arte`) — see `k8s/base/cluster-issuer.yaml`. Rotating does not require reissuing existing certs. |
+| Staging R2 access key | `STAGING_R2_ACCESS_KEY_ID`, `STAGING_R2_SECRET_ACCESS_KEY` | Cloudflare Dashboard → R2 → Manage API tokens | Same handling as the production R2 row above, separate bucket/token. |
+| Staging Stripe keys | `STAGING_STRIPE_SECRET_KEY`, `STAGING_STRIPE_PUBLISHABLE_KEY`, `STAGING_STRIPE_WEBHOOK_SECRET_BILLING` | Stripe Dashboard (test-mode keys) | Same handling as the production Stripe rows above. |
+| Social-verification credentials | `FACEBOOK_APP_ID`/`FACEBOOK_APP_SECRET`/`FACEBOOK_REDIRECT_URI`, `X_CLIENT_ID`/`X_CLIENT_SECRET`/`X_BEARER_TOKEN`/`X_REDIRECT_URI`, `YOUTUBE_CLIENT_ID`/`YOUTUBE_CLIENT_SECRET`/`YOUTUBE_API_KEY`/`YOUTUBE_REDIRECT_URI`, `TIKTOK_CLIENT_KEY`/`TIKTOK_CLIENT_SECRET`/`TIKTOK_REDIRECT_URI` | Each platform's own developer console | All config-gated — the app degrades gracefully if any of these are unset. Not previously listed in this runbook at all (drift found 2026-09-05). |
+| Social OAuth state signing key | `SOCIAL_STATE_SIGNING_KEY` | Self-generated | Signs the OAuth `state` parameter across all social-connect flows above; rotating invalidates any in-flight OAuth redirect (users just retry). Not previously listed (drift found 2026-09-05). |
+| Google / Apple sign-in client IDs | `VITE_GOOGLE_CLIENT_ID`, `VITE_APPLE_CLIENT_ID` | Google Cloud Console / Apple Developer | Public client identifiers, not secret, but listed here since they're part of the same `pena-e-arte-api-secrets` bundle and breakage here looks identical to a secret-rotation incident. Not previously listed (drift found 2026-09-05). |
+| Forwarded-headers trusted proxy CIDR | `FORWARDED_HEADERS_TRUSTED_PROXY_CIDR` | Self-known value (`10.42.0.0/16`, the K3s pod CIDR) | Not a secret, but a wrong value here silently breaks client-IP resolution (GeoIP, rate limiting) across the whole app — listed for that reason. Not previously listed (drift found 2026-09-05). |
+| Vault address | `VAULT_ADDR` | Self-known value (in-cluster Service DNS) | Not a secret, kept alongside `VAULT_TOKEN` above for consistency — same reasoning as the CIDR row. Not previously listed (drift found 2026-09-05). |
 
 ## After any rotation
 

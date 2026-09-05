@@ -3,17 +3,57 @@
 > Feed this file directly to Claude Code (main **Pena e Artë - Engineering** project, full repo
 > write access) as the task prompt. **Mixed mode**: §1 (ACME email) and §2 (GeoIP path) are
 > fully autonomous, no dependency on anything else. §3 (alerting), §4 (status page), §5 (uptime
-> monitoring) all need a live Grafana instance and a reachable public URL — **gated on
-> `docs/claude/overnight-prompt-production-deploy-first-2026-09-03.md` having landed**; check
-> `kubectl get pods -n monitoring` before starting those sections and stop if Grafana isn't
-> `Running`. §6 (backup/DR) and §7 (secrets rotation drill) are partly BLOCKING-MANUAL (real
-> external accounts, a real restore test) — do what's autonomous, hand off the rest explicitly.
+> monitoring) all need a live Grafana instance and a reachable public URL — **gated on production
+> actually being deployed**, which per the 2026-09-04 re-verification below now looks very likely
+> true (read that addendum before assuming otherwise); check `kubectl get pods -n monitoring`
+> yourself as this prompt's first action either way, and stop before §3–§5 only if that command's
+> real output shows Grafana isn't `Running`. §6 (backup/DR) and §7 (secrets rotation drill) are
+> partly BLOCKING-MANUAL (real external accounts, a real restore test) — do what's autonomous,
+> hand off the rest explicitly.
 
-**Date logged:** 2026-09-03
+**Date logged:** 2026-09-03 · **Re-verified against the live repo:** 2026-09-04
 **Requested by:** Phi
 **Origin:** Engineering-consultation gap audit. None of these seven items are oversights — the
 K3s and CD prompts both explicitly named alerting, a status page, and DB backup/restore as
 out-of-scope follow-ups. This prompt is that follow-up.
+
+**Addendum — 2026-09-04 re-verification (read before starting, supersedes the gating assumption
+in the callout above):** the codebase moved very fast in the day since this prompt was first
+written — re-reading `git log` and `docs/claude/architecture.md`'s Decisions Log surfaced a real
+sequence of events, not just a plan:
+
+1. The CD pipeline could not reach the cluster at all (`dial tcp ...:6443: i/o timeout` — GitHub-
+   hosted runner IPs aren't on the Hetzner firewall's allowlist). Fixed by moving `deploy`/
+   `deploy-staging` to a self-hosted runner on the box itself (`docs/infra/
+   self-hosted-runner-setup.md`) — that setup needed Phi's own interactive SSH session
+   (passphrase-protected key, never recorded anywhere a session could read it), so it was **not**
+   something a Claude Code session could do; the commit history shows it as done regardless
+   (`cd.yml`'s `deploy`/`deploy-staging` jobs target `[self-hosted, pena-e-arte-prod]`).
+2. With CD actually able to reach the cluster, **a real first production deploy ran**, and then a
+   real first staging deploy — both surfaced, and got, genuine same-day fixes: Vault OOMKilled on
+   real cold boot (256Mi → 384Mi/192Mi), `cd.yml` applying the migration Job before the ConfigMap
+   it depends on existed, a `cloudflare-api-token` secret created in the wrong namespace for
+   `cert-manager`'s `ClusterIssuer` to find (blocking TLS issuance silently), a Hangfire schema
+   race across 2 API replicas crash-looping every pod, the Free/Starter/Growth/Premium/Pro plan
+   rows never having been seeded outside local dev (500ing every studio/solo-artist signup in
+   every real environment), the migration Job never exiting once startup started succeeding
+   cleanly (hanging CD until timeout), redeploys silently serving stale secrets/images, and —
+   most relevant to §3 below — Grafana Alloy's log-shipping config using `#` comments in a syntax
+   that only supports `//`, which crash-looped the entire log collector and meant **100% of log
+   shipping had silently produced zero lines, ever**, until fixed and verified live (a real
+   `Loki` query after the fix returned real log lines for the first time).
+3. **Net effect: this is no longer "gated on a future deploy" the way it reads above — a real
+   production deploy, and the `monitoring` namespace's Grafana/Prometheus/Loki/Alloy stack,
+   very likely exist and are healthy as of the most recent infra commit (`47637d4`).** This
+   consultation session has no direct `kubectl` access to confirm that firsthand, so **do not
+   take this addendum's word for current pod status** — run `kubectl get pods -n pena-e-arte` and
+   `kubectl get pods -n monitoring` yourself as the very first thing in this prompt, exactly as
+   the callout above already says, and let the real output decide whether §3–§5 proceed. This
+   addendum's only job is to make sure you don't waste time re-diagnosing the firewall/CD-
+   connectivity problem (solved), re-installing cert-manager (already done, pinned `v1.21.1`), or
+   treating the `monitoring` namespace's mere existence as ambiguous — by the weight of evidence
+   above it's most likely populated and running, not the "created but inert" state an even
+   earlier snapshot of this repo was in.
 
 **Checkpoint before starting:**
 ```bash
@@ -37,7 +77,12 @@ If Phi confirms an inbox: update the `email` field, note in the same comment blo
 this does not require reissuing existing certs (already documented, keep that line), and commit
 with a message explaining the swap. If no such inbox exists yet, leave this as-is and say so in
 the final summary — this is explicitly low-priority per the source audit ("doesn't block
-issuance, purely a correctness fix").
+issuance, purely a correctness fix"). (Context confirmed via the 2026-09-04 re-verification: a
+real, separate ACME-issuance blocker — the `cloudflare-api-token` secret being created in the
+wrong namespace for the `ClusterIssuer` to find it — was hit and fixed on the actual first
+production deploy, so `letsencrypt-prod-dns01` issuing a real cert is no longer purely
+theoretical by the time this section runs; that fix is unrelated to the email address itself and
+doesn't change what to do here.)
 
 ---
 
@@ -66,17 +111,30 @@ PVC or init-container population strategy — real design work, not a quick fix)
 ## 3. Alerting / on-call routing (gated on production being live)
 
 ```bash
-kubectl get pods -n monitoring     # Grafana must be Running before proceeding
+kubectl get pods -n monitoring     # Grafana must be Running before proceeding — the namespace
+                                    # existing is not enough, see the 2026-09-04 addendum above
 ```
-Nothing pages anyone today — confirmed no `AlertRule`/Alertmanager config anywhere in `k8s/`.
-Build:
-1. Grafana Alerting rules (provisioned via `k8s/observability/grafana-configmap.yaml`'s
-   provisioning mechanism — check whether it already supports a `provisioning/alerting/`
-   directory pattern, matching however its existing dashboards/datasources are provisioned,
-   before inventing a new mechanism) for at minimum: API pod not `Ready` for >5 minutes, error
-   rate spike (5xx rate from the existing Loki/Tempo instrumentation), and Hangfire job failure
-   rate. Pick concrete thresholds and say why in a comment — don't leave them as arbitrary
-   defaults with no rationale.
+Nothing pages anyone today — confirmed no `AlertRule`/Alertmanager config anywhere in `k8s/`. As
+of the 2026-09-04 re-verification, log shipping is also newly real: a same-day fix
+("Alloy never actually shipped a single log line to Loki") means Loki-based log alert rules are
+now viable, not just Prometheus-metric ones — worth using for the Hangfire-failure rule below
+rather than trying to derive it from a metric that may not exist. Build:
+1. Grafana Alerting rules. `k8s/observability/grafana-configmap.yaml` + `grafana-deployment.yaml`
+   already establish the provisioning pattern this should extend, not reinvent: two ConfigMaps
+   (`pena-e-arte-grafana-dashboards-provider`, `pena-e-arte-grafana-datasources`) are each mounted
+   as a single file under `/etc/grafana/provisioning/{dashboards,datasources}/...` via
+   `volumeMounts` on the Grafana container. Add a third ConfigMap
+   (`pena-e-arte-grafana-alerting`) holding a Grafana Alerting provisioning file (`alerting.yaml`
+   — `apiVersion: 1`, `groups:`/`contactPoints:`/`policies:` per Grafana's own provisioning
+   schema), mounted the same way at `/etc/grafana/provisioning/alerting/alerting.yaml`, and add
+   the matching `volumeMounts`/`volumes` entries to `grafana-deployment.yaml` alongside the
+   existing two. At minimum, alert on: API pod not `Ready` for >5 minutes (Prometheus, from the
+   existing `up`/readiness metrics), 5xx error-rate spike (Prometheus, from the RED dashboard's
+   already-confirmed `http_server_request_duration_seconds_count` series filtered to
+   `http_response_status_code=~"5.."`), and a Hangfire job failure rate (Loki, now that log
+   shipping actually works — query for the structured failure log line Hangfire/Serilog already
+   emits, don't invent a new metric for this). Pick concrete thresholds and say why in a comment
+   — don't leave them as arbitrary defaults with no rationale.
 2. A real receiver. Ask Phi (via the final summary, not by blocking mid-session) which channel
    to use if none is obvious from existing project context — email via Resend (already
    configured for app notifications) is the lowest-setup option and should be the default
@@ -110,13 +168,14 @@ to the more elaborate option.
 
 Nothing outside the cluster watches for an outage today. Set up a free/cheap external check
 (UptimeRobot-class service or equivalent — pick one, state which and why) pointed at
-`https://app.tattooos.co/health/live` (confirm this exact path is the right one — check
-`Pena_e_Arte.API`'s health-check endpoint registration for the actual liveness route rather than
-assuming `/health/live` is correct verbatim) at a 1–5 minute interval, alerting to the same
-channel as §3's receiver. This likely needs a real account (BLOCKING-MANUAL if it requires
-Phi's own email/payment details) — if so, prepare everything that doesn't need the account
-(the health-check endpoint confirmed reachable, the monitoring config as a documented step) and
-hand off the account-creation step explicitly.
+`https://app.tattooos.co/health/live` — **confirmed correct** against `Pena_e_Arte.API/Program.cs`
+(`app.MapHealthChecks("/health/live", ...)`, alongside the plain `/health` and `/health/ready`
+this file also registers; `/health/live` is the right one for an external uptime check since it's
+the liveness-only probe, not the readiness one that can legitimately flip during a rolling
+deploy) — at a 1–5 minute interval, alerting to the same channel as §3's receiver. This likely
+needs a real account (BLOCKING-MANUAL if it requires Phi's own email/payment details) — if so,
+prepare everything that doesn't need the account (the health-check endpoint confirmed reachable,
+the monitoring config as a documented step) and hand off the account-creation step explicitly.
 
 ---
 
@@ -144,8 +203,11 @@ No `docs/infra/` backup/DR doc exists today. Three parts:
    `cd.yml`'s deploy against a fresh box, restoring DNS, and the DB/R2 recovery steps from
    above. Cross-reference `docs/infra/vault-self-hosted-runbook.md` for the specific added
    wrinkle that Vault's Raft data lives only on that one box's PVC and has no backup of its own
-   today — name this as a known gap in the runbook rather than silently omitting it, since it's
-   real and currently true (confirmed: Vault only exists as of the CD/secrets prompt's work).
+   today — name this as a known gap in the runbook rather than silently omitting it. This is no
+   longer a hypothetical: per the 2026-09-04 addendum above, `vault-0` has already been through a
+   real cold boot on this cluster (initially OOMKilled at a 256Mi limit, confirmed via `kubectl
+   describe`, then redeployed at 384Mi/192Mi) — whatever Raft/boltdb state exists on that PVC
+   right now is real, unbacked-up data, not a clean slate.
 
 ---
 
@@ -177,6 +239,10 @@ first).
 
 ## 9. Final self-check
 
+- [ ] This session ran `kubectl get pods -n pena-e-arte` and `kubectl get pods -n monitoring`
+      itself as its first action and quoted the real output in the final summary — §3–§5 were
+      gated on that real output, not on this doc's 2026-09-04 addendum's inference from commit
+      messages (which is strong evidence, not a substitute for checking).
 - [ ] §1: either the ACME email was swapped with a confirmed real destination inbox, or this
       session explicitly states no such inbox was confirmed and nothing was changed.
 - [ ] §2: the app's graceful-degradation behavior with `GeoIp:*` unset was actually verified

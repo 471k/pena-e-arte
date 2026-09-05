@@ -39,6 +39,29 @@ spec:
               value: "false"
             - name: GF_USERS_ALLOW_SIGN_UP
               value: "false"
+            # Grafana's built-in "email" contact-point type has no per-contact-point
+            # credentials of its own — it only ever sends through this server-level [smtp]
+            # config. Resend's SMTP relay (smtp.resend.com, username literally "resend") lets
+            # this reuse the same Resend account/API key the app already uses for
+            # transactional email, without giving Grafana a second email provider to manage.
+            - name: GF_SMTP_ENABLED
+              value: "true"
+            - name: GF_SMTP_HOST
+              value: "smtp.resend.com:587"
+            - name: GF_SMTP_USER
+              value: "resend"
+            - name: GF_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pena-e-arte-grafana-smtp
+                  key: smtp-password
+            - name: GF_SMTP_FROM_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: pena-e-arte-grafana-smtp
+                  key: smtp-from-address
+            - name: GF_SMTP_FROM_NAME
+              value: "Pena e Arte Alerts"
           volumeMounts:
             - name: dashboards-provider
               mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
@@ -49,6 +72,9 @@ spec:
             - name: dashboard-json
               mountPath: /etc/grafana/provisioning/dashboards/json/api-overview.json
               subPath: api-overview.json
+            - name: alerting
+              mountPath: /etc/grafana/provisioning/alerting/alerting.yaml
+              subPath: alerting.yaml
             - name: data
               mountPath: /var/lib/grafana
           resources:
@@ -68,6 +94,9 @@ spec:
         - name: dashboard-json
           configMap:
             name: pena-e-arte-grafana-dashboard-json
+        - name: alerting
+          configMap:
+            name: pena-e-arte-grafana-alerting
         - name: data
           persistentVolumeClaim:
             claimName: pena-e-arte-grafana-data
