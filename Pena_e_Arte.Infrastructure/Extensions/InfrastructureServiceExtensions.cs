@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Jobs;
@@ -68,7 +69,7 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IConnectionMultiplexer>(
             ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
 
-        services.AddHangfire(config => config
+        services.AddHangfire((serviceProvider, config) => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
@@ -84,7 +85,9 @@ public static class InfrastructureServiceExtensions
                 // library) now owns table creation — see
                 // Migrations/20260904210000_AddHangfireSchema.cs. Found and fixed 2026-09-04.
                 PrepareSchemaIfNecessary = false
-            })));
+            }))
+            .UseFilter(new HangfireJobFailureLogFilter(
+                serviceProvider.GetRequiredService<ILogger<HangfireJobFailureLogFilter>>())));
         services.AddHangfireServer();
 
         services.AddSignalR();
