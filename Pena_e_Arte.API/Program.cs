@@ -144,6 +144,11 @@ try
             "guest-pending-upload-cleanup",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 5)); // staggered after retention-purge (4am)
+
+        recurringJobs.AddOrUpdate<R2ExportJob>(
+            "r2-export",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 6)); // staggered after guest-pending-upload-cleanup (5am)
     }
 
     // k8s/base/migration-job.yaml runs this exact image as a one-off Job (restartPolicy:

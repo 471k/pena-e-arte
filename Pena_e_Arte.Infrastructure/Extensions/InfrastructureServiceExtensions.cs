@@ -124,11 +124,21 @@ public static class InfrastructureServiceExtensions
             services.AddSingleton<IAmazonS3>(
                 new AmazonS3Client(new BasicAWSCredentials(r2Opts.AccessKeyId, r2Opts.SecretAccessKey), s3Config));
             services.AddSingleton<IR2Service, R2Service>();
+
+            // Deliberately a SEPARATE credential from the primary IAmazonS3 above — see
+            // R2Options.BackupAccessKeyId's comment for why (R2ExportService downloads via the
+            // primary client and uploads via this one, so a misconfigured/compromised backup
+            // token can never touch the app's actual production storage path).
+            services.AddKeyedSingleton<IAmazonS3>("r2-backup",
+                new AmazonS3Client(new BasicAWSCredentials(r2Opts.BackupAccessKeyId, r2Opts.BackupSecretAccessKey), s3Config));
+            services.AddSingleton<IR2ExportService, R2ExportService>();
         }
         else
         {
             services.AddSingleton<IR2Service, NullR2Service>();
+            services.AddSingleton<IR2ExportService, NullR2ExportService>();
         }
+        services.AddTransient<R2ExportJob>();
 
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
         services.AddTransient<RetentionPurgeJob>();

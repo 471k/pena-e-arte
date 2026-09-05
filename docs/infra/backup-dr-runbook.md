@@ -19,31 +19,65 @@ change in Settings — the number comes from the tier itself).
 
 ## What does NOT back up automatically today
 
-- **Cloudflare R2 (portfolio images, consent-form PDFs, other uploads).** **Corrected 2026-09-05
-  — the original operational-hardening prompt's premise here was wrong.** It assumed R2 supports
-  S3-style object versioning as a toggle; checked directly against the real `pena-e-arte-prod`
-  bucket's Settings page (Cloudflare dashboard → R2 → bucket → Settings) and no such feature
-  exists there at all — the available settings are Custom Domains, CORS Policy, Object Lifecycle
-  Rules, **Bucket Lock Rules**, Event Notifications, Data Access Logs, On Demand Migration,
-  Local Uploads, and Default Storage Class. R2 does not offer per-object version history today.
-  The closest native feature, **Bucket Lock Rules** (currently none configured on this bucket),
-  is a retention/immutability lock (prevents overwrite/delete for a fixed period) rather than
-  version history — it protects against *deletion* but doesn't let you recover a prior version
-  of an object that was legitimately overwritten. **Recommendation: a scheduled export job**
-  (e.g. a Hangfire `CronJob`/recurring job, matching the existing `TrafficRollupJob` pattern,
-  copying new/changed objects to a second bucket or into cold storage on a schedule) is the
-  realistic option here, not "flip on versioning" as the original prompt assumed. Not
-  implemented in this pass — this is a real gap, named rather than silently left unaddressed,
-  and left as a follow-up given it's genuine design/build work, not a checkbox.
-- **Vault's Raft/boltdb state** (`vault-0`'s PVC, `pena-e-arte` namespace). This is real,
-  unbacked-up data as of 2026-09-05 — `vault-0` has already been through one real cold boot on
-  this cluster (initially OOMKilled at a 256Mi limit, confirmed via `kubectl describe`, then
-  redeployed at 384Mi/192Mi; see `docs/infra/vault-self-hosted-runbook.md`), so whatever secrets
-  are stored there right now exist in exactly one place. Losing this PVC means re-running the
-  entire init/unseal runbook from scratch and re-populating every secret Vault holds — named
-  here as a known gap, not silently omitted. No fix implemented in this pass; closing it (e.g.
-  Raft's built-in snapshot support, or a periodic `vault operator raft snapshot save` into R2)
-  is future work, not in scope for this runbook.
+### Cloudflare R2 (portfolio images, consent-form PDFs, other uploads)
+
+**Corrected 2026-09-05 — the original operational-hardening prompt's premise here was wrong.**
+It assumed R2 supports S3-style object versioning as a toggle; checked directly against the real
+`pena-e-arte-prod` bucket's Settings page (Cloudflare dashboard → R2 → bucket → Settings) and no
+such feature exists there at all — the available settings are Custom Domains, CORS Policy,
+Object Lifecycle Rules, **Bucket Lock Rules**, Event Notifications, Data Access Logs, On Demand
+Migration, Local Uploads, and Default Storage Class. R2 does not offer per-object version history
+today. The closest native feature, **Bucket Lock Rules** (currently none configured on this
+bucket), is a retention/immutability lock (prevents overwrite/delete for a fixed period) rather
+than version history — it protects against *deletion* but doesn't let you recover a prior
+version of an object that was legitimately overwritten.
+
+**Built 2026-09-05: `R2ExportJob`** (`Pena_e_Arte.Infrastructure/Jobs/R2ExportJob.cs`, backed by
+`R2ExportService`). Daily at 06:00 UTC (Hangfire recurring job `r2-export`, staggered after
+`guest-pending-upload-cleanup` at 05:00), it walks every object in the primary R2 bucket and
+copies any new-or-changed one (compared by ETag) into a separate backup bucket. Downloads via
+the app's existing primary-bucket credentials and uploads via a **second, dedicated** R2 token
+scoped only to the backup bucket — not R2's server-side `CopyObject` API, which would need one
+credential with read+write access to both buckets. Decided this way deliberately during setup:
+widening the app's live primary-bucket token (which every upload/download/presigned-URL flow
+depends on) to also cover a brand-new backup bucket was judged higher-risk than the bytes simply
+passing through the job process once a day for images/PDFs of this size. **Deliberately never
+deletes from the backup bucket**, even when the source object is deleted — propagating a
+deletion into the backup would defeat the entire point of having one. This means the backup
+bucket grows without bound as objects are deleted from production; revisit with an Object
+Lifecycle Rule on the *backup* bucket (e.g. expire backup copies after N days past last-modified)
+if that growth becomes a real cost concern — not needed at current scale.
+
+**Status: bucket and token created 2026-09-05, secrets/deploy/verification still pending.**
+1. ✅ Created the `pena-e-arte-prod-backup` R2 bucket (Standard storage class, Automatic/Eastern
+   Europe location — matching the primary bucket, Public Access disabled).
+2. ✅ Created a dedicated Account API token (`pena-e-arte-prod-backup`), "Object Read & Write",
+   scoped to that bucket only — never the primary bucket, and never reusing the app's existing
+   R2 token.
+3. ⬜ Set `R2_BACKUP_BUCKET_NAME`, `R2_BACKUP_ACCESS_KEY_ID`, `R2_BACKUP_SECRET_ACCESS_KEY` as
+   GitHub Actions secrets, then redeploy.
+4. ⬜ Verify: check the job's log line after its first real run (`R2ExportJob completed: N
+   copied, N already up to date, N failed`) rather than assuming success from the code alone —
+   same standard as every other piece of this operational-hardening work
+   (see `docs/infra/alerting-runbook.md`'s "Manual verification" section for why).
+
+If literally every object in a run fails to copy (as opposed to occasional per-object flakiness),
+`R2ExportService` deliberately throws rather than swallowing it — this surfaces as a real
+Hangfire `Failed` job via `HangfireJobFailureLogFilter`, which the Hangfire-failure-rate alert in
+`docs/infra/alerting-runbook.md` catches. A systemic problem (bucket deleted, token lost access)
+pages someone; it does not silently degrade to warning-level logs nobody watches.
+
+### Vault's Raft/boltdb state
+
+`vault-0`'s PVC (`pena-e-arte` namespace) is real, unbacked-up data as of 2026-09-05 — `vault-0`
+has already been through one real cold boot on this cluster (initially OOMKilled at a 256Mi
+limit, confirmed via `kubectl describe`, then redeployed at 384Mi/192Mi; see
+`docs/infra/vault-self-hosted-runbook.md`), so whatever secrets are stored there right now exist
+in exactly one place. Losing this PVC means re-running the entire init/unseal runbook from
+scratch and re-populating every secret Vault holds — named here as a known gap, not silently
+omitted. No fix implemented in this pass; closing it (e.g. Raft's built-in snapshot support, or
+a periodic `vault operator raft snapshot save` into R2) is future work, not in scope for this
+runbook.
 
 ## Restore test — procedure (not yet run)
 
@@ -90,8 +124,10 @@ scheduled as a deliberate future drill rather than run blind today. To actually 
    survives the box dying untouched. No action needed here unless DigitalOcean itself is also
    affected, in which case use the restore procedure above against the most recent backup.
 6. **Restore R2** — same story: Cloudflare R2 is independent of the Hetzner box and survives its
-   loss untouched, provided versioning (or an export, if that path was chosen instead — see
-   above) already covers accidental object loss separately from a box failure.
+   loss untouched. This step is about a *box* failure, not an R2 data-loss scenario — R2 itself
+   isn't hosted on the Hetzner box at all — so no action is needed here specifically; the R2
+   export job above (once its BLOCKING-MANUAL step is done) is what covers accidental object
+   loss, a separate failure mode from this section.
 7. **Restore Vault** — this is the one piece of real state that lives only on the dead box's
    PVC, per the known gap named above. Until a Raft snapshot backup exists, this step is
    "re-run the init/unseal runbook and re-populate every secret it held from the GitHub Actions
