@@ -2,6 +2,13 @@
 
 **Owner:** Phi · **Related:** `docs/infra/ADR-0002-secrets-management.md`, EPIC-0001 Phase 5
 
+**First real drill: proposed 2026-09-19.** This runbook has existed but never been exercised
+end-to-end. Proposed first drill: rotate a low-stakes secret (Resend API key or the Hangfire
+dashboard credentials — either has an easy, safe rollback and no user-facing blast radius if
+something goes wrong) live, with Phi present, following the General procedure below exactly as
+written to see whether it actually holds up in practice. Not scheduled as an automated reminder
+per Phi's 2026-09-05 decision — noted here as the next real step instead.
+
 Rotating a secret = issue a new value at the provider, update it wherever the app reads it,
 redeploy/restart, then revoke the old value. **This is a founder action** — an automated session
 cannot rotate live values (no access to the real `.env` or the external accounts). Do these in
