@@ -187,6 +187,7 @@ jobs:
             --from-literal=CloudflareR2__SecretAccessKey="${{ secrets.R2_SECRET_ACCESS_KEY }}" \
             --from-literal=CloudflareR2__BucketName="${{ secrets.R2_BUCKET_NAME }}" \
             --from-literal=CloudflareR2__PublicUrl="${{ secrets.R2_PUBLIC_URL }}" \
+            --from-literal=CloudflareR2__BackupBucketName="${{ secrets.R2_BACKUP_BUCKET_NAME }}" \
             --from-literal=Resend__ApiKey="${{ secrets.RESEND_API_KEY }}" \
             --from-literal=Resend__FromAddress="${{ secrets.RESEND_FROM_ADDRESS }}" \
             --from-literal=Twilio__AccountSid="${{ secrets.TWILIO_ACCOUNT_SID }}" \
@@ -378,7 +379,9 @@ jobs:
           # (no staging Vault instance — see k8s/overlays/staging/vault-exclude-patch.yaml;
           # pointing staging at PRODUCTION's Vault address/token would be a real cross-
           # environment credential leak, not a harmless no-op, so this is omitted rather than
-          # reused).
+          # reused). CloudflareR2__BackupBucketName also stays unset on staging — backing up
+          # staging's throwaway data isn't worth a second bucket; R2ExportService no-ops when
+          # empty (see docs/infra/backup-dr-runbook.md).
 
       - name: Pin image tags (staging)
         working-directory: k8s/overlays/staging

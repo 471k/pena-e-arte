@@ -124,11 +124,14 @@ public static class InfrastructureServiceExtensions
             services.AddSingleton<IAmazonS3>(
                 new AmazonS3Client(new BasicAWSCredentials(r2Opts.AccessKeyId, r2Opts.SecretAccessKey), s3Config));
             services.AddSingleton<IR2Service, R2Service>();
+            services.AddSingleton<IR2ExportService, R2ExportService>();
         }
         else
         {
             services.AddSingleton<IR2Service, NullR2Service>();
+            services.AddSingleton<IR2ExportService, NullR2ExportService>();
         }
+        services.AddTransient<R2ExportJob>();
 
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
         services.AddTransient<RetentionPurgeJob>();
