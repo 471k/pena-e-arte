@@ -35,26 +35,30 @@ version of an object that was legitimately overwritten.
 **Built 2026-09-05: `R2ExportJob`** (`Pena_e_Arte.Infrastructure/Jobs/R2ExportJob.cs`, backed by
 `R2ExportService`). Daily at 06:00 UTC (Hangfire recurring job `r2-export`, staggered after
 `guest-pending-upload-cleanup` at 05:00), it walks every object in the primary R2 bucket and
-copies any new-or-changed one (compared by ETag) into a separate backup bucket via R2's
-`CopyObject` API — no bytes round-trip through the app, the copy happens bucket-to-bucket inside
-Cloudflare. **Deliberately never deletes from the backup bucket**, even when the source object is
-deleted — propagating a deletion into the backup would defeat the entire point of having one.
-This means the backup bucket grows without bound as objects are deleted from production; revisit
-with an Object Lifecycle Rule on the *backup* bucket (e.g. expire backup copies after N days past
-last-modified) if that growth becomes a real cost concern — not needed at current scale.
+copies any new-or-changed one (compared by ETag) into a separate backup bucket. Downloads via
+the app's existing primary-bucket credentials and uploads via a **second, dedicated** R2 token
+scoped only to the backup bucket — not R2's server-side `CopyObject` API, which would need one
+credential with read+write access to both buckets. Decided this way deliberately during setup:
+widening the app's live primary-bucket token (which every upload/download/presigned-URL flow
+depends on) to also cover a brand-new backup bucket was judged higher-risk than the bytes simply
+passing through the job process once a day for images/PDFs of this size. **Deliberately never
+deletes from the backup bucket**, even when the source object is deleted — propagating a
+deletion into the backup would defeat the entire point of having one. This means the backup
+bucket grows without bound as objects are deleted from production; revisit with an Object
+Lifecycle Rule on the *backup* bucket (e.g. expire backup copies after N days past last-modified)
+if that growth becomes a real cost concern — not needed at current scale.
 
-**Status: code shipped, not yet live — one BLOCKING-MANUAL step remains.** The job no-ops
-gracefully (`R2ExportService` logs a warning and returns immediately) until `R2_BACKUP_BUCKET_NAME`
-is actually set to a real bucket name, which requires:
-1. Create a new R2 bucket in the Cloudflare dashboard (e.g. `pena-e-arte-prod-backup`) — a real
-   action Phi needs to take, not something this session can do without dashboard access.
-2. Confirm the existing R2 API token (`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`) has write access
-   to the new bucket too — if the token is scoped to specific buckets rather than account-wide,
-   it needs re-scoping or a second token.
-3. Set the `R2_BACKUP_BUCKET_NAME` GitHub Actions secret to the new bucket's name, then redeploy.
-4. Verify: check the job's log line after its first real run (`R2ExportJob completed: N copied, N
-   already up to date, N failed`) rather than assuming success from the code alone — same
-   standard as every other piece of this operational-hardening work
+**Status: bucket and token created 2026-09-05, secrets/deploy/verification still pending.**
+1. ✅ Created the `pena-e-arte-prod-backup` R2 bucket (Standard storage class, Automatic/Eastern
+   Europe location — matching the primary bucket, Public Access disabled).
+2. ✅ Created a dedicated Account API token (`pena-e-arte-prod-backup`), "Object Read & Write",
+   scoped to that bucket only — never the primary bucket, and never reusing the app's existing
+   R2 token.
+3. ⬜ Set `R2_BACKUP_BUCKET_NAME`, `R2_BACKUP_ACCESS_KEY_ID`, `R2_BACKUP_SECRET_ACCESS_KEY` as
+   GitHub Actions secrets, then redeploy.
+4. ⬜ Verify: check the job's log line after its first real run (`R2ExportJob completed: N
+   copied, N already up to date, N failed`) rather than assuming success from the code alone —
+   same standard as every other piece of this operational-hardening work
    (see `docs/infra/alerting-runbook.md`'s "Manual verification" section for why).
 
 If literally every object in a run fails to copy (as opposed to occasional per-object flakiness),

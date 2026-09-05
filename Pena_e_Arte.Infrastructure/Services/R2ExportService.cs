@@ -1,13 +1,23 @@
 using Amazon.S3;
 using Amazon.S3.Model;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Infrastructure.Services;
 
-public class R2ExportService(IAmazonS3 s3, IOptions<R2Options> options, ILogger<R2ExportService> logger)
-    : IR2ExportService
+/// <summary>
+/// Deliberately uses two separate IAmazonS3 clients on two separate credentials — sourceS3
+/// (the app's primary token, read-only here) and backupS3 (a dedicated token scoped only to
+/// the backup bucket, injected via the "r2-backup" DI key) — rather than R2's server-side
+/// CopyObject, which would need one credential with access to both buckets. See R2Options.
+/// </summary>
+public class R2ExportService(
+    IAmazonS3 sourceS3,
+    [FromKeyedServices("r2-backup")] IAmazonS3 backupS3,
+    IOptions<R2Options> options,
+    ILogger<R2ExportService> logger) : IR2ExportService
 {
     private readonly R2Options _opts = options.Value;
 
@@ -25,7 +35,7 @@ public class R2ExportService(IAmazonS3 s3, IOptions<R2Options> options, ILogger<
 
         do
         {
-            ListObjectsV2Response page = await s3.ListObjectsV2Async(new ListObjectsV2Request
+            ListObjectsV2Response page = await sourceS3.ListObjectsV2Async(new ListObjectsV2Request
             {
                 BucketName = _opts.BucketName,
                 ContinuationToken = continuationToken,
@@ -37,13 +47,7 @@ public class R2ExportService(IAmazonS3 s3, IOptions<R2Options> options, ILogger<
                 {
                     if (await NeedsCopyAsync(obj, ct))
                     {
-                        await s3.CopyObjectAsync(new CopyObjectRequest
-                        {
-                            SourceBucket = _opts.BucketName,
-                            SourceKey = obj.Key,
-                            DestinationBucket = _opts.BackupBucketName,
-                            DestinationKey = obj.Key,
-                        }, ct);
+                        await DownloadThenUploadAsync(obj, ct);
                         copied++;
                     }
                     else
@@ -65,10 +69,10 @@ public class R2ExportService(IAmazonS3 s3, IOptions<R2Options> options, ILogger<
         } while (continuationToken is not null);
 
         // Per-object failures are swallowed above so one bad object never aborts the run — but
-        // that means a systemic problem (backup bucket deleted, API token lost access to it)
-        // would otherwise degrade to "every object fails, every night, forever" with nothing
-        // but WARNING-level logs nobody watches. Throwing here when literally everything failed
-        // (as opposed to occasional flakiness) surfaces it as a real Hangfire Failed job, which
+        // that means a systemic problem (backup bucket deleted, API token lost access) would
+        // otherwise degrade to "every object fails, every night, forever" with nothing but
+        // WARNING-level logs nobody watches. Throwing here when literally everything failed (as
+        // opposed to occasional flakiness) surfaces it as a real Hangfire Failed job, which
         // HangfireJobFailureLogFilter logs and the alerting-runbook's Hangfire rule can page on.
         if (failed > 0 && copied == 0 && skipped == 0)
         {
@@ -83,7 +87,7 @@ public class R2ExportService(IAmazonS3 s3, IOptions<R2Options> options, ILogger<
     {
         try
         {
-            GetObjectMetadataResponse dest = await s3.GetObjectMetadataAsync(new GetObjectMetadataRequest
+            GetObjectMetadataResponse dest = await backupS3.GetObjectMetadataAsync(new GetObjectMetadataRequest
             {
                 BucketName = _opts.BackupBucketName,
                 Key = sourceObject.Key,
@@ -97,5 +101,26 @@ public class R2ExportService(IAmazonS3 s3, IOptions<R2Options> options, ILogger<
         {
             return true;
         }
+    }
+
+    private async Task DownloadThenUploadAsync(S3Object sourceObject, CancellationToken ct)
+    {
+        using GetObjectResponse getResponse = await sourceS3.GetObjectAsync(new GetObjectRequest
+        {
+            BucketName = _opts.BucketName,
+            Key = sourceObject.Key,
+        }, ct);
+
+        using MemoryStream buffer = new();
+        await getResponse.ResponseStream.CopyToAsync(buffer, ct);
+        buffer.Position = 0;
+
+        await backupS3.PutObjectAsync(new PutObjectRequest
+        {
+            BucketName = _opts.BackupBucketName,
+            Key = sourceObject.Key,
+            InputStream = buffer,
+            ContentType = getResponse.Headers.ContentType,
+        }, ct);
     }
 }
