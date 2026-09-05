@@ -166,6 +166,52 @@ just a K8s Deployment's resource requests. Flagged as a distinct follow-up for P
 (e.g., whether to size up the DB tier, add explicit per-environment connection-pool caps in each
 connection string, or accept staging's load ceiling as-is) — not addressed here.
 
+## Follow-up #2 (2026-09-05, same day) — root-caused with a real number, capped per-environment
+
+Phi asked for everything fixable without DigitalOcean dashboard/API access to actually get fixed.
+Confirmed the exact ceiling by connecting from *inside* the cluster (a short-lived
+`kubectl run` debug pod in the `pena-e-arte-staging` namespace, using the existing `staging_user`
+credentials already available in that namespace's own Secret — no new access needed, and no
+direct connection attempted from outside the cluster's network, sidestepping any question of
+whether DigitalOcean's trusted-sources firewall would even allow that):
+
+```
+SHOW VARIABLES LIKE 'max_connections';   ->  76
+SHOW STATUS LIKE 'Threads_connected';    ->  11   (idle, at the time of the check)
+SHOW STATUS LIKE 'Max_used_connections'; ->  78   (high-water mark — already at/above the
+                                                    76 ceiling, most likely from this same
+                                                    load-test baseline's earlier 50-VU run)
+```
+
+**76 total connections for the entire shared instance — production and staging combined —**
+confirms the theory exactly: nothing was misconfigured, the instance's own tier just has a small
+budget, and neither connection string had ever set an explicit pool-size ceiling (MySqlConnector's
+own default is up to 100 connections *per pool*, meaning production's 2 replicas alone could
+theoretically have opened up to 200 connections between them under enough load — a latent risk
+that existed independently of staging, not something staging introduced).
+
+Fixed by adding an explicit `Maximum Pool Size` to both connection strings, sized off the real 76
+number with headroom for DigitalOcean's own overhead: **staging capped at 15** (1 replica — small
+enough it can never meaningfully compete with production, deliberately, since staging load should
+never affect production), **production capped at 25 per replica** (2 replicas = 50 theoretical
+max). 15 + 50 = 65 of 76, leaving ~11 as real margin. This is a hard, client-side-enforced ceiling
+per pool — production physically cannot open more than its cap regardless of what staging does,
+so this doesn't require re-running the load test to "prove" the isolation the way the pod-resource
+fix did; the guarantee is structural, not empirical.
+
+Applied both ways, matching this project's established pattern: updated the `STAGING_DB_
+CONNECTION_STRING`/`PROD_DB_CONNECTION_STRING` GitHub Actions secrets (source of truth for future
+deploys) *and* patched both live K8s Secrets directly, then did a `kubectl rollout restart` on
+each Deployment (staging first, verified healthy, then production — production's existing
+`maxUnavailable: 0` rolling-update strategy made this a zero-downtime restart, confirmed via a
+`/health/live` check that stayed `200` throughout with 0 pod restarts on both new replicas).
+
+**Still not touched, and still needs Phi specifically**: actually resizing the DigitalOcean
+database tier itself (option 2 from the three named above) — this session has no DigitalOcean API
+token or `doctl` configured anywhere, so that one genuinely requires either the DO dashboard or a
+token Phi provides. The connection-pool caps above are a real, load-bearing mitigation on their
+own regardless of whether the tier itself ever changes.
+
 ## Files
 
 - `load-tests/staging-baseline.js` — the k6 script itself, reusable for future runs.
