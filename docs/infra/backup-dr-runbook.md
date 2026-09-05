@@ -10,12 +10,12 @@ backs up today, what doesn't, and what to do if the Hetzner box dies.
 
 ## What backs up automatically today
 
-**Database — `pena-e-arte-prod-db` (DigitalOcean managed MySQL 8.4).** DigitalOcean takes
-automatic daily backups of managed database clusters. **Retention window: unconfirmed as of
-2026-09-05** — check DigitalOcean dashboard → Databases → `pena-e-arte-prod-db` → **Settings**
-tab → Backups section, and update this line with the actual number. This cluster is on the
-Basic tier (1GB RAM/1vCPU), where DigitalOcean's standard is 7 daily backups and the retention
-window is not user-configurable; confirm this is still accurate rather than trusting this note.
+**Database — `pena-e-arte-prod-db` (DigitalOcean managed MySQL 8.4, Basic tier, 1GB RAM/1vCPU).**
+**Confirmed 2026-09-05** via the dashboard's own Actions → "Restore from backup" dialog:
+*"You can restore to any transaction, as far back as 7 days."* This is point-in-time recovery,
+not a fixed set of daily snapshots — any moment within the last 7 days can be restored to, not
+just discrete backup times. Not user-configurable on this tier (no retention setting exists to
+change in Settings — the number comes from the tier itself).
 
 ## What does NOT back up automatically today
 
