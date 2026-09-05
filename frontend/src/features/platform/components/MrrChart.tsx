@@ -188,7 +188,7 @@ export function MrrChart() {
         {isLoading ? (
           <Skeleton className="h-[130px] w-full" />
         ) : isError ? (
-          <p className="h-[130px] flex items-center justify-center text-xs text-destructive" role="alert">
+          <p className="h-[130px] flex items-center justify-center text-xs text-destructive-text" role="alert">
             Couldn't load MRR data — try refreshing.
           </p>
         ) : !data || data.length === 0 ? (

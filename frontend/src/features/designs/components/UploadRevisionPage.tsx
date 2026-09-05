@@ -176,7 +176,7 @@ export function UploadRevisionPage() {
               disabled={busy}
             />
             {fileError && (
-              <p className="text-xs text-destructive">{fileError}</p>
+              <p className="text-xs text-destructive-text">{fileError}</p>
             )}
           </div>
 
@@ -192,12 +192,12 @@ export function UploadRevisionPage() {
               className={cn(TEXTAREA_CLS, errors.notes && "border-destructive")}
             />
             {errors.notes && (
-              <p className="text-xs text-destructive">{errors.notes.message}</p>
+              <p className="text-xs text-destructive-text">{errors.notes.message}</p>
             )}
           </div>
 
           {uploadError && (
-            <p className="text-sm text-destructive">{uploadError}</p>
+            <p className="text-sm text-destructive-text">{uploadError}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={busy}>

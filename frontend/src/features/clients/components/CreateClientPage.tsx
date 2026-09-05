@@ -100,7 +100,7 @@ export function CreateClientPage() {
                 className={cn(errors.firstName && "border-destructive")}
               />
               {errors.firstName && (
-                <p className="text-xs text-destructive">{errors.firstName.message}</p>
+                <p className="text-xs text-destructive-text">{errors.firstName.message}</p>
               )}
             </div>
 
@@ -112,7 +112,7 @@ export function CreateClientPage() {
                 className={cn(errors.lastName && "border-destructive")}
               />
               {errors.lastName && (
-                <p className="text-xs text-destructive">{errors.lastName.message}</p>
+                <p className="text-xs text-destructive-text">{errors.lastName.message}</p>
               )}
             </div>
           </div>
@@ -126,7 +126,7 @@ export function CreateClientPage() {
               className={cn(errors.email && "border-destructive")}
             />
             {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
+              <p className="text-xs text-destructive-text">{errors.email.message}</p>
             )}
           </div>
 
@@ -156,7 +156,7 @@ export function CreateClientPage() {
                 )}
               />
               {errors.artistId && (
-                <p className="text-xs text-destructive">{errors.artistId.message}</p>
+                <p className="text-xs text-destructive-text">{errors.artistId.message}</p>
               )}
             </div>
           )}
@@ -179,7 +179,7 @@ export function CreateClientPage() {
               )}
             />
             {errors.phone && (
-              <p id="phone-error" className="text-xs text-destructive">{errors.phone.message}</p>
+              <p id="phone-error" className="text-xs text-destructive-text">{errors.phone.message}</p>
             )}
           </div>
 

@@ -163,14 +163,14 @@ export function ArtistListPage() {
       header: "Specializations",
       cell: (a) => {
         if (!a.specializations) {
-          return <span className="text-muted-foreground/60">—</span>;
+          return <span className="text-muted-foreground">—</span>;
         }
         const chips = a.specializations
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
         if (chips.length === 0) {
-          return <span className="text-muted-foreground/60">—</span>;
+          return <span className="text-muted-foreground">—</span>;
         }
         return (
           <div className="flex flex-wrap gap-1">
@@ -206,7 +206,7 @@ export function ArtistListPage() {
           {canManage && (
             confirmDeleteId === a.id ? (
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-destructive whitespace-nowrap">
+                <span className="text-xs text-destructive-text whitespace-nowrap">
                   Delete {a.firstName} {a.lastName}?
                 </span>
                 <Button
@@ -242,7 +242,7 @@ export function ArtistListPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                className="h-7 text-xs gap-1 text-destructive-text hover:text-destructive-text hover:bg-destructive/10"
                 onClick={() => setConfirmDeleteId(a.id)}
               >
                 <Trash2 className="h-3 w-3" />
@@ -329,7 +329,7 @@ export function ArtistListPage() {
         )}
 
         {errorMessage && (
-          <p className="text-center text-sm text-destructive py-16" role="alert">
+          <p className="text-center text-sm text-destructive-text py-16" role="alert">
             {errorMessage}
           </p>
         )}
@@ -423,7 +423,7 @@ export function ArtistListPage() {
                           </Button>
                         </div>
                       ) : (
-                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setConfirmDeleteId(a.id)}>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-destructive-text hover:text-destructive-text hover:bg-destructive/10" onClick={() => setConfirmDeleteId(a.id)}>
                           <Trash2 className="h-3.5 w-3.5" /> Delete
                         </Button>
                       )

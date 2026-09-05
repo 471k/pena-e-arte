@@ -208,7 +208,7 @@ export function BillingPage() {
   if (subError || !sub) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-sm text-destructive">Failed to load subscription. Please try again.</p>
+        <p className="text-sm text-destructive-text">Failed to load subscription. Please try again.</p>
       </div>
     );
   }

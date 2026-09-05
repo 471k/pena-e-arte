@@ -77,7 +77,7 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
       {errorMsg && (
         <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2">
           <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-          <p className="text-sm text-destructive">{errorMsg}</p>
+          <p className="text-sm text-destructive-text">{errorMsg}</p>
         </div>
       )}
       <Button type="submit" className="w-full gap-2" disabled={!stripe || isProcessing}>
@@ -162,7 +162,7 @@ export function DepositCheckoutPage() {
             {isError && (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <AlertCircle className="h-8 w-8 text-destructive" />
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-destructive-text">
                   Payment not found or you don't have access to it.
                 </p>
               </div>
@@ -171,7 +171,7 @@ export function DepositCheckoutPage() {
             {data?.clientSecret && !cardPaymentsAvailable && (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <AlertCircle className="h-8 w-8 text-destructive" />
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-destructive-text">
                   Card payments are temporarily unavailable for this link. Please contact the studio.
                 </p>
               </div>

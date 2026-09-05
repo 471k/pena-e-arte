@@ -25,7 +25,7 @@ export function ContactSupportPanel() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-        <p className="text-sm text-destructive">Failed to check for an existing support ticket.</p>
+        <p className="text-sm text-destructive-text">Failed to check for an existing support ticket.</p>
         <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
       </div>
     );

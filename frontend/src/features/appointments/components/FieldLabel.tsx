@@ -13,7 +13,7 @@ export function FieldLabel({
     <Label htmlFor={htmlFor} className="text-xs font-medium text-muted-foreground">
       {children}
       {required && (
-        <span aria-hidden="true" className="ml-0.5 text-destructive">*</span>
+        <span aria-hidden="true" className="ml-0.5 text-destructive-text">*</span>
       )}
     </Label>
   );

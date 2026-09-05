@@ -193,7 +193,7 @@ export function ClientDetailPage() {
   if (clientError || !client) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-sm text-destructive">Client not found.</p>
+        <p className="text-sm text-destructive-text">Client not found.</p>
         <Button variant="ghost" size="sm" onClick={() => navigate("/clients")}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Clients
@@ -319,7 +319,7 @@ export function ClientDetailPage() {
                 className={cn(errors.dateOfBirth && "border-destructive")}
               />
               {errors.dateOfBirth && (
-                <p className="text-xs text-destructive">{errors.dateOfBirth.message}</p>
+                <p className="text-xs text-destructive-text">{errors.dateOfBirth.message}</p>
               )}
             </div>
 
@@ -332,7 +332,7 @@ export function ClientDetailPage() {
                 className={cn(errors.allergies && "border-destructive")}
               />
               {errors.allergies && (
-                <p className="text-xs text-destructive">{errors.allergies.message}</p>
+                <p className="text-xs text-destructive-text">{errors.allergies.message}</p>
               )}
             </div>
 
@@ -346,7 +346,7 @@ export function ClientDetailPage() {
                 className={cn("resize-none", errors.medicalNotes && "border-destructive")}
               />
               {errors.medicalNotes && (
-                <p className="text-xs text-destructive">{errors.medicalNotes.message}</p>
+                <p className="text-xs text-destructive-text">{errors.medicalNotes.message}</p>
               )}
             </div>
 

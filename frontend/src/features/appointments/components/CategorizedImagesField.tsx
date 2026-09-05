@@ -72,7 +72,7 @@ export function CategorizedImagesField({
         disabled={atLimit || disabled}
       />
       {error && (
-        <p className="text-xs text-destructive" role="alert">{error}</p>
+        <p className="text-xs text-destructive-text" role="alert">{error}</p>
       )}
       {images.length > 0 && (
         <div className="grid grid-cols-4 gap-2 pt-1">

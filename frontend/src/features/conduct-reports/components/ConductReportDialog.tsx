@@ -336,7 +336,7 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
                 />
               )}
               {errors.appointmentId && (
-                <p className="text-xs text-destructive">{errors.appointmentId.message}</p>
+                <p className="text-xs text-destructive-text">{errors.appointmentId.message}</p>
               )}
             </div>
 
@@ -359,7 +359,7 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
                 className={cn("resize-none", errors.reason && "border-destructive")}
               />
               {errors.reason && (
-                <p className="text-xs text-destructive">{errors.reason.message}</p>
+                <p className="text-xs text-destructive-text">{errors.reason.message}</p>
               )}
             </div>
 
@@ -393,7 +393,7 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
                 disabled={attachments.length >= MAX_ATTACHMENTS || isSubmitting}
               />
               {attachmentError && (
-                <p className="text-xs text-destructive" role="alert">{attachmentError}</p>
+                <p className="text-xs text-destructive-text" role="alert">{attachmentError}</p>
               )}
               {attachments.length > 0 && (
                 <ul className="space-y-1.5 pt-1">

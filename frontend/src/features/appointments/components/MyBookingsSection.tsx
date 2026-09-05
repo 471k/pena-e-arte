@@ -104,7 +104,7 @@ function CancelArea({ appt, activeRule }: { appt: AppointmentResponse; activeRul
     return (
       <button
         type="button"
-        className="text-xs text-muted-foreground underline hover:text-destructive"
+        className="text-xs text-muted-foreground underline hover:text-destructive-text"
         onClick={() => setConfirming(true)}
       >
         Cancel appointment
@@ -351,7 +351,7 @@ export function MyBookingsSection() {
         )}
 
         {isError && (
-          <p className="py-4 text-sm text-destructive">
+          <p className="py-4 text-sm text-destructive-text">
             Couldn&apos;t load your bookings. Please refresh and try again.
           </p>
         )}

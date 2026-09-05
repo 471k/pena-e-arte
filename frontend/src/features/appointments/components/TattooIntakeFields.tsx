@@ -46,7 +46,7 @@ export function TattooIntakeFields({
           className={cn("resize-none", tattooDescriptionError && "border-destructive")}
         />
         {tattooDescriptionError && (
-          <p className="text-xs text-destructive" role="alert">{tattooDescriptionError}</p>
+          <p className="text-xs text-destructive-text" role="alert">{tattooDescriptionError}</p>
         )}
       </div>
 
@@ -75,7 +75,7 @@ export function TattooIntakeFields({
               className={cn(referralSourceOtherError && "border-destructive")}
             />
             {referralSourceOtherError && (
-              <p className="text-xs text-destructive mt-1" role="alert">{referralSourceOtherError}</p>
+              <p className="text-xs text-destructive-text mt-1" role="alert">{referralSourceOtherError}</p>
             )}
           </div>
         )}

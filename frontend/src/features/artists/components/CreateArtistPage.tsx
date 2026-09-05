@@ -110,7 +110,7 @@ export function CreateArtistPage() {
                 className={cn(errors.firstName && "border-destructive")}
               />
               {errors.firstName && (
-                <p className="text-xs text-destructive">{errors.firstName.message}</p>
+                <p className="text-xs text-destructive-text">{errors.firstName.message}</p>
               )}
             </div>
 
@@ -122,7 +122,7 @@ export function CreateArtistPage() {
                 className={cn(errors.lastName && "border-destructive")}
               />
               {errors.lastName && (
-                <p className="text-xs text-destructive">{errors.lastName.message}</p>
+                <p className="text-xs text-destructive-text">{errors.lastName.message}</p>
               )}
             </div>
           </div>
@@ -136,7 +136,7 @@ export function CreateArtistPage() {
               className={cn(errors.email && "border-destructive")}
             />
             {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
+              <p className="text-xs text-destructive-text">{errors.email.message}</p>
             )}
           </div>
 
@@ -164,7 +164,7 @@ export function CreateArtistPage() {
               Used to calculate percentage-based booking deposits.
             </p>
             {errors.hourlyRate && (
-              <p className="text-xs text-destructive">{errors.hourlyRate.message}</p>
+              <p className="text-xs text-destructive-text">{errors.hourlyRate.message}</p>
             )}
           </div>
 

@@ -1,48 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const STUDIO_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-const ARTIST_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
-const CLIENT_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc";
-const APPT_ID   = "dddddddd-dddd-dddd-dddd-dddddddddddd";
-
-// The decodeToken() utility reads the MS role claim key from the JWT payload.
-const MS_ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
-
-function makeJwt(role: string, sub: string, email: string): string {
-  const header  = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64");
-  const payload = Buffer.from(
-    JSON.stringify({
-      sub,
-      email,
-      given_name: email.split("@")[0],
-      tenant_id: STUDIO_ID,
-      [MS_ROLE_CLAIM]: role,
-      exp: Math.floor(Date.now() / 1000) + 3600,
-    }),
-  ).toString("base64");
-  return `${header}.${payload}.fakesig`;
-}
-
-const OWNER_TOKEN  = makeJwt("owner",  "user-id-owner",  "owner@tinta-alma.com");
-const CLIENT_TOKEN = makeJwt("client", "user-id-client", "ana@example.com");
+import { STUDIO_ID, ARTIST_ID, CLIENT_ID, APPT_ID, OWNER_TOKEN, CLIENT_TOKEN, mockAuthLogin } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Mock helpers
 // ---------------------------------------------------------------------------
-
-async function mockAuthLogin(page: Page, token: string) {
-  await page.route("**/api/v1/auth/login", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ accessToken: token, tokenType: "Bearer" }),
-    });
-  });
-}
 
 async function mockStudioRegistration(page: Page) {
   await page.route("**/api/v1/studios", async (route) => {

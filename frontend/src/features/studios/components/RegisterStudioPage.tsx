@@ -385,7 +385,7 @@ export function RegisterStudioPage() {
                         aria-invalid={!!soloErrors.firstName}
                       />
                       {soloErrors.firstName && (
-                        <p className="text-xs text-destructive">{soloErrors.firstName.message}</p>
+                        <p className="text-xs text-destructive-text">{soloErrors.firstName.message}</p>
                       )}
                     </div>
                     <div className="space-y-1.5">
@@ -396,7 +396,7 @@ export function RegisterStudioPage() {
                         aria-invalid={!!soloErrors.lastName}
                       />
                       {soloErrors.lastName && (
-                        <p className="text-xs text-destructive">{soloErrors.lastName.message}</p>
+                        <p className="text-xs text-destructive-text">{soloErrors.lastName.message}</p>
                       )}
                     </div>
                   </div>
@@ -412,7 +412,7 @@ export function RegisterStudioPage() {
                       aria-invalid={!!soloErrors.email}
                     />
                     {soloErrors.email && (
-                      <p className="text-xs text-destructive">{soloErrors.email.message}</p>
+                      <p className="text-xs text-destructive-text">{soloErrors.email.message}</p>
                     )}
                   </div>
 
@@ -425,7 +425,7 @@ export function RegisterStudioPage() {
                       aria-invalid={!!soloErrors.password}
                     />
                     {soloErrors.password && (
-                      <p className="text-xs text-destructive">{soloErrors.password.message}</p>
+                      <p className="text-xs text-destructive-text">{soloErrors.password.message}</p>
                     )}
                     {watchSolo("password") !== "" && (
                       <PasswordStrengthMeter password={watchSolo("password")} />
@@ -441,7 +441,7 @@ export function RegisterStudioPage() {
                       aria-invalid={!!soloErrors.confirmPassword}
                     />
                     {soloErrors.confirmPassword && (
-                      <p className="text-xs text-destructive">{soloErrors.confirmPassword.message}</p>
+                      <p className="text-xs text-destructive-text">{soloErrors.confirmPassword.message}</p>
                     )}
                   </div>
 
@@ -451,7 +451,7 @@ export function RegisterStudioPage() {
                   </p>
 
                   {soloServerError && (
-                    <p className="text-sm text-destructive" role="alert">
+                    <p className="text-sm text-destructive-text" role="alert">
                       {soloServerError}
                     </p>
                   )}
@@ -488,7 +488,7 @@ export function RegisterStudioPage() {
                         aria-invalid={!!errors.name}
                       />
                       {errors.name && (
-                        <p className="text-xs text-destructive">{errors.name.message}</p>
+                        <p className="text-xs text-destructive-text">{errors.name.message}</p>
                       )}
                     </div>
 
@@ -509,7 +509,7 @@ export function RegisterStudioPage() {
                         <strong>{slugValue || "your-slug"}</strong>
                       </p>
                       {errors.slug && (
-                        <p className="text-xs text-destructive">{errors.slug.message}</p>
+                        <p className="text-xs text-destructive-text">{errors.slug.message}</p>
                       )}
                     </div>
 
@@ -527,7 +527,7 @@ export function RegisterStudioPage() {
                         Format: one letter, 8 digits, one letter.
                       </p>
                       {errors.nipt && (
-                        <p className="text-xs text-destructive">{errors.nipt.message}</p>
+                        <p className="text-xs text-destructive-text">{errors.nipt.message}</p>
                       )}
                     </div>
 
@@ -553,7 +553,7 @@ export function RegisterStudioPage() {
                     </div>
 
                     {serverError && (
-                      <p className="text-sm text-destructive" role="alert">
+                      <p className="text-sm text-destructive-text" role="alert">
                         {serverError}
                       </p>
                     )}
@@ -579,7 +579,7 @@ export function RegisterStudioPage() {
                         aria-invalid={!!errors.email}
                       />
                       {errors.email && (
-                        <p className="text-xs text-destructive">{errors.email.message}</p>
+                        <p className="text-xs text-destructive-text">{errors.email.message}</p>
                       )}
                     </div>
 
@@ -594,7 +594,7 @@ export function RegisterStudioPage() {
                             aria-invalid={!!errors.password}
                           />
                           {errors.password && (
-                            <p className="text-xs text-destructive">{errors.password.message}</p>
+                            <p className="text-xs text-destructive-text">{errors.password.message}</p>
                           )}
                           {(watch("password") !== "" || watch("confirmPassword") !== "") && (
                             <PasswordStrengthMeter password={watch("password")} />
@@ -610,7 +610,7 @@ export function RegisterStudioPage() {
                             aria-invalid={!!errors.confirmPassword}
                           />
                           {errors.confirmPassword && (
-                            <p className="text-xs text-destructive">
+                            <p className="text-xs text-destructive-text">
                               {errors.confirmPassword.message}
                             </p>
                           )}
@@ -638,7 +638,7 @@ export function RegisterStudioPage() {
                     )}
 
                     {serverError && (
-                      <p className="text-sm text-destructive" role="alert">
+                      <p className="text-sm text-destructive-text" role="alert">
                         {serverError}
                       </p>
                     )}

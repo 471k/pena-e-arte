@@ -117,7 +117,7 @@ export function DesignListPage() {
 
         {/* Error */}
         {errorMessage && (
-          <p className="text-center text-sm text-destructive py-16" role="alert">
+          <p className="text-center text-sm text-destructive-text py-16" role="alert">
             {errorMessage}
           </p>
         )}

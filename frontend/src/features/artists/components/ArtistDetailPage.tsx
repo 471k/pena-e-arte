@@ -311,7 +311,7 @@ export function ArtistDetailPage() {
   if (isError || !artist) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-sm text-destructive">Artist not found.</p>
+        <p className="text-sm text-destructive-text">Artist not found.</p>
         <Button variant="ghost" size="sm" onClick={() => navigate("/artists")}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Artists
@@ -344,7 +344,7 @@ export function ArtistDetailPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setDeleteOpen(true)}
-                className="gap-1.5 text-destructive hover:text-destructive"
+                className="gap-1.5 text-destructive-text hover:text-destructive-text"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {isOwnProfile ? "Stop working as an artist" : "Delete"}
@@ -390,7 +390,7 @@ export function ArtistDetailPage() {
                   className={cn(errors.firstName && "border-destructive")}
                 />
                 {errors.firstName && (
-                  <p className="text-xs text-destructive">{errors.firstName.message}</p>
+                  <p className="text-xs text-destructive-text">{errors.firstName.message}</p>
                 )}
               </div>
 
@@ -402,7 +402,7 @@ export function ArtistDetailPage() {
                   className={cn(errors.lastName && "border-destructive")}
                 />
                 {errors.lastName && (
-                  <p className="text-xs text-destructive">{errors.lastName.message}</p>
+                  <p className="text-xs text-destructive-text">{errors.lastName.message}</p>
                 )}
               </div>
             </div>
@@ -416,7 +416,7 @@ export function ArtistDetailPage() {
                 className={cn(errors.email && "border-destructive")}
               />
               {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
+                <p className="text-xs text-destructive-text">{errors.email.message}</p>
               )}
             </div>
 
@@ -443,7 +443,7 @@ export function ArtistDetailPage() {
                 Used to calculate percentage-based booking deposits.
               </p>
               {errors.hourlyRate && (
-                <p className="text-xs text-destructive">{errors.hourlyRate.message}</p>
+                <p className="text-xs text-destructive-text">{errors.hourlyRate.message}</p>
               )}
             </div>
 
@@ -458,7 +458,7 @@ export function ArtistDetailPage() {
                 Used in the public portfolio URL: /artist/your-slug
               </p>
               {errors.slug && (
-                <p className="text-xs text-destructive">{errors.slug.message}</p>
+                <p className="text-xs text-destructive-text">{errors.slug.message}</p>
               )}
             </div>
 
@@ -624,7 +624,7 @@ export function ArtistDetailPage() {
                                      flex-col items-center justify-center gap-1 text-center px-2"
                         >
                           <p className="text-xs text-muted-foreground">Image unavailable</p>
-                          <p className="text-[10px] text-muted-foreground/60 break-all line-clamp-2">{imageUrl}</p>
+                          <p className="text-[10px] text-muted-foreground break-all line-clamp-2">{imageUrl}</p>
                         </div>
                         {canManagePortfolio && (
                           <button

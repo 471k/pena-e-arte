@@ -164,7 +164,7 @@ export function SignConsentFormPage() {
               )}
             />
             {errors.appointmentId && (
-              <p className="text-xs text-destructive">{errors.appointmentId.message}</p>
+              <p className="text-xs text-destructive-text">{errors.appointmentId.message}</p>
             )}
             {!loadingAppts && relevantAppointments?.length === 0 && (
               <p className="text-xs text-muted-foreground">
@@ -184,12 +184,12 @@ export function SignConsentFormPage() {
               className={cn("resize-none", errors.signatureData && "border-destructive")}
             />
             {errors.signatureData && (
-              <p className="text-xs text-destructive">{errors.signatureData.message}</p>
+              <p className="text-xs text-destructive-text">{errors.signatureData.message}</p>
             )}
           </div>
 
           {isError && (
-            <p className="text-sm text-destructive text-center">
+            <p className="text-sm text-destructive-text text-center">
               {isDuplicateSignature
                 ? "You've already signed a consent form for this appointment."
                 : "Failed to sign. Please try again."}

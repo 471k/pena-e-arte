@@ -94,7 +94,7 @@ export function AuthenticatedNav({ user, role }: AuthenticatedNavProps) {
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
         className="h-8 w-8 rounded-full bg-violet-600/20 border border-violet-500/40
-                   text-violet-300 text-xs font-semibold flex items-center justify-center
+                   text-violet-800 dark:text-violet-300 text-xs font-semibold flex items-center justify-center
                    hover:bg-violet-600/30 transition-colors
                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
@@ -147,7 +147,7 @@ export function AuthenticatedNav({ user, role }: AuthenticatedNavProps) {
               type="button"
               onClick={handleSignOut}
               className="flex w-full items-center px-3 py-2 text-sm
-                         text-destructive hover:bg-muted/40 transition-colors"
+                         text-destructive-text hover:bg-muted/40 transition-colors"
             >
               Sign out
             </button>
@@ -205,9 +205,9 @@ export function PublicPageHeader() {
               <Link
                 to="/register"
                 className="text-xs font-medium px-3 py-2 rounded-md
-                           border-2 border-violet-500 text-violet-400
+                           border-2 border-violet-500 text-violet-700 dark:text-violet-400
                            bg-violet-500/5
-                           hover:bg-violet-500/15 hover:text-violet-300
+                           hover:bg-violet-500/15 hover:text-violet-800 dark:hover:text-violet-300
                            transition-colors
                            focus-visible:outline-none focus-visible:ring-2
                            focus-visible:ring-violet-500"

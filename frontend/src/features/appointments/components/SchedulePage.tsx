@@ -144,7 +144,7 @@ export function SchedulePage() {
       ) : (
         <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
           {errorMessage && (
-            <p className="text-center text-sm text-destructive py-16" role="alert">
+            <p className="text-center text-sm text-destructive-text py-16" role="alert">
               {errorMessage}
             </p>
           )}

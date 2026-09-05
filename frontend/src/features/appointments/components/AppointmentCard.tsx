@@ -215,7 +215,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
             {confirmCancel ? (
               <>
-                <span className="text-xs text-destructive">Cancel?</span>
+                <span className="text-xs text-destructive-text">Cancel?</span>
                 <Button
                   variant="destructive"
                   size="sm"

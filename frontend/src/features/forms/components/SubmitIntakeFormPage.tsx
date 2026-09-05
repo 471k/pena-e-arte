@@ -123,7 +123,7 @@ export function SubmitIntakeFormPage() {
               className={cn("resize-none", errors.formData && "border-destructive")}
             />
             {errors.formData && (
-              <p className="text-xs text-destructive">{errors.formData.message}</p>
+              <p className="text-xs text-destructive-text">{errors.formData.message}</p>
             )}
           </div>
 
@@ -174,7 +174,7 @@ export function SubmitIntakeFormPage() {
               className={cn(errors.fileUrl && "border-destructive")}
             />
             {errors.fileUrl && (
-              <p className="text-xs text-destructive">{errors.fileUrl.message}</p>
+              <p className="text-xs text-destructive-text">{errors.fileUrl.message}</p>
             )}
           </div>
 
@@ -196,12 +196,12 @@ export function SubmitIntakeFormPage() {
               </span>
             </label>
             {errors.consentAccepted && (
-              <p className="text-xs text-destructive">{errors.consentAccepted.message}</p>
+              <p className="text-xs text-destructive-text">{errors.consentAccepted.message}</p>
             )}
           </div>
 
           {isError && (
-            <p className="text-sm text-destructive text-center">
+            <p className="text-sm text-destructive-text text-center">
               Failed to submit. Please try again.
             </p>
           )}
