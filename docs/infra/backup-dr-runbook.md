@@ -48,18 +48,23 @@ bucket grows without bound as objects are deleted from production; revisit with 
 Lifecycle Rule on the *backup* bucket (e.g. expire backup copies after N days past last-modified)
 if that growth becomes a real cost concern — not needed at current scale.
 
-**Status: bucket and token created 2026-09-05, secrets/deploy/verification still pending.**
+**Status: fully live and verified 2026-09-05.**
 1. ✅ Created the `pena-e-arte-prod-backup` R2 bucket (Standard storage class, Automatic/Eastern
    Europe location — matching the primary bucket, Public Access disabled).
 2. ✅ Created a dedicated Account API token (`pena-e-arte-prod-backup`), "Object Read & Write",
    scoped to that bucket only — never the primary bucket, and never reusing the app's existing
    R2 token.
-3. ⬜ Set `R2_BACKUP_BUCKET_NAME`, `R2_BACKUP_ACCESS_KEY_ID`, `R2_BACKUP_SECRET_ACCESS_KEY` as
-   GitHub Actions secrets, then redeploy.
-4. ⬜ Verify: check the job's log line after its first real run (`R2ExportJob completed: N
-   copied, N already up to date, N failed`) rather than assuming success from the code alone —
-   same standard as every other piece of this operational-hardening work
-   (see `docs/infra/alerting-runbook.md`'s "Manual verification" section for why).
+3. ✅ Set `R2_BACKUP_BUCKET_NAME`, `R2_BACKUP_ACCESS_KEY_ID`, `R2_BACKUP_SECRET_ACCESS_KEY` as
+   GitHub Actions secrets, redeployed.
+4. ✅ Verified via a real manual trigger (Hangfire dashboard → Recurring Jobs → `r2-export` →
+   Trigger now — only possible after also fixing a separate, previously-undiscovered bug where
+   `/hangfire` was never reachable via the public domain at all, see
+   `frontend/nginx.conf.template`'s history). Log line: `R2ExportJob completed: 0 copied, 0
+   already up to date, 0 failed`. Confirmed this is the *correct* result, not a bug — the
+   production R2 bucket is genuinely empty (the app only went live 2026-09-04, no real
+   studio/client has uploaded a portfolio image or signed a consent form in production yet).
+   Re-run this trigger once real objects exist to confirm the actual copy path, not just the
+   empty-bucket path.
 
 If literally every object in a run fails to copy (as opposed to occasional per-object flakiness),
 `R2ExportService` deliberately throws rather than swallowing it — this surfaces as a real
