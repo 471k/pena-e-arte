@@ -245,6 +245,21 @@ jobs:
             --from-literal=admin-password="${{ secrets.PROD_GRAFANA_ADMIN_PASSWORD }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      # Reuses the same RESEND_API_KEY/RESEND_FROM_ADDRESS GitHub secrets pena-e-arte-api-secrets
+      # already uses for transactional email — same Resend account, no new external credential.
+      # A second K8s Secret (not a reference to pena-e-arte-api-secrets) because Secrets are
+      # namespace-scoped and Grafana lives in `monitoring`, not `pena-e-arte`; K8s has no
+      # cross-namespace secretKeyRef. Resend's SMTP relay (smtp.resend.com, username literally
+      # "resend") is what lets Grafana's built-in email contact point — which only ever speaks
+      # SMTP, never a provider API — send through the same Resend account as the app.
+      - name: Populate pena-e-arte-grafana-smtp
+        run: |
+          kubectl create secret generic pena-e-arte-grafana-smtp \
+            -n monitoring \
+            --from-literal=smtp-password="${{ secrets.RESEND_API_KEY }}" \
+            --from-literal=smtp-from-address="${{ secrets.RESEND_FROM_ADDRESS }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Pin image tags
         working-directory: k8s/overlays/production
         run: |
