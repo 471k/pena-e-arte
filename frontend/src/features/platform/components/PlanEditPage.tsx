@@ -185,7 +185,7 @@ function LimitField({ id, label, name, control, register, setValue, error }: Lim
         </label>
       </div>
       <Input id={id} type="number" min="1" disabled={unlimited} {...register(name)} />
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-xs text-destructive-text">{error}</p>}
     </div>
   );
 }
@@ -295,7 +295,7 @@ export function PlanEditPage() {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-          <p className="text-sm text-destructive">Plan not found.</p>
+          <p className="text-sm text-destructive-text">Plan not found.</p>
           <Link to="/platform/plans" className="text-sm text-primary hover:underline mt-2 inline-block">
             ← Back to Plans
           </Link>
@@ -332,7 +332,7 @@ export function PlanEditPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         {submitError && (
-          <div role="alert" className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div role="alert" className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive-text">
             {submitError}
           </div>
         )}
@@ -346,14 +346,14 @@ export function PlanEditPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="planName">Name</Label>
                 <Input id="planName" {...register("name")} aria-invalid={!!errors.name} />
-                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                {errors.name && <p className="text-xs text-destructive-text">{errors.name.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="discount">Yearly discount (%)</Label>
                 <Input id="discount" type="number" min="0" max="100"
                   {...register("yearlyDiscountPercent", { valueAsNumber: true })} />
                 {errors.yearlyDiscountPercent && (
-                  <p className="text-xs text-destructive">{errors.yearlyDiscountPercent.message}</p>
+                  <p className="text-xs text-destructive-text">{errors.yearlyDiscountPercent.message}</p>
                 )}
               </div>
             </CardContent>
@@ -379,7 +379,7 @@ export function PlanEditPage() {
                       <Label htmlFor="monthlyPrice" className="text-xs text-muted-foreground">Monthly price (€)</Label>
                       <Input id="monthlyPrice" type="number" step="0.01" min="0"
                         {...register("monthly.price", { valueAsNumber: true })} />
-                      {errors.monthly?.price && <p className="text-xs text-destructive">{errors.monthly.price.message}</p>}
+                      {errors.monthly?.price && <p className="text-xs text-destructive-text">{errors.monthly.price.message}</p>}
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="monthlyStripePriceId" className="text-xs text-muted-foreground">Stripe Monthly Price ID</Label>
@@ -410,7 +410,7 @@ export function PlanEditPage() {
                           Suggested: {formatCurrency(suggestedYearly)} (monthly × 12 × {100 - watchedDiscount}%)
                         </p>
                       )}
-                      {errors.yearly?.price && <p className="text-xs text-destructive">{errors.yearly.price.message}</p>}
+                      {errors.yearly?.price && <p className="text-xs text-destructive-text">{errors.yearly.price.message}</p>}
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="yearlyStripePriceId" className="text-xs text-muted-foreground">Stripe Yearly Price ID</Label>
@@ -420,7 +420,7 @@ export function PlanEditPage() {
                   </div>
                 )}
                 {errors.monthly?.message && (
-                  <p className="text-xs text-destructive">{errors.monthly.message}</p>
+                  <p className="text-xs text-destructive-text">{errors.monthly.message}</p>
                 )}
               </div>
             </CardContent>

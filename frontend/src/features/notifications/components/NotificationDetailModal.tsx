@@ -34,7 +34,7 @@ export function NotificationDetailModal({ log, onClose }: Props) {
                 Delivered
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs text-destructive">
+              <span className="inline-flex items-center gap-1 text-xs text-destructive-text">
                 <XCircle className="h-3.5 w-3.5" />
                 Failed
               </span>

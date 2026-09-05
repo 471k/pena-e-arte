@@ -95,7 +95,7 @@ export function CreateDepositRulePage() {
               className={cn(errors.name && "border-destructive")}
             />
             {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
+              <p className="text-xs text-destructive-text">{errors.name.message}</p>
             )}
           </div>
 
@@ -127,7 +127,7 @@ export function CreateDepositRulePage() {
               className={cn(errors.amount && "border-destructive")}
             />
             {errors.amount && (
-              <p className="text-xs text-destructive">{errors.amount.message}</p>
+              <p className="text-xs text-destructive-text">{errors.amount.message}</p>
             )}
           </div>
 
@@ -145,7 +145,7 @@ export function CreateDepositRulePage() {
               className={cn(errors.cancellationWindowHours && "border-destructive")}
             />
             {errors.cancellationWindowHours && (
-              <p className="text-xs text-destructive">{errors.cancellationWindowHours.message}</p>
+              <p className="text-xs text-destructive-text">{errors.cancellationWindowHours.message}</p>
             )}
             <p className="text-xs text-muted-foreground">
               How much notice a client must give to cancel without forfeiting their deposit.
@@ -165,7 +165,7 @@ export function CreateDepositRulePage() {
               className={cn(errors.refundPercentOnLateCancel && "border-destructive")}
             />
             {errors.refundPercentOnLateCancel && (
-              <p className="text-xs text-destructive">{errors.refundPercentOnLateCancel.message}</p>
+              <p className="text-xs text-destructive-text">{errors.refundPercentOnLateCancel.message}</p>
             )}
             <p className="text-xs text-muted-foreground">
               What percentage of the deposit to refund if a client cancels within the notice

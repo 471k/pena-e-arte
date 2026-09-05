@@ -57,7 +57,7 @@ function NotificationRow({
                 Delivered
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs text-destructive">
+              <span className="inline-flex items-center gap-1 text-xs text-destructive-text">
                 <XCircle className="h-3.5 w-3.5" />
                 Failed
               </span>
@@ -172,7 +172,7 @@ export function NotificationLogListPage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">
+          <p className="text-center text-sm text-destructive-text py-16">
             Failed to load notification log. Please try again.
           </p>
         )}

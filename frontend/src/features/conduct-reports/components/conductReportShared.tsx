@@ -49,7 +49,7 @@ export function ReportsList({
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <p className="text-sm text-destructive">Failed to load reports.</p>
+        <p className="text-sm text-destructive-text">Failed to load reports.</p>
         <Button size="sm" variant="outline" onClick={onRetry}>Retry</Button>
       </div>
     );

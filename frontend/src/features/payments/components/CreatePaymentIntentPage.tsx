@@ -389,7 +389,7 @@ function ConfirmPanel({
           })}
         </div>
         {!cardPaymentsAvailable && (
-          <p className="text-xs text-destructive pt-1">
+          <p className="text-xs text-destructive-text pt-1">
             Card payments are temporarily unavailable. Use the Cash option below.
           </p>
         )}
@@ -435,7 +435,7 @@ function ConfirmPanel({
         </div>
 
         {amountError && (
-          <p className="text-xs text-destructive">{amountError}</p>
+          <p className="text-xs text-destructive-text">{amountError}</p>
         )}
         {!noDepositRule && (
           <p className="text-xs text-muted-foreground">
@@ -447,7 +447,7 @@ function ConfirmPanel({
       {(isErrorCard || isErrorCash) && (
         <Card>
           <CardContent className="p-3">
-            <p className="text-sm text-destructive">
+            <p className="text-sm text-destructive-text">
               Failed to create payment. This appointment may already have an active payment.
             </p>
           </CardContent>

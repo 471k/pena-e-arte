@@ -264,7 +264,7 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
                     maxLength={500}
                   />
                 </div>
-                {timeOffError && <p className="text-xs text-destructive">{timeOffError}</p>}
+                {timeOffError && <p className="text-xs text-destructive-text">{timeOffError}</p>}
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={handleAddTimeOff} disabled={addingTimeOff} className="gap-2">
                     {addingTimeOff && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

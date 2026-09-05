@@ -179,7 +179,7 @@ export function SocialLinksCard({
                   variant="ghost"
                   size="sm"
                   onClick={() => void handleDisconnect(row.platform)}
-                  className="gap-1.5 text-destructive hover:text-destructive"
+                  className="gap-1.5 text-destructive-text hover:text-destructive-text"
                 >
                   <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
                   Disconnect

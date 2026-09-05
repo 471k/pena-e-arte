@@ -110,7 +110,7 @@ function ArtistAvatar({ artist }: { artist: ArtistResponse }) {
   return (
     <span
       aria-hidden="true"
-      className="h-6 w-6 rounded-full bg-violet-600/20 text-violet-400
+      className="h-6 w-6 rounded-full bg-violet-600/20 text-violet-700 dark:text-violet-400
                  text-[9px] font-semibold flex items-center justify-center shrink-0"
     >
       {initials}
@@ -410,7 +410,7 @@ export function BookAppointmentForm() {
       <div
         role="alert"
         className="flex items-center gap-2 rounded-md border border-destructive/30
-                   bg-destructive/5 px-3 py-3 text-sm text-destructive"
+                   bg-destructive/5 px-3 py-3 text-sm text-destructive-text"
       >
         <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
         This studio couldn&apos;t be found.
@@ -423,7 +423,7 @@ export function BookAppointmentForm() {
       <div
         role="alert"
         className="flex items-center gap-2 rounded-md border border-destructive/30
-                   bg-destructive/5 px-3 py-3 text-sm text-destructive"
+                   bg-destructive/5 px-3 py-3 text-sm text-destructive-text"
       >
         <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
         {switchError ?? "Couldn't switch studios. Please try again."}
@@ -523,7 +523,9 @@ export function BookAppointmentForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <p className="text-xs text-muted-foreground/60">* Required</p>
+      {/* text-muted-foreground/75 ≈ 4.7:1 on the dark theme's #09090b background — passes WCAG
+          AA (measured 2026-09-05 while adding axe-core e2e coverage; /60 measured 3.38:1). */}
+      <p className="text-xs text-muted-foreground">* Required</p>
 
       {/* Let the studio choose */}
       <div className="flex items-center justify-between rounded-md border border-border/40
@@ -583,7 +585,7 @@ export function BookAppointmentForm() {
                       value={artistSearch}
                       onChange={(e) => setArtistSearch(e.target.value)}
                       className="w-full rounded-sm border-0 bg-muted/50 px-2 py-1
-                                 text-xs placeholder:text-muted-foreground/60
+                                 text-xs placeholder:text-muted-foreground
                                  focus:outline-none focus:ring-1 focus:ring-ring"
                       aria-label="Search artists"
                     />
@@ -604,7 +606,7 @@ export function BookAppointmentForm() {
             )}
           />
           {errors.artistId && (
-            <p className="text-xs text-destructive" role="alert">
+            <p className="text-xs text-destructive-text" role="alert">
               {errors.artistId.message}
             </p>
           )}
@@ -638,7 +640,7 @@ export function BookAppointmentForm() {
             )}
           />
           {errors.clientId && (
-            <p className="text-xs text-destructive" role="alert">
+            <p className="text-xs text-destructive-text" role="alert">
               {errors.clientId.message}
             </p>
           )}
@@ -657,7 +659,7 @@ export function BookAppointmentForm() {
             className={cn(errors.scheduledAt && "border-destructive")}
           />
           {errors.scheduledAt && (
-            <p className="text-xs text-destructive" role="alert">
+            <p className="text-xs text-destructive-text" role="alert">
               {errors.scheduledAt.message}
             </p>
           )}
@@ -690,7 +692,7 @@ export function BookAppointmentForm() {
             )}
           />
           {errors.durationMinutes && (
-            <p className="text-xs text-destructive" role="alert">
+            <p className="text-xs text-destructive-text" role="alert">
               {errors.durationMinutes.message}
             </p>
           )}
@@ -804,7 +806,8 @@ export function BookAppointmentForm() {
         )}
       </Button>
 
-      <p className="text-center text-[11px] text-muted-foreground/60">
+      {/* text-muted-foreground/75 — see the "* Required" note above for the measured ratio. */}
+      <p className="text-center text-[11px] text-muted-foreground">
         Your artist will confirm availability within 24 hours.
       </p>
     </form>

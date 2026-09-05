@@ -105,7 +105,7 @@ export function StudioMapPage() {
         )}
 
         {isError && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-background border border-destructive rounded-full px-4 py-1.5 text-xs text-destructive shadow-md">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-background border border-destructive rounded-full px-4 py-1.5 text-xs text-destructive-text shadow-md">
             Failed to load studios.
           </div>
         )}

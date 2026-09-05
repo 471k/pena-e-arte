@@ -262,14 +262,14 @@ export function StudioProfilePage() {
                     </Button>
                   </div>
                 )}
-                <span className="text-foreground/40">·</span>
+                <span className="text-foreground/65">·</span>
                 <span className="text-xs text-foreground/70">
                   Registered {new Date(studio.createdAt).toLocaleDateString("en-GB")}
                 </span>
               </div>
 
               {slugError && (
-                <p id="slug-error" className="text-xs text-destructive">{slugError}</p>
+                <p id="slug-error" className="text-xs text-destructive-text">{slugError}</p>
               )}
 
               {studio.slugLockedAt && (
@@ -291,13 +291,13 @@ export function StudioProfilePage() {
               <p className="text-sm text-green-600 mb-4">Changes saved.</p>
             )}
             {serverError && (
-              <p className="text-sm text-destructive mb-4">{serverError}</p>
+              <p className="text-sm text-destructive-text mb-4">{serverError}</p>
             )}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Studio name</Label>
                 <Input id="name" {...register("name")} aria-invalid={!!errors.name} />
-                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                {errors.name && <p className="text-xs text-destructive-text">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -317,7 +317,7 @@ export function StudioProfilePage() {
                   )}
                 />
                 {errors.phoneNumber && (
-                  <p id="phoneNumber-error" className="text-xs text-destructive">{errors.phoneNumber.message}</p>
+                  <p id="phoneNumber-error" className="text-xs text-destructive-text">{errors.phoneNumber.message}</p>
                 )}
               </div>
 
@@ -345,7 +345,7 @@ export function StudioProfilePage() {
                       Used for invoicing and business verification. Format: one letter, 8 digits, one letter.
                     </p>
                     {errors.nipt && (
-                      <p className="text-xs text-destructive">{errors.nipt.message}</p>
+                      <p className="text-xs text-destructive-text">{errors.nipt.message}</p>
                     )}
                   </>
                 )}

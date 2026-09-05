@@ -111,29 +111,38 @@ function AuthenticatedBookPage() {
           {needsVerify && !dismissed && (
             <div
               role="alert"
-              className="relative rounded-lg border border-amber-800/50 bg-amber-950/20
+              // Matches the established alert-banner pattern used elsewhere (ReadOnlyBanner,
+              // LoginPage, DashboardPage's SubscriptionBanner): a mid-tone amber-500 at low
+              // opacity for border/bg works in both themes unmodified, with only the TEXT
+              // needing a light/dark split. The previous amber-950/amber-800/amber-300
+              // combination here was tuned for dark mode only — in light mode (now actually
+              // exercised by e2e's chromium-light project) it rendered near-invisible pale
+              // yellow text on a muddy tan background (measured 1.03:1 and 1.14:1, both far
+              // under WCAG AA's 4.5:1). Fixed 2026-09-05.
+              className="relative rounded-lg border border-amber-500/30 bg-amber-500/10
                          px-4 py-3 text-sm flex items-start gap-3"
             >
               <AlertTriangle
-                className="h-4 w-4 mt-0.5 shrink-0 text-amber-400"
+                className="h-4 w-4 mt-0.5 shrink-0 text-amber-700 dark:text-amber-400"
                 aria-hidden="true"
               />
               <div className="flex-1 space-y-1">
                 {resentOk ? (
-                  <p className="text-amber-300">
+                  <p className="text-amber-700 dark:text-amber-400">
                     Verification email sent — check your inbox.
                   </p>
                 ) : (
                   <>
-                    <p className="text-amber-300">
+                    <p className="text-amber-700 dark:text-amber-400">
                       Please verify your email address to complete bookings.
                     </p>
                     <button
                       type="button"
                       onClick={() => void resend()}
                       disabled={isResending}
-                      className="text-xs text-amber-400 hover:text-amber-300 underline
-                                 underline-offset-2 transition-colors disabled:opacity-60"
+                      className="text-xs text-amber-800 hover:text-amber-900 dark:text-amber-400
+                                 dark:hover:text-amber-300 underline underline-offset-2
+                                 transition-colors disabled:opacity-60"
                     >
                       {isResending ? "Sending…" : "Resend verification email"}
                     </button>
@@ -144,7 +153,8 @@ function AuthenticatedBookPage() {
                 type="button"
                 onClick={() => setDismissed(true)}
                 aria-label="Dismiss email verification reminder"
-                className="text-amber-400/60 hover:text-amber-400 transition-colors"
+                className="text-amber-700/60 hover:text-amber-700 dark:text-amber-400/60
+                           dark:hover:text-amber-400 transition-colors"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

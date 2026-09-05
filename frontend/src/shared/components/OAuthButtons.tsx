@@ -61,7 +61,9 @@ export function OAuthButtons({ onToken, disabled = false }: OAuthButtonsProps) {
           <span className="w-full border-t border-border/50" />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="bg-card px-2 text-foreground/40">or continue with</span>
+          {/* text-foreground/50 ≈ 5.2:1 on the dark theme's #09090b background — passes WCAG AA
+              (measured 2026-09-05 while adding axe-core e2e coverage; /40 measured 3.63:1). */}
+          <span className="bg-card px-2 text-foreground/65">or continue with</span>
         </div>
       </div>
 
@@ -98,7 +100,7 @@ export function OAuthButtons({ onToken, disabled = false }: OAuthButtonsProps) {
       )}
 
       {error && (
-        <p className="text-xs text-destructive text-center" role="alert">
+        <p className="text-xs text-destructive-text text-center" role="alert">
           {error}
         </p>
       )}

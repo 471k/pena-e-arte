@@ -128,7 +128,7 @@ function SpecializationChips({ value }: { value: string }) {
         <span
           key={tag}
           className="text-xs px-2.5 py-1 rounded-full
-                     bg-muted/60 text-muted-foreground/90
+                     bg-muted/60 text-muted-foreground
                      border border-border/50"
         >
           {tag}
@@ -154,7 +154,7 @@ function RatingSummary({
         <button
           type="button"
           onClick={onWriteReview}
-          className="text-xs text-violet-400 hover:text-violet-300 transition-colors
+          className="text-xs text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors
                      underline underline-offset-2"
         >
           Be the first to review
@@ -171,7 +171,7 @@ function RatingSummary({
       <button
         type="button"
         onClick={onWriteReview}
-        className="text-xs text-violet-400 hover:text-violet-300 transition-colors
+        className="text-xs text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors
                    underline underline-offset-2 ml-auto"
       >
         Leave a review
@@ -562,7 +562,7 @@ export function ArtistPortfolioPage() {
             />
 
             {artist.bio && (
-              <p className="text-sm text-muted-foreground/90 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                 {artist.bio}
               </p>
             )}
@@ -730,7 +730,7 @@ export function ArtistPortfolioPage() {
                 <button
                   type="button"
                   onClick={() => setReportOpen(true)}
-                  className="text-xs text-muted-foreground/70 hover:text-muted-foreground
+                  className="text-xs text-muted-foreground hover:text-muted-foreground
                              underline underline-offset-2 transition-colors"
                 >
                   Report this artist
@@ -749,7 +749,7 @@ export function ArtistPortfolioPage() {
         />
       )}
 
-      <footer className="py-4 text-center text-xs text-foreground/50 border-t mt-auto">
+      <footer className="py-4 text-center text-xs text-foreground/65 border-t mt-auto">
         <a
           href="https://tattooos.co"
           target="_blank"

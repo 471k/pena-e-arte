@@ -65,7 +65,7 @@ export function QrCodeSection() {
           )}
 
           {isError && (
-            <p className="text-sm text-destructive">Failed to load QR code.</p>
+            <p className="text-sm text-destructive-text">Failed to load QR code.</p>
           )}
 
           {blobUrl && !isLoading && (

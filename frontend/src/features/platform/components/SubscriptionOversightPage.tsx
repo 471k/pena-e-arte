@@ -257,8 +257,8 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs gap-1 text-destructive border-destructive/40
-                           hover:bg-destructive/10 hover:text-destructive"
+                className="h-7 text-xs gap-1 text-destructive-text border-destructive/40
+                           hover:bg-destructive/10 hover:text-destructive-text"
                 onClick={() => setConfirming(true)}
                 aria-label={`Cancel subscription for ${sub.studioName}`}
               >
@@ -345,7 +345,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
         )}
         {confirming && (
           <div className="flex items-center gap-2 pt-1">
-            <span className="text-xs text-destructive font-medium">
+            <span className="text-xs text-destructive-text font-medium">
               Cancel subscription for <strong>{sub.studioName}</strong>?
             </span>
             <Button
@@ -502,7 +502,7 @@ export function SubscriptionOversightPage() {
         )}
 
         {isError && (
-          <p className="text-center text-sm text-destructive py-16">Failed to load subscriptions.</p>
+          <p className="text-center text-sm text-destructive-text py-16">Failed to load subscriptions.</p>
         )}
 
         {!isLoading && !isError && filtered.length === 0 && (

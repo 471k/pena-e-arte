@@ -114,7 +114,7 @@ function CardTab({
 
   if (!cardPaymentsAvailable) {
     return (
-      <p className="text-sm text-destructive py-4 text-center">
+      <p className="text-sm text-destructive-text py-4 text-center">
         Card payments are temporarily unavailable. Use the Cash option below,
         or contact the studio directly.
       </p>
@@ -133,7 +133,7 @@ function CardTab({
   if (isError || !data) {
     const err = error as { data?: { message?: string } } | undefined;
     return (
-      <p className="text-sm text-destructive py-4 text-center">
+      <p className="text-sm text-destructive-text py-4 text-center">
         {err?.data?.message ?? "Could not prepare the card payment. Please try again."}
       </p>
     );

@@ -132,7 +132,7 @@ export function ClientListPage() {
         )}
 
         {errorMessage && (
-          <p className="text-center text-sm text-destructive py-16" role="alert">
+          <p className="text-center text-sm text-destructive-text py-16" role="alert">
             {errorMessage}
           </p>
         )}
@@ -178,7 +178,7 @@ export function ClientListPage() {
                 header: "Phone",
                 cell: (c) =>
                   c.phone ?? (
-                    <span aria-label="Not provided" className="text-muted-foreground/50">
+                    <span aria-label="Not provided" className="text-muted-foreground">
                       —
                     </span>
                   ),
@@ -187,7 +187,7 @@ export function ClientListPage() {
                 header: "Artist",
                 cell: (c) =>
                   c.artistName ?? (
-                    <span aria-label="Unassigned" className="text-muted-foreground/50">
+                    <span aria-label="Unassigned" className="text-muted-foreground">
                       —
                     </span>
                   ),

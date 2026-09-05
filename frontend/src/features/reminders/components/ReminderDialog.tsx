@@ -174,7 +174,7 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
                   }
                 />
                 {recipientPhone.length > 0 && !isValidE164Phone(recipientPhone) && (
-                  <p id="reminder-recipient-phone-error" className="text-xs text-destructive">
+                  <p id="reminder-recipient-phone-error" className="text-xs text-destructive-text">
                     {PHONE_ERROR_MESSAGE}
                   </p>
                 )}

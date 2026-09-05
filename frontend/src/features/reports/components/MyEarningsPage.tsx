@@ -57,7 +57,7 @@ export function MyEarningsPage() {
 
         {isError && !isNoArtistProfile && (
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <p className="text-sm text-destructive">Failed to load your earnings.</p>
+            <p className="text-sm text-destructive-text">Failed to load your earnings.</p>
             <button
               type="button"
               onClick={() => refetch()}

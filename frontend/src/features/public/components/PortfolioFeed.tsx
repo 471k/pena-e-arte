@@ -314,8 +314,8 @@ function PortfolioTile({ image, isSaved, onOpen, onToggleSave, showBookmark }: T
                    flex flex-col items-center justify-center gap-1 text-center px-3"
         aria-label={`Image unavailable — ${image.artistName}`}
       >
-        <p className="text-xs text-muted-foreground/70">Image unavailable</p>
-        <p className="text-[10px] text-muted-foreground/50">{image.artistName}</p>
+        <p className="text-xs text-muted-foreground">Image unavailable</p>
+        <p className="text-[10px] text-muted-foreground">{image.artistName}</p>
       </div>
     );
   }
@@ -358,7 +358,7 @@ function PortfolioTile({ image, isSaved, onOpen, onToggleSave, showBookmark }: T
               <span className="text-white/60 text-[10px]">({image.imageReviewCount})</span>
             </div>
           )}
-          <span className="text-violet-300 text-xs font-medium">View tattoo →</span>
+          <span className="text-violet-800 dark:text-violet-300 text-xs font-medium">View tattoo →</span>
         </div>
       </button>
 
@@ -590,7 +590,7 @@ export function PortfolioFeed({
           <button
             type="button"
             onClick={() => { setPage(1); setAllImages([]); }}
-            className="text-sm text-violet-400 hover:text-violet-300 underline
+            className="text-sm text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 underline
                        underline-offset-4 transition-colors"
           >
             Retry
@@ -636,7 +636,7 @@ export function PortfolioFeed({
           </div>
           <Link
             to="/register"
-            className="text-sm text-violet-400 hover:text-violet-300 underline
+            className="text-sm text-violet-700 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 underline
                        underline-offset-4 transition-colors"
           >
             Register your studio →

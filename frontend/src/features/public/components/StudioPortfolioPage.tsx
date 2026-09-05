@@ -349,7 +349,7 @@ export function StudioPortfolioPage() {
               )}
 
               {studio.description && (
-                <p className="text-sm text-muted-foreground/90 leading-relaxed">
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   {studio.description}
                 </p>
               )}
@@ -428,7 +428,7 @@ export function StudioPortfolioPage() {
                 <button
                   type="button"
                   onClick={() => setReportOpen(true)}
-                  className="text-xs text-muted-foreground/70 hover:text-muted-foreground
+                  className="text-xs text-muted-foreground hover:text-muted-foreground
                              underline underline-offset-2 transition-colors"
                 >
                   Report this studio
@@ -503,14 +503,14 @@ export function StudioPortfolioPage() {
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground/60 text-center px-1">
+            <p className="text-xs text-muted-foreground text-center px-1">
               Booking requests go directly to the studio.
             </p>
           </aside>
         </div>
       </div>
 
-      <footer className="py-4 text-center text-xs text-foreground/50 border-t mt-auto">
+      <footer className="py-4 text-center text-xs text-foreground/65 border-t mt-auto">
         <a
           href="https://tattooos.co"
           target="_blank"

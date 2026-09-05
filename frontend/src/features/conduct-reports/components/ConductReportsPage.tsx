@@ -124,7 +124,7 @@ function ArtistReportCard({ report }: { report: ConductReportResponse }) {
         {expanded && (
           <div className="pt-2 space-y-2 border-t">
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{report.reason}</p>
-            <p className="text-xs text-muted-foreground/70 italic">
+            <p className="text-xs text-muted-foreground italic">
               The reporting client's identity is not shared with you.
             </p>
           </div>

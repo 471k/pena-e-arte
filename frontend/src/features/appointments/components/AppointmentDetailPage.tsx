@@ -226,7 +226,7 @@ export function AppointmentDetailPage() {
       <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
         {(isError || !appt) && (
           <div className="flex flex-col items-center py-16 gap-3">
-            <p className="text-sm text-destructive">Appointment not found.</p>
+            <p className="text-sm text-destructive-text">Appointment not found.</p>
           </div>
         )}
 
@@ -475,7 +475,7 @@ export function AppointmentDetailPage() {
 
                 <Button
                   variant="ghost"
-                  className="w-full gap-2 text-destructive hover:text-destructive"
+                  className="w-full gap-2 text-destructive-text hover:text-destructive-text"
                   disabled={anyLoading}
                   onClick={() => setCancelDialogOpen(true)}
                 >

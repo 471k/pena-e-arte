@@ -210,7 +210,7 @@ function TodaySection({
           )}
 
           {errorMessage && (
-            <p className="text-sm text-destructive py-4" role="alert">{errorMessage}</p>
+            <p className="text-sm text-destructive-text py-4" role="alert">{errorMessage}</p>
           )}
 
           {!isLoading && !isError && appointments?.length === 0 && (
