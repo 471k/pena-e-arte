@@ -65,9 +65,23 @@ one `LogError` (job id, type, failure reason) whenever *any* job transitions to 
 
 ## Manual verification
 
-Per this runbook's own standard (and `docs/infra/secrets-rotation-runbook.md`'s "founder
-action" framing for anything touching live production), triggering a real alert and confirming
-delivery is a live-production action and needs the `pena-e-arte-grafana-smtp` secret to exist
-first (only created by a real `cd.yml` run against this branch's changes — not yet run as of
-this writing). **Status: prepared, not yet verified end-to-end** — see the session's final
-summary for the exact handoff.
+**Verified end-to-end live on 2026-09-05, with Phi's explicit go-ahead for real downtime.**
+
+First deploy surfaced a real bug: `api-pod-not-ready` and `api-5xx-error-rate` both sat in
+`health=error` ("invalid format of evaluation results ... looks like time series data, only
+reduced data can be alerted on") — the single-stage "classic condition" query model doesn't
+reduce a Prometheus range query correctly in this Grafana version. Fixed in a follow-up PR by
+switching to the standard three-stage reduce→threshold expression pipeline; confirmed via
+Grafana's own `/api/prometheus/grafana/api/v1/rules` that all three rules report `health=ok`
+before running the live test.
+
+**Live test:** scaled `pena-e-arte-api` to 0 replicas at 11:41:14 AM, confirmed via
+`/api/prometheus/grafana/api/v1/rules` polling that the alert transitioned
+`inactive → pending → firing` at exactly the 5-minute mark (11:47:12 AM, matching the rule's
+`for: 5m`), confirmed the fired alert in Alertmanager's `/api/alertmanager/grafana/api/v2/alerts`
+routed to the `ops-email` receiver, then restored the API to 2 replicas immediately (total
+downtime ~7 minutes, `/health/live` confirmed `200` again afterward). **The email itself
+arrived** — `notifications@tattooos.co` → `phisoftwaresolutions@gmail.com`, subject
+`[FIRING:1] API pod not ready ...`, delivered 33 seconds after the alert fired, correct summary
+and label values — confirming the full chain (Prometheus → Grafana alert rule → Alertmanager →
+Resend SMTP relay → inbox) actually works, not just that the YAML looks right.
