@@ -119,6 +119,11 @@ describe("CreateClientPage", () => {
     expect(screen.getByText("Select an artist")).toBeInTheDocument();
   });
 
+  // These tests each fill the full form (including the artist Select) and submit —
+  // heavy enough interaction sequences that this sandbox's known CPU-contention
+  // flakiness (see src/test/setup.ts's asyncUtilTimeout comment) can push them past the
+  // 10s default under load even though nothing is actually broken; confirmed by
+  // re-running in isolation with a raised timeout and watching them pass, 2026-09-05.
   it("does not require phone", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -128,7 +133,7 @@ describe("CreateClientPage", () => {
     await selectArtist(user);
     await user.click(screen.getByRole("button", { name: /create client/i }));
     expect(await screen.findByTestId("detail-page")).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("submitting a valid form navigates to the new client's detail page", async () => {
     const user = userEvent.setup();
@@ -140,7 +145,7 @@ describe("CreateClientPage", () => {
     await selectArtist(user);
     await user.click(screen.getByRole("button", { name: /create client/i }));
     expect(await screen.findByTestId("detail-page")).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("typing an invalid phone number and submitting shows the phone error and blocks submission", async () => {
     const user = userEvent.setup();
@@ -153,7 +158,7 @@ describe("CreateClientPage", () => {
     await user.click(screen.getByRole("button", { name: /create client/i }));
     expect(await screen.findByText(/enter a valid phone number/i)).toBeInTheDocument();
     expect(screen.queryByTestId("detail-page")).not.toBeInTheDocument();
-  });
+  }, 20000);
 
   it("typing a valid phone number submits with the correct E.164 value", async () => {
     let capturedPhone: unknown;
@@ -179,7 +184,7 @@ describe("CreateClientPage", () => {
     await user.click(screen.getByRole("button", { name: /create client/i }));
     await screen.findByTestId("detail-page");
     expect(capturedPhone).toBe("+351912345678");
-  });
+  }, 20000);
 
   it("shows a success toast after creating a client", async () => {
     const user = userEvent.setup();
@@ -190,7 +195,7 @@ describe("CreateClientPage", () => {
     await selectArtist(user);
     await user.click(screen.getByRole("button", { name: /create client/i }));
     expect(await screen.findByText("Client created.")).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("shows an error toast when the API call fails", async () => {
     server.use(
@@ -207,7 +212,7 @@ describe("CreateClientPage", () => {
     await user.click(screen.getByRole("button", { name: /create client/i }));
     expect(await screen.findByText("Failed to create client.")).toBeInTheDocument();
     expect(screen.queryByTestId("detail-page")).not.toBeInTheDocument();
-  });
+  }, 20000);
 
   it("'Clients' back button navigates to /clients", async () => {
     const user = userEvent.setup();
@@ -226,5 +231,5 @@ describe("CreateClientPage", () => {
     await user.type(screen.getByLabelText(/^email/i), "ana@example.com");
     await user.click(screen.getByRole("button", { name: /create client/i }));
     expect(await screen.findByTestId("detail-page")).toBeInTheDocument();
-  });
+  }, 20000);
 });

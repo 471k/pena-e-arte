@@ -193,6 +193,11 @@ describe("ReminderDialog", () => {
 
   // ── Submit gating ────────────────────────────────────────────────────────────
 
+  // These tests type into the phone field (AsYouType formatting on every keystroke) and
+  // wait on the resulting state change — this sandbox's known CPU-contention flakiness
+  // (see src/test/setup.ts's asyncUtilTimeout comment) can push them past the 10s default
+  // under load even though nothing is actually broken; confirmed by re-running in
+  // isolation with a raised timeout and watching them pass, 2026-09-05.
   it("submit is disabled in raw-contact mode until both name and phone are filled", async () => {
     const user = userEvent.setup();
     renderDialog();
@@ -204,7 +209,7 @@ describe("ReminderDialog", () => {
 
     await user.type(screen.getByLabelText(/^phone$/i), "912345678");
     expect(screen.getByRole("button", { name: /send now/i })).not.toBeDisabled();
-  });
+  }, 20000);
 
   it("submit stays disabled and shows an inline error while the phone is invalid, then enables once valid", async () => {
     const user = userEvent.setup();
@@ -220,7 +225,7 @@ describe("ReminderDialog", () => {
 
     expect(screen.queryByText(/enter a valid phone number/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /send now/i })).not.toBeDisabled();
-  });
+  }, 20000);
 
   it("submit is enabled immediately in appointment-linked mode (recipient is implicit)", () => {
     renderDialog({ appointmentId: "appt-001" });
@@ -238,7 +243,7 @@ describe("ReminderDialog", () => {
     await user.click(screen.getByRole("button", { name: /send now/i }));
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Reminder sent."));
-  });
+  }, 20000);
 
   it("submitting a raw-contact reminder sends the correct E.164 phone value", async () => {
     let capturedBody: Record<string, unknown> | null = null;
@@ -256,7 +261,7 @@ describe("ReminderDialog", () => {
     await user.click(screen.getByRole("button", { name: /send now/i }));
 
     await waitFor(() => expect(capturedBody).toMatchObject({ recipientPhone: "+351912345678" }));
-  });
+  }, 20000);
 
   it("a failed create shows an error toast", async () => {
     server.use(
@@ -271,7 +276,7 @@ describe("ReminderDialog", () => {
     await user.click(screen.getByRole("button", { name: /send now/i }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Quota exceeded"));
-  });
+  }, 20000);
 
   // ── History list ─────────────────────────────────────────────────────────────
 
