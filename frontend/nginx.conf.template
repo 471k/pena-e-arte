@@ -53,6 +53,27 @@ server {
         add_header X-Robots-Tag "${IS_STAGING}" always;
     }
 
+    # Hangfire dashboard — same-origin proxy to the backend service, mounted at the same
+    # /hangfire base path Program.cs's UseHangfireDashboard uses. Found missing 2026-09-05:
+    # this block never existed, so every request to /hangfire (dashboard itself, no trailing
+    # slash) fell through to the SPA "location /" fallback below, served index.html, and React
+    # Router's client-side catch-all silently redirected to Discover — the dashboard has never
+    # been reachable via the public domain in any environment. No trailing slash on the location
+    # path (unlike /api/ above): Hangfire is requested as bare "/hangfire" as well as
+    # "/hangfire/recurring", "/hangfire/js/...", etc., and nginx's prefix matching only matches
+    # both a literal "/hangfire" AND "/hangfire/..." when the location itself has no trailing
+    # slash. The app's own HangfireDashboardAuthFilter (Basic Auth) is what actually protects
+    # this, same as before — nginx is only responsible for routing, not authorization here.
+    location /hangfire {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header X-Robots-Tag "${IS_STAGING}" always;
+    }
+
     # /embed/:studioSlug is an intentionally embeddable widget (see
     # EmbedCodeCard.tsx, which generates <iframe> snippets for studios to paste
     # into their own sites) — studios embed on arbitrary external origins we
