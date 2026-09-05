@@ -123,6 +123,49 @@ that Phi should make deliberately rather than have it slipped in as a side effec
 script. Re-run this same script after any such change to confirm it actually helps before
 declaring it fixed.
 
+## Follow-up (2026-09-05) — resource limits fixed, a deeper bottleneck surfaced
+
+Phi asked for the pod-resource issue above to be fixed. Before picking new numbers, checked real
+cluster capacity rather than guessing: `kubectl top nodes` showed the whole node at only ~7% real
+CPU usage (146m of ~2000m) — the 250m *limit* was artificially throttling this one pod via CFS
+quota enforcement even though the physical node had plenty of spare cycles, so raising CPU was
+low-risk. Memory was the genuinely tight resource (measured ~80% used cluster-wide, ~700-800Mi
+real headroom across production + monitoring + staging combined on this single CPX22 box) — bumped
+more conservatively. New values (`k8s/overlays/staging/resources-patch.yaml`): CPU 250m→750m limit
+(50m→75m request), memory 256Mi→384Mi limit (128Mi→160Mi request). Applied directly to the live
+cluster first (`kubectl patch` + verified rollout), then committed to keep the manifest in sync.
+
+**Re-running this exact same baseline after the fix still shows staging becoming unhealthy under
+the same ~50 VUs** — but the failure mode changed. Before: raw `context deadline exceeded`
+timeouts (the pod too CPU-starved to answer at all). After: a mix of timeouts and clean HTTP `503`
+responses from the app's own `/health/ready` check — the pod is now CPU/memory-healthy enough to
+respond, but something *downstream* is reporting unhealthy under load.
+
+Checked the actual DB connection string staging uses (`kubectl get secret ... ConnectionStrings__Default`,
+password redacted before viewing): `Server=pena-e-arte-prod-db-do-user-30836506-0.j.db.ondigitalocean.com;
+Database=pena_e_arte_staging;Uid=staging_user;...` — confirmed byte-for-byte the same server
+hostname production's own connection string uses, just a different database/user. **Staging and
+production share the exact same physical DigitalOcean managed MySQL instance.** No explicit
+connection-pool-size tuning exists on either connection string, so the likely culprit is the DB
+instance's own `max_connections` ceiling (a Basic-tier 1GB instance has a genuinely small one)
+being reached faster than expected once 50 concurrent load-test VUs each open their own EF Core
+connections against it — but this wasn't verified with a real `SHOW VARIABLES LIKE
+'max_connections'` / connection-count query, since that would mean connecting to the live
+production database instance, a real production-adjacent action outside what this follow-up was
+asked to do.
+
+**Confirmed no production impact from this re-test**: `https://app.tattooos.co/health/live`
+stayed `200` throughout, and `kubectl get pods -n pena-e-arte` showed 0 restarts across the whole
+run — but the shared-instance finding above means a *future*, larger staging load test could
+plausibly compete with production for DB connections, which the original baseline's "staging
+only, never production" safety framing didn't anticipate needing to account for.
+
+**This is now a materially different, more sensitive question than the original pod-resource
+one** — it touches the live production database's own tier/connection-limit configuration, not
+just a K8s Deployment's resource requests. Flagged as a distinct follow-up for Phi's own decision
+(e.g., whether to size up the DB tier, add explicit per-environment connection-pool caps in each
+connection string, or accept staging's load ceiling as-is) — not addressed here.
+
 ## Files
 
 - `load-tests/staging-baseline.js` — the k6 script itself, reusable for future runs.
