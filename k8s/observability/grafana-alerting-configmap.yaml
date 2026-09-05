@@ -37,9 +37,20 @@ data:
         folder: Pena e Arte
         interval: 1m
         rules:
+          # These two use the modern reduce->threshold expression pipeline (A: raw instant
+          # query, B: reduce A to a scalar via Grafana's "__expr__" expression engine, C:
+          # threshold B), not a single-stage "classic condition" query. Found the hard way
+          # (2026-09-05, first real deploy of this ConfigMap): a single-stage model with
+          # conditions/evaluator/reducer embedded directly against the prometheus-uid
+          # datasource evaluates to "invalid format of evaluation results ... looks like time
+          # series data, only reduced data can be alerted on" in this Grafana version — it
+          # only works when the query source is itself already a Loki count aggregation
+          # (see hangfire-job-failure-rate below, which uses that simpler single-stage form
+          # successfully). Confirmed via the real Grafana API after deploy, not assumed from
+          # provisioning YAML alone.
           - uid: api-pod-not-ready
             title: API pod not ready
-            condition: A
+            condition: C
             data:
               - refId: A
                 relativeTimeRange:
@@ -49,19 +60,32 @@ data:
                 model:
                   refId: A
                   expr: up{service="pena-e-arte-api", environment="production"}
+                  instant: true
                   intervalMs: 1000
                   maxDataPoints: 43200
+              - refId: B
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  expression: A
+                  reducer: last
+              - refId: C
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
                   conditions:
                     - evaluator:
                         type: lt
                         params: [1]
-                      operator:
-                        type: and
-                      query:
-                        params: ["A"]
-                      reducer:
-                        type: last
-                      type: query
             for: 5m
             noDataState: Alerting
             execErrState: Alerting
@@ -72,7 +96,7 @@ data:
 
           - uid: api-5xx-error-rate
             title: API 5xx error rate spike
-            condition: A
+            condition: C
             data:
               - refId: A
                 relativeTimeRange:
@@ -86,19 +110,32 @@ data:
                     environment="production", http_response_status_code=~"5.."}[5m])) /
                     clamp_min(sum(rate(http_server_request_duration_seconds_count{service="pena-e-arte-api",
                     environment="production"}[5m])), 1e-9)
+                  instant: true
                   intervalMs: 1000
                   maxDataPoints: 43200
+              - refId: B
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  expression: A
+                  reducer: last
+              - refId: C
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
                   conditions:
                     - evaluator:
                         type: gt
                         params: [5]
-                      operator:
-                        type: and
-                      query:
-                        params: ["A"]
-                      reducer:
-                        type: last
-                      type: query
             for: 5m
             noDataState: OK
             execErrState: Alerting
