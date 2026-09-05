@@ -45,6 +45,13 @@ later).
 
 ## Status
 
-Both prepared, neither created yet — Phi opted to add the monitor and status page directly in
-the existing UptimeRobot dashboard rather than have this session drive it via browser
-automation. Nothing else in this repo depends on either existing.
+**Both live as of 2026-09-05.** Phi added both directly in the UptimeRobot dashboard (guided
+step by step in-session, screenshots confirmed at each step rather than assumed):
+
+- **Uptime monitor**: `app.tattooos.co/health/live`, HTTP(s), 5-minute interval, email alert to
+  `phisoftwaresolutions@gmail.com` — matches the config above exactly.
+- **Public status page**: named "TattooOS Status," live at
+  `https://stats.uptimerobot.com/JwKjcwKGAE`, tracking the monitor above. No password, no custom
+  domain — both left at UptimeRobot's free-tier defaults per the recommendation above.
+
+Nothing else in this repo depends on either existing — this is external, standalone monitoring.
