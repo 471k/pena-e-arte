@@ -84,4 +84,6 @@ downtime ~7 minutes, `/health/live` confirmed `200` again afterward). **The emai
 arrived** — `notifications@tattooos.co` → `phisoftwaresolutions@gmail.com`, subject
 `[FIRING:1] API pod not ready ...`, delivered 33 seconds after the alert fired, correct summary
 and label values — confirming the full chain (Prometheus → Grafana alert rule → Alertmanager →
-Resend SMTP relay → inbox) actually works, not just that the YAML looks right.
+Resend SMTP relay → inbox) actually works, not just that the YAML looks right. The `[RESOLVED]`
+notification also arrived once the API came back healthy, confirming the full fire → recover →
+resolve → notify lifecycle, not just the initial fire.
