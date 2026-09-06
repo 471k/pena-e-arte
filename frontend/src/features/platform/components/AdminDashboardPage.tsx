@@ -196,7 +196,7 @@ function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
 
-export function IssuerDashboardPage() {
+export function AdminDashboardPage() {
   useDocumentMeta({ title: "Platform Overview — Platform Admin", canonical: "/platform" });
 
   const { data: stats, isLoading: statsLoading } =
@@ -318,7 +318,7 @@ export function IssuerDashboardPage() {
                 label="Suspended"
                 value={stats?.suspendedStudios ?? 0}
                 icon={<Ban className="h-6 w-6" />}
-                subtitle="deactivated by issuer"
+                subtitle="deactivated by admin"
                 href="/platform/studios"
                 accent={stats?.suspendedStudios ? "danger" : "default"}
               />

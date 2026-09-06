@@ -27,7 +27,7 @@ const ROLE_LABELS: Record<string, string> = {
   client: "Client",
   artist: "Artist",
   owner:  "Owner",
-  issuer: "Issuer",
+  admin: "Admin",
 };
 
 function countryFlag(countryCode: string | null): string {
@@ -257,7 +257,7 @@ export function LiveTrafficPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <Activity className="h-5 w-5" aria-hidden="true" />
         <span className="font-semibold tracking-tight">Live Traffic</span>
         {snapshot && (

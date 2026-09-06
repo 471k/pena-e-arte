@@ -24,7 +24,7 @@
   --role-client: #3b82f6;
   --role-artist: #a855f7;
   --role-owner:  #22c55e;
-  --role-issuer: #f59e0b;
+  --role-admin: #f59e0b;
   --popover:     #17171f;
 }
 @media (prefers-color-scheme: light) {
@@ -103,7 +103,7 @@ kbd {
 .role-tab[data-role="client"][aria-selected="true"] { background: var(--role-client); }
 .role-tab[data-role="artist"][aria-selected="true"] { background: var(--role-artist); }
 .role-tab[data-role="owner"][aria-selected="true"]  { background: var(--role-owner); }
-.role-tab[data-role="issuer"][aria-selected="true"] { background: var(--role-issuer); }
+.role-tab[data-role="admin"][aria-selected="true"] { background: var(--role-admin); }
 .role-tab[data-role="reference"][aria-selected="true"] { background:#64748b; }
 
 .intro-link {
@@ -157,7 +157,7 @@ p { margin: 8px 0; }
 .role-badge.role-client { background: var(--role-client); }
 .role-badge.role-artist { background: var(--role-artist); }
 .role-badge.role-owner  { background: var(--role-owner); }
-.role-badge.role-issuer { background: var(--role-issuer); }
+.role-badge.role-admin { background: var(--role-admin); }
 
 .access-table { border-collapse:collapse; margin:12px 0; font-size:12.5px; }
 .access-table th, .access-table td {
@@ -256,7 +256,7 @@ ol.steps li { margin: 6px 0; }
       <button class="role-tab" data-role="client" role="tab" aria-selected="false">Client</button>
       <button class="role-tab" data-role="artist" role="tab" aria-selected="false">Artist</button>
       <button class="role-tab" data-role="owner"  role="tab" aria-selected="false">Owner</button>
-      <button class="role-tab" data-role="issuer" role="tab" aria-selected="false">Issuer</button>
+      <button class="role-tab" data-role="admin" role="tab" aria-selected="false">Admin</button>
       <button class="role-tab" data-role="reference" role="tab" aria-selected="false">Ref</button>
     </div>
 
@@ -455,21 +455,21 @@ ol.steps li { margin: 6px 0; }
       </div>
     </div>
 
-    <div class="role-nav-group" data-role="issuer">
+    <div class="role-nav-group" data-role="admin">
       <div class="nav-section">
         <button class="nav-section-toggle" aria-expanded="true">Platform admin</button>
         <ul class="nav-section-list">
-          <li><a href="#issuer-dashboard" data-nav-link>Platform overview</a></li>
-          <li><a href="#issuer-live-traffic" data-nav-link>Live traffic</a></li>
-          <li><a href="#issuer-studios" data-nav-link>Studio list</a></li>
-          <li><a href="#issuer-studio-detail" data-nav-link>Studio detail</a></li>
-          <li><a href="#issuer-plans" data-nav-link>Plan management</a></li>
-          <li><a href="#issuer-subscriptions" data-nav-link>Subscription oversight</a></li>
-          <li><a href="#issuer-referrals" data-nav-link>Platform referral codes</a></li>
-          <li><a href="#issuer-reports" data-nav-link>Industry reports</a></li>
-          <li><a href="#issuer-feedback" data-nav-link>Feedback inbox</a></li>
-          <li><a href="#issuer-help-insights" data-nav-link>Help search insights</a></li>
-          <li><a href="#issuer-audit-log" data-nav-link>Audit log</a></li>
+          <li><a href="#admin-dashboard" data-nav-link>Platform overview</a></li>
+          <li><a href="#admin-live-traffic" data-nav-link>Live traffic</a></li>
+          <li><a href="#admin-studios" data-nav-link>Studio list</a></li>
+          <li><a href="#admin-studio-detail" data-nav-link>Studio detail</a></li>
+          <li><a href="#admin-plans" data-nav-link>Plan management</a></li>
+          <li><a href="#admin-subscriptions" data-nav-link>Subscription oversight</a></li>
+          <li><a href="#admin-referrals" data-nav-link>Platform referral codes</a></li>
+          <li><a href="#admin-reports" data-nav-link>Industry reports</a></li>
+          <li><a href="#admin-feedback" data-nav-link>Feedback inbox</a></li>
+          <li><a href="#admin-help-insights" data-nav-link>Help search insights</a></li>
+          <li><a href="#admin-audit-log" data-nav-link>Audit log</a></li>
         </ul>
       </div>
     </div>
@@ -501,7 +501,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="role-badge role-client">Client</span> — a person getting tattooed. Books appointments, fills in forms, approves designs, tracks their tattoo history.</li>
 <li><span class="role-badge role-artist">Artist</span> — a tattooer working at a studio. Manages their own schedule, clients, and designs.</li>
 <li><span class="role-badge role-owner">Owner</span> — the studio's manager/admin. Everything an artist can do, plus staff, pricing, payments, and studio settings.</li>
-<li><span class="role-badge role-issuer">Issuer</span> — TattooOS's own platform team. Oversees every studio, subscription plans, and platform-wide health — not tied to any one studio.</li>
+<li><span class="role-badge role-admin">Admin</span> — TattooOS's own platform team. Oversees every studio, subscription plans, and platform-wide health — not tied to any one studio.</li>
 </ul>
 <p>A client can belong to more than one studio at a time and switch between them from <a href="#client-my-studios">My Studios</a>. Everyone else belongs to exactly one studio.</p>
 <h3>How to use this manual</h3>
@@ -513,7 +513,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-discover" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Discover feed</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The homepage for anyone browsing the platform, at <code>/discover</code>. It detects the visitor's location (or falls back to a default city), and shows either a scrollable feed of tattoo photos or a grid of nearby studios, switchable with a tab. Signed-in visitors see their account menu instead of sign-in links.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Discover feed wireframe">
@@ -563,7 +563,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-map" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Studio map</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A full-screen interactive map (at <code>/map</code>) showing every registered studio as a pin. Useful for browsing by geography rather than by search term.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio map wireframe">
@@ -595,7 +595,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-studio-portfolio" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Studio profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (own studio, reply to reviews)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (own studio, reply to reviews)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details — phone, social media links, and a "Get Directions" link to Google Maps — in the sidebar. A social link shows a green "Verified" badge when the studio has proven it owns that account.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile page wireframe">
@@ -639,7 +639,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-artist-portfolio" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Artist profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own profile shows a completion nudge)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own profile shows a completion nudge)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>An individual artist's public page at <code>/artist/&lt;slug&gt;</code>: profile photo, bio, specialties, hourly rate, verified social media links, a filterable portfolio grid, connected Instagram posts, and reviews. Viewing the page records a "view" used to help rank the discovery feed.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist profile page wireframe">
@@ -685,7 +685,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-portfolio-feed" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Portfolio feed widget</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓ (bookmarking enabled)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓ (bookmarking enabled)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The masonry photo grid that powers the Discover page's Portfolio tab. It lays out photos across 1–3 responsive columns, supports infinite "Load more" paging, and opens a full lightbox with keyboard arrow navigation between photos.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Portfolio feed lightbox wireframe">
@@ -720,7 +720,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-register-client" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Client sign up</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗ (redirected to booking)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗ (redirected to booking)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>The free client account form at <code>/client-register</code>. Unlike studio registration, this is studio-less — you can sign up without picking a studio first, then join one later by visiting its page and tapping Book, or via Discover.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Client sign up wireframe">
@@ -753,7 +753,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-register-studio" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Register a studio</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (redirected to dashboard)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (redirected to dashboard)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>A two-step wizard at <code>/register</code> that creates a brand-new studio and its owner account together. Step 1 collects the studio's identity, location, and business tax ID (NIPT); step 2 creates the owner's login, either by password or by continuing with Google (an Apple option appears alongside it once Apple Sign-In is configured for this deployment).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Register studio wireframe">
@@ -786,7 +786,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-login" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Sign in</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗ (redirected)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗ (redirected)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>The sign-in form at <code>/login</code>, shared by every role — the app reads your role from the login response and sends you to the right home screen automatically. Supports "remember me", Google sign-in (Apple too, once configured for this deployment), and a <code>?redirect=</code> deep link back to wherever you came from.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Sign in wireframe">
@@ -820,7 +820,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-forgot-password" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Forgot password</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A simple two-step password reset flow: request a reset link by email at <code>/forgot-password</code>, then use the token from that email on <code>/reset-password</code> to set a new password. Reset links expire <strong>1 hour</strong> after they're sent.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Forgot password wireframe">
@@ -846,7 +846,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-shared-design" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Shared design link</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓ (with valid link)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓ (with valid link)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A one-off preview page at <code>/share/&lt;token&gt;</code> for a single design revision, generated when an artist shares a design outside the app (see <a href="#artist-share-design">Share a design</a>). The link expires automatically after 30 days.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Shared design page wireframe">
@@ -873,7 +873,7 @@ ol.steps li { margin: 6px 0; }
 <section id="guest-embed" data-role="guest">
 <h2><span class="role-badge role-guest">Guest</span> Embedded booking widget</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A compact, iframe-friendly version of a studio's profile at <code>/embed/&lt;studioSlug&gt;</code>, meant to be pasted into a studio's own website (see <a href="#owner-embed">Owner: embed code</a>). Shows the cover photo, name, description, artist list, and a Book button, with no navigation chrome.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Embed widget wireframe">
@@ -903,7 +903,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-book" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Book an appointment</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓ (guest checkout — no account needed to book)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓ (guest checkout — no account needed to book)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The client's home screen at <code>/book</code>. Request a new appointment with an artist at your currently active studio, and see your upcoming and past bookings below the form. If you don't belong to a studio yet, you're pointed to Discover instead. <strong>An unauthenticated visitor arriving from a studio's public page (e.g. <code>/book?studio=&lt;slug&gt;</code>) sees a guest checkout version of this same form instead</strong> — no sign-up step first; an account is created automatically as part of the booking.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Book appointment wireframe">
@@ -951,7 +951,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-my-studios" data-role="client">
 <h2><span class="role-badge role-client">Client</span> My Studios</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>At <code>/my-studios</code>, a client can belong to several studios at once and this page lists them all, showing which one is currently active, letting you switch, manage per-studio notification settings, or leave a studio.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="My Studios wireframe">
@@ -988,7 +988,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-designs" data-role="client">
 <h2><span class="role-badge role-client">Client</span> My Designs</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/designs</code>, every design your artist has created for you, searchable by title, with designs awaiting your feedback ("Changes Requested") surfaced first regardless of date.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="My Designs list wireframe">
@@ -1015,7 +1015,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-design-detail" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Design detail &amp; approval</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own; can approve/request changes)</td></tr><tr><td>Artist</td><td>✓ (can upload revisions)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own; can approve/request changes)</td></tr><tr><td>Artist</td><td>✓ (can upload revisions)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Shows every revision of one design, newest first, each with its own image, artist notes, and approval status. As a client this is where you approve a design or ask for changes.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Design detail wireframe">
@@ -1044,7 +1044,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-intake-submit" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Submit intake form</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>At <code>/forms/intake/new</code>, share medical history and health notes with your studio before a session — optionally linked to a specific upcoming appointment. Because this form carries sensitive health information, you must tick a consent checkbox before you can submit it; the exact consent text you agreed to is saved with the form.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Submit intake form wireframe">
@@ -1075,7 +1075,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-intake-list" data-role="client">
 <h2><span class="role-badge role-client">Client</span> My intake forms</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Every intake form you've submitted, at <code>/forms/intake</code>, each showing a short preview of your info and whether it was Submitted or is still a Draft.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Intake forms list wireframe">
@@ -1098,7 +1098,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-intake-detail" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Intake form detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own, read-only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own, read-only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A read-only view of one submitted intake form, showing structured health flags (blood conditions, allergies, pregnancy, etc.) when the data was captured in the newer structured format, or plain text for older free-form submissions.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Intake form detail wireframe">
@@ -1125,7 +1125,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-consent-sign" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Sign consent form</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>At <code>/forms/consent/new</code>, digitally sign a consent form for a specific appointment by typing your full legal name. The full consent agreement text is shown on the page so you can read exactly what you're agreeing to before you sign, and the exact wording is saved with your signature. A PDF copy is generated and attached to the appointment automatically.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Sign consent form wireframe">
@@ -1154,7 +1154,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-consent-list" data-role="client">
 <h2><span class="role-badge role-client">Client</span> My consent forms</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/forms/consent</code>, every consent form you've signed, each tagged with its client and appointment reference and a Signed/Pending badge.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Consent forms list wireframe">
@@ -1177,7 +1177,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-consent-detail" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Consent form detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own, read-only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own, read-only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A read-only view showing the signature, client/appointment IDs, dates, the exact consent text agreed to at signing time (the "Consent agreement (as signed)" snapshot — not the studio's current wording, so a past consent is always an accurate record), and a link to the generated PDF document.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Consent form detail wireframe">
@@ -1202,7 +1202,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-profile" data-role="client">
 <h2><span class="role-badge role-client">Client</span> My Profile &amp; body map</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓ (via own profile route)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓ (via own profile route)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/clients/me</code>: your contact details, an interactive body-map for marking where you have tattoos, your tattoo history, and a "Sharing" tab to opt in to letting other studios read your tattoo history.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="My Profile wireframe">
@@ -1235,7 +1235,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-deposit" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment. If card payments are temporarily unavailable, the page shows a message instead of the card form — Cash always remains available at booking, or you can contact the studio directly.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
@@ -1265,7 +1265,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-verify-email" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Verify email</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✓ (link works signed-out)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✓ (link works signed-out)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/verify-email</code>, confirms your address using the token from your welcome email. Some flows verify server-side and just redirect you to sign in with a success banner instead.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Verify email wireframe">
@@ -1288,7 +1288,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-change-password" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Change password</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/account/change-password</code>, shared by every signed-in role — update your password from within the app rather than via the email reset flow.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Change password wireframe">
@@ -1315,7 +1315,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-change-email" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Change email</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/account/change-email</code>, shared by every signed-in role — switch the email address used to sign in. Two-step confirmation: a link is emailed to the <strong>new</strong> address, and the switch only takes effect once that link is clicked. A notice is sent to the old address when it completes, in case it wasn't you.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Change email wireframe">
@@ -1341,7 +1341,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-report" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Report an artist or studio</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own real appointment required)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own real appointment required)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>On a studio's page (<code>/s/{slug}</code>) or an artist's page (<code>/artist/{slug}</code>), below Reviews: a quiet "Report this artist" / "Report this studio" link opens a form to flag a serious issue — scam, sexual misconduct, unsafe hygiene practices, harassment, discrimination, or poor service — for our platform team to review. This is not a public review; it is never shown on the page.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 300" role="img" aria-label="Report dialog wireframe">
@@ -1371,7 +1371,7 @@ ol.steps li { margin: 6px 0; }
 <section id="client-messaging" data-role="client">
 <h2><span class="role-badge role-client">Client</span> Messages</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own booked/assigned artist, and the studio owner)</td></tr><tr><td>Artist</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Owner</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own booked/assigned artist, and the studio owner)</td></tr><tr><td>Artist</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Owner</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Admin</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
 <p>At <code>/messages</code>: real-time, two-party threads with your booked or assigned artist, or with the studio owner. Delivered instantly over a live connection while the app is open; if the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 420" role="img" aria-label="Messages wireframe">
@@ -1402,7 +1402,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-schedule" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Weekly schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (all artists)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (all artists)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card. A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Weekly schedule wireframe">
@@ -1431,7 +1431,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-appointment-detail" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Appointment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, any client-attached reference images, and aftercare status once completed, plus every status-change action and a <strong>Send Reminder</strong> button.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Appointment detail wireframe">
@@ -1468,7 +1468,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-clients" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Client list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (can also add clients)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (can also add clients)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Every client at your studio, at <code>/clients</code>, searchable by name or email.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Client list wireframe">
@@ -1491,7 +1491,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-client-detail" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (can add/edit profile info)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (can add/edit profile info)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/clients/&lt;id&gt;</code>: contact info, medical/health profile, body map, tattoo history, forms, and appointments for one client, in tabs, plus a <strong>Send Reminder</strong> button. The artist assigned to the client is shown near the top of the profile (read-only for this role — only owners can reassign it).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Client detail wireframe">
@@ -1524,7 +1524,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-tattoo-record" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Tattoo record detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (read via own profile instead)</td></tr><tr><td>Artist</td><td>✓ (can add/edit)</td></tr><tr><td>Owner</td><td>✓ (can also delete)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (read via own profile instead)</td></tr><tr><td>Artist</td><td>✓ (can add/edit)</td></tr><tr><td>Owner</td><td>✓ (can also delete)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/clients/&lt;id&gt;/tattoos/&lt;tattooId&gt;</code>: one completed tattoo's description, body location, artist, date, and photos, editable in place.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Tattoo record detail wireframe">
@@ -1552,7 +1552,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-designs" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Design list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same list screen as <a href="#client-designs">the client's My Designs</a>, at <code>/designs</code>, but artists also see a <span class="step-title">New Design</span> button and every design across their clients (filterable by client or artist via the URL).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist design list wireframe">
@@ -1577,7 +1577,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-create-design" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Create design</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/designs/new</code>, start a new design entry for a client — the image itself is added afterward as the first revision.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Create design wireframe">
@@ -1607,7 +1607,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-design-detail" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Design detail &amp; review</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own; approves/requests changes)</td></tr><tr><td>Artist</td><td>✓ (uploads revisions, shares, deletes)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own; approves/requests changes)</td></tr><tr><td>Artist</td><td>✓ (uploads revisions, shares, deletes)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same page as the client's design detail, at <code>/designs/&lt;id&gt;</code>, but artists see an <span class="step-title">Upload Revision</span> button and, per revision, <span class="step-title">Share</span> and <span class="step-title">Delete</span> controls.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist design detail wireframe">
@@ -1632,7 +1632,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-upload-revision" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Upload revision</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/designs/&lt;id&gt;/upload</code>: pick a JPEG/PNG/WebP image, add optional notes describing what changed, and upload it as the next version of the design.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Upload revision wireframe">
@@ -1659,7 +1659,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-share-design" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Share a design</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A small dialog, opened from any revision on the design detail page, that generates a public 30-day link so you can send a design preview to someone outside the app.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Share design dialog wireframe">
@@ -1685,7 +1685,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-intake-view" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> View intake forms</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same screens as <a href="#client-intake-list">the client's intake list</a> and <a href="#client-intake-detail">detail</a>, at <code>/forms/intake</code>, but scoped to every client at your studio — filterable by client or appointment via the URL (e.g. from a client's Forms tab).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist intake forms wireframe">
@@ -1707,7 +1707,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-consent-view" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> View consent forms</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same list/detail pattern as intake forms, at <code>/forms/consent</code>, scoped to your studio's clients.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist consent forms wireframe">
@@ -1729,7 +1729,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-profile" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> My portfolio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗ (public version at <a href="#guest-artist-portfolio">/artist/slug</a>)</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own; edits bio, rate, portfolio)</td></tr><tr><td>Owner</td><td>✓ (any artist at the studio)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗ (public version at <a href="#guest-artist-portfolio">/artist/slug</a>)</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own; edits bio, rate, portfolio)</td></tr><tr><td>Owner</td><td>✓ (any artist at the studio)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with five tabs — Profile, Portfolio, Schedule, Designs, and Social — reached from "My Portfolio" in the artist's own top navigation.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist portfolio profile wireframe">
@@ -1761,7 +1761,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-notifications" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Notifications</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (plus preferences)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (plus preferences)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Two related pieces: the bell icon in the top bar (a quick recent-activity panel) and the full <a href="#owner-notifications-log">Notification Log</a> page at <code>/notifications</code>, both shared across artist and owner layouts.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Notification bell wireframe">
@@ -1788,7 +1788,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-conduct-reports" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Reports about me</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own reports, redacted)</td></tr><tr><td>Owner</td><td>✗ (uses the studio-wide Conduct Reports page instead)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own reports, redacted)</td></tr><tr><td>Owner</td><td>✗ (uses the studio-wide Conduct Reports page instead)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>At <code>/conduct-reports</code>: every conduct report a client has filed about you specifically — category, description, and which appointment it relates to. An open-count badge appears next to "Reports About Me" in the nav.</p>
 <h3>Steps</h3>
 <ol class="steps">
@@ -1802,7 +1802,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-messaging" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Messages</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Artist</td><td>✓ (own booked/assigned clients, and the studio owner)</td></tr><tr><td>Owner</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Artist</td><td>✓ (own booked/assigned clients, and the studio owner)</td></tr><tr><td>Owner</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Admin</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
 <p>At <code>/messages</code>, and from a "Message [client name]" button on an appointment's detail page: real-time, two-party threads with a client you have an appointment with or who's assigned to you, or with the studio owner. If the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
 <h3>Steps</h3>
 <ol class="steps">
@@ -1817,7 +1817,7 @@ ol.steps li { margin: 6px 0; }
 <section id="artist-earnings" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> My Earnings</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own earnings only)</td></tr><tr><td>Owner</td><td>✓ (only if they've also enabled their own artist profile — their own earnings only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own earnings only)</td></tr><tr><td>Owner</td><td>✓ (only if they've also enabled their own artist profile — their own earnings only)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>At <code>/earnings</code>: your own earnings trend for the last 12 months, plus every payment from the last 30 days that contributed, with the client, appointment date, and amount. If the studio recorded a session split for a payment (for example, your cut vs. a studio fee), it's shown under that payment exactly as the studio entered it — this page doesn't guess which part of a split is "yours."</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 420" role="img" aria-label="My Earnings wireframe">
@@ -1847,7 +1847,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-dashboard" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Dashboard</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The owner's home screen at <code>/dashboard</code>: a subscription status banner, the studio setup checklist, KPI stat cards (today / this week / deposits due), today's appointments, and any cash payments awaiting collection.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner dashboard wireframe">
@@ -1881,7 +1881,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-setup-checklist" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Setup checklist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>A small onboarding card embedded at the top of the Dashboard, checking off "Add your first artist" and "Set a deposit rule" as you complete them, and hiding itself entirely once both are done.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Setup checklist wireframe">
@@ -1904,7 +1904,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-solo-studio" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Solo studio &amp; Free plan</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>If you signed up from <code>/register</code>'s "I'm an independent artist" option instead of registering a studio, TattooOS auto-created a studio for you behind the scenes — no business tax ID (NIPT) or studio address required up front.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Solo studio and Free plan wireframe">
@@ -1931,7 +1931,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-artists" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Artist list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (read-only, no add/delete)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (read-only, no add/delete)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Every artist at your studio, at <code>/artists</code>, searchable by name/email and filterable by specialization chips.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist list wireframe">
@@ -1958,7 +1958,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-create-artist" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Add artist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/artists/new</code>: create an artist record for your studio. You don't set a password — after creation, the artist gets an automatic email with a link to set their own password (link expires after 1 hour). If it doesn't arrive, use <span class="step-title">Resend invite</span> on their profile page.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Add artist wireframe">
@@ -1988,7 +1988,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-become-artist" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Enable your own artist profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>If you also tattoo yourself, at <code>/artists</code> you can link your existing owner login as a bookable artist — no new email, password, or invite email, and no second account.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Enable your own artist profile wireframe">
@@ -2018,7 +2018,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-invite-solo-artist" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Invite a solo artist to join</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>At <code>/artists/new</code>: if the artist you're trying to invite already runs their own independent solo studio, a normal invite fails ("already belongs to an existing account"). Instead of a dead end, send them a request to join your studio.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Invite a solo artist wireframe">
@@ -2043,7 +2043,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-accept-join-invite" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Accept/decline a studio join invite</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studio owners)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studio owners)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>If another studio invites your independent artist account to join them, a small mail icon with a badge count appears in the header, next to the notification bell — it only shows up when you have a pending invite.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio join invite wireframe">
@@ -2072,7 +2072,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-artist-detail" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Artist detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own only, cannot delete)</td></tr><tr><td>Owner</td><td>✓ (any artist, can delete)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own only, cannot delete)</td></tr><tr><td>Owner</td><td>✓ (any artist, can delete)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same page as <a href="#artist-profile">the artist's own portfolio profile</a>, at <code>/artists/&lt;id&gt;</code> — owners can open any artist's page, edit their details, and delete the artist record entirely.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner artist detail wireframe">
@@ -2099,7 +2099,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-clients" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Client list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Identical screen to <a href="#artist-clients">the artist's client list</a>, at <code>/clients</code>, plus a <span class="step-title">New Client</span> button.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner client list wireframe">
@@ -2122,7 +2122,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-create-client" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Add client</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/clients/new</code>: manually register a client (e.g. a walk-in) without them signing up themselves.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Add client wireframe">
@@ -2153,7 +2153,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-client-detail" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. The one difference: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner client detail wireframe">
@@ -2176,7 +2176,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-designs" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Design list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same list as <a href="#artist-designs">the artist's design list</a>, at <code>/designs</code>, visible across the whole studio.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner design list wireframe">
@@ -2197,7 +2197,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-design-detail" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Design detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own; approves/requests changes)</td></tr><tr><td>Artist</td><td>✓ (uploads revisions)</td></tr><tr><td>Owner</td><td>✓ (oversight, no upload)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own; approves/requests changes)</td></tr><tr><td>Artist</td><td>✓ (uploads revisions)</td></tr><tr><td>Owner</td><td>✓ (oversight, no upload)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Owners see the same revision history as everyone else at <code>/designs/&lt;id&gt;</code>, primarily for oversight — uploading new revisions is an artist action.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner design detail wireframe">
@@ -2218,7 +2218,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-deposit-rules" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Deposit rule list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (read-only)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (read-only)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/deposit-rules</code>: every deposit rule your studio can apply at booking time, either a fixed amount or a percentage of the session cost.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit rule list wireframe">
@@ -2241,7 +2241,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-create-deposit-rule" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Create deposit rule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/deposit-rules/new</code>: name a rule, choose fixed-amount or percentage, set your cancellation policy, and set whether it's active.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 520" role="img" aria-label="Create deposit rule wireframe">
@@ -2275,7 +2275,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-deposit-rule-detail" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Deposit rule detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (view only)</td></tr><tr><td>Owner</td><td>✓ (edit/delete)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (view only)</td></tr><tr><td>Owner</td><td>✓ (edit/delete)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/deposit-rules/&lt;id&gt;</code>: view, edit, or delete a single deposit rule.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit rule detail wireframe">
@@ -2304,7 +2304,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-schedule" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own appointments)</td></tr><tr><td>Owner</td><td>✓ (whole studio)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own appointments)</td></tr><tr><td>Owner</td><td>✓ (whole studio)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Identical screen to <a href="#artist-schedule">the artist's weekly schedule</a>, at <code>/schedule</code>, but shows every artist's appointments across the studio.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner schedule wireframe">
@@ -2332,7 +2332,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-appointment-detail" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Appointment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (plus Charge deposit)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (plus Charge deposit)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same page as <a href="#artist-appointment-detail">the artist's appointment detail</a>, at <code>/appointments/&lt;id&gt;</code> — owners additionally see a <span class="step-title">Charge deposit</span> button whenever the deposit is still pending, and an editable <span class="step-title">Artist</span> dropdown for assigning who does the work.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner appointment detail wireframe">
@@ -2359,7 +2359,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-intake-list" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Intake forms</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same list as <a href="#artist-intake-view">the artist's intake form list</a>, at <code>/forms/intake</code>, studio-wide.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner intake forms wireframe">
@@ -2377,7 +2377,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-intake-detail" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Intake form detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same read-only detail page as <a href="#client-intake-detail">the client-facing version</a>, at <code>/forms/intake/&lt;id&gt;</code>.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner intake detail wireframe">
@@ -2395,7 +2395,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-consent-list" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Consent forms</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same list as <a href="#artist-consent-view">the artist's consent form list</a>, at <code>/forms/consent</code>, studio-wide.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner consent forms wireframe">
@@ -2413,7 +2413,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-consent-detail" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Consent form detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Same read-only page as the client-facing consent detail, at <code>/forms/consent/&lt;id&gt;</code>.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner consent detail wireframe">
@@ -2431,7 +2431,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-payments" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Payment list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/payments</code>: every payment across the studio, searchable by client name, filterable by status, with cursor-based "Load more" paging.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Payment list wireframe">
@@ -2459,7 +2459,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-payment-detail" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Payment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/payments/&lt;appointmentId&gt;</code>: one appointment's payment — amount, method, status, and the actions available for its current state, plus session-split tracking for multi-artist payouts.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Payment detail wireframe">
@@ -2488,7 +2488,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-create-payment" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Create payment</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/payments/new</code>: a 3-step flow — pick an appointment with a pending deposit, confirm the method and amount, then get a shareable card checkout link or a cash-pending record. If card payments are temporarily unavailable, the Card option is disabled with an explanatory message and Cash is used instead.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Create payment wireframe">
@@ -2520,7 +2520,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-studio-profile" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The studio settings hub at <code>/studios/me</code>: name, phone, business tax ID (NIPT), location, and URL slug at the top, followed by a Social Media card, then branding, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile wireframe">
@@ -2547,13 +2547,13 @@ ol.steps li { margin: 6px 0; }
 <li>Below: <a href="#owner-social-verification">Social Media</a> (connect/verify Instagram, TikTok, Facebook, X, YouTube), <a href="#owner-branding">Branding</a>, QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully.</div>
-<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#issuer-audit-log">Issuer: audit log</a>, <a href="#owner-social-verification">Verify social media accounts</a></div>
+<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#admin-audit-log">Admin: audit log</a>, <a href="#owner-social-verification">Verify social media accounts</a></div>
 </section>
 
 <section id="owner-publish-studio" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Publish your studio</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>A solo studio (see <a href="#owner-solo-studio">Solo studio &amp; Free plan</a>) starts hidden from the Studio Map, the /discover Studios tab, and its own public studio page — until it has a real city and location on file.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Publish your studio wireframe">
@@ -2579,7 +2579,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-social-verification" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Verify social media accounts</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own profile's four non-Instagram platforms; Instagram stays on the Social tab's own Connect flow)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own profile's four non-Instagram platforms; Instagram stays on the Social tab's own Connect flow)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The "Social Media" card (Studio Settings) and the artist profile's "Social" tab both use the same mechanism: connect or verify Instagram, TikTok, Facebook, X, and YouTube accounts, so clients see a green "Verified" checkmark next to the handle wherever it's shown — proof it's really the account it claims to be, not something anyone could type into a form.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 220" role="img" aria-label="Social Media card wireframe">
@@ -2612,7 +2612,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-branding" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Branding</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A single toggle, on the Studio Settings page, for showing or hiding the "Powered by TattooOS" mark on your public booking widget — hiding it requires a plan that allows branding removal.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Branding settings wireframe">
@@ -2634,7 +2634,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-embed" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Embed code</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>A ready-made <code>&lt;iframe&gt;</code> snippet on the Studio Settings page for pasting your booking widget into your own website.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Embed code card wireframe">
@@ -2660,7 +2660,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-referral" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Referral programme</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>Generate a shareable referral link on the Studio Settings page — studios that sign up using your code get a free month once they subscribe, and you can track how many have redeemed it.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Referral programme card wireframe">
@@ -2680,13 +2680,13 @@ ol.steps li { margin: 6px 0; }
 <li>Copy the shareable link and send it to studios you want to refer.</li>
 <li>Click <span class="step-title">New code</span> to regenerate (this deactivates the previous code).</li>
 </ol>
-<div class="crosslinks">See also: <a href="#guest-register-studio">Guest: register a studio</a>, <a href="#issuer-referrals">Issuer: platform referral codes</a></div>
+<div class="crosslinks">See also: <a href="#guest-register-studio">Guest: register a studio</a>, <a href="#admin-referrals">Admin: platform referral codes</a></div>
 </section>
 
 <section id="owner-notifications-log" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Notification log</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/notifications</code>: every email/SMS the app has sent on your studio's behalf, filterable by channel and date range, each showing delivery success or failure.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Notification log wireframe">
@@ -2713,7 +2713,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-notifications-prefs" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Notification preferences</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (clients set per-studio prefs instead, see <a href="#client-my-studios">My Studios</a>)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (clients set per-studio prefs instead, see <a href="#client-my-studios">My Studios</a>)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>A table on the Studio Settings page: for each event type (appointment created, deposit captured, form submitted, etc.), toggle whether Email and/or SMS notifications are sent.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Notification preferences wireframe">
@@ -2740,7 +2740,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-billing" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Billing</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/billing</code>: your studio's current plan, subscription status (trial, active, grace period, past due, cancelled), renewal date, and buttons to change plan or manage billing via Stripe's customer portal.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Billing wireframe">
@@ -2769,7 +2769,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-subscribe" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Choose / change plan</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/billing/subscribe</code>: pick a plan and billing cycle (monthly/yearly). New subscribers and cash-to-card switchers go through Stripe Checkout; already-card-billed studios change plans instantly with prorated billing.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Choose plan wireframe">
@@ -2800,7 +2800,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-solo-upgrade" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Grow beyond one artist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Issuer</td><td>✗</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (solo studios only)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>The Free plan (what every solo studio starts on) allows exactly one artist seat. Here's what happens when you try to add a second, and how to unlock more.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Grow beyond one artist wireframe">
@@ -2824,7 +2824,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-reports" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Revenue reports</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/reports</code>: a monthly revenue trend chart for the last 12 months, plus a per-artist revenue breakdown for the last 30 days. Only fully paid deposits count (card captured or cash confirmed) — pending, refunded, or forfeited ones don't.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 420" role="img" aria-label="Reports wireframe">
@@ -2851,7 +2851,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-conduct-reports" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Conduct reports</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (can file one; never sees a list)</td></tr><tr><td>Artist</td><td>✗ (uses the redacted "Reports About Me" page instead)</td></tr><tr><td>Owner</td><td>✓ (own studio)</td></tr><tr><td>Issuer</td><td>✓ (every studio, via the platform inbox)</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (can file one; never sees a list)</td></tr><tr><td>Artist</td><td>✗ (uses the redacted "Reports About Me" page instead)</td></tr><tr><td>Owner</td><td>✓ (own studio)</td></tr><tr><td>Admin</td><td>✓ (every studio, via the platform inbox)</td></tr></table>
 <p>At <code>/conduct-reports</code>: every trust &amp; safety report a client has filed about your studio or one of your artists, with an open-count badge in the nav. Standard-severity reports (Poor service quality, Other) can be resolved here directly. High-severity reports (Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, Discrimination) are shown in full — including who filed them — but locked to platform-only resolution.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 200" role="img" aria-label="Conduct reports wireframe">
@@ -2874,13 +2874,13 @@ ol.steps li { margin: 6px 0; }
 <li>A High-severity report shows escalation copy instead of status buttons — there is nothing to click; Pena e Artë platform staff resolve it.</li>
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> High-severity reports are locked to platform-only resolution deliberately — an owner resolving a serious report about their own artist would be a conflict of interest.</div>
-<div class="crosslinks">See also: <a href="#artist-conduct-reports">Artist: reports about me</a>, <a href="#issuer-conduct-reports">Issuer: conduct reports</a></div>
+<div class="crosslinks">See also: <a href="#artist-conduct-reports">Artist: reports about me</a>, <a href="#admin-conduct-reports">Admin: conduct reports</a></div>
 </section>
 
 <section id="owner-messaging" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Messages</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Artist</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Owner</td><td>✓ (any artist or client at the studio)</td></tr><tr><td>Issuer</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Artist</td><td>✗ (has its own Messages page instead)</td></tr><tr><td>Owner</td><td>✓ (any artist or client at the studio)</td></tr><tr><td>Admin</td><td>✗ (uses the separate platform support inbox)</td></tr></table>
 <p>At <code>/messages</code>, and from a "Message [client name]" button on an appointment's detail page: real-time, two-party threads with any artist or client at your studio — the owner is the only role with no messaging restrictions. If the recipient is offline, they get a single "you have a new message" email per unread streak, not one per message.</p>
 <h3>Steps</h3>
 <ol class="steps">
@@ -2892,10 +2892,10 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a></div>
 </section>
 
-<section id="issuer-dashboard" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Platform overview</h2>
+<section id="admin-dashboard" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Platform overview</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The platform team's home screen at <code>/platform</code>: KPI cards across three rows (totals, pipeline, health), an MRR trend chart, and an at-risk studios list with inline trial-extension controls.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Platform overview wireframe">
@@ -2921,13 +2921,13 @@ ol.steps li { margin: 6px 0; }
 <li>Use the <span class="step-title">3m / 6m / 12m</span> toggle on the MRR chart, and hover a point for the exact figure.</li>
 <li>In <span class="step-title">At-Risk Studios</span>, click <span class="step-title">Extend trial</span> to grant more days inline, or the arrow to jump to that studio in the full list.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#issuer-studios">Studio list</a>, <a href="#issuer-subscriptions">Subscription oversight</a></div>
+<div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-subscriptions">Subscription oversight</a></div>
 </section>
 
-<section id="issuer-studios" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Studio list</h2>
+<section id="admin-studios" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Studio list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/studios</code>: every studio on the platform, one row per studio, with search, status filter, plan filter, and per-row actions — extend trial, activate on cash, suspend/reactivate, or cancel subscription.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio list wireframe">
@@ -2954,13 +2954,13 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Cancel Subscription</span> to end it permanently (with confirmation).</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> suspending a studio makes it inaccessible to its own clients and staff immediately — use only for policy violations or non-payment beyond the grace period.</div>
-<div class="crosslinks">See also: <a href="#issuer-studio-detail">Studio detail</a>, <a href="#issuer-subscriptions">Subscription oversight</a></div>
+<div class="crosslinks">See also: <a href="#admin-studio-detail">Studio detail</a>, <a href="#admin-subscriptions">Subscription oversight</a></div>
 </section>
 
-<section id="issuer-studio-detail" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Studio detail</h2>
+<section id="admin-studio-detail" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Studio detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/studios/&lt;studioId&gt;</code>: the same information and actions as one row of the studio list, but as a full page — useful when arriving from a deep link (e.g. from the at-risk list).</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio detail wireframe">
@@ -2984,13 +2984,13 @@ ol.steps li { margin: 6px 0; }
 <li>Use the <span class="step-title">Actions</span> card for the same extend/activate/suspend/cancel controls as the list view.</li>
 <li>Use the <span class="step-title">Referral codes</span> card to generate, deactivate, reactivate, or delete this studio's referral code without leaving the page.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#issuer-studios">Studio list</a>, <a href="#issuer-referrals">Manage platform referral codes</a></div>
+<div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-referrals">Manage platform referral codes</a></div>
 </section>
 
-<section id="issuer-plans" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Plan management</h2>
+<section id="admin-plans" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Plan management</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (sees plans read-only when subscribing)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (sees plans read-only when subscribing)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/plans</code>: define the subscription plans studios can choose from — pricing per billing interval (monthly and/or yearly), yearly discount, usage limits (Artists, Appointments/mo, Notifications/mo, Storage, Locations — or "Unlimited"), the branding-removal feature flag, and the linked Stripe Price IDs.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Plan management wireframe">
@@ -3017,10 +3017,10 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#owner-subscribe">Owner: choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
 </section>
 
-<section id="issuer-subscriptions" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Subscription oversight</h2>
+<section id="admin-subscriptions" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Subscription oversight</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/subscriptions</code>: every studio's subscription in one filterable, sortable list — a subscription-focused counterpart to the Studio list, reachable directly from Dashboard KPI cards via <code>?status=</code>.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Subscription oversight wireframe">
@@ -3043,13 +3043,13 @@ ol.steps li { margin: 6px 0; }
 <li>Filter by status pill (All / Active / Trialing / Grace Period / Past Due / Cancelled), search by studio name/slug, and sort by trial end, period end, or name.</li>
 <li>Per row: <span class="step-title">Extend Trial</span>, <span class="step-title">Activate</span> (cash), or <span class="step-title">Cancel Subscription</span>, matching the studio list's inline pattern.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#issuer-studios">Studio list</a>, <a href="#issuer-dashboard">Platform overview</a></div>
+<div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-dashboard">Platform overview</a></div>
 </section>
 
-<section id="issuer-referrals" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Platform referral codes</h2>
+<section id="admin-referrals" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Platform referral codes</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (generates own code from Studio Settings)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (generates own code from Studio Settings)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/referrals</code>: every referral code across the platform, plus the ability to generate a code for a studio manually (with an optional expiry date), deactivate, reactivate, or delete unredeemed codes.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Platform referral codes wireframe">
@@ -3073,10 +3073,10 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#owner-referral">Owner: referral programme</a></div>
 </section>
 
-<section id="issuer-reports" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Industry reports</h2>
+<section id="admin-reports" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Industry reports</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/reports</code>: anonymized, platform-wide analytics (booking trends, trial conversion, MRR growth — no PII or studio identifiers), generated automatically on the 1st of each month, downloadable as JSON.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Industry reports wireframe">
@@ -3093,14 +3093,14 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Download</span> to save a month's report as JSON, or <span class="step-title">Open</span> to view it in a new tab.</li>
 <li>Click <span class="step-title">Generate Report</span> to queue an out-of-cycle report immediately (60-second cooldown between triggers).</li>
 </ol>
-<div class="crosslinks">See also: <a href="#issuer-dashboard">Platform overview</a></div>
+<div class="crosslinks">See also: <a href="#admin-dashboard">Platform overview</a></div>
 </section>
 
-<section id="issuer-feedback" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Feedback inbox</h2>
+<section id="admin-feedback" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Feedback inbox</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗ (can submit feedback via the feedback icon)</td></tr><tr><td>Owner</td><td>✗ (can submit feedback)</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
-<p>At <code>/platform/feedback</code>: bug reports, feature requests, and general feedback submitted by artists and owners across every studio, filterable by type and status, with an unread-count badge in the issuer navigation. Reports may include up to 3 attached screenshots or short video clips the submitter added when reporting the issue.</p>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗ (can submit feedback via the feedback icon)</td></tr><tr><td>Owner</td><td>✗ (can submit feedback)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/platform/feedback</code>: bug reports, feature requests, and general feedback submitted by artists and owners across every studio, filterable by type and status, with an unread-count badge in the admin navigation. Reports may include up to 3 attached screenshots or short video clips the submitter added when reporting the issue.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Feedback inbox wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -3120,19 +3120,19 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Filter by type (<span class="step-title">Bug Report</span> / <span class="step-title">Feature Request</span> / <span class="step-title">General</span>) and status.</li>
 <li>Click a card to expand it and read the full report — any attached screenshots or video clips appear as thumbnails below the description; click one to open it full-size in a new tab.</li>
-<li>Write an optional internal <span class="step-title">Issuer note</span>.</li>
+<li>Write an optional internal <span class="step-title">Admin note</span>.</li>
 <li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#issuer-dashboard">Platform overview</a></div>
+<div class="crosslinks">See also: <a href="#admin-dashboard">Platform overview</a></div>
 </section>
 
-<section id="issuer-conduct-reports" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Conduct reports</h2>
+<section id="admin-conduct-reports" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Conduct reports</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (own studio only, via the owner Conduct Reports page)</td></tr><tr><td>Issuer</td><td>✓ (every studio)</td></tr></table>
-<p>At <code>/platform/conduct-reports</code>: the cross-tenant inbox for every trust &amp; safety report filed on the platform, filterable by status, category, or studio. Unlike the owner's own Conduct Reports page, status controls here are never locked — the issuer can resolve a report of any severity, including the High-severity categories (Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, Discrimination) an owner cannot touch.</p>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗ (own studio only, via the owner Conduct Reports page)</td></tr><tr><td>Admin</td><td>✓ (every studio)</td></tr></table>
+<p>At <code>/platform/conduct-reports</code>: the cross-tenant inbox for every trust &amp; safety report filed on the platform, filterable by status, category, or studio. Unlike the owner's own Conduct Reports page, status controls here are never locked — the admin can resolve a report of any severity, including the High-severity categories (Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, Discrimination) an owner cannot touch.</p>
 <figure class="wireframe">
-<svg viewBox="0 0 760 200" role="img" aria-label="Issuer conduct reports wireframe">
+<svg viewBox="0 0 760 200" role="img" aria-label="Admin conduct reports wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="21" font-size="10" font-weight="700">Conduct Reports (7)</text>
 <rect x="16" y="46" width="700" height="60" rx="6" fill="currentColor" fill-opacity="0.05"/>
@@ -3140,10 +3140,10 @@ ol.steps li { margin: 6px 0; }
 <rect x="112" y="58" width="35" height="14" rx="7" fill="#3b82f6" fill-opacity="0.3"/><text x="118" y="68" font-size="7">Open</text>
 <text x="28" y="88" font-size="9" font-weight="700">Sexual misconduct or abuse</text>
 <text x="28" y="100" font-size="8" fill-opacity="0.5">Ink Studio · About Maria Silva · 2 Aug 2026 · Reported by Jane Doe</text>
-<rect x="16" y="118" width="700" height="30" rx="6" fill="currentColor" fill-opacity="0.03"/><text x="28" y="137" font-size="8" fill-opacity="0.6">[ Open ] [ Reviewing ] [ Resolved ] [ Dismissed ] — always enabled for the issuer</text>
+<rect x="16" y="118" width="700" height="30" rx="6" fill="currentColor" fill-opacity="0.03"/><text x="28" y="137" font-size="8" fill-opacity="0.6">[ Open ] [ Reviewing ] [ Resolved ] [ Dismissed ] — always enabled for the admin</text>
 </svg>
 </figure>
-<figcaption>Issuer conduct reports — filters above the list; status buttons stay enabled regardless of severity</figcaption>
+<figcaption>Admin conduct reports — filters above the list; status buttons stay enabled regardless of severity</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Open <span class="step-title">Conduct Reports</span> from the platform nav.</li>
@@ -3151,26 +3151,26 @@ ol.steps li { margin: 6px 0; }
 <li>Click a card to expand it and read the full description, including the reporter's identity.</li>
 <li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#owner-conduct-reports">Owner: conduct reports</a>, <a href="#issuer-feedback">Feedback inbox</a></div>
+<div class="crosslinks">See also: <a href="#owner-conduct-reports">Owner: conduct reports</a>, <a href="#admin-feedback">Feedback inbox</a></div>
 </section>
 
-<section id="issuer-help-insights" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Help search insights</h2>
+<section id="admin-help-insights" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Help search insights</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/help-insights</code>: what studio users searched for in the in-app Help menu over the last 30 days, aggregated across every studio — the top queries, and every query that returned zero results.</p>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Review the top queries table to see what users look for most, and which roles ask for it.</li>
 <li>Review the zero-result queries table — each row is a search that found nothing, which is the clearest signal of a documentation gap or confusing UX to fix in the in-app FAQ or this manual.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#issuer-feedback">Feedback inbox</a></div>
+<div class="crosslinks">See also: <a href="#admin-feedback">Feedback inbox</a></div>
 </section>
 
-<section id="issuer-live-traffic" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Live traffic</h2>
+<section id="admin-live-traffic" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Live traffic</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/traffic</code>: a real-time view of everyone currently browsing the platform — guests and signed-in users by role — updated roughly every 5 seconds, plus a live world map and historical trends by country, network, device, and page over the last 30 days.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 300" role="img" aria-label="Live traffic wireframe">
@@ -3196,13 +3196,13 @@ ol.steps li { margin: 6px 0; }
 <li>Scroll down for the historical trend chart (toggle between Guests and each role), top countries, device/browser breakdown, top pages, and top networks (ISP) — use the 7d/30d/90d toggle above the chart to change the time window for all of them at once.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> country/city is approximate, resolved from IP address — it can be off by a city or two, especially on mobile networks. No visitor is ever identified by name, email, or IP address here — only role, rough location, network, and device. A visitor without a resolvable location still appears in the live table but won't show a dot on the map. A pulsing "Live" badge in the header confirms the real-time feed is connected — if it says "Reconnecting…" or "Offline," the numbers on screen may be stale; use the ↻ button next to it to refresh manually.</div>
-<div class="crosslinks">See also: <a href="#issuer-audit-log">Audit log</a></div>
+<div class="crosslinks">See also: <a href="#admin-audit-log">Audit log</a></div>
 </section>
 
-<section id="issuer-audit-log" data-role="issuer">
-<h2><span class="role-badge role-issuer">Issuer</span> Audit log</h2>
+<section id="admin-audit-log" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Audit log</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Issuer</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>At <code>/platform/audit-log</code>: a searchable, cross-tenant log of every trust-sensitive action taken on the platform — studio suspensions, subscription cancellations/manual activations, trial extensions, plan edits, and referral code changes.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 340" role="img" aria-label="Audit log wireframe">
@@ -3212,8 +3212,8 @@ ol.steps li { margin: 6px 0; }
 <text x="32" y="76" font-size="8" fill-opacity="0.6">Action</text><text x="220" y="76" font-size="8" fill-opacity="0.6">Target type</text><text x="400" y="76" font-size="8" fill-opacity="0.6">From</text><text x="560" y="76" font-size="8" fill-opacity="0.6">To</text>
 <rect x="20" y="112" width="720" height="24" fill="currentColor" fill-opacity="0.06"/>
 <text x="32" y="128" font-size="8" font-weight="700">When</text><text x="160" y="128" font-size="8" font-weight="700">Action</text><text x="360" y="128" font-size="8" font-weight="700">Target</text><text x="520" y="128" font-size="8" font-weight="700">Studio</text><text x="640" y="128" font-size="8" font-weight="700">Actor role</text>
-<text x="32" y="152" font-size="8">20 Jul 2026, 10:00</text><text x="160" y="152" font-size="8">Studio.Suspended</text><text x="360" y="152" font-size="8">Studio · a1b2c3d4</text><text x="520" y="152" font-size="8">s0e1f2a3</text><text x="640" y="152" font-size="8">issuer</text>
-<text x="32" y="172" font-size="8">19 Jul 2026, 09:30</text><text x="160" y="172" font-size="8">Plan.Updated</text><text x="360" y="172" font-size="8">Plan · p9z8y7x6</text><text x="520" y="172" font-size="8" fill-opacity="0.6">Platform-wide</text><text x="640" y="172" font-size="8">issuer</text>
+<text x="32" y="152" font-size="8">20 Jul 2026, 10:00</text><text x="160" y="152" font-size="8">Studio.Suspended</text><text x="360" y="152" font-size="8">Studio · a1b2c3d4</text><text x="520" y="152" font-size="8">s0e1f2a3</text><text x="640" y="152" font-size="8">admin</text>
+<text x="32" y="172" font-size="8">19 Jul 2026, 09:30</text><text x="160" y="172" font-size="8">Plan.Updated</text><text x="360" y="172" font-size="8">Plan · p9z8y7x6</text><text x="520" y="172" font-size="8" fill-opacity="0.6">Platform-wide</text><text x="640" y="172" font-size="8">admin</text>
 </svg>
 </figure>
 <figcaption>Audit log — filters above the table, most recent entry first</figcaption>
@@ -3279,7 +3279,7 @@ ol.steps li { margin: 6px 0; }
 
 <section id="ref-subscription-plans" data-role="reference">
 <h2>Reference — Subscription plans</h2>
-<p>Plans are fully configured by the platform team (see <a href="#issuer-plans">Plan management</a>) rather than hardcoded — each has a name, monthly and yearly price, a yearly discount percentage, and whether it allows removing TattooOS branding from the booking widget. A studio's subscription always starts in a free trial before any plan is chosen.</p>
+<p>Plans are fully configured by the platform team (see <a href="#admin-plans">Plan management</a>) rather than hardcoded — each has a name, monthly and yearly price, a yearly discount percentage, and whether it allows removing TattooOS branding from the booking widget. A studio's subscription always starts in a free trial before any plan is chosen.</p>
 <table class="access-table">
 <tr><th>Subscription state</th><th>Meaning</th></tr>
 <tr><td>Trialing</td><td>Free trial period, full access, no plan chosen yet.</td></tr>
@@ -3288,14 +3288,14 @@ ol.steps li { margin: 6px 0; }
 <tr><td>PastDue</td><td>A card payment failed — access may be restricted until resolved.</td></tr>
 <tr><td>Cancelled</td><td>Subscription ended — reactivation required to regain access.</td></tr>
 </table>
-<div class="crosslinks">See also: <a href="#owner-billing">Owner: billing</a>, <a href="#owner-subscribe">Owner: choose / change plan</a>, <a href="#issuer-plans">Issuer: plan management</a></div>
+<div class="crosslinks">See also: <a href="#owner-billing">Owner: billing</a>, <a href="#owner-subscribe">Owner: choose / change plan</a>, <a href="#admin-plans">Admin: plan management</a></div>
 </section>
 
 <section id="ref-roles" data-role="reference">
 <h2>Reference — Role comparison</h2>
 <p>A high-level comparison of what each role can do. See individual sections for exact per-screen access.</p>
 <table class="access-table">
-<tr><th>Capability</th><th>Guest</th><th>Client</th><th>Artist</th><th>Owner</th><th>Issuer</th></tr>
+<tr><th>Capability</th><th>Guest</th><th>Client</th><th>Artist</th><th>Owner</th><th>Admin</th></tr>
 <tr><td>Browse Discover / studio / artist pages</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
 <tr><td>Book appointments</td><td>✗</td><td>✓</td><td>✗</td><td>✗</td><td>✓</td></tr>
 <tr><td>Belong to multiple studios</td><td>—</td><td>✓</td><td>✗</td><td>✗</td><td>—</td></tr>
@@ -3319,7 +3319,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">What's the difference between an intake form and a consent form?</span> Intake forms capture medical/health history; consent forms are a legal digital signature acknowledging the tattoo procedure's risks, generated as a PDF.</li>
 <li><span class="step-title">Can artists see each other's clients?</span> Yes, within the same studio — client, design, and schedule data is shared studio-wide among artists and owners.</li>
 <li><span class="step-title">What happens when a studio's trial ends without subscribing?</span> It enters a Grace Period (read-only), then risks losing access entirely if not resolved — see <a href="#ref-subscription-plans">Subscription plans</a>.</li>
-<li><span class="step-title">Who can suspend a studio?</span> Only the platform team (Issuer role) — see <a href="#issuer-studios">Studio list</a>. This is separate from billing status.</li>
+<li><span class="step-title">Who can suspend a studio?</span> Only the platform team (Admin role) — see <a href="#admin-studios">Studio list</a>. This is separate from billing status.</li>
 <li><span class="step-title">How do referral codes work?</span> A studio shares a link; a new studio that registers with that code gets a free month once it subscribes. See <a href="#owner-referral">Referral programme</a>.</li>
 <li><span class="step-title">Can I pay my deposit in cash instead of by card?</span> Yes — the deposit flow always offers both options.</li>
 <li><span class="step-title">Why does my portfolio photo count for Discover ranking?</span> Photo views are recorded to help rank the Discover feed and profile pages by relevance/popularity.</li>

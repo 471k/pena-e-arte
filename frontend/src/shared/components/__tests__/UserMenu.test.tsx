@@ -7,7 +7,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import { UserMenu } from "../UserMenu";
 
-function makeStore(role: "issuer" | "owner" = "issuer") {
+function makeStore(role: "admin" | "owner" = "admin") {
   return configureStore({
     reducer: { auth: authReducer },
     preloadedState: {

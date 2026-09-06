@@ -33,7 +33,7 @@ interface ReminderDialogProps {
   appointmentId?: string;
   /** Send tied to an existing Client record — recipient is implicit. */
   clientId?: string;
-  /** Only honored for owner/issuer callers acting on another artist's behalf. */
+  /** Only honored for owner/admin callers acting on another artist's behalf. */
   artistId?: string;
 }
 
@@ -60,7 +60,7 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
   const isRawContact = !appointmentId && !clientId;
 
   // A client with no assigned artist has no authoritative artist source, and an
-  // owner/issuer caller (unlike an artist, who is always resolved from their own
+  // owner/admin caller (unlike an artist, who is always resolved from their own
   // account) must supply one explicitly — mirrors CreateManualReminderCommand's
   // RequireExplicitArtistAsync fallback for exactly this case.
   const role = useAppSelector((s) => s.auth.role);

@@ -102,16 +102,16 @@ describe("HelpMenu", () => {
     expect(screen.queryByText(/manage subscription plans/i)).not.toBeInTheDocument();
   });
 
-  it("shows the all-roles toggle only for issuer", async () => {
+  it("shows the all-roles toggle only for admin", async () => {
     const user = userEvent.setup();
-    renderMenu("issuer" as Role);
+    renderMenu("admin" as Role);
 
     await user.click(screen.getByRole("button", { name: /open help menu/i }));
 
     expect(screen.getByRole("button", { name: /show all roles' guides/i })).toBeInTheDocument();
   });
 
-  it("does not show the all-roles toggle for non-issuer roles", async () => {
+  it("does not show the all-roles toggle for non-admin roles", async () => {
     const user = userEvent.setup();
     renderMenu("owner" as Role);
 
@@ -221,7 +221,7 @@ describe("HelpMenu", () => {
       http.get("http://localhost/api/v1/feedback/mine", () => HttpResponse.json([{
         id: "fb-1", type: "SupportRequest", title: "Need help", body: "Can't find billing.",
         status: "Open", studioName: "Ink Soul", submitterRole: "client",
-        issuerNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
+        adminNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
       }])),
       http.get("http://localhost/api/v1/feedback/fb-1/messages", () => HttpResponse.json([])),
     );

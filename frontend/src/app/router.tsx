@@ -22,9 +22,9 @@ import { ReportsPage, MyEarningsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
 import {
-  IssuerDashboardPage,
-  IssuerStudioListPage,
-  IssuerStudioDetailPage,
+  AdminDashboardPage,
+  AdminStudioListPage,
+  AdminStudioDetailPage,
   PlanManagementPage,
   PlanEditPage,
   SubscriptionOversightPage,
@@ -42,7 +42,7 @@ import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
-import { IssuerLayout } from "@/layouts/IssuerLayout";
+import { AdminLayout } from "@/layouts/AdminLayout";
 import { Role } from "@/shared/types/roles";
 import { logout } from "@/features/auth/authSlice";
 import { clearSessionExpired } from "@/features/ui/uiSlice";
@@ -62,7 +62,7 @@ export function getRoleRedirectPath(role: Role): string {
     case Role.Client: return "/book";
     case Role.Artist: return "/schedule";
     case Role.Owner: return "/dashboard";
-    case Role.Issuer: return "/platform";
+    case Role.Admin: return "/platform";
   }
 }
 
@@ -103,7 +103,7 @@ function AppLayout() {
     case Role.Owner:  return <OwnerLayout />;
     case Role.Artist: return <ArtistLayout />;
     case Role.Client: return <ClientLayout />;
-    case Role.Issuer: return <IssuerLayout />;
+    case Role.Admin: return <AdminLayout />;
     default:          return <Outlet />;
   }
 }
@@ -140,7 +140,7 @@ export const routes = [
       // blanket auth RoleGuard below, but still gets AppLayout for an authenticated visit
       // (AppLayout itself already falls back to a bare Outlet with no role, matching the
       // guest page's own self-contained PublicPageHeader shell). BookPage internally
-      // preserves the pre-existing Client/Issuer-only restriction for authenticated users.
+      // preserves the pre-existing Client/Admin-only restriction for authenticated users.
       {
         element: <AppLayout />,
         children: [
@@ -148,7 +148,7 @@ export const routes = [
         ],
       },
       {
-        element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+        element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
         children: [
           {
             element: <AppLayout />,
@@ -163,26 +163,26 @@ export const routes = [
               // ── Artist + Owner ───────────────────────────────────────────────
               {
                 path: "schedule",
-                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [{ index: true, element: <ErrorBoundary><SchedulePage /></ErrorBoundary> }],
               },
 
               // ── Owner ───────────────────────────────────────────────────────
               {
                 path: "dashboard",
-                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                 children: [{ index: true, element: <ErrorBoundary><DashboardPage /></ErrorBoundary> }],
               },
 
-              // ── Issuer platform ─────────────────────────────────────────────
+              // ── Admin platform ─────────────────────────────────────────────
               {
                 path: "platform",
-                element: <RoleGuard allowedRoles={[Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Admin]} />,
                 children: [
-                  { index: true,               element: <ErrorBoundary><IssuerDashboardPage /></ErrorBoundary> },
+                  { index: true,               element: <ErrorBoundary><AdminDashboardPage /></ErrorBoundary> },
                   { path: "traffic",           element: <ErrorBoundary><LiveTrafficPage /></ErrorBoundary> },
-                  { path: "studios",           element: <ErrorBoundary><IssuerStudioListPage /></ErrorBoundary> },
-                  { path: "studios/:studioId", element: <ErrorBoundary><IssuerStudioDetailPage /></ErrorBoundary> },
+                  { path: "studios",           element: <ErrorBoundary><AdminStudioListPage /></ErrorBoundary> },
+                  { path: "studios/:studioId", element: <ErrorBoundary><AdminStudioDetailPage /></ErrorBoundary> },
                   {
                     path: "plans",
                     children: [
@@ -204,7 +204,7 @@ export const routes = [
               // ── Shared: appointments ────────────────────────────────────────
               {
                 path: "appointments",
-                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [
                   { path: ":id", element: <ErrorBoundary><AppointmentDetailPage /></ErrorBoundary> },
                 ],
@@ -213,12 +213,12 @@ export const routes = [
               // ── Shared: artists ─────────────────────────────────────────────
               {
                 path: "artists",
-                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><ArtistListPage /></ErrorBoundary> },
                   {
                     path: "new",
-                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                     children: [{ index: true, element: <ErrorBoundary><CreateArtistPage /></ErrorBoundary> }],
                   },
                   { path: ":id", element: <ErrorBoundary><ArtistDetailPage /></ErrorBoundary> },
@@ -228,14 +228,14 @@ export const routes = [
               // ── Client: self-profile ────────────────────────────────────────
               {
                 path: "clients/me",
-                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [{ index: true, element: <ErrorBoundary><MyProfilePage /></ErrorBoundary> }],
               },
 
               // ── Shared: clients ─────────────────────────────────────────────
               {
                 path: "clients",
-                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true,                   element: <ErrorBoundary><ClientListPage /></ErrorBoundary> },
                   { path: "new",                   element: <ErrorBoundary><CreateClientPage /></ErrorBoundary> },
@@ -247,11 +247,11 @@ export const routes = [
               // ── Shared: designs ─────────────────────────────────────────────
               {
                 path: "designs",
-                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><DesignListPage /></ErrorBoundary> },
                   {
-                    element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                    element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                     children: [
                       { path: "new",        element: <ErrorBoundary><CreateDesignPage /></ErrorBoundary> },
                       { path: ":id/upload", element: <ErrorBoundary><UploadRevisionPage /></ErrorBoundary> },
@@ -264,12 +264,12 @@ export const routes = [
               // ── Shared: deposit rules ───────────────────────────────────────
               {
                 path: "deposit-rules",
-                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><DepositRuleListPage /></ErrorBoundary> },
                   {
                     path: "new",
-                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                     children: [{ index: true, element: <ErrorBoundary><CreateDepositRulePage /></ErrorBoundary> }],
                   },
                   { path: ":id", element: <ErrorBoundary><DepositRuleDetailPage /></ErrorBoundary> },
@@ -279,7 +279,7 @@ export const routes = [
               // ── Shared: forms ────────────────────────────────────────────────
               {
                 path: "forms",
-                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [
                   {
                     path: "intake/new",
@@ -288,7 +288,7 @@ export const routes = [
                   },
                   {
                     path: "intake",
-                    element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                    element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
                     children: [
                       { index: true, element: <ErrorBoundary><IntakeFormListPage /></ErrorBoundary> },
                       { path: ":id", element: <ErrorBoundary><IntakeFormDetailPage /></ErrorBoundary> },
@@ -301,7 +301,7 @@ export const routes = [
                   },
                   {
                     path: "consent",
-                    element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                    element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
                     children: [
                       { index: true, element: <ErrorBoundary><ConsentFormListPage /></ErrorBoundary> },
                       { path: ":id", element: <ErrorBoundary><ConsentFormDetailPage /></ErrorBoundary> },
@@ -313,7 +313,7 @@ export const routes = [
               // ── Shared: notifications ───────────────────────────────────────
               {
                 path: "notifications",
-                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><NotificationLogListPage /></ErrorBoundary> },
                 ],
@@ -322,7 +322,7 @@ export const routes = [
               // ── Owner: billing ──────────────────────────────────────────────
               {
                 path: "billing",
-                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true,       element: <ErrorBoundary><BillingPage /></ErrorBoundary> },
                   { path: "subscribe", element: <ErrorBoundary><SubscribePage /></ErrorBoundary> },
@@ -332,7 +332,7 @@ export const routes = [
               // ── Owner: studio profile ───────────────────────────────────────
               {
                 path: "studios",
-                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                 children: [
                   { path: "me", element: <ErrorBoundary><StudioProfilePage /></ErrorBoundary> },
                 ],
@@ -341,7 +341,7 @@ export const routes = [
               // ── Owner: reports ───────────────────────────────────────────────
               {
                 path: "reports",
-                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><ReportsPage /></ErrorBoundary> },
                 ],
@@ -365,7 +365,7 @@ export const routes = [
                 ],
               },
 
-              // ── Shared: in-app messaging (client, artist, owner — not issuer, see
+              // ── Shared: in-app messaging (client, artist, owner — not admin, see
               // messaging Decision 1) ─────────────────────────────────────────
               {
                 path: "messages",
@@ -376,7 +376,7 @@ export const routes = [
               // ── Owner: payments ─────────────────────────────────────────────
               {
                 path: "payments",
-                element: <RoleGuard allowedRoles={[Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true,            element: <ErrorBoundary><PaymentListPage /></ErrorBoundary> },
                   { path: "new",            element: <ErrorBoundary><CreatePaymentIntentPage /></ErrorBoundary> },
@@ -387,19 +387,19 @@ export const routes = [
               // ── Client: deposit checkout ────────────────────────────────────
               {
                 path: "pay/:paymentId",
-                element: <RoleGuard allowedRoles={[Role.Client, Role.Owner, Role.Artist, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Owner, Role.Artist, Role.Admin]} />,
                 children: [{ index: true, element: <ErrorBoundary><DepositCheckoutPage /></ErrorBoundary> }],
               },
 
               // ── Auth: account settings ───────────────────────────────────────
               {
                 path: "account/change-password",
-                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [{ index: true, element: <ErrorBoundary><ChangePasswordPage /></ErrorBoundary> }],
               },
               {
                 path: "account/change-email",
-                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Issuer]} />,
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [{ index: true, element: <ErrorBoundary><RequestChangeEmailPage /></ErrorBoundary> }],
               },
             ],

@@ -76,9 +76,9 @@ export function BookPage() {
   }
 
   // Preserve the pre-existing router-level restriction (RoleGuard allowedRoles=[Client,
-  // Issuer]) now that /book is reachable outside that guard — Artist/Owner still redirect
+  // Admin]) now that /book is reachable outside that guard — Artist/Owner still redirect
   // to their own home, unchanged from before this feature.
-  if (role !== Role.Client && role !== Role.Issuer) {
+  if (role !== Role.Client && role !== Role.Admin) {
     return <Navigate to={getRoleRedirectPath(role)} replace />;
   }
 
