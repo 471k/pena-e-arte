@@ -13,8 +13,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-api
-  namespace: pena-e-arte
+  name: tattooos-api
+  namespace: tattooos
 spec:
   template:
     spec:
@@ -27,4 +27,4 @@ spec:
       volumes:
         - name: geoip-data
           persistentVolumeClaim:
-            claimName: pena-e-arte-geoip-data
+            claimName: tattooos-geoip-data

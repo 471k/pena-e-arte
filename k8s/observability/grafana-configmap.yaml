@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-grafana-dashboards-provider
+  name: tattooos-grafana-dashboards-provider
   namespace: monitoring
 data:
   dashboards.yaml: |
     apiVersion: 1
 
     providers:
-      - name: "Pena e Arte"
+      - name: "TattooOS"
         orgId: 1
-        folder: "Pena e Arte"
+        folder: "TattooOS"
         type: file
         options:
           path: /etc/grafana/provisioning/dashboards/json
@@ -19,7 +19,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-grafana-datasources
+  name: tattooos-grafana-datasources
   namespace: monitoring
 data:
   # Translated from docker/observability/grafana/provisioning/datasources/datasources.yaml —
@@ -32,14 +32,14 @@ data:
         type: prometheus
         uid: prometheus-uid
         access: proxy
-        url: http://pena-e-arte-prometheus.monitoring.svc.cluster.local:9090
+        url: http://tattooos-prometheus.monitoring.svc.cluster.local:9090
         isDefault: true
 
       - name: Loki
         type: loki
         uid: loki-uid
         access: proxy
-        url: http://pena-e-arte-loki.monitoring.svc.cluster.local:3100
+        url: http://tattooos-loki.monitoring.svc.cluster.local:3100
         jsonData:
           derivedFields:
             - datasourceUid: tempo-uid
@@ -51,7 +51,7 @@ data:
         type: tempo
         uid: tempo-uid
         access: proxy
-        url: http://pena-e-arte-tempo.monitoring.svc.cluster.local:3200
+        url: http://tattooos-tempo.monitoring.svc.cluster.local:3200
         jsonData:
           tracesToLogsV2:
             datasourceUid: loki-uid
@@ -60,13 +60,13 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-grafana-dashboard-json
+  name: tattooos-grafana-dashboard-json
   namespace: monitoring
 data:
   # Translated from docker/observability/grafana/provisioning/dashboards/json/api-overview.json
-  # — one required fix: the compose version's "up{job=~\"pena-e-arte-api-.*\"}" query matched
+  # — one required fix: the compose version's "up{job=~\"tattooos-api-.*\"}" query matched
   # the dual "-container"/"-host" job names from the old prometheus.yml. The K8s
-  # prometheus-configmap.yaml collapses to a single job named exactly "pena-e-arte-api" (no
+  # prometheus-configmap.yaml collapses to a single job named exactly "tattooos-api" (no
   # trailing "-container"/"-host" suffix, per Phase 7's intentional simplification), which the
   # old regex would NOT have matched (it requires a literal "-" after "api") — fixed to an
   # exact match below so this panel doesn't silently render empty in production.
@@ -78,14 +78,14 @@ data:
   # an added environment="$environment" matcher alongside its existing service= matcher.
   api-overview.json: |
     {
-      "title": "Pena e Arte API Overview",
+      "title": "TattooOS API Overview",
       "uid": "pea-api-overview",
       "timezone": "browser",
       "schemaVersion": 39,
       "version": 1,
       "refresh": "30s",
       "time": { "from": "now-1h", "to": "now" },
-      "tags": ["pena-e-arte", "api"],
+      "tags": ["tattooos", "api"],
       "templating": {
         "list": [
           {
@@ -110,7 +110,7 @@ data:
           "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
           "targets": [
             {
-              "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{service=\"pena-e-arte-api\", environment=\"$environment\"}[5m]))",
+              "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{service=\"tattooos-api\", environment=\"$environment\"}[5m]))",
               "legendFormat": "{{http_route}}",
               "refId": "A"
             }
@@ -125,7 +125,7 @@ data:
           "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "min": 0 }, "overrides": [] },
           "targets": [
             {
-              "expr": "100 * sum(rate(http_server_request_duration_seconds_count{service=\"pena-e-arte-api\", environment=\"$environment\", http_response_status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count{service=\"pena-e-arte-api\", environment=\"$environment\"}[5m])), 1e-9)",
+              "expr": "100 * sum(rate(http_server_request_duration_seconds_count{service=\"tattooos-api\", environment=\"$environment\", http_response_status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count{service=\"tattooos-api\", environment=\"$environment\"}[5m])), 1e-9)",
               "legendFormat": "5xx %",
               "refId": "A"
             }
@@ -140,17 +140,17 @@ data:
           "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"pena-e-arte-api\", environment=\"$environment\"}[5m])))",
+              "expr": "histogram_quantile(0.50, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"tattooos-api\", environment=\"$environment\"}[5m])))",
               "legendFormat": "p50 {{http_route}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"pena-e-arte-api\", environment=\"$environment\"}[5m])))",
+              "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"tattooos-api\", environment=\"$environment\"}[5m])))",
               "legendFormat": "p95 {{http_route}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"pena-e-arte-api\", environment=\"$environment\"}[5m])))",
+              "expr": "histogram_quantile(0.99, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{service=\"tattooos-api\", environment=\"$environment\"}[5m])))",
               "legendFormat": "p99 {{http_route}}",
               "refId": "C"
             }
@@ -165,7 +165,7 @@ data:
           "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
           "targets": [
             {
-              "expr": "sum(http_server_active_requests{service=\"pena-e-arte-api\", environment=\"$environment\"})",
+              "expr": "sum(http_server_active_requests{service=\"tattooos-api\", environment=\"$environment\"})",
               "legendFormat": "active",
               "refId": "A"
             }
@@ -180,7 +180,7 @@ data:
           "fieldConfig": { "defaults": { "unit": "short", "max": 1, "min": 0 }, "overrides": [] },
           "targets": [
             {
-              "expr": "up{service=\"pena-e-arte-api\", environment=\"$environment\"}",
+              "expr": "up{service=\"tattooos-api\", environment=\"$environment\"}",
               "legendFormat": "{{job}}",
               "refId": "A"
             }

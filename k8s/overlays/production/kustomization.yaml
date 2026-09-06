@@ -12,5 +12,5 @@ patches:
   - path: api-config-patch.yaml
 
 # Image tags are pinned here at deploy time by CD via
-# `kustomize edit set image ghcr.io/471k/pena-e-arte-api=ghcr.io/471k/pena-e-arte-api:<sha>`
+# `kustomize edit set image ghcr.io/471k/tattooos-api=ghcr.io/471k/tattooos-api:<sha>`
 # (and the same for -frontend) — never hand-edited, never committed with a real sha.

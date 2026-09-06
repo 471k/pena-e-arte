@@ -1,14 +1,17 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: pena-e-arte
-  namespace: pena-e-arte
+  name: tattooos
+  namespace: tattooos
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod-dns01
 spec:
   ingressClassName: traefik
   tls:
     - hosts: ["app.tattooos.co"] # confirmed against the real Cloudflare DNS record, Phase 0 step 4
+      # Deliberately kept as the old name — Secrets don't move between namespaces so a fresh
+      # cert reissues in the new namespace regardless of what this string says; renaming it too
+      # would just be unnecessary churn on an internal-only, never-user-visible identifier.
       secretName: pena-e-arte-tls
   rules:
     - host: app.tattooos.co
@@ -20,5 +23,5 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: pena-e-arte-frontend
+                name: tattooos-frontend
                 port: { number: 8080 }

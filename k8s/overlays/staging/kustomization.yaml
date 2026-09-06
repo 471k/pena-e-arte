@@ -11,13 +11,13 @@ resources:
 
 # Kustomize's namespace transformer rewrites every base resource's metadata into this
 # namespace. The cluster-scoped ClusterIssuer is untouched by it (reused as-is per §3.2 of the
-# staging prompt). base/namespace.yaml's pena-e-arte/monitoring Namespace objects are
+# staging prompt). base/namespace.yaml's tattooos/monitoring Namespace objects are
 # deliberately excluded (namespace-exclude-patch.yaml) rather than left to ride along — see
 # that file's comment for why (the transformer rewrites a Namespace object's own name, which
-# collides with this overlay's own pena-e-arte-staging Namespace object otherwise). Object
-# *names* stay identical to production's (pena-e-arte-api, pena-e-arte-frontend, ...) —
+# collides with this overlay's own tattooos-staging Namespace object otherwise). Object
+# *names* stay identical to production's (tattooos-api, tattooos-frontend, ...) —
 # namespace isolation alone is sufficient, no namePrefix needed.
-namespace: pena-e-arte-staging
+namespace: tattooos-staging
 
 patches:
   - path: namespace-exclude-patch.yaml
@@ -29,9 +29,9 @@ patches:
   - path: vault-exclude-patch.yaml
 
 # Image tags are pinned here at deploy time by CD via
-# `kustomize edit set image ghcr.io/471k/pena-e-arte-api=ghcr.io/471k/pena-e-arte-api:<sha>`
+# `kustomize edit set image ghcr.io/471k/tattooos-api=ghcr.io/471k/tattooos-api:<sha>`
 # (the exact same sha production's own deploy just used — no staging-specific API build, see
 # docs/infra/staging-environment.md) and
-# `ghcr.io/471k/pena-e-arte-frontend=ghcr.io/471k/pena-e-arte-frontend:staging-<sha>` (a
+# `ghcr.io/471k/tattooos-frontend=ghcr.io/471k/tattooos-frontend:staging-<sha>` (a
 # distinctly-tagged frontend image, built with staging's own VITE_* build-args) — never
 # hand-edited, never committed with a real sha.

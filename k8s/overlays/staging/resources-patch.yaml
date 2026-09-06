@@ -19,8 +19,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-api
-  namespace: pena-e-arte
+  name: tattooos-api
+  namespace: tattooos
 spec:
   template:
     spec:
@@ -37,8 +37,8 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-frontend
-  namespace: pena-e-arte
+  name: tattooos-frontend
+  namespace: tattooos
 spec:
   template:
     spec:
@@ -55,8 +55,8 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-redis
-  namespace: pena-e-arte
+  name: tattooos-redis
+  namespace: tattooos
 spec:
   template:
     spec:

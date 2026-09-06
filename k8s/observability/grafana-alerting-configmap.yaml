@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-grafana-alerting
+  name: tattooos-grafana-alerting
   namespace: monitoring
 data:
   # Grafana's file-based Alerting provisioning format (apiVersion: 1) — same provisioning
   # mechanism grafana-configmap.yaml already uses for dashboards/datasources, extended with a
   # third mounted file rather than a new mechanism. Three rules, all evaluated every 1m:
   #
-  # 1. api-pod-not-ready: reuses the exact `up{service="pena-e-arte-api", environment=...}`
+  # 1. api-pod-not-ready: reuses the exact `up{service="tattooos-api", environment=...}`
   #    series api-overview.json's "Scrape target up" panel already renders (no new metric).
   #    5m `for` avoids paging on a normal rolling-deploy pod replacement — kubelet's default
   #    readiness/liveness periods plus rollout time land well under 2 minutes end to end, so 5
@@ -33,8 +33,8 @@ data:
 
     groups:
       - orgId: 1
-        name: pena-e-arte-alerts
-        folder: Pena e Arte
+        name: tattooos-alerts
+        folder: TattooOS
         interval: 1m
         rules:
           # These two use the modern reduce->threshold expression pipeline (A: raw instant
@@ -59,7 +59,7 @@ data:
                 datasourceUid: prometheus-uid
                 model:
                   refId: A
-                  expr: up{service="pena-e-arte-api", environment="production"}
+                  expr: up{service="tattooos-api", environment="production"}
                   instant: true
                   intervalMs: 1000
                   maxDataPoints: 43200
@@ -92,7 +92,7 @@ data:
             labels:
               severity: critical
             annotations:
-              summary: "pena-e-arte-api is not reachable by Prometheus for 5+ minutes"
+              summary: "tattooos-api is not reachable by Prometheus for 5+ minutes"
 
           - uid: api-5xx-error-rate
             title: API 5xx error rate spike
@@ -106,9 +106,9 @@ data:
                 model:
                   refId: A
                   expr: >-
-                    100 * sum(rate(http_server_request_duration_seconds_count{service="pena-e-arte-api",
+                    100 * sum(rate(http_server_request_duration_seconds_count{service="tattooos-api",
                     environment="production", http_response_status_code=~"5.."}[5m])) /
-                    clamp_min(sum(rate(http_server_request_duration_seconds_count{service="pena-e-arte-api",
+                    clamp_min(sum(rate(http_server_request_duration_seconds_count{service="tattooos-api",
                     environment="production"}[5m])), 1e-9)
                   instant: true
                   intervalMs: 1000
@@ -142,7 +142,7 @@ data:
             labels:
               severity: critical
             annotations:
-              summary: "pena-e-arte-api 5xx rate has exceeded 5% for 5+ minutes"
+              summary: "tattooos-api 5xx rate has exceeded 5% for 5+ minutes"
 
           - uid: hangfire-job-failure-rate
             title: Hangfire job failure rate
@@ -156,7 +156,7 @@ data:
                 model:
                   refId: A
                   expr: >-
-                    count_over_time({namespace="pena-e-arte"} |= "HangfireJobFailed" [15m])
+                    count_over_time({namespace="tattooos"} |= "HangfireJobFailed" [15m])
                   intervalMs: 1000
                   maxDataPoints: 43200
                   conditions:
@@ -180,7 +180,7 @@ data:
 
     # Grafana's built-in "email" contact-point type only ever speaks SMTP — it needs the
     # server-level [smtp]/GF_SMTP_* config grafana-deployment.yaml now sets (sourced from
-    # pena-e-arte-grafana-smtp, populated by cd.yml via the same RESEND_API_KEY used for the
+    # tattooos-grafana-smtp, populated by cd.yml via the same RESEND_API_KEY used for the
     # app's own transactional email). Recipient is phisoftwaresolutions@gmail.com — the same
     # confirmed-real, monitored address cluster-issuer.yaml uses today; no dedicated ops/on-
     # call inbox was confirmed to exist yet (see docs/infra/alerting-runbook.md), so this

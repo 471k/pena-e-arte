@@ -1,4 +1,4 @@
-# Non-sensitive config only (Phase 8) — safe to commit, unlike pena-e-arte-api-secrets which
+# Non-sensitive config only (Phase 8) — safe to commit, unlike tattooos-api-secrets which
 # CD populates at deploy time from GitHub Actions secrets and is never written to k8s/ as YAML
 # with real values. GeoIp:* keys are deliberately left unset here in base: production sets them
 # via k8s/overlays/production/api-config-patch.yaml, backed by that overlay's geoip-pvc.yaml +
@@ -9,14 +9,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-api-config
-  namespace: pena-e-arte
+  name: tattooos-api-config
+  namespace: tattooos
 data:
   Jwt__Issuer: "tattoos-prod"
   Jwt__Audience: "tattoos-prod"
   App__BaseUrl: "https://app.tattooos.co"
   Cors__AllowedOrigins__0: "https://app.tattooos.co"
   Migrations__ApplyOnStartup: "false"
-  Redis__ConnectionString: "pena-e-arte-redis:6379,connectTimeout=500,syncTimeout=500,abortConnect=false"
+  Redis__ConnectionString: "tattooos-redis:6379,connectTimeout=500,syncTimeout=500,abortConnect=false"
   Resend__FromName: "TattooOS"
-  OpenTelemetry__OtlpEndpoint: "http://pena-e-arte-tempo.monitoring.svc.cluster.local:4317"
+  OpenTelemetry__OtlpEndpoint: "http://tattooos-tempo.monitoring.svc.cluster.local:4317"
