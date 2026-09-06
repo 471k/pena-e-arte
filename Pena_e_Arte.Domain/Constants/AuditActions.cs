@@ -34,6 +34,10 @@ public static class AuditActions
 
     public const string PaymentRefunded = "Payment.Refunded";
     public const string CashDepositConfirmed = "Payment.CashDepositConfirmed";
+
+    /// <summary>One-time creation of the platform's first admin account by AdminBootstrapper,
+    /// never a MediatR command — see AdminBootstrapper.RunAsync.</summary>
+    public const string AdminAccountBootstrapped = "Admin.AccountBootstrapped";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -49,4 +53,5 @@ public static class AuditTargetTypes
     public const string Client = "Client";
     public const string ManualReminder = "ManualReminder";
     public const string ConductReport = "ConductReport";
+    public const string User = "User";
 }
