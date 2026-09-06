@@ -1,0 +1,66 @@
+# Populates pena-e-arte-geoip-data with current GeoLite2-City/ASN .mmdb files, closing the gap
+# documented in docs/claude/architecture.md's "K8s .mmdb population" Decisions Log entry
+# (option 2, CronJob + PVC, chosen over a per-pod-start init-container). Uses MaxMind's own
+# official image rather than a custom build — see
+# https://github.com/maxmind/geoipupdate/blob/main/doc/docker.md.
+#
+# Schedule matches MaxMind's own GeoLite2 refresh cadence (weekly) rather than the pod
+# lifecycle — an init-container re-downloading on every pod start/restart/autoscale event
+# would hit MaxMind far more often than the underlying file ever actually changes.
+# GEOIPUPDATE_FREQUENCY=0 makes each container run exactly once and exit (the K8s Schedule is
+# what re-triggers it, not the image's own internal loop).
+#
+# Only GeoLite2-City and GeoLite2-ASN are requested — GeoLite2-Country is in the local
+# GeoIP.conf (docker-compose parity with an older setup) but GeoIpService never reads it, so
+# there's no reason to spend a production download slot / PVC bytes on it.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pena-e-arte-geoip-update
+  namespace: pena-e-arte
+spec:
+  schedule: "0 6 * * 3"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: geoipupdate
+              image: ghcr.io/maxmind/geoipupdate:v7.1.1
+              env:
+                - name: GEOIPUPDATE_EDITION_IDS
+                  value: "GeoLite2-City GeoLite2-ASN"
+                - name: GEOIPUPDATE_DB_DIR
+                  value: "/data/geoip"
+                - name: GEOIPUPDATE_FREQUENCY
+                  value: "0"
+                - name: GEOIPUPDATE_ACCOUNT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: pena-e-arte-api-secrets
+                      key: GeoIpUpdate__AccountId
+                - name: GEOIPUPDATE_LICENSE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: pena-e-arte-api-secrets
+                      key: GeoIpUpdate__LicenseKey
+              volumeMounts:
+                - name: geoip-data
+                  mountPath: /data/geoip
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+          volumes:
+            - name: geoip-data
+              persistentVolumeClaim:
+                claimName: pena-e-arte-geoip-data

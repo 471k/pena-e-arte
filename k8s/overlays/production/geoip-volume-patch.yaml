@@ -1,0 +1,30 @@
+# Mounts the GeoLite2 .mmdb PVC (geoip-pvc.yaml, populated by geoip-cronjob.yaml) read-only
+# into the API container. A strategic-merge patch here rather than editing
+# k8s/base/api-deployment.yaml directly, because staging shares that same base Deployment and
+# has no geoip PVC of its own (see geoip-pvc.yaml's comment) — patching it in base would leave
+# staging's pods permanently Pending on an unresolvable volume claim.
+#
+# GeoIpService opens each DatabaseReader once, in its constructor, as a singleton (see that
+# class's own doc comment) — it does NOT hot-reload when the CronJob overwrites the file on
+# disk mid-week. The CD "Force rollout to pick up current Secrets/ConfigMaps" step already
+# restarts this Deployment on every deploy, which is frequent enough in practice; if a
+# multi-week gap between deploys is ever observed, the CronJob would need a
+# `kubectl rollout restart` step added alongside it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pena-e-arte-api
+  namespace: pena-e-arte
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          volumeMounts:
+            - name: geoip-data
+              mountPath: /data/geoip
+              readOnly: true
+      volumes:
+        - name: geoip-data
+          persistentVolumeClaim:
+            claimName: pena-e-arte-geoip-data

@@ -1,10 +1,11 @@
 # Non-sensitive config only (Phase 8) — safe to commit, unlike pena-e-arte-api-secrets which
 # CD populates at deploy time from GitHub Actions secrets and is never written to k8s/ as YAML
-# with real values. GeoIp:* keys are deliberately left unset: neither this prompt nor the
-# earlier live-traffic-analytics prompt specs a K8s volume/PVC + population mechanism for the
-# GeoLite2 .mmdb files docker-compose.yml mounts locally — flagged as a real gap, not
-# silently built; the feature stays gracefully degraded (empty path) in production until
-# that's addressed.
+# with real values. GeoIp:* keys are deliberately left unset here in base: production sets them
+# via k8s/overlays/production/api-config-patch.yaml, backed by that overlay's geoip-pvc.yaml +
+# geoip-cronjob.yaml (see docs/claude/architecture.md's "K8s .mmdb population" Decisions Log
+# entry). Staging intentionally has no equivalent — GeoIpService degrades to always-null
+# gracefully when these are unset, and staging traffic isn't real geography data worth a
+# second MaxMind download slot.
 apiVersion: v1
 kind: ConfigMap
 metadata:
