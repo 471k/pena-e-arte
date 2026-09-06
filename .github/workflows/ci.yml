@@ -93,7 +93,7 @@ jobs:
         run: docker rm -f ci-mysql || true
 
       - name: Publish test results
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Backend test results
@@ -115,14 +115,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
       - name: Enable pnpm (pinned version — must match frontend/Dockerfile)
         run: corepack enable && corepack prepare pnpm@11.5.1 --activate
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
@@ -192,7 +192,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Build API image
         uses: docker/build-push-action@v7
@@ -237,7 +237,7 @@ jobs:
           fetch-depth: 0   # full history — gitleaks needs it to scan past commits, not just HEAD
 
       - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Enforces rule 4 ("secrets never in source"). If this fires on a false positive
