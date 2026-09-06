@@ -212,6 +212,34 @@ token or `doctl` configured anywhere, so that one genuinely requires either the 
 token Phi provides. The connection-pool caps above are a real, load-bearing mitigation on their
 own regardless of whether the tier itself ever changes.
 
+## Follow-up #3 (2026-09-06) — DB tier actually resized, pool caps raised to match
+
+Phi resized `pena-e-arte-prod-db` via the DO dashboard: **1GB/1vCPU (75 connections) → 2GB/1vCPU
+(150 connections)**, $15.15/mo → $30.45/mo. Guided step by step (Basic - Shared CPU tab; an
+earlier wrong turn into the much pricier Storage-Optimized tab was caught and corrected before
+saving). Verified live, before and after:
+
+```
+Before: innodb_buffer_pool_size = 32 MB,  max_connections = 76
+After:  innodb_buffer_pool_size = 256 MB, max_connections = 151
+```
+
+(DigitalOcean applied the new `max_connections` limit within seconds of clicking Save, but the
+actual hardware swap — and the buffer pool size increase that comes with it — took a few more
+minutes, visible as a "RESIZING" badge with a progress bar on the cluster's dashboard page.)
+
+With the real ceiling roughly doubled, raised the per-environment pool caps from the previous
+follow-up proportionally: **staging 15→25, production 25→50 per replica** (100 across its 2
+replicas). 125 of 151 total, keeping a similar relative safety margin to before. Same mechanism
+as last time: updated both GitHub secrets and both live K8s secrets, then a `kubectl rollout
+restart` on each Deployment (staging first, verified, then production — zero-downtime via its
+`maxUnavailable: 0` strategy, confirmed 0 restarts and `/health/live` 200 on both new replicas
+throughout).
+
+This closes all three items from the original load-test finding: pod resource limits (follow-up
+#1), connection-pool exhaustion (follow-up #2), and the DB tier itself (this one). No further
+staging-load-test-related follow-up expected unless a future run surfaces something new.
+
 ## Files
 
 - `load-tests/staging-baseline.js` — the k6 script itself, reusable for future runs.
