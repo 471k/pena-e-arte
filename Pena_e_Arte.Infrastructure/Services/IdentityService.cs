@@ -389,7 +389,7 @@ public class IdentityService(
         // A user may hold a "tenant_id" claim for every studio they belong to, but the
         // token must carry exactly one — the caller-selected active studio if given,
         // else whichever the user was first granted (preserves today's behavior for
-        // every single-studio account: artist/owner/issuer, and clients pre-dating
+        // every single-studio account: artist/owner/admin, and clients pre-dating
         // multi-studio support).
         string? activeTenantId = activeStudioId?.ToString()
             ?? userClaims.FirstOrDefault(c => c.Type == "tenant_id")?.Value;

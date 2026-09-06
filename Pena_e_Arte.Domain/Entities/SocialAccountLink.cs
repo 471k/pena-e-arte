@@ -7,10 +7,10 @@ namespace Pena_e_Arte.Domain.Entities;
 /// No global query filter (see AppDbContext) — same documented shape as
 /// InstagramConnection. Every handler must filter by (SubjectType, SubjectId) explicitly
 /// and resolve/verify the real owning StudioId from the target entity, never trust
-/// ICurrentTenant blindly (an issuer-role caller may have no tenant set at all).
+/// ICurrentTenant blindly (an admin-role caller may have no tenant set at all).
 ///
 /// For a Studio-subject row, StudioId == SubjectId (the studio's own id, since Studio is
-/// issuer-level/unfiltered — a self-referential tenant key, not a bug). For an
+/// admin-level/unfiltered — a self-referential tenant key, not a bug). For an
 /// Artist-subject row, StudioId is that artist's real tenant.
 ///
 /// This entity does not replace InstagramConnection, which keeps owning the artist

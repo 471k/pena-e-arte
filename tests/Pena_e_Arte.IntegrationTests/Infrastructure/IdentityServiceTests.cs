@@ -46,7 +46,7 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         ServiceProvider sp = services.BuildServiceProvider();
 
         RoleManager<IdentityRole> roleManager = sp.GetRequiredService<RoleManager<IdentityRole>>();
-        foreach (string role in new[] { "client", "artist", "owner", "issuer" })
+        foreach (string role in new[] { "client", "artist", "owner", "admin" })
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));

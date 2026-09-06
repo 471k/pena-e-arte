@@ -31,7 +31,7 @@ public class ConductReport
     public Guid AppointmentId { get; private set; }
 
     /// <summary>Never exposed in a response the reported artist can read — see
-    /// ConductReportProjections and ConductReportResponse mapping. Owner/issuer always see it.</summary>
+    /// ConductReportProjections and ConductReportResponse mapping. Owner/admin always see it.</summary>
     public Guid ReporterUserId { get; private set; }
     public string ReporterName { get; private set; } = string.Empty;
 
@@ -98,14 +98,14 @@ public class ConductReport
             : null;
     }
 
-    /// <summary>Issuer: always. Owner: any report targeting their own studio (StudioId match),
+    /// <summary>Admin: always. Owner: any report targeting their own studio (StudioId match),
     /// regardless of severity — owners can always VIEW a high-severity report about their own
     /// artist, they just can't change its status (enforced separately, see
     /// ConductReportAuthorizationGuard.EnsureCanChangeStatus). Artist: only reports where
     /// ArtistId matches their own — never studio-target reports with no ArtistId.</summary>
     public bool IsReadableBy(Guid? callerStudioId, Guid? callerArtistId, string role)
     {
-        if (string.Equals(role, "issuer", StringComparison.OrdinalIgnoreCase)) return true;
+        if (string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)) return true;
         if (string.Equals(role, "owner", StringComparison.OrdinalIgnoreCase))
             return callerStudioId is not null && StudioId == callerStudioId;
         if (string.Equals(role, "artist", StringComparison.OrdinalIgnoreCase))

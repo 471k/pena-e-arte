@@ -5,7 +5,7 @@ const RANK: Record<Role, number> = {
   [Role.Client]: 0,
   [Role.Artist]: 1,
   [Role.Owner]:  2,
-  [Role.Issuer]: 3,
+  [Role.Admin]: 3,
 };
 
 export function hasPermission(role: Role | null, requiredRole: Role): boolean {

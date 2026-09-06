@@ -34,7 +34,7 @@ public interface IAppDbContext
     DbSet<Conversation> Conversations { get; }
     DbSet<ChatMessage> ChatMessages { get; }
 
-    // Issuer-level
+    // Admin-level
     DbSet<Studio> Studios { get; }
     DbSet<Plan> Plans { get; }
     DbSet<PlanPrice> PlanPrices { get; }
@@ -59,11 +59,11 @@ public interface IAppDbContext
     // Social verification — polymorphic subject (Artist or Studio), no tenant filter (see AppDbContext)
     DbSet<SocialAccountLink> SocialAccountLinks { get; }
 
-    // Platform feedback — no tenant filter (issuer reads across all studios)
+    // Platform feedback — no tenant filter (admin reads across all studios)
     DbSet<FeedbackReport> FeedbackReports { get; }
     DbSet<FeedbackMessage> FeedbackMessages { get; }
 
-    // Help search analytics — tenant-scoped write, issuer reads cross-tenant via IgnoreQueryFilters
+    // Help search analytics — tenant-scoped write, admin reads cross-tenant via IgnoreQueryFilters
     DbSet<HelpSearchLog> HelpSearchLogs { get; }
 
     // Onboarding tour completion — per-user, cross-tenant, no tenant filter needed
@@ -77,7 +77,7 @@ public interface IAppDbContext
     // Review/FeedbackReport/AuditLogEntry (see AppDbContext)
     DbSet<ConductReport> ConductReports { get; }
 
-    // Traffic analytics — no tenant filter (StudioId nullable, issuer-only cross-tenant reads)
+    // Traffic analytics — no tenant filter (StudioId nullable, admin-only cross-tenant reads)
     DbSet<TrafficEvent> TrafficEvents { get; }
     DbSet<TrafficDailyAggregate> TrafficDailyAggregates { get; }
 

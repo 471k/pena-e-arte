@@ -17,11 +17,11 @@ public class ConductReportEntityTests
             ReportCategory.UnsafeHygienePractices, "The studio did not sterilize equipment properly.");
 
     [Fact]
-    public void IsReadableBy_Issuer_AlwaysTrue()
+    public void IsReadableBy_Admin_AlwaysTrue()
     {
         ConductReport report = ArtistTargetReport(Guid.NewGuid(), Guid.NewGuid());
 
-        report.IsReadableBy(callerStudioId: null, callerArtistId: null, role: "issuer").Should().BeTrue();
+        report.IsReadableBy(callerStudioId: null, callerArtistId: null, role: "admin").Should().BeTrue();
     }
 
     [Fact]

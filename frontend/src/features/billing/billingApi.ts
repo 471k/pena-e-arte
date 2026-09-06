@@ -84,8 +84,8 @@ export const billingApi = createApi({
     createPortalSession: builder.mutation<BillingPortalResponse, { returnUrl: string }>({
       query: (body) => ({ url: "billing/portal", method: "POST", body }),
     }),
-    // Issuer plan management
-    getIssuerPlans: builder.query<PlanResponse[], void>({
+    // Admin plan management
+    getAdminPlans: builder.query<PlanResponse[], void>({
       query: () => "billing/plans",
       providesTags: ["Plan"],
     }),
@@ -114,7 +114,7 @@ export const {
   useChangePlanMutation,
   useCancelPlanChangeMutation,
   useCreatePortalSessionMutation,
-  useGetIssuerPlansQuery,
+  useGetAdminPlansQuery,
   useCreatePlanMutation,
   useUpdatePlanMutation,
   useDeletePlanMutation,

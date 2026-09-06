@@ -9,12 +9,12 @@ using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Platform;
 
-public class GetIssuerStudioSummaryHandlerTests
+public class GetAdminStudioSummaryHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
 
-    private GetIssuerStudioSummaryHandler CreateSut() => new(_db, _identity);
+    private GetAdminStudioSummaryHandler CreateSut() => new(_db, _identity);
 
     [Fact]
     public async Task Handle_StudioWithData_ReturnsCorrectCounts()
@@ -31,8 +31,8 @@ public class GetIssuerStudioSummaryHandlerTests
         _identity.GetUserDisplayNameAsync("owner@ink-soul.test", Arg.Any<CancellationToken>())
             .Returns((string?)"Maria Silva");
 
-        IssuerStudioSummaryResponse result =
-            await CreateSut().Handle(new GetIssuerStudioSummaryQuery(studioId), default);
+        AdminStudioSummaryResponse result =
+            await CreateSut().Handle(new GetAdminStudioSummaryQuery(studioId), default);
 
         result.ArtistCount.Should().Be(2);
         result.ClientCount.Should().Be(1);
@@ -49,8 +49,8 @@ public class GetIssuerStudioSummaryHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
 
-        IssuerStudioSummaryResponse result =
-            await CreateSut().Handle(new GetIssuerStudioSummaryQuery(studioId), default);
+        AdminStudioSummaryResponse result =
+            await CreateSut().Handle(new GetAdminStudioSummaryQuery(studioId), default);
 
         result.OwnerEmail.Should().Be("—");
         result.OwnerDisplayName.Should().Be("—");
@@ -67,8 +67,8 @@ public class GetIssuerStudioSummaryHandlerTests
         _identity.GetUserDisplayNameAsync("owner@empty.test", Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
-        IssuerStudioSummaryResponse result =
-            await CreateSut().Handle(new GetIssuerStudioSummaryQuery(studioId), default);
+        AdminStudioSummaryResponse result =
+            await CreateSut().Handle(new GetAdminStudioSummaryQuery(studioId), default);
 
         result.ArtistCount.Should().Be(0);
         result.ClientCount.Should().Be(0);
@@ -79,7 +79,7 @@ public class GetIssuerStudioSummaryHandlerTests
     [Fact]
     public async Task Handle_StudioNotFound_ThrowsNotFoundException()
     {
-        Func<Task> act = () => CreateSut().Handle(new GetIssuerStudioSummaryQuery(Guid.NewGuid()), default);
+        Func<Task> act = () => CreateSut().Handle(new GetAdminStudioSummaryQuery(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }

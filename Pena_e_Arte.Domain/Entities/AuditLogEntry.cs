@@ -5,7 +5,7 @@ namespace Pena_e_Arte.Domain.Entities;
 /// TenantEntity: StudioId is nullable (null = platform-wide action with no single
 /// studio target, e.g. Plan.Updated), and there is no EF Core global query filter —
 /// authorization for who may read which rows is enforced in the query handlers
-/// (GetAuditLogHandler for the issuer, GetMyStudioAuditLogHandler for the owner),
+/// (GetAuditLogHandler for the admin, GetMyStudioAuditLogHandler for the owner),
 /// same non-tenant-scoped shape as FeedbackReport/UserOnboardingState.
 /// </summary>
 public class AuditLogEntry

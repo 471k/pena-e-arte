@@ -124,12 +124,12 @@ public class PostFeedbackMessageHandlerTests
     }
 
     [Fact]
-    public async Task Handle_IssuerReplyOnResolvedTicket_DoesNotReopenIt()
+    public async Task Handle_AdminReplyOnResolvedTicket_DoesNotReopenIt()
     {
         FeedbackReport report = SeedReport(FeedbackStatus.Resolved);
         await _db.SaveChangesAsync();
         _user.UserId.Returns(Guid.NewGuid());
-        _user.Role.Returns("issuer");
+        _user.Role.Returns("admin");
         _tenant.StudioId.Returns(Guid.NewGuid());
 
         await CreateSut().Handle(

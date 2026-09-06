@@ -15,7 +15,7 @@ public interface IAuditableCommand
     Guid AuditTargetId { get; }
 
     /// <summary>
-    /// Explicit studio target when the command carries one directly (e.g. issuer
+    /// Explicit studio target when the command carries one directly (e.g. admin
     /// commands with a StudioId property). Null falls back to the caller's own
     /// ICurrentTenant.StudioId when set (tenant-scoped commands), or to null for
     /// genuinely platform-wide actions / commands that don't expose a resolvable

@@ -16,7 +16,7 @@ public class UpdateFeedbackStatusHandlerTests
     private UpdateFeedbackStatusHandler CreateSut() => new(_db);
 
     [Fact]
-    public async Task Handle_ValidRequest_UpdatesStatusAndIssuerNote()
+    public async Task Handle_ValidRequest_UpdatesStatusAndAdminNote()
     {
         Guid id = await SeedReport();
 
@@ -25,7 +25,7 @@ public class UpdateFeedbackStatusHandlerTests
             default);
 
         result.Status.Should().Be("Reviewing");
-        result.IssuerNote.Should().Be("Looking into it");
+        result.AdminNote.Should().Be("Looking into it");
         _db.FeedbackReports.Single(r => r.Id == id).Status.Should().Be(FeedbackStatus.Reviewing);
     }
 

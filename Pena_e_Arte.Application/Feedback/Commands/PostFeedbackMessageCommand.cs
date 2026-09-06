@@ -28,11 +28,11 @@ public class PostFeedbackMessageHandler(
         db.FeedbackMessages.Add(message);
 
         // Replying to a closed ticket reopens it — the studio-side user is signaling it
-        // isn't actually resolved. Issuer replies don't reopen (issuer is the one closing it).
-        bool isStudioSideReply = !string.Equals(user.Role, "issuer", StringComparison.OrdinalIgnoreCase);
+        // isn't actually resolved. Admin replies don't reopen (admin is the one closing it).
+        bool isStudioSideReply = !string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase);
         if (isStudioSideReply && report.Status is FeedbackStatus.Resolved or FeedbackStatus.Dismissed)
         {
-            report.UpdateStatus(FeedbackStatus.Open, report.IssuerNote);
+            report.UpdateStatus(FeedbackStatus.Open, report.AdminNote);
         }
 
         await db.SaveChangesAsync(ct);

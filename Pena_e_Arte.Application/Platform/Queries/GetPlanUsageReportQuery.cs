@@ -15,7 +15,7 @@ public class GetPlanUsageReportHandler(IAppDbContext db)
     {
         DateTime monthStart = new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        // IgnoreQueryFilters approved: usage #25 — cross-tenant aggregate reads for the issuer
+        // IgnoreQueryFilters approved: usage #25 — cross-tenant aggregate reads for the admin
         // plan-usage validation report. See architecture.md.
         List<Studio> studios = await db.Studios
             .IgnoreQueryFilters()
@@ -57,7 +57,7 @@ public class GetPlanUsageReportHandler(IAppDbContext db)
                     notificationCounts.GetValueOrDefault(s.Id), plan.MaxNotificationsPerMonth,
                     storageGb, plan.MaxStorageGb);
             })
-            // Studios closest to any of their caps first, so the issuer can scan
+            // Studios closest to any of their caps first, so the admin can scan
             // top-to-bottom for "who's about to hit a wall" without manually sorting.
             .OrderByDescending(ClosestCapPercent)
             .ToList();

@@ -190,7 +190,7 @@ test.describe("Critical path — register, login, create appointment", () => {
   });
 
   test("client creates an appointment", async ({ page }) => {
-    // Use client token — /book is guarded by Role.Client and Role.Issuer.
+    // Use client token — /book is guarded by Role.Client and Role.Admin.
     // Owner role redirects to /dashboard, which has no booking form.
     await mockAuthLogin(page, CLIENT_TOKEN);
     await mockStudioMe(page);

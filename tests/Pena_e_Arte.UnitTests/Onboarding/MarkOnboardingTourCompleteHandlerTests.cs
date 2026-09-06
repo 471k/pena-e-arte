@@ -67,7 +67,7 @@ public class MarkOnboardingTourCompleteHandlerTests
     public async Task Handle_RoleDoesNotMatchCurrentUserRole_ThrowsForbidden()
     {
         Func<Task> act = () => CreateSut().Handle(
-            new MarkOnboardingTourCompleteCommand(new MarkOnboardingTourCompleteRequest("issuer")), default);
+            new MarkOnboardingTourCompleteCommand(new MarkOnboardingTourCompleteRequest("admin")), default);
 
         await act.Should().ThrowAsync<ForbiddenException>();
         _db.UserOnboardingStates.Should().BeEmpty();

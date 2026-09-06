@@ -1,7 +1,7 @@
 namespace Pena_e_Arte.Contracts.Responses;
 
 // ReporterUserId/ReporterName are nullable and populated ONLY when the caller is authorized to
-// see reporter identity (owner, issuer). For an artist-scoped read they are always null — see
+// see reporter identity (owner, admin). For an artist-scoped read they are always null — see
 // ConductReportProjections.ToRedactedResponse. This redaction happens server-side in the
 // handler's projection, never client-side — do not ship a version of this response that
 // includes the fields and relies on the frontend to hide them.

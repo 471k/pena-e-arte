@@ -8,7 +8,7 @@ using Pena_e_Arte.Contracts.Responses;
 namespace Pena_e_Arte.Application.ConductReports;
 
 /// <summary>
-/// Shared join + response mapping for every ConductReport read (owner, artist, issuer). The
+/// Shared join + response mapping for every ConductReport read (owner, artist, admin). The
 /// entity itself stores only StudioId/ArtistId/AppointmentId, so every caller needs the same
 /// join against Studios/Artists/Appointments to render StudioName/ArtistName/AppointmentDate —
 /// centralized here so a future caller can't forget a join and ship a response missing display
@@ -17,14 +17,14 @@ namespace Pena_e_Arte.Application.ConductReports;
 /// The Studios/Appointments joins need no IgnoreQueryFilters() (neither entity carries a
 /// tenant filter that would block them here — Studio has none; Appointment's is bypassed
 /// deliberately below). The Artists join DOES need IgnoreQueryFilters(): Artist is a
-/// TenantEntity, and the issuer caller (GetConductReportsHandler) has no tenant set at all, so
+/// TenantEntity, and the admin caller (GetConductReportsHandler) has no tenant set at all, so
 /// without it every artist-target report issued from any studio other than none would resolve
 /// ArtistName to null. This is safe for the owner/artist callers too, since in both cases the
 /// outer ConductReports query is already scoped to the caller's own StudioId/ArtistId before
 /// this join ever runs — IgnoreQueryFilters() here only ever widens the *lookup*, never which
 /// ConductReport rows are visible. Same reasoning as the Appointments join (needed for
 /// AppointmentDate — a report's target appointment isn't necessarily in the caller's tenant
-/// context either, e.g. an issuer with no tenant).
+/// context either, e.g. an admin with no tenant).
 /// </summary>
 internal static class ConductReportProjections
 {
@@ -92,7 +92,7 @@ internal static class ConductReportProjections
         redact ? null : j.ReporterUserId,
         redact ? null : j.ReporterName);
 
-    /// <summary>Owner/issuer callers — full reporter identity included.</summary>
+    /// <summary>Owner/admin callers — full reporter identity included.</summary>
     public static async Task<List<ConductReportResponse>> ToFullResponseAsync(
         IQueryable<ConductReport> reports, IAppDbContext db, CancellationToken ct)
     {

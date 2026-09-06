@@ -84,8 +84,8 @@ const SNAPSHOT: LiveTrafficSnapshotResponse = {
 const HISTORY: TrafficHistoryResponse = {
   days: 30,
   dataPoints: [
-    { date: "2026-08-01", guestCount: 5, clientCount: 2, artistCount: 1, ownerCount: 0, issuerCount: 0 },
-    { date: "2026-08-02", guestCount: 7, clientCount: 3, artistCount: 1, ownerCount: 1, issuerCount: 0 },
+    { date: "2026-08-01", guestCount: 5, clientCount: 2, artistCount: 1, ownerCount: 0, adminCount: 0 },
+    { date: "2026-08-02", guestCount: 7, clientCount: 3, artistCount: 1, ownerCount: 1, adminCount: 0 },
   ],
 };
 
@@ -117,7 +117,7 @@ function makeStore() {
     middleware: (gd) => gd().concat(platformApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "issuer@platform.test" }, token: "fake", tenantId: null, role: "issuer" } as any,
+      auth: { user: { id: "u1", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin" } as any,
     },
   });
 }
@@ -252,7 +252,7 @@ describe("LiveTrafficPage", () => {
       http.get("http://localhost/api/v1/platform/traffic/history", () =>
         HttpResponse.json({
           days: 30,
-          dataPoints: [{ date: "2026-08-04", guestCount: 3, clientCount: 1, artistCount: 0, ownerCount: 0, issuerCount: 0 }],
+          dataPoints: [{ date: "2026-08-04", guestCount: 3, clientCount: 1, artistCount: 0, ownerCount: 0, adminCount: 0 }],
         }),
       ),
     );

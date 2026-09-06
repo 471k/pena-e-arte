@@ -60,14 +60,14 @@ public class UpdateConductReportStatusHandlerTests
     }
 
     [Fact]
-    public async Task Handle_IssuerResolvingHighSeverity_Succeeds()
+    public async Task Handle_AdminResolvingHighSeverity_Succeeds()
     {
         Guid studioId = Guid.NewGuid();
         _tenant.IsSet.Returns(false);
         ConductReport report = await SeedReport(studioId, ReportCategory.SexualMisconduct);
 
-        FakeCurrentUser issuer = new(Guid.NewGuid(), "issuer");
-        await CreateSut(issuer).Handle(
+        FakeCurrentUser admin = new(Guid.NewGuid(), "admin");
+        await CreateSut(admin).Handle(
             new UpdateConductReportStatusCommand(report.Id, ReportStatus.Resolved, "Investigated and resolved."),
             CancellationToken.None);
 
@@ -75,14 +75,14 @@ public class UpdateConductReportStatusHandlerTests
     }
 
     [Fact]
-    public async Task Handle_IssuerResolvingStandardSeverity_Succeeds()
+    public async Task Handle_AdminResolvingStandardSeverity_Succeeds()
     {
         Guid studioId = Guid.NewGuid();
         _tenant.IsSet.Returns(false);
         ConductReport report = await SeedReport(studioId, ReportCategory.Other);
 
-        FakeCurrentUser issuer = new(Guid.NewGuid(), "issuer");
-        await CreateSut(issuer).Handle(
+        FakeCurrentUser admin = new(Guid.NewGuid(), "admin");
+        await CreateSut(admin).Handle(
             new UpdateConductReportStatusCommand(report.Id, ReportStatus.Dismissed, null),
             CancellationToken.None);
 
@@ -130,8 +130,8 @@ public class UpdateConductReportStatusHandlerTests
     [Fact]
     public async Task Handle_ReportNotFound_ThrowsNotFoundException()
     {
-        FakeCurrentUser issuer = new(Guid.NewGuid(), "issuer");
-        Func<Task> act = () => CreateSut(issuer).Handle(
+        FakeCurrentUser admin = new(Guid.NewGuid(), "admin");
+        Func<Task> act = () => CreateSut(admin).Handle(
             new UpdateConductReportStatusCommand(Guid.NewGuid(), ReportStatus.Resolved, null),
             CancellationToken.None);
 

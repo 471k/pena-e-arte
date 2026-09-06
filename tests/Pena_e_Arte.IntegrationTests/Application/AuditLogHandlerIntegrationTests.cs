@@ -13,7 +13,7 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class AuditLogHandlerIntegrationTests(DatabaseFixture fixture)
 {
     [Fact]
-    public async Task GetAuditLog_IssuerRead_SeesEntriesAcrossTenants()
+    public async Task GetAuditLog_AdminRead_SeesEntriesAcrossTenants()
     {
         Guid tenantA = Guid.NewGuid();
         Guid tenantB = Guid.NewGuid();

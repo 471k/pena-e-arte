@@ -123,12 +123,12 @@ export const studiosApi = createApi({
     inviteSoloArtistToJoin: builder.mutation<StudioJoinInviteResponse, InviteSoloArtistToJoinRequest>({
       query: (body) => ({ url: "studios/me/join-invites", method: "POST", body }),
     }),
-    // Issuer: list all studios
+    // Admin: list all studios
     getStudios: builder.query<StudioResponse[], void>({
       query: () => "studios",
       providesTags: ["Studio"],
     }),
-    // Issuer: get single studio by id
+    // Admin: get single studio by id
     getStudioById: builder.query<StudioResponse, string>({
       query: (id) => `studios/${id}`,
       providesTags: ["Studio"],

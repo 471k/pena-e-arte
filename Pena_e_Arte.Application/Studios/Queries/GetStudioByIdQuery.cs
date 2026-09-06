@@ -13,7 +13,7 @@ public class GetStudioByIdHandler(IAppDbContext db)
 {
     public async Task<StudioResponse> Handle(GetStudioByIdQuery query, CancellationToken ct)
     {
-        // IssuerOnly endpoint — IgnoreQueryFilters approved: usage #8 (cross-tenant read).
+        // AdminOnly endpoint — IgnoreQueryFilters approved: usage #8 (cross-tenant read).
         // See architecture.md Approved Usages table.
         StudioResponse? studio = await db.Studios
             .IgnoreQueryFilters()

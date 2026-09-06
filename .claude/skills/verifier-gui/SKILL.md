@@ -52,7 +52,7 @@ fake session never reaches real auth.
 | `client` | `/book`                                  |
 | `artist` | `/schedule`                              |
 | `owner`  | `/dashboard`                             |
-| `issuer` | `/platform`                              |
+| `admin`  | `/platform`                              |
 
 ## Route mocking pitfalls
 

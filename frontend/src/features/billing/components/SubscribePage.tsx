@@ -195,7 +195,7 @@ export function SubscribePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-3 px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center gap-3 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <Button
           variant="ghost"
           size="sm"

@@ -13,8 +13,8 @@ public class UpdateFeedbackStatusValidator : AbstractValidator<UpdateFeedbackSta
             .Must(v => Enum.TryParse<FeedbackStatus>(v, ignoreCase: true, out _))
             .WithMessage("Status must be Open, Reviewing, Resolved, or Dismissed.");
 
-        RuleFor(x => x.Request.IssuerNote)
+        RuleFor(x => x.Request.AdminNote)
             .MaximumLength(1000)
-            .When(x => x.Request.IssuerNote is not null);
+            .When(x => x.Request.AdminNote is not null);
     }
 }

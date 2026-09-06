@@ -25,7 +25,7 @@ public class AccountErasureIntegrationTests(DatabaseFixture fixture)
         .AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-chars!",
-            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Admin"] = "test-admin",
             ["Jwt:Audience"] = "test-audience",
             ["Jwt:AccessTokenExpiryMinutes"] = "15",
         })
@@ -166,7 +166,7 @@ public class AccountErasureIntegrationTests(DatabaseFixture fixture)
 
         ServiceProvider sp = services.BuildServiceProvider();
         RoleManager<IdentityRole> roleManager = sp.GetRequiredService<RoleManager<IdentityRole>>();
-        foreach (string role in new[] { "client", "artist", "owner", "issuer" })
+        foreach (string role in new[] { "client", "artist", "owner", "admin" })
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));

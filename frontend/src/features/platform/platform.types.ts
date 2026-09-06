@@ -57,7 +57,7 @@ export interface MrrDataPoint {
   mrr:   number;
 }
 
-export interface IssuerStudioSummaryResponse {
+export interface AdminStudioSummaryResponse {
   ownerEmail:       string;
   ownerDisplayName: string;
   artistCount:      number;
@@ -152,7 +152,7 @@ export interface TrafficHistoryDataPoint {
   clientCount:  number;
   artistCount:  number;
   ownerCount:   number;
-  issuerCount:  number;
+  adminCount:  number;
 }
 
 export interface TrafficHistoryResponse {

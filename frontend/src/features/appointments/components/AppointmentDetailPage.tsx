@@ -141,7 +141,7 @@ export function AppointmentDetailPage() {
   const [assignArtist, { isLoading: assigning }] = useAssignAppointmentArtistMutation();
   const [createConversation, { isLoading: startingConversation }] = useCreateConversationMutation();
 
-  // Issuer can view this page but is not a valid messaging participant (see messaging
+  // Admin can view this page but is not a valid messaging participant (see messaging
   // Decision 1) — only artist/owner get the "Message client" entry point.
   const canMessageClient = (role === Role.Artist || role === Role.Owner) && !!appt?.clientUserId;
 

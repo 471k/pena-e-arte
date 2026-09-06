@@ -6,7 +6,7 @@ import type {
   PlatformSubscriptionResponse,
   PlatformReferralCodeResponse,
   IndustryReportSummary,
-  IssuerStudioSummaryResponse,
+  AdminStudioSummaryResponse,
   PlanUsageReportResponse,
   HelpSearchInsightsResponse,
   AuditLogPageResponse,
@@ -20,15 +20,15 @@ import type { SubscriptionResponse } from "@/features/billing/billing.types";
 export const platformApi = createApi({
   reducerPath: "platformApi",
   baseQuery,
-  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "IssuerStudioSummary", "PlanUsageReport", "AuditLog", "LiveTraffic", "TrafficHistory", "TrafficBreakdown"],
+  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "AdminStudioSummary", "PlanUsageReport", "AuditLog", "LiveTraffic", "TrafficHistory", "TrafficBreakdown"],
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStatsResponse, void>({
       query: () => "platform/stats",
       providesTags: ["PlatformStats"],
     }),
-    getIssuerStudioSummary: builder.query<IssuerStudioSummaryResponse, string>({
+    getAdminStudioSummary: builder.query<AdminStudioSummaryResponse, string>({
       query: (studioId) => `platform/studios/${studioId}/summary`,
-      providesTags: (_result, _err, studioId) => [{ type: "IssuerStudioSummary", id: studioId }],
+      providesTags: (_result, _err, studioId) => [{ type: "AdminStudioSummary", id: studioId }],
     }),
     getMrrHistory: builder.query<MrrDataPoint[], number | void>({
       query: (months) => months ? `platform/mrr-history?months=${months}` : "platform/mrr-history",
@@ -141,7 +141,7 @@ export const platformApi = createApi({
 
 export const {
   useGetPlatformStatsQuery,
-  useGetIssuerStudioSummaryQuery,
+  useGetAdminStudioSummaryQuery,
   useGetMrrHistoryQuery,
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,

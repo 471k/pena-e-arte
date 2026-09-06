@@ -39,7 +39,7 @@ export function HelpMenu({ onBeforeTourStep }: HelpMenuProps) {
 
   const scopedArticles = useMemo(() => {
     if (!role) return [];
-    if (role === "issuer" && showAllRoles) return HELP_ARTICLES;
+    if (role === "admin" && showAllRoles) return HELP_ARTICLES;
     return HELP_ARTICLES.filter((a) => a.roles.includes(role));
   }, [role, showAllRoles]);
 
@@ -150,8 +150,8 @@ export function HelpMenu({ onBeforeTourStep }: HelpMenuProps) {
                 >
                   Take the tour again
                 </Button>
-                {role === "issuer" && (
-                  <IssuerAllRolesToggle checked={showAllRoles} onChange={setShowAllRoles} />
+                {role === "admin" && (
+                  <AdminAllRolesToggle checked={showAllRoles} onChange={setShowAllRoles} />
                 )}
                 <GuideList articles={scopedArticles} onSelect={setSelectedArticleId} />
               </TabsContent>
@@ -246,7 +246,7 @@ function GuideList({ articles, onSelect }: { articles: HelpArticle[]; onSelect: 
   );
 }
 
-function IssuerAllRolesToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function AdminAllRolesToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <Alert>
       <AlertDescription className="flex items-center justify-between gap-3">

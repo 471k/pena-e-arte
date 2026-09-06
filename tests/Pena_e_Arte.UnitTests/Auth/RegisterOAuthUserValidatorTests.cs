@@ -21,11 +21,11 @@ public class RegisterOAuthUserValidatorTests
     }
 
     // Same regression guard as RegisterUserValidatorTests: this is a public
-    // [AllowAnonymous] endpoint. "artist" and "issuer" must never be self-registerable
+    // [AllowAnonymous] endpoint. "artist" and "admin" must never be self-registerable
     // here via OAuth either.
     [Theory]
     [InlineData("artist")]
-    [InlineData("issuer")]
+    [InlineData("admin")]
     public void Validate_PrivilegedRole_FailsOnRole(string role)
     {
         _sut.ShouldFailOn(Command("google", "token", role, Guid.NewGuid()), "Request.Role");

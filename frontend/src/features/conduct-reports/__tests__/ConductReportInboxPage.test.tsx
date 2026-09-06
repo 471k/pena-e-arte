@@ -50,7 +50,7 @@ function makeStore() {
     middleware: (gd) => gd().concat(conductReportsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "issuer@test.com" }, token: "fake", tenantId: null, role: "issuer" } as any,
+      auth: { user: { id: "u1", email: "admin@test.com" }, token: "fake", tenantId: null, role: "admin" } as any,
     },
   });
 }
@@ -115,7 +115,7 @@ describe("ConductReportInboxPage", () => {
     await waitFor(() => expect(lastUrl?.searchParams.get("category")).toBe("SexualMisconduct"));
   });
 
-  it("shows the reporter identity for the issuer", async () => {
+  it("shows the reporter identity for the admin", async () => {
     renderPage();
 
     const matches = await screen.findAllByText(/reported by jane doe/i);

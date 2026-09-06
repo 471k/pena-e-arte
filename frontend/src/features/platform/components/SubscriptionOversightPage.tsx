@@ -26,7 +26,7 @@ import {
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
 } from "@/features/platform/platformApi";
-import { useGetIssuerPlansQuery } from "@/features/billing/billingApi";
+import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -97,7 +97,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   const [extendTrial,      { isLoading: extending_ }]  = useExtendTrialMutation();
   const [activateManually, { isLoading: activating_ }] = useActivateSubscriptionManuallyMutation();
   const [cancelSub,        { isLoading: cancelling_ }] = useCancelSubscriptionMutation();
-  const { data: plans = [] } = useGetIssuerPlansQuery();
+  const { data: plans = [] } = useGetAdminPlansQuery();
 
   async function handleExtend() {
     const additionalDays = parseInt(days, 10);
@@ -385,7 +385,7 @@ export function SubscriptionOversightPage() {
   const [sortKey, setSortKey] = useState<"name" | "trialEnd" | "periodEnd">("trialEnd");
   const [page, setPage] = useState(1);
 
-  // Refetch on mount so the issuer always sees current subscription state.
+  // Refetch on mount so the admin always sees current subscription state.
   const { data: subscriptions, isLoading, isError } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
 
@@ -425,7 +425,7 @@ export function SubscriptionOversightPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <Receipt className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Subscriptions</span>
         {subscriptions && (

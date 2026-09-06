@@ -1,6 +1,6 @@
 namespace Pena_e_Arte.Contracts.Responses;
 
-public record IssuerStudioSummaryResponse(
+public record AdminStudioSummaryResponse(
     string OwnerEmail,
     string OwnerDisplayName,
     int ArtistCount,

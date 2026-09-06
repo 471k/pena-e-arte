@@ -5,5 +5,5 @@ public enum Role
     Client,
     Artist,
     Owner,
-    Issuer
+    Admin
 }

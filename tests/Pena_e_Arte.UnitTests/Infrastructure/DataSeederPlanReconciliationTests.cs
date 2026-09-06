@@ -129,7 +129,7 @@ public class DataSeederPlanReconciliationTests
     [Fact]
     public async Task ReconcileCoreTiersAsync_DoesNotTouchDifferentlyNamedCustomPlan()
     {
-        // A hand-created Plan (e.g. issuer-cloned custom tier) not matching any of the
+        // A hand-created Plan (e.g. admin-cloned custom tier) not matching any of the
         // five reserved tier names must be left completely alone — this reconciler is
         // keyed on tier Name, so there is nowhere for a duplicate/orphan of a RESERVED
         // name to hide (the bug class both prior fixes had to clean up after).

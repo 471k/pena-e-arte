@@ -23,7 +23,7 @@ const CREATED_REPORT: FeedbackReportResponse = {
   status:        "Open",
   studioName:    "Test Studio",
   submitterRole: "artist",
-  issuerNote:    null,
+  adminNote:    null,
   createdAt:     "2026-07-01T00:00:00.000Z",
   resolvedAt:    null,
 };

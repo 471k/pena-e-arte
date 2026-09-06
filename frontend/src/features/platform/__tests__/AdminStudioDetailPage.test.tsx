@@ -11,7 +11,7 @@ import authReducer from "@/features/auth/authSlice";
 import { platformApi } from "@/features/platform/platformApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { billingApi } from "@/features/billing/billingApi";
-import { IssuerStudioDetailPage } from "@/features/platform/components/IssuerStudioDetailPage";
+import { AdminStudioDetailPage } from "@/features/platform/components/AdminStudioDetailPage";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import type { PlatformSubscriptionResponse, PlatformReferralCodeResponse } from "@/features/platform/platform.types";
 import type { PlanResponse } from "@/features/billing/billing.types";
@@ -122,7 +122,7 @@ function makeStore() {
       gd().concat(platformApi.middleware, studiosApi.middleware, billingApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u4", email: "issuer@platform.test" }, token: "fake", tenantId: null, role: "issuer", pendingReferralCode: null } as any,
+      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin", pendingReferralCode: null } as any,
     },
   });
 }
@@ -133,7 +133,7 @@ function renderPage(studioId = "s1") {
     <Provider store={store}>
       <MemoryRouter initialEntries={[`/platform/studios/${studioId}`]}>
         <Routes>
-          <Route path="/platform/studios/:studioId" element={<IssuerStudioDetailPage />} />
+          <Route path="/platform/studios/:studioId" element={<AdminStudioDetailPage />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -143,7 +143,7 @@ function renderPage(studioId = "s1") {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe("IssuerStudioDetailPage", () => {
+describe("AdminStudioDetailPage", () => {
   it("renders the studio name", async () => {
     renderPage();
     // Studio name appears in both the header breadcrumb and the card title

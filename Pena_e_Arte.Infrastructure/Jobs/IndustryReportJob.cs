@@ -20,7 +20,7 @@ public class IndustryReportJob(AppDbContext db, IR2Service r2)
 
     public async Task RunAsync(CancellationToken ct = default)
     {
-        // Approved exception #4: industry report aggregate — issuer-level, no PII
+        // Approved exception #4: industry report aggregate — admin-level, no PII
         if (db.Database.IsRelational())
             db.Database.SetCommandTimeout(300);
 
