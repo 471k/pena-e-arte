@@ -221,6 +221,8 @@ jobs:
             --from-literal=ForwardedHeaders__TrustedProxyCidr="${{ secrets.FORWARDED_HEADERS_TRUSTED_PROXY_CIDR }}" \
             --from-literal=Vault__Address="${{ secrets.VAULT_ADDR }}" \
             --from-literal=Vault__Token="${{ secrets.VAULT_TOKEN }}" \
+            --from-literal=GeoIpUpdate__AccountId="${{ secrets.MAXMIND_ACCOUNT_ID }}" \
+            --from-literal=GeoIpUpdate__LicenseKey="${{ secrets.MAXMIND_LICENSE_KEY }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       # A ClusterIssuer's secretRef (letsencrypt-prod-dns01's Cloudflare API token) resolves
@@ -383,7 +385,9 @@ jobs:
           # environment credential leak, not a harmless no-op, so this is omitted rather than
           # reused). CloudflareR2__BackupBucketName also stays unset on staging — backing up
           # staging's throwaway data isn't worth a second bucket; R2ExportService no-ops when
-          # empty (see docs/infra/backup-dr-runbook.md).
+          # empty (see docs/infra/backup-dr-runbook.md). GeoIpUpdate__AccountId/LicenseKey
+          # also stay unset — staging has no geoip-update CronJob/PVC of its own (production
+          # overlay only, see k8s/overlays/production/geoip-cronjob.yaml's comment).
 
       - name: Pin image tags (staging)
         working-directory: k8s/overlays/staging

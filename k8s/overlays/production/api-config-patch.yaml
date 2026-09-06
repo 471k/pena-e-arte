@@ -1,0 +1,13 @@
+# Only production sets GeoIp:* — the PVC + CronJob that keep these paths populated
+# (geoip-pvc.yaml/geoip-cronjob.yaml/geoip-volume-patch.yaml) are production-only. Staging
+# keeps GeoIp:DatabasePath/AsnDatabasePath unset via k8s/base/api-configmap.yaml, and
+# GeoIpService degrades to always-null gracefully rather than erroring — see that class's own
+# doc comment and docs/claude/architecture.md's "K8s .mmdb population" Decisions Log entry.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pena-e-arte-api-config
+  namespace: pena-e-arte
+data:
+  GeoIp__DatabasePath: "/data/geoip/GeoLite2-City.mmdb"
+  GeoIp__AsnDatabasePath: "/data/geoip/GeoLite2-ASN.mmdb"

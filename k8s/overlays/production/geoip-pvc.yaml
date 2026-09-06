@@ -1,0 +1,16 @@
+# Persistent volume for the GeoLite2 .mmdb files, refreshed weekly by geoip-cronjob.yaml and
+# mounted read-only into the API Deployment by geoip-volume-patch.yaml. Production-only — see
+# docs/claude/architecture.md's "K8s .mmdb population" Decisions Log entry: staging doesn't get
+# its own copy (GeoIpService degrades gracefully with GeoIp:* unset, and staging traffic isn't
+# real geography data worth a second MaxMind download slot). 1Gi comfortably covers both
+# GeoLite2 editions this app reads (~80MB combined) with room to grow.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pena-e-arte-geoip-data
+  namespace: pena-e-arte
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi

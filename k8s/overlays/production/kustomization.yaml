@@ -3,6 +3,14 @@ kind: Kustomization
 resources:
   - ../../base
   - ../../observability
+  # GeoLite2 .mmdb PVC + refresh CronJob — production-only, see geoip-pvc.yaml's own comment.
+  - geoip-pvc.yaml
+  - geoip-cronjob.yaml
+
+patches:
+  - path: geoip-volume-patch.yaml
+  - path: api-config-patch.yaml
+
 # Image tags are pinned here at deploy time by CD via
 # `kustomize edit set image ghcr.io/471k/pena-e-arte-api=ghcr.io/471k/pena-e-arte-api:<sha>`
 # (and the same for -frontend) — never hand-edited, never committed with a real sha.
