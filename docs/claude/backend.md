@@ -145,10 +145,10 @@ builder.Services.AddTransient(
 Defined once in `Extensions/AuthorizationExtensions.cs`. Never redefine inline.
 
 ```csharp
-options.AddPolicy("ClientAndAbove",  p => p.RequireRole("client","artist","owner","issuer"));
-options.AddPolicy("ArtistAndAbove",  p => p.RequireRole("artist","owner","issuer"));
-options.AddPolicy("OwnerOnly",       p => p.RequireRole("owner","issuer"));
-options.AddPolicy("IssuerOnly",      p => p.RequireRole("issuer"));
+options.AddPolicy("ClientAndAbove",  p => p.RequireRole("client","artist","owner","admin"));
+options.AddPolicy("ArtistAndAbove",  p => p.RequireRole("artist","owner","admin"));
+options.AddPolicy("OwnerOnly",       p => p.RequireRole("owner","admin"));
+options.AddPolicy("AdminOnly",       p => p.RequireRole("admin"));
 ```
 
 ---
@@ -229,9 +229,9 @@ confirmation flow entirely within the domain.
    Sets Appointment.DepositStatus = Paid
    Sets Payment.CashConfirmedByUserId = currentUser.UserId
 
-3. Issuer activates cash subscription → ActivateSubscriptionManuallyCommand
+3. Admin activates cash subscription → ActivateSubscriptionManuallyCommand
    Sets Subscription.Status = Active, CurrentPeriodEnd = UtcNow + 1 month
-   Uses IgnoreQueryFilters() — IssuerOnly command
+   Uses IgnoreQueryFilters() — AdminOnly command
 ```
 
 Cash fields on `Payment`:

@@ -597,7 +597,7 @@ private static async Task<IResult> ActivateSubscriptionManually(
 ## STEP 5 — Implement Issuer Platform Features
 
 These are fully new features that haven't been implemented yet.
-Follow `docs/claude/issuer-dashboard-prompt.md` exactly for F1–F6 and FIX.
+Follow `docs/claude/admin-dashboard-prompt.md` exactly for F1–F6 and FIX.
 
 ### 5.1 FIX — Remove duplicate plan CRUD
 
@@ -611,7 +611,7 @@ Read `Pena_e_Arte.Application/Plans/Commands/` to find `UpdatePlanCommand`.
 Read `Pena_e_Arte.Contracts/Requests/UpdatePlanRequest.cs`.
 
 If `AllowBrandingRemoval` is missing from the request/command/handler, add it.
-Follow Section F6 of `issuer-dashboard-prompt.md` exactly.
+Follow Section F6 of `admin-dashboard-prompt.md` exactly.
 
 ### 5.3 F1 — Platform Statistics API
 
@@ -629,7 +629,7 @@ The query aggregates across all tenants (approved `IgnoreQueryFilters()` usage #
 - `TrialConversionRate` — `ActiveSubscriptions / (ActiveSubscriptions + TrialStudios + GracePeriodStudios)`
 - `NewStudiosThisMonth` — count created in current calendar month
 
-Follow Section F1 of `issuer-dashboard-prompt.md` for the full handler implementation.
+Follow Section F1 of `admin-dashboard-prompt.md` for the full handler implementation.
 
 ### 5.4 F2 — Subscription Oversight
 
@@ -640,7 +640,7 @@ Implement:
 - `GET /api/v1/platform/subscriptions` endpoint
 - `PATCH /api/v1/platform/subscriptions/{studioId}/trial` endpoint
 
-Follow Section F2 of `issuer-dashboard-prompt.md` exactly.
+Follow Section F2 of `admin-dashboard-prompt.md` exactly.
 
 ### 5.5 F3 — Platform Referral Code Management
 
@@ -651,7 +651,7 @@ Implement:
 - `GET /api/v1/platform/referral-codes` endpoint
 - `PATCH /api/v1/platform/referral-codes/{id}/deactivate` endpoint
 
-Follow Section F3 of `issuer-dashboard-prompt.md` exactly.
+Follow Section F3 of `admin-dashboard-prompt.md` exactly.
 
 ---
 
@@ -1038,7 +1038,7 @@ Read these for complete implementation specs — do not guess, read them:
 
 ```
 docs/claude/payment-simplified-prompt.md   ← Card/Cash implementation details
-docs/claude/issuer-dashboard-prompt.md     ← Platform features F1–F6 + FIX
+docs/claude/admin-dashboard-prompt.md     ← Platform features F1–F6 + FIX
 docs/claude/architecture.md                ← IgnoreQueryFilters approved usages
 docs/claude/backend.md                     ← Patterns for commands, validators, endpoints
 docs/claude/frontend.md                    ← RTK Query patterns, store setup, routing

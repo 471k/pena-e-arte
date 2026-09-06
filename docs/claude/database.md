@@ -8,7 +8,7 @@
 ## DbContext Setup
 
 The example below is the full expected DbSet list. Add a DbSet and query filter
-for every new tenant-scoped entity. Issuer-level entities (Plan, Subscription, Studio)
+for every new tenant-scoped entity. Admin-level entities (Plan, Subscription, Studio)
 are NOT query-filtered.
 
 ```csharp
@@ -33,7 +33,7 @@ public class AppDbContext(
     public DbSet<ConsentForm>    ConsentForms    => Set<ConsentForm>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
 
-    // --- Issuer-level (no tenant filter) ---
+    // --- Admin-level (no tenant filter) ---
     public DbSet<Studio>       Studios       => Set<Studio>();
     public DbSet<Plan>         Plans         => Set<Plan>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
@@ -58,7 +58,7 @@ public class AppDbContext(
         builder.Entity<ConsentForm>()   .HasQueryFilter(c => c.StudioId == tenant.StudioId);
         builder.Entity<NotificationLog>().HasQueryFilter(n => n.StudioId == tenant.StudioId);
 
-        // Issuer-level — NOT filtered
+        // Admin-level — NOT filtered
         // Studio, Plan, Subscription: IgnoreQueryFilters() not needed, no filter applied
     }
 }
@@ -71,7 +71,7 @@ public class AppDbContext(
 All fields the Studio entity must carry (scattered across architecture.md — consolidated here):
 
 ```csharp
-public class Studio  // NOT a TenantEntity — issuer-owned
+public class Studio  // NOT a TenantEntity — admin-owned
 {
     public Guid     Id               { get; init; } = Guid.NewGuid();
     public string   Name             { get; set; }
@@ -145,22 +145,22 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
 var appointments = await _db.Appointments.ToListAsync(ct);
 ```
 
-**Query without filter (`issuer` role cross-tenant queries only):**
+**Query without filter (`admin` role cross-tenant queries only):**
 ```csharp
-// Only use IgnoreQueryFilters in IssuerOnly-authorized handlers
+// Only use IgnoreQueryFilters in AdminOnly-authorized handlers
 var allAppointments = await _db.Appointments
     .IgnoreQueryFilters()
     .Where(a => a.Date >= from)
     .ToListAsync(ct);
 ```
 
-Never call `IgnoreQueryFilters()` in a handler that is not behind `IssuerOnly` policy,
+Never call `IgnoreQueryFilters()` in a handler that is not behind `AdminOnly` policy,
 except the following documented, narrowly-scoped exceptions:
 
 | # | Location | Purpose | Guardrail |
 |---|---|---|---|
 | 3 | `PortableProfileService` | Cross-tenant client profile read | Requires `ClientProfile.AllowCrossTenantRead == true` opt-in |
-| 4 | `IndustryReportJob` | Issuer-level industry aggregate | No PII, issuer-only consumer |
+| 4 | `IndustryReportJob` | Admin-level industry aggregate | No PII, admin-only consumer |
 | 5 | `ClientAccountExtensions.FindClientForUserAtStudioAsync` / `FindAnyClientRecordForUserAsync` | Multi-studio client "switch active studio" flow (`SwitchStudioCommand`) | Only ever queries by the *caller's own* `UserId`; never used to read another user's data, and never copies medical/`ClientProfile` data across studios |
 | 6 | `StudioJoinInvites` reads in `InviteSoloArtistToJoinHandler` / `GetMyStudioJoinInvitesHandler` / `AcceptStudioJoinInviteHandler` / `DeclineStudioJoinInviteHandler` | Solo artist accepting/declining a cross-studio join invite (`docs/claude/overnight-prompt-solo-independent-artist-2026-08-26.md` Phase 6) | `StudioJoinInvite` itself carries no query filter (it isn't a `TenantEntity` — the invitee is not a member of the inviting studio's tenant until they accept); every read is additionally scoped by the *caller's own* email or the studio the caller currently owns, never an arbitrary studio id |
 

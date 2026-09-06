@@ -74,7 +74,7 @@ Cross-cutting (every feature, no exceptions — CLAUDE.md rules #6/#7)
   [ ] `frontend/src/features/help/helpContent.ts` updated (or confirmed no
       user-visible surface exists that needs an entry)
   [ ] Standalone manual (`frontend/public/user-manual/index.html`) updated to match
-  [ ] Onboarding tour (`frontend/src/features/help/tours/{client,artist,owner,issuer}Tour.ts`)
+  [ ] Onboarding tour (`frontend/src/features/help/tours/{client,artist,owner,admin}Tour.ts`)
       updated if the feature touches a nav item, primary button, or any existing
       `data-tour="..."` target
 ```
@@ -92,7 +92,7 @@ Vertical (client/artist/owner UX + booking-SaaS backend structure):
   Schedulicity, Square Appointments
 Tattoo-specific (where a closer analog exists):
   Tattoo Studio Pro, Porter, Linework, Venue Ink
-General B2B SaaS platform-admin (issuer role only):
+General B2B SaaS platform-admin (admin role only):
   org/tenant management, plan & seat management, dunning/failed-payment recovery,
   usage metering, audit logs, support impersonation, status pages, API/webhook
   access tiers — benchmark against how any mature multi-tenant SaaS admin panel
@@ -176,7 +176,7 @@ DesignApproved          client approved design
 DesignChangeRequested   client requested changes
 NotificationReceived    generic in-app notification
 SupportMessageReceived  new reply posted on a support ticket
-TrafficSnapshotUpdated  live visitor presence snapshot (TrafficHub, every 5s while ≥1 issuer connected)
+TrafficSnapshotUpdated  live visitor presence snapshot (TrafficHub, every 5s while ≥1 admin connected)
 MessageReceived         new chat message posted in a conversation (pushed to both participants' user:{userId} groups)
 ConversationRead        the other participant marked the conversation read (read-receipt update)
 ```
@@ -200,8 +200,8 @@ CLIENT DEPOSITS (client pays studio, at booking)
 
 PLATFORM SUBSCRIPTIONS (owner pays platform, SaaS access)
   Card  → Stripe Billing (unchanged, platform Stripe account)
-  Cash  → Owner contacts issuer out-of-band;
-           Issuer calls ActivateSubscriptionManuallyCommand
+  Cash  → Owner contacts admin out-of-band;
+           Admin calls ActivateSubscriptionManuallyCommand
 ```
 
 **Key rule:** `IStripePaymentService` must NEVER pass `RequestOptions { StripeAccount = ... }`.
@@ -215,7 +215,7 @@ Every PaymentIntent goes to the platform account. This is enforced by the interf
   `Method = Cash`, `Status = CashPending`.
 - `ConfirmCashDepositCommand` — called by artist or owner when cash is physically received;
   sets `Status = Paid`, mirrors `DepositStatus.Paid` on the `Appointment`.
-- `ActivateSubscriptionManuallyCommand` — IssuerOnly; activates a studio subscription
+- `ActivateSubscriptionManuallyCommand` — AdminOnly; activates a studio subscription
   after a cash subscription payment is confirmed out-of-band.
 
 ---
@@ -233,7 +233,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 05 | Payments & Session Splits | `Payment`, `SessionSplit` | `IPaymentProvider` (card; `NullPaymentProvider` until POK lands, see ADR-0001 — `GET /api/v1/payments/capabilities` exposes `Capabilities.SupportsAuthCapture` so the UI gates on real backend state, not just an env-var proxy) + Cash (manual) | Per-tenant |
 | 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + Resend | Per-tenant |
 | 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth. Filters `IsActive && IsPublished`. | Platform-wide |
-| 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Issuer-level |
+| 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Admin-level |
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
 | 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints. `GetPublicStudioQuery`/`/s/{slug}` filters `IsActive && IsPublished`; `GetPublicArtistQuery`/`/artist/{slug}` stays `IsActive`-only (see "IsActive vs IsPublished"). | Platform-wide |
 
@@ -342,35 +342,35 @@ Frontend:    VerifiedSocialBadge (shared/components/) — same badge variant as
              "Social" tab (which also wired InstagramTab.tsx into the app for the first
              time — it previously had no rendering call site anywhere).
 ```
-| 11 | Referral Code System | `ReferralCode`, `ReferralRedemption` | Stripe Billing discount coupon | Issuer-level |
-| 12 | Client Portable Profiles | `ClientProfile` cross-tenant read (opt-in) | `IgnoreQueryFilters` — issuer-scoped only | Cross-tenant (issuer) |
+| 11 | Referral Code System | `ReferralCode`, `ReferralRedemption` | Stripe Billing discount coupon | Admin-level |
+| 12 | Client Portable Profiles | `ClientProfile` cross-tenant read (opt-in) | `IgnoreQueryFilters` — admin-scoped only | Cross-tenant (admin) |
 | 13 | Design Share Token | `DesignShareToken` | Cloudflare R2, public time-limited endpoint | Per-tenant |
 | 14 | Studio QR Code Generator | No new entity (reads `Studio.Slug`) | QRCoder NuGet (pre-approved, see Decisions Log) | Per-tenant |
-| 15 | Industry Analytics Reports | No entity (aggregate reads, issuer-scoped) | Hangfire monthly job, Cloudflare R2 (report storage) | Issuer-level |
+| 15 | Industry Analytics Reports | No entity (aggregate reads, admin-scoped) | Hangfire monthly job, Cloudflare R2 (report storage) | Admin-level |
 | 16 | Booking Confirmation Branding | Reuses `Studio.ShowPlatformBranding` (#09) | MailKit templates, R2 PDF footer | Per-tenant |
-| 17 | Platform Statistics API | No entity (aggregate reads, issuer-scoped) | `IgnoreQueryFilters()` — 4th approved usage | Issuer-level |
-| 18 | Subscription Oversight + Trial Extension | `Studio.TrialExpiresAt`, `Subscription.Status` | `IgnoreQueryFilters()` — 5th approved usage | Issuer-level |
-| 19 | Platform Referral Code Management | `ReferralCode`, `ReferralRedemption` | `IgnoreQueryFilters()` — 6th approved usage | Issuer-level |
-| 20 | Issuer Dashboard Page | No entity (reads features 17–19) | `platformApi` RTK Query slice | Issuer-level |
+| 17 | Platform Statistics API | No entity (aggregate reads, admin-scoped) | `IgnoreQueryFilters()` — 4th approved usage | Admin-level |
+| 18 | Subscription Oversight + Trial Extension | `Studio.TrialExpiresAt`, `Subscription.Status` | `IgnoreQueryFilters()` — 5th approved usage | Admin-level |
+| 19 | Platform Referral Code Management | `ReferralCode`, `ReferralRedemption` | `IgnoreQueryFilters()` — 6th approved usage | Admin-level |
+| 20 | Admin Dashboard Page | No entity (reads features 17–19) | `platformApi` RTK Query slice | Admin-level |
 | 21 | Bookmark / Saved Images | `SavedPortfolioImage` (cross-tenant, user-scoped, no TenantEntity) | `savedImagesApi` RTK Query slice (separate base URL `/api/v1/`) | Per-user, cross-tenant |
 | 22 | Google/Apple OAuth Sign-In | No new entity — Identity `IdentityUser` created passwordless via `CreateOAuthUserAsync` | `IOAuthTokenValidator` (JWKS via `IHttpClientFactory`, cached 1h in Redis); Google/Apple JS SDKs via CDN, no npm packages | Per-tenant (owner/client only) |
 | 23 | Multi-Studio Client View | No new entity (`Studio` + Identity claims) | `IIdentityService.GetTenantIdsAsync` | Per-user, cross-tenant |
-| 24 | Plan Usage Limits + Owner Visibility | No new entity (`Plan.Max*`, `Studio.StorageUsageBytes`) | `IPlanLimitService`/`PlanLimitService` (Redis-cached), `PlanLimitBehavior` (MediatR pipeline) | Per-tenant (enforcement/visibility), Issuer-level (validation report) |
+| 24 | Plan Usage Limits + Owner Visibility | No new entity (`Plan.Max*`, `Studio.StorageUsageBytes`) | `IPlanLimitService`/`PlanLimitService` (Redis-cached), `PlanLimitBehavior` (MediatR pipeline) | Per-tenant (enforcement/visibility), Admin-level (validation report) |
 | 25 | In-App Help Menu | No entity (static content) | None — frontend-only, no backend | All roles |
-| 26 | Help Search Analytics | `HelpSearchLog` | `IgnoreQueryFilters()` — 39th approved usage (issuer insights read) | Per-tenant (write), Issuer-level (aggregate read) |
+| 26 | Help Search Analytics | `HelpSearchLog` | `IgnoreQueryFilters()` — 39th approved usage (admin insights read) | Per-tenant (write), Admin-level (aggregate read) |
 | 27 | First-Run Onboarding Tour | `UserOnboardingState` (no tenant filter) | None — no `IgnoreQueryFilters()` needed, no filter registered on this entity | Per-user, cross-tenant |
-| 28 | Support Escalation (Help menu ticket threads) | `FeedbackMessage` (child of `FeedbackReport`, no tenant filter, cascade delete) | `SupportHub` SignalR hub, `IRealtimeNotifier.NotifyTicketAsync` | Per-user (own tickets), Issuer-level (all tickets) |
+| 28 | Support Escalation (Help menu ticket threads) | `FeedbackMessage` (child of `FeedbackReport`, no tenant filter, cascade delete) | `SupportHub` SignalR hub, `IRealtimeNotifier.NotifyTicketAsync` | Per-user (own tickets), Admin-level (all tickets) |
 | 29 | Studio-Wide Closures | `StudioClosure` | None — checked in `CheckSlotAvailabilityQuery` alongside per-artist schedule/time-off | Per-tenant |
 | 30 | Client Self-Service Cancel/Reschedule | Reuses `Appointment`, `DepositRule` (+ Phase 1's new cancellation-policy fields) | `ClientCancellationPolicy` domain service | Per-tenant |
 | 31 | Owner Revenue & Trend Reporting | No entity (aggregate reads over `Payment`/`Appointment`) | None — standard tenant-scoped read | Per-tenant |
-| 32 | Structured Admin/Audit Log | `AuditLogEntry` (no tenant filter, `StudioId` nullable) | `IAuditableCommand` marker + `AuditLogBehavior` (MediatR pipeline) | Per-tenant (owner read), Issuer-level (cross-tenant read) |
-| 33 | NIPT Business Verification | `Studio.Nipt` | None — format validation only, no external registry call | Per-tenant (owner write), Issuer-level (read via existing `GetStudiosQuery`/`GetStudioByIdQuery`) |
-| 34 | Live Site Traffic Analytics | `TrafficEvent`, `TrafficDailyAggregate` (both no tenant filter, `StudioId` nullable) | Redis presence (`traffic:presence:*`) + `TrafficHub` SignalR + `TrafficBroadcastService` (5s), `TrafficRollupJob` (Hangfire daily), MaxMind GeoLite2 (`MaxMind.GeoIP2`) + `UAParser.Core`, `IgnoreQueryFilters()` — 41st approved usage | Issuer-level |
+| 32 | Structured Admin/Audit Log | `AuditLogEntry` (no tenant filter, `StudioId` nullable) | `IAuditableCommand` marker + `AuditLogBehavior` (MediatR pipeline) | Per-tenant (owner read), Admin-level (cross-tenant read) |
+| 33 | NIPT Business Verification | `Studio.Nipt` | None — format validation only, no external registry call | Per-tenant (owner write), Admin-level (read via existing `GetStudiosQuery`/`GetStudioByIdQuery`) |
+| 34 | Live Site Traffic Analytics | `TrafficEvent`, `TrafficDailyAggregate` (both no tenant filter, `StudioId` nullable) | Redis presence (`traffic:presence:*`) + `TrafficHub` SignalR + `TrafficBroadcastService` (5s), `TrafficRollupJob` (Hangfire daily), MaxMind GeoLite2 (`MaxMind.GeoIP2`) + `UAParser.Core`, `IgnoreQueryFilters()` — 41st approved usage | Admin-level |
 | 35 | Manual Client Reminders | `ManualReminder` | Hangfire + Twilio (reused) + Redis (quota) | Per-tenant |
 | 36 | Social Media Verification | `SocialAccountLink` (polymorphic Artist/Studio subject, no tenant filter — same shape as `InstagramConnection`) | `ISocialOAuthProvider`/`ISocialOAuthProviderFactory` (5 platforms), `ISocialBioChecker`/`ISocialBioCheckerFactory` (4 of 5 — TikTok has no suitable public-read API), `ISocialOAuthStateSigner` (separate key from `IInstagramStateSigner`) | Per-tenant (Artist subject resolves the artist's real tenant; Studio subject is self-referential — `StudioId == SubjectId`) |
-| 37 | Client Conduct Reports | `ConductReport` (non-tenant, no query filter — same shape as `Review`/`FeedbackReport`/`AuditLogEntry`) | None — direct email alert for High severity, same `INotificationService.SendEmailAsync` path as the contact form | Per-tenant (owner read), Per-user (artist read, reporter identity redacted), Issuer-level (cross-tenant read + High-severity resolution) |
-| 38 | In-App Messaging | `Conversation`, `ChatMessage` (both `TenantEntity`, `DesignRevision`-shaped — ordinary per-studio query filter, not a `FeedbackReport`-style exception) | `ChatHub` SignalR hub (per-user `user:{id}` groups, no join-by-id), `IRealtimeNotifier.NotifyUserAsync`, `IJobScheduler.EnqueueNewMessageEmail` (Hangfire, debounced — see `IgnoreQueryFilters()` row #36) | Per-tenant (client↔artist, client↔owner, artist↔owner only — no issuer) |
-| 39 | Solo/Independent Artist Signup | `Studio.IsSolo`/`IsPublished` (Phase 1); `StudioJoinInvite` (Phase 6, issuer-shaped, no tenant filter) | `RegisterSoloArtistCommand` (auto-provisions `Studio`+`Subscription` on `Free` plan, no NIPT/city/coords); `IPlanLimitService` (existing `MaxArtists` enforcement, unchanged); `IIdentityService` role-swap for studio-join acceptance | Per-tenant (solo signup, publish-on-real-location); cross-tenant (Phase 6 studio-join invite/accept, dual-consent) |
+| 37 | Client Conduct Reports | `ConductReport` (non-tenant, no query filter — same shape as `Review`/`FeedbackReport`/`AuditLogEntry`) | None — direct email alert for High severity, same `INotificationService.SendEmailAsync` path as the contact form | Per-tenant (owner read), Per-user (artist read, reporter identity redacted), Admin-level (cross-tenant read + High-severity resolution) |
+| 38 | In-App Messaging | `Conversation`, `ChatMessage` (both `TenantEntity`, `DesignRevision`-shaped — ordinary per-studio query filter, not a `FeedbackReport`-style exception) | `ChatHub` SignalR hub (per-user `user:{id}` groups, no join-by-id), `IRealtimeNotifier.NotifyUserAsync`, `IJobScheduler.EnqueueNewMessageEmail` (Hangfire, debounced — see `IgnoreQueryFilters()` row #36) | Per-tenant (client↔artist, client↔owner, artist↔owner only — no admin) |
+| 39 | Solo/Independent Artist Signup | `Studio.IsSolo`/`IsPublished` (Phase 1); `StudioJoinInvite` (Phase 6, admin-shaped, no tenant filter) | `RegisterSoloArtistCommand` (auto-provisions `Studio`+`Subscription` on `Free` plan, no NIPT/city/coords); `IPlanLimitService` (existing `MaxArtists` enforcement, unchanged); `IIdentityService` role-swap for studio-join acceptance | Per-tenant (solo signup, publish-on-real-location); cross-tenant (Phase 6 studio-join invite/accept, dual-consent) |
 
 ### Client Self-Service Cancel/Reschedule + Owner Revenue Reporting + Structured Audit Log — 2026-07-21
 
@@ -381,7 +381,7 @@ policy; `CancelAppointmentCommand`/`RescheduleAppointmentCommand` are now callab
 `ClientAndAbove` with role-conditional ownership + policy checks; a new
 `GetRevenueSummaryQuery` gives owners a 12-month trend + per-artist breakdown; a new
 `AuditLogEntry` + `IAuditableCommand`/`AuditLogBehavior` pipeline mechanism logs
-trust-sensitive issuer/owner actions, readable by issuer (cross-tenant) and owner
+trust-sensitive admin/owner actions, readable by admin (cross-tenant) and owner
 (own-studio only).
 
 ### In-App Help Menu — 2026-07-20
@@ -390,7 +390,7 @@ Searchable, role-scoped help panel opened from every layout header (mirrors the
 FeedbackDialog integration pattern). Content lives entirely in
 `frontend/src/features/help/helpContent.ts` — no backend, no entity, no endpoint.
 Search is plain substring scoring in `helpSearch.ts` (title > keyword > body), same
-approach as the standalone manual at `frontend/public/user-manual/index.html`. Issuer
+approach as the standalone manual at `frontend/public/user-manual/index.html`. Admin
 role gets an additional toggle to browse Client/Artist/Owner guides for support purposes.
 Keep this file and the standalone manual in sync when either is updated — they cover the
 same screens from two different delivery mechanisms (in-app panel vs. offline document).
@@ -403,13 +403,13 @@ logged as a separate Decisions Log entry.
 
 Keyboard shortcut `Shift+?` opens the panel from anywhere (ignored while typing in an
 input/textarea). Verified in a real browser (Playwright, `verifier-gui` skill) as all
-four roles: menu opens, search narrows results, FAQ tab renders, the issuer-only
-"show all roles' guides" toggle appears only for issuer, and the shortcut opens the sheet.
+four roles: menu opens, search narrows results, FAQ tab renders, the admin-only
+"show all roles' guides" toggle appears only for admin, and the shortcut opens the sheet.
 
 ### Help Search Analytics — 2026-07-21
 
 Logs every Help-menu search (query text + result count) to a new tenant-scoped
-`HelpSearchLog` entity, and gives the issuer an aggregate view of what studio users
+`HelpSearchLog` entity, and gives the admin an aggregate view of what studio users
 search for — the single highest-signal list of missing documentation or confusing UX,
 same reasoning Intercom/Zendesk/Help Scout apply to their own search analytics.
 
@@ -420,19 +420,19 @@ same reasoning Intercom/Zendesk/Help Scout apply to their own search analytics.
   limiting — per the Redis rate-limiting rule, authenticated-only endpoints don't get one;
   volume is controlled client-side by an 800ms debounce plus a per-open-session dedupe Set
   in `HelpMenu.tsx`, so at most one log call per distinct query per Sheet-open.
-- **Read path**: `GET /api/v1/platform/help-search-insights?days=30` (`IssuerOnly`) →
+- **Read path**: `GET /api/v1/platform/help-search-insights?days=30` (`AdminOnly`) →
   `GetHelpSearchInsightsHandler`, in `Application/Platform/Queries/` (not `Application/Help/`)
-  to match where `PlatformEndpoints.cs` already groups every other issuer aggregate-report
+  to match where `PlatformEndpoints.cs` already groups every other admin aggregate-report
   endpoint. Uses `IgnoreQueryFilters()` — approved usage #39 (see table above) — groups by
   lowercased `Query`, returns top 20 by count plus every zero-result query, each with the
   distinct set of roles that asked it.
 - `HelpSearchLog` is a normal `TenantEntity` (standard global query filter applies to the
-  write path); only the issuer's cross-tenant aggregate read needs to bypass it.
+  write path); only the admin's cross-tenant aggregate read needs to bypass it.
 - Frontend: new `helpApi` RTK Query slice (first one this feature needed — Part A had none).
-  `HelpInsightsPage` at `/platform/help-insights` (`IssuerOnly`) follows `IndustryReportsPage`'s
-  plain `<table>` style, not `MrrChart`'s chart treatment. Linked from `IssuerLayout`'s nav
-  and a quick-link at the bottom of `IssuerDashboardPage`.
-- Verified end-to-end against the real backend + local MySQL: the GET aggregate path (issuer,
+  `HelpInsightsPage` at `/platform/help-insights` (`AdminOnly`) follows `IndustryReportsPage`'s
+  plain `<table>` style, not `MrrChart`'s chart treatment. Linked from `AdminLayout`'s nav
+  and a quick-link at the bottom of `AdminDashboardPage`.
+- Verified end-to-end against the real backend + local MySQL: the GET aggregate path (admin,
   cross-tenant) worked correctly. The POST write path (client, tenant-scoped) reliably 500'd
   locally — traced to `SubscriptionAccessService.GetSnapshotAsync`, a pre-existing tenant-access
   gate that runs on every authenticated tenant-scoped request and falls back to a DB query when
@@ -461,11 +461,11 @@ mechanics (masonry via CSS columns, lightbox via shadcn Dialog).
   this is normal, not an error path: e.g. the owner tour's deposit-rules step targets the
   Dashboard's `SetupChecklist` "Set rule" button, which only renders while that setup item is
   incomplete, so an already-configured studio correctly skips straight past it.
-- **Content**: `frontend/src/features/help/tours/{client,artist,owner,issuer}Tour.ts` — plain
+- **Content**: `frontend/src/features/help/tours/{client,artist,owner,admin}Tour.ts` — plain
   `TourStep[]` (or a function, for the client tour's conditional My Studios step — only shown
   if `useGetMyStudiosQuery` returns more than one studio). Targets are `data-tour="..."`
   attributes added to the real nav links/buttons they describe — added directly to
-  `ClientLayout`/`ArtistLayout`/`OwnerLayout`/`IssuerLayout`'s nav item arrays, `NotificationBell`,
+  `ClientLayout`/`ArtistLayout`/`OwnerLayout`/`AdminLayout`'s nav item arrays, `NotificationBell`,
   `DesignListPage`'s "New Design" button (both the header and empty-state variants — whichever
   renders), `SetupChecklist`'s "Set rule" button, and `HelpMenu`'s own trigger button
   (`data-tour="{role}-help-button"`, closing the loop back to Help).
@@ -497,10 +497,10 @@ Threaded messaging on top of the existing `FeedbackReport` inbox, reached from t
 menu's new "Contact Support" tab. Deliberately async (SignalR-pushed when the other party
 is online, no live-chat presence requirement) rather than a parallel ticket system —
 builds on `FeedbackReport`/`FeedbackStatus`/`FeedbackInboxPage`, which were already an
-issuer-facing ticket inbox, just one-shot until now.
+admin-facing ticket inbox, just one-shot until now.
 
 - **New `FeedbackType.SupportRequest`** — not selectable in the existing `FeedbackDialog`
-  (Bug Report / Feature Request / General stay artist/owner/issuer-only); only ever created
+  (Bug Report / Feature Request / General stay artist/owner/admin-only); only ever created
   from the Help menu's Contact Support flow.
 - **`POST /api/v1/feedback` widened to `ClientAndAbove`** (see the updated Feedback (2.6)
   entry above) — `SubmitFeedbackValidator` now takes a constructor-injected `ICurrentUser`
@@ -514,15 +514,15 @@ issuer-facing ticket inbox, just one-shot until now.
 - **Resource ownership, not just role policy** — `GET/POST /api/v1/feedback/{id}/messages` are
   both `ClientAndAbove` at the route level, but "can this user see this ticket" isn't
   expressible as a static policy, so each handler calls a new domain method,
-  `FeedbackReport.IsAccessibleBy(userId, studioId, role)`: issuer sees everything, everyone
+  `FeedbackReport.IsAccessibleBy(userId, studioId, role)`: admin sees everything, everyone
   else only their own submission in their own studio (`ForbiddenException` → 403 otherwise).
   Centralized on the entity specifically so the two handlers can't drift out of sync on this
   security-critical check. `GET /api/v1/feedback/mine` is its own route group at
-  `/api/v1/feedback` (`ClientAndAbove`) — deliberately not nested under the `IssuerOnly`
+  `/api/v1/feedback` (`ClientAndAbove`) — deliberately not nested under the `AdminOnly`
   `/api/v1/platform/feedback` group.
 - **Reopen-on-reply** — `PostFeedbackMessageHandler` reopens a `Resolved`/`Dismissed` ticket
-  (back to `Open`, preserving the existing `IssuerNote`) when the *studio-side* user replies —
-  issuer replies don't reopen, since issuer is the one closing tickets.
+  (back to `Open`, preserving the existing `AdminNote`) when the *studio-side* user replies —
+  admin replies don't reopen, since admin is the one closing tickets.
 - **`SupportHub`** — new SignalR hub, ticket-keyed groups (`ticket:{feedbackReportId}`) via
   `JoinTicket`/`LeaveTicket`, matching `ScheduleHub`'s exact shape. `JoinTicket` does **not**
   validate ticket ownership before adding the caller to the group — this matches
@@ -548,7 +548,7 @@ issuer-facing ticket inbox, just one-shot until now.
 - Verified with a route-mocked backend (Playwright, same technique as Parts A/B/D): owner
   role sees the Contact Support form when they have no open ticket, submits it with
   `type: SupportRequest`, and — once an open ticket exists — sees the thread instead of the
-  form with existing messages and a working reply box. Issuer's Feedback Inbox expands to the
+  form with existing messages and a working reply box. Admin's Feedback Inbox expands to the
   same thread component with a working reply box. Did not attempt the real-backend write path
   for this feature — Part B's investigation already established that local tenant-scoped
   writes 500 here due to `SubscriptionAccessService`/Redis being absent in this dev
@@ -579,7 +579,7 @@ same R2 presign flow used everywhere else (Design revisions, appointment referen
 - Attachments render as thumbnails (images) or a video-icon chip (videos, detected by file
   extension since no client-side video thumbnailing was built) inside `SupportTicketThread`'s
   existing original-body bubble — the same component already used by both `FeedbackInboxPage`
-  (issuer) and the Help menu's ticket view, so no duplicate rendering logic was needed.
+  (admin) and the Help menu's ticket view, so no duplicate rendering logic was needed.
 
 #### Local `/code-review high` pass — 2026-07-21, before merge
 
@@ -624,7 +624,7 @@ were fixed before merge, not just logged:
   member of their own ticket's group). Fixed by having `useSupportHub` skip invalidation when
   the echoed message's `authorUserId` matches the current user.
 - **Every reply invalidated the unscoped `"Feedback"` tag**, forcing a full report-list
-  refetch (issuer's entire cross-tenant inbox) even when replying to an already-`Open` ticket
+  refetch (admin's entire cross-tenant inbox) even when replying to an already-`Open` ticket
   changes no report-level field. Fixed by threading a `mayReopen` flag through the mutation
   (computed client-side from the same condition `PostFeedbackMessageHandler` uses server-side:
   studio-side reply + `Resolved`/`Dismissed` status) so `"Feedback"` is only invalidated when
@@ -655,7 +655,7 @@ OAuth Sign-In    Backend:  POST /api/v1/auth/oauth/login    (AllowAnonymous, rat
                            fix, 2026-07-02) — the original spec predated that fix and
                            would have reopened the owner-takeover vulnerability if
                            implemented as originally written. RegisterOAuthUserValidator
-                           likewise restricts roles to client/owner only (no artist/issuer),
+                           likewise restricts roles to client/owner only (no artist/admin),
                            matching RegisterUserValidator.
 ```
 
@@ -702,7 +702,7 @@ the backlog-carry-forward detail. This entry is the architecture-level summary.
   `TenantEntity`: `StudioId` is nullable, no `HasQueryFilter()` registered at all (same
   non-tenant shape as `FeedbackReport`/`UserOnboardingState`), so it doesn't get a row in
   the `IgnoreQueryFilters()` Approved Usages table above — "who can read which rows" is
-  enforced entirely in `GetAuditLogHandler` (issuer, cross-tenant) and
+  enforced entirely in `GetAuditLogHandler` (admin, cross-tenant) and
   `GetMyStudioAuditLogHandler` (owner, explicit `.Where(StudioId == tenant.StudioId)`). New
   `IAuditableCommand` marker interface (mirrors `IQuotaCheckedCommand`'s exact shape) +
   `AuditLogBehavior` MediatR pipeline behavior, registered immediately after
@@ -718,9 +718,9 @@ the backlog-carry-forward detail. This entry is the architecture-level summary.
   "delete client record" command, because no such command exists anywhere in this codebase
   (grepped `ClientEndpoints.cs` and the whole `Application` layer) — the source prompt's
   citation was stale/invented, not a real gap in this pass's scope.
-  New endpoints: `GET /api/v1/platform/audit-log` (issuer, in `PlatformEndpoints.cs`'s
-  existing `IssuerOnly` group) and `GET /api/v1/studios/me/audit-log` (owner, in
-  `StudioEndpoints.cs`). Frontend: `AuditLogPage.tsx` (issuer, filterable table) +
+  New endpoints: `GET /api/v1/platform/audit-log` (admin, in `PlatformEndpoints.cs`'s
+  existing `AdminOnly` group) and `GET /api/v1/studios/me/audit-log` (owner, in
+  `StudioEndpoints.cs`). Frontend: `AuditLogPage.tsx` (admin, filterable table) +
   `StudioAuditLogCard.tsx` (owner, read-only recent-activity list on `StudioProfilePage.tsx`).
 - **Phase 6 — `AllowApiAccess`/`PrioritySupport` verification.** Re-grepping
   case-insensitively (the 2026-07-20 pass's case-sensitive grep for the literal string
@@ -728,7 +728,7 @@ the backlog-carry-forward detail. This entry is the architecture-level summary.
   `PlanManagementPage.tsx` still rendering an "API access" badge that the 2026-07-20 fix
   missed entirely (only `PlanEditPage.tsx`'s toggle was hidden that night). Also found
   `PrioritySupport` (flagged as "same risk, lower severity" on 2026-07-20 but never acted
-  on) was still a live issuer-editable toggle + list-page badge + documented in both Help
+  on) was still a live admin-editable toggle + list-page badge + documented in both Help
   surfaces, with zero backing implementation (no support-priority routing anywhere in the
   codebase). Both hidden now, same treatment as `AllowApiAccess` — data model untouched,
   UI/Help surfaces only.
@@ -751,9 +751,9 @@ the backlog-carry-forward detail. This entry is the architecture-level summary.
 Every phase updated `helpContent.ts` + the standalone manual in the same change:
 Phase 1 (deposit-rule create/edit entries), Phase 2 (`client-cancel-booking` article +
 FAQ), Phase 3 (`client-reschedule-booking` article), Phase 4 (`owner-reports` article +
-manual section), Phase 5 (`issuer-audit-log` + `owner-audit-log` articles, manual sections
+manual section), Phase 5 (`admin-audit-log` + `owner-audit-log` articles, manual sections
 for both), Phase 6 (removed the `Priority support` feature-flag line from both surfaces).
-Tour steps added for Phase 4 (`owner-reports-nav`) and Phase 5 (`issuer-audit-log-nav`);
+Tour steps added for Phase 4 (`owner-reports-nav`) and Phase 5 (`admin-audit-log-nav`);
 Phases 1–3 deliberately did NOT get new tour steps since they're new fields/actions on
 already-covered tour stops, not new nav items — verified by checking each tour file's
 existing target selectors before deciding. Phase 5's owner-facing card likewise got no new
@@ -769,7 +769,7 @@ tests green.
 
 ### Live Site Traffic Analytics — 2026-08-04
 
-Issuer-only real-time + historical site-traffic analytics, covering both the unauthenticated
+Admin-only real-time + historical site-traffic analytics, covering both the unauthenticated
 public surface (`features/public/*`) and the authenticated in-app surface. See §9 of
 `docs/claude/overnight-prompt-live-traffic-analytics-2026-08-03.md` for the full
 industry-benchmark write-up (Google Analytics Realtime / Plausible Live / Cloudflare Web
@@ -777,7 +777,7 @@ Analytics / PostHog Live comparison set) and §9.2 for the ADR on why a self-hos
 service (Umami/Plausible/Matomo) was rejected in favor of the open-source *libraries* those
 tools themselves use (GeoIP + UA parsing), integrated directly into this app's own stack —
 the deciding factor being that none of those services have any visibility into this app's
-JWT/tenant model, so none can distinguish "guest" from "client/artist/owner/issuer" or
+JWT/tenant model, so none can distinguish "guest" from "client/artist/owner/admin" or
 attribute a visit to a specific studio, which is the entire point of this feature.
 
 - **Entities**: `TrafficEvent` (one row per navigation event, not every heartbeat) and
@@ -836,7 +836,7 @@ attribute a visit to a specific studio, which is the entire point of this featur
   Google Analytics Realtime / Plausible Live's own refresh rate (verified via web search,
   2026-08, cited in the source prompt's §9). `ITrafficConnectionCounter` (DI singleton,
   `Interlocked`-backed, not a bare `static` field) lets the broadcast loop skip all Redis/DB
-  work when no issuer has the page open.
+  work when no admin has the page open.
 - **`connectedAt` gap fixed during implementation**: the source prompt's §6.3 key-scheme
   description listed a `connectedAt` field in the presence detail hash, but its own §6.4
   beacon-handler code never actually wrote it — would have made "connected Xs ago" always
@@ -861,10 +861,10 @@ attribute a visit to a specific studio, which is the entire point of this featur
   `router.subscribe()` was used specifically because it works regardless of where it's
   mounted, avoiding a route-tree restructure for this alone.
 - **`KpiCard` extracted**: moved from a private, unexported function inside
-  `IssuerDashboardPage.tsx` into `features/platform/components/KpiCard.tsx` (`KpiCard` +
+  `AdminDashboardPage.tsx` into `features/platform/components/KpiCard.tsx` (`KpiCard` +
   `KpiSkeleton`) so `LiveTrafficPage` could reuse the same visual pattern instead of
   duplicating it, per this project's own reuse-over-duplication rule.
-  `IssuerDashboardPage.tsx`'s own multi-row `KpiGridSkeleton` stayed local (page-specific
+  `AdminDashboardPage.tsx`'s own multi-row `KpiGridSkeleton` stayed local (page-specific
   layout, not a generic shared shape).
 - **Retention**: `TrafficRollupJob` (Hangfire, daily `02:30` UTC, staggered from the existing
   `02:00`/`03:00` jobs) aggregates the previous UTC day's `TrafficEvent` rows into
@@ -877,13 +877,13 @@ attribute a visit to a specific studio, which is the entire point of this featur
 - Not built this pass (deliberately deferred, full spec in the source prompt's §3.4):
   owner-facing "my studio's public page views" — no evidence any vertical-booking-SaaS
   competitor (Vagaro/Fresha/Boulevard/Mindbody/GlossGenius) exposes anything like this to
-  tenant owners, so it's correctly scoped issuer-only for now.
+  tenant owners, so it's correctly scoped admin-only for now.
 
 ---
 
 ## Platform Subscription Architecture
 
-Subscriptions are issuer-level — they control studio (tenant) access to the platform.
+Subscriptions are admin-level — they control studio (tenant) access to the platform.
 They are NOT per-client or per-artist.
 
 ### Trial Model
@@ -910,7 +910,7 @@ TenantMiddleware access rules (evaluated in order):
 ### Entities
 
 ```
-Plan (Issuer-owned, not tenant-scoped)
+Plan (Admin-owned, not tenant-scoped)
   PlanId, Name, BillingInterval (Monthly | Yearly), PriceMonthly, PriceYearly
   YearlyDiscountPercent (default: 17 — equivalent to 2 months free)
 
@@ -966,7 +966,7 @@ justify adding it).
 `IsActive` and `IsPublished` are now both real, distinct fields:
 
 - **`IsActive`** gates tenant access entirely. A deactivated studio's owner/artists
-  cannot use the app at all (suspended, manually disabled by issuer).
+  cannot use the app at all (suspended, manually disabled by admin).
 - **`IsPublished`** gates listing in studio-directory surfaces only: Studio Map
   (`GetStudioMapQuery`), `/discover`'s Studios tab (`GetNearbyStudiosQuery`), and
   `StudioPortfolioPage` (`GetPublicStudioQuery`). Defaults to `true` for every
@@ -1053,17 +1053,17 @@ Never add a new one without updating this table and the Decisions Log.
 
 | # | Location | Purpose | Who calls it |
 |---|---|---|---|
-| 1 | `IPortableProfileService` impl | Cross-tenant client profile read (opt-in only) | Client themselves or IssuerOnly |
+| 1 | `IPortableProfileService` impl | Cross-tenant client profile read (opt-in only) | Client themselves or AdminOnly |
 | 2 | Public portfolio handlers (`GetPublicStudioQuery`, `GetPublicArtistQuery`) | SEO public endpoints, no tenant scope | Anonymous |
-| 3 | `IndustryReportJob` | Monthly aggregate report generation, no PII | Hangfire job (issuer-scoped) |
-| 4 | `GetPlatformStatsHandler` | Platform KPI aggregate (total studios, MRR, conversion) | IssuerOnly |
-| 5 | `GetPlatformSubscriptionsHandler`, `ExtendTrialHandler` | All subscriptions cross-tenant; trial extension | IssuerOnly |
-| 6 | `GetPlatformReferralCodesHandler`, `DeactivateReferralCodeHandler` | All referral codes cross-tenant | IssuerOnly |
-| 7  | `CancelSubscriptionHandler`             | Subscription cancellation cross-tenant                           | IssuerOnly |
-| 8  | `GetStudioByIdHandler`                  | Cross-tenant single-studio read for admin detail page            | IssuerOnly |
-| 9  | `IssuerGenerateReferralCodeHandler`     | Cross-tenant studio lookup + referral code generation for issuer | IssuerOnly |
-| 10 | `ReactivateReferralCodeHandler`         | Cross-tenant referral code reactivation                          | IssuerOnly |
-| 11 | `DeleteReferralCodeHandler`             | Cross-tenant referral code deletion (unredeemed only)            | IssuerOnly |
+| 3 | `IndustryReportJob` | Monthly aggregate report generation, no PII | Hangfire job (admin-scoped) |
+| 4 | `GetPlatformStatsHandler` | Platform KPI aggregate (total studios, MRR, conversion) | AdminOnly |
+| 5 | `GetPlatformSubscriptionsHandler`, `ExtendTrialHandler` | All subscriptions cross-tenant; trial extension | AdminOnly |
+| 6 | `GetPlatformReferralCodesHandler`, `DeactivateReferralCodeHandler` | All referral codes cross-tenant | AdminOnly |
+| 7  | `CancelSubscriptionHandler`             | Subscription cancellation cross-tenant                           | AdminOnly |
+| 8  | `GetStudioByIdHandler`                  | Cross-tenant single-studio read for admin detail page            | AdminOnly |
+| 9  | `AdminGenerateReferralCodeHandler`      | Cross-tenant studio lookup + referral code generation for admin  | AdminOnly |
+| 10 | `ReactivateReferralCodeHandler`         | Cross-tenant referral code reactivation                          | AdminOnly |
+| 11 | `DeleteReferralCodeHandler`             | Cross-tenant referral code deletion (unredeemed only)            | AdminOnly |
 | 12 | `GetPortfolioFeedHandler` (Artists)     | Cross-tenant artist portfolio discovery; public feed             | Anonymous  |
 | 12 | `GetPortfolioFeedHandler` (Studios)     | Cross-tenant studio name/slug lookup for portfolio response      | Anonymous  |
 | 13 | `RecordArtistView` endpoint             | Cross-tenant artist slug lookup for Redis view counter           | Anonymous  |
@@ -1077,14 +1077,14 @@ Never add a new one without updating this table and the Decisions Log.
 | 21 | `GetPortfolioImageReviewsQuery` (Appointments + Clients) | `IsVerifiedBooking` check — completed appointments at the image's studio cross-tenant | Anonymous |
 | 22 | `ExchangeInstagramCodeHandler` (Artists) | Resolve artist's StudioId from an anonymous OAuth callback; artistId is pre-authenticated via `IInstagramStateSigner` HMAC before this handler runs | Anonymous (state-signed) |
 | 23 | `GetPublicArtistInstagramPostsQuery` (Artists) | Cross-tenant artist slug lookup for public Instagram post feed | Anonymous |
-| 24 | `GetIssuerStudioSummaryHandler` | Cross-tenant: studio + owner lookup, artist/client/appointment counts for a single studio | IssuerOnly |
-| 25 | `GetPlanUsageReportHandler` | Cross-tenant: all studios + plans + artist/appointment/notification counts, for the issuer plan-usage validation report | IssuerOnly |
+| 24 | `GetAdminStudioSummaryHandler` | Cross-tenant: studio + owner lookup, artist/client/appointment counts for a single studio | AdminOnly |
+| 25 | `GetPlanUsageReportHandler` | Cross-tenant: all studios + plans + artist/appointment/notification counts, for the admin plan-usage validation report | AdminOnly |
 | 26 | `ReferralRewardService` | Cross-tenant: `ReferralRedemption`, `ReferralCode`, `Studio` (referrer + new), `Subscription` (referrer) — rewards the referring studio's Stripe subscription when their code converts a new paying studio | System (triggered from subscription-creation handlers, any tenant) |
 | 27 | `CreateArtistCommand`, `UpdateArtistCommand`, `UpdateStudioSlugCommand` | Global slug-uniqueness check — `Artist.Slug`/`Studio.Slug` must be unique across all tenants for public portfolio URLs (`/artist/{slug}`, `/s/{slug}`) | ArtistAndAbove / OwnerOnly |
 | 28 | `RegisterUserCommand`, `RegisterOAuthUserCommand` | Anonymous registration: cross-tenant `Studio` lookup for the `OwnerEmail` match check, and cross-tenant `Client` lookup to link a studio-created record by email | Anonymous |
 | 29 | `ClientAccountExtensions` (`FindClientForUserAtStudioAsync`, `FindAnyClientRecordForUserAsync`) | Cross-tenant `Client` lookup by `UserId` — supports linking a client's account across the multiple studios they belong to | Authenticated (any role, called from login/registration/multi-studio flows) |
 | 30 | `ConfirmPaymentCommand`, `MarkPaymentAuthorizedCommand`, `MarkPaymentFailedCommand` | Stripe webhook handlers — no tenant JWT in scope; `Payment` looked up by the globally-unique `StripePaymentIntentId` | Anonymous (Stripe-Signature HMAC validated at the endpoint) |
-| 31 | `ActivateSubscriptionManuallyCommand` | Cross-tenant `Studio` lookup for manual cash-subscription activation | IssuerOnly |
+| 31 | `ActivateSubscriptionManuallyCommand` | Cross-tenant `Studio` lookup for manual cash-subscription activation | AdminOnly |
 | 32 | `GetNearbyStudiosQuery` | Public studio-nearby geo search (DiscoverPage Studios tab) | Anonymous |
 | 33 | `GetSharedDesignQuery` | Public design-share-token lookup, validated by token + expiry | Anonymous |
 | 34 | `CreateArtistReviewCommand`, `CreateStudioReviewCommand` | Cross-tenant artist/studio lookup for public review submission | Authenticated (any role) |
@@ -1092,13 +1092,13 @@ Never add a new one without updating this table and the Decisions Log.
 | 36 | `AppointmentReminderJob`, `DesignRevisionTimeoutJob`, `PaymentReconciliationJob`, `SendArtistInviteJob`, `ManualReminderJob`, `ChatNotificationJob`, `GuestPendingUploadCleanupJob` | Hangfire background jobs run with no request/tenant scope at all — same class as `IndustryReportJob` (#3) | Hangfire job (system) |
 | 37 | `DataSeeder` | Startup seed data — runs before any request or tenant scope exists | System (startup) |
 | 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
-| 39 | `GetHelpSearchInsightsHandler` | Cross-tenant aggregate of help search queries for the issuer product-insights view | IssuerOnly |
+| 39 | `GetHelpSearchInsightsHandler` | Cross-tenant aggregate of help search queries for the admin product-insights view | AdminOnly |
 | 40 | `GetSitemapUrlsHandler` | Public SEO sitemap — active studio/artist slugs across all tenants for `/sitemap.xml` | Anonymous |
 | 41 | `RecordTrafficEventHandler` | Cross-tenant artist-slug lookup to resolve `StudioId` for an anonymous `/artist/{slug}` traffic beacon, mirroring `RecordArtistView`'s own lookup (#13) | Anonymous |
 | 42 | `ExchangeSocialOAuthCodeHandler` (Artists + Studios) | Resolve the OAuth subject's real `StudioId` from an anonymous social-verification callback (studio Instagram, TikTok, Facebook, X, YouTube), and check the studio isn't suspended before writing a verified `SocialAccountLink`; subjectId is pre-authenticated via `ISocialOAuthStateSigner` HMAC before this handler runs — same shape as entry #22 for the artist-Instagram callback | Anonymous (state-signed) |
 | 43 | `FileArtistConductReportCommand`, `FileStudioConductReportCommand` | Cross-tenant artist/studio + appointment/client lookup for conduct-report filing — identical join shape to entry #34's review submission, minus the `Completed`/dedup filters (see Decisions Log, "Client Conduct Reports") | ClientOnly |
 | 44 | `GetReportableArtistAppointmentsQuery`, `GetReportableStudioAppointmentsQuery` | Cross-tenant appointment/client lookup for the report-filing appointment picker — identical join shape to entries #19/#20's `IsVerifiedBooking` checks | ClientOnly |
-| 45 | `ConductReportProjections` (Artists + Appointments) | Cross-tenant `Artist`/`Appointment` join to resolve `ArtistName`/`AppointmentDate` for display — needed because the issuer caller (`GetConductReportsHandler`) has no tenant set at all; harmless for the owner/artist callers since the outer `ConductReport` query is already scoped to their own `StudioId`/`ArtistId` before this join runs | Owner / Artist (own scope only) / IssuerOnly |
+| 45 | `ConductReportProjections` (Artists + Appointments) | Cross-tenant `Artist`/`Appointment` join to resolve `ArtistName`/`AppointmentDate` for display — needed because the admin caller (`GetConductReportsHandler`) has no tenant set at all; harmless for the owner/artist callers since the outer `ConductReport` query is already scoped to their own `StudioId`/`ArtistId` before this join runs | Owner / Artist (own scope only) / AdminOnly |
 | 46 | `CreateGuestAppointmentHandler` (Public/Commands) | Guest checkout: `Studio` slug lookup (same shape as #2), and cross-tenant `Client` lookup by email to link a studio-pre-created record (same shape as #28) | Anonymous |
 | 47 | `GetPublicBookingArtistsHandler` | `Studio` slug lookup + cross-tenant `Artist` list for the guest booking artist picker | Anonymous |
 | 48 | `CheckPublicSlotAvailabilityHandler` | `Studio` slug lookup for the public slot-availability preview (the actual availability queries run through entry #51) | Anonymous |
@@ -1294,7 +1294,7 @@ features depend on entities introduced by earlier ones.
 05 → Client Portable Profiles      (cross-tenant read, IPortableProfileService)
 06 → Design Share Token            (DesignShareToken, depends on DesignRevision)
 07 → Studio QR Code Generator      (depends on #02 — uses portfolio URL)
-08 → Industry Analytics Reports    (issuer-only, depends on stable aggregate schema)
+08 → Industry Analytics Reports    (admin-only, depends on stable aggregate schema)
 ```
 
 ### Platform Branding Flag
@@ -1306,7 +1306,7 @@ Studio entity gains:
 
 Plan entity gains:
   AllowBrandingRemoval  bool  default: false
-  (issuer sets this true on paid plans)
+  (admin sets this true on paid plans)
 
 Enforcement:
   - Booking widget footer: rendered by frontend, reads Studio flag via RTK Query
@@ -1342,7 +1342,7 @@ ReferralCode
   StudioId        Guid   (the referring studio)
   Code            string (8-char uppercase, unique)
   CreatedAt       DateTime
-  ExpiresAt       DateTime (nullable — issuer can set expiry)
+  ExpiresAt       DateTime (nullable — admin can set expiry)
   IsActive        bool
 
 ReferralRedemption
@@ -1359,7 +1359,7 @@ Flow:
   4. On first CreateSubscriptionCommand: applies Stripe Billing coupon
      (one free month, created programmatically via Stripe API)
   5. ReferralRedemption record written, ReferralCode.IsActive may be set false
-     if single-use (issuer config)
+     if single-use (admin config)
 ```
 
 ### Client Portable Profiles (Cross-Tenant)
@@ -1378,7 +1378,7 @@ Implementation in Infrastructure MUST:
   4. Return only non-sensitive fields (no payment history, no consent form data)
 
 This service is ONLY injectable in handlers where the command comes from
-the client themselves (ClientAndAbove) or IssuerOnly queries.
+the client themselves (ClientAndAbove) or AdminOnly queries.
 Never inject it in owner/artist handlers.
 ```
 
@@ -1420,13 +1420,13 @@ Frontend:
 ### Industry Analytics Reports
 
 ```
-Hangfire job: IndustryReportJob (runs first day of each month, issuer-scoped)
+Hangfire job: IndustryReportJob (runs first day of each month, admin-scoped)
   - Queries aggregate data with IgnoreQueryFilters() (third approved usage)
   - Output: anonymized JSON — no studio names, no user IDs
   - Metrics: avg appointments/month, peak booking hours, top session durations,
     platform-wide retention rate, trial→paid conversion rate
   - Written to Cloudflare R2: reports/industry/{year}-{month}.json
-  - Issuer dashboard endpoint: GET /api/v1/platform/reports/industry (IssuerOnly)
+  - Admin dashboard endpoint: GET /api/v1/platform/reports/industry (AdminOnly)
     returns list of available report months + signed R2 URLs
 
 PII rules:
