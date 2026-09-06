@@ -74,7 +74,7 @@ pages someone; it does not silently degrade to warning-level logs nobody watches
 
 ### Vault's Raft/boltdb state
 
-`vault-0`'s PVC (`pena-e-arte` namespace) is real, unbacked-up data as of 2026-09-05 — `vault-0`
+`vault-0`'s PVC (`tattooos` namespace) is real, unbacked-up data as of 2026-09-05 — `vault-0`
 has already been through one real cold boot on this cluster (initially OOMKilled at a 256Mi
 limit, confirmed via `kubectl describe`, then redeployed at 384Mi/192Mi; see
 `docs/infra/vault-self-hosted-runbook.md`), so whatever secrets are stored there right now exist

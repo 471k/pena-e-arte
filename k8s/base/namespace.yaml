@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: pena-e-arte
+  name: tattooos
 ---
 apiVersion: v1
 kind: Namespace
@@ -16,4 +16,4 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: pena-e-arte-staging
+  name: tattooos-staging

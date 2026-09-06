@@ -8,7 +8,7 @@ never production, per this prompt's explicit constraint.
 
 ## Gate check
 
-`kubectl get pods -n pena-e-arte-staging` confirmed staging genuinely `Running` before starting
+`kubectl get pods -n tattooos-staging` confirmed staging genuinely `Running` before starting
 (API, frontend, Redis all up; the one-off `migrate` Job `Completed`) — this section proceeded on
 that real output, not an assumption from an earlier deploy record.
 
@@ -88,7 +88,7 @@ script ran clean at 3 concurrent VUs immediately before this run.
 
 ## What actually happened — cross-referenced against the live cluster, not guessed
 
-`kubectl get pods -n pena-e-arte-staging` immediately after the run showed the API pod with
+`kubectl get pods -n tattooos-staging` immediately after the run showed the API pod with
 `RESTARTS: 1`, and `kubectl describe` on it showed why:
 
 ```
@@ -102,7 +102,7 @@ Normal   Killing    kubelet  Container api failed liveness probe, will be restar
 its own liveness probe in time, and Kubernetes killed and restarted it mid-test.** Cross-checked
 against the shared Prometheus instance (port-forwarded locally to confirm staging's metrics are
 genuinely live and queryable, not just present after the fact, per this prompt's requirement):
-`up{job="pena-e-arte-api-staging"}` shows a real `0` sample during the test window, then `1`
+`up{job="tattooos-api-staging"}` shows a real `0` sample during the test window, then `1`
 again — Prometheus itself independently observed the same outage the k6 run and the pod's own
 events did.
 
@@ -155,7 +155,7 @@ production database instance, a real production-adjacent action outside what thi
 asked to do.
 
 **Confirmed no production impact from this re-test**: `https://app.tattooos.co/health/live`
-stayed `200` throughout, and `kubectl get pods -n pena-e-arte` showed 0 restarts across the whole
+stayed `200` throughout, and `kubectl get pods -n tattooos` showed 0 restarts across the whole
 run — but the shared-instance finding above means a *future*, larger staging load test could
 plausibly compete with production for DB connections, which the original baseline's "staging
 only, never production" safety framing didn't anticipate needing to account for.
@@ -170,7 +170,7 @@ connection string, or accept staging's load ceiling as-is) — not addressed her
 
 Phi asked for everything fixable without DigitalOcean dashboard/API access to actually get fixed.
 Confirmed the exact ceiling by connecting from *inside* the cluster (a short-lived
-`kubectl run` debug pod in the `pena-e-arte-staging` namespace, using the existing `staging_user`
+`kubectl run` debug pod in the `tattooos-staging` namespace, using the existing `staging_user`
 credentials already available in that namespace's own Secret — no new access needed, and no
 direct connection attempted from outside the cluster's network, sidestepping any question of
 whether DigitalOcean's trusted-sources firewall would even allow that):

@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-api
-  namespace: pena-e-arte
+  name: tattooos-api
+  namespace: tattooos
 spec:
   replicas: 2
   strategy:
@@ -12,17 +12,17 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: pena-e-arte-api
+      app: tattooos-api
   template:
     metadata:
       labels:
-        app: pena-e-arte-api
+        app: tattooos-api
     spec:
       containers:
         - name: api
           # Tag pinned by CD (kustomize edit set image) to the built github.sha — the
           # base manifest's own tag is a placeholder never applied directly.
-          image: ghcr.io/471k/pena-e-arte-api:latest
+          image: ghcr.io/471k/tattooos-api:latest
           # A manual `workflow_dispatch` redeploy with no new commit reuses the exact same
           # tag string. Without `Always`, a node that already pulled that tag once (e.g. an
           # earlier failed run) never repulls it even after a real rebuild+repush under the
@@ -34,9 +34,9 @@ spec:
             - containerPort: 8080
           envFrom:
             - configMapRef:
-                name: pena-e-arte-api-config
+                name: tattooos-api-config
             - secretRef:
-                name: pena-e-arte-api-secrets
+                name: tattooos-api-secrets
           # 15s matches the Dockerfile's own HEALTHCHECK --start-period=15s.
           livenessProbe:
             httpGet:

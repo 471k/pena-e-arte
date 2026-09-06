@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-tempo-config
+  name: tattooos-tempo-config
   namespace: monitoring
 data:
   # 1:1 translation of docker/observability/tempo.yaml — no changes needed.

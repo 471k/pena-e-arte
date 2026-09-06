@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-loki
+  name: tattooos-loki
   namespace: monitoring
 spec:
   replicas: 1
@@ -9,11 +9,11 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: pena-e-arte-loki
+      app: tattooos-loki
   template:
     metadata:
       labels:
-        app: pena-e-arte-loki
+        app: tattooos-loki
     spec:
       containers:
         - name: loki
@@ -36,7 +36,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: pena-e-arte-loki-config
+            name: tattooos-loki-config
         - name: data
           persistentVolumeClaim:
-            claimName: pena-e-arte-loki-data
+            claimName: tattooos-loki-data

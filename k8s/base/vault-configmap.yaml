@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-vault-config
-  namespace: pena-e-arte
+  name: tattooos-vault-config
+  namespace: tattooos
 data:
   # Real Raft-backed persistent storage — not the docker-compose.yml dev-mode service
   # (in-memory, auto-unsealed, data lost on restart). tls_disable=true: this listener is
@@ -21,7 +21,7 @@ data:
       tls_disable = true
     }
 
-    api_addr     = "http://pena-e-arte-vault.pena-e-arte.svc.cluster.local:8200"
-    cluster_addr = "http://vault-0.pena-e-arte-vault.pena-e-arte.svc.cluster.local:8201"
+    api_addr     = "http://tattooos-vault.tattooos.svc.cluster.local:8200"
+    cluster_addr = "http://vault-0.tattooos-vault.tattooos.svc.cluster.local:8201"
 
     disable_mlock = false

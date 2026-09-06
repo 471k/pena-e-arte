@@ -17,7 +17,7 @@ Run these directly against the cluster, by hand, after `k8s/base/vault-statefuls
 deployed and the `vault-0` pod is `Running` (but `0/1 Ready` — sealed — which is expected):
 
 ```bash
-kubectl exec -it pena-e-arte-vault-0 -n pena-e-arte -- vault operator init -key-shares=5 -key-threshold=3
+kubectl exec -it tattooos-vault-0 -n tattooos -- vault operator init -key-shares=5 -key-threshold=3
 ```
 
 Prints 5 unseal key shares and a root token. Record all 6 values somewhere durable and **never**
@@ -27,21 +27,21 @@ same standard as any other production root credential.
 **Unseal** (needs 3 of the 5 key shares — run this command 3 times with 3 different shares):
 
 ```bash
-kubectl exec -it pena-e-arte-vault-0 -n pena-e-arte -- vault operator unseal
+kubectl exec -it tattooos-vault-0 -n tattooos -- vault operator unseal
 ```
 
 **Authenticate with the root token, then create a scoped, non-root token for the app to use —
 never put the root token itself into a GitHub secret:**
 
 ```bash
-kubectl exec -it pena-e-arte-vault-0 -n pena-e-arte -- vault login <root-token>
-kubectl exec -it pena-e-arte-vault-0 -n pena-e-arte -- vault secrets enable -path=secret kv-v2
-kubectl exec -it pena-e-arte-vault-0 -n pena-e-arte -- vault policy write pena-e-arte-app - <<'EOF'
+kubectl exec -it tattooos-vault-0 -n tattooos -- vault login <root-token>
+kubectl exec -it tattooos-vault-0 -n tattooos -- vault secrets enable -path=secret kv-v2
+kubectl exec -it tattooos-vault-0 -n tattooos -- vault policy write tattooos-app - <<'EOF'
 path "secret/data/*" {
   capabilities = ["read"]
 }
 EOF
-kubectl exec -it pena-e-arte-vault-0 -n pena-e-arte -- vault token create -policy=pena-e-arte-app -period=720h
+kubectl exec -it tattooos-vault-0 -n tattooos -- vault token create -policy=tattooos-app -period=720h
 ```
 
 Record the resulting token — this is the value for the `VAULT_TOKEN` GitHub Actions secret.
@@ -51,7 +51,7 @@ nothing currently renews it automatically — a follow-up, not solved here.
 **GitHub Actions secrets to add from this runbook:**
 
 ```
-VAULT_ADDR  = http://pena-e-arte-vault.pena-e-arte.svc.cluster.local:8200
+VAULT_ADDR  = http://tattooos-vault.tattooos.svc.cluster.local:8200
 VAULT_TOKEN = <the scoped token from `vault token create` above, NOT the root token>
 ```
 

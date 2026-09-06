@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-loki-config
+  name: tattooos-loki-config
   namespace: monitoring
 data:
   # 1:1 translation of docker/observability/loki-config.yml — no changes needed.

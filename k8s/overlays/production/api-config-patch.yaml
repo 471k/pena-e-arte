@@ -6,8 +6,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-api-config
-  namespace: pena-e-arte
+  name: tattooos-api-config
+  namespace: tattooos
 data:
   GeoIp__DatabasePath: "/data/geoip/GeoLite2-City.mmdb"
   GeoIp__AsnDatabasePath: "/data/geoip/GeoLite2-ASN.mmdb"

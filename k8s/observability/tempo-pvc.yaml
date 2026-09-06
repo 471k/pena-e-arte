@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pena-e-arte-tempo-data
+  name: tattooos-tempo-data
   namespace: monitoring
 spec:
   accessModes: ["ReadWriteOnce"]

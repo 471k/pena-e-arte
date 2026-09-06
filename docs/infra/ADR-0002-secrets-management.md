@@ -106,7 +106,7 @@ actually ships and starts depending on Vault being reachable.
 
 No `VaultSharp` code changes — same as this ADR's original point about HCP Vault: only
 `Vault:Address`/`Vault:Token` config differs. `Vault:Address` becomes the in-cluster Service DNS
-name (`http://pena-e-arte-vault.pena-e-arte.svc.cluster.local:8200`); `Vault:Token` becomes a
+name (`http://tattooos-vault.tattooos.svc.cluster.local:8200`); `Vault:Token` becomes a
 scoped, non-root token generated during the manual init runbook, never the root token.
 
 See `k8s/base/vault-statefulset.yaml`, `vault-service.yaml`, `vault-configmap.yaml`, and

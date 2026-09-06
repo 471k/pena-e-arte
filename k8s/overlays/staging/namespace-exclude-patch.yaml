@@ -1,19 +1,19 @@
 # Discovered empirically while validating this overlay: Kustomize's `namespace:` transformer
 # doesn't just leave Namespace-kind objects alone (as their cluster scope would suggest) — it
 # rewrites their own .metadata.name to the target namespace too. With all three Namespace
-# objects from base/namespace.yaml pulled in here, that renamed the "pena-e-arte" Namespace
-# object to "pena-e-arte-staging", colliding with the real pena-e-arte-staging Namespace
+# objects from base/namespace.yaml pulled in here, that renamed the "tattooos" Namespace
+# object to "tattooos-staging", colliding with the real tattooos-staging Namespace
 # object already in the list. Production's overlay never hits this because it sets no
-# `namespace:` transformer at all (base resources already hardcode namespace: pena-e-arte
-# inline). Fix: staging doesn't need to (re-)apply the pena-e-arte/monitoring Namespace
+# `namespace:` transformer at all (base resources already hardcode namespace: tattooos
+# inline). Fix: staging doesn't need to (re-)apply the tattooos/monitoring Namespace
 # objects at all — deploy-staging only ever runs after deploy (production) has already
 # created them (§2.5's `needs: [deploy]` gate) — so they're deleted from this overlay's
-# resource set, leaving only pena-e-arte-staging's own Namespace object (a no-op rename of
+# resource set, leaving only tattooos-staging's own Namespace object (a no-op rename of
 # itself) to apply.
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: pena-e-arte
+  name: tattooos
 $patch: delete
 ---
 apiVersion: v1
