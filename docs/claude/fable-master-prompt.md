@@ -54,7 +54,7 @@ frontend/src/features/billing/components/BillingPage.tsx
 frontend/src/features/billing/components/SubscribePage.tsx
 frontend/src/features/platform/platformApi.ts
 frontend/src/features/platform/platform.types.ts
-frontend/src/features/platform/components/IssuerDashboardPage.tsx
+frontend/src/features/platform/components/AdminDashboardPage.tsx
 frontend/src/features/platform/components/SubscriptionOversightPage.tsx
 frontend/src/features/platform/components/PlanManagementPage.tsx
 frontend/src/features/platform/components/PlatformReferralPage.tsx
@@ -578,7 +578,7 @@ Read the full file first. Add:
 
 ```csharp
 group.MapPost("studios/{studioId:guid}/subscription/activate",
-    ActivateSubscriptionManually).RequireAuthorization("IssuerOnly");
+    ActivateSubscriptionManually).RequireAuthorization("AdminOnly");
 
 private static async Task<IResult> ActivateSubscriptionManually(
     Guid                                 studioId,
@@ -594,15 +594,15 @@ private static async Task<IResult> ActivateSubscriptionManually(
 
 ---
 
-## STEP 5 — Implement Issuer Platform Features
+## STEP 5 — Implement Admin Platform Features
 
 These are fully new features that haven't been implemented yet.
 Follow `docs/claude/admin-dashboard-prompt.md` exactly for F1–F6 and FIX.
 
 ### 5.1 FIX — Remove duplicate plan CRUD
 
-**Check** if `Pena_e_Arte.API/Endpoints/IssuerEndpoints.cs` exists.
-If yes, delete it and remove `app.MapIssuerEndpoints()` from `Program.cs`.
+**Check** if `Pena_e_Arte.API/Endpoints/AdminEndpoints.cs` exists.
+If yes, delete it and remove `app.MapAdminEndpoints()` from `Program.cs`.
 If it doesn't exist, skip.
 
 ### 5.2 F6 — AllowBrandingRemoval on UpdatePlan
@@ -616,7 +616,7 @@ Follow Section F6 of `admin-dashboard-prompt.md` exactly.
 ### 5.3 F1 — Platform Statistics API
 
 Implement in full:
-- `GetPlatformStatsQuery` + `GetPlatformStatsHandler` (IssuerOnly, `IgnoreQueryFilters()`)
+- `GetPlatformStatsQuery` + `GetPlatformStatsHandler` (AdminOnly, `IgnoreQueryFilters()`)
 - `PlatformStatsResponse` contract
 - `GET /api/v1/platform/stats` endpoint
 
@@ -634,8 +634,8 @@ Follow Section F1 of `admin-dashboard-prompt.md` for the full handler implementa
 ### 5.4 F2 — Subscription Oversight
 
 Implement:
-- `GetPlatformSubscriptionsQuery` + handler (IssuerOnly, `IgnoreQueryFilters()`)
-- `ExtendTrialCommand` + handler (IssuerOnly, max 90-day cap)
+- `GetPlatformSubscriptionsQuery` + handler (AdminOnly, `IgnoreQueryFilters()`)
+- `ExtendTrialCommand` + handler (AdminOnly, max 90-day cap)
 - `PlatformSubscriptionResponse` contract
 - `GET /api/v1/platform/subscriptions` endpoint
 - `PATCH /api/v1/platform/subscriptions/{studioId}/trial` endpoint
@@ -645,8 +645,8 @@ Follow Section F2 of `admin-dashboard-prompt.md` exactly.
 ### 5.5 F3 — Platform Referral Code Management
 
 Implement:
-- `GetPlatformReferralCodesQuery` + handler (IssuerOnly, `IgnoreQueryFilters()`)
-- `DeactivateReferralCodeCommand` + handler (IssuerOnly)
+- `GetPlatformReferralCodesQuery` + handler (AdminOnly, `IgnoreQueryFilters()`)
+- `DeactivateReferralCodeCommand` + handler (AdminOnly)
 - `PlatformReferralCodeResponse` contract
 - `GET /api/v1/platform/referral-codes` endpoint
 - `PATCH /api/v1/platform/referral-codes/{id}/deactivate` endpoint
@@ -758,7 +758,7 @@ At the bottom of the form (after the Stripe card section), add:
 
 ---
 
-## STEP 7 — Frontend: Fix Issuer Platform Features
+## STEP 7 — Frontend: Fix Admin Platform Features
 
 ### 7.1 Fix `platform.types.ts`
 
@@ -807,17 +807,17 @@ getPlatformSubscriptions // GET platform/subscriptions → PlatformSubscriptionR
 extendTrial              // PATCH platform/subscriptions/{studioId}/trial
 getPlatformReferralCodes // GET platform/referral-codes → PlatformReferralCodeResponse[]
 deactivateReferralCode   // PATCH platform/referral-codes/{id}/deactivate
-getIssuerPlans           // GET billing/plans → PlanResponse[] (for plan selector)
+getAdminPlans           // GET billing/plans → PlanResponse[] (for plan selector)
 activateSubscriptionManually // POST platform/studios/{studioId}/subscription/activate
 ```
 
 Tag types: `PlatformStats`, `PlatformSubscription`, `PlatformReferral`.
 
-### 7.3 Fix `IssuerDashboardPage.tsx`
+### 7.3 Fix `AdminDashboardPage.tsx`
 
-**Read** `frontend/src/features/platform/components/IssuerDashboardPage.tsx`.
+**Read** `frontend/src/features/platform/components/AdminDashboardPage.tsx`.
 
-This is the issuer home screen. It must show:
+This is the admin home screen. It must show:
 1. **KPI stat cards** — using `useGetPlatformStatsQuery()`:
    - Total Studios (with `Building2` icon)
    - Active Subscriptions (with `CreditCard` icon)
@@ -842,7 +842,7 @@ For studios with `status` of `NoSubscription`, `GracePeriod`, or `Cancelled`:
 - Show "Activate (cash)" button → opens inline form with plan selector + note input
   → calls `activateSubscriptionManually` mutation
 
-Plan selector is populated from `useGetIssuerPlansQuery()`.
+Plan selector is populated from `useGetAdminPlansQuery()`.
 
 ### 7.5 Fix `PlatformReferralPage.tsx`
 
@@ -865,19 +865,19 @@ Ensure the form for creating/editing a plan includes `allowBrandingRemoval` togg
 Ensure `platformApi` and `paymentsApi` are registered (reducer + middleware).
 Add them if missing.
 
-### 7.8 Verify `router.tsx` has all issuer routes
+### 7.8 Verify `router.tsx` has all admin routes
 
 **Read** `frontend/src/app/router.tsx`.
-Ensure all platform routes exist under `RoleGuard allowedRoles={["issuer"]}`:
+Ensure all platform routes exist under `RoleGuard allowedRoles={["admin"]}`:
 ```
-/platform             → IssuerDashboardPage
-/platform/studios     → IssuerStudioListPage
+/platform             → AdminDashboardPage
+/platform/studios     → AdminStudioListPage
 /platform/plans       → PlanManagementPage
 /platform/subscriptions → SubscriptionOversightPage
 /platform/referrals   → PlatformReferralPage
 /platform/reports     → IndustryReportsPage
 ```
-Also ensure that after login, issuer role redirects to `/platform`, not `/dashboard`.
+Also ensure that after login, admin role redirects to `/platform`, not `/dashboard`.
 
 ---
 
@@ -911,10 +911,10 @@ If `CreateSubscriptionCommand` doesn't exist, create it:
 ### 8.3 Read and verify `BillingEndpoints.cs`
 
 Confirm:
-- `GET  /api/v1/billing/plans`           → IssuerOnly (list plans)
-- `POST /api/v1/billing/plans`           → IssuerOnly (create plan)
-- `PUT  /api/v1/billing/plans/{id}`      → IssuerOnly (update plan)
-- `DELETE /api/v1/billing/plans/{id}`    → IssuerOnly (delete plan)
+- `GET  /api/v1/billing/plans`           → AdminOnly (list plans)
+- `POST /api/v1/billing/plans`           → AdminOnly (create plan)
+- `PUT  /api/v1/billing/plans/{id}`      → AdminOnly (update plan)
+- `DELETE /api/v1/billing/plans/{id}`    → AdminOnly (delete plan)
 - `GET  /api/v1/billing/subscription`    → OwnerOnly (get own subscription)
 - `POST /api/v1/billing/subscription`    → OwnerOnly (create Stripe subscription)
 - `POST /api/webhooks/stripe/billing`    → AllowAnonymous (Stripe webhook)
@@ -932,7 +932,7 @@ Stripe event. No `StripeAccountId` references.
 
 **Read** `frontend/src/features/billing/billingApi.ts`.
 Ensure endpoints: `getPlans`, `getSubscription`, `createSubscription`,
-`createPlan` (IssuerOnly), `updatePlan` (IssuerOnly), `deletePlan` (IssuerOnly).
+`createPlan` (AdminOnly), `updatePlan` (AdminOnly), `deletePlan` (AdminOnly).
 No PayPal endpoints.
 
 ---
@@ -1014,18 +1014,18 @@ Fix ALL errors before stopping. Do not leave compilation failures.
 - [ ] EF migration applied: `RemoveStripeConnect`
 - [ ] `POST /api/v1/payments/cash` exists and requires `ClientAndAbove`
 - [ ] `POST /api/v1/payments/{id}/cash/confirm` exists and requires `ArtistAndAbove`
-- [ ] `POST /api/v1/platform/studios/{studioId}/subscription/activate` exists and requires `IssuerOnly`
-- [ ] `GET /api/v1/platform/stats` exists and requires `IssuerOnly`
-- [ ] `GET /api/v1/platform/subscriptions` exists and requires `IssuerOnly`
-- [ ] `PATCH /api/v1/platform/subscriptions/{studioId}/trial` exists and requires `IssuerOnly`
-- [ ] `GET /api/v1/platform/referral-codes` exists and requires `IssuerOnly`
-- [ ] `PATCH /api/v1/platform/referral-codes/{id}/deactivate` exists and requires `IssuerOnly`
-- [ ] `IssuerDashboardPage` shows KPI cards, at-risk widget, quick nav
+- [ ] `POST /api/v1/platform/studios/{studioId}/subscription/activate` exists and requires `AdminOnly`
+- [ ] `GET /api/v1/platform/stats` exists and requires `AdminOnly`
+- [ ] `GET /api/v1/platform/subscriptions` exists and requires `AdminOnly`
+- [ ] `PATCH /api/v1/platform/subscriptions/{studioId}/trial` exists and requires `AdminOnly`
+- [ ] `GET /api/v1/platform/referral-codes` exists and requires `AdminOnly`
+- [ ] `PATCH /api/v1/platform/referral-codes/{id}/deactivate` exists and requires `AdminOnly`
+- [ ] `AdminDashboardPage` shows KPI cards, at-risk widget, quick nav
 - [ ] `SubscriptionOversightPage` has "Extend trial" and "Activate (cash)" actions
 - [ ] `PaymentMethodSelector` has Card + Cash tabs only
 - [ ] `DashboardPage` has cash-pending section
 - [ ] `SubscribePage` has cash info block
-- [ ] Issuer login redirects to `/platform`
+- [ ] Admin login redirects to `/platform`
 - [ ] No PII in any log line
 - [ ] `VITE_STRIPE_PUBLISHABLE_KEY` in `.env.example` (placeholder only)
 - [ ] `Stripe:SecretKey` referenced only via config key, not hardcoded
