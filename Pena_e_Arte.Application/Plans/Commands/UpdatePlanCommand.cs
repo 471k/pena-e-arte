@@ -12,7 +12,7 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Plans.Commands;
 
-// Plan is issuer-owned, not tenant-scoped — this is a genuinely platform-wide action
+// Plan is admin-owned, not tenant-scoped — this is a genuinely platform-wide action
 // with no single studio target, so AuditStudioId is left at its default (null).
 public record UpdatePlanCommand(Guid PlanId, UpdatePlanRequest Request) : IRequest<PlanResponse>, IAuditableCommand
 {
@@ -73,7 +73,7 @@ public class UpdatePlanHandler(IAppDbContext db)
         }
 
         // A price interval present on the existing plan but NOT in the request is removed —
-        // this is how an issuer turns an interval off from the editor (distinct from
+        // this is how an admin turns an interval off from the editor (distinct from
         // IsActive = false, which keeps the row but hides it from checkout; removing it
         // entirely means "this tier never offered this interval").
         foreach (PlanPrice stale in existingPrices.Where(ep => !requestedIntervals.Contains(ep.Interval)))

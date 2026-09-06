@@ -21,7 +21,7 @@ public class DeleteReferralCodeHandler(IAppDbContext db)
 {
     public async Task Handle(DeleteReferralCodeCommand command, CancellationToken ct)
     {
-        // IgnoreQueryFilters approved: usage #11 — issuer deletes any
+        // IgnoreQueryFilters approved: usage #11 — admin deletes any
         // studio's unredeemed referral code cross-tenant. See architecture.md.
         Domain.Entities.ReferralCode code = await db.ReferralCodes
             .IgnoreQueryFilters()

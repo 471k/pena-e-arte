@@ -16,7 +16,7 @@ public class TrafficHubTests
         ITrafficConnectionCounter counter = Substitute.For<ITrafficConnectionCounter>();
         TrafficHub hub = new(counter)
         {
-            Context = FakeHubCallerContext.Build("conn-1", null, "issuer"),
+            Context = FakeHubCallerContext.Build("conn-1", null, "admin"),
             Groups = groups,
         };
 
@@ -32,7 +32,7 @@ public class TrafficHubTests
         ITrafficConnectionCounter counter = Substitute.For<ITrafficConnectionCounter>();
         TrafficHub hub = new(counter)
         {
-            Context = FakeHubCallerContext.Build("conn-1", null, "issuer"),
+            Context = FakeHubCallerContext.Build("conn-1", null, "admin"),
             Groups = Substitute.For<IGroupManager>(),
         };
 
@@ -47,7 +47,7 @@ public class TrafficHubTests
         ITrafficConnectionCounter counter = Substitute.For<ITrafficConnectionCounter>();
         TrafficHub hub = new(counter)
         {
-            Context = FakeHubCallerContext.Build("conn-1", null, "issuer"),
+            Context = FakeHubCallerContext.Build("conn-1", null, "admin"),
             Groups = Substitute.For<IGroupManager>(),
         };
 

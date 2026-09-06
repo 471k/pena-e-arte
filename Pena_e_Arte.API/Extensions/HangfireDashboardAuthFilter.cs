@@ -7,10 +7,10 @@ namespace Pena_e_Arte.API.Extensions;
 // /hangfire is reached by a plain browser navigation, which never carries the SPA's JWT
 // (stored in local/session storage, only ever attached as an Authorization: Bearer header by
 // fetchBaseQuery — never sent on a top-level navigation, and there is no cookie-auth scheme
-// registered). So the original IsInRole("issuer") check alone left this dashboard completely
+// registered). So the original IsInRole("admin") check alone left this dashboard completely
 // unreachable by its intended operators, while docker-compose.yml's required
 // Hangfire:DashboardUsername/Password sat unread — enforced config with no effect. HTTP Basic
-// Auth is now the real gate; the issuer-JWT check remains as an additional layer for the case
+// Auth is now the real gate; the admin-JWT check remains as an additional layer for the case
 // where a valid bearer token happens to be attached (e.g. a scripted curl request).
 public class HangfireDashboardAuthFilter(IConfiguration configuration) : IDashboardAuthorizationFilter
 {
@@ -18,7 +18,7 @@ public class HangfireDashboardAuthFilter(IConfiguration configuration) : IDashbo
     {
         HttpContext httpContext = context.GetHttpContext();
 
-        if (httpContext.User.Identity?.IsAuthenticated == true && httpContext.User.IsInRole("issuer"))
+        if (httpContext.User.Identity?.IsAuthenticated == true && httpContext.User.IsInRole("admin"))
             return true;
 
         return AuthorizeBasic(httpContext);

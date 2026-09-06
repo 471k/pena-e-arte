@@ -141,11 +141,11 @@ public class GetConversationContactsHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Issuer_NeverGetsAnyContacts()
+    public async Task Handle_Admin_NeverGetsAnyContacts()
     {
         SeedStudio("owner@studio.test");
         _user.UserId.Returns(Guid.NewGuid());
-        _user.Role.Returns("issuer");
+        _user.Role.Returns("admin");
         _identity.GetUserIdByEmailAsync("owner@studio.test", Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
 
         List<ConversationContactResponse> result = await CreateSut().Handle(new GetConversationContactsQuery(), default);

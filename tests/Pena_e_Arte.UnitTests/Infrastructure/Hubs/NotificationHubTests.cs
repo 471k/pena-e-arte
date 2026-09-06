@@ -44,13 +44,13 @@ public class NotificationHubTests
     }
 
     [Fact]
-    public async Task JoinStudio_IssuerRole_AddsToGroupRegardlessOfOwnTenant()
+    public async Task JoinStudio_AdminRole_AddsToGroupRegardlessOfOwnTenant()
     {
         Guid otherStudioId = Guid.NewGuid();
         IGroupManager groups = Substitute.For<IGroupManager>();
         NotificationHub hub = new()
         {
-            Context = FakeHubCallerContext.Build("conn-1", tenantId: null, role: "issuer"),
+            Context = FakeHubCallerContext.Build("conn-1", tenantId: null, role: "admin"),
             Groups = groups,
         };
 

@@ -53,15 +53,15 @@ public class RequestLoggingEnrichmentTests
     [Fact]
     public void Enrich_AuthenticatedWithoutTenantClaim_SetsUserIdOnly()
     {
-        // e.g. an issuer (cross-tenant platform admin) token has no tenant_id claim.
+        // e.g. an admin (cross-tenant platform admin) token has no tenant_id claim.
         IDiagnosticContext diagnosticContext = Substitute.For<IDiagnosticContext>();
         DefaultHttpContext httpContext = new() { TraceIdentifier = "req-4" };
-        List<Claim> claims = [new(ClaimTypes.NameIdentifier, "issuer-1")];
+        List<Claim> claims = [new(ClaimTypes.NameIdentifier, "admin-1")];
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
 
         RequestLoggingEnrichment.Enrich(diagnosticContext, httpContext);
 
-        diagnosticContext.Received(1).Set("user_id", "issuer-1", false);
+        diagnosticContext.Received(1).Set("user_id", "admin-1", false);
         diagnosticContext.DidNotReceive().Set("tenant_id", Arg.Any<object>(), Arg.Any<bool>());
     }
 }

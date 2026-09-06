@@ -8,8 +8,8 @@ namespace Pena_e_Arte.Infrastructure.Hubs;
 // adding them to the broadcast group — mirrors SupportHub.JoinTicket's fix. /hubs paths are
 // exempt from TenantMiddleware (see TenantMiddleware.ExemptPrefixes), so ICurrentUser/
 // ICurrentTenant are never populated for hub invocations; claims are read directly from
-// Context.User instead. Issuer connections may join any studio's group for platform-support
-// purposes, mirroring the issuer role's other documented cross-tenant reads.
+// Context.User instead. Admin connections may join any studio's group for platform-support
+// purposes, mirroring the admin role's other documented cross-tenant reads.
 [Authorize]
 public class DesignHub : Hub
 {
@@ -18,7 +18,7 @@ public class DesignHub : Hub
         if (!Guid.TryParse(studioId, out Guid requestedStudioId)) return;
 
         string role = Context.User?.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
-        if (!string.Equals(role, "issuer", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
         {
             Guid callerStudioId = Guid.TryParse(
                 Context.User?.FindFirstValue("tenant_id"), out Guid sid) ? sid : Guid.Empty;

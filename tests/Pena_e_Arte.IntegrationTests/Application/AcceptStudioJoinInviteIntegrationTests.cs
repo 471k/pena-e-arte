@@ -32,7 +32,7 @@ public class AcceptStudioJoinInviteIntegrationTests(DatabaseFixture fixture)
         .AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-chars!",
-            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Admin"] = "test-admin",
             ["Jwt:Audience"] = "test-audience",
             ["Jwt:AccessTokenExpiryMinutes"] = "15",
         })

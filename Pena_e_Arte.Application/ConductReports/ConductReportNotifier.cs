@@ -6,8 +6,8 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.ConductReports;
 
 /// <summary>
-/// Fires the immediate owner+issuer alert email for a High-severity report. Standard-severity
-/// reports are a no-op here — they surface purely via the in-app inboxes (owner/artist/issuer
+/// Fires the immediate owner+admin alert email for a High-severity report. Standard-severity
+/// reports are a no-op here — they surface purely via the in-app inboxes (owner/artist/admin
 /// queries). Deliberately bypasses NotificationLog/NotificationType/
 /// StudioNotificationPreference — same direct INotificationService.SendEmailAsync call shape as
 /// SubmitContactRequestHandler — an owner must not be able to opt out of this via notification

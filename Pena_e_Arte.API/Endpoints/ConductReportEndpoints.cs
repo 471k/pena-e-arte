@@ -17,8 +17,8 @@ public static class ConductReportEndpoints
         app.MapGet("/api/v1/artists/me/conduct-reports", GetMyConductReportsAsArtist)
            .RequireAuthorization("ArtistAndAbove");
 
-        // Gated OwnerOnly at the route level (which includes issuer); the finer-grained
-        // severity split (owner may resolve Standard only, issuer may resolve any) is
+        // Gated OwnerOnly at the route level (which includes admin); the finer-grained
+        // severity split (owner may resolve Standard only, admin may resolve any) is
         // enforced inside the handler via ConductReportAuthorizationGuard.EnsureCanChangeStatus
         // — matches how RespondToReview is OwnerOnly at the route while finer-grained rules
         // live in the handler layer throughout this codebase.
@@ -26,7 +26,7 @@ public static class ConductReportEndpoints
            .RequireAuthorization("OwnerOnly");
 
         RouteGroupBuilder platform = app.MapGroup("/api/v1/platform/conduct-reports")
-            .RequireAuthorization("IssuerOnly");
+            .RequireAuthorization("AdminOnly");
         platform.MapGet("", GetConductReports);
     }
 

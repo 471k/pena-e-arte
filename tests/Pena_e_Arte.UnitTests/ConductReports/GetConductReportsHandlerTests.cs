@@ -27,10 +27,10 @@ public class GetConductReportsHandlerTests
         Guid reporterUserId = Guid.NewGuid();
         _db.ConductReports.Add(ConductReport.ForStudio(
             studioA, Guid.NewGuid(), reporterUserId, "Jane Doe", ReportCategory.Scam,
-            "A cross-tenant issuer read should see this report from studio A."));
+            "A cross-tenant admin read should see this report from studio A."));
         _db.ConductReports.Add(ConductReport.ForStudio(
             studioB, Guid.NewGuid(), Guid.NewGuid(), "John Roe", ReportCategory.Other,
-            "A cross-tenant issuer read should also see this report from studio B."));
+            "A cross-tenant admin read should also see this report from studio B."));
         await _db.SaveChangesAsync();
 
         List<ConductReportResponse> result = await CreateSut().Handle(new GetConductReportsQuery(), CancellationToken.None);

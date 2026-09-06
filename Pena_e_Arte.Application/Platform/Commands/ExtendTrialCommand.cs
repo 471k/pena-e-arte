@@ -24,7 +24,7 @@ public class ExtendTrialHandler(IAppDbContext db)
 {
     public async Task Handle(ExtendTrialCommand command, CancellationToken ct)
     {
-        // IgnoreQueryFilters approved: usage #5 — trial extension cross-tenant, IssuerOnly. See architecture.md.
+        // IgnoreQueryFilters approved: usage #5 — trial extension cross-tenant, AdminOnly. See architecture.md.
         Studio studio = await db.Studios
             .IgnoreQueryFilters()
             .Include(s => s.Subscription)

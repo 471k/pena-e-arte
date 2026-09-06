@@ -13,7 +13,7 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 
 public record CancelSubscriptionCommand(Guid StudioId) : IRequest, IAuditableCommand
 {
-    public string AuditAction => AuditActions.SubscriptionCancelledByIssuer;
+    public string AuditAction => AuditActions.SubscriptionCancelledByAdmin;
     public string AuditTargetType => AuditTargetTypes.Subscription;
     public Guid AuditTargetId => StudioId;
     public Guid? AuditStudioId => StudioId;
@@ -35,7 +35,7 @@ public class CancelSubscriptionHandler(
 
     public async Task Handle(CancelSubscriptionCommand command, CancellationToken ct)
     {
-        // IgnoreQueryFilters approved: usage #7 — subscription cancellation cross-tenant, IssuerOnly. See architecture.md.
+        // IgnoreQueryFilters approved: usage #7 — subscription cancellation cross-tenant, AdminOnly. See architecture.md.
         Studio studio = await db.Studios
             .IgnoreQueryFilters()
             .Include(s => s.Subscription)
@@ -54,7 +54,7 @@ public class CancelSubscriptionHandler(
         subscription.PendingPlanId = null;
 
         logger.LogInformation(
-            "Subscription cancelled for studio {@StudioId} by issuer",
+            "Subscription cancelled for studio {@StudioId} by admin",
             studio.Id);
 
         await db.SaveChangesAsync(ct);

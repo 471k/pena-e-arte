@@ -9,7 +9,7 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.ConductReports.Commands;
 
 // Known minor gap (flagged rather than silently "fixed" — see architecture.md Decisions Log):
-// this command doesn't carry the target studio id directly, so an issuer-authored status
+// this command doesn't carry the target studio id directly, so an admin-authored status
 // change (no ICurrentTenant set) falls back to AuditLogBehavior's `null` default for
 // AuditStudioId, meaning the audit row isn't attributed to the report's actual studio. A clean
 // fix needs either a second constructor step (look up report.StudioId before dispatch, which a

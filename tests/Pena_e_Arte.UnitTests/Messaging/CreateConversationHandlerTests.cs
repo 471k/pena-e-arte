@@ -81,12 +81,12 @@ public class CreateConversationHandlerTests
     }
 
     [Fact]
-    public async Task Handle_IssuerCaller_ThrowsForbidden()
+    public async Task Handle_AdminCaller_ThrowsForbidden()
     {
         Guid artistUserId = Guid.NewGuid();
         SeedArtist(artistUserId);
         _user.UserId.Returns(Guid.NewGuid());
-        _user.Role.Returns("issuer");
+        _user.Role.Returns("admin");
 
         Func<Task> act = async () => await CreateSut().Handle(
             new CreateConversationCommand(new CreateConversationRequest(artistUserId)), default);

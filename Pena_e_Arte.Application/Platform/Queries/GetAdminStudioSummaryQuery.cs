@@ -7,17 +7,17 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Queries;
 
-public record GetIssuerStudioSummaryQuery(Guid StudioId) : IRequest<IssuerStudioSummaryResponse>;
+public record GetAdminStudioSummaryQuery(Guid StudioId) : IRequest<AdminStudioSummaryResponse>;
 
-public class GetIssuerStudioSummaryHandler(IAppDbContext db, IIdentityService identity)
-    : IRequestHandler<GetIssuerStudioSummaryQuery, IssuerStudioSummaryResponse>
+public class GetAdminStudioSummaryHandler(IAppDbContext db, IIdentityService identity)
+    : IRequestHandler<GetAdminStudioSummaryQuery, AdminStudioSummaryResponse>
 {
-    public async Task<IssuerStudioSummaryResponse> Handle(
-        GetIssuerStudioSummaryQuery query,
+    public async Task<AdminStudioSummaryResponse> Handle(
+        GetAdminStudioSummaryQuery query,
         CancellationToken ct)
     {
-        // IgnoreQueryFilters approved: usage #24 — issuer cross-tenant studio summary
-        // (studio + client/appointment/artist counts). IssuerOnly. See architecture.md.
+        // IgnoreQueryFilters approved: usage #24 — admin cross-tenant studio summary
+        // (studio + client/appointment/artist counts). AdminOnly. See architecture.md.
         Domain.Entities.Studio? studio = await db.Studios
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.Id == query.StudioId, ct);
@@ -47,7 +47,7 @@ public class GetIssuerStudioSummaryHandler(IAppDbContext db, IIdentityService id
             .Where(a => a.StudioId == query.StudioId)
             .CountAsync(ct);
 
-        return new IssuerStudioSummaryResponse(
+        return new AdminStudioSummaryResponse(
             ownerEmail,
             ownerDisplayName,
             artistCount,

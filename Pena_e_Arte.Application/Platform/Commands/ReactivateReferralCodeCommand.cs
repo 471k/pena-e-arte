@@ -21,7 +21,7 @@ public class ReactivateReferralCodeHandler(IAppDbContext db)
 {
     public async Task Handle(ReactivateReferralCodeCommand command, CancellationToken ct)
     {
-        // IgnoreQueryFilters approved: usage #10 — issuer reactivates any
+        // IgnoreQueryFilters approved: usage #10 — admin reactivates any
         // studio's referral code cross-tenant. See architecture.md.
         Domain.Entities.ReferralCode code = await db.ReferralCodes
             .IgnoreQueryFilters()

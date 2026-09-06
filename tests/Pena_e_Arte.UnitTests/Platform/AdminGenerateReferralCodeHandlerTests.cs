@@ -10,13 +10,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pena_e_Arte.UnitTests.Platform;
 
-public class IssuerGenerateReferralCodeHandlerTests
+public class AdminGenerateReferralCodeHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
 
-    private IssuerGenerateReferralCodeHandler CreateSut() =>
-        new(_db, _realtime, NullLogger<IssuerGenerateReferralCodeHandler>.Instance);
+    private AdminGenerateReferralCodeHandler CreateSut() =>
+        new(_db, _realtime, NullLogger<AdminGenerateReferralCodeHandler>.Instance);
 
     [Fact]
     public async Task Handle_ValidStudio_ReturnsNewActiveCode()
@@ -24,7 +24,7 @@ public class IssuerGenerateReferralCodeHandlerTests
         Guid studioId = await SeedStudio();
 
         Contracts.Responses.PlatformReferralCodeResponse result =
-            await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+            await CreateSut().Handle(new AdminGenerateReferralCodeCommand(studioId), default);
 
         result.Should().NotBeNull();
         result.StudioId.Should().Be(studioId);
@@ -41,7 +41,7 @@ public class IssuerGenerateReferralCodeHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
 
-        await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+        await CreateSut().Handle(new AdminGenerateReferralCodeCommand(studioId), default);
 
         _db.ReferralCodes.Single(r => r.Code == "OLD12345").IsActive.Should().BeFalse();
         _db.ReferralCodes.Count(r => r.StudioId == studioId && r.IsActive).Should().Be(1);
@@ -51,7 +51,7 @@ public class IssuerGenerateReferralCodeHandlerTests
     public async Task Handle_StudioNotFound_ThrowsNotFoundException()
     {
         Func<Task> act = () =>
-            CreateSut().Handle(new IssuerGenerateReferralCodeCommand(Guid.NewGuid()), default);
+            CreateSut().Handle(new AdminGenerateReferralCodeCommand(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -62,7 +62,7 @@ public class IssuerGenerateReferralCodeHandlerTests
         Guid studioId = await SeedStudio();
 
         Contracts.Responses.PlatformReferralCodeResponse result =
-            await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+            await CreateSut().Handle(new AdminGenerateReferralCodeCommand(studioId), default);
 
         result.ShareUrl.Should().Be($"https://tattooos.co/register?ref={result.Code}");
     }
@@ -73,7 +73,7 @@ public class IssuerGenerateReferralCodeHandlerTests
         Guid studioId = await SeedStudio();
 
         Contracts.Responses.PlatformReferralCodeResponse result =
-            await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+            await CreateSut().Handle(new AdminGenerateReferralCodeCommand(studioId), default);
 
         NotificationLog notice = _db.NotificationLogs.Single(n => n.StudioId == studioId);
         notice.Channel.Should().Be(NotificationChannel.InApp);
@@ -88,7 +88,7 @@ public class IssuerGenerateReferralCodeHandlerTests
     {
         Guid studioId = await SeedStudio();
 
-        await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+        await CreateSut().Handle(new AdminGenerateReferralCodeCommand(studioId), default);
 
         await _realtime.Received(1).NotifyStudioAsync(
             studioId, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
@@ -100,7 +100,7 @@ public class IssuerGenerateReferralCodeHandlerTests
         Guid studioId = await SeedStudio();
 
         Contracts.Responses.PlatformReferralCodeResponse result =
-            await CreateSut().Handle(new IssuerGenerateReferralCodeCommand(studioId), default);
+            await CreateSut().Handle(new AdminGenerateReferralCodeCommand(studioId), default);
 
         result.RedemptionCount.Should().Be(0);
     }

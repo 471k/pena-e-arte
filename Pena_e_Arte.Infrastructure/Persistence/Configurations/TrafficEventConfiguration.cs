@@ -30,7 +30,7 @@ public class TrafficEventConfiguration : IEntityTypeConfiguration<TrafficEvent>
 
         // No HasQueryFilter — deliberate deviation from the standard TenantEntity shape.
         // StudioId is nullable (null = non-studio-scoped page); "who can read which rows"
-        // is enforced in the query handlers (IssuerOnly), not here. Same non-tenant-scoped
+        // is enforced in the query handlers (AdminOnly), not here. Same non-tenant-scoped
         // shape as AuditLogEntry/HelpSearchLog/FeedbackReport.
         builder.HasIndex(t => t.CreatedAt).HasDatabaseName("ix_traffic_events_created_at");
         builder.HasIndex(t => new { t.StudioId, t.CreatedAt })

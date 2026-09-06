@@ -15,7 +15,7 @@ public static class DataSeeder
 {
     private const string Password = "Password123";
 
-    // ─── Issuer-level IDs ──────────────────────────────────────────────────────
+    // ─── Admin-level IDs ──────────────────────────────────────────────────────
 
     internal static readonly Guid StarterPlanId = new("aaaa0001-0000-0000-0000-000000000000");
     internal static readonly Guid GrowthPlanId = new("aaaa0002-0000-0000-0000-000000000000");
@@ -30,7 +30,7 @@ public static class DataSeeder
 
     // ─── Studio 1 User IDs (strings — IdentityUser.Id) ────────────────────────
 
-    private static readonly string IssuerUserId = "dddd0000-0000-0000-0000-000000000000";
+    private static readonly string AdminUserId = "dddd0000-0000-0000-0000-000000000000";
     private static readonly string S1OwnerUserId = "dddd0001-0000-0000-0000-000000000001";
     private static readonly string S1Artist1UserId = "dddd0001-0000-0000-0000-000000000002";
     private static readonly string S1Artist2UserId = "dddd0001-0000-0000-0000-000000000003";
@@ -137,7 +137,7 @@ public static class DataSeeder
         bool coreEntitiesAlreadySeeded = await db.Plans.AnyAsync(p => p.Id == StarterPlanId);
 
         // Always run: Starter/Growth/Premium/Pro/Free are system-defined tiers, not
-        // issuer-owned data — their canonical values (and their PlanPrice rows) live in
+        // admin-owned data — their canonical values (and their PlanPrice rows) live in
         // source control, not the database. Keyed on tier Name + (PlanId, Interval), so
         // an orphan row under a non-canonical Id cannot occur by construction. See
         // architecture.md Decisions Log — "Plan/PlanPrice split".
@@ -227,11 +227,11 @@ public static class DataSeeder
     // with the same Name to hide.
     //
     // Practical consequence, spelled out because it's a real behavior change: if an
-    // issuer edits Starter, Growth, Premium, Pro, or Free in place via
+    // admin edits Starter, Growth, Premium, Pro, or Free in place via
     // PlanManagementPage, that edit will be reverted back to these values on the next
     // app restart/deploy. That's the intended trade-off — see architecture.md Decisions
     // Log, "Core plan reconciliation replaces one-time plan seed", for the reasoning and
-    // for what an issuer should do instead (clone a new Plan row rather than editing one
+    // for what an admin should do instead (clone a new Plan row rather than editing one
     // of these five).
     //
     // Public and called unconditionally from Program.cs, unlike the rest of this class —
@@ -295,7 +295,7 @@ public static class DataSeeder
                         Interval = tp.Interval,
                         Price = tp.Price,
                         // StripePriceId intentionally left null — populated by
-                        // StripeDemoSeeder or an issuer, never reconciled here (matches
+                        // StripeDemoSeeder or an admin, never reconciled here (matches
                         // the established precedent from the pre-PlanPrice reconciler).
                     });
                 }
@@ -379,8 +379,8 @@ public static class DataSeeder
 
     private static async Task EnsureSeedUsersAsync(UserManager<IdentityUser> userManager)
     {
-        await EnsureUserAsync(userManager, IssuerUserId,
-            "issuer@pena-arte.test", "issuer", Studio1Id, "Gabriel");
+        await EnsureUserAsync(userManager, AdminUserId,
+            "admin@pena-arte.test", "admin", Studio1Id, "Gabriel");
         await EnsureUserAsync(userManager, S1OwnerUserId,
             "owner@ink-soul.test", "owner", Studio1Id, "Inês");
         await EnsureUserAsync(userManager, S1Artist1UserId,

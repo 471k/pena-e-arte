@@ -184,19 +184,19 @@ public class UpdateFeedbackStatusValidatorTests
     }
 
     [Fact]
-    public void Validate_NullIssuerNote_IsValid()
+    public void Validate_NullAdminNote_IsValid()
     {
         _sut.ShouldBeValid(Command("Open", null));
     }
 
     [Fact]
-    public void Validate_IssuerNoteExceedsMaxLength_FailsOnIssuerNote()
+    public void Validate_AdminNoteExceedsMaxLength_FailsOnAdminNote()
     {
-        _sut.ShouldFailOn(Command("Open", new string('x', 1001)), "Request.IssuerNote");
+        _sut.ShouldFailOn(Command("Open", new string('x', 1001)), "Request.AdminNote");
     }
 
-    private static UpdateFeedbackStatusCommand Command(string status, string? issuerNote) =>
-        new(Guid.NewGuid(), new UpdateFeedbackStatusRequest(status, issuerNote));
+    private static UpdateFeedbackStatusCommand Command(string status, string? adminNote) =>
+        new(Guid.NewGuid(), new UpdateFeedbackStatusRequest(status, adminNote));
 }
 
 public class PostFeedbackMessageValidatorTests

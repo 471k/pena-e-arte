@@ -9,7 +9,7 @@ public static class AuditActions
     public const string StudioSuspended = "Studio.Suspended";
     public const string StudioUnsuspended = "Studio.Unsuspended";
     public const string StudioTrialExtended = "Studio.TrialExtended";
-    public const string SubscriptionCancelledByIssuer = "Subscription.CancelledByIssuer";
+    public const string SubscriptionCancelledByAdmin = "Subscription.CancelledByAdmin";
     public const string SubscriptionActivatedManually = "Subscription.ActivatedManually";
     public const string PlanUpdated = "Plan.Updated";
     public const string ReferralCodeDeactivated = "ReferralCode.Deactivated";

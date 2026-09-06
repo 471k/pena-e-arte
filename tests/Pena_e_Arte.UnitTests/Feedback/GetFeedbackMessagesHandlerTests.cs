@@ -45,15 +45,15 @@ public class GetFeedbackMessagesHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Issuer_CanReadAnyTicketMessages_CrossTenant()
+    public async Task Handle_Admin_CanReadAnyTicketMessages_CrossTenant()
     {
         FeedbackReport report = SeedReport(_ownerUserId, _studioId);
         _db.FeedbackMessages.Add(FeedbackMessage.Create(report.Id, _ownerUserId, "owner", "Hello"));
         await _db.SaveChangesAsync();
 
         _user.UserId.Returns(Guid.NewGuid());
-        _user.Role.Returns("issuer");
-        _tenant.StudioId.Returns(Guid.NewGuid()); // issuer's tenant is irrelevant
+        _user.Role.Returns("admin");
+        _tenant.StudioId.Returns(Guid.NewGuid()); // admin's tenant is irrelevant
 
         List<FeedbackMessageResponse> result = await CreateSut().Handle(new GetFeedbackMessagesQuery(report.Id), default);
 

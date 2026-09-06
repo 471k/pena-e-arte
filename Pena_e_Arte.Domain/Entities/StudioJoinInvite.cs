@@ -7,7 +7,7 @@ public enum StudioJoinInviteStatus { Pending, Accepted, Declined, Expired }
 /// dissolve their solo studio and join as an artist here instead. Deliberately not a
 /// TenantEntity: the invited party is not a member of the inviting studio's tenant until
 /// they accept, so this must be readable/writable across both tenants — see AppDbContext's
-/// "Issuer-level (no tenant filter)" section.
+/// "Admin-level (no tenant filter)" section.
 /// </summary>
 public class StudioJoinInvite
 {
