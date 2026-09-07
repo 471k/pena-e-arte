@@ -22,7 +22,7 @@ export interface FeedbackReportResponse {
   status:          FeedbackStatus;
   studioName:      string;
   submitterRole:   string;
-  issuerNote:      string | null;
+  adminNote:      string | null;
   createdAt:       string;
   resolvedAt:      string | null;
   attachmentUrls?: string[];
@@ -37,7 +37,7 @@ export interface SubmitFeedbackRequest {
 
 export interface UpdateFeedbackStatusRequest {
   status:     FeedbackStatus;
-  issuerNote: string | null;
+  adminNote: string | null;
 }
 
 export interface FeedbackMessageResponse {

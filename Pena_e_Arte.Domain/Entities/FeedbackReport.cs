@@ -15,7 +15,7 @@ public class FeedbackReport
     public string Title { get; private set; } = string.Empty;
     public string Body { get; private set; } = string.Empty;
     public FeedbackStatus Status { get; private set; } = FeedbackStatus.Open;
-    public string? IssuerNote { get; private set; }
+    public string? AdminNote { get; private set; }
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
     public DateTime? ResolvedAt { get; private set; }
 
@@ -48,17 +48,17 @@ public class FeedbackReport
         };
     }
 
-    public void UpdateStatus(FeedbackStatus status, string? issuerNote)
+    public void UpdateStatus(FeedbackStatus status, string? adminNote)
     {
         Status = status;
-        IssuerNote = issuerNote?.Trim();
+        AdminNote = adminNote?.Trim();
         ResolvedAt = status is FeedbackStatus.Resolved or FeedbackStatus.Dismissed
             ? DateTime.UtcNow
             : null;
     }
 
-    /// <summary>Issuer can access any ticket; everyone else only their own, within their own studio.</summary>
+    /// <summary>Admin can access any ticket; everyone else only their own, within their own studio.</summary>
     public bool IsAccessibleBy(Guid userId, Guid studioId, string role) =>
-        string.Equals(role, "issuer", StringComparison.OrdinalIgnoreCase)
+        string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
         || (SubmitterUserId == userId && StudioId == studioId);
 }

@@ -11,7 +11,7 @@ import authReducer from "@/features/auth/authSlice";
 import { platformApi } from "@/features/platform/platformApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { billingApi } from "@/features/billing/billingApi";
-import { IssuerStudioListPage } from "@/features/platform/components/IssuerStudioListPage";
+import { AdminStudioListPage } from "@/features/platform/components/AdminStudioListPage";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 import type { PlanResponse } from "@/features/billing/billing.types";
@@ -151,7 +151,7 @@ function makeStore() {
       gd().concat(platformApi.middleware, studiosApi.middleware, billingApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u4", email: "issuer@platform.test" }, token: "fake", tenantId: null, role: "issuer", pendingReferralCode: null } as any,
+      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin", pendingReferralCode: null } as any,
     },
   });
 }
@@ -161,7 +161,7 @@ function renderPage() {
   render(
     <Provider store={store}>
       <MemoryRouter>
-        <IssuerStudioListPage />
+        <AdminStudioListPage />
       </MemoryRouter>
     </Provider>,
   );
@@ -170,7 +170,7 @@ function renderPage() {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe("IssuerStudioListPage", () => {
+describe("AdminStudioListPage", () => {
 
   it("shows skeleton cards while loading, not a spinner", () => {
     renderPage();

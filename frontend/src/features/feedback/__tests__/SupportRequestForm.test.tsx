@@ -16,7 +16,7 @@ const server = setupServer(
     return HttpResponse.json({
       id: "fb-new", type: body.type, title: body.title, body: body.body,
       status: "Open", studioName: "Ink Soul", submitterRole: "client",
-      issuerNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
+      adminNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
     });
   }),
 );
@@ -68,7 +68,7 @@ describe("SupportRequestForm", () => {
         return HttpResponse.json({
           id: "fb-new", type: "SupportRequest", title: "Need help", body: "I can't find the billing page.",
           status: "Open", studioName: "Ink Soul", submitterRole: "client",
-          issuerNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
+          adminNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
         });
       }),
     );

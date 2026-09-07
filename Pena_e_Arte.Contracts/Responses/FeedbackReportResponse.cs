@@ -8,7 +8,7 @@ public record FeedbackReportResponse(
     string Status,
     string StudioName,
     string SubmitterRole,
-    string? IssuerNote,
+    string? AdminNote,
     DateTime CreatedAt,
     DateTime? ResolvedAt,
     IReadOnlyList<string>? AttachmentUrls = null);

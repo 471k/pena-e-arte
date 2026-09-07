@@ -5,7 +5,7 @@ import { OnboardingTour, type TourStep } from "@/shared/components/OnboardingTou
 import { getClientTourSteps } from "./tours/clientTour";
 import { artistTourSteps } from "./tours/artistTour";
 import { ownerTourSteps } from "./tours/ownerTour";
-import { issuerTourSteps } from "./tours/issuerTour";
+import { adminTourSteps } from "./tours/adminTour";
 import { Role } from "@/shared/types/roles";
 
 function getStepsForRole(role: Role, hasMultipleStudios: boolean): TourStep[] {
@@ -13,7 +13,7 @@ function getStepsForRole(role: Role, hasMultipleStudios: boolean): TourStep[] {
     case Role.Client: return getClientTourSteps(hasMultipleStudios);
     case Role.Artist: return artistTourSteps;
     case Role.Owner:  return ownerTourSteps;
-    case Role.Issuer: return issuerTourSteps;
+    case Role.Admin: return adminTourSteps;
   }
 }
 

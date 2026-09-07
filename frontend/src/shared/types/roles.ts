@@ -2,7 +2,7 @@ export const Role = {
   Client: "client",
   Artist: "artist",
   Owner: "owner",
-  Issuer: "issuer",
+  Admin: "admin",
 } as const;
 
 export type Role = (typeof Role)[keyof typeof Role];

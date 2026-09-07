@@ -23,7 +23,7 @@ import {
   AlertDialogCancel,
 } from "@/shared/components/ui/alert-dialog";
 import {
-  useGetIssuerPlansQuery,
+  useGetAdminPlansQuery,
   useCreatePlanMutation,
   useUpdatePlanMutation,
   type PlanPriceRequest,
@@ -196,7 +196,7 @@ export function PlanEditPage() {
   const isEditMode = Boolean(planId);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { data: plans, isLoading } = useGetIssuerPlansQuery();
+  const { data: plans, isLoading } = useGetAdminPlansQuery();
   const [createPlan, { isLoading: creating }] = useCreatePlanMutation();
   const [updatePlan, { isLoading: updating }] = useUpdatePlanMutation();
   const saving = creating || updating;
@@ -306,7 +306,7 @@ export function PlanEditPage() {
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
-      <header className="flex items-center justify-between gap-4 px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center justify-between gap-4 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <div className="min-w-0">
           <Link
             to="/platform/plans"

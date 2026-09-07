@@ -10,7 +10,7 @@ namespace Pena_e_Arte.Infrastructure.Services;
 
 /// <summary>
 /// Ticks every 5s (matches Google Analytics Realtime / Plausible Live's own cadence — see
-/// architecture.md's industry-benchmark note). Only does Redis/DB work when at least one issuer
+/// architecture.md's industry-benchmark note). Only does Redis/DB work when at least one admin
 /// has TrafficHub open (ITrafficConnectionCounter), so an idle platform costs nothing. Reads via
 /// the same ITrafficPresenceReader the on-demand GetLiveTrafficSnapshotQuery uses, so the two
 /// can never drift out of sync with each other.

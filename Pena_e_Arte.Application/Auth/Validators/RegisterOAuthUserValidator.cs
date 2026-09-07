@@ -8,8 +8,8 @@ public class RegisterOAuthUserValidator : AbstractValidator<RegisterOAuthUserCom
     private static readonly string[] AllowedProviders = ["google", "apple"];
 
     // Same restriction as RegisterUserValidator: this endpoint is [AllowAnonymous], so
-    // "artist" and "issuer" accounts must never be self-registered here — artists are
-    // provisioned by an authenticated owner, and issuer is the cross-tenant platform-admin
+    // "artist" and "admin" accounts must never be self-registered here — artists are
+    // provisioned by an authenticated owner, and admin is the cross-tenant platform-admin
     // role. Only "client" (public signup) and "owner" (studio self-registration, see
     // RegisterOAuthUserHandler's OwnerEmail check) may pass through this public endpoint.
     private static readonly string[] AllowedRoles = ["client", "owner"];

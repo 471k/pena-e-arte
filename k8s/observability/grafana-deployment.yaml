@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-grafana
+  name: tattooos-grafana
   namespace: monitoring
 spec:
   replicas: 1
@@ -9,11 +9,11 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: pena-e-arte-grafana
+      app: tattooos-grafana
   template:
     metadata:
       labels:
-        app: pena-e-arte-grafana
+        app: tattooos-grafana
     spec:
       containers:
         - name: grafana
@@ -21,19 +21,19 @@ spec:
           ports:
             - containerPort: 3000
           env:
-            # pena-e-arte-grafana-admin is created by CD from PROD_GRAFANA_ADMIN_USER /
+            # tattooos-grafana-admin is created by CD from PROD_GRAFANA_ADMIN_USER /
             # PROD_GRAFANA_ADMIN_PASSWORD GitHub secrets — never admin/admin, matching the
             # same guard docker-compose.yml's GF_SECURITY_ADMIN_PASSWORD:?... already enforces
             # locally. Not committed to k8s/ as YAML with real values (Phase 8).
             - name: GF_SECURITY_ADMIN_USER
               valueFrom:
                 secretKeyRef:
-                  name: pena-e-arte-grafana-admin
+                  name: tattooos-grafana-admin
                   key: admin-user
             - name: GF_SECURITY_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: pena-e-arte-grafana-admin
+                  name: tattooos-grafana-admin
                   key: admin-password
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "false"
@@ -53,15 +53,15 @@ spec:
             - name: GF_SMTP_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: pena-e-arte-grafana-smtp
+                  name: tattooos-grafana-smtp
                   key: smtp-password
             - name: GF_SMTP_FROM_ADDRESS
               valueFrom:
                 secretKeyRef:
-                  name: pena-e-arte-grafana-smtp
+                  name: tattooos-grafana-smtp
                   key: smtp-from-address
             - name: GF_SMTP_FROM_NAME
-              value: "Pena e Arte Alerts"
+              value: "TattooOS Alerts"
           volumeMounts:
             - name: dashboards-provider
               mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
@@ -87,16 +87,16 @@ spec:
       volumes:
         - name: dashboards-provider
           configMap:
-            name: pena-e-arte-grafana-dashboards-provider
+            name: tattooos-grafana-dashboards-provider
         - name: datasources
           configMap:
-            name: pena-e-arte-grafana-datasources
+            name: tattooos-grafana-datasources
         - name: dashboard-json
           configMap:
-            name: pena-e-arte-grafana-dashboard-json
+            name: tattooos-grafana-dashboard-json
         - name: alerting
           configMap:
-            name: pena-e-arte-grafana-alerting
+            name: tattooos-grafana-alerting
         - name: data
           persistentVolumeClaim:
-            claimName: pena-e-arte-grafana-data
+            claimName: tattooos-grafana-data

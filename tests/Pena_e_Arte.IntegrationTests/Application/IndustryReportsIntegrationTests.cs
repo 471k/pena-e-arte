@@ -16,8 +16,8 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 [Collection("Database")]
 public class IndustryReportsIntegrationTests(DatabaseFixture fixture)
 {
-    // ── GetIndustryReportsHandler — 200 for issuer ────────────────────────────────
-    // Authorization is enforced at the API endpoint level (RequireAuthorization("IssuerOnly")).
+    // ── GetIndustryReportsHandler — 200 for admin ────────────────────────────────
+    // Authorization is enforced at the API endpoint level (RequireAuthorization("AdminOnly")).
     // These tests verify the handler behavior independently of HTTP auth.
 
     [Fact]

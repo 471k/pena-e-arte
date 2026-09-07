@@ -116,7 +116,7 @@ function PlanUsagePanel({ usage }: { usage: PlanUsageResponse }) {
 function BillingPageSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5 text-muted-foreground" />
           <Skeleton className="h-5 w-16" />
@@ -142,7 +142,7 @@ export function BillingPage() {
 
   const navigate = useNavigate();
   // Always refetch on mount — subscription/plan can change out of band (webhooks,
-  // issuer actions, a switch in another tab), and stale cache must not mislead the owner.
+  // admin actions, a switch in another tab), and stale cache must not mislead the owner.
   const { data: sub,   isLoading: loadingSub,   isError: subError } =
     useGetSubscriptionQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: plans, isLoading: loadingPlans } =
@@ -224,7 +224,7 @@ export function BillingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Billing</span>
@@ -243,7 +243,7 @@ export function BillingPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-4">
 
-        {/* Studio suspended — shown when issuer has suspended the studio independently of billing */}
+        {/* Studio suspended — shown when admin has suspended the studio independently of billing */}
         {studio && !studio.isActive && (
           <Card className="border-red-500/50">
             <CardContent className="p-4 flex items-start gap-3 bg-red-500/10 rounded-lg">
@@ -460,7 +460,7 @@ export function BillingPage() {
           </Card>
         )}
 
-        {/* Cash-billed: keep cash (issuer-handled) or self-serve switch to card billing */}
+        {/* Cash-billed: keep cash (admin-handled) or self-serve switch to card billing */}
         {sub.status === "Active" && isCashBilled && !isFreePlan && (
           <Card>
             <CardContent className="p-5 space-y-3 text-sm">

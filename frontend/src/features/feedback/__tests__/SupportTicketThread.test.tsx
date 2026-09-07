@@ -14,7 +14,7 @@ import type { FeedbackReportResponse, FeedbackMessageResponse } from "../feedbac
 const REPORT: FeedbackReportResponse = {
   id: "fb-1", type: "SupportRequest", title: "Billing question", body: "Where do I see my invoices?",
   status: "Open", studioName: "Ink Soul", submitterRole: "owner",
-  issuerNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
+  adminNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
 };
 
 const MESSAGES: FeedbackMessageResponse[] = [
@@ -23,7 +23,7 @@ const MESSAGES: FeedbackMessageResponse[] = [
     body: "Any update?", createdAt: "2026-07-21T01:00:00.000Z",
   },
   {
-    id: "msg-2", feedbackReportId: "fb-1", authorUserId: "u9", authorRole: "issuer",
+    id: "msg-2", feedbackReportId: "fb-1", authorUserId: "u9", authorRole: "admin",
     body: "Looking into it now.", createdAt: "2026-07-21T02:00:00.000Z",
   },
 ];

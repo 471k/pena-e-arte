@@ -17,7 +17,7 @@ public class ChatNotificationJob(
 {
     public async Task SendNewMessageEmailAsync(Guid chatMessageId, CancellationToken ct = default)
     {
-        // IgnoreQueryFilters is used here — not because of an issuer cross-tenant read (this
+        // IgnoreQueryFilters is used here — not because of an admin cross-tenant read (this
         // feature adds none, see Decision 2), but because this job runs with no ICurrentTenant
         // scope at all (Hangfire jobs are not HTTP requests) — the tenant filter's underlying
         // predicate would throw for a null/default tenant otherwise. Same pattern as

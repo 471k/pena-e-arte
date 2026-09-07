@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { ConductReportResponse } from "../conductReports.types";
 
-// Shared between ConductReportsPage.tsx (owner/artist) and ConductReportInboxPage.tsx (issuer)
+// Shared between ConductReportsPage.tsx (owner/artist) and ConductReportInboxPage.tsx (admin)
 // — was copy-pasted verbatim across both before this module existed. Non-component exports
 // (STATUS_BADGE, fmt) live in ./conductReportFormat.ts instead of here, since mixing them into
 // this file trips react-refresh/only-export-components.
@@ -32,7 +32,7 @@ interface ReportsListProps {
   emptyMessage:   string;
   renderCard:     (report: ConductReportResponse) => ReactNode;
   /** Number of skeleton cards shown while loading. Defaults to 3 (owner/artist views); the
-   * issuer inbox passes 5 to match its historically busier list. */
+   * admin inbox passes 5 to match its historically busier list. */
   skeletonCount?: number;
 }
 

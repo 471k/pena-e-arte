@@ -51,7 +51,7 @@ internal static class ClientDataErasure
 /// <summary>
 /// Owner/support-initiated erasure of a specific client (OwnerOnly endpoint). Tenant query
 /// filters scope it to the caller's own studio. Audited; the actor role recorded by
-/// AuditLogBehavior ("owner"/"issuer") distinguishes this from a client's own self-service
+/// AuditLogBehavior ("owner"/"admin") distinguishes this from a client's own self-service
 /// request (actor role "client") below.
 /// </summary>
 public record RequestDataErasureCommand(Guid ClientId) : IRequest<Unit>, IAuditableCommand

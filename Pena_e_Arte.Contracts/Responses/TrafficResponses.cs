@@ -28,7 +28,7 @@ public record TrafficHistoryDataPoint(
     int ClientCount,
     int ArtistCount,
     int OwnerCount,
-    int IssuerCount);
+    int AdminCount);
 
 public record TrafficBreakdownResponse(
     int Days,

@@ -5,7 +5,7 @@ const ROLE_LABELS: Record<Role, string> = {
   client:  "Client",
   artist:  "Artist",
   owner:   "Owner",
-  issuer:  "Super Admin",
+  admin:   "Admin",
 };
 
 export function UserChip() {

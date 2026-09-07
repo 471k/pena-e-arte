@@ -17,8 +17,8 @@ public class PlanPrice
 
     /// <summary>
     /// Account-specific — never hardcoded/reconciled by DataSeeder once set. Populated
-    /// by StripeDemoSeeder or an issuer via PlanManagementPage. Null means this
-    /// interval is defined (shows in the issuer's editor) but not yet purchasable
+    /// by StripeDemoSeeder or an admin via PlanManagementPage. Null means this
+    /// interval is defined (shows in the admin's editor) but not yet purchasable
     /// online — see IsActive below for the distinct "temporarily disabled" case.
     /// </summary>
     public string? StripePriceId { get; set; }

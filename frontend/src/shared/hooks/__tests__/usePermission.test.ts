@@ -12,11 +12,11 @@ import { Role } from "@/shared/types/roles";
 // ── Pure function tests ───────────────────────────────────────────────────────
 
 describe("hasPermission (pure)", () => {
-  it("issuer passes all role checks", () => {
-    expect(hasPermission(Role.Issuer, Role.Client)).toBe(true);
-    expect(hasPermission(Role.Issuer, Role.Artist)).toBe(true);
-    expect(hasPermission(Role.Issuer, Role.Owner)).toBe(true);
-    expect(hasPermission(Role.Issuer, Role.Issuer)).toBe(true);
+  it("admin passes all role checks", () => {
+    expect(hasPermission(Role.Admin, Role.Client)).toBe(true);
+    expect(hasPermission(Role.Admin, Role.Artist)).toBe(true);
+    expect(hasPermission(Role.Admin, Role.Owner)).toBe(true);
+    expect(hasPermission(Role.Admin, Role.Admin)).toBe(true);
   });
 
   it("owner passes owner, artist, client checks", () => {
@@ -25,8 +25,8 @@ describe("hasPermission (pure)", () => {
     expect(hasPermission(Role.Owner, Role.Owner)).toBe(true);
   });
 
-  it("owner fails issuer check", () => {
-    expect(hasPermission(Role.Owner, Role.Issuer)).toBe(false);
+  it("owner fails admin check", () => {
+    expect(hasPermission(Role.Owner, Role.Admin)).toBe(false);
   });
 
   it("artist passes artist, client checks", () => {
@@ -45,7 +45,7 @@ describe("hasPermission (pure)", () => {
 
   it("null role fails all checks", () => {
     expect(hasPermission(null, Role.Client)).toBe(false);
-    expect(hasPermission(null, Role.Issuer)).toBe(false);
+    expect(hasPermission(null, Role.Admin)).toBe(false);
   });
 });
 

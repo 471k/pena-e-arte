@@ -5,8 +5,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-frontend
-  namespace: pena-e-arte
+  name: tattooos-frontend
+  namespace: tattooos
 spec:
   template:
     spec:

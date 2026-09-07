@@ -12,20 +12,20 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
-public record IssuerGenerateReferralCodeCommand(Guid StudioId, DateTime? ExpiresAt = null) : IRequest<PlatformReferralCodeResponse>;
+public record AdminGenerateReferralCodeCommand(Guid StudioId, DateTime? ExpiresAt = null) : IRequest<PlatformReferralCodeResponse>;
 
-public class IssuerGenerateReferralCodeHandler(
+public class AdminGenerateReferralCodeHandler(
     IAppDbContext db,
     IRealtimeNotifier realtime,
-    ILogger<IssuerGenerateReferralCodeHandler> logger)
-    : IRequestHandler<IssuerGenerateReferralCodeCommand, PlatformReferralCodeResponse>
+    ILogger<AdminGenerateReferralCodeHandler> logger)
+    : IRequestHandler<AdminGenerateReferralCodeCommand, PlatformReferralCodeResponse>
 {
     private const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     public async Task<PlatformReferralCodeResponse> Handle(
-        IssuerGenerateReferralCodeCommand command, CancellationToken ct)
+        AdminGenerateReferralCodeCommand command, CancellationToken ct)
     {
-        // IgnoreQueryFilters approved: usage #9 — issuer generates referral code
+        // IgnoreQueryFilters approved: usage #9 — admin generates referral code
         // for any studio cross-tenant. See architecture.md.
         Studio studio = await db.Studios
             .IgnoreQueryFilters()
@@ -77,7 +77,7 @@ public class IssuerGenerateReferralCodeHandler(
             GetNotificationsHandler.Map(notice, studio.Name), ct);
 
         logger.LogInformation(
-            "Issuer generated referral code {ReferralCodeId} for studio {StudioId}",
+            "Admin generated referral code {ReferralCodeId} for studio {StudioId}",
             referralCode.Id, command.StudioId);
 
         return new PlatformReferralCodeResponse(
@@ -117,10 +117,10 @@ public class IssuerGenerateReferralCodeHandler(
     }
 }
 
-public class IssuerGenerateReferralCodeValidator
-    : AbstractValidator<IssuerGenerateReferralCodeCommand>
+public class AdminGenerateReferralCodeValidator
+    : AbstractValidator<AdminGenerateReferralCodeCommand>
 {
-    public IssuerGenerateReferralCodeValidator()
+    public AdminGenerateReferralCodeValidator()
     {
         RuleFor(x => x.StudioId).NotEmpty();
     }

@@ -50,7 +50,7 @@ export function useCurrentUser() {}
 
 // Types and interfaces — PascalCase
 interface AppointmentCardProps { appointment: AppointmentResponse; }
-type Role = "client" | "artist" | "owner" | "issuer";
+type Role = "client" | "artist" | "owner" | "admin";
 
 // Constants — SCREAMING_SNAKE_CASE
 const MAX_SESSION_DURATION = 480;

@@ -23,7 +23,7 @@ public class UpdateFeedbackStatusHandler(IAppDbContext db)
             ?? throw new NotFoundException(nameof(FeedbackReport), command.Id);
 
         FeedbackStatus status = Enum.Parse<FeedbackStatus>(command.Request.Status, ignoreCase: true);
-        report.UpdateStatus(status, command.Request.IssuerNote);
+        report.UpdateStatus(status, command.Request.AdminNote);
         await db.SaveChangesAsync(ct);
 
         return SubmitFeedbackHandler.Map(report);

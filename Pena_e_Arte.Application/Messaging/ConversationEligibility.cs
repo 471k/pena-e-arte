@@ -24,12 +24,12 @@ internal static class ConversationEligibility
     {
         List<EligibleContact> contacts = [];
 
-        // Issuer is deliberately never a messaging participant (messaging Decision 1) —
-        // issuer already has FeedbackReport/SupportHub for platform support. Without this
-        // explicit exclusion, an issuer request would fall through every role branch below
+        // Admin is deliberately never a messaging participant (messaging Decision 1) —
+        // admin already has FeedbackReport/SupportHub for platform support. Without this
+        // explicit exclusion, an admin request would fall through every role branch below
         // and still pick up the unconditional "owner is reachable by anyone" contact added
         // at the end of this method.
-        if (string.Equals(callerRole, "issuer", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(callerRole, "admin", StringComparison.OrdinalIgnoreCase))
             return contacts;
 
         if (string.Equals(callerRole, "client", StringComparison.OrdinalIgnoreCase))

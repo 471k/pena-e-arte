@@ -35,7 +35,7 @@ import {
   useCancelSubscriptionMutation,
 } from "@/features/platform/platformApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
-import { useGetIssuerPlansQuery } from "@/features/billing/billingApi";
+import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlanResponse } from "@/features/billing/billing.types";
 
 // ── Status display config ──────────────────────────────────────────────────────
@@ -444,7 +444,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export function IssuerStudioListPage() {
+export function AdminStudioListPage() {
   useDocumentMeta({ title: "Studios — Platform Admin", canonical: "/platform/studios" });
 
   const location      = useLocation();
@@ -461,7 +461,7 @@ export function IssuerStudioListPage() {
     useGetStudiosQuery();
   const { data: subscriptions, isLoading: subsLoading } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
-  const { data: plans = [] } = useGetIssuerPlansQuery();
+  const { data: plans = [] } = useGetAdminPlansQuery();
 
   const subMap = useMemo(() => {
     const m = new Map<string, PlatformSubscriptionResponse>();
@@ -554,7 +554,7 @@ export function IssuerStudioListPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <Building2 className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Studios</span>
         {studios && (

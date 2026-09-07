@@ -88,6 +88,11 @@ try
 
     await SeedRolesAsync(app);
 
+    // Unconditional in every environment, including production — creates the platform's
+    // first admin account exactly once, self-guarded on Bootstrap:AdminEmail/AdminPassword
+    // being configured AND no admin already existing. See AdminBootstrapper's own doc comment.
+    await AdminBootstrapper.RunAsync(app.Services, app.Configuration);
+
     // Unconditional, unlike the rest of DataSeeder below — Free/Starter/Growth/Premium/Pro
     // are baseline product data every environment needs, not demo data.
     // RegisterSoloArtistCommand hard-depends on a Plan named "Free" existing; bundling this
@@ -262,7 +267,7 @@ static async Task SeedRolesAsync(WebApplication app)
     RoleManager<IdentityRole> roleManager =
         scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    foreach (string role in new[] { "client", "artist", "owner", "issuer" })
+    foreach (string role in new[] { "client", "artist", "owner", "admin" })
     {
         if (!await roleManager.RoleExistsAsync(role))
             await roleManager.CreateAsync(new IdentityRole(role));

@@ -59,10 +59,10 @@ export const feedbackApi = createApi({
         method: "POST",
         body: { body },
       }),
-      // "Feedback" backs the report-list queries (issuer inbox, client's own tickets) —
+      // "Feedback" backs the report-list queries (admin inbox, client's own tickets) —
       // only worth invalidating when this reply could actually change a report-level field.
       // Mirrors PostFeedbackMessageHandler's own reopen condition: a studio-side reply on an
-      // already-closed ticket reopens it; anything else (including any issuer reply) leaves
+      // already-closed ticket reopens it; anything else (including any admin reply) leaves
       // the report row unchanged, so refetching the whole list would be wasted work.
       invalidatesTags: (_result, _err, { feedbackReportId, mayReopen }) => [
         { type: "FeedbackMessage", id: feedbackReportId },

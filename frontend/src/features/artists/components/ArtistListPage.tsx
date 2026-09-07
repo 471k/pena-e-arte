@@ -78,7 +78,7 @@ export function ArtistListPage() {
   useEffect(() => {
     if (searchParams.get("onboarding") === "1" && !myArtistLoading && !myArtist) {
       // Syncing from the URL (an external source) — same accepted pattern as elsewhere
-      // in this codebase (e.g. IssuerStudioListPage, PortfolioFeed).
+      // in this codebase (e.g. AdminStudioListPage, PortfolioFeed).
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setBecomeArtistOpen(true);
       const next = new URLSearchParams(searchParams);

@@ -192,7 +192,7 @@ export function BookAppointmentForm() {
   const role = useAppSelector((s) => s.auth.role);
 
   const isClientRole = role === Role.Client;
-  const isStaffRole  = role === Role.Artist || role === Role.Owner || role === Role.Issuer;
+  const isStaffRole  = role === Role.Artist || role === Role.Owner || role === Role.Admin;
   const tenantId     = useAppSelector((s) => s.auth.tenantId);
 
   // A logged-in client can arrive here from a DIFFERENT studio's public page

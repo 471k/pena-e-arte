@@ -9,7 +9,7 @@ import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
 import { platformApi } from "@/features/platform/platformApi";
-import { IssuerDashboardPage } from "@/features/platform/components/IssuerDashboardPage";
+import { AdminDashboardPage } from "@/features/platform/components/AdminDashboardPage";
 import type { PlatformStatsResponse, PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ function makeStore() {
     middleware: (gd) => gd().concat(platformApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u4", email: "issuer@platform.test" }, token: "fake", tenantId: null, role: "issuer", pendingReferralCode: null } as any,
+      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin", pendingReferralCode: null } as any,
     },
   });
 }
@@ -107,7 +107,7 @@ function renderPage() {
     <Provider store={store}>
       <MemoryRouter initialEntries={["/platform"]}>
         <Routes>
-          <Route path="/platform"              element={<IssuerDashboardPage />} />
+          <Route path="/platform"              element={<AdminDashboardPage />} />
           <Route path="/platform/studios"      element={<div data-testid="studios-page" />} />
           <Route path="/platform/plans"        element={<div data-testid="plans-page" />} />
           <Route path="/platform/subscriptions" element={<div data-testid="subscriptions-page" />} />
@@ -122,7 +122,7 @@ function renderPage() {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe("IssuerDashboardPage", () => {
+describe("AdminDashboardPage", () => {
 
   it("shows a loading skeleton while data is loading", () => {
     renderPage();

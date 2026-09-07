@@ -7,7 +7,7 @@ using Pena_e_Arte.Domain.Entities;
 namespace Pena_e_Arte.Application.Platform.Queries;
 
 /// <summary>
-/// Issuer-facing cross-tenant audit log read. No IgnoreQueryFilters() needed — AuditLogEntry
+/// Admin-facing cross-tenant audit log read. No IgnoreQueryFilters() needed — AuditLogEntry
 /// has no query filter registered at all (see AppDbContext / architecture.md), so this is a
 /// plain read across every studio's entries, not an approved-usages-table exception.
 /// </summary>

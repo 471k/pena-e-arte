@@ -71,7 +71,7 @@ A change is done when:
 ## Conventions (quick reference — full detail in `docs/claude/`)
 
 - Backend: MediatR + FluentValidation (a validator per command/endpoint); EF Core only; tenant
-  isolation via global query filters (issuer-only `IgnoreQueryFilters` with a justification
+  isolation via global query filters (admin-only `IgnoreQueryFilters` with a justification
   comment); explicit C# types, no `var` for non-obvious types.
 - Frontend: RTK Query for data fetching (no `useEffect` fetching); no `any`; Tailwind + shadcn/ui.
 - Don't add a new NuGet/npm package without flagging it as a prerequisite decision in the PR.

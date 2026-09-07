@@ -35,11 +35,11 @@ public static class StudioEndpoints
         group.MapPost("{id:guid}/closures", AddClosure).RequireAuthorization("OwnerOnly");
         group.MapDelete("{id:guid}/closures/{closureId:guid}", DeleteClosure).RequireAuthorization("OwnerOnly");
 
-        // Issuer: list all studios + suspension controls
-        group.MapGet("/", GetStudios).RequireAuthorization("IssuerOnly");
-        group.MapGet("{id:guid}", GetStudioById).RequireAuthorization("IssuerOnly");
-        group.MapPatch("{id:guid}/suspend", SuspendStudio).RequireAuthorization("IssuerOnly");
-        group.MapPatch("{id:guid}/unsuspend", UnsuspendStudio).RequireAuthorization("IssuerOnly");
+        // Admin: list all studios + suspension controls
+        group.MapGet("/", GetStudios).RequireAuthorization("AdminOnly");
+        group.MapGet("{id:guid}", GetStudioById).RequireAuthorization("AdminOnly");
+        group.MapPatch("{id:guid}/suspend", SuspendStudio).RequireAuthorization("AdminOnly");
+        group.MapPatch("{id:guid}/unsuspend", UnsuspendStudio).RequireAuthorization("AdminOnly");
     }
 
     private static async Task<IResult> GetStudioMap(

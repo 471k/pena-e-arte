@@ -266,10 +266,10 @@ public class TenantMiddlewareTests
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task InvokeAsync_IssuerRole_BypassesEnforcement()
+    public async Task InvokeAsync_AdminRole_BypassesEnforcement()
     {
         SetupSnapshot(SubscriptionStatus.Cancelled, DateTime.UtcNow.AddDays(-21), DateTime.UtcNow.AddDays(-14));
-        DefaultHttpContext context = ContextWithTenantAndRole(_studioId, "issuer", "/api/v1/appointments", "POST");
+        DefaultHttpContext context = ContextWithTenantAndRole(_studioId, "admin", "/api/v1/appointments", "POST");
 
         Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
             .InvokeAsync(context, _tenant, _subscriptions);

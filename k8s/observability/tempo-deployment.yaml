@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-tempo
+  name: tattooos-tempo
   namespace: monitoring
 spec:
   replicas: 1
@@ -9,11 +9,11 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: pena-e-arte-tempo
+      app: tattooos-tempo
   template:
     metadata:
       labels:
-        app: pena-e-arte-tempo
+        app: tattooos-tempo
     spec:
       containers:
         - name: tempo
@@ -48,7 +48,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: pena-e-arte-tempo-config
+            name: tattooos-tempo-config
         - name: data
           persistentVolumeClaim:
-            claimName: pena-e-arte-tempo-data
+            claimName: tattooos-tempo-data

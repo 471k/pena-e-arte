@@ -17,17 +17,17 @@ contact point.
 
 | Alert | Source | Condition | Why this threshold |
 |---|---|---|---|
-| API pod not ready | Prometheus (`up{service="pena-e-arte-api"}`, the same series `api-overview.json`'s "Scrape target up" panel already renders) | `< 1` for 5 minutes | A normal rolling deploy replaces a pod in well under 2 minutes end to end (kubelet's default readiness/liveness periods plus rollout time); 5 continuous minutes unreachable is a real outage, not deploy noise. |
+| API pod not ready | Prometheus (`up{service="tattooos-api"}`, the same series `api-overview.json`'s "Scrape target up" panel already renders) | `< 1` for 5 minutes | A normal rolling deploy replaces a pod in well under 2 minutes end to end (kubelet's default readiness/liveness periods plus rollout time); 5 continuous minutes unreachable is a real outage, not deploy noise. |
 | API 5xx error rate spike | Prometheus, the same percent formula as the dashboard's "Error rate (5xx as % of total)" panel | `> 5%` for 5 minutes | Comfortably above the background noise of a handful of isolated/retried requests at low traffic, low enough to catch a real regression before it compounds. First-cut threshold — tune once real production traffic gives a baseline. |
-| Hangfire job failure rate | Loki, `count_over_time({namespace="pena-e-arte"} \|= "HangfireJobFailed" [15m])` | `>= 3` in 15 minutes | Hangfire auto-retries a job before it lands in `Failed`, so one failure can be a transient blip. 3+ distinct failures in 15 minutes means retries themselves are exhausting — the actual signal worth waking someone for. This alert only became possible on 2026-09-05: see "Why a new log line was needed" below. |
+| Hangfire job failure rate | Loki, `count_over_time({namespace="tattooos"} \|= "HangfireJobFailed" [15m])` | `>= 3` in 15 minutes | Hangfire auto-retries a job before it lands in `Failed`, so one failure can be a transient blip. 3+ distinct failures in 15 minutes means retries themselves are exhausting — the actual signal worth waking someone for. This alert only became possible on 2026-09-05: see "Why a new log line was needed" below. |
 
 **Receiver:** Grafana's built-in `email` contact point, sent through Resend's SMTP relay
 (`smtp.resend.com`, username `resend`, password = the same `RESEND_API_KEY` the app already uses
 for transactional email — reused rather than a new credential, since it's the same Resend
 account either way). Wired via `GF_SMTP_*` env vars on the Grafana Deployment, sourced from a new
-`pena-e-arte-grafana-smtp` Secret (populated by `cd.yml`, same GitHub secret, materialized into
+`tattooos-grafana-smtp` Secret (populated by `cd.yml`, same GitHub secret, materialized into
 the `monitoring` namespace since K8s Secrets are namespace-scoped and Grafana doesn't live in
-`pena-e-arte`).
+`tattooos`).
 
 **Recipient:** `phisoftwaresolutions@gmail.com` — the same address already used (and already
 public) in `k8s/base/cluster-issuer.yaml`'s ACME contact. No dedicated ops/on-call inbox was
@@ -49,16 +49,16 @@ one `LogError` (job id, type, failure reason) whenever *any* job transitions to 
 
 ## What a responder should do first
 
-1. **API pod not ready** — `kubectl get pods -n pena-e-arte`. If a pod is `CrashLoopBackOff`,
+1. **API pod not ready** — `kubectl get pods -n tattooos`. If a pod is `CrashLoopBackOff`,
    `kubectl logs` it and check whether the last deploy is the cause (`kubectl rollout history
-   deployment/pena-e-arte-api -n pena-e-arte`); `kubectl rollout undo` if so. If pods look
+   deployment/tattooos-api -n tattooos`); `kubectl rollout undo` if so. If pods look
    healthy but the alert still fired, check Prometheus itself
    (`kubectl get pods -n monitoring`) — the scrape target, not the app, may be down.
-2. **API 5xx error rate spike** — open the "Pena e Arte API Overview" Grafana dashboard, filter
+2. **API 5xx error rate spike** — open the "TattooOS API Overview" Grafana dashboard, filter
    by `http_route` to find which endpoint is failing, then check recent logs in Loki
-   (`{namespace="pena-e-arte", container="pena-e-arte-api"}`) for the actual exception. Roll
+   (`{namespace="tattooos", container="tattooos-api"}`) for the actual exception. Roll
    back the last deploy if the timing lines up.
-3. **Hangfire job failure rate** — query Loki for `{namespace="pena-e-arte"} |= "HangfireJobFailed"`
+3. **Hangfire job failure rate** — query Loki for `{namespace="tattooos"} |= "HangfireJobFailed"`
    to see which job type and exception is recurring, then check
    `https://app.tattooos.co/hangfire` (Basic Auth via `HANGFIRE_DASHBOARD_USERNAME`/
    `HANGFIRE_DASHBOARD_PASSWORD`) for the specific failed job instances and their retry history.
@@ -75,7 +75,7 @@ switching to the standard three-stage reduce→threshold expression pipeline; co
 Grafana's own `/api/prometheus/grafana/api/v1/rules` that all three rules report `health=ok`
 before running the live test.
 
-**Live test:** scaled `pena-e-arte-api` to 0 replicas at 11:41:14 AM, confirmed via
+**Live test:** scaled `tattooos-api` to 0 replicas at 11:41:14 AM, confirmed via
 `/api/prometheus/grafana/api/v1/rules` polling that the alert transitioned
 `inactive → pending → firing` at exactly the 5-minute mark (11:47:12 AM, matching the rule's
 `for: 5m`), confirmed the fired alert in Alertmanager's `/api/alertmanager/grafana/api/v2/alerts`

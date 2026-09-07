@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: pena-e-arte-alloy
+  name: tattooos-alloy
   namespace: monitoring
 spec:
   selector:
     matchLabels:
-      app: pena-e-arte-alloy
+      app: tattooos-alloy
   template:
     metadata:
       labels:
-        app: pena-e-arte-alloy
+        app: tattooos-alloy
     spec:
-      serviceAccountName: pena-e-arte-alloy
+      serviceAccountName: tattooos-alloy
       containers:
         - name: alloy
           image: grafana/alloy:v1.18.0
@@ -46,7 +46,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: pena-e-arte-alloy-config
+            name: tattooos-alloy-config
         - name: varlogpods
           hostPath:
             path: /var/log/pods
@@ -54,13 +54,13 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: pena-e-arte-alloy
+  name: tattooos-alloy
   namespace: monitoring
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: pena-e-arte-alloy
+  name: tattooos-alloy
 rules:
   - apiGroups: [""]
     resources: ["pods", "nodes"]
@@ -69,12 +69,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: pena-e-arte-alloy
+  name: tattooos-alloy
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: pena-e-arte-alloy
+  name: tattooos-alloy
 subjects:
   - kind: ServiceAccount
-    name: pena-e-arte-alloy
+    name: tattooos-alloy
     namespace: monitoring

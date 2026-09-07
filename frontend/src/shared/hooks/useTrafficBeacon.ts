@@ -29,7 +29,7 @@ function sendBeacon(path: string, isNavigation: boolean, token: string | null) {
     "X-Visitor-Id": getVisitorId(),
   };
   // Without this, the backend never sees an authenticated caller at all — every signed-in
-  // client/artist/owner/issuer would be recorded and shown as a Guest on the live traffic page.
+  // client/artist/owner/admin would be recorded and shown as a Guest on the live traffic page.
   if (token) headers.Authorization = `Bearer ${token}`;
 
   void fetch(BEACON_URL, {

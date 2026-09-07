@@ -55,7 +55,7 @@ public class SubmitFeedbackHandlerTests
         result.Status.Should().Be("Open");
         result.StudioName.Should().Be("Test Studio");
         result.SubmitterRole.Should().Be("artist");
-        result.IssuerNote.Should().BeNull();
+        result.AdminNote.Should().BeNull();
         result.ResolvedAt.Should().BeNull();
     }
 

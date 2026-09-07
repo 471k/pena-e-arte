@@ -6,7 +6,7 @@ public class Plan
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Marketing/display figure for "Save X% annually" copy and the issuer editor's
+    /// Marketing/display figure for "Save X% annually" copy and the admin editor's
     /// suggested-yearly-price helper — NOT itself a price. Real prices live on
     /// PlanPrice, one row per interval this tier actually offers. See architecture.md
     /// Decisions Log — "Plan/PlanPrice split".

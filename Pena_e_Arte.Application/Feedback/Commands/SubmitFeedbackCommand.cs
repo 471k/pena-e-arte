@@ -49,7 +49,7 @@ public class SubmitFeedbackHandler(
         r.Status.ToString(),
         r.StudioName,
         r.SubmitterRole,
-        r.IssuerNote,
+        r.AdminNote,
         r.CreatedAt,
         r.ResolvedAt,
         r.AttachmentUrls);
