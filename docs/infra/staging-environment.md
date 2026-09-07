@@ -25,16 +25,16 @@ uptime — and so a future PSP (payment service provider) reviewer has something
 namespace, replica count, resource sizing, image tag, and the Ingress host. Not two
 independently-maintained manifest sets that can silently drift apart.
 
-| | Production (`pena-e-arte` namespace) | Staging (`pena-e-arte-staging` namespace) |
+| | Production (`tattooos` namespace) | Staging (`tattooos-staging` namespace) |
 |---|---|---|
 | API/frontend replicas | 2 (zero-downtime rolling update) | 1 (staging tolerates brief downtime mid-deploy) |
 | Resource requests/limits | full (§Phase 2/3 of the July 26 prompt) | halved |
 | Database | DigitalOcean `pena_e_arte_prod` | DigitalOcean `pena_e_arte_staging` — same cluster, second database + scoped user |
-| Redis | own instance, `pena-e-arte` namespace | own instance, `pena-e-arte-staging` namespace — namespace isolation alone gives this for free |
+| Redis | own instance, `tattooos` namespace | own instance, `tattooos-staging` namespace — namespace isolation alone gives this for free |
 | R2 bucket | production bucket | separate `pena-e-arte-staging` bucket + scoped token |
 | Stripe | live-mode keys (Flow B billing; blocked on Albania — see the Decisions Log) | test-mode keys, reused from local dev — not newly generated |
 | Observability | same shared Prometheus/Loki/Tempo/Alloy/Grafana, `environment="production"` | same shared stack, `environment="staging"` — **not** a duplicated stack |
-| Vault | `pena-e-arte-vault` StatefulSet, `pena-e-arte` namespace | **none** — deliberately excluded, see below |
+| Vault | `tattooos-vault` StatefulSet, `tattooos` namespace | **none** — deliberately excluded, see below |
 | JWT signing key | shared (`JWT_SECRET_KEY`) | shared — safe because `Jwt:Issuer`/`Jwt:Audience` differ (`tattoos-prod` vs. `tattoos-staging`) and the databases are separate, so a token from one environment doesn't validate in the other |
 
 ## What's deliberately shared, not duplicated
@@ -42,7 +42,7 @@ independently-maintained manifest sets that can silently drift apart.
 - **Observability.** One Prometheus/Loki/Tempo/Alloy/Grafana stack in the `monitoring`
   namespace, not a second stack in a `monitoring-staging` namespace. Staging is an additional
   scrape target (`k8s/observability/prometheus-configmap.yaml`, job
-  `pena-e-arte-api-staging`) and its pods are picked up automatically by Alloy's existing
+  `tattooos-api-staging`) and its pods are picked up automatically by Alloy's existing
   cluster-wide (node-filtered, not namespace-filtered) pod discovery. Both carry an
   `environment` label (`production`/`staging`) added at the Prometheus static-config and Alloy
   relabel stage — this is what lets `api-overview.json`'s one dashboard filter between the two
@@ -88,7 +88,7 @@ different Secrets/ConfigMaps. The frontend does not: `VITE_STRIPE_PUBLISHABLE_KE
 values baked into the static JS bundle. Reusing production's frontend image on staging would
 silently serve production's live Stripe key and public URL to `staging.tattooos.co` visitors.
 `.github/workflows/cd.yml`'s `build-and-push-frontend-staging` job builds a second,
-distinctly-tagged image (`ghcr.io/471k/pena-e-arte-frontend:staging-<sha>`) with staging's own
+distinctly-tagged image (`ghcr.io/471k/tattooos-frontend:staging-<sha>`) with staging's own
 build-args — same class of fix already applied for the `ci.yml`-placeholder version of this
 identical bug (see the Sept 3 CD prompt).
 
@@ -115,15 +115,15 @@ needed. A small `StagingBanner` component
 ## Object naming — a real discrepancy from the original spec, resolved one way
 
 The original staging spec's prose named the CD-populated Secret
-`pena-e-arte-staging-api-secrets` in a few places, while its own §2.8 design decision says
-object *names* stay identical to production's (`pena-e-arte-api-secrets`,
-`pena-e-arte-api-config`) with namespace isolation alone doing the disambiguation — no
+`tattooos-staging-api-secrets` in a few places, while its own §2.8 design decision says
+object *names* stay identical to production's (`tattooos-api-secrets`,
+`tattooos-api-config`) with namespace isolation alone doing the disambiguation — no
 `namePrefix`. These two are incompatible: the base Deployments' `envFrom` references are the
 unprefixed names, so a `-staging-`-prefixed Secret would silently fail to resolve.
 **Resolved in favor of the unprefixed names** (matching §2.8's own design and this overlay's
 already-validated `kubectl kustomize` output) — `deploy-staging` creates
-`pena-e-arte-api-secrets`/reads `pena-e-arte-api-config`, both inside the
-`pena-e-arte-staging` namespace.
+`tattooos-api-secrets`/reads `tattooos-api-config`, both inside the
+`tattooos-staging` namespace.
 
 ## Same-cluster capacity gate — not yet run
 

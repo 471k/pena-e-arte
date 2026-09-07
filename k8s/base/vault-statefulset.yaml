@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: pena-e-arte-vault
-  namespace: pena-e-arte
+  name: tattooos-vault
+  namespace: tattooos
 spec:
-  serviceName: pena-e-arte-vault
+  serviceName: tattooos-vault
   replicas: 1
   selector:
     matchLabels:
-      app: pena-e-arte-vault
+      app: tattooos-vault
   template:
     metadata:
       labels:
-        app: pena-e-arte-vault
+        app: tattooos-vault
     spec:
       hostname: vault-0
       containers:
@@ -59,7 +59,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: pena-e-arte-vault-config
+            name: tattooos-vault-config
   volumeClaimTemplates:
     - metadata:
         name: data

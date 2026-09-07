@@ -1,8 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: pena-e-arte-migrate
-  namespace: pena-e-arte
+  name: tattooos-migrate
+  namespace: tattooos
 spec:
   backoffLimit: 2
   template:
@@ -16,13 +16,13 @@ spec:
           # this Job to complete BEFORE rolling out the API Deployment (which runs with
           # Migrations__ApplyOnStartup=false via the ConfigMap), so N replicas never race the
           # same migration history table.
-          image: ghcr.io/471k/pena-e-arte-api:latest
+          image: ghcr.io/471k/tattooos-api:latest
           envFrom:
             - configMapRef:
-                name: pena-e-arte-api-config
+                name: tattooos-api-config
             - secretRef:
-                name: pena-e-arte-api-secrets
-          # pena-e-arte-api-config sets Migrations__ApplyOnStartup=false for the API
+                name: tattooos-api-secrets
+          # tattooos-api-config sets Migrations__ApplyOnStartup=false for the API
           # Deployment (§ below) — explicitly override it back to true here so this Job (and
           # only this Job) performs the one controlled migration run. env: entries take
           # precedence over envFrom: entries with the same name.

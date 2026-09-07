@@ -797,13 +797,13 @@ attribute a visit to a specific studio, which is the entire point of this featur
   recommended design (CronJob + PVC, chosen over a per-pod-start init-container because an
   init-container would re-download on *every* pod restart/rollout — wasteful against MaxMind's
   rate limits and adds latency to every rollout for a file that only actually changes weekly).
-  `k8s/overlays/production/geoip-pvc.yaml` (a 1Gi `pena-e-arte-geoip-data` PVC) +
+  `k8s/overlays/production/geoip-pvc.yaml` (a 1Gi `tattooos-geoip-data` PVC) +
   `geoip-cronjob.yaml` (weekly, `ghcr.io/maxmind/geoipupdate:v7.1.1`, matching MaxMind's own
   GeoLite2 refresh cadence) + `geoip-volume-patch.yaml` (mounts the PVC read-only into the API
   Deployment at `/data/geoip`) + `api-config-patch.yaml` (sets `GeoIp:DatabasePath`/
   `GeoIp:AsnDatabasePath` to point at that mount) — production overlay only. The MaxMind
   license key lives as `GeoIpUpdate__AccountId`/`GeoIpUpdate__LicenseKey` in the same
-  `pena-e-arte-api-secrets` K8s Secret (sourced from the `MAXMIND_ACCOUNT_ID`/
+  `tattooos-api-secrets` K8s Secret (sourced from the `MAXMIND_ACCOUNT_ID`/
   `MAXMIND_LICENSE_KEY` GitHub Actions secrets in `cd.yml`), never in `api-configmap.yaml` as
   plaintext, consistent with the Non-sensitive-config comment already in that file. Only
   `GeoLite2-City`/`GeoLite2-ASN` are fetched — `GeoLite2-Country` (present in the local

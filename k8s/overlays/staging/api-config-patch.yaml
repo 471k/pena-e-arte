@@ -1,8 +1,8 @@
 # ConfigMap data is a plain map, so this patch merges just these keys into base's
-# pena-e-arte-api-config — everything else (Redis__ConnectionString short DNS name,
+# tattooos-api-config — everything else (Redis__ConnectionString short DNS name,
 # Migrations__ApplyOnStartup, OpenTelemetry__OtlpEndpoint pointing at the shared monitoring
 # namespace) is correct unchanged, since Kustomize's namespace transformer already resolves
-# same-namespace short names correctly inside pena-e-arte-staging too.
+# same-namespace short names correctly inside tattooos-staging too.
 #
 # Jwt__Issuer/Audience deliberately differ from production's "tattoos-prod" — this is what
 # makes the shared JWT_SECRET_KEY judgment call in the staging secrets checklist actually safe:
@@ -11,8 +11,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-api-config
-  namespace: pena-e-arte
+  name: tattooos-api-config
+  namespace: tattooos
 data:
   Jwt__Issuer: "tattoos-staging"
   Jwt__Audience: "tattoos-staging"
