@@ -21,9 +21,9 @@ public static class BillingEndpoints
             .RequireAuthorization();
 
         billingGroup.MapGet("/plans", GetPlans).RequireAuthorization("OwnerOnly");
-        billingGroup.MapPost("/plans", CreatePlan).RequireAuthorization("IssuerOnly");
-        billingGroup.MapPut("/plans/{id:guid}", UpdatePlan).RequireAuthorization("IssuerOnly");
-        billingGroup.MapDelete("/plans/{id:guid}", DeletePlan).RequireAuthorization("IssuerOnly");
+        billingGroup.MapPost("/plans", CreatePlan).RequireAuthorization("AdminOnly");
+        billingGroup.MapPut("/plans/{id:guid}", UpdatePlan).RequireAuthorization("AdminOnly");
+        billingGroup.MapDelete("/plans/{id:guid}", DeletePlan).RequireAuthorization("AdminOnly");
 
         billingGroup.MapGet("/subscription", GetSubscription).RequireAuthorization("OwnerOnly");
         billingGroup.MapGet("/usage", GetPlanUsage).RequireAuthorization("OwnerOnly");

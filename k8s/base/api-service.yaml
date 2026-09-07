@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: pena-e-arte-api
-  namespace: pena-e-arte
+  name: tattooos-api
+  namespace: tattooos
 spec:
   type: ClusterIP
   selector:
-    app: pena-e-arte-api
+    app: tattooos-api
   ports:
     - port: 8080
       targetPort: 8080

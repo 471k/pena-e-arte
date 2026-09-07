@@ -364,8 +364,8 @@ describe("BookAppointmentForm", () => {
     expect(screen.queryByLabelText("Client")).not.toBeInTheDocument();
   });
 
-  it("renders the Client selector for issuer (staff) role", async () => {
-    renderForm(Role.Issuer);
+  it("renders the Client selector for admin (staff) role", async () => {
+    renderForm(Role.Admin);
     // Client selector is a combobox labelled "Client" (accessible name from the associated label)
     expect(await screen.findByRole("combobox", { name: /client/i })).toBeInTheDocument();
   });

@@ -57,8 +57,8 @@ describe("getRoleRedirectPath", () => {
     expect(getRoleRedirectPath(Role.Owner)).toBe("/dashboard");
   });
 
-  it("returns /platform for issuer", () => {
-    expect(getRoleRedirectPath(Role.Issuer)).toBe("/platform");
+  it("returns /platform for admin", () => {
+    expect(getRoleRedirectPath(Role.Admin)).toBe("/platform");
   });
 });
 
@@ -78,7 +78,7 @@ describe("RoleGuard", () => {
             <Route path="/book"      element={<div data-testid="client-home" />} />
             <Route path="/schedule"  element={<div data-testid="artist-home" />} />
             <Route path="/dashboard" element={<div data-testid="owner-home" />} />
-            <Route path="/platform"  element={<div data-testid="issuer-home" />} />
+            <Route path="/platform"  element={<div data-testid="admin-home" />} />
           </Routes>
         </MemoryRouter>
       </Provider>,
@@ -87,7 +87,7 @@ describe("RoleGuard", () => {
   }
 
   it("redirects to /login when user is not authenticated (role is null)", () => {
-    renderGuard([Role.Client, Role.Artist, Role.Owner, Role.Issuer], null);
+    renderGuard([Role.Client, Role.Artist, Role.Owner, Role.Admin], null);
     expect(screen.getByTestId("login-page")).toBeInTheDocument();
     expect(screen.queryByTestId("protected-page")).not.toBeInTheDocument();
   });
@@ -98,17 +98,17 @@ describe("RoleGuard", () => {
   });
 
   it("renders Outlet when role is one of multiple allowed roles", () => {
-    renderGuard([Role.Artist, Role.Owner, Role.Issuer], "artist");
+    renderGuard([Role.Artist, Role.Owner, Role.Admin], "artist");
     expect(screen.getByTestId("protected-page")).toBeInTheDocument();
   });
 
-  it("renders Outlet for issuer on an issuer-only route", () => {
-    renderGuard([Role.Issuer], "issuer");
+  it("renders Outlet for admin on an admin-only route", () => {
+    renderGuard([Role.Admin], "admin");
     expect(screen.getByTestId("protected-page")).toBeInTheDocument();
   });
 
   it("renders Outlet for owner when all roles are allowed", () => {
-    renderGuard([Role.Client, Role.Artist, Role.Owner, Role.Issuer], "owner");
+    renderGuard([Role.Client, Role.Artist, Role.Owner, Role.Admin], "owner");
     expect(screen.getByTestId("protected-page")).toBeInTheDocument();
   });
 
@@ -130,9 +130,9 @@ describe("RoleGuard", () => {
     expect(screen.queryByTestId("protected-page")).not.toBeInTheDocument();
   });
 
-  it("redirects issuer to /platform when accessing an artist-only route", () => {
-    renderGuard([Role.Artist], "issuer");
-    expect(screen.getByTestId("issuer-home")).toBeInTheDocument();
+  it("redirects admin to /platform when accessing an artist-only route", () => {
+    renderGuard([Role.Artist], "admin");
+    expect(screen.getByTestId("admin-home")).toBeInTheDocument();
     expect(screen.queryByTestId("protected-page")).not.toBeInTheDocument();
   });
 

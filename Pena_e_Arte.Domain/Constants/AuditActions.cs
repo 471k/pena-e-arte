@@ -9,7 +9,7 @@ public static class AuditActions
     public const string StudioSuspended = "Studio.Suspended";
     public const string StudioUnsuspended = "Studio.Unsuspended";
     public const string StudioTrialExtended = "Studio.TrialExtended";
-    public const string SubscriptionCancelledByIssuer = "Subscription.CancelledByIssuer";
+    public const string SubscriptionCancelledByAdmin = "Subscription.CancelledByAdmin";
     public const string SubscriptionActivatedManually = "Subscription.ActivatedManually";
     public const string PlanUpdated = "Plan.Updated";
     public const string ReferralCodeDeactivated = "ReferralCode.Deactivated";
@@ -34,6 +34,10 @@ public static class AuditActions
 
     public const string PaymentRefunded = "Payment.Refunded";
     public const string CashDepositConfirmed = "Payment.CashDepositConfirmed";
+
+    /// <summary>One-time creation of the platform's first admin account by AdminBootstrapper,
+    /// never a MediatR command — see AdminBootstrapper.RunAsync.</summary>
+    public const string AdminAccountBootstrapped = "Admin.AccountBootstrapped";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -49,4 +53,5 @@ public static class AuditTargetTypes
     public const string Client = "Client";
     public const string ManualReminder = "ManualReminder";
     public const string ConductReport = "ConductReport";
+    public const string User = "User";
 }

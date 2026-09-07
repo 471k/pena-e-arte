@@ -29,11 +29,11 @@ import {
   useExtendTrialMutation,
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
-  useGetIssuerStudioSummaryQuery,
+  useGetAdminStudioSummaryQuery,
   useGetPlatformReferralCodesQuery,
   useGenerateReferralCodeForStudioMutation,
 } from "@/features/platform/platformApi";
-import { useGetIssuerPlansQuery } from "@/features/billing/billingApi";
+import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 import { ReferralCodeRow } from "./PlatformReferralPage";
 
@@ -66,7 +66,7 @@ function fmt(date: string | Date) {
   });
 }
 
-export function IssuerStudioDetailPage() {
+export function AdminStudioDetailPage() {
   const { studioId } = useParams<{ studioId: string }>();
 
   useDocumentMeta({ title: "Studio Details — Platform Admin", canonical: `/platform/studios/${studioId ?? ""}` });
@@ -75,9 +75,9 @@ export function IssuerStudioDetailPage() {
     useGetStudioByIdQuery(studioId!, { skip: !studioId });
   const { data: subscriptions } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
-  const { data: plans = [] } = useGetIssuerPlansQuery();
+  const { data: plans = [] } = useGetAdminPlansQuery();
   const { data: summary, isLoading: summaryLoading } =
-    useGetIssuerStudioSummaryQuery(studioId!, { skip: !studioId });
+    useGetAdminStudioSummaryQuery(studioId!, { skip: !studioId });
   const { data: allReferralCodes, isLoading: codesLoading } = useGetPlatformReferralCodesQuery();
 
   const studioReferralCodes = useMemo(
@@ -220,7 +220,7 @@ export function IssuerStudioDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <Link
           to="/platform/studios"
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"

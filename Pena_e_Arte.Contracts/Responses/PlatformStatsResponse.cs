@@ -5,7 +5,7 @@ namespace Pena_e_Arte.Contracts.Responses;
 /// TotalStudios = ActiveSubscriptions + TrialStudios + GracePeriodStudios
 ///              + PastDueStudios + CancelledStudios
 ///              (every active studio falls into exactly one bucket).
-/// SuspendedStudios are excluded from TotalStudios — they are deactivated by the issuer.
+/// SuspendedStudios are excluded from TotalStudios — they are deactivated by the admin.
 /// </summary>
 public record PlatformStatsResponse(
     int TotalStudios,

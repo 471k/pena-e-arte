@@ -2,7 +2,7 @@ export const HelpRole = {
   Client: "client",
   Artist: "artist",
   Owner:  "owner",
-  Issuer: "issuer",
+  Admin:  "admin",
 } as const;
 export type HelpRole = typeof HelpRole[keyof typeof HelpRole];
 

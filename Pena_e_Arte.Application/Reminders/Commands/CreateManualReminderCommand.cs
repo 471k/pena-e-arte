@@ -49,7 +49,7 @@ public class CreateManualReminderHandler(
         bool isArtist = currentUser.Role == "artist";
 
         // Only needed for the artist-role ownership checks below and as the artist-role
-        // fallback source of truth — owner/issuer callers resolve the target artist per
+        // fallback source of truth — owner/admin callers resolve the target artist per
         // branch instead (from the appointment/client's own ArtistId whenever one exists),
         // so they never need to pass ArtistId just to send a reminder about a specific
         // appointment or an already-assigned client.
@@ -86,7 +86,7 @@ public class CreateManualReminderHandler(
             clientId = appointment.ClientId;
             appointmentId = appointment.Id;
             // Authoritative — the appointment's own artist, never req.ArtistId. Prevents an
-            // owner/issuer from attributing the reminder (and its quota consumption/audit
+            // owner/admin from attributing the reminder (and its quota consumption/audit
             // trail) to an unrelated artist by supplying a mismatched ArtistId.
             resolvedArtistId = appointment.ArtistId
                 ?? throw new BusinessRuleViolationException(
@@ -189,7 +189,7 @@ public class CreateManualReminderHandler(
 
     private async Task<Guid> RequireExplicitArtistAsync(Guid? requestedArtistId, CancellationToken ct)
     {
-        // Owner/issuer with no authoritative artist source (raw-contact, or an Unassigned
+        // Owner/admin with no authoritative artist source (raw-contact, or an Unassigned
         // client) must act on behalf of an explicitly named artist (Decision 2) — never
         // silently picking "any" artist at the studio.
         if (requestedArtistId is null)

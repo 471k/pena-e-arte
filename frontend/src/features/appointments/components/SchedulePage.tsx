@@ -56,7 +56,7 @@ export function SchedulePage() {
   const [quickReminderOpen, setQuickReminderOpen] = useState(false);
   // Exact-role (not usePermission's rank-based "Artist and above") check: raw-contact
   // reminders require an ArtistId the backend can only infer for the artist themselves —
-  // owner/issuer have no artist context on this page and no artist-picker exists yet, so
+  // owner/admin have no artist context on this page and no artist-picker exists yet, so
   // showing this button to them would open a dialog that always 422s on submit.
   const role = useAppSelector((s) => s.auth.role);
   const canQuickRemind = role === Role.Artist;

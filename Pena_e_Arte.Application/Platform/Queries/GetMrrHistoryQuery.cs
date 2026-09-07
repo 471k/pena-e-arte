@@ -16,7 +16,7 @@ public class GetMrrHistoryHandler(IAppDbContext db)
     {
         int months = Math.Clamp(query.Months, 1, 24);
 
-        // IssuerOnly endpoint — no tenant filter on Subscriptions entity (not a TenantEntity).
+        // AdminOnly endpoint — no tenant filter on Subscriptions entity (not a TenantEntity).
         var subscriptions = await db.Subscriptions
             .AsNoTracking()
             .Include(s => s.Plan)

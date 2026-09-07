@@ -41,7 +41,7 @@ public class AppDbContext(
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
-    // --- Issuer-level (no tenant filter) ---
+    // --- Admin-level (no tenant filter) ---
     public DbSet<Studio> Studios => Set<Studio>();
     public DbSet<Plan> Plans => Set<Plan>();
     public DbSet<PlanPrice> PlanPrices => Set<PlanPrice>();
@@ -71,11 +71,11 @@ public class AppDbContext(
     //     by (SubjectType, SubjectId) and verify tenant ownership explicitly) ---
     public DbSet<SocialAccountLink> SocialAccountLinks => Set<SocialAccountLink>();
 
-    // --- Platform feedback (no tenant filter — issuer reads across all studios) ---
+    // --- Platform feedback (no tenant filter — admin reads across all studios) ---
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
 
-    // --- Help search analytics (tenant-scoped write; issuer aggregate read via IgnoreQueryFilters) ---
+    // --- Help search analytics (tenant-scoped write; admin aggregate read via IgnoreQueryFilters) ---
     public DbSet<HelpSearchLog> HelpSearchLogs => Set<HelpSearchLog>();
 
     // --- Onboarding tour completion (no tenant filter — per-user, cross-tenant) ---
@@ -90,7 +90,7 @@ public class AppDbContext(
     //     client's own current tenant) ---
     public DbSet<ConductReport> ConductReports => Set<ConductReport>();
 
-    // --- Traffic analytics (no tenant filter — StudioId nullable, issuer-only cross-tenant reads) ---
+    // --- Traffic analytics (no tenant filter — StudioId nullable, admin-only cross-tenant reads) ---
     public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
     public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
 
@@ -198,7 +198,7 @@ public class AppDbContext(
             entity.Property(r => r.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.Property(r => r.Title).HasMaxLength(150).IsRequired();
             entity.Property(r => r.Body).HasMaxLength(2000).IsRequired();
-            entity.Property(r => r.IssuerNote).HasMaxLength(1000);
+            entity.Property(r => r.AdminNote).HasMaxLength(1000);
 
             entity.Property(r => r.AttachmentUrls)
                   .HasConversion(
@@ -206,7 +206,7 @@ public class AppDbContext(
                       v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
                   .HasColumnType("json");
 
-            // No HasQueryFilter — issuer reads across all studios.
+            // No HasQueryFilter — admin reads across all studios.
             entity.HasIndex(r => r.StudioId);
             entity.HasIndex(r => r.Status);
             entity.HasIndex(r => r.CreatedAt);

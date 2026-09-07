@@ -5,9 +5,9 @@ namespace Pena_e_Arte.Application.Auth.Validators;
 
 public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
 {
-    // This endpoint is [AllowAnonymous]. "artist" and "issuer" accounts must never be
+    // This endpoint is [AllowAnonymous]. "artist" and "admin" accounts must never be
     // self-registered here — artists are provisioned by an authenticated owner, and
-    // issuer is the cross-tenant platform-admin role. Only "client" (public signup) and
+    // admin is the cross-tenant platform-admin role. Only "client" (public signup) and
     // "owner" (studio self-registration, see RegisterUserHandler's OwnerEmail check) may
     // pass through this public endpoint.
     private static readonly string[] ValidRoles = ["client", "owner"];

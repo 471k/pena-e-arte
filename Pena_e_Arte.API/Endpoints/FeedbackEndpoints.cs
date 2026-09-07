@@ -21,7 +21,7 @@ public static class FeedbackEndpoints
         mine.MapPost("{id:guid}/messages", PostFeedbackMessage);
 
         RouteGroupBuilder group = app.MapGroup("/api/v1/platform/feedback")
-            .RequireAuthorization("IssuerOnly");
+            .RequireAuthorization("AdminOnly");
 
         group.MapGet("", GetFeedbackReports);
         group.MapPatch("{id:guid}/status", UpdateFeedbackStatus);

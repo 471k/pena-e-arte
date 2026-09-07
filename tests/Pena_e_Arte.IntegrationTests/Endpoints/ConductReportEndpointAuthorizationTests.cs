@@ -93,7 +93,7 @@ public class ConductReportEndpointAuthorizationTests(DatabaseFixture fixture)
     }
 
     [Fact]
-    public async Task UpdateStatus_OwnerOnHighSeverity_Returns403_IssuerCanThenResolve_AndAuditRowIsWritten()
+    public async Task UpdateStatus_OwnerOnHighSeverity_Returns403_AdminCanThenResolve_AndAuditRowIsWritten()
     {
         Guid studioId = Guid.NewGuid();
         (_, Guid reportId) = await SeedArtistAndReportAsync(studioId, Guid.NewGuid(), ReportCategory.SexualMisconduct);
@@ -106,11 +106,11 @@ public class ConductReportEndpointAuthorizationTests(DatabaseFixture fixture)
         HttpResponseMessage ownerAttempt = await PatchStatus(ownerClient, ownerToken, reportId, "Resolved");
         ownerAttempt.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        using HttpClient issuerClient = server.CreateClient();
-        string issuerToken = BuildToken(null, Guid.NewGuid(), "issuer");
+        using HttpClient adminClient = server.CreateClient();
+        string adminToken = BuildToken(null, Guid.NewGuid(), "admin");
 
-        HttpResponseMessage issuerAttempt = await PatchStatus(issuerClient, issuerToken, reportId, "Resolved");
-        issuerAttempt.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        HttpResponseMessage adminAttempt = await PatchStatus(adminClient, adminToken, reportId, "Resolved");
+        adminAttempt.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         ConductReport updated = await db.ConductReports.SingleAsync(r => r.Id == reportId);

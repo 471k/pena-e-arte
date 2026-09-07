@@ -15,12 +15,12 @@ import type { AuditLogPageResponse } from "@/features/platform/platform.types";
 const PAGE: AuditLogPageResponse = {
   items: [
     {
-      id: "log-1", actorUserId: "u-1", actorRole: "issuer",
+      id: "log-1", actorUserId: "u-1", actorRole: "admin",
       action: "Studio.Suspended", targetType: "Studio", targetId: "s-001",
       studioId: "s-001", metadata: "{}", createdAt: "2026-07-20T10:00:00Z",
     },
     {
-      id: "log-2", actorUserId: "u-2", actorRole: "issuer",
+      id: "log-2", actorUserId: "u-2", actorRole: "admin",
       action: "Plan.Updated", targetType: "Plan", targetId: "p-001",
       studioId: null, metadata: "{}", createdAt: "2026-07-19T10:00:00Z",
     },
@@ -47,7 +47,7 @@ function makeStore() {
     middleware: (gd) => gd().concat(platformApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u4", email: "issuer@platform.test" }, token: "fake", tenantId: null, role: "issuer" } as any,
+      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin" } as any,
     },
   });
 }

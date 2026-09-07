@@ -55,9 +55,9 @@ describe("UserChip", () => {
     expect(screen.getByText("Owner")).toBeInTheDocument();
   });
 
-  it("issuer role shows 'Super Admin', not 'Platform Admin'", () => {
-    renderChip({ id: "u1", email: "admin@example.com", name: "Gabriel" }, "issuer");
-    expect(screen.getByText("Super Admin")).toBeInTheDocument();
+  it("admin role shows 'Admin', not 'Platform Admin'", () => {
+    renderChip({ id: "u1", email: "admin@example.com", name: "Gabriel" }, "admin");
+    expect(screen.getByText("Admin")).toBeInTheDocument();
     expect(screen.queryByText("Platform Admin")).not.toBeInTheDocument();
   });
 

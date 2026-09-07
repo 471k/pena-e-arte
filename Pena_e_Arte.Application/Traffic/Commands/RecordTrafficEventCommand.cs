@@ -66,7 +66,7 @@ public class RecordTrafficEventHandler(IAppDbContext db) : IRequestHandler<Recor
         if (segments[0] == "s")
         {
             string slug = segments[1];
-            // Studio carries no query filter at all (issuer-level, not tenant-scoped) — no
+            // Studio carries no query filter at all (admin-level, not tenant-scoped) — no
             // IgnoreQueryFilters() needed here, matching database.md's documented shape.
             // IsActive matches GetPublicStudioQuery's own filter exactly — a beacon fired at a
             // deactivated studio's page (which itself 404s) must not attribute traffic to it.

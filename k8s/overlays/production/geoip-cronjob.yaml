@@ -1,4 +1,4 @@
-# Populates pena-e-arte-geoip-data with current GeoLite2-City/ASN .mmdb files, closing the gap
+# Populates tattooos-geoip-data with current GeoLite2-City/ASN .mmdb files, closing the gap
 # documented in docs/claude/architecture.md's "K8s .mmdb population" Decisions Log entry
 # (option 2, CronJob + PVC, chosen over a per-pod-start init-container). Uses MaxMind's own
 # official image rather than a custom build — see
@@ -16,8 +16,8 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: pena-e-arte-geoip-update
-  namespace: pena-e-arte
+  name: tattooos-geoip-update
+  namespace: tattooos
 spec:
   schedule: "0 6 * * 3"
   concurrencyPolicy: Forbid
@@ -43,12 +43,12 @@ spec:
                 - name: GEOIPUPDATE_ACCOUNT_ID
                   valueFrom:
                     secretKeyRef:
-                      name: pena-e-arte-api-secrets
+                      name: tattooos-api-secrets
                       key: GeoIpUpdate__AccountId
                 - name: GEOIPUPDATE_LICENSE_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: pena-e-arte-api-secrets
+                      name: tattooos-api-secrets
                       key: GeoIpUpdate__LicenseKey
               volumeMounts:
                 - name: geoip-data
@@ -63,4 +63,4 @@ spec:
           volumes:
             - name: geoip-data
               persistentVolumeClaim:
-                claimName: pena-e-arte-geoip-data
+                claimName: tattooos-geoip-data

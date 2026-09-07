@@ -35,7 +35,7 @@ src/frontend/src/
     ├── ClientLayout.tsx
     ├── ArtistLayout.tsx
     ├── OwnerLayout.tsx
-    └── IssuerLayout.tsx
+    └── AdminLayout.tsx
 ```
 
 ---
@@ -60,7 +60,7 @@ export const store = configureStore({
     [intakeFormsApi.reducerPath]:   intakeFormsApi.reducer,
     [consentFormsApi.reducerPath]:  consentFormsApi.reducer,
     [depositRulesApi.reducerPath]:  depositRulesApi.reducer,
-    [platformApi.reducerPath]:      platformApi.reducer,   // issuer platform admin
+    [platformApi.reducerPath]:      platformApi.reducer,   // admin platform
   },
   middleware: (getDefault) =>
     getDefault()
@@ -162,17 +162,17 @@ const authSlice = createSlice({
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <RoleGuard allowedRoles={["client", "artist", "owner", "issuer"]} />,
+    element: <RoleGuard allowedRoles={["client", "artist", "owner", "admin"]} />,
     children: [
       { path: "book",      element: <ClientLayout />,  ... },
       { path: "schedule",  element: <ArtistLayout />,  ... },
       { path: "dashboard", element: <OwnerLayout />,   ... },
       {
         path: "platform",
-        element: <RoleGuard allowedRoles={["issuer"]} />,
+        element: <RoleGuard allowedRoles={["admin"]} />,
         children: [
-          { index: true,           element: <IssuerDashboardPage /> },
-          { path: "studios",       element: <IssuerStudioListPage /> },
+          { index: true,           element: <AdminDashboardPage /> },
+          { path: "studios",       element: <AdminStudioListPage /> },
           { path: "plans",         element: <PlanManagementPage /> },
           { path: "subscriptions", element: <SubscriptionOversightPage /> },
           { path: "referrals",     element: <PlatformReferralPage /> },
@@ -188,7 +188,7 @@ const router = createBrowserRouter([
 // client  → /book
 // artist  → /schedule
 // owner   → /dashboard
-// issuer  → /platform   ← NOT /dashboard
+// admin   → /platform   ← NOT /dashboard
 
 // shared/hooks/usePermission.ts — use this for conditional UI rendering
 export function usePermission(requiredRole: Role): boolean {
@@ -197,9 +197,9 @@ export function usePermission(requiredRole: Role): boolean {
 }
 ```
 
-## Issuer Feature Slice
+## Admin Feature Slice
 
-All issuer platform-admin data lives in `features/platform/`.
+All admin platform data lives in `features/platform/`.
 
 ```
 features/platform/
@@ -208,8 +208,8 @@ features/platform/
 ├── platformApi.ts             RTK Query slice (reducerPath: "platformApi")
 ├── index.ts                   public exports
 └── components/
-    ├── IssuerDashboardPage.tsx    home screen (KPI cards, at-risk widget, quick nav)
-    ├── IssuerStudioListPage.tsx   all studios + suspend/unsuspend
+    ├── AdminDashboardPage.tsx     home screen (KPI cards, at-risk widget, quick nav)
+    ├── AdminStudioListPage.tsx    all studios + suspend/unsuspend
     ├── PlanManagementPage.tsx     plan CRUD (incl. AllowBrandingRemoval toggle)
     ├── SubscriptionOversightPage.tsx  all subscriptions + trial extension
     ├── PlatformReferralPage.tsx   all referral codes + deactivate
@@ -218,7 +218,7 @@ features/platform/
 
 `platformApi` tag types: `PlatformStats`, `PlatformSubscription`, `PlatformReferral`, `IndustryReport`.
 
-Do NOT add issuer platform queries to `billingApi` or `studiosApi` — keep them in `platformApi`.
+Do NOT add admin platform queries to `billingApi` or `studiosApi` — keep them in `platformApi`.
 
 ---
 
@@ -313,7 +313,7 @@ export const Role = {
   Client: "client",
   Artist: "artist",
   Owner:  "owner",
-  Issuer: "issuer",
+  Admin:  "admin",
 } as const;
 
 export type Role = typeof Role[keyof typeof Role];

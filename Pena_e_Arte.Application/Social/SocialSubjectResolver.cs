@@ -14,7 +14,7 @@ namespace Pena_e_Arte.Application.Social;
 /// ICurrentTenant.StudioId directly:
 /// - Artist subject: db.Artists carries the tenant query filter already, so a caller
 ///   can never resolve an artist outside their own studio through this path.
-/// - Studio subject: Studio has no tenant filter at all (issuer-level/unfiltered), so
+/// - Studio subject: Studio has no tenant filter at all (admin-level/unfiltered), so
 ///   this checks subjectId against ICurrentTenant.StudioId explicitly — the same
 ///   pattern UpdateStudioBrandingCommand/AddStudioClosureCommand/GenerateReferralCodeCommand
 ///   already use for OwnerOnly + route-studio-id endpoints elsewhere in this codebase.

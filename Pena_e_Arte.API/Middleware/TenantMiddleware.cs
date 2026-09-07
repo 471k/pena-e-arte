@@ -32,7 +32,7 @@ public class TenantMiddleware(RequestDelegate next)
         {
             tenant.SetTenant(studioId);
 
-            if (!context.User.IsInRole("issuer") && !IsExemptPath(context.Request.Path))
+            if (!context.User.IsInRole("admin") && !IsExemptPath(context.Request.Path))
                 await EnforceAsync(context, studioId, subscriptions);
         }
 

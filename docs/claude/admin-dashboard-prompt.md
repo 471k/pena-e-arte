@@ -1,4 +1,4 @@
-# Issuer Dashboard & Platform Features — Overnight Execution Prompt
+# Admin Dashboard & Platform Features — Overnight Execution Prompt
 
 > Self-contained implementation spec. Read `CLAUDE.md`, `docs/claude/backend.md`,
 > `docs/claude/frontend.md`, `docs/claude/database.md`, and `docs/claude/conventions.md`
@@ -21,19 +21,19 @@ Five features, one bug fix, and one refactor:
 | F2 | Subscription Oversight (list + trial extension) | New |
 | F3 | Platform Referral Code Management | New |
 | F4 | Industry Reports Viewer (frontend only) | New |
-| F5 | Issuer Dashboard Page (home screen) | New |
+| F5 | Admin Dashboard Page (home screen) | New |
 | F6 | `AllowBrandingRemoval` on UpdatePlan | Completion |
-| FIX | Remove duplicate plan CRUD in IssuerEndpoints.cs | Bug fix / refactor |
+| FIX | Remove duplicate plan CRUD in AdminEndpoints.cs | Bug fix / refactor |
 
 ---
 
 ## Global Rules (enforced on every file)
 
-- Every new backend endpoint → `RequireAuthorization("IssuerOnly")` unless noted.
+- Every new backend endpoint → `RequireAuthorization("AdminOnly")` unless noted.
 - Every new DB query on tenant data → goes through EF Core global query filters, OR uses
   `IgnoreQueryFilters()` only where explicitly permitted below (platform stats and
-  subscription oversight are issuer-scoped and approved to bypass filters).
-- No PII in logs. Every log includes `tenant_id` where applicable; for issuer-level
+  subscription oversight are admin-scoped and approved to bypass filters).
+- No PII in logs. Every log includes `tenant_id` where applicable; for admin-level
   aggregate queries use `"platform"` as the tenant context in log enrichment.
 - No business logic in endpoints — MediatR only.
 - TypeScript strict mode. No `any`. Named exports only. No `useEffect` for data fetching.
@@ -41,18 +41,18 @@ Five features, one bug fix, and one refactor:
 
 ---
 
-## FIX — Remove Duplicate Plan CRUD from IssuerEndpoints.cs
+## FIX — Remove Duplicate Plan CRUD from AdminEndpoints.cs
 
-**Problem:** `IssuerEndpoints.cs` at `/api/v1/plans` and `BillingEndpoints.cs` at
+**Problem:** `AdminEndpoints.cs` at `/api/v1/plans` and `BillingEndpoints.cs` at
 `/api/v1/billing/plans` both register `GetPlansQuery`, `CreatePlanCommand`,
 `UpdatePlanCommand`, and `DeletePlanCommand`. The canonical path is `/api/v1/billing/plans`
 (already used by the frontend's `billingApi.ts`).
 
 **Fix:**
 
-Delete `Pena_e_Arte.API/Endpoints/IssuerEndpoints.cs` entirely.
+Delete `Pena_e_Arte.API/Endpoints/AdminEndpoints.cs` entirely.
 
-Verify in `Program.cs` that `app.MapIssuerEndpoints()` is removed after deletion.
+Verify in `Program.cs` that `app.MapAdminEndpoints()` is removed after deletion.
 
 No handler, contract, or frontend change needed — the billing path was already wired.
 
@@ -62,7 +62,7 @@ No handler, contract, or frontend change needed — the billing path was already
 
 **Why:** The `Plan` entity has `AllowBrandingRemoval` (bool) per the architecture, but
 `UpdatePlanRequest`, `UpdatePlanCommand`, and `UpdatePlanHandler` never expose it.
-The issuer currently cannot toggle which plans unlock branding removal.
+The admin currently cannot toggle which plans unlock branding removal.
 
 ### Contracts
 
@@ -145,7 +145,7 @@ Add a unit test: `UpdatePlan_WithAllowBrandingRemoval_SetsFlag`.
 
 ### Goal
 
-Single endpoint returning a platform-wide snapshot. Used by the issuer dashboard.
+Single endpoint returning a platform-wide snapshot. Used by the admin dashboard.
 Query uses `IgnoreQueryFilters()` — this is the fourth approved use (see architecture.md).
 
 ### Domain
@@ -165,7 +165,7 @@ public class GetPlatformStatsHandler(AppDbContext db)
     public async Task<PlatformStatsResponse> Handle(
         GetPlatformStatsQuery _, CancellationToken ct)
     {
-        // All queries here use IgnoreQueryFilters() — issuer-scoped, approved.
+        // All queries here use IgnoreQueryFilters() — admin-scoped, approved.
         List<Studio> studios = await db.Studios
             .IgnoreQueryFilters()
             .Include(s => s.Subscription)
@@ -399,7 +399,7 @@ public class PlatformStatsIntegrationTests(IntegrationTestFactory factory)
 
 ### Goal
 
-Issuer can see all subscriptions across tenants and extend a studio's trial.
+Admin can see all subscriptions across tenants and extend a studio's trial.
 
 ### Application
 
@@ -557,7 +557,7 @@ The page renders a filterable list of all platform subscriptions. Full spec:
 
 ### Goal
 
-Issuer can view all referral codes across all studios and deactivate any code.
+Admin can view all referral codes across all studios and deactivate any code.
 
 ### Application
 
@@ -686,7 +686,7 @@ Full spec:
 - Filter toggle: All | Active only | Inactive only.
 - Each row is a `Card` showing: code (monospaced font), studio name, redemption count badge, expiry date (or "No expiry"), created date, active/inactive status badge.
 - Inactive rows are visually muted (`opacity-60`).
-- Each active row has a "Deactivate" button with a two-step confirm (same pattern as `IssuerStudioListPage`).
+- Each active row has a "Deactivate" button with a two-step confirm (same pattern as `AdminStudioListPage`).
 - On deactivate, calls `useDeactivateReferralCodeMutation`. On success row updates to inactive state immediately via RTK Query cache invalidation.
 - Named export: `PlatformReferralPage`.
 
@@ -715,29 +715,29 @@ Full spec:
 - Renders a list of report cards, one per available month, sorted newest first.
 - Each card shows: "Month Year" title (e.g. "May 2026"), a "Download report" link that opens `reportUrl` in a new tab (`target="_blank" rel="noopener noreferrer"`).
 - Empty state: "No reports available yet. The first report generates on the 1st of next month."
-- Loading and error states following the same pattern as `IssuerStudioListPage`.
+- Loading and error states following the same pattern as `AdminStudioListPage`.
 - Named export: `IndustryReportsPage`.
 
 No backend, no new tests needed (endpoint already tested in `IndustryReportsIntegrationTests.cs`).
 
 ---
 
-## F5 — Issuer Dashboard Page
+## F5 — Admin Dashboard Page
 
 ### Goal
 
-Replace the owner-focused `DashboardPage` for the issuer role with a platform-admin home
-screen. The issuer's entry point after login is `/platform` → `IssuerLayout` →
-`IssuerDashboardPage`.
+Replace the owner-focused `DashboardPage` for the admin role with a platform-admin home
+screen. The admin's entry point after login is `/platform` → `AdminLayout` →
+`AdminDashboardPage`.
 
 ### Frontend
 
-**Create** `frontend/src/features/platform/components/IssuerDashboardPage.tsx`:
+**Create** `frontend/src/features/platform/components/AdminDashboardPage.tsx`:
 
 #### Structure
 
 ```
-IssuerDashboardPage
+AdminDashboardPage
 ├── Header ("Platform Dashboard" + today's date)
 ├── KpiSection       — stat cards grid
 ├── AtRiskSection    — studios needing attention
@@ -795,33 +795,33 @@ Five nav tiles in a 3-column grid (with last row left-aligned):
 
 Same tile style as `DashboardPage`'s `QuickNav`.
 
-Named export: `IssuerDashboardPage`.
+Named export: `AdminDashboardPage`.
 
 ### Router Update
 
 Update `frontend/src/app/router.tsx`:
 
-The issuer role must be routed to `IssuerLayout` which already exists. Add the following
+The admin role must be routed to `AdminLayout` which already exists. Add the following
 child routes under the `/platform` path group:
 
 ```typescript
-{ index: true,            element: <IssuerDashboardPage /> },
-{ path: "studios",        element: <IssuerStudioListPage /> },
+{ index: true,            element: <AdminDashboardPage /> },
+{ path: "studios",        element: <AdminStudioListPage /> },
 { path: "plans",          element: <PlanManagementPage /> },
 { path: "subscriptions",  element: <SubscriptionOversightPage /> },
 { path: "referrals",      element: <PlatformReferralPage /> },
 { path: "reports",        element: <IndustryReportsPage /> },
 ```
 
-Ensure the `RoleGuard` wrapping `/platform` allows only `"issuer"`.
+Ensure the `RoleGuard` wrapping `/platform` allows only `"admin"`.
 
-After login, the router already redirects users by role. Confirm the issuer redirect
+After login, the router already redirects users by role. Confirm the admin redirect
 target is `/platform` (not `/dashboard`). If it currently redirects to `/dashboard`,
 update the role-redirect logic.
 
-### IssuerLayout Nav Update
+### AdminLayout Nav Update
 
-Update `frontend/src/layouts/IssuerLayout.tsx` to include nav links for all five platform
+Update `frontend/src/layouts/AdminLayout.tsx` to include nav links for all five platform
 sections:
 
 ```typescript
@@ -841,7 +841,7 @@ Use `NavLink` from React Router for active state highlighting.
 
 Frontend component tests in `frontend/src/features/platform/__tests__/`:
 
-**`IssuerDashboardPage.test.tsx`:**
+**`AdminDashboardPage.test.tsx`:**
 ```typescript
 // renders KPI cards with data from getPlatformStats
 // renders skeleton cards while loading
@@ -864,13 +864,13 @@ Frontend component tests in `frontend/src/features/platform/__tests__/`:
 
 Before committing, verify:
 
-- [ ] `IssuerEndpoints.cs` is deleted and `MapIssuerEndpoints()` removed from `Program.cs`.
+- [ ] `AdminEndpoints.cs` is deleted and `MapAdminEndpoints()` removed from `Program.cs`.
 - [ ] `UpdatePlanRequest` includes `AllowBrandingRemoval` and the handler sets it.
-- [ ] `PlatformEndpoints.cs` registers all five new routes under `IssuerOnly`.
+- [ ] `PlatformEndpoints.cs` registers all five new routes under `AdminOnly`.
 - [ ] `IgnoreQueryFilters()` usage in F1, F2, F3 is documented with inline comments referencing the architecture approved-usage list (4th, 5th, 6th usage respectively — update `architecture.md`).
 - [ ] `platformApi` added to `store.ts` reducer and middleware.
-- [ ] Router routes issuer to `/platform` not `/dashboard`.
-- [ ] `IssuerLayout` nav includes all five sections.
+- [ ] Router routes admin to `/platform` not `/dashboard`.
+- [ ] `AdminLayout` nav includes all five sections.
 - [ ] All new integration tests pass with `dotnet test`.
 - [ ] All new frontend tests pass with `pnpm test`.
 - [ ] No new npm/NuGet packages introduced.

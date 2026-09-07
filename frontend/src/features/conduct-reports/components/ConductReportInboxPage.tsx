@@ -65,7 +65,7 @@ function ReportCard({ report }: { report: ConductReportResponse }) {
           <div className="pt-2 space-y-3 border-t">
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{report.reason}</p>
 
-            {/* Status controls are always enabled for the issuer, regardless of severity. */}
+            {/* Status controls are always enabled for the admin, regardless of severity. */}
             <div className="flex gap-1.5 flex-wrap">
               {STATUS_BUTTONS.map((status) => (
                 <Button

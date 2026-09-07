@@ -5,6 +5,6 @@ export interface NavItem {
   href:       string;
   icon:       ReactNode;
   tourId?:    string;
-  end?:       boolean;   // exact-match routing, e.g. IssuerLayout's Dashboard item
-  badge?:     number;    // e.g. IssuerLayout's open-feedback count
+  end?:       boolean;   // exact-match routing, e.g. AdminLayout's Dashboard item
+  badge?:     number;    // e.g. AdminLayout's open-feedback count
 }

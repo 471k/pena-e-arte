@@ -1,6 +1,6 @@
 import type { ReportStatus } from "../conductReports.types";
 
-// Shared between ConductReportsPage.tsx (owner/artist) and ConductReportInboxPage.tsx (issuer)
+// Shared between ConductReportsPage.tsx (owner/artist) and ConductReportInboxPage.tsx (admin)
 // — was copy-pasted verbatim across both before this module existed. Split out from
 // conductReportShared.tsx because that file's component exports tripped
 // react-refresh/only-export-components when mixed with these non-component exports.

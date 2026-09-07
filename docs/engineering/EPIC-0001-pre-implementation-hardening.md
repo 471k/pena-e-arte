@@ -152,7 +152,7 @@ alongside PENA-100 so the gates are in place before the rest of the epic starts 
 3. No `console.log`/`Console.WriteLine` introduced; structured Serilog logging only, and payment-
    or health-adjacent log lines carry zero PII (name/email/phone/card/health text) — grep the diff
    for the client's/studio's actual data before requesting review
-4. If the change touches anything a client, artist, owner, or issuer can see or do: `helpContent.ts`,
+4. If the change touches anything a client, artist, owner, or admin can see or do: `helpContent.ts`,
    `frontend/public/user-manual/index.html`, and the relevant file(s) under
    `frontend/src/features/help/tours/` are updated **in the same PR** — CLAUDE.md rule 7. A ticket
    that changes user-facing behavior without a Help diff fails review on that basis alone, no

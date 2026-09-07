@@ -6,7 +6,7 @@ import { CreditCard, Edit2, Loader2, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { useGetIssuerPlansQuery, useDeletePlanMutation } from "@/features/billing/billingApi";
+import { useGetAdminPlansQuery, useDeletePlanMutation } from "@/features/billing/billingApi";
 import { priceFor, type PlanResponse } from "@/features/billing/billing.types";
 
 // null = unlimited on the plan
@@ -202,11 +202,11 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
 export function PlanManagementPage() {
   useDocumentMeta({ title: "Plans — Platform Admin", canonical: "/platform/plans" });
 
-  const { data: plans, isLoading, isError } = useGetIssuerPlansQuery();
+  const { data: plans, isLoading, isError } = useGetAdminPlansQuery();
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-[var(--issuer-nav-height)] z-10">
+      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Plans</span>

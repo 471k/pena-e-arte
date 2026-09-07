@@ -4,10 +4,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: pena-e-arte
-  # Must match base's resource identity (namespace: pena-e-arte) — patches are matched
-  # BEFORE the namespace: transformer below reassigns everything to pena-e-arte-staging.
-  namespace: pena-e-arte
+  name: tattooos
+  # Must match base's resource identity (namespace: tattooos) — patches are matched
+  # BEFORE the namespace: transformer below reassigns everything to tattooos-staging.
+  namespace: tattooos
 spec:
   tls:
     - hosts: ["staging.tattooos.co"]
@@ -23,5 +23,5 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: pena-e-arte-frontend
+                name: tattooos-frontend
                 port: { number: 8080 }

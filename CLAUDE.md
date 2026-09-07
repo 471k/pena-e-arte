@@ -8,7 +8,7 @@
 ## What This Project Is
 
 Multi-tenant SaaS for tattoo studios. Each studio is a tenant. Four roles:
-`client` `artist` `owner` `issuer` (platform admin, cross-tenant).
+`client` `artist` `owner` `admin` (platform admin, cross-tenant).
 
 **Core features:** appointment booking + deposits, digital consent forms,
 design approval workflow, client profiles + body map, payments + session
@@ -86,7 +86,7 @@ Infra         Docker · K3s · Traefik · GitHub Actions
 
 1. **Tenant isolation is mandatory.** Every DB query touching tenant data must
    go through EF Core global query filters. Never query without tenant scope
-   unless the role is `issuer`.
+   unless the role is `admin`.
 
 2. **RBAC at the endpoint.** Every endpoint must have `.RequireAuthorization()`
    with the correct policy. No unprotected endpoints except `/auth` and `/health`.
@@ -104,10 +104,10 @@ Infra         Docker · K3s · Traefik · GitHub Actions
    change, backend and frontend alike, must reflect the current standard for this
    product category: vertical booking/scheduling SaaS (Vagaro, Fresha, Boulevard,
    Mindbody, Zenoti, GlossGenius-tier UX and architecture) plus general B2B SaaS
-   platform-admin standards for the issuer role (org/tenant management, billing,
+   platform-admin standards for the admin role (org/tenant management, billing,
    audit logs, support tooling). This applies to backend architecture/structure/
    conventions and to frontend UI/UX equally, and must hold for every tenant this
-   touches — client, artist, owner, and issuer — not just the role the feature was
+   touches — client, artist, owner, and admin — not just the role the feature was
    built for. See `docs/claude/architecture.md`'s "Industry-Standard Benchmark" note
    for the concrete comparison set and how to verify against it.
 
@@ -148,7 +148,7 @@ docker compose down
 ## What Claude Code Should Never Do
 
 - Add a new ORM or data access library (EF Core is the only one)
-- Bypass global query filters without explicit `issuer` role check
+- Bypass global query filters without explicit `admin` role check
 - Store state in-memory that should be in Redis (sessions, slots, rate limits)
 - Create a REST endpoint without a corresponding FluentValidation validator
 - Skip writing a test for business logic in the Application layer

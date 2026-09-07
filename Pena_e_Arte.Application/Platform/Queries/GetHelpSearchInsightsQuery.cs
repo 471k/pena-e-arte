@@ -16,7 +16,7 @@ public class GetHelpSearchInsightsHandler(IAppDbContext db)
         DateTime since = DateTime.UtcNow.AddDays(-query.Days);
 
         // IgnoreQueryFilters approved: usage #39 — cross-tenant aggregate of help search
-        // queries for the issuer product-insights view. See architecture.md.
+        // queries for the admin product-insights view. See architecture.md.
         List<HelpSearchLog> logs = await db.HelpSearchLogs
             .IgnoreQueryFilters()
             .Where(h => h.CreatedAt >= since)

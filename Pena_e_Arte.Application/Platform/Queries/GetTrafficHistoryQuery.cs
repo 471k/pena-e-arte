@@ -35,7 +35,7 @@ public class GetTrafficHistoryHandler(IAppDbContext db)
                 ClientCount: g.Where(r => r.Role == "client").Sum(r => r.VisitCount),
                 ArtistCount: g.Where(r => r.Role == "artist").Sum(r => r.VisitCount),
                 OwnerCount: g.Where(r => r.Role == "owner").Sum(r => r.VisitCount),
-                IssuerCount: g.Where(r => r.Role == "issuer").Sum(r => r.VisitCount)))
+                AdminCount: g.Where(r => r.Role == "admin").Sum(r => r.VisitCount)))
             .ToList();
 
         return new TrafficHistoryResponse(days, dataPoints);

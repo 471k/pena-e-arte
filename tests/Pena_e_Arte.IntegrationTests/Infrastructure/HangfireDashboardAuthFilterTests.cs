@@ -18,9 +18,9 @@ public class HangfireDashboardAuthFilterTests
     private const string DashboardPassword = "test-dashboard-password-1234";
 
     [Fact]
-    public void Authorize_AuthenticatedIssuer_ReturnsTrue()
+    public void Authorize_AuthenticatedAdmin_ReturnsTrue()
     {
-        DashboardContext ctx = DashboardContextFor(authenticated: true, role: "issuer");
+        DashboardContext ctx = DashboardContextFor(authenticated: true, role: "admin");
 
         bool result = BuildSut().Authorize(ctx);
 
@@ -58,9 +58,9 @@ public class HangfireDashboardAuthFilterTests
     }
 
     [Fact]
-    public void Authorize_UnauthenticatedWithIssuerRole_ReturnsFalse()
+    public void Authorize_UnauthenticatedWithAdminRole_ReturnsFalse()
     {
-        DefaultHttpContext httpContext = BuildHttpContext(authenticated: false, role: "issuer");
+        DefaultHttpContext httpContext = BuildHttpContext(authenticated: false, role: "admin");
 
         DashboardContext ctx = new AspNetCoreDashboardContext(
             Substitute.For<JobStorage>(), new DashboardOptions(), httpContext);
@@ -83,7 +83,7 @@ public class HangfireDashboardAuthFilterTests
     // /hangfire is reached via plain browser navigation, which never carries the SPA's JWT
     // (localStorage/sessionStorage only, attached to fetch/XHR by baseQuery.ts — never sent on a
     // top-level navigation, and there is no cookie-auth scheme registered). Basic Auth is the
-    // real access mechanism for that path; the issuer-JWT check above remains an additional layer.
+    // real access mechanism for that path; the admin-JWT check above remains an additional layer.
     [Fact]
     public void Authorize_CorrectBasicCredentials_ReturnsTrue()
     {

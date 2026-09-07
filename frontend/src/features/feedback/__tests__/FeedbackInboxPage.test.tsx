@@ -18,12 +18,12 @@ const REPORTS: FeedbackReportResponse[] = [
   {
     id: "fb-1", type: "BugReport", title: "Broken button", body: "The submit button does nothing on Safari.",
     status: "Open", studioName: "Studio A", submitterRole: "artist",
-    issuerNote: null, createdAt: "2026-07-01T00:00:00.000Z", resolvedAt: null,
+    adminNote: null, createdAt: "2026-07-01T00:00:00.000Z", resolvedAt: null,
   },
   {
     id: "fb-2", type: "FeatureRequest", title: "Add dark mode", body: "It would be great to have a dark theme.",
     status: "Resolved", studioName: "Studio B", submitterRole: "owner",
-    issuerNote: "Shipped in v2", createdAt: "2026-06-28T00:00:00.000Z", resolvedAt: "2026-06-29T00:00:00.000Z",
+    adminNote: "Shipped in v2", createdAt: "2026-06-28T00:00:00.000Z", resolvedAt: "2026-06-29T00:00:00.000Z",
   },
 ];
 
@@ -53,7 +53,7 @@ function makeStore() {
     middleware: (gd) => gd().concat(feedbackApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "issuer@test.com" }, token: "fake", tenantId: null, role: "issuer" } as any,
+      auth: { user: { id: "u1", email: "admin@test.com" }, token: "fake", tenantId: null, role: "admin" } as any,
     },
   });
 }
@@ -132,7 +132,7 @@ describe("FeedbackInboxPage", () => {
     const card = within(toggle.parentElement!);
 
     expect(card.getByText("The submit button does nothing on Safari.")).toBeInTheDocument();
-    expect(card.getByLabelText(/issuer note/i)).toBeInTheDocument();
+    expect(card.getByLabelText(/admin note/i)).toBeInTheDocument();
     expect(card.getByRole("button", { name: /^dismissed$/i })).toBeInTheDocument();
   });
 

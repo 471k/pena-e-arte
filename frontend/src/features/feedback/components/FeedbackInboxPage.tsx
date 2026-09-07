@@ -67,14 +67,14 @@ interface FeedbackCardProps {
 
 function FeedbackCard({ report }: FeedbackCardProps) {
   const [expanded, setExpanded]   = useState(false);
-  const [issuerNote, setIssuerNote] = useState(report.issuerNote ?? "");
+  const [adminNote, setAdminNote] = useState(report.adminNote ?? "");
   const [pendingStatus, setPendingStatus] = useState<FeedbackStatus | null>(null);
   const [updateStatus, { isLoading }] = useUpdateFeedbackStatusMutation();
 
   async function handleStatusClick(status: FeedbackStatus) {
     setPendingStatus(status);
     try {
-      await updateStatus({ id: report.id, status, issuerNote: issuerNote.trim() || null }).unwrap();
+      await updateStatus({ id: report.id, status, adminNote: adminNote.trim() || null }).unwrap();
       toast.success("Updated.");
     } catch {
       toast.error("Failed to update.");
@@ -111,14 +111,14 @@ function FeedbackCard({ report }: FeedbackCardProps) {
             <SupportTicketThread report={report} canReply />
 
             <div className="space-y-1.5">
-              <label htmlFor={`issuer-note-${report.id}`} className="text-xs font-medium text-muted-foreground">
-                Issuer note
+              <label htmlFor={`admin-note-${report.id}`} className="text-xs font-medium text-muted-foreground">
+                Admin note
               </label>
               <Textarea
-                id={`issuer-note-${report.id}`}
+                id={`admin-note-${report.id}`}
                 rows={2}
-                value={issuerNote}
-                onChange={(e) => setIssuerNote(e.target.value)}
+                value={adminNote}
+                onChange={(e) => setAdminNote(e.target.value)}
                 placeholder="Internal note (optional)…"
                 className="resize-none text-xs"
               />

@@ -20,12 +20,12 @@ public class RegisterUserValidatorTests
         result.Errors.Should().NotContain(e => e.PropertyName == "Request.Role");
     }
 
-    // Regression guard: this is a public [AllowAnonymous] endpoint. "artist" and "issuer"
+    // Regression guard: this is a public [AllowAnonymous] endpoint. "artist" and "admin"
     // must never be self-registerable here, or any caller could mint a platform-admin
-    // (issuer) or attach a rogue artist account to an arbitrary studio.
+    // (admin) or attach a rogue artist account to an arbitrary studio.
     [Theory]
     [InlineData("artist")]
-    [InlineData("issuer")]
+    [InlineData("admin")]
     public void Validate_PrivilegedRole_FailsOnRole(string role)
     {
         _sut.ShouldFailOn(Command("u@example.com", "Password1!", role, Guid.NewGuid()), "Request.Role");

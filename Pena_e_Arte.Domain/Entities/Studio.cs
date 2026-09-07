@@ -39,7 +39,7 @@ public class Studio
     /// <summary>Set when this studio is soft-closed after its owner accepted a
     /// StudioJoinInvite to join a different studio (Phase 6). IsActive is also false at
     /// that point — this field distinguishes "closed by its own owner joining elsewhere"
-    /// from other IsActive=false paths (e.g. issuer suspension). Historical data
+    /// from other IsActive=false paths (e.g. admin suspension). Historical data
     /// (appointments, clients, portfolio, payments) is retained, never deleted or copied.</summary>
     public DateTime? ClosedAt { get; set; }
 

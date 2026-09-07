@@ -5,7 +5,7 @@
 ## Non-negotiable rules checklist
 
 - [ ] Tenant isolation: any new/changed query touches tenant data only through EF Core global
-      query filters, or is explicitly `issuer`-scoped with an `// Approved:` comment
+      query filters, or is explicitly `admin`-scoped with an `// Approved:` comment
 - [ ] RBAC: every new endpoint has `.RequireAuthorization()` with the correct policy, or is
       `/auth` / `/health` / documented in `architecture.md`'s AllowAnonymous exceptions list
 - [ ] No PII in logs (names, emails, phone numbers, card data)

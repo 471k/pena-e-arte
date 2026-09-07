@@ -41,8 +41,8 @@ export function SupportTicketThread({ report, canReply = true }: SupportTicketTh
   useSupportHub(report.id);
 
   // Mirrors PostFeedbackMessageHandler's own reopen condition — only a studio-side reply
-  // (not issuer) on an already-closed ticket can change the report row.
-  const mayReopen = currentRole !== "issuer" && (report.status === "Resolved" || report.status === "Dismissed");
+  // (not admin) on an already-closed ticket can change the report row.
+  const mayReopen = currentRole !== "admin" && (report.status === "Resolved" || report.status === "Dismissed");
 
   async function handleSend() {
     const body = reply.trim();

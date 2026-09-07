@@ -6,10 +6,10 @@ public static class AuthorizationExtensions
     {
         services.AddAuthorizationBuilder()
             .AddPolicy("ClientOnly", p => p.RequireRole("client"))
-            .AddPolicy("ClientAndAbove", p => p.RequireRole("client", "artist", "owner", "issuer"))
-            .AddPolicy("ArtistAndAbove", p => p.RequireRole("artist", "owner", "issuer"))
-            .AddPolicy("OwnerOnly", p => p.RequireRole("owner", "issuer"))
-            .AddPolicy("IssuerOnly", p => p.RequireRole("issuer"));
+            .AddPolicy("ClientAndAbove", p => p.RequireRole("client", "artist", "owner", "admin"))
+            .AddPolicy("ArtistAndAbove", p => p.RequireRole("artist", "owner", "admin"))
+            .AddPolicy("OwnerOnly", p => p.RequireRole("owner", "admin"))
+            .AddPolicy("AdminOnly", p => p.RequireRole("admin"));
 
         return services;
     }

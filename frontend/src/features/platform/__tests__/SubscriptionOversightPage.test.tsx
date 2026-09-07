@@ -103,7 +103,7 @@ function makeStore() {
       gd().concat(platformApi.middleware, billingApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u4", email: "issuer@platform.test" }, token: "fake", tenantId: null, role: "issuer", pendingReferralCode: null } as any,
+      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin", pendingReferralCode: null } as any,
     },
   });
 }
@@ -465,7 +465,7 @@ describe("SubscriptionOversightPage", () => {
     expect(screen.queryByText(/trial ends/i)).not.toBeInTheDocument();
   });
 
-  // ── Header / layout parity with IssuerStudioListPage ───────────────────────────
+  // ── Header / layout parity with AdminStudioListPage ───────────────────────────
 
   it("page header has z-10 class, below the global nav's z-20, to prevent it painting over the nav on scroll", async () => {
     renderPage();

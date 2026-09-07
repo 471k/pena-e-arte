@@ -18,7 +18,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
         DateTime monthStart = new(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         DateTime lastMonth = monthStart.AddMonths(-1);
 
-        // IgnoreQueryFilters approved: usage #4 — platform KPI aggregate, IssuerOnly. See architecture.md.
+        // IgnoreQueryFilters approved: usage #4 — platform KPI aggregate, AdminOnly. See architecture.md.
         List<Studio> studios = await db.Studios
             .IgnoreQueryFilters()
             .Include(s => s.Subscription)
@@ -26,7 +26,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
                     .ThenInclude(plan => plan!.Prices)
             .ToListAsync(ct);
 
-        // Suspended = manually deactivated by issuer (IsActive = false). These studios are still
+        // Suspended = manually deactivated by admin (IsActive = false). These studios are still
         // in the DB but invisible on the platform. They are NOT included in any subscription bucket.
         int suspendedStudios = studios.Count(s => !s.IsActive);
 

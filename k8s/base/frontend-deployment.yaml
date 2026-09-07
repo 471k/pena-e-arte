@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pena-e-arte-frontend
-  namespace: pena-e-arte
+  name: tattooos-frontend
+  namespace: tattooos
 spec:
   replicas: 2
   strategy:
@@ -12,16 +12,16 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: pena-e-arte-frontend
+      app: tattooos-frontend
   template:
     metadata:
       labels:
-        app: pena-e-arte-frontend
+        app: tattooos-frontend
     spec:
       containers:
         - name: frontend
           # Tag pinned by CD (kustomize edit set image) to the built github.sha.
-          image: ghcr.io/471k/pena-e-arte-frontend:latest
+          image: ghcr.io/471k/tattooos-frontend:latest
           # A manual `workflow_dispatch` redeploy with no new commit reuses the exact same
           # `staging-<sha>` tag string. Without `Always`, a node that already pulled that tag
           # once (e.g. an earlier failed run) never repulls it even after
@@ -36,7 +36,7 @@ spec:
             # nginx-unprivileged's envsubst-on-templates entrypoint resolves these into
             # nginx.conf.template at container start — same mechanism docker-compose.yml uses.
             - name: BACKEND_HOST
-              value: pena-e-arte-api
+              value: tattooos-api
             - name: BACKEND_PORT
               value: "8080"
           livenessProbe:

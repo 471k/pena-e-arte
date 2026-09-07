@@ -37,13 +37,13 @@ internal static class ConductReportAuthorizationGuard
     }
 
     /// <summary>Owner may change status only for Standard-severity reports about their own
-    /// studio; issuer may always change status; artist may never change status. A
+    /// studio; admin may always change status; artist may never change status. A
     /// sexual-misconduct or scam report about the owner's own artist is a direct conflict of
     /// interest for the owner to resolve/dismiss — same reasoning class as why
-    /// IgnoreQueryFilters() is restricted to IssuerOnly handlers by default.</summary>
+    /// IgnoreQueryFilters() is restricted to AdminOnly handlers by default.</summary>
     public static void EnsureCanChangeStatus(ConductReport report, ICurrentUser user)
     {
-        if (string.Equals(user.Role, "issuer", StringComparison.OrdinalIgnoreCase)) return;
+        if (string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase)) return;
 
         if (string.Equals(user.Role, "owner", StringComparison.OrdinalIgnoreCase)
             && !ReportCategoryClassifier.IsHighSeverity(report.Category))

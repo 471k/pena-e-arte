@@ -1,7 +1,7 @@
 # base/kustomization.yaml includes the Vault StatefulSet/Service/ConfigMap as resources
 # (needed by overlays/production), which this overlay's `resources: [../../base]` would
 # otherwise also pull in — spinning up a SECOND single-node Vault + PVC inside
-# pena-e-arte-staging. Nothing in this staging plan calls for a staging Vault instance (no
+# tattooos-staging. Nothing in this staging plan calls for a staging Vault instance (no
 # code path calls ISecretsProvider yet, same as production's own Vault today), and doing so
 # unprompted would cost real cluster capacity for zero benefit — directly working against the
 # §3.1 capacity gate. Deleted here via $patch: delete, matching the same
@@ -11,20 +11,20 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: pena-e-arte-vault
-  namespace: pena-e-arte
+  name: tattooos-vault
+  namespace: tattooos
 $patch: delete
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: pena-e-arte-vault
-  namespace: pena-e-arte
+  name: tattooos-vault
+  namespace: tattooos
 $patch: delete
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pena-e-arte-vault-config
-  namespace: pena-e-arte
+  name: tattooos-vault-config
+  namespace: tattooos
 $patch: delete

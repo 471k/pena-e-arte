@@ -12,7 +12,7 @@ public static class PlatformEndpoints
     public static void MapPlatformEndpoints(this IEndpointRouteBuilder app)
     {
         RouteGroupBuilder group = app.MapGroup("/api/v1/platform")
-            .RequireAuthorization("IssuerOnly");
+            .RequireAuthorization("AdminOnly");
 
         group.MapGet("stats", GetStats);
         group.MapGet("studios/{studioId:guid}/summary", GetStudioSummary);
@@ -49,8 +49,8 @@ public static class PlatformEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        IssuerStudioSummaryResponse result =
-            await mediator.Send(new GetIssuerStudioSummaryQuery(studioId), ct);
+        AdminStudioSummaryResponse result =
+            await mediator.Send(new GetAdminStudioSummaryQuery(studioId), ct);
         return Results.Ok(result);
     }
 
@@ -128,7 +128,7 @@ public static class PlatformEndpoints
         CancellationToken ct)
     {
         PlatformReferralCodeResponse result =
-            await mediator.Send(new IssuerGenerateReferralCodeCommand(studioId, request?.ExpiresAt), ct);
+            await mediator.Send(new AdminGenerateReferralCodeCommand(studioId, request?.ExpiresAt), ct);
         return Results.Ok(result);
     }
 

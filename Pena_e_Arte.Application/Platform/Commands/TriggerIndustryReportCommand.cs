@@ -15,7 +15,7 @@ public class TriggerIndustryReportHandler(
     public Task Handle(TriggerIndustryReportCommand command, CancellationToken ct)
     {
         jobs.TriggerIndustryReportNow();
-        logger.LogInformation("Industry report generation triggered by issuer");
+        logger.LogInformation("Industry report generation triggered by admin");
         return Task.CompletedTask;
     }
 }

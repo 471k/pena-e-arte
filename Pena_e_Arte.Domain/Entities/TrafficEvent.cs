@@ -6,7 +6,7 @@ namespace Pena_e_Arte.Domain.Entities;
 /// nullable (null = a non-studio-scoped page, e.g. /discover or /platform/*),
 /// and there is no EF Core global query filter — same non-tenant shape as
 /// AuditLogEntry/HelpSearchLog/FeedbackReport. Authorization for who may read
-/// which rows is enforced in the query handlers (IssuerOnly), not a filter.
+/// which rows is enforced in the query handlers (AdminOnly), not a filter.
 /// Never stores a raw IP address — CountryCode/City/Region (and the newer geo fields
 /// below) are resolved via GeoIP at ingestion and IpHash is a one-way, unsalted-to-source
 /// SHA-256 of the raw IP plus a server pepper, kept only for coarse abuse/dedup signal.

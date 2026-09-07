@@ -1,6 +1,6 @@
 import { HelpRole, type HelpArticle, type FaqItem } from "./help.types";
 
-const { Client, Artist, Owner, Issuer } = HelpRole;
+const { Client, Artist, Owner, Admin } = HelpRole;
 
 export const HELP_ARTICLES: HelpArticle[] = [
   // ── Client ──────────────────────────────────────────────────────────────
@@ -275,7 +275,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "client-change-password",
-    roles: [Client, Artist, Owner, Issuer],
+    roles: [Client, Artist, Owner, Admin],
     title: "Change your password",
     route: "/account/change-password",
     keywords: ["password", "account security"],
@@ -290,7 +290,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "client-change-email",
-    roles: [Client, Artist, Owner, Issuer],
+    roles: [Client, Artist, Owner, Admin],
     title: "Change your email address",
     route: "/account/change-email",
     keywords: ["email", "change email", "account security", "sign-in email"],
@@ -1082,10 +1082,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: ["As the owner, you're the only role with no messaging restrictions — you can start a thread with anyone at your studio."],
   },
-  // ── Issuer ──────────────────────────────────────────────────────────────
+  // ── Admin ──────────────────────────────────────────────────────────────
   {
-    id: "issuer-dashboard",
-    roles: [Issuer],
+    id: "admin-dashboard",
+    roles: [Admin],
     title: "Read the platform dashboard",
     route: "/platform",
     keywords: ["platform overview", "mrr", "kpi"],
@@ -1099,8 +1099,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["Clicking most KPI cards jumps straight to a pre-filtered Studios or Subscriptions list."],
   },
   {
-    id: "issuer-studios",
-    roles: [Issuer],
+    id: "admin-studios",
+    roles: [Admin],
     title: "Oversee all studios",
     route: "/platform/studios",
     keywords: ["studio list", "manage studios"],
@@ -1113,8 +1113,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["Use the copy icon next to a studio's slug to quickly copy it."],
   },
   {
-    id: "issuer-studio-detail",
-    roles: [Issuer],
+    id: "admin-studio-detail",
+    roles: [Admin],
     title: "Open a single studio's detail",
     route: "/platform/studios",
     keywords: ["studio detail", "owner info"],
@@ -1128,8 +1128,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["Click \"View public portfolio\" to open the studio's live public page in a new tab."],
   },
   {
-    id: "issuer-suspend-studio",
-    roles: [Issuer],
+    id: "admin-suspend-studio",
+    roles: [Admin],
     title: "Suspend or unsuspend a studio",
     keywords: ["suspend", "lock out", "reactivate studio"],
     summary: "Temporarily lock a studio out of the platform without deleting anything, or restore access afterward.",
@@ -1141,8 +1141,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     warnings: ["Suspending a studio immediately hides it from Discover and blocks logins for its owner and all its artists — this takes effect right away, though it can be undone anytime with \"Reactivate Studio\"."],
   },
   {
-    id: "issuer-plans",
-    roles: [Issuer],
+    id: "admin-plans",
+    roles: [Admin],
     title: "Manage subscription plans",
     route: "/platform/plans",
     keywords: ["plan catalogue", "pricing"],
@@ -1155,8 +1155,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     warnings: ["Deleting a plan is permanent and stops new studios from signing up to it — studios already subscribed keep their subscription unaffected."],
   },
   {
-    id: "issuer-plan-edit",
-    roles: [Issuer],
+    id: "admin-plan-edit",
+    roles: [Admin],
     title: "Create or edit a plan",
     route: "/platform/plans/new",
     keywords: ["plan price", "usage limits", "feature flags"],
@@ -1171,8 +1171,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["A plan must be either fully free (all prices €0) or fully paid — you can't mix a free interval with a paid one."],
   },
   {
-    id: "issuer-subscriptions",
-    roles: [Issuer],
+    id: "admin-subscriptions",
+    roles: [Admin],
     title: "Oversee all subscriptions",
     route: "/platform/subscriptions",
     keywords: ["billing oversight", "subscription status"],
@@ -1185,8 +1185,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
-    id: "issuer-extend-trial",
-    roles: [Issuer],
+    id: "admin-extend-trial",
+    roles: [Admin],
     title: "Extend a studio's trial",
     keywords: ["grant extension", "more trial days"],
     summary: "Give a studio extra time before their trial (or grace period) runs out, without requiring payment.",
@@ -1198,8 +1198,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
-    id: "issuer-activate-cash-sub",
-    roles: [Issuer],
+    id: "admin-activate-cash-sub",
+    roles: [Admin],
     title: "Activate a subscription paid by cash",
     keywords: ["cash payment", "manual activation"],
     summary: "Mark a studio's subscription as paid when they paid you outside the app, in cash, instead of by card.",
@@ -1212,8 +1212,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["Only use this for cash payments collected in person — card payments go through the studio's own checkout automatically."],
   },
   {
-    id: "issuer-referrals",
-    roles: [Issuer],
+    id: "admin-referrals",
+    roles: [Admin],
     title: "Manage platform referral codes",
     route: "/platform/referrals",
     keywords: ["referral code", "generate code"],
@@ -1228,8 +1228,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     warnings: ["Deleting a code with zero redemptions cannot be undone. A code that has already been redeemed can't be deleted at all, only deactivated."],
   },
   {
-    id: "issuer-reports",
-    roles: [Issuer],
+    id: "admin-reports",
+    roles: [Admin],
     title: "Read monthly industry reports",
     route: "/platform/reports",
     keywords: ["analytics", "plan usage report"],
@@ -1243,8 +1243,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["Reports contain no studio names or personal data — they're aggregated platform-wide. New reports also generate automatically on the 1st of every month."],
   },
   {
-    id: "issuer-feedback",
-    roles: [Issuer],
+    id: "admin-feedback",
+    roles: [Admin],
     title: "Read feedback submitted by owners",
     route: "/platform/feedback",
     keywords: ["bug reports", "feature requests", "inbox"],
@@ -1257,8 +1257,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
-    id: "issuer-help-insights",
-    roles: [Issuer],
+    id: "admin-help-insights",
+    roles: [Admin],
     title: "Review Help search insights",
     route: "/platform/help-insights",
     keywords: ["help search analytics", "zero-result queries", "missing documentation"],
@@ -1271,8 +1271,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["Data covers a rolling 30-day window and is aggregated across all studios."],
   },
   {
-    id: "issuer-live-traffic",
-    roles: [Issuer],
+    id: "admin-live-traffic",
+    roles: [Admin],
     title: "See who's on the site right now",
     route: "/platform/traffic",
     keywords: ["live traffic", "visitors", "analytics", "site traffic", "geography", "country", "real-time", "map", "ISP", "network"],
@@ -1285,11 +1285,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Scroll down for the historical trend chart, top countries, device/browser breakdown, top pages, and top networks (ISP) — use the 7d/30d/90d toggle above the chart to change the time window for all of them at once.",
     ],
     tips: ["Country/city is approximate, resolved from IP address — it can be off by a city or two, especially on mobile networks.", "No visitor is ever identified by name, email, or IP address here — only role, rough location, network, and device.", "A visitor without a resolvable location (private network, GeoIP miss) still appears in the live table but won't show a dot on the map.", "A pulsing 'Live' badge in the header confirms the real-time feed is connected — if it says 'Reconnecting…' or 'Offline,' the numbers on screen may be stale; use the ↻ button next to it to refresh manually."],
-    relatedArticleIds: ["issuer-audit-log"],
+    relatedArticleIds: ["admin-audit-log"],
   },
   {
-    id: "issuer-audit-log",
-    roles: [Issuer],
+    id: "admin-audit-log",
+    roles: [Admin],
     title: "Review the platform audit log",
     route: "/platform/audit-log",
     keywords: ["audit log", "admin actions", "compliance", "who did what"],
@@ -1375,8 +1375,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: ["The reporting client's name, email, and account are never shown to you — only the studio owner and Pena e Artë platform staff can see who filed a report."],
   },
   {
-    id: "issuer-conduct-reports",
-    roles: [Issuer],
+    id: "admin-conduct-reports",
+    roles: [Admin],
     title: "Resolve conduct reports",
     route: "/platform/conduct-reports",
     keywords: ["conduct reports", "trust and safety", "moderation", "misconduct"],
@@ -1385,7 +1385,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Open Conduct Reports from the platform nav.",
       "Filter by status and/or category.",
       "Click a report card to expand it and read the full description, including the reporter's identity.",
-      "Click a status button to mark it Open, Reviewing, Resolved, or Dismissed — issuer status controls are never locked, unlike an owner's on a High-severity report.",
+      "Click a status button to mark it Open, Reviewing, Resolved, or Dismissed — admin status controls are never locked, unlike an owner's on a High-severity report.",
     ],
   },
 ];
@@ -1512,22 +1512,22 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     id: "faq-forgot-password",
-    roles: [Client, Artist, Owner, Issuer],
+    roles: [Client, Artist, Owner, Admin],
     question: "I forgot my password — what do I do?",
     answer: "Click \"Forgot password?\" on the login screen and enter your email. You'll get a reset link — click it to set a new password. Reset links expire 1 hour after they're sent; if yours has expired, the reset page shows a \"Request a new reset link\" button that takes you straight back to the forgot-password form.",
   },
   {
-    id: "faq-issuer-suspend-effect",
-    roles: [Issuer],
+    id: "faq-admin-suspend-effect",
+    roles: [Admin],
     question: "What happens to a studio immediately after I suspend it?",
     answer: "It's hidden from Discover right away, and its owner and all its artists are immediately blocked from logging in. Nothing is deleted, and you can reverse it anytime with \"Reactivate Studio\".",
-    relatedArticleIds: ["issuer-suspend-studio"],
+    relatedArticleIds: ["admin-suspend-studio"],
   },
   {
-    id: "faq-issuer-cash-subscription",
-    roles: [Issuer],
+    id: "faq-admin-cash-subscription",
+    roles: [Admin],
     question: "How do I activate a studio's subscription if they paid by cash?",
     answer: "Open the studio (from the Dashboard, Studios list, Subscriptions list, or its detail page), click \"Activate\", pick the plan they paid for, and confirm. This is only for cash collected outside the app — card payments activate automatically.",
-    relatedArticleIds: ["issuer-activate-cash-sub"],
+    relatedArticleIds: ["admin-activate-cash-sub"],
   },
 ];

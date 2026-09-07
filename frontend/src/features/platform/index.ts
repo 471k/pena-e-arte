@@ -1,11 +1,11 @@
-export { IssuerStudioListPage }     from "./components/IssuerStudioListPage";
-export { IssuerStudioDetailPage }   from "./components/IssuerStudioDetailPage";
+export { AdminStudioListPage }     from "./components/AdminStudioListPage";
+export { AdminStudioDetailPage }   from "./components/AdminStudioDetailPage";
 export { PlanManagementPage }       from "./components/PlanManagementPage";
 export { PlanEditPage }             from "./components/PlanEditPage";
 export { SubscriptionOversightPage } from "./components/SubscriptionOversightPage";
 export { PlatformReferralPage }     from "./components/PlatformReferralPage";
 export { IndustryReportsPage }      from "./components/IndustryReportsPage";
-export { IssuerDashboardPage }      from "./components/IssuerDashboardPage";
+export { AdminDashboardPage }      from "./components/AdminDashboardPage";
 export { HelpInsightsPage }         from "./components/HelpInsightsPage";
 export { AuditLogPage }             from "./components/AuditLogPage";
 export { LiveTrafficPage }          from "./components/LiveTrafficPage";

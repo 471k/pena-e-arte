@@ -38,7 +38,7 @@ public interface IIdentityService
 
     /// <summary>
     /// Returns the Identity roles held by the given user (e.g. "owner", "artist", "client",
-    /// "issuer"). Empty if no such user exists. This app's own flows only ever assign a user
+    /// "admin"). Empty if no such user exists. This app's own flows only ever assign a user
     /// one role, but Identity itself does not prevent more than one, so callers should not
     /// assume a single-element result.
     /// </summary>

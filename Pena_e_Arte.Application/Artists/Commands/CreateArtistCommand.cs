@@ -58,7 +58,7 @@ public class CreateArtistHandler(
             // the Artist row below, e.g. a crash between identity.CreateUserAsync and
             // SaveChangesAsync. That case is safe to recover by reusing the existing user's ID.
             //
-            // Any other case — the email belongs to an owner, client, or issuer account, or to
+            // Any other case — the email belongs to an owner, client, or admin account, or to
             // an artist who already belongs to a DIFFERENT studio — must be rejected outright.
             // Silently reusing that account's ID here would grant it artist access to this
             // tenant's data without the account holder's consent or knowledge, violating tenant
