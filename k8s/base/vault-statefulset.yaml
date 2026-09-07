@@ -48,14 +48,18 @@ spec:
           # 256Mi was too tight — OOMKilled (exit 137) on this box's actual first boot,
           # crashing near-instantly during Raft/boltdb initialization, confirmed via
           # `kubectl describe pod` showing Started/Finished at the same second. Bumped
-          # to the smallest limit that survived a real cold start on this cluster.
+          # to 384Mi, which survived that cold start. Bumped again to 512Mi during the
+          # pena-e-arte->tattooos namespace migration (2026-09-07): with the old and new
+          # Vault instances briefly running side by side on this single-node cluster,
+          # 384Mi OOMKilled again under that contention even after the old instance was
+          # removed — 512Mi is what actually held.
           resources:
             requests:
               cpu: 100m
-              memory: 192Mi
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 384Mi
+              memory: 512Mi
       volumes:
         - name: config
           configMap:
