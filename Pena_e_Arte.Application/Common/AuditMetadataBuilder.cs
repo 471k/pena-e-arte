@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Application.Platform.Commands;
@@ -27,6 +28,13 @@ public static class AuditMetadataBuilder
         {
             // Plan name is a studio-facing product label, not PII.
             ["planName"] = c.Request.Name,
+        },
+        RescheduleAppointmentCommand c => new Dictionary<string, object?>
+        {
+            // Scheduling facts only, no client/artist names or notes — matches D24's
+            // "who changed what" intent without risking a PII leak into the audit log.
+            ["newDate"] = c.Request.NewDate,
+            ["newDurationMinutes"] = c.Request.NewDurationMinutes,
         },
         _ => new Dictionary<string, object?>(),
     });
