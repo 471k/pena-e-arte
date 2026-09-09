@@ -150,7 +150,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
   const anyImageUploading = areaPhotos.uploading || referenceImages.uploading;
 
   const [intake, setIntake] = useState<TattooIntakeValues>({
-    tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
+    tattooDescription: "", style: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
   });
   const [tattooDescriptionError, setTattooDescriptionError] = useState<string | null>(null);
   const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
@@ -232,6 +232,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
           durationMinutes: values.durationMinutes,
           notes:           values.notes || null,
           tattooDescription:         intake.tattooDescription,
+          style:                     intake.style || null,
           safetyNotes:               intake.safetyNotes || null,
           desiredPlacementLocations: desiredPlacement,
           referralSource:            intake.referralSource || null,

@@ -2,6 +2,9 @@ import { ReferralSource } from "../appointment.types";
 
 export interface TattooIntakeValues {
   tattooDescription:   string;
+  /** One of TATTOO_STYLE_OPTIONS' values, or "" for unset ("artist's choice" / unsure) — same
+   *  empty-string-means-unset convention as referralSource on this type. */
+  style:               string;
   referralSource:      string;
   referralSourceOther: string;
   /** Maps to BookingIntake.SafetyNotes — "anything else I should know?" (medical issues,

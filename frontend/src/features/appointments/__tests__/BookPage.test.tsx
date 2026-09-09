@@ -612,6 +612,56 @@ describe("BookAppointmentForm", () => {
     expect(capturedBody).toMatchObject({ artistId: null });
   });
 
+  it("submitting with a style selected includes it in the request", async () => {
+    let capturedBody: unknown = null;
+    server.use(
+      http.post("http://localhost/api/v1/appointments", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    await user.type(
+      screen.getByLabelText(/date.*time/i),
+      new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
+    );
+    await fillTattooDescription(user);
+    await user.click(screen.getByLabelText(/style \(optional\)/i));
+    await user.click(await screen.findByRole("option", { name: "Japanese" }));
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Appointment requested!");
+    expect(capturedBody).toMatchObject({ style: "japanese" });
+  });
+
+  it("submitting without a style sends null, not an empty string", async () => {
+    let capturedBody: unknown = null;
+    server.use(
+      http.post("http://localhost/api/v1/appointments", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    await user.type(
+      screen.getByLabelText(/date.*time/i),
+      new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
+    );
+    await fillTattooDescription(user);
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Appointment requested!");
+    expect(capturedBody).toMatchObject({ style: null });
+  });
+
   it("the slot-check call omits artistId when the toggle is on", async () => {
     let sawArtistIdParam = false;
     server.use(

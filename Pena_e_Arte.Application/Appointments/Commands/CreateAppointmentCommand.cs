@@ -153,6 +153,7 @@ public class CreateAppointmentHandler(
             {
                 StudioId = studioId,
                 TattooDescription = req.TattooDescription,
+                Style = req.Style,
                 SafetyNotes = req.SafetyNotes,
                 DesiredPlacement = new BodyMap { Locations = req.DesiredPlacementLocations?.ToList() ?? [] },
                 ReferralSource = req.ReferralSource is null
@@ -223,6 +224,7 @@ public class CreateAppointmentHandler(
             artistName,
             clientUserId,
             a.Intake?.TattooDescription,
+            a.Intake?.Style,
             a.Intake?.SafetyNotes,
             a.Intake?.DesiredPlacement.Locations,
             a.Intake?.ReferralSource?.ToString(),

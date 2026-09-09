@@ -12,6 +12,7 @@ public static class ReportEndpoints
             .RequireAuthorization();
 
         group.MapGet("/revenue-summary", GetRevenueSummary).RequireAuthorization("OwnerOnly");
+        group.MapGet("/revenue/export.csv", ExportRevenueCsv).RequireAuthorization("OwnerOnly");
         group.MapGet("/my-earnings", GetMyEarnings).RequireAuthorization("ArtistAndAbove");
     }
 
@@ -23,6 +24,16 @@ public static class ReportEndpoints
     {
         RevenueSummaryResponse result = await mediator.Send(new GetRevenueSummaryQuery(from, to), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ExportRevenueCsv(
+        DateTime? from,
+        DateTime? to,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        string csv = await mediator.Send(new ExportRevenueCsvQuery(from, to), ct);
+        return Results.Content(csv, "text/csv; charset=utf-8");
     }
 
     private static async Task<IResult> GetMyEarnings(

@@ -8,7 +8,7 @@ import type { TattooIntakeValues } from "@/features/appointments/components/tatt
 afterEach(() => cleanup());
 
 const EMPTY: TattooIntakeValues = {
-  tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
+  tattooDescription: "", style: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
 };
 
 function renderFields(value: TattooIntakeValues = EMPTY, onChange = vi.fn()) {
@@ -81,5 +81,36 @@ describe("TattooIntakeFields", () => {
       />,
     );
     expect(screen.getByText("Please tell us where.")).toBeInTheDocument();
+  });
+
+  // ── Style ───────────────────────────────────────────────────────────────────
+
+  it("renders the style selector", () => {
+    renderFields();
+    expect(screen.getByLabelText(/style \(optional\)/i)).toBeInTheDocument();
+  });
+
+  it("renders all 8 style options", async () => {
+    const user = userEvent.setup();
+    renderFields();
+
+    await user.click(screen.getByLabelText(/style \(optional\)/i));
+
+    for (const label of [
+      "Blackwork", "Realism", "Traditional", "Geometric",
+      "Fineline", "Watercolor", "Neo-Traditional", "Japanese",
+    ]) {
+      expect(await screen.findByRole("option", { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it("selecting a style option calls onChange with that style", async () => {
+    const user = userEvent.setup();
+    const onChange = renderFields();
+
+    await user.click(screen.getByLabelText(/style \(optional\)/i));
+    await user.click(await screen.findByRole("option", { name: "Japanese" }));
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ style: "japanese" }));
   });
 });

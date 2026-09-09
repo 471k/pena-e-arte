@@ -14,6 +14,7 @@ public static class AppointmentEndpoints
             .RequireAuthorization();
 
         group.MapGet("/", GetAppointments).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/export.csv", ExportAppointmentsCsv).RequireAuthorization("OwnerOnly");
         group.MapGet("/mine", GetMyAppointments).RequireAuthorization("ClientAndAbove");
         group.MapGet("/check-slot", CheckSlotAvailability).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}", GetAppointment).RequireAuthorization("ArtistAndAbove");
@@ -36,6 +37,16 @@ public static class AppointmentEndpoints
     {
         List<AppointmentResponse> result = await mediator.Send(new GetAppointmentsQuery(from, to, artistId), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ExportAppointmentsCsv(
+        DateTime? from,
+        DateTime? to,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        string csv = await mediator.Send(new ExportAppointmentsCsvQuery(from, to), ct);
+        return Results.Content(csv, "text/csv; charset=utf-8");
     }
 
     private static async Task<IResult> GetMyAppointments(

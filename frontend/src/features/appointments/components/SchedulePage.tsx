@@ -1,11 +1,13 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { CalendarDays, ChevronLeft, ChevronRight, MessageSquarePlus, PenLine } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Download, MessageSquarePlus, PenLine } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { useGetAppointmentsQuery } from "../appointmentsApi";
 import { AppointmentCard } from "./AppointmentCard";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
@@ -58,8 +60,21 @@ export function SchedulePage() {
   // reminders require an ArtistId the backend can only infer for the artist themselves —
   // owner/admin have no artist context on this page and no artist-picker exists yet, so
   // showing this button to them would open a dialog that always 422s on submit.
-  const role = useAppSelector((s) => s.auth.role);
+  const { role, token, tenantId } = useAppSelector((s) => s.auth);
   const canQuickRemind = role === Role.Artist;
+  const canExport = role === Role.Owner || role === Role.Admin;
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      await downloadAuthenticatedFile("appointments/export.csv", "appointments.csv", token, tenantId);
+    } catch {
+      toast.error("Couldn't export appointments. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const weekEnd = addDays(weekStart, 7);
 
@@ -134,6 +149,19 @@ export function SchedulePage() {
               aria-label="Quick reminder"
             >
               <MessageSquarePlus className="h-4 w-4" />
+            </Button>
+          )}
+
+          {canExport && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2 text-xs gap-1.5"
+              onClick={handleExportCsv}
+              disabled={exporting}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
             </Button>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -6,7 +6,9 @@ import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { Toaster } from "sonner";
 
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { reportsApi } from "@/features/reports/reportsApi";
@@ -29,6 +31,10 @@ const SUMMARY: RevenueSummaryResponse = {
 
 const EMPTY_SUMMARY: RevenueSummaryResponse = { monthlyTrend: [], perArtist: [] };
 
+vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
+  downloadAuthenticatedFile: vi.fn().mockResolvedValue(undefined),
+}));
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -36,7 +42,12 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => {
+  server.resetHandlers();
+  cleanup();
+  vi.mocked(downloadAuthenticatedFile).mockClear();
+  vi.mocked(downloadAuthenticatedFile).mockResolvedValue(undefined);
+});
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -60,6 +71,7 @@ function makeStore(role: Role = Role.Owner) {
 function renderPage(role: Role = Role.Owner) {
   render(
     <Provider store={makeStore(role)}>
+      <Toaster />
       <MemoryRouter>
         <ReportsPage />
       </MemoryRouter>
@@ -132,5 +144,33 @@ describe("ReportsPage", () => {
   it("formats per-artist revenue as currency", async () => {
     renderPage();
     expect(await screen.findByText(/500,00\s?€/)).toBeInTheDocument();
+  });
+
+  // ── Export CSV ──────────────────────────────────────────────────────────────
+
+  it("shows an Export CSV button (page is already OwnerOnly-routed)", () => {
+    renderPage();
+    expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+  });
+
+  it("clicking Export CSV downloads revenue.csv from the export endpoint", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /export csv/i }));
+
+    expect(downloadAuthenticatedFile).toHaveBeenCalledWith(
+      "reports/revenue/export.csv", "revenue.csv", "fake-token", "s-001",
+    );
+  });
+
+  it("shows an error toast when the CSV export fails", async () => {
+    vi.mocked(downloadAuthenticatedFile).mockRejectedValueOnce(new Error("boom"));
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /export csv/i }));
+
+    expect(await screen.findByText(/couldn't export revenue/i)).toBeInTheDocument();
   });
 });

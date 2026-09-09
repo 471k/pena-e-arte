@@ -16,6 +16,7 @@ public class BookingIntakeConfiguration : TenantEntityConfiguration<BookingIntak
         base.Configure(builder);
 
         builder.Property(i => i.TattooDescription).IsRequired().HasMaxLength(4000);
+        builder.Property(i => i.Style).HasMaxLength(50).IsRequired(false);
         builder.Property(i => i.SafetyNotes).HasMaxLength(4000);
         builder.Property(i => i.ReferralSource).HasConversion<string>().HasMaxLength(32);
         builder.Property(i => i.ReferralSourceOther).HasMaxLength(200);

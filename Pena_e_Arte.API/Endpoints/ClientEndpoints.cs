@@ -16,6 +16,7 @@ public static class ClientEndpoints
 
         group.MapGet("/", GetClients).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/", CreateClient).RequireAuthorization("ArtistAndAbove");
+        group.MapGet("/export.csv", ExportClientsCsv).RequireAuthorization("OwnerOnly");
         group.MapGet("{clientId:guid}", GetClientById).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{clientId:guid}/artist", UpdateClientArtist).RequireAuthorization("OwnerOnly");
 
@@ -94,6 +95,14 @@ public static class ClientEndpoints
     {
         ClientResponse result = await mediator.Send(new GetClientQuery(clientId), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ExportClientsCsv(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        string csv = await mediator.Send(new ExportClientsCsvQuery(), ct);
+        return Results.Content(csv, "text/csv; charset=utf-8");
     }
 
     private static async Task<IResult> GetClients(

@@ -882,3 +882,62 @@ handling were all explicitly deferred as of 2026-07-21. Items 2 and 3 above
 *are* on that list — this spec exists so that if/when the go-ahead comes, the
 build isn't starting from zero, but the go-ahead itself is still a separate
 decision this document does not make.
+
+---
+
+## Addendum — 2026-09-09: Group 1 build
+
+Built via `docs/claude/overnight-prompt-p1-group1-2026-09-09.md`, on
+`feat/p1-group1-csv-style-pwa-2026-09-09`.
+
+**Shipped:**
+
+- **Item 13 — CSV Data Export.** Three owner-only endpoints
+  (`GET /api/v1/clients/export.csv`, `GET /api/v1/appointments/export.csv`,
+  `GET /api/v1/reports/revenue/export.csv`), each a typed MediatR query +
+  validator, hand-rolled CSV via `Pena_e_Arte.Application/Common/CsvUtils.cs`.
+  Frontend: `shared/utils/downloadAuthenticatedFile.ts` + "Export CSV" buttons
+  on `ClientListPage.tsx`, `SchedulePage.tsx`, `ReportsPage.tsx`. See
+  `docs/claude/overnight-prompt-p1-group1-2026-09-09.md` Phase 1 for the full
+  file list and deviations (revenue route path, `downloadAuthenticatedFile`
+  taking token/tenantId as params instead of reading the store directly).
+- **Item 17 — Booking Widget Style Selection Upfront.** `BookingIntake.Style`
+  (string?, `AddStyleToBookingIntake` migration), threaded through
+  `CreateAppointmentRequest`/`AppointmentResponse`/`CreateAppointmentCommand`
+  and validated against `TattooStyle.All`. Frontend:
+  `shared/constants/tattooStyles.ts` (new shared source, also adopted by
+  `PortfolioFeed.tsx` and `ArtistPortfolioPage.tsx`, closing out the
+  three-copy duplication `TattooStyle.cs`'s doc comment had flagged), a Style
+  `Select` in `TattooIntakeFields.tsx` (shared by the authenticated and guest
+  booking forms). See the overnight prompt's Phase 2 for deviations from the
+  original spec's "reuse Artist.Specializations" assumption — not built:
+  `Specializations` is freeform text, not a structured `TattooStyle` list.
+- **Item 7 — Installable PWA.** Hand-rolled `frontend/public/manifest.json` +
+  `frontend/public/sw.js` (cache-first for the app shell, always network for
+  `/api/`/`/hubs/`), registered in `main.tsx`. Icons generated locally
+  (`frontend/public/icons/icon-{192,512}.png`) — no new npm package.
+
+**Item 6 (Saved Payment Method) — moved out of "ready now."** It was in this
+spec's original Group 1 grouping above but was **not** built in the
+2026-09-09 session: source verification found `IPaymentProvider` +
+`NullPaymentProvider` (ADR-0001) fail closed until a replacement payment
+provider ("POK") is chosen and integrated — see the overnight prompt's
+Context section for the full trace. Item 6 now belongs with the
+decision-gated items in "Suggested build order" step 3 above, not step 1 —
+re-schedule only after the POK (or equivalent) provider decision lands.
+
+**New follow-up candidates surfaced while building this group** (not
+previously tracked anywhere in this backlog):
+
+- `AppointmentDetailPage.tsx`'s "Add to Calendar (.ics)" link is very likely
+  broken today — a plain `<a href download>` against an
+  `RequireAuthorization("ClientAndAbove")` endpoint, and this app's auth
+  (JWT in `localStorage`/`sessionStorage`) gives a raw browser navigation no
+  `Authorization`/`X-Tenant-Id` headers. Not confirmed against a running
+  instance; first step of a real follow-up ticket, not fixed here. If
+  confirmed broken, `downloadAuthenticatedFile` (built for item 13 above) is
+  the fix.
+- `Artist.Specializations` (freeform text) could be migrated to a structured
+  multi-select of `TattooStyle.All` values, enabling real client-facing
+  artist/style matching. Separate, larger product decision — noted while
+  scoping item 17, not scheduled.

@@ -40,6 +40,28 @@ public class ClientEndpointsAuthorizationTests
     }
 
     [Fact]
+    public void ExportClientsCsvEndpoint_RequiresOwnerOnlyPolicy()
+    {
+        using WebApplication app = BuildApp();
+
+        RouteEndpoint endpoint = FindEndpoint(app, "GET", "/api/v1/clients/export.csv");
+
+        endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
+            .Should().ContainSingle(a => a.Policy == "OwnerOnly");
+    }
+
+    [Fact]
+    public void ExportClientsCsvEndpoint_DoesNotCollideWithGetClientByIdRoute()
+    {
+        using WebApplication app = BuildApp();
+
+        // Both routes must be registered distinctly — a literal "/export.csv" segment must not
+        // be swallowed by the "{clientId:guid}" parameterized route it sits alongside.
+        FindEndpoint(app, "GET", "/api/v1/clients/export.csv");
+        FindEndpoint(app, "GET", "/api/v1/clients/{clientId:guid}");
+    }
+
+    [Fact]
     public void CreateClientEndpoint_RequiresArtistAndAbovePolicy()
     {
         using WebApplication app = BuildApp();
