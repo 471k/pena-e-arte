@@ -5,6 +5,7 @@ using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -13,8 +14,15 @@ using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
+// AuditStudioId is left at its default (null) — AuditLogBehavior falls back to the caller's
+// ICurrentTenant.StudioId, same as CancelAppointmentCommand right above it in the audit log.
 public record RescheduleAppointmentCommand(Guid AppointmentId, RescheduleAppointmentRequest Request)
-    : IRequest<AppointmentResponse>;
+    : IRequest<AppointmentResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.AppointmentRescheduled;
+    public string AuditTargetType => AuditTargetTypes.Appointment;
+    public Guid AuditTargetId => AppointmentId;
+}
 
 public class RescheduleAppointmentHandler(
     IAppDbContext db,

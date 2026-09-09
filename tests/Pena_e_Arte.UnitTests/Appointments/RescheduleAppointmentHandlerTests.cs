@@ -66,6 +66,18 @@ public class RescheduleAppointmentHandlerTests
     }
 
     [Fact]
+    public void Command_ExposesAuditProperties()
+    {
+        Guid appointmentId = Guid.NewGuid();
+        IAuditableCommand command = new RescheduleAppointmentCommand(appointmentId,
+            new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(1), 60, null));
+
+        command.AuditAction.Should().Be("Appointment.Rescheduled");
+        command.AuditTargetType.Should().Be("Appointment");
+        command.AuditTargetId.Should().Be(appointmentId);
+    }
+
+    [Fact]
     public async Task Handle_AppointmentNotFound_ThrowsNotFoundException()
     {
         Func<Task> act = () => CreateSut().Handle(
