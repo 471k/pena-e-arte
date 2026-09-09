@@ -15,8 +15,14 @@ interface ChecklistItem {
 
 export function SetupChecklist() {
   const navigate = useNavigate();
-  const { data: artists = [] }      = useGetArtistsQuery(undefined);
-  const { data: depositRules = [] } = useGetDepositRulesQuery(undefined);
+  const { data: artists = [], isLoading: artistsLoading }           = useGetArtistsQuery(undefined);
+  const { data: depositRules = [], isLoading: depositRulesLoading } = useGetDepositRulesQuery(undefined);
+
+  // Both queries default to [] while their first request is in flight, which would
+  // otherwise render "0/2 complete" for a moment on every dashboard load — even for a
+  // fully-set-up studio — before the real data arrives. Wait for both to resolve at
+  // least once rather than flash a false "incomplete" state.
+  if (artistsLoading || depositRulesLoading) return null;
 
   const items: ChecklistItem[] = [
     {
