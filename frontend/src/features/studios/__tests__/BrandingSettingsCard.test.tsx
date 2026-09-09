@@ -31,6 +31,7 @@ const STUDIO_BRANDING_ON: StudioResponse = {
   nipt:                 null,
   isSolo:               false,
   isPublished:          true,
+  timezone:             "Europe/Tirane",
 };
 
 const STUDIO_BRANDING_REMOVABLE: StudioResponse = {

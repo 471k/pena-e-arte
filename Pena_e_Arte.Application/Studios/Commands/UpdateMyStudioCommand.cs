@@ -30,6 +30,9 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
         studio.PhoneNumber = string.IsNullOrWhiteSpace(command.Request.PhoneNumber)
                                   ? null : command.Request.PhoneNumber.Trim();
 
+        if (!string.IsNullOrWhiteSpace(command.Request.Timezone))
+            studio.Timezone = command.Request.Timezone.Trim();
+
         // InstagramHandle is deliberately NOT written here anymore. The frontend form no
         // longer collects it (Instagram is now managed via SocialLinksCard →
         // UpdateSocialHandleCommand, writing to SocialAccountLink), so
@@ -76,7 +79,7 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
             AllowBrandingRemoval: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
-            studio.IsSolo, studio.IsPublished);
+            studio.IsSolo, studio.IsPublished, studio.Timezone);
     }
 }
 
@@ -99,5 +102,8 @@ public class UpdateMyStudioValidator : AbstractValidator<UpdateMyStudioCommand>
             .Must(n => NiptFormat.IsMatch(n!.Trim().ToUpperInvariant()))
             .WithMessage("NIPT must be 10 characters: a letter, 8 digits, then a letter (e.g. L01234567A).")
             .When(x => !string.IsNullOrWhiteSpace(x.Request.Nipt));
+        RuleFor(x => x.Request.Timezone)
+            .Must(tz => tz is null || TimeZoneInfo.TryFindSystemTimeZoneById(tz, out _))
+            .WithMessage("Timezone must be a valid IANA timezone identifier (e.g. 'Europe/Tirane').");
     }
 }

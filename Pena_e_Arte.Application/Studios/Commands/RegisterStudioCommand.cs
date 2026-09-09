@@ -87,6 +87,28 @@ public class RegisterStudioHandler(
 
         db.Studios.Add(studio);
         db.Subscriptions.Add(subscription);
+
+        // Default Mon–Fri, 09:00–18:00 hours so a new studio is bookable immediately —
+        // correctable in settings, not a blocking required step (mirrors SetupChecklist's
+        // posture toward "things a new owner should set but isn't blocked without"). Weekend
+        // days are simply absent — StudioHours' own "no entry = closed" convention already
+        // covers that, no need to insert closed-day rows.
+        foreach (DayOfWeek day in new[]
+                 {
+                     DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+                     DayOfWeek.Thursday, DayOfWeek.Friday,
+                 })
+        {
+            db.StudioHours.Add(new StudioHours
+            {
+                StudioId = studio.Id,
+                DayOfWeek = day,
+                StartTime = new TimeSpan(9, 0, 0),
+                EndTime = new TimeSpan(18, 0, 0),
+                IsOpen = true,
+            });
+        }
+
         await db.SaveChangesAsync(ct);
 
         jobs.ScheduleTrialExpiryWarning(studio.Id, trialEnd.AddHours(-48));
@@ -103,6 +125,6 @@ public class RegisterStudioHandler(
             AllowBrandingRemoval: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, PhoneNumber: null, InstagramHandle: null, Nipt: studio.Nipt,
-            IsSolo: studio.IsSolo, IsPublished: studio.IsPublished);
+            IsSolo: studio.IsSolo, IsPublished: studio.IsPublished, Timezone: studio.Timezone);
     }
 }

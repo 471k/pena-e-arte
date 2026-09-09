@@ -2,6 +2,7 @@ using System.Globalization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
@@ -46,7 +47,10 @@ public class SendAppointmentCreatedNotificationHandler(
         }
 
         string clientFullName = $"{appointment.Client.FirstName} {appointment.Client.LastName}";
-        string appointmentDate = appointment.Date.ToString(
+        // Studio-local time for every human-readable rendering below — appointment.Date
+        // itself stays UTC throughout; only these display strings convert.
+        DateTime localDate = TimezoneUtils.ToStudioLocal(appointment.Date, studio.Timezone);
+        string appointmentDate = localDate.ToString(
             "dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
 
         bool emailEnabled = await prefs.IsEnabledAsync(
@@ -57,7 +61,7 @@ public class SendAppointmentCreatedNotificationHandler(
         // Email to client
         string clientEmailBody = emailRenderer.RenderAppointmentCreatedClient(
             appointment.Client.FirstName,
-            appointment.Date,
+            localDate,
             appointment.DurationMinutes,
             studio.Name,
             studio.ShowPlatformBranding);
@@ -99,7 +103,7 @@ public class SendAppointmentCreatedNotificationHandler(
             // Email to studio owner
             string studioEmailBody = emailRenderer.RenderAppointmentCreatedStudio(
                 clientFullName,
-                appointment.Date,
+                localDate,
                 appointment.DurationMinutes,
                 appointment.Notes);
 

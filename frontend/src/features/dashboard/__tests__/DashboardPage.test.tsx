@@ -14,6 +14,7 @@ import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { DashboardPage } from "@/features/dashboard/components/DashboardPage";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -132,6 +133,12 @@ const server = setupServer(
   http.get("http://localhost/api/v1/deposit-rules", () =>
     HttpResponse.json([]),
   ),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "stud-0001", timezone: "Europe/Tirane" }),
+  ),
+  http.get("http://localhost/api/v1/studios/stud-0001/hours", () =>
+    HttpResponse.json([]),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -150,6 +157,7 @@ function makeStore() {
       [artistsApi.reducerPath]:          artistsApi.reducer,
       [paymentsApi.reducerPath]:         paymentsApi.reducer,
       [depositRulesApi.reducerPath]:     depositRulesApi.reducer,
+      [studiosApi.reducerPath]:          studiosApi.reducer,
     },
     middleware: (gd) =>
       gd().concat(
@@ -158,6 +166,7 @@ function makeStore() {
         artistsApi.middleware,
         paymentsApi.middleware,
         depositRulesApi.middleware,
+        studiosApi.middleware,
       ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

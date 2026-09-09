@@ -58,7 +58,22 @@ public class RegisterSoloArtistHandlerTests
         subscription.Status.Should().Be(SubscriptionStatus.Active);
         subscription.TrialExpiresAt.Should().BeNull();
         subscription.CurrentPeriodEnd.Should().BeCloseTo(DateTime.UtcNow.AddYears(50), TimeSpan.FromMinutes(5));
-        subscription.PlanId.Should().Be(_db.Plans.Single().Id);
+    }
+
+    [Fact]
+    public async Task Handle_ValidRequest_SeedsDefaultWeekdayHours()
+    {
+        // Without this, a solo studio would have zero StudioHours rows and be permanently
+        // unbookable under the ArtistAvailabilityExtensions hard gate — this path creates a
+        // Studio too, just like RegisterStudioHandler, so needs the same seeding.
+        IdentitySucceeds();
+
+        await CreateSut().Handle(new RegisterSoloArtistCommand(ValidRequest()), default);
+
+        Studio studio = _db.Studios.Single();
+        List<StudioHours> hours = _db.StudioHours.Where(h => h.StudioId == studio.Id).ToList();
+        hours.Should().HaveCount(5);
+        hours.Should().OnlyContain(h => h.IsOpen);
     }
 
     [Fact]

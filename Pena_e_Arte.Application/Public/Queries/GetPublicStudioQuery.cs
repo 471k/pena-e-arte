@@ -88,6 +88,14 @@ public class GetPublicStudioHandler(IAppDbContext db)
                 s.Platform.ToString(), s.Handle, s.IsVerified, SocialProfileUrlBuilder.Build(s.Platform, s.Handle)))
             .ToList();
 
+        // Approved: public portfolio query — same class as the other reads in this handler.
+        IReadOnlyList<PublicStudioHoursResponse> hours = await db.StudioHours
+            .IgnoreQueryFilters()
+            .Where(h => h.StudioId == studio.Id && h.DeletedAt == null)
+            .OrderBy(h => h.DayOfWeek)
+            .Select(h => new PublicStudioHoursResponse(h.DayOfWeek, h.StartTime, h.EndTime, h.IsOpen))
+            .ToListAsync(ct);
+
         IReadOnlyList<PublicArtistSummary> artistSummaries = artists
             .Select(a =>
             {
@@ -119,6 +127,8 @@ public class GetPublicStudioHandler(IAppDbContext db)
             galleryImages,
             artistSummaries,
             ShowBookingCta: true,
-            socialLinks);
+            socialLinks,
+            hours,
+            studio.Timezone);
     }
 }

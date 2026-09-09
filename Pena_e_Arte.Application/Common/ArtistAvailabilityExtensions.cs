@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Application.Common;
@@ -7,8 +8,9 @@ namespace Pena_e_Arte.Application.Common;
 public static class ArtistAvailabilityExtensions
 {
     /// <summary>
-    /// True if at least one active artist at <paramref name="studioId"/> has open schedule, no
-    /// time-off, and no conflicting appointment covering [date, date + durationMinutes). Used
+    /// True if the studio is open (StudioClosures, StudioHours) at [date, date +
+    /// durationMinutes) AND at least one active artist has open schedule, no
+    /// time-off, and no conflicting appointment covering that window. Used
     /// only for the "book with the studio" path, where no specific artist has been chosen yet —
     /// this is a soft, advisory check. AssignAppointmentArtistCommand re-validates the specific
     /// artist actually chosen at assignment time, under a real per-artist lock, independent of
@@ -41,6 +43,11 @@ public static class ArtistAvailabilityExtensions
             c => c.StudioId == studioId && c.DeletedAt == null
                  && c.StartDate <= date.Date && c.EndDate >= date.Date, ct);
         if (studioClosed) return false;
+
+        StudioHours? studioHours = await db.StudioHours.IgnoreQueryFilters().FirstOrDefaultAsync(
+            h => h.StudioId == studioId && h.DeletedAt == null && h.DayOfWeek == day, ct);
+        if (studioHours is null || !studioHours.IsOpen) return false;
+        if (startTime < studioHours.StartTime || endTime > studioHours.EndTime) return false;
 
         List<Guid> candidateArtistIds = await db.Artists
             .IgnoreQueryFilters()
@@ -85,8 +92,12 @@ public static class ArtistAvailabilityExtensions
     }
 
     /// <summary>
-    /// Schedule-side specific-artist availability (studio-closure → schedule → hours →
-    /// time-off — deliberately NO conflict check). Shared by CreateAppointmentCommand's
+    /// Schedule-side specific-artist availability (studio-closure → studio hours →
+    /// artist schedule → artist's own hours → time-off — deliberately NO conflict check).
+    /// "Studio hours" (StudioHours, added 2026-09-09) is a studio-wide day/time gate,
+    /// distinct from "artist's own hours" (the StartTime/EndTime on the artist's own
+    /// ArtistSchedule row for that day) — an artist can never be booked outside either.
+    /// Shared by CreateAppointmentCommand's
     /// CreateAppointmentCoreAsync (both authenticated and guest paths) for its PRE-LOCK check,
     /// and by <see cref="CheckArtistSlotAvailabilityAsync"/> below. Kept separate from the
     /// conflict check because CreateAppointmentCoreAsync must run its authoritative conflict
@@ -113,6 +124,13 @@ public static class ArtistAvailabilityExtensions
                  && c.StartDate <= date.Date && c.EndDate >= date.Date, ct);
         if (studioClosed)
             return (false, "Studio is closed that day.");
+
+        StudioHours? studioHours = await db.StudioHours.IgnoreQueryFilters().FirstOrDefaultAsync(
+            h => h.StudioId == studioId && h.DeletedAt == null && h.DayOfWeek == day, ct);
+        if (studioHours is null || !studioHours.IsOpen)
+            return (false, "Studio is closed that day.");
+        if (startTime < studioHours.StartTime || endTime > studioHours.EndTime)
+            return (false, $"Outside studio hours ({studioHours.StartTime:hh\\:mm}–{studioHours.EndTime:hh\\:mm}).");
 
         var schedule = await db.ArtistSchedules
             .IgnoreQueryFilters()

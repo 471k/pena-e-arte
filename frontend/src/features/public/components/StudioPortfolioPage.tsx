@@ -4,6 +4,7 @@ import {
   AtSign,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Images,
   MapPin,
   Phone,
@@ -21,7 +22,7 @@ import {
 import { StarRating }              from "@/shared/components/ui/StarRating";
 import { useAppSelector }          from "@/app/hooks";
 import { useGetPublicStudioQuery } from "../publicApi";
-import type { PublicArtistSummary } from "../publicApi";
+import type { PublicArtistSummary, PublicStudioHoursResponse } from "../publicApi";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { useDocumentMeta }          from "@/shared/utils/useDocumentMeta";
@@ -32,11 +33,16 @@ import { PublicPageHeader }         from "./PublicPageHeader";
 import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
 import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 
+const SCHEMA_DAY_NAMES = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+];
+
 function StudioMeta({
-  name, slug, description, coverImageUrl, city, latitude, longitude, averageRating, reviewCount,
+  name, slug, description, coverImageUrl, city, latitude, longitude, averageRating, reviewCount, hours,
 }: {
   name: string; slug: string; description: string | null; coverImageUrl: string | null;
   city: string; latitude: number; longitude: number; averageRating: number | null; reviewCount: number;
+  hours: PublicStudioHoursResponse[];
 }) {
   useDocumentMeta({
     title:       `${name} — Book a Tattoo on TattooOS`,
@@ -44,6 +50,7 @@ function StudioMeta({
     ogImage:     coverImageUrl ?? undefined,
     canonical:   `https://tattooos.co/s/${slug}`,
   });
+  const openHours = hours.filter((h) => h.isOpen);
   useStructuredData({
     "@context":    "https://schema.org",
     "@type":       "TattooParlor",
@@ -58,8 +65,47 @@ function StudioMeta({
     ...(reviewCount > 0
       ? { aggregateRating: { "@type": "AggregateRating", ratingValue: averageRating, reviewCount } }
       : {}),
+    ...(openHours.length > 0
+      ? {
+          openingHoursSpecification: openHours.map((h) => ({
+            "@type":   "OpeningHoursSpecification",
+            dayOfWeek: SCHEMA_DAY_NAMES[h.dayOfWeek],
+            opens:     h.startTime.slice(0, 5),
+            closes:    h.endTime.slice(0, 5),
+          })),
+        }
+      : {}),
   });
   return null;
+}
+
+// Mon-first display order (common business-hours convention) even though the underlying
+// dayOfWeek value follows JS/C#'s Sunday=0 convention.
+const DISPLAY_DAYS: { day: number; label: string }[] = [
+  { day: 1, label: "Mon" }, { day: 2, label: "Tue" }, { day: 3, label: "Wed" },
+  { day: 4, label: "Thu" }, { day: 5, label: "Fri" }, { day: 6, label: "Sat" },
+  { day: 0, label: "Sun" },
+];
+
+function StudioHoursDisplay({ hours }: { hours: PublicStudioHoursResponse[] }) {
+  const openByDay = new Map(hours.filter((h) => h.isOpen).map((h) => [h.dayOfWeek, h]));
+  if (openByDay.size === 0) return null;
+
+  return (
+    <div className="flex items-start gap-2 text-sm text-muted-foreground">
+      <Clock className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+      <ul className="space-y-0.5">
+        {DISPLAY_DAYS.filter(({ day }) => openByDay.has(day)).map(({ day, label }) => {
+          const entry = openByDay.get(day)!;
+          return (
+            <li key={day}>
+              {label} {entry.startTime.slice(0, 5)}–{entry.endTime.slice(0, 5)}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 function ArtistAvatar({ name, profileImageUrl }: { name: string; profileImageUrl: string | null }) {
@@ -274,6 +320,7 @@ export function StudioPortfolioPage() {
         longitude={studio.longitude}
         averageRating={studio.averageRating}
         reviewCount={studio.reviewCount}
+        hours={studio.hours}
       />
 
       <GalleryLightbox
@@ -501,6 +548,8 @@ export function StudioPortfolioPage() {
                   {studio.city}
                 </div>
               )}
+
+              <StudioHoursDisplay hours={studio.hours} />
             </div>
 
             <p className="text-xs text-muted-foreground text-center px-1">

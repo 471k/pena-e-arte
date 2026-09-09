@@ -17,4 +17,5 @@ public record StudioResponse(
     string? InstagramHandle = null,
     string? Nipt = null,
     bool IsSolo = false,
-    bool IsPublished = true);
+    bool IsPublished = true,
+    string Timezone = "Europe/Tirane");

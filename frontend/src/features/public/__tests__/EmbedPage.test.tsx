@@ -61,6 +61,8 @@ const STUDIO: PublicStudioResponse = {
   ],
   showBookingCta: true,
   socialLinks: [],
+  hours: [],
+  timezone: "Europe/Lisbon",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

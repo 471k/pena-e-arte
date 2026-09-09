@@ -155,6 +155,14 @@ public class AppointmentArtistEndpointAuthorizationTests(DatabaseFixture fixture
                 EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
+            db.StudioHours.Add(new StudioHours
+            {
+                StudioId = tenantId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsOpen = true,
+            });
         }
 
         Appointment appointment = new()

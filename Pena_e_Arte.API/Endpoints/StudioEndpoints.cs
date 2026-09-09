@@ -35,6 +35,10 @@ public static class StudioEndpoints
         group.MapPost("{id:guid}/closures", AddClosure).RequireAuthorization("OwnerOnly");
         group.MapDelete("{id:guid}/closures/{closureId:guid}", DeleteClosure).RequireAuthorization("OwnerOnly");
 
+        // Owner: weekly studio hours (hard-gates bookable slots — see ArtistAvailabilityExtensions)
+        group.MapGet("{id:guid}/hours", GetHours).RequireAuthorization("ClientAndAbove");
+        group.MapPut("{id:guid}/hours", UpsertHours).RequireAuthorization("OwnerOnly");
+
         // Admin: list all studios + suspension controls
         group.MapGet("/", GetStudios).RequireAuthorization("AdminOnly");
         group.MapGet("{id:guid}", GetStudioById).RequireAuthorization("AdminOnly");
@@ -159,6 +163,28 @@ public static class StudioEndpoints
         CancellationToken ct)
     {
         await mediator.Send(new DeleteStudioClosureCommand(id, closureId), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetHours(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        List<StudioHoursEntryResponse> result = await mediator.Send(new GetStudioHoursQuery(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpsertHours(
+        Guid id,
+        UpsertStudioHoursRequest body,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        List<StudioHoursEntryDto> entries = body.Entries
+            .Select(e => new StudioHoursEntryDto(e.DayOfWeek, e.StartTime, e.EndTime, e.IsOpen))
+            .ToList();
+        await mediator.Send(new UpsertStudioHoursCommand(entries), ct);
         return Results.NoContent();
     }
 

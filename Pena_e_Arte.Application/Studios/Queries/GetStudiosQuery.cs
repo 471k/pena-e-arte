@@ -21,7 +21,7 @@ public class GetStudiosHandler(IAppDbContext db)
                 AllowBrandingRemoval: false,
                 s.TrialExpiresAt, s.CreatedAt, s.IsActive,
                 s.SlugLockedAt, s.PhoneNumber, s.InstagramHandle, s.Nipt,
-                s.IsSolo, s.IsPublished))
+                s.IsSolo, s.IsPublished, s.Timezone))
             .ToListAsync(ct);
     }
 }

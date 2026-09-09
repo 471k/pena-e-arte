@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
@@ -44,14 +45,19 @@ public class SendAppointmentConfirmationHandler(
             return Unit.Value;
         }
 
+        // Studio-local time for every human-readable rendering below (email body, subject,
+        // SMS) — appointment.Date itself stays UTC throughout; only these display strings
+        // convert. See TimezoneUtils.ToStudioLocal.
+        DateTime localDate = TimezoneUtils.ToStudioLocal(appointment.Date, studio.Timezone);
+
         string body = emailRenderer.RenderAppointmentConfirmation(
             appointment.Client.FirstName,
-            appointment.Date,
+            localDate,
             appointment.DurationMinutes,
             appointment.Notes,
             studio.ShowPlatformBranding);
 
-        string subject = $"Appointment Confirmed — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
+        string subject = $"Appointment Confirmed — {localDate:ddd, dd MMM yyyy 'at' HH:mm}";
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             studio.Id, NotificationType.AppointmentConfirmed, NotificationChannel.Email, ct);
@@ -103,7 +109,7 @@ public class SendAppointmentConfirmationHandler(
         {
             string smsBody =
                 $"Hi {appointment.Client.FirstName}, your tattoo appointment at " +
-                $"{studio.Name} on {appointment.Date:dd MMM yyyy 'at' HH:mm} is confirmed. " +
+                $"{studio.Name} on {localDate:dd MMM yyyy 'at' HH:mm} is confirmed. " +
                 $"See you soon!";
 
             bool smsSent = true;

@@ -96,6 +96,26 @@ public class RegisterSoloArtistHandler(
 
         db.Studios.Add(studio);
         db.Subscriptions.Add(subscription);
+
+        // Same default Mon–Fri, 09:00–18:00 seeding as RegisterStudioHandler — without it, a
+        // solo studio would have zero StudioHours rows and be permanently unbookable under the
+        // ArtistAvailabilityExtensions hard gate (StudioHours' own "no entry = closed" rule).
+        foreach (DayOfWeek day in new[]
+                 {
+                     DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+                     DayOfWeek.Thursday, DayOfWeek.Friday,
+                 })
+        {
+            db.StudioHours.Add(new StudioHours
+            {
+                StudioId = studio.Id,
+                DayOfWeek = day,
+                StartTime = new TimeSpan(9, 0, 0),
+                EndTime = new TimeSpan(18, 0, 0),
+                IsOpen = true,
+            });
+        }
+
         await db.SaveChangesAsync(ct);
 
         // Send email verification (non-blocking; failure must not abort registration).

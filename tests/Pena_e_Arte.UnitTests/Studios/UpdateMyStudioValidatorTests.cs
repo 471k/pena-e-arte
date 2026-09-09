@@ -63,6 +63,31 @@ public class UpdateMyStudioValidatorTests
         _sut.ShouldFailOn(Command(phoneNumber: "not a phone"), "Request.PhoneNumber");
     }
 
-    private static UpdateMyStudioCommand Command(string? nipt = "L01234567A", string? phoneNumber = null) =>
-        new(new UpdateStudioRequest("Studio", "Lisbon", 38.7, -9.1, PhoneNumber: phoneNumber, Nipt: nipt));
+    [Fact]
+    public void Validate_NullTimezone_IsValid()
+    {
+        _sut.ShouldBeValid(Command(timezone: null));
+    }
+
+    [Theory]
+    [InlineData("Europe/Tirane")]
+    [InlineData("America/New_York")]
+    [InlineData("UTC")]
+    public void Validate_ValidIanaTimezone_IsValid(string timezone)
+    {
+        _sut.ShouldBeValid(Command(timezone: timezone));
+    }
+
+    [Theory]
+    [InlineData("Not/A_Real_Zone")]
+    [InlineData("garbage")]
+    [InlineData("GMT+2")]
+    public void Validate_InvalidTimezone_FailsOnTimezone(string timezone)
+    {
+        _sut.ShouldFailOn(Command(timezone: timezone), "Request.Timezone");
+    }
+
+    private static UpdateMyStudioCommand Command(
+        string? nipt = "L01234567A", string? phoneNumber = null, string? timezone = null) =>
+        new(new UpdateStudioRequest("Studio", "Lisbon", 38.7, -9.1, PhoneNumber: phoneNumber, Nipt: nipt, Timezone: timezone));
 }

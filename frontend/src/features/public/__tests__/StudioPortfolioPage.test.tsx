@@ -81,6 +81,12 @@ const STUDIO: PublicStudioResponse = {
   socialLinks: [
     { platform: "Instagram", handle: "inksoultattoo", isVerified: true, profileUrl: "https://instagram.com/inksoultattoo" },
   ],
+  hours: [
+    { dayOfWeek: 1, startTime: "09:00:00", endTime: "18:00:00", isOpen: true },
+    { dayOfWeek: 2, startTime: "09:00:00", endTime: "18:00:00", isOpen: true },
+    { dayOfWeek: 0, startTime: "00:00:00", endTime: "00:00:00", isOpen: false },
+  ],
+  timezone: "Europe/Lisbon",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -184,6 +190,35 @@ describe("StudioPortfolioPage", () => {
     expect(json["@type"]).toBe("TattooParlor");
     expect(json.name).toBe("Ink Soul");
     expect(json.aggregateRating).toEqual({ "@type": "AggregateRating", ratingValue: 4.7, reviewCount: 12 });
+  });
+
+  it("includes openingHoursSpecification in JSON-LD for open days only", () => {
+    renderPage();
+    const script = document.head.querySelector('script[type="application/ld+json"]');
+    const json = JSON.parse(script!.textContent ?? "{}");
+    expect(json.openingHoursSpecification).toEqual([
+      { "@type": "OpeningHoursSpecification", dayOfWeek: "Monday", opens: "09:00", closes: "18:00" },
+      { "@type": "OpeningHoursSpecification", dayOfWeek: "Tuesday", opens: "09:00", closes: "18:00" },
+    ]);
+  });
+
+  it("omits openingHoursSpecification entirely when every day is closed", () => {
+    mockUseGetPublicStudioQuery.mockReturnValue({
+      data: { ...STUDIO, hours: STUDIO.hours.map((h) => ({ ...h, isOpen: false })) },
+      isLoading: false,
+      isError: false,
+    });
+    renderPage();
+    const script = document.head.querySelector('script[type="application/ld+json"]');
+    const json = JSON.parse(script!.textContent ?? "{}");
+    expect(json.openingHoursSpecification).toBeUndefined();
+  });
+
+  it("renders visible studio hours for open days only, Monday first", () => {
+    renderPage();
+    expect(screen.getByText("Mon 09:00–18:00")).toBeInTheDocument();
+    expect(screen.getByText("Tue 09:00–18:00")).toBeInTheDocument();
+    expect(screen.queryByText(/Sun /)).not.toBeInTheDocument();
   });
 
   // ── New tests ────────────────────────────────────────────────────────────────

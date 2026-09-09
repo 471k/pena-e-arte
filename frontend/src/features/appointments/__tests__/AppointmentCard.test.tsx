@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { AppointmentCard } from "@/features/appointments/components/AppointmentCard";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -48,6 +49,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/appointments/check-slot", () =>
     HttpResponse.json({ available: true, reason: null }),
   ),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -63,8 +67,9 @@ function makeStore(role: Role = Role.Artist) {
       auth:                          authReducer,
       ui:                            uiReducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+      [studiosApi.reducerPath]:      studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(appointmentsApi.middleware),
+    middleware: (gd) => gd().concat(appointmentsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
@@ -89,6 +94,24 @@ function renderCard(appointment: AppointmentResponse, role: Role = Role.Artist) 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("AppointmentCard", () => {
+
+  it("renders appointment time in the studio's timezone, not the test environment's local timezone", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "America/New_York" }),
+      ),
+    );
+    const fixedAppt: AppointmentResponse = {
+      ...APPT_PENDING,
+      date: "2026-06-15T20:00:00Z",
+      endDate: "2026-06-15T21:00:00Z",
+    };
+    renderCard(fixedAppt, Role.Artist);
+
+    const expected = new Date(fixedAppt.date)
+      .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" });
+    await screen.findByText(new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  });
 
   it("artist sees the Reschedule icon button for a non-terminal appointment", () => {
     renderCard(APPT_PENDING, Role.Artist);
