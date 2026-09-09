@@ -65,7 +65,8 @@ public class CreateClientHandler(IAppDbContext db, ICurrentTenant tenant, ICurre
     // filtered-out artist.
     internal static ClientResponse Map(Client c, Artist? artist = null) =>
         new(c.Id, c.StudioId, c.FirstName, c.LastName, c.Email, c.Phone, c.CreatedAt, c.UserId,
-            c.ArtistId, artist is null ? null : $"{artist.FirstName} {artist.LastName}");
+            c.ArtistId, artist is null ? null : $"{artist.FirstName} {artist.LastName}",
+            c.ErasureRequestedAt);
 
     /// <summary>Shared by CreateClientCommand and UpdateClientArtistCommand — the two places a
     /// client's artist assignment is set from a caller-supplied id — so the not-found/inactive

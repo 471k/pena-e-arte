@@ -775,6 +775,29 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Choose a different artist, or choose \"Unassigned\".",
       "The change saves immediately — no separate save button.",
     ],
+    relatedArticleIds: ["owner-clients-erase-data"],
+  },
+  {
+    id: "owner-clients-erase-data",
+    roles: [Owner],
+    title: "Erase a client's data on their behalf",
+    route: "/clients",
+    keywords: ["delete client data", "erase data", "right to erasure", "gdpr", "remove client data"],
+    summary: "Honor a client's right-to-erasure request (GDPR Art. 17) yourself — e.g. one that came in by phone or email, or for a walk-in client without their own account.",
+    steps: [
+      "Open the client's profile from the Clients list.",
+      "Scroll to the \"Erase client data\" section at the bottom of the page.",
+      "Click \"Erase client data\", read the warning, type the client's full name to confirm, then click \"Erase client data\" in the dialog.",
+    ],
+    warnings: [
+      "Their profile, body map, and consent records are permanently deleted after a 30-day grace period, and this cannot be undone.",
+      "If the client has their own login, it's disabled immediately.",
+      "This only erases the targeted client's data — it never affects any other client.",
+    ],
+    tips: [
+      "A client can also request this themselves from their own profile — see the client-facing \"Delete my account\" article. Use this owner-initiated version only when the client can't or didn't do it themselves.",
+    ],
+    relatedArticleIds: ["owner-clients-list", "owner-clients-reassign-artist"],
   },
   {
     id: "owner-designs",

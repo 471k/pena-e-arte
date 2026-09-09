@@ -47,6 +47,7 @@ const CLIENT: ClientResponse = {
   userId:     null,
   artistId:   null,
   artistName: null,
+  erasureRequestedAt: null,
 };
 
 const CREATED_DESIGN: DesignResponse = {

@@ -40,6 +40,7 @@ import { BodyMap } from "./BodyMap";
 import { TattooHistorySection } from "./TattooHistorySection";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import { useGetPortableProfileQuery } from "../clientsApi";
+import { EraseClientDataSection } from "./EraseClientDataSection";
 
 const profileSchema = z.object({
   dateOfBirth:  z.string().optional(),
@@ -594,6 +595,14 @@ export function ClientDetailPage() {
               ))}
             </TabsContent>
           </Tabs>
+        )}
+
+        {isOwner && !isEditing && (
+          <EraseClientDataSection
+            clientId={id!}
+            clientName={`${client.firstName} ${client.lastName}`}
+            erasureRequestedAt={client.erasureRequestedAt}
+          />
         )}
       </main>
 

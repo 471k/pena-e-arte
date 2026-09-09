@@ -43,6 +43,7 @@ const CLIENT: ClientResponse = {
   userId:     "u-ana",
   artistId:   "artist-001",
   artistName: "Marta Reis",
+  erasureRequestedAt: null,
 };
 
 const PROFILE: ClientProfileResponse = {
@@ -166,6 +167,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/intake-forms", () => HttpResponse.json([INTAKE_FORM])),
   http.get("http://localhost/api/v1/consent-forms", () => HttpResponse.json([CONSENT_FORM])),
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
+  http.post("http://localhost/api/v1/clients/:id/erase-data", () =>
+    new HttpResponse(null, { status: 204 })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -528,5 +531,74 @@ describe("ClientDetailPage", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(/send reminder/i)).toBeInTheDocument();
     expect(within(dialog).queryByLabelText(/^name$/i)).not.toBeInTheDocument();
+  });
+
+  // ── Erase client data (owner-initiated GDPR erasure) ────────────────────────
+
+  it("Owner sees the 'Erase client data' section; non-owner (artist) does not", async () => {
+    renderPage(Role.Owner);
+    expect(await screen.findByRole("button", { name: /erase client data/i })).toBeInTheDocument();
+
+    cleanup();
+    renderPage(Role.Artist);
+    await screen.findByText("Ana Ferreira");
+    expect(screen.queryByRole("button", { name: /erase client data/i })).not.toBeInTheDocument();
+  });
+
+  it("'Erase client data' confirm button stays disabled until the client's name is typed exactly", async () => {
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await user.click(await screen.findByRole("button", { name: /erase client data/i }));
+
+    const dialog = screen.getByRole("dialog");
+    const confirmButton = within(dialog).getByRole("button", { name: /erase client data/i });
+    expect(confirmButton).toBeDisabled();
+
+    await user.type(within(dialog).getByLabelText(/type ana ferreira to confirm/i), "wrong name");
+    expect(confirmButton).toBeDisabled();
+  });
+
+  it("confirming erasure with the exact name calls the endpoint and shows a success toast", async () => {
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await user.click(await screen.findByRole("button", { name: /erase client data/i }));
+
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/type ana ferreira to confirm/i), "Ana Ferreira");
+    await user.click(within(dialog).getByRole("button", { name: /erase client data/i }));
+
+    expect(await screen.findByText("Client data has been scheduled for deletion.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("failed erasure request shows an error toast and keeps the dialog open", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/clients/:id/erase-data", () =>
+        HttpResponse.json({ message: "Server error" }, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await user.click(await screen.findByRole("button", { name: /erase client data/i }));
+
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/type ana ferreira to confirm/i), "Ana Ferreira");
+    await user.click(within(dialog).getByRole("button", { name: /erase client data/i }));
+
+    expect(
+      await screen.findByText(/couldn't erase this client's data/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("shows an erasure-pending banner instead of the button once erasure has been requested", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients/:id", () =>
+        HttpResponse.json({ ...CLIENT, erasureRequestedAt: "2026-09-01T00:00:00.000Z" })),
+    );
+    renderPage(Role.Owner);
+    await screen.findByText("Ana Ferreira");
+
+    expect(await screen.findByText(/data erasure requested on 1 sep(t|tember)? 2026/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /erase client data/i })).not.toBeInTheDocument();
   });
 });

@@ -45,6 +45,7 @@ const CLIENT_A: ClientResponse = {
   userId:     null,
   artistId:   ARTIST_A.id,
   artistName: "Luna Artista",
+  erasureRequestedAt: null,
 };
 
 const CLIENT_B: ClientResponse = {
@@ -58,6 +59,7 @@ const CLIENT_B: ClientResponse = {
   userId:     null,
   artistId:   null,
   artistName: null,
+  erasureRequestedAt: null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
