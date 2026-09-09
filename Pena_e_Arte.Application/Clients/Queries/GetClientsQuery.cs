@@ -38,7 +38,8 @@ public class GetClientsHandler(IAppDbContext db)
                 c.ArtistId,
                 c.Artist != null && c.Artist.DeletedAt == null
                     ? c.Artist.FirstName + " " + c.Artist.LastName
-                    : null))
+                    : null,
+                c.ErasureRequestedAt))
             .ToListAsync(ct);
     }
 }

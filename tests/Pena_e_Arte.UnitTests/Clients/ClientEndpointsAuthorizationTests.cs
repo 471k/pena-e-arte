@@ -50,6 +50,28 @@ public class ClientEndpointsAuthorizationTests
             .Should().ContainSingle(a => a.Policy == "ArtistAndAbove");
     }
 
+    [Fact]
+    public void EraseDataEndpoint_RequiresOwnerOnlyPolicy()
+    {
+        using WebApplication app = BuildApp();
+
+        RouteEndpoint endpoint = FindEndpoint(app, "POST", "/api/v1/clients/{clientId:guid}/erase-data");
+
+        endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
+            .Should().ContainSingle(a => a.Policy == "OwnerOnly");
+    }
+
+    [Fact]
+    public void MyEraseDataEndpoint_RequiresClientAndAbovePolicy_NotOwnerOnly()
+    {
+        using WebApplication app = BuildApp();
+
+        RouteEndpoint endpoint = FindEndpoint(app, "POST", "/api/v1/clients/me/erase-data");
+
+        endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
+            .Should().ContainSingle(a => a.Policy == "ClientAndAbove");
+    }
+
     private static RouteEndpoint FindEndpoint(WebApplication app, string method, string pattern) =>
         ((IEndpointRouteBuilder)app).DataSources
             .SelectMany(ds => ds.Endpoints)

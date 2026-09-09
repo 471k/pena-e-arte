@@ -1,17 +1,19 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
+import { consentFormsApi } from "@/features/forms/consentFormsApi";
 
 export interface ClientResponse {
-  id:         string;
-  studioId:   string;
-  firstName:  string;
-  lastName:   string;
-  email:      string;
-  phone:      string | null;
-  createdAt:  string;
-  userId:     string | null;
-  artistId:   string | null;
-  artistName: string | null;
+  id:                 string;
+  studioId:           string;
+  firstName:          string;
+  lastName:           string;
+  email:              string;
+  phone:              string | null;
+  createdAt:          string;
+  userId:             string | null;
+  artistId:           string | null;
+  artistName:         string | null;
+  erasureRequestedAt: string | null;
 }
 
 export interface ClientProfileResponse {
@@ -233,6 +235,25 @@ export const clientsApi = createApi({
     requestMyDataErasure: builder.mutation<void, void>({
       query: () => ({ url: "clients/me/erase-data", method: "POST" }),
     }),
+    // Owner/support-initiated erasure of a specific client (GDPR Art. 17).
+    requestDataErasure: builder.mutation<void, string>({
+      query: (clientId) => ({ url: `clients/${clientId}/erase-data`, method: "POST" }),
+      invalidatesTags: (_result, _error, clientId) => [
+        { type: "Client", id: clientId },
+        "Client",
+        { type: "ClientProfile", id: clientId },
+      ],
+      // Erasure also soft-deletes the client's consent forms, but ConsentForm lives in a
+      // separate RTK Query slice — invalidatesTags here can't reach it.
+      async onQueryStarted(_clientId, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(consentFormsApi.util.invalidateTags(["ConsentForm"]));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
+    }),
   }),
 });
 
@@ -256,4 +277,5 @@ export const {
   useUpdatePortableProfileOptInMutation,
   useGetPortableProfileQuery,
   useRequestMyDataErasureMutation,
+  useRequestDataErasureMutation,
 } = clientsApi;

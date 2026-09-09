@@ -2154,7 +2154,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. The one difference: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text.</p>
+<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. Two differences: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text; and owners see an <span class="step-title">Erase client data</span> section at the bottom of the page.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner client detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2169,6 +2169,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Same as <a href="#artist-client-detail">the artist client detail</a> walkthrough.</li>
+<li>To honor a right-to-erasure request the client made by phone or email (or for a walk-in client without their own account), scroll to the <span class="step-title">Erase client data</span> section, click <span class="step-title">Erase client data</span>, type the client's full name to confirm, then confirm again in the dialog. Their profile, body map, and consent records are permanently deleted after a 30-day grace period, their login (if any) is disabled immediately, and this cannot be undone — it only ever affects the targeted client, never anyone else's data. Once requested, this section shows a banner with the request date instead of the button.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-client-detail">Artist: client detail</a>, <a href="#artist-tattoo-record">Tattoo record detail</a></div>
 </section>
