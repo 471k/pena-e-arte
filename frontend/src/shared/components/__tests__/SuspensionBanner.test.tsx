@@ -33,6 +33,12 @@ const SUSPENDED_STUDIO: StudioResponse = {
 
 const ACTIVE_STUDIO: StudioResponse = { ...SUSPENDED_STUDIO, isActive: true };
 
+const PAST_DUE_STUDIO: StudioResponse = {
+  ...SUSPENDED_STUDIO,
+  subscriptionStatus: "PastDue",
+  pastDueSince:       new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+};
+
 // ── Store helper ───────────────────────────────────────────────────────────────
 
 function makeStoreWithSuspension(suspended: boolean) {
@@ -126,5 +132,36 @@ describe("SuspensionBanner", () => {
   it("renders owner reactivation link when role='owner' (default) with studio prop", () => {
     renderBanner({ studio: SUSPENDED_STUDIO });
     expect(screen.getByRole("link", { name: /reactivate your subscription/i })).toBeInTheDocument();
+  });
+
+  // ── PastDue-specific copy (owner only) ────────────────────────────────────────
+
+  it("shows the days-overdue count for a PastDue owner studio", () => {
+    renderBanner({ studio: PAST_DUE_STUDIO });
+    expect(screen.getByText(/3 days overdue/i)).toBeInTheDocument();
+    expect(screen.queryByText(/platform administrator/i)).not.toBeInTheDocument();
+  });
+
+  it("still shows the reactivation link for a PastDue owner studio", () => {
+    renderBanner({ studio: PAST_DUE_STUDIO });
+    expect(screen.getByRole("link", { name: /reactivate your subscription/i })).toBeInTheDocument();
+  });
+
+  it("does not use PastDue copy for the artist role even if subscriptionStatus is PastDue", () => {
+    renderBanner({ studio: PAST_DUE_STUDIO, role: "artist" });
+    expect(screen.getByText(/contact your studio owner/i)).toBeInTheDocument();
+    expect(screen.queryByText(/days overdue/i)).not.toBeInTheDocument();
+  });
+
+  it("does not use PastDue copy for the client role even if subscriptionStatus is PastDue", () => {
+    renderBanner({ studio: PAST_DUE_STUDIO, role: "client" });
+    expect(screen.getByText(/contact the studio/i)).toBeInTheDocument();
+    expect(screen.queryByText(/days overdue/i)).not.toBeInTheDocument();
+  });
+
+  it("falls back to the generic suspended message when subscriptionStatus is not PastDue", () => {
+    renderBanner({ studio: SUSPENDED_STUDIO });
+    expect(screen.getByText(/platform administrator/i)).toBeInTheDocument();
+    expect(screen.queryByText(/days overdue/i)).not.toBeInTheDocument();
   });
 });

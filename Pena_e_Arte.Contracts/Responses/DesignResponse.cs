@@ -3,9 +3,11 @@ namespace Pena_e_Arte.Contracts.Responses;
 public record DesignResponse(
     Guid Id,
     Guid StudioId,
-    Guid ClientId,
+    Guid? ClientId,
     Guid ArtistId,
     string Title,
     string? Description,
     DateTime CreatedAt,
-    string Status = "Draft");
+    string Status = "Draft",
+    bool IsCatalogItem = false,
+    decimal? Price = null);

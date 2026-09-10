@@ -63,6 +63,7 @@ const schema = z.object({
     (v) => (VALID_DURATIONS as readonly number[]).includes(v),
     "Select a valid appointment duration",
   ),
+  promoCode: z.string().optional(),
   notes: z.string().optional(),
 }).refine(
   (data) => data.bookAnyArtist || (!!data.artistId && data.artistId.length > 0),
@@ -237,6 +238,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
           referralSource:            intake.referralSource || null,
           referralSourceOther:       intake.referralSourceOther || null,
           images,
+          promoCode: values.promoCode || null,
         },
       },
     });
@@ -437,6 +439,17 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
           rule={depositRule}
         />
       )}
+
+      {/* Promo code */}
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
+        <Input
+          id="promoCode"
+          placeholder="Optional"
+          autoCapitalize="characters"
+          {...register("promoCode")}
+        />
+      </div>
 
       {/* Tattoo description, referral source, safety notes */}
       <TattooIntakeFields

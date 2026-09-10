@@ -67,6 +67,7 @@ export interface AppointmentResponse {
   referralSource?:            string | null;
   referralSourceOther?:       string | null;
   attachments?:               AppointmentAttachmentResponse[] | null;
+  promoCodeApplied?:          boolean;
 }
 
 export interface CreateAppointmentRequest {
@@ -82,6 +83,7 @@ export interface CreateAppointmentRequest {
   referralSource?:            string | null;
   referralSourceOther?:       string | null;
   images?:                    AppointmentImageRequest[];
+  promoCode?:                 string | null;
 }
 
 export interface AssignAppointmentArtistRequest {

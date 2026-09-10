@@ -25,6 +25,8 @@ const DESIGN_A: DesignResponse = {
   description: "Full sleeve concept",
   createdAt:   "2024-01-15T10:00:00Z",
   status:      "Draft",
+  isCatalogItem: false,
+  price:       null,
 };
 
 const DESIGN_B: DesignResponse = {
@@ -36,6 +38,8 @@ const DESIGN_B: DesignResponse = {
   description: null,
   createdAt:   "2024-02-01T10:00:00Z",
   status:      "InReview",
+  isCatalogItem: false,
+  price:       null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

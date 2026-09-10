@@ -12,12 +12,14 @@ import { DesignListPage, CreateDesignPage, UploadRevisionPage, DesignDetailPage 
 import {
   SubmitIntakeFormPage,
   IntakeFormListPage,
+  IntakeFormBuilderPage,
   IntakeFormDetailPage,
   SignConsentFormPage,
   ConsentFormListPage,
   ConsentFormDetailPage,
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
+import { PromoCodeListPage, PromoCodeDetailPage, CreatePromoCodePage } from "@/features/promo-codes";
 import { ReportsPage, MyEarningsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
@@ -302,6 +304,24 @@ export const routes = [
                     children: [{ index: true, element: <ErrorBoundary><CreateDepositRulePage /></ErrorBoundary> }],
                   },
                   { path: ":id", element: <ErrorBoundary><DepositRuleDetailPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: intake form builder ───────────────────────────────────
+              {
+                path: "intake-form-builder",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [{ index: true, element: <ErrorBoundary><IntakeFormBuilderPage /></ErrorBoundary> }],
+              },
+
+              // ── Owner: promo codes ──────────────────────────────────────────
+              {
+                path: "promo-codes",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><PromoCodeListPage /></ErrorBoundary> },
+                  { path: "new", element: <ErrorBoundary><CreatePromoCodePage /></ErrorBoundary> },
+                  { path: ":id", element: <ErrorBoundary><PromoCodeDetailPage /></ErrorBoundary> },
                 ],
               },
 

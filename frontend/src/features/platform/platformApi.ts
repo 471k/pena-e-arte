@@ -114,6 +114,14 @@ export const platformApi = createApi({
       }),
       invalidatesTags: ["PlatformSubscription", "PlatformStats"],
     }),
+    setDunningExclusion: builder.mutation<void, { studioId: string; excluded: boolean }>({
+      query: ({ studioId, excluded }) => ({
+        url:    `platform/studios/${studioId}/subscription/dunning-exclusion`,
+        method: "POST",
+        body:   { excluded },
+      }),
+      invalidatesTags: ["PlatformSubscription"],
+    }),
     getPlanUsageReport: builder.query<PlanUsageReportResponse, void>({
       query: () => "platform/plan-usage-report",
       providesTags: ["PlanUsageReport"],
@@ -175,6 +183,7 @@ export const {
   useDeleteReferralCodeMutation,
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
+  useSetDunningExclusionMutation,
   useGetPlanUsageReportQuery,
   useGetHelpSearchInsightsQuery,
   useGetAuditLogQuery,

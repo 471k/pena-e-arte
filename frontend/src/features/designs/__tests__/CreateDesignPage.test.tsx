@@ -59,6 +59,8 @@ const CREATED_DESIGN: DesignResponse = {
   description: null,
   createdAt:   "2024-06-01T10:00:00Z",
   status:      "Draft",
+  isCatalogItem: false,
+  price:       null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

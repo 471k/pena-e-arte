@@ -22,6 +22,7 @@ public static class PlatformEndpoints
         group.MapGet("subscriptions", GetSubscriptions);
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
         group.MapPost("studios/{studioId:guid}/subscription/activate", ActivateSubscriptionManually);
+        group.MapPost("studios/{studioId:guid}/subscription/dunning-exclusion", SetDunningExclusion);
         group.MapPatch("subscriptions/{studioId:guid}/cancel", CancelSubscription);
         group.MapGet("referral-codes", GetReferralCodes);
         group.MapPatch("referral-codes/{id:guid}/deactivate", DeactivateReferralCode);
@@ -117,6 +118,16 @@ public static class PlatformEndpoints
         SubscriptionResponse result = await mediator.Send(
             new ActivateSubscriptionManuallyCommand(studioId, request.PlanId, request.Note), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> SetDunningExclusion(
+        Guid studioId,
+        SetDunningExclusionRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new SetDunningExclusionCommand(studioId, request), ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> CancelSubscription(

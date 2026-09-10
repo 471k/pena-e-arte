@@ -253,6 +253,33 @@ public class TenantMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_PastDueSubscription_GetStudiosMe_BypassesEnforcement()
+    {
+        // Without this exemption, the owner's own PastDue banner (which sources its
+        // subscriptionStatus/pastDueSince fields from this exact endpoint) could never load —
+        // see SuspensionBanner.tsx / GetMyStudioQuery.
+        SetupSnapshot(SubscriptionStatus.PastDue, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddDays(-23));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "GET");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions, _db);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_PastDueSubscription_PostStudiosMe_StillBlocked()
+    {
+        SetupSnapshot(SubscriptionStatus.PastDue, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddDays(-23));
+        DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "POST");
+
+        Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
+            .InvokeAsync(context, _tenant, _subscriptions, _db);
+
+        await act.Should().ThrowAsync<SubscriptionRequiredException>();
+    }
+
+    [Fact]
     public async Task InvokeAsync_GracePeriodExpired_BlocksReadRequest()
     {
         // Grace period job hasn't run yet, but the dates show it should be suspended

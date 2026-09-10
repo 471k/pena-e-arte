@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
+  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet, Tag,
+  DollarSign, FileText,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -36,7 +37,10 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Clients",          href: "/clients",           icon: <UserSquare      className="h-4 w-4" /> },
   { label: "Messages",         href: "/messages",          icon: <MessageCircle   className="h-4 w-4" />, tourId: "owner-messages-nav" },
   { label: "Designs",          href: "/designs",           icon: <Palette         className="h-4 w-4" /> },
+  { label: "Intake Form",      href: "/intake-form-builder", icon: <FileText      className="h-4 w-4" /> },
   { label: "Payments",         href: "/payments",          icon: <CreditCard      className="h-4 w-4" /> },
+  { label: "Deposit Rules",    href: "/deposit-rules",     icon: <DollarSign      className="h-4 w-4" />, tourId: "owner-deposit-rules-nav" },
+  { label: "Promo Codes",      href: "/promo-codes",       icon: <Tag             className="h-4 w-4" /> },
   { label: "Billing",          href: "/billing",           icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
   { label: "Reports",          href: "/reports",           icon: <BarChart3       className="h-4 w-4" />, tourId: "owner-reports-nav" },
   { label: "Conduct Reports",  href: "/conduct-reports",   icon: <ShieldAlert     className="h-4 w-4" />, tourId: "owner-conduct-reports-nav" },

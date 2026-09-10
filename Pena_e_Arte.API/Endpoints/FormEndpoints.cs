@@ -19,6 +19,9 @@ public static class FormEndpoints
         intake.MapPost("/", SubmitIntakeForm).RequireAuthorization("ClientAndAbove");
         intake.MapGet("/", GetIntakeForms).RequireAuthorization("ClientAndAbove");
         intake.MapGet("{id:guid}", GetIntakeFormById).RequireAuthorization("ClientAndAbove");
+        intake.MapGet("active-template", GetActiveIntakeFormTemplate).RequireAuthorization("ClientAndAbove");
+        intake.MapGet("template/mine", GetMyIntakeFormTemplate).RequireAuthorization("OwnerOnly");
+        intake.MapPut("template", UpsertIntakeFormTemplate).RequireAuthorization("OwnerOnly");
 
         RouteGroupBuilder consent = app.MapGroup("/api/v1/consent-forms")
             .RequireAuthorization();
@@ -63,6 +66,31 @@ public static class FormEndpoints
         CancellationToken ct)
     {
         IntakeFormResponse result = await mediator.Send(new GetIntakeFormByIdQuery(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetActiveIntakeFormTemplate(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        IntakeFormTemplateResponse? result = await mediator.Send(new GetActiveIntakeFormTemplateQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetMyIntakeFormTemplate(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        IntakeFormTemplateResponse? result = await mediator.Send(new GetMyIntakeFormTemplateQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpsertIntakeFormTemplate(
+        UpsertIntakeFormTemplateRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        IntakeFormTemplateResponse result = await mediator.Send(new UpsertIntakeFormTemplateCommand(request), ct);
         return Results.Ok(result);
     }
 

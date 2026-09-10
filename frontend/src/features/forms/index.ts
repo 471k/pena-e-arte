@@ -1,6 +1,7 @@
 export { SubmitIntakeFormPage } from "./components/SubmitIntakeFormPage";
 export { IntakeFormListPage }   from "./components/IntakeFormListPage";
 export { IntakeFormDetailPage } from "./components/IntakeFormDetailPage";
+export { IntakeFormBuilderPage } from "./components/IntakeFormBuilderPage";
 export { SignConsentFormPage }  from "./components/SignConsentFormPage";
 export { ConsentFormListPage }  from "./components/ConsentFormListPage";
 export { ConsentFormDetailPage } from "./components/ConsentFormDetailPage";
@@ -10,6 +11,9 @@ export {
   useGetIntakeFormsQuery,
   useGetIntakeFormByIdQuery,
   useSubmitIntakeFormMutation,
+  useGetActiveIntakeFormTemplateQuery,
+  useGetMyIntakeFormTemplateQuery,
+  useUpsertIntakeFormTemplateMutation,
 } from "./intakeFormsApi";
 export {
   useGetConsentFormsQuery,
@@ -20,6 +24,10 @@ export type {
   IntakeFormResponse,
   SubmitIntakeFormRequest,
   GetIntakeFormsParams,
+  IntakeFormFieldType,
+  IntakeFormFieldDefinition,
+  IntakeFormTemplateResponse,
+  UpsertIntakeFormTemplateRequest,
   ConsentFormResponse,
   ConsentFormDetailResponse,
   SignConsentFormRequest,

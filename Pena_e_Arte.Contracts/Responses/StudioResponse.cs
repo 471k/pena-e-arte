@@ -17,4 +17,6 @@ public record StudioResponse(
     string? InstagramHandle = null,
     string? Nipt = null,
     bool IsSolo = false,
-    bool IsPublished = true);
+    bool IsPublished = true,
+    string? SubscriptionStatus = null,
+    DateTime? PastDueSince = null);

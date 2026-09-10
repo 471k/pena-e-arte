@@ -11,7 +11,8 @@ public record CreateAppointmentRequest(
     IReadOnlyList<string>? DesiredPlacementLocations = null,
     string? ReferralSource = null,          // enum name as string, nullable — "Other" requires ReferralSourceOther
     string? ReferralSourceOther = null,
-    IReadOnlyList<AppointmentImageRequest>? Images = null);
+    IReadOnlyList<AppointmentImageRequest>? Images = null,
+    string? PromoCode = null);
 
 /// <summary>Category: "AreaPhoto" | "Reference" (matches AppointmentAttachmentCategory).</summary>
 public record AppointmentImageRequest(string Url, string Category);

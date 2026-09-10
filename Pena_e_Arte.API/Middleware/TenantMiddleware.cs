@@ -95,9 +95,7 @@ public class TenantMiddleware(RequestDelegate next)
             // GET /api/v1/studios/me passes through when suspended so the owner can
             // read isActive=false and the frontend can render the SuspensionBanner.
             // All other paths — including writes to this endpoint — remain blocked.
-            if (context.Request.Method.Equals("GET", StringComparison.OrdinalIgnoreCase) &&
-                context.Request.Path.Equals("/api/v1/studios/me", StringComparison.OrdinalIgnoreCase))
-                return;
+            if (IsStudiosMeGet(context)) return;
             throw new TenantSuspendedException();
         }
 
@@ -122,10 +120,21 @@ public class TenantMiddleware(RequestDelegate next)
         }
 
         if (snapshot.Status == SubscriptionStatus.PastDue)
+        {
+            // Same "let the owner see their own status" exemption as the suspended-studio
+            // branch above (isActive=false) — without it, GET /api/v1/studios/me itself would
+            // 402 for a PastDue studio and the frontend could never fetch subscriptionStatus/
+            // pastDueSince to render the PastDue-specific SuspensionBanner copy at all.
+            if (IsStudiosMeGet(context)) return;
             throw new SubscriptionRequiredException(
                 "Your subscription payment is overdue. Please update your billing details.");
+        }
 
         throw new SubscriptionRequiredException(
             "Your studio subscription has expired. Please subscribe to continue.");
     }
+
+    private static bool IsStudiosMeGet(HttpContext context) =>
+        context.Request.Method.Equals("GET", StringComparison.OrdinalIgnoreCase) &&
+        context.Request.Path.Equals("/api/v1/studios/me", StringComparison.OrdinalIgnoreCase);
 }

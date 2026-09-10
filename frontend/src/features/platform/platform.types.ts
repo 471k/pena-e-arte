@@ -31,6 +31,8 @@ export interface PlatformSubscriptionResponse {
   currentPeriodEnd: string;
   isSuspended:     boolean;
   cancelAtPeriodEnd: boolean;
+  pastDueSince?:   string | null;
+  dunningExcludedManually?: boolean;
 }
 
 export interface PlatformReferralCodeResponse {

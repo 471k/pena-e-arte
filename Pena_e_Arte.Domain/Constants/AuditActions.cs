@@ -11,6 +11,7 @@ public static class AuditActions
     public const string StudioTrialExtended = "Studio.TrialExtended";
     public const string SubscriptionCancelledByAdmin = "Subscription.CancelledByAdmin";
     public const string SubscriptionActivatedManually = "Subscription.ActivatedManually";
+    public const string SubscriptionDunningExclusionChanged = "Subscription.DunningExclusionChanged";
     public const string PlanUpdated = "Plan.Updated";
     public const string ReferralCodeDeactivated = "ReferralCode.Deactivated";
     public const string ReferralCodeReactivated = "ReferralCode.Reactivated";
