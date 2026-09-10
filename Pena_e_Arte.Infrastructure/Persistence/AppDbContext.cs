@@ -40,6 +40,10 @@ public class AppDbContext(
     public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ClientReferralCode> ClientReferralCodes => Set<ClientReferralCode>();
+    public DbSet<ClientReferralRedemption> ClientReferralRedemptions => Set<ClientReferralRedemption>();
+    public DbSet<ClientReferralReward> ClientReferralRewards => Set<ClientReferralReward>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
 
     // --- Admin-level (no tenant filter) ---
     public DbSet<Studio> Studios => Set<Studio>();
@@ -134,6 +138,10 @@ public class AppDbContext(
         builder.Entity<StudioNotificationPreference>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Conversation>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<ChatMessage>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);
+        builder.Entity<ClientReferralCode>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
+        builder.Entity<ClientReferralRedemption>().HasQueryFilter(r => r.StudioId == tenant.StudioId && r.DeletedAt == null);
+        builder.Entity<ClientReferralReward>().HasQueryFilter(r => r.StudioId == tenant.StudioId && r.DeletedAt == null);
+        builder.Entity<Campaign>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         // ClientNotificationPreference — NOT filtered, dual-keyed by (UserId, StudioId); see ClientNotificationPreferenceConfiguration.
 
         builder.Entity<SavedPortfolioImage>(b =>

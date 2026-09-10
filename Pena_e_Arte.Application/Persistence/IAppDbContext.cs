@@ -33,6 +33,10 @@ public interface IAppDbContext
     DbSet<ManualReminder> ManualReminders { get; }
     DbSet<Conversation> Conversations { get; }
     DbSet<ChatMessage> ChatMessages { get; }
+    DbSet<ClientReferralCode> ClientReferralCodes { get; }
+    DbSet<ClientReferralRedemption> ClientReferralRedemptions { get; }
+    DbSet<ClientReferralReward> ClientReferralRewards { get; }
+    DbSet<Campaign> Campaigns { get; }
 
     // Admin-level
     DbSet<Studio> Studios { get; }

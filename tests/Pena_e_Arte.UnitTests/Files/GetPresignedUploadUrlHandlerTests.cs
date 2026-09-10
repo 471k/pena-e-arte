@@ -4,6 +4,7 @@ using NSubstitute;
 using Pena_e_Arte.Application.Files.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.UnitTests.Files;
@@ -18,6 +19,14 @@ public class GetPresignedUploadUrlHandlerTests
         _tenant.StudioId.Returns(_studioId);
 
     private GetPresignedUploadUrlHandler CreateSut() => new(_r2, _tenant);
+
+    [Fact]
+    public void GetPresignedUploadUrlQuery_IsQuotaCheckedForStorageBytes()
+    {
+        IQuotaCheckedCommand query = new GetPresignedUploadUrlQuery(new PresignUploadRequest("", "image/png"));
+
+        query.QuotaType.Should().Be(QuotaType.StorageBytes);
+    }
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsBothUrls()

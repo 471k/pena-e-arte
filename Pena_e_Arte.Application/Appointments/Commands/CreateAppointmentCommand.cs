@@ -135,6 +135,49 @@ public class CreateAppointmentHandler(
 
             decimal depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
 
+            // ── Discount stacking order (documented once, here, rather than scattered across
+            // uncoordinated edits): promo code → gift card → referral-code redemption →
+            // referral-reward redemption, each applied to whatever remains after the previous
+            // one, floored at 0. Only the last two exist as of this commit — PromoCode (P1
+            // Group 4) and GiftCard (P1 Group 3) redemption are not yet merged into this branch;
+            // whoever reconciles those PRs with this one must insert their steps BEFORE the
+            // referral steps below, not after, to preserve this order. ──
+            // IgnoreQueryFilters() throughout this block for the same reason as
+            // Artists/DepositRules above — this core is shared with the anonymous
+            // guest-booking path, which has no ambient tenant scope.
+            ClientReferralCode? redeemedReferralCode = null;
+            if (!string.IsNullOrWhiteSpace(req.ReferralCode))
+            {
+                redeemedReferralCode = await db.ClientReferralCodes.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(c => c.StudioId == studioId && c.DeletedAt == null && c.Code == req.ReferralCode, ct)
+                    ?? throw new BusinessRuleViolationException("That referral code isn't valid for this studio.");
+
+                if (redeemedReferralCode.ReferrerClientId == clientId)
+                    throw new BusinessRuleViolationException("You can't redeem your own referral code.");
+
+                bool alreadyRedeemed = await db.ClientReferralRedemptions.IgnoreQueryFilters().AnyAsync(r =>
+                    r.ClientReferralCodeId == redeemedReferralCode.Id && r.RedeemedByClientId == clientId, ct);
+                if (alreadyRedeemed)
+                    throw new BusinessRuleViolationException("You've already redeemed this referral code.");
+
+                depositAmount = Math.Max(0, depositAmount - depositAmount * redeemedReferralCode.RewardPercent / 100m);
+            }
+
+            ClientReferralReward? spentReward = null;
+            if (req.ReferralRewardId is Guid rewardId)
+            {
+                spentReward = await db.ClientReferralRewards.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(r => r.Id == rewardId && r.DeletedAt == null, ct)
+                    ?? throw new NotFoundException(nameof(ClientReferralReward), rewardId);
+
+                if (spentReward.ClientId != clientId)
+                    throw new BusinessRuleViolationException("This referral reward doesn't belong to you.");
+                if (spentReward.IsRedeemed)
+                    throw new BusinessRuleViolationException("This referral reward has already been redeemed.");
+
+                depositAmount = Math.Max(0, depositAmount - depositAmount * spentReward.RewardPercent / 100m);
+            }
+
             Appointment appointment = new()
             {
                 StudioId = studioId,
@@ -183,6 +226,41 @@ public class CreateAppointmentHandler(
                 appointment.Id, "48h", appointment.Date.AddHours(-48));
             appointment.ReminderJobId24h = jobs.ScheduleAppointmentReminder(
                 appointment.Id, "24h", appointment.Date.AddHours(-24));
+
+            if (redeemedReferralCode is not null)
+            {
+                // Ids are client-generated (TenantEntity.Id = Guid.NewGuid() at construction),
+                // not DB-assigned — safe to reference redemption.Id before SaveChangesAsync.
+                ClientReferralRedemption redemption = new()
+                {
+                    StudioId = studioId,
+                    ClientReferralCodeId = redeemedReferralCode.Id,
+                    RedeemedByClientId = clientId,
+                    AppointmentId = appointment.Id,
+                };
+                db.ClientReferralRedemptions.Add(redemption);
+                redeemedReferralCode.RedemptionCount++;
+                redeemedReferralCode.UpdatedAt = DateTime.UtcNow;
+
+                // Two-sided: the referrer doesn't get their discount applied to anything right
+                // now (they aren't necessarily booking) — they get a spendable credit instead.
+                db.ClientReferralRewards.Add(new ClientReferralReward
+                {
+                    StudioId = studioId,
+                    ClientId = redeemedReferralCode.ReferrerClientId,
+                    SourceRedemptionId = redemption.Id,
+                    RewardPercent = redeemedReferralCode.RewardPercent,
+                    IsRedeemed = false,
+                });
+            }
+
+            if (spentReward is not null)
+            {
+                spentReward.IsRedeemed = true;
+                spentReward.RedeemedOnAppointmentId = appointment.Id;
+                spentReward.UpdatedAt = DateTime.UtcNow;
+            }
+
             await db.SaveChangesAsync(ct);
 
             AppointmentResponse response = Map(appointment);

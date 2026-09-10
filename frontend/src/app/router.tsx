@@ -35,9 +35,10 @@ import {
   LiveTrafficPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
-import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage } from "@/features/public";
+import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { MessagesInboxPage } from "@/features/messaging";
+import { CampaignsPage } from "@/features/campaigns";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
@@ -130,6 +131,7 @@ export const routes = [
   { path: "/terms",           element: <TermsOfServicePage /> },
   { path: "/refund-policy",   element: <RefundPolicyPage /> },
   { path: "/contact",         element: <ContactPage /> },
+  { path: "/unsubscribe",     element: <UnsubscribePage /> },
 
   {
     path: "/",
@@ -344,6 +346,15 @@ export const routes = [
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><ReportsPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: marketing campaigns ──────────────────────────────────
+              {
+                path: "campaigns",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><CampaignsPage /></ErrorBoundary> },
                 ],
               },
 

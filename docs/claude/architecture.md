@@ -1151,6 +1151,7 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/studios/{slug}/booking/availability` | Public slot-availability check for guest booking | None — read-only boolean+reason, no PII |
 | `GET /api/v1/public/studios/{slug}/booking/deposit-rule` | Public deposit estimate for guest booking | None — read-only, single active rule's name/amounts only |
 | `POST /api/v1/public/studios/{slug}/booking/presign` | Anonymous image upload before a guest's account exists | Rate-limited (`public-booking`); image content-types only, no PDF; entire R2 key server-constructed, no client-supplied path component; orphan-cleanup job (`GuestPendingUploadCleanupJob`) |
+| `POST /api/v1/marketing/unsubscribe` | Anonymous unsubscribe link in campaign emails | Signed token (HMAC-SHA256, `IMarketingOptOutSigner`, own key — separate from `IInstagramStateSigner`/`ISocialOAuthStateSigner`) validated before trusting clientId; rate-limited (`public-write`); single studio+client pair per token |
 
 The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`,
 `/auth/register/solo-artist`, `/auth/oauth/*`, `/auth/forgot-password`,
@@ -3840,3 +3841,174 @@ Verified after every batch of changes (not just at the end): `dotnet build` clea
 final `dotnet test` — 1914 unit + 388 integration, all passing (the +1 vs. the `a768f68` count is
 the new `CreateGuestAppointmentHandlerTests` coverage for the enumeration-resistance redesign);
 `pnpm tsc --noEmit` and `pnpm build` clean throughout.
+
+## P1 Backlog Group 5 — Client Referrals, Marketing Campaigns, Storage Quota Completion — 2026-09-10
+
+Final master prompt of the 2026-09-09 P1 backlog audit, covering the three items that had open
+product questions or were "completion, not new-build" work: Client-to-Client Referral (#4),
+Marketing Email Campaigns (#10), and Plan Usage-Limit Enforcement completion (#19). Branched off
+plain `main` (Groups 3/4 were still open, unmerged PRs at the time — same posture Group 3 itself
+took relative to Group 4), so `CreateAppointmentCommand.cs` carries only the referral discount
+step for now; a comment at the insertion point documents the intended four-way stacking order
+(promo code → gift card → referral-code redemption → referral-reward redemption) for whoever
+reconciles this branch with Groups 3/4.
+
+**Pre-existing bug found before any of this work started, not caused by it**: a `.gitignore`
+pattern (`**/[Pp]ackages/`, the same one already known to have eaten a frontend folder from Group
+3 — see the Group 3 log entry) had also silently swallowed an entire *backend* directory,
+`Pena_e_Arte.Application/Packages/` — three command/query files that existed on disk (from an
+earlier session) but were never committed to *any* branch, including Group 3's own open PR, which
+is therefore currently missing its Packages command handlers. These orphaned, uncompilable files
+were moved out of the working tree (not deleted) before this session's own build could succeed.
+Not fixed as part of this prompt — flagged here since it's a real gap in an already-open PR,
+outside this prompt's scope to correct.
+
+### Phase 1 — Client-to-Client Referral Program (#4)
+
+Product decision (confirmed by the studio owner): **two-sided** — both referrer and referee are
+rewarded — with the reward form fixed as **percent off the next deposit** for both sides (no
+per-code fixed-vs-percent choice, unlike `PromoCode`; this is a platform-standard mechanic, not
+studio-configurable). Three new tenant-scoped entities: `ClientReferralCode` (one per client per
+studio, unique `(StudioId, Code)` and `(StudioId, ReferrerClientId)` indexes), `ClientReferralRedemption`
+(records a referee redeeming someone else's code; unique `(ClientReferralCodeId, RedeemedByClientId)`
+index — DB-enforced, not just application-checked, same posture as `Payment.AppointmentId`),
+and `ClientReferralReward` (the referrer's own earned, spendable credit). `GetOrCreateMyReferralCodeCommand`
+is idempotent (checks for an existing code before generating one). Redemption is hooked into
+`CreateAppointmentCoreAsync` — the same core shared by the authenticated and guest booking paths
+— so a referral code can be redeemed by a brand-new guest referee, not only an existing client;
+every new referral query in that shared core uses `IgnoreQueryFilters()` + an explicit `StudioId`
+predicate, mirroring the existing `Artists`/`DepositRules` treatment there, since the guest path
+has no ambient tenant.
+
+**Correction to the original spec's proposed reward mechanism.** The spec's own required reading
+flagged the existing two-sided referral precedent
+(`docs/claude/overnight-prompt-two-sided-referral-rewards-2026-07-18.md`) as *not* directly
+reusable, and live-codebase verification confirmed why: that mechanism rewards a referring
+*studio* via a Stripe coupon applied to the studio's own platform subscription (Stripe Billing,
+unaffected by the payment-provider restriction) — there is no equivalent surface for a *client's*
+deposit payment on Flow A, which has no live Stripe provider (`NullPaymentProvider`, fails closed
+pending POK) and doesn't use Stripe coupons even when it does have one. Built instead: the
+referee's discount is applied inline at booking time (the same in-app pattern any future
+promo-code/gift-card discount would use), and the referrer's reward is a redeemable credit
+(`ClientReferralReward`) spent on their own future booking via an optional `ReferralRewardId` on
+`CreateAppointmentRequest`, since the referrer isn't necessarily booking anything at the moment
+their code gets redeemed.
+
+Frontend: `ReferAFriendCard` (client-facing, mounted on `/book` below `MyBookingsSection`) shows
+the client's code, a copyable share link, redemption count, and any unredeemed reward credit. Both
+`BookAppointmentForm.tsx` (authenticated) and `GuestBookAppointmentForm.tsx` (guest checkout) gained
+a "Referral code" field, visually and semantically distinct from the pre-existing "how did you hear
+about us" `ReferralSource` field. A pre-checked "Apply your referral credit" toggle appears on the
+authenticated form only, when the signed-in client has an unredeemed reward.
+
+Tests: unit coverage in `CreateAppointmentHandlerTests.cs` for self-referral rejection, invalid/
+already-redeemed codes, referrer-reward creation with matching percent, reward ownership/already-
+redeemed checks, and the two-step (code + reward) stacking floored at 0; `GetOrCreateMyReferralCodeHandlerTests`
+for idempotency. Integration: `ClientReferralFlowIntegrationTests` — `GetOrCreateMyReferralCodeCommand`
+idempotency against a real database, and the full flow end-to-end (referrer gets a code → referee
+books with it → referee's deposit reduced → referrer has a new unredeemed reward → referrer books
+spending that reward → referrer's deposit reduced, reward marked redeemed).
+
+### Phase 2 — Marketing Email Campaigns (#10, email-only)
+
+Product decision (confirmed): existing clients are opted **out** of marketing email by default;
+the studio must get explicit opt-in. Verified this is already the codebase's existing default —
+`Client.MarketingOptIn` (bool, defaults `false`) already exists with exactly this semantics,
+captured at guest checkout and manual Add Client. **Used directly, no redundant second field
+added** — the original spec's proposed `ClientProfile.MarketingEmailOptOut` was not built; that
+would have created two sources of truth for the same consent. `Campaign` (new tenant-scoped
+entity: subject, body, audience enum, status, recipient/delivered counts) resolves its audience
+via `CampaignAudienceExtensions.ResolveCampaignAudienceAsync`, which hard-filters
+`Client.MarketingOptIn == true` on every audience mode — including `Custom` (a supplied client-id
+list is a starting set to narrow, never a way to bypass consent). `SendCampaignJob` (Hangfire,
+enqueued once per send, not a recurring job) re-resolves the audience at send time rather than
+trusting the count snapshotted when the send was requested, so a client who opts out in between is
+never emailed; each email gets a per-client signed unsubscribe link
+(`IMarketingOptOutSigner`, new HMAC-SHA256 signer with its own key — deliberately not
+`IInstagramStateSigner`/`ISocialOAuthStateSigner`, which stay scoped to their own OAuth flows) that
+`WithdrawMarketingOptInCommand` (`POST /api/v1/marketing/unsubscribe`, `AllowAnonymous`) validates
+before flipping `MarketingOptIn` to `false`.
+
+**`Plan.AllowMarketingCampaigns` is a real, enforced flag from day one** — checked directly in
+`SendCampaignHandler`, throwing `BusinessRuleViolationException` when the studio's resolved plan
+doesn't carry it, verified by `SendCampaignHandlerTests`. **Correction to the original spec's
+instruction to "mirror `AllowApiAccess`/`PrioritySupport`'s enforcement mechanism"**: live-codebase
+verification (re-reading this same log's own Phase 6 entry above) found those two flags are *not*
+enforced anywhere — they were deliberately hidden from every UI/Help surface for being sold-but-
+undelivered, zero-backing-implementation flags. There was no enforcement site to mirror;
+`AllowMarketingCampaigns` is the first Plan boolean flag this codebase actually enforces. Wired
+through the full admin Plan CRUD path (`CreatePlanRequest`/`UpdatePlanRequest`/`PlanResponse`,
+`CreatePlanHandler.Map`, `UpdatePlanHandler`, `GetPlansHandler`) and into `DataSeeder`'s core-tier
+reconciliation — granted to Growth, Premium, and Pro (not Free/Starter), consistent with
+`AllowBrandingRemoval`'s own tier cutoff — so the flag is real and demoable, not a column with no
+seed data ever setting it `true`.
+
+Frontend: `/campaigns` (owner-only route, added to `OwnerLayout`'s nav) — compose form (subject,
+body, audience picker, conditional "no recent visit" day threshold), draft save, send, and a send-
+history table with live delivered/total counts; renders an upgrade prompt instead of the compose
+form when the owner's current plan lacks `allowMarketingCampaigns`. `/unsubscribe` (public,
+`AllowAnonymous`) — plain confirmation page, no auth.
+
+Tests: unit coverage for `CampaignAudienceExtensions` across all three audience modes (confirming
+`Custom` still hard-filters on opt-in), `SendCampaignHandler`'s plan gate (blocks when `false`,
+succeeds and enqueues when `true`), and `WithdrawMarketingOptInHandler`. Integration:
+`CampaignFlowIntegrationTests` — full send flow against a real database (create draft → send →
+`SendCampaignJob` processes the audience → `DeliveredCount`/`Status` updated) and the unsubscribe
+flow (flips `MarketingOptIn`, a second send afterward excludes that client).
+
+### Phase 3 — Plan Usage-Limit Enforcement completion (#19)
+
+Not a from-scratch build — `Artists`, `AppointmentsPerMonth`, and `NotificationsPerMonth` were
+already gated via `IQuotaCheckedCommand`; this phase completes the `StorageBytes` dimension and
+deliberately leaves `Locations` unenforced (confirmed: `PlanLimitService` still always reports `1`
+for that dimension by explicit design, pending multi-location support — enforcing against a
+permanent `1` would be a no-op dressed as a feature).
+
+**Correction to the original spec's proposed approach.** The spec proposed finding every command
+that writes to R2 and gating it directly. Live-codebase verification found this doesn't fit: file
+uploads go through `GetPresignedUploadUrlQuery`/`GetPresignedGuestUploadUrlQuery`, which mint a
+presigned direct-to-R2 PUT URL — the backend never observes the upload completing or its size, and
+no entity anywhere stores a per-file `SizeBytes`. Built instead: `StorageReconciliationJob` (new
+daily Hangfire job, registered at hour 7 — the next free stagger slot after `r2-export`'s hour 6),
+which lists every object under each studio's own `{studioId}/` prefix via the pre-existing
+`IR2Service.ListByPrefixAsync` (the same primitive `GuestPendingUploadCleanupJob` already used for
+prefix-scoped listing) and sums `SizeBytes` into `Studio.StorageUsageBytes` — a field
+`PlanLimitService` already read for `QuotaType.StorageBytes` checks but that, before this job, no
+code anywhere ever wrote. Storage quota enforcement is therefore **eventual** (up to ~24h stale
+between reconciliation runs), not synchronous — an accepted trade-off given the alternative would
+mean abandoning direct-to-R2 presigned uploads or adding a "confirm upload" round-trip to every
+upload flow in the app, a far larger change than this completion item warrants.
+
+`GetPresignedUploadUrlQuery` (authenticated — `ICurrentTenant` reliably set via the JWT
+`tenant_id` claim) now implements `IQuotaCheckedCommand`/`QuotaType.StorageBytes`, confirming first
+that `PlanLimitBehavior`'s pipeline registration is generic over `IRequest<TResponse>` and not
+scoped to commands only. **A second correction, found while wiring the guest counterpart**:
+`GetPresignedGuestUploadUrlQuery` genuinely cannot use the same marker-interface approach —
+`PlanLimitBehavior` fires before the handler runs and would check `ICurrentTenant.StudioId`, which
+`TenantMiddleware` never sets for an anonymous caller (it resolves the real studio from the route
+slug *inside* the handler, after the pipeline behavior has already run). `IPlanLimitService`'s
+explicit-`studioId` overload exists exactly for this "no ambient tenant" shape — its own doc
+comment already said "do not force-fit this overload into the `IQuotaCheckedCommand` pipeline" —
+so the guest handler calls it directly after resolving the studio, rather than implementing the
+marker interface at all.
+
+Tests: unit coverage for `StorageReconciliationJob` (sums correctly per studio, no cross-
+contamination between studios, a zero-object studio writes `0` rather than skipping, an inactive
+studio is never listed) and a quota-marker test for both presign queries (one via
+`IQuotaCheckedCommand`, one via a mocked `PlanLimitExceededException` propagating through the
+explicit-overload path). Integration: `StorageQuotaIntegrationTests` runs the real
+`StorageReconciliationJob` → `Studio.StorageUsageBytes` → real `PlanLimitService` →
+`GetPresignedGuestUploadUrlHandler` pipeline end to end against a real database (a studio over its
+`MaxStorageGb` after reconciliation throws `PlanLimitExceededException` on the next presign
+request; a studio under its limit is unaffected).
+
+This closes the 2026-09-09 P1 backlog audit in full except **Support Impersonation (#15)**, which
+remains pending a separate product/security conversation about its admin-endpoint allow-list, as
+flagged in the Group 3 prompt.
+
+Verified: `dotnet build` clean throughout; final `dotnet test` on this branch (built independently
+off plain `main`, not stacked on Groups 3/4) — 1967 unit + 402 integration, all passing;
+`pnpm tsc --noEmit` clean; full `pnpm test` (frontend) — 2048 tests, all passing after fixing two
+pre-existing test-local Redux stores (`BookPage.test.tsx`) that predated the new `clientReferralsApi`
+slice and needed its middleware/reducer added, the same class of fix any new RTK Query API slice
+requires wherever a test builds its own store instead of importing the real one.

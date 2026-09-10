@@ -13,6 +13,7 @@ using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.Infrastructure.Services.MailKit;
+using Pena_e_Arte.Infrastructure.Services.Marketing;
 using Pena_e_Arte.Infrastructure.Services.Social;
 using Resend;
 using StackExchange.Redis;
@@ -198,6 +199,11 @@ public static class InfrastructureServiceExtensions
         services.AddHttpClient("X");
         services.AddHttpClient("YouTube");
         services.AddSingleton<ISocialOAuthStateSigner, SocialOAuthStateSigner>();
+
+        services.Configure<MarketingOptOutOptions>(configuration.GetSection(MarketingOptOutOptions.Section));
+        services.AddSingleton<IMarketingOptOutSigner, MarketingOptOutSigner>();
+        services.AddTransient<StorageReconciliationJob>();
+        services.AddTransient<SendCampaignJob>();
 
         services.AddScoped<ISocialOAuthProvider, InstagramSocialOAuthProvider>();
         services.AddScoped<ISocialOAuthProvider, TikTokSocialOAuthProvider>();

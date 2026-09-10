@@ -456,4 +456,200 @@ public class CreateAppointmentHandlerTests
 
     private CreateAppointmentRequest ValidRequest(decimal? artistHourlyRate = null) =>
         new(SeedArtist(artistHourlyRate), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+
+    // ── Client-to-Client Referral (P1 #4) ──────────────────────────────────────────
+
+    private async Task SeedFixedDeposit(decimal amount = 100m) =>
+        await Task.Run(() =>
+        {
+            _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Fixed", AmountFixed = amount, IsActive = true });
+            _db.SaveChanges();
+        });
+
+    private ClientReferralCode SeedReferralCode(Guid referrerClientId, decimal rewardPercent = 10m, string code = "REFCODE1")
+    {
+        ClientReferralCode referralCode = new()
+        {
+            StudioId = _studioId,
+            ReferrerClientId = referrerClientId,
+            Code = code,
+            RewardPercent = rewardPercent,
+        };
+        _db.ClientReferralCodes.Add(referralCode);
+        _db.SaveChanges();
+        return referralCode;
+    }
+
+    [Fact]
+    public async Task Handle_ReferralCode_AppliesPercentDiscountToDeposit()
+    {
+        await SeedFixedDeposit(100m);
+        Guid referrerId = Guid.NewGuid();
+        ClientReferralCode code = SeedReferralCode(referrerId, rewardPercent: 10m);
+
+        CreateAppointmentRequest req = ValidRequest() with { ReferralCode = code.Code };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(90m);
+    }
+
+    [Fact]
+    public async Task Handle_SelfReferral_ThrowsBusinessRuleViolationException()
+    {
+        await SeedFixedDeposit(100m);
+        Guid clientId = Guid.NewGuid();
+        ClientReferralCode code = SeedReferralCode(clientId, rewardPercent: 10m);
+
+        CreateAppointmentRequest req = ValidRequest() with { ClientId = clientId, ReferralCode = code.Code };
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_InvalidReferralCode_ThrowsBusinessRuleViolationException()
+    {
+        await SeedFixedDeposit(100m);
+
+        CreateAppointmentRequest req = ValidRequest() with { ReferralCode = "NOSUCHCODE" };
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_ReferralCodeAlreadyRedeemedByClient_ThrowsBusinessRuleViolationException()
+    {
+        await SeedFixedDeposit(100m);
+        Guid referrerId = Guid.NewGuid();
+        Guid refereeId = Guid.NewGuid();
+        ClientReferralCode code = SeedReferralCode(referrerId, rewardPercent: 10m);
+        _db.ClientReferralRedemptions.Add(new ClientReferralRedemption
+        {
+            StudioId = _studioId,
+            ClientReferralCodeId = code.Id,
+            RedeemedByClientId = refereeId,
+            AppointmentId = Guid.NewGuid(),
+        });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { ClientId = refereeId, ReferralCode = code.Code };
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_ReferralCode_CreatesRedemptionAndReferrerRewardWithMatchingPercent()
+    {
+        await SeedFixedDeposit(100m);
+        Guid referrerId = Guid.NewGuid();
+        Guid refereeId = Guid.NewGuid();
+        ClientReferralCode code = SeedReferralCode(referrerId, rewardPercent: 15m);
+
+        CreateAppointmentRequest req = ValidRequest() with { ClientId = refereeId, ReferralCode = code.Code };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        _db.ClientReferralRedemptions.Should().ContainSingle(r =>
+            r.ClientReferralCodeId == code.Id && r.RedeemedByClientId == refereeId && r.AppointmentId == result.Id);
+        _db.ClientReferralCodes.Single(c => c.Id == code.Id).RedemptionCount.Should().Be(1);
+        _db.ClientReferralRewards.Should().ContainSingle(r =>
+            r.ClientId == referrerId && r.RewardPercent == 15m && !r.IsRedeemed);
+    }
+
+    [Fact]
+    public async Task Handle_ReferralReward_AppliesDiscountAndMarksRedeemed()
+    {
+        await SeedFixedDeposit(100m);
+        Guid clientId = Guid.NewGuid();
+        ClientReferralReward reward = new()
+        {
+            StudioId = _studioId,
+            ClientId = clientId,
+            SourceRedemptionId = Guid.NewGuid(),
+            RewardPercent = 10m,
+        };
+        _db.ClientReferralRewards.Add(reward);
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { ClientId = clientId, ReferralRewardId = reward.Id };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(90m);
+        ClientReferralReward updated = _db.ClientReferralRewards.Single(r => r.Id == reward.Id);
+        updated.IsRedeemed.Should().BeTrue();
+        updated.RedeemedOnAppointmentId.Should().Be(result.Id);
+    }
+
+    [Fact]
+    public async Task Handle_ReferralRewardNotOwnedByClient_ThrowsBusinessRuleViolationException()
+    {
+        await SeedFixedDeposit(100m);
+        ClientReferralReward reward = new()
+        {
+            StudioId = _studioId,
+            ClientId = Guid.NewGuid(),
+            SourceRedemptionId = Guid.NewGuid(),
+            RewardPercent = 10m,
+        };
+        _db.ClientReferralRewards.Add(reward);
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { ClientId = Guid.NewGuid(), ReferralRewardId = reward.Id };
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyRedeemedReferralReward_ThrowsBusinessRuleViolationException()
+    {
+        await SeedFixedDeposit(100m);
+        Guid clientId = Guid.NewGuid();
+        ClientReferralReward reward = new()
+        {
+            StudioId = _studioId,
+            ClientId = clientId,
+            SourceRedemptionId = Guid.NewGuid(),
+            RewardPercent = 10m,
+            IsRedeemed = true,
+        };
+        _db.ClientReferralRewards.Add(reward);
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { ClientId = clientId, ReferralRewardId = reward.Id };
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_ReferralCodeAndRewardStack_AppliesBothSequentiallyFlooredAtZero()
+    {
+        await SeedFixedDeposit(100m);
+        Guid referrerId = Guid.NewGuid();
+        Guid refereeId = Guid.NewGuid();
+        ClientReferralCode code = SeedReferralCode(referrerId, rewardPercent: 60m);
+        ClientReferralReward reward = new()
+        {
+            StudioId = _studioId,
+            ClientId = refereeId,
+            SourceRedemptionId = Guid.NewGuid(),
+            RewardPercent = 60m,
+        };
+        _db.ClientReferralRewards.Add(reward);
+        await _db.SaveChangesAsync();
+
+        // 100 -> 60% off (code) = 40 -> 60% off (reward, of the remaining 40) = 16 — never negative.
+        CreateAppointmentRequest req = ValidRequest() with
+        {
+            ClientId = refereeId,
+            ReferralCode = code.Code,
+            ReferralRewardId = reward.Id,
+        };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(16m);
+        result.DepositAmount.Should().BeGreaterThanOrEqualTo(0m);
+    }
 }

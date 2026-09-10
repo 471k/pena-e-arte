@@ -5,6 +5,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
@@ -13,7 +14,14 @@ namespace Pena_e_Arte.Application.Public.Queries;
 public record GetPresignedGuestUploadUrlQuery(string StudioSlug, PresignGuestUploadRequest Request)
     : IRequest<PresignUploadResponse>;
 
-public class GetPresignedGuestUploadUrlHandler(IAppDbContext db, IR2Service r2)
+// Deliberately NOT IQuotaCheckedCommand: PlanLimitBehavior's marker-interface pipeline
+// checks against ICurrentTenant.StudioId, which is never set for an anonymous caller
+// (TenantMiddleware only sets it from a JWT "tenant_id" claim) — by the time this handler
+// resolves the real studio from the route slug, the pipeline behavior has already run (and
+// would have no-opped against Guid.Empty). IPlanLimitService's explicit-studioId overload
+// exists exactly for this "no ambient tenant" shape (see its doc comment: "do not force-fit
+// this overload into the IQuotaCheckedCommand pipeline") — called directly below instead.
+public class GetPresignedGuestUploadUrlHandler(IAppDbContext db, IR2Service r2, IPlanLimitService planLimits)
     : IRequestHandler<GetPresignedGuestUploadUrlQuery, PresignUploadResponse>
 {
     // Image types only — no application/pdf (Decision #10). A narrower subset of the existing
@@ -32,6 +40,8 @@ public class GetPresignedGuestUploadUrlHandler(IAppDbContext db, IR2Service r2)
         // Deliberately leaks no more than that handler already does (404 either way).
         Studio studio = await db.GetPublishedStudioBySlugAsync(query.StudioSlug, ct)
             ?? throw new NotFoundException(nameof(Studio), query.StudioSlug);
+
+        await planLimits.EnsureWithinLimitAsync(studio.Id, QuotaType.StorageBytes, ct);
 
         // Category is normalized to lowercase "area"/"reference" by the request; the R2 key uses
         // that lowercase form directly (validator enforces the closed set).

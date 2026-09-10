@@ -27,6 +27,7 @@ const NO_LIMITS = {
   maxLocations:             null,
   allowApiAccess:           false,
   prioritySupport:          false,
+  allowMarketingCampaigns: false,
 };
 
 const PLANS: PlanResponse[] = [

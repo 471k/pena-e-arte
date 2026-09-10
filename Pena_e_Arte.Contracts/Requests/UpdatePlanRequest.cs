@@ -11,4 +11,5 @@ public record UpdatePlanRequest(
     int? MaxStorageGb = null,
     int? MaxLocations = null,
     bool AllowApiAccess = false,
-    bool PrioritySupport = false);
+    bool PrioritySupport = false,
+    bool AllowMarketingCampaigns = false);

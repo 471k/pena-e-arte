@@ -11,6 +11,7 @@ import { useAppSelector } from "@/app/hooks";
 import { useResendVerificationEmailMutation } from "@/features/auth/authApi";
 import { Role } from "@/shared/types/roles";
 import { getRoleRedirectPath } from "@/app/router";
+import { ReferAFriendCard } from "@/features/client-referrals/components/ReferAFriendCard";
 import { BookAppointmentForm } from "./BookAppointmentForm";
 import { MyBookingsSection } from "./MyBookingsSection";
 
@@ -175,6 +176,8 @@ function AuthenticatedBookPage() {
           </Card>
 
           <MyBookingsSection />
+
+          <ReferAFriendCard />
         </div>
       </div>
     </BookingWidget>

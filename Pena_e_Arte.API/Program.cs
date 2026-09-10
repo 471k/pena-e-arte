@@ -154,6 +154,11 @@ try
             "r2-export",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 6)); // staggered after guest-pending-upload-cleanup (5am)
+
+        recurringJobs.AddOrUpdate<StorageReconciliationJob>(
+            "storage-reconciliation",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 7)); // staggered after r2-export (6am)
     }
 
     // k8s/base/migration-job.yaml runs this exact image as a one-off Job (restartPolicy:
@@ -242,6 +247,9 @@ try
     app.MapManualReminderEndpoints();
     app.MapFileEndpoints();
     app.MapReferralEndpoints();
+    app.MapClientReferralEndpoints();
+    app.MapCampaignEndpoints();
+    app.MapMarketingEndpoints();
     app.MapPlatformEndpoints();
     app.MapFeedbackEndpoints();
     app.MapReviewEndpoints();

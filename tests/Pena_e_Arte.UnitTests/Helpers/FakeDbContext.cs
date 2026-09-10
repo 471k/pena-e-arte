@@ -55,6 +55,10 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ConductReport> ConductReports => Set<ConductReport>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ClientReferralCode> ClientReferralCodes => Set<ClientReferralCode>();
+    public DbSet<ClientReferralRedemption> ClientReferralRedemptions => Set<ClientReferralRedemption>();
+    public DbSet<ClientReferralReward> ClientReferralRewards => Set<ClientReferralReward>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

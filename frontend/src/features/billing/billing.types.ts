@@ -34,6 +34,7 @@ export interface PlanResponse {
   maxLocations:             number | null;
   allowApiAccess:           boolean;
   prioritySupport:          boolean;
+  allowMarketingCampaigns:  boolean;
   prices:                   PlanPriceResponse[];
 }
 
