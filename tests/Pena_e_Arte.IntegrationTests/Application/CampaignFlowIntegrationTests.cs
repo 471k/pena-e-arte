@@ -131,8 +131,11 @@ public class CampaignFlowIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         Client client = new()
         {
-            StudioId = studioId, FirstName = "C", LastName = "D",
-            Email = $"{Guid.NewGuid():N}@client.test", MarketingOptIn = marketingOptIn,
+            StudioId = studioId,
+            FirstName = "C",
+            LastName = "D",
+            Email = $"{Guid.NewGuid():N}@client.test",
+            MarketingOptIn = marketingOptIn,
         };
         db.Clients.Add(client);
         await db.SaveChangesAsync();

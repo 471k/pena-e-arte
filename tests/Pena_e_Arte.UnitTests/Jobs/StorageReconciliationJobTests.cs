@@ -20,8 +20,12 @@ public class StorageReconciliationJobTests
     {
         Studio studio = new()
         {
-            Name = "Test", Slug = $"test-{Guid.NewGuid():N}", City = "Porto", OwnerEmail = "x@x.com",
-            IsActive = isActive, TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            Name = "Test",
+            Slug = $"test-{Guid.NewGuid():N}",
+            City = "Porto",
+            OwnerEmail = "x@x.com",
+            IsActive = isActive,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         };
         _db.Studios.Add(studio);
         _db.SaveChanges();

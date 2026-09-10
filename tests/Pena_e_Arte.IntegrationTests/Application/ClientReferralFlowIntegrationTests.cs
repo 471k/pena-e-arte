@@ -117,7 +117,10 @@ public class ClientReferralFlowIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         Client client = new()
         {
-            StudioId = studioId, UserId = userId, FirstName = "C", LastName = "D",
+            StudioId = studioId,
+            UserId = userId,
+            FirstName = "C",
+            LastName = "D",
             Email = $"{Guid.NewGuid():N}@client.test",
         };
         db.Clients.Add(client);
@@ -136,8 +139,11 @@ public class ClientReferralFlowIntegrationTests(DatabaseFixture fixture)
         {
             db.ArtistSchedules.Add(new ArtistSchedule
             {
-                ArtistId = artist.Id, StudioId = studioId, DayOfWeek = day,
-                StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                ArtistId = artist.Id,
+                StudioId = studioId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
         }
