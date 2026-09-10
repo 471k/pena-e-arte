@@ -4,6 +4,7 @@ import {
 } from "@/shared/components/ui/select";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
+import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import { ReferralSource } from "../appointment.types";
 import { FieldLabel } from "./FieldLabel";
 import type { TattooIntakeValues } from "./tattooIntakeValidation";
@@ -48,6 +49,23 @@ export function TattooIntakeFields({
         {tattooDescriptionError && (
           <p className="text-xs text-destructive-text" role="alert">{tattooDescriptionError}</p>
         )}
+      </div>
+
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="style">Style (optional)</FieldLabel>
+        <Select
+          value={value.style}
+          onValueChange={(v) => onChange({ ...value, style: v })}
+        >
+          <SelectTrigger id="style">
+            <SelectValue placeholder="Select a style" />
+          </SelectTrigger>
+          <SelectContent>
+            {TATTOO_STYLE_OPTIONS.map(({ value: v, label }) => (
+              <SelectItem key={v} value={v}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-1.5">

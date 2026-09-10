@@ -597,6 +597,10 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("StudioId")
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("Style")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<string>("TattooDescription")
                         .IsRequired()
                         .HasMaxLength(4000)

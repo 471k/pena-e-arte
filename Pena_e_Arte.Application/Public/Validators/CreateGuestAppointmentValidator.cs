@@ -1,6 +1,7 @@
 using FluentValidation;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Public.Commands;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Public.Validators;
@@ -38,6 +39,9 @@ public class CreateGuestAppointmentValidator : AbstractValidator<CreateGuestAppo
         RuleFor(x => x.Request.Booking.Notes).MaximumLength(2000).When(x => x.Request.Booking.Notes is not null);
 
         RuleFor(x => x.Request.Booking.TattooDescription).NotEmpty().MaximumLength(2000);
+        RuleFor(x => x.Request.Booking.Style)
+            .Must(s => s is null || TattooStyle.All.Contains(s))
+            .WithMessage("Style must be one of: " + string.Join(", ", TattooStyle.All));
         RuleFor(x => x.Request.Booking.SafetyNotes)
             .MaximumLength(2000)
             .When(x => x.Request.Booking.SafetyNotes is not null);

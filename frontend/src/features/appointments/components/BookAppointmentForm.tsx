@@ -290,7 +290,7 @@ export function BookAppointmentForm() {
   // Booking-content intake fields — kept outside react-hook-form, same pattern the pre-existing
   // image state already used, since these were added on top of an already-shipped schema.
   const [intake, setIntake] = useState<TattooIntakeValues>({
-    tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
+    tattooDescription: "", style: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
   });
   const [tattooDescriptionError, setTattooDescriptionError] = useState<string | null>(null);
   const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
@@ -395,6 +395,7 @@ export function BookAppointmentForm() {
       promoCode:       values.promoCode || null,
       notes:           values.notes || null,
       tattooDescription:          intake.tattooDescription,
+      style:                      intake.style || null,
       safetyNotes:                intake.safetyNotes || null,
       desiredPlacementLocations:  desiredPlacement,
       referralSource:             intake.referralSource || null,
@@ -425,7 +426,7 @@ export function BookAppointmentForm() {
       // same watched fields resetForm() above already clears, so it naturally settles to null.
       areaPhotos.clear();
       referenceImages.clear();
-      setIntake({ tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "" });
+      setIntake({ tattooDescription: "", style: "", referralSource: "", referralSourceOther: "", safetyNotes: "" });
       setDesiredPlacement([]);
       setReferralCode("");
       setApplyOwnReward(true);

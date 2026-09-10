@@ -19,6 +19,11 @@ public class BookingIntake : TenantEntity
     /// <summary>"What are you looking to get done?" — required on every new booking.</summary>
     public string TattooDescription { get; set; } = string.Empty;
 
+    /// <summary>Optional tattoo style tag for this specific booking. Values are one of
+    /// TattooStyle's constants — same convention PortfolioImage.Style already uses. Null
+    /// means the client didn't specify (e.g. "artist's choice" / unsure).</summary>
+    public string? Style { get; set; }
+
     /// <summary>"Anything else I should know?" — medical issues, allergies, antibiotics, skin
     /// conditions. Optional. Free text; NOT synced into ClientProfile.MedicalNotes/Allergies.</summary>
     public string? SafetyNotes { get; set; }

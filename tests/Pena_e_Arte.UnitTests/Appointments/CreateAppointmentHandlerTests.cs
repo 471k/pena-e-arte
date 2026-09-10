@@ -61,6 +61,27 @@ public class CreateAppointmentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RequestWithStyle_PersistsAndRoundTripsStyleOnResponse()
+    {
+        CreateAppointmentRequest req = ValidRequest() with { Style = "blackwork" };
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.Style.Should().Be("blackwork");
+        (await _db.BookingIntakes.SingleAsync(i => i.AppointmentId == result.Id)).Style.Should().Be("blackwork");
+    }
+
+    [Fact]
+    public async Task Handle_RequestWithNullStyle_ReturnsNullStyleOnResponse()
+    {
+        CreateAppointmentRequest req = ValidRequest() with { Style = null };
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.Style.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_ActiveFixedDepositRule_UsesRuleAmount()
     {
         _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });

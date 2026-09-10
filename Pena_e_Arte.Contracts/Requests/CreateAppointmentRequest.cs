@@ -7,6 +7,7 @@ public record CreateAppointmentRequest(
     int DurationMinutes,
     string? Notes,
     string TattooDescription = "",
+    string? Style = null,
     string? SafetyNotes = null,
     IReadOnlyList<string>? DesiredPlacementLocations = null,
     string? ReferralSource = null,          // enum name as string, nullable — "Other" requires ReferralSourceOther

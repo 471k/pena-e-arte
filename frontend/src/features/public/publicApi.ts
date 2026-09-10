@@ -195,6 +195,7 @@ export interface CreateGuestAppointmentRequest {
     durationMinutes: number;
     notes:           string | null;
     tattooDescription:          string;
+    style?:                     string | null;
     safetyNotes?:               string | null;
     desiredPlacementLocations?: string[];
     referralSource?:            string | null;

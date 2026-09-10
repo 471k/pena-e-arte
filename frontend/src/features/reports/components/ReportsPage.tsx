@@ -1,7 +1,12 @@
-import { BarChart3 } from "lucide-react";
+import { useState } from "react";
+import { BarChart3, Download } from "lucide-react";
+import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Button } from "@/shared/components/ui/button";
+import { useAppSelector } from "@/app/hooks";
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { useGetRevenueSummaryQuery } from "../reportsApi";
 import { RevenueTrendChart } from "./RevenueTrendChart";
 
@@ -13,12 +18,31 @@ export function ReportsPage() {
   useDocumentMeta({ title: "Reports — TattooOS", canonical: "/reports" });
 
   const { data, isLoading, isError, refetch } = useGetRevenueSummaryQuery();
+  const { token, tenantId } = useAppSelector((s) => s.auth);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      await downloadAuthenticatedFile("reports/revenue/export.csv", "revenue.csv", token, tenantId);
+    } catch {
+      toast.error("Couldn't export revenue. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-10">
-        <BarChart3 className="h-5 w-5" aria-hidden="true" />
-        <span className="font-semibold tracking-tight">Reports</span>
+      <header className="flex items-center justify-between gap-2 px-6 py-3 border-b bg-background sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" aria-hidden="true" />
+          <span className="font-semibold tracking-tight">Reports</span>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={exporting} className="gap-1.5">
+          <Download className="h-3.5 w-3.5" />
+          Export CSV
+        </Button>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">

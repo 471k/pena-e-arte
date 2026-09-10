@@ -20,6 +20,7 @@ public record AppointmentResponse(
     string? ArtistName = null,
     Guid? ClientUserId = null,
     string? TattooDescription = null,
+    string? Style = null,
     string? SafetyNotes = null,
     IReadOnlyList<string>? DesiredPlacementLocations = null,
     string? ReferralSource = null,

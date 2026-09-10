@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -6,7 +6,9 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { Toaster } from "sonner";
 
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { clientsApi } from "@/features/clients/clientsApi";
@@ -14,6 +16,10 @@ import type { ClientResponse } from "@/features/clients/clientsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { ClientListPage } from "@/features/clients/components/ClientListPage";
+
+vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
+  downloadAuthenticatedFile: vi.fn().mockResolvedValue(undefined),
+}));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -77,7 +83,7 @@ afterAll(() => server.close());
 
 // ── Store / render helpers ─────────────────────────────────────────────────────
 
-function makeStore() {
+function makeStore(role: string = "owner") {
   return configureStore({
     reducer: {
       auth: authReducer,
@@ -91,7 +97,7 @@ function makeStore() {
         user: { id: "u1", email: "owner@ink.test" },
         token: "fake-token",
         tenantId: "stud-0001",
-        role: "owner",
+        role,
         pendingReferralCode: null, impersonation: null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
@@ -100,10 +106,11 @@ function makeStore() {
   });
 }
 
-function renderPage() {
-  const store = makeStore();
+function renderPage(role?: string) {
+  const store = makeStore(role);
   render(
     <Provider store={store}>
+      <Toaster />
       <MemoryRouter initialEntries={["/clients"]}>
         <Routes>
           <Route path="/clients"     element={<ClientListPage />} />
@@ -309,5 +316,42 @@ describe("ClientListPage", () => {
 
     expect(screen.getAllByText("Maria Ferreira")).toHaveLength(2);
     expect(screen.queryByText("João Silva")).not.toBeInTheDocument();
+  });
+
+  // ── Export CSV ──────────────────────────────────────────────────────────────
+
+  it("shows an Export CSV button for an owner", async () => {
+    renderPage("owner");
+    await screen.findAllByText("João Silva");
+    expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+  });
+
+  it("hides the Export CSV button for a non-owner role", async () => {
+    renderPage("artist");
+    await screen.findAllByText("João Silva");
+    expect(screen.queryByRole("button", { name: /export csv/i })).not.toBeInTheDocument();
+  });
+
+  it("clicking Export CSV downloads clients.csv from the export endpoint", async () => {
+    const user = userEvent.setup();
+    renderPage("owner");
+    await screen.findAllByText("João Silva");
+
+    await user.click(screen.getByRole("button", { name: /export csv/i }));
+
+    expect(downloadAuthenticatedFile).toHaveBeenCalledWith(
+      "clients/export.csv", "clients.csv", "fake-token", "stud-0001",
+    );
+  });
+
+  it("shows an error toast when the CSV export fails", async () => {
+    vi.mocked(downloadAuthenticatedFile).mockRejectedValueOnce(new Error("boom"));
+    const user = userEvent.setup();
+    renderPage("owner");
+    await screen.findAllByText("João Silva");
+
+    await user.click(screen.getByRole("button", { name: /export csv/i }));
+
+    expect(await screen.findByText(/couldn't export clients/i)).toBeInTheDocument();
   });
 });

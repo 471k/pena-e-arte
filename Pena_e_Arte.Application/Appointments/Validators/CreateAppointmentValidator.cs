@@ -1,6 +1,7 @@
 using FluentValidation;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Common;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Appointments.Validators;
@@ -19,6 +20,9 @@ public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentCom
         RuleFor(x => x.Request.Notes).MaximumLength(2000).When(x => x.Request.Notes is not null);
 
         RuleFor(x => x.Request.TattooDescription).NotEmpty().MaximumLength(2000);
+        RuleFor(x => x.Request.Style)
+            .Must(s => s is null || TattooStyle.All.Contains(s))
+            .WithMessage("Style must be one of: " + string.Join(", ", TattooStyle.All));
         RuleFor(x => x.Request.SafetyNotes).MaximumLength(2000).When(x => x.Request.SafetyNotes is not null);
 
         // Zone ids are validated leniently (non-empty, bounded length) — mirrors

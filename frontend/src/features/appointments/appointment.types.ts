@@ -63,6 +63,7 @@ export interface AppointmentResponse {
   artistName?:         string | null;
   clientUserId?:       string | null;
   tattooDescription?:         string | null;
+  style?:                     string | null;
   safetyNotes?:               string | null;
   desiredPlacementLocations?: string[] | null;
   referralSource?:            string | null;
@@ -79,6 +80,7 @@ export interface CreateAppointmentRequest {
   depositRuleId:   string | null;
   notes:           string | null;
   tattooDescription:          string;
+  style?:                     string | null;
   safetyNotes?:               string | null;
   desiredPlacementLocations?: string[];
   referralSource?:            string | null;

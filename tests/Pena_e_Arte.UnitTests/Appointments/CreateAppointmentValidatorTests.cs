@@ -157,6 +157,29 @@ public class CreateAppointmentValidatorTests
     }
 
     [Fact]
+    public void Validate_NullStyle_IsValid()
+    {
+        ValidationResult result = _sut.Validate(ValidCommand() with { Request = ValidRequest() with { Style = null } });
+        result.Errors.Should().NotContain(e => e.PropertyName == "Request.Style");
+    }
+
+    [Fact]
+    public void Validate_ValidStyle_IsValid()
+    {
+        ValidationResult result = _sut.Validate(
+            ValidCommand() with { Request = ValidRequest() with { Style = "blackwork" } });
+        result.Errors.Should().NotContain(e => e.PropertyName == "Request.Style");
+    }
+
+    [Fact]
+    public void Validate_InvalidStyle_FailsOnStyle()
+    {
+        _sut.ShouldFailOn(
+            ValidCommand() with { Request = ValidRequest() with { Style = "not-a-real-style" } },
+            "Request.Style");
+    }
+
+    [Fact]
     public void Validate_ReferralSourceOtherWithoutText_FailsOnReferralSourceOther()
     {
         _sut.ShouldFailOn(

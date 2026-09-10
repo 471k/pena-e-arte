@@ -36,6 +36,7 @@ import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
 import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 import { CategoryTabs } from "./CategoryTabs";
 import { CATEGORIES } from "./categoryConstants";
+import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
 
@@ -99,17 +100,8 @@ function ArtistAvatar({
 
 // ── Style filter chips ─────────────────────────────────────────────────────────
 
-// Keep in sync with the STYLES array in PortfolioFeed.tsx (and TattooStyle.cs on the backend).
-const STYLES: ReadonlyArray<{ value: string; label: string }> = [
-  { value: "blackwork",       label: "Blackwork"       },
-  { value: "realism",         label: "Realism"         },
-  { value: "traditional",     label: "Traditional"     },
-  { value: "geometric",       label: "Geometric"       },
-  { value: "fineline",        label: "Fineline"        },
-  { value: "watercolor",      label: "Watercolor"      },
-  { value: "neo-traditional", label: "Neo-Traditional" },
-  { value: "japanese",        label: "Japanese"        },
-];
+// Shared with PortfolioFeed.tsx and TattooIntakeFields.tsx — see tattooStyles.ts.
+const STYLES = TATTOO_STYLE_OPTIONS;
 
 function chipClass(active: boolean): string {
   return `shrink-0 px-3 py-2 min-h-[44px] rounded-full text-xs font-medium
