@@ -534,6 +534,105 @@ public class IdentityServiceTests(DatabaseFixture fixture)
         roles.Should().BeEquivalentTo(["artist"]);
     }
 
+    [Fact]
+    public async Task IssueImpersonationTokenAsync_ValidAdmin_TokenKeepsAdminRole()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        (_, Guid adminUserId, _) = await sut.CreateUserAsync(email, "Password1!", "admin", null);
+        Guid targetStudioId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+
+        (bool success, string? accessToken, string? error) =
+            await sut.IssueImpersonationTokenAsync(adminUserId, targetStudioId, sessionId, DateTime.UtcNow.AddMinutes(45));
+
+        success.Should().BeTrue();
+        error.Should().BeNull();
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+        jwt.Claims.Should().Contain(c => c.Type == ClaimTypes.Role && c.Value == "admin");
+    }
+
+    [Fact]
+    public async Task IssueImpersonationTokenAsync_SetsTenantIdToTargetStudio()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        (_, Guid adminUserId, _) = await sut.CreateUserAsync(email, "Password1!", "admin", null);
+        Guid targetStudioId = Guid.NewGuid();
+
+        (_, string? accessToken, _) = await sut.IssueImpersonationTokenAsync(
+            adminUserId, targetStudioId, Guid.NewGuid(), DateTime.UtcNow.AddMinutes(45));
+
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+        jwt.Claims.Where(c => c.Type == "tenant_id").Should().ContainSingle()
+            .Which.Value.Should().Be(targetStudioId.ToString());
+    }
+
+    [Fact]
+    public async Task IssueImpersonationTokenAsync_CarriesImpClaimWithSessionId()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        (_, Guid adminUserId, _) = await sut.CreateUserAsync(email, "Password1!", "admin", null);
+        Guid sessionId = Guid.NewGuid();
+
+        (_, string? accessToken, _) = await sut.IssueImpersonationTokenAsync(
+            adminUserId, Guid.NewGuid(), sessionId, DateTime.UtcNow.AddMinutes(45));
+
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+        jwt.Claims.Should().Contain(c => c.Type == "imp" && c.Value == sessionId.ToString());
+    }
+
+    [Fact]
+    public async Task IssueImpersonationTokenAsync_SubClaimStaysRealAdminId()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        (_, Guid adminUserId, _) = await sut.CreateUserAsync(email, "Password1!", "admin", null);
+
+        (_, string? accessToken, _) = await sut.IssueImpersonationTokenAsync(
+            adminUserId, Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddMinutes(45));
+
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+        jwt.Claims.Should().Contain(c => c.Type == JwtRegisteredClaimNames.Sub && c.Value == adminUserId.ToString());
+    }
+
+    [Fact]
+    public async Task IssueImpersonationTokenAsync_ExpiryIsCappedToSessionExpiryNotStandardAccessTokenLifetime()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        (_, Guid adminUserId, _) = await sut.CreateUserAsync(email, "Password1!", "admin", null);
+        // Config's Jwt:AccessTokenExpiryMinutes is 15 — a 45-minute session cap must NOT be
+        // truncated down to that standard lifetime.
+        DateTime sessionExpiresAt = DateTime.UtcNow.AddMinutes(45);
+
+        (_, string? accessToken, _) = await sut.IssueImpersonationTokenAsync(
+            adminUserId, Guid.NewGuid(), Guid.NewGuid(), sessionExpiresAt);
+
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+        jwt.ValidTo.Should().BeCloseTo(sessionExpiresAt, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task IssueImpersonationTokenAsync_NoSuchAdmin_ReturnsFalse()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+
+        (bool success, string? accessToken, string? error) = await sut.IssueImpersonationTokenAsync(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddMinutes(45));
+
+        success.Should().BeFalse();
+        accessToken.Should().BeNull();
+        error.Should().NotBeNullOrEmpty();
+    }
+
     private static async Task<(string Email, Guid UserId)> CreateAndFetchUserAsync(
         IdentityService sut, UserManager<IdentityUser> um, string email)
     {

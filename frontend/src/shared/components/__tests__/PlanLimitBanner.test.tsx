@@ -15,7 +15,7 @@ function makeStore(planLimitError: string | null, role: "owner" | "artist" | "cl
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: null, token: null, tenantId: null, role } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError },
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

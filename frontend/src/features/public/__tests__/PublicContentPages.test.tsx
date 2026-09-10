@@ -21,7 +21,7 @@ function renderPublic(ui: ReactElement) {
     middleware: (getDefault) => getDefault().concat(contactApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null } as any,
+      auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null, impersonation: null } as any,
     },
   });
   return render(

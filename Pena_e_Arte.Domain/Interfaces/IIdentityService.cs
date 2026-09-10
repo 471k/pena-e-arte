@@ -128,4 +128,17 @@ public interface IIdentityService
     /// separately, same as every other tenant-claim change in this codebase.
     /// </summary>
     Task SwapRoleAsync(Guid userId, string oldRole, string newRole, CancellationToken ct);
+
+    /// <summary>
+    /// Issues a short-lived JWT for Support Impersonation: role stays "admin" (every RBAC
+    /// policy in this codebase already grants admin every role-based permission — see
+    /// AuthorizationExtensions.cs), tenant_id is set to <paramref name="targetStudioId"/>,
+    /// and a custom "imp" claim carries <paramref name="sessionId"/> so TenantMiddleware's
+    /// gate can look the session up on every request without a second lookup key. The
+    /// Sub/NameIdentifier claim remains the real admin's own user id — never a synthetic
+    /// identity — so every audited action during the session is still correctly attributed.
+    /// No refresh token is issued: the session is meant to hard-expire, not be renewable.
+    /// </summary>
+    Task<(bool Success, string? AccessToken, string? Error)> IssueImpersonationTokenAsync(
+        Guid adminUserId, Guid targetStudioId, Guid sessionId, DateTime expiresAt);
 }
