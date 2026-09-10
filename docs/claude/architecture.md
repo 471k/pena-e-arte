@@ -3974,6 +3974,20 @@ the heavier authorization-pipeline test pattern already established elsewhere in
 (`AppointmentArtistEndpointAuthorizationTests` and siblings) was not replicated for these four
 endpoint groups, a real scope reduction under this session's time budget.
 
+### Follow-ups (not yet scheduled)
+- [ ] Add the "Notify me" waitlist CTA to `GuestBookAppointmentForm.tsx` — `NotifyMeDialog`
+      already exists as a reusable component (used today in `BookAppointmentForm.tsx`); the
+      backend (`JoinWaitlistCommand`) already fully supports the guest path. Real gap, low effort.
+- [ ] Make gift-card redemption at checkout update the card tab's payment-intent amount live,
+      instead of requiring a page refresh — on `RedeemGiftCardField` success, invalidate the
+      payment-intent RTK Query cache and reset `CardTab`'s "already requested" guard
+      (`PaymentMethodSelector.tsx`) so it re-creates the intent at the new (lower) amount.
+- [ ] Optional, lower priority: add `TestServer`+JWT authorization-pipeline tests (the
+      `AppointmentArtistEndpointAuthorizationTests` pattern) for the Waitlist/BoothRent/
+      GiftCard/Package endpoint groups. Not a security gap today — every endpoint already carries
+      the correct policy, verified by policy-registration + handler-level ownership tests — this
+      would only add regression insurance matching this repo's existing test depth elsewhere.
+
 Verified: backend `dotnet build` clean across `API`/`Application`/`Domain`/`Infrastructure`/
 `Contracts` and both test projects; `dotnet test` — 1967 unit + 410 integration, all passing, zero
 regressions against the pre-existing suite. New coverage: 22 backend unit tests (FIFO
