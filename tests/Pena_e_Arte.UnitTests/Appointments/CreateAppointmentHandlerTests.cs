@@ -392,7 +392,10 @@ public class CreateAppointmentHandlerTests
         _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
         _db.PromoCodes.Add(new PromoCode
         {
-            StudioId = _studioId, Code = "EXPIRED", AmountFixed = 20m, IsActive = true,
+            StudioId = _studioId,
+            Code = "EXPIRED",
+            AmountFixed = 20m,
+            IsActive = true,
             ExpiresAt = DateTime.UtcNow.AddDays(-1),
         });
         await _db.SaveChangesAsync();
@@ -410,8 +413,12 @@ public class CreateAppointmentHandlerTests
         _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
         _db.PromoCodes.Add(new PromoCode
         {
-            StudioId = _studioId, Code = "MAXED", AmountFixed = 20m, IsActive = true,
-            MaxRedemptions = 1, RedemptionCount = 1,
+            StudioId = _studioId,
+            Code = "MAXED",
+            AmountFixed = 20m,
+            IsActive = true,
+            MaxRedemptions = 1,
+            RedemptionCount = 1,
         });
         await _db.SaveChangesAsync();
 

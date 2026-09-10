@@ -70,7 +70,9 @@ public class MarkDesignAsCatalogItemHandlerTests
         _db.SaveChanges();
         _db.DesignApprovals.Add(new DesignApproval
         {
-            StudioId = _studioId, DesignRevisionId = revision.Id, Status = DesignApprovalStatus.Approved,
+            StudioId = _studioId,
+            DesignRevisionId = revision.Id,
+            Status = DesignApprovalStatus.Approved,
         });
         _db.SaveChanges();
         _db.ChangeTracker.Clear();

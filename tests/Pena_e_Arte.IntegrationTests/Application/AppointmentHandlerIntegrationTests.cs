@@ -345,8 +345,11 @@ public class AppointmentHandlerIntegrationTests
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
         PromoCode promo = new()
         {
-            StudioId = tenantId, Code = code, AmountFixed = amountFixed,
-            AmountPercent = amountPercent, IsActive = isActive,
+            StudioId = tenantId,
+            Code = code,
+            AmountFixed = amountFixed,
+            AmountPercent = amountPercent,
+            IsActive = isActive,
         };
         ctx.PromoCodes.Add(promo);
         await ctx.SaveChangesAsync();

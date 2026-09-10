@@ -40,7 +40,9 @@ public class UpsertIntakeFormTemplateHandlerTests
     {
         _db.IntakeFormTemplates.Add(new IntakeFormTemplate
         {
-            StudioId = _studioId, FieldSchemaJson = """[{"label":"Old","type":"Text","required":false}]""", IsActive = false,
+            StudioId = _studioId,
+            FieldSchemaJson = """[{"label":"Old","type":"Text","required":false}]""",
+            IsActive = false,
         });
         await _db.SaveChangesAsync();
 
@@ -57,7 +59,9 @@ public class UpsertIntakeFormTemplateHandlerTests
         Guid otherStudioId = Guid.NewGuid();
         _db.IntakeFormTemplates.Add(new IntakeFormTemplate
         {
-            StudioId = otherStudioId, FieldSchemaJson = """[{"label":"Other","type":"Text","required":false}]""", IsActive = true,
+            StudioId = otherStudioId,
+            FieldSchemaJson = """[{"label":"Other","type":"Text","required":false}]""",
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 

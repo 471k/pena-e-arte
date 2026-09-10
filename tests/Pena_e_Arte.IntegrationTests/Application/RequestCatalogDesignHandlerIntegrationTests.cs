@@ -162,15 +162,22 @@ public class RequestCatalogDesignHandlerIntegrationTests
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
         Design design = new()
         {
-            StudioId = tenantId, ArtistId = artistId, ClientId = null,
-            IsCatalogItem = true, Title = "Flash Original", Price = 120m,
+            StudioId = tenantId,
+            ArtistId = artistId,
+            ClientId = null,
+            IsCatalogItem = true,
+            Title = "Flash Original",
+            Price = 120m,
         };
         ctx.Designs.Add(design);
         await ctx.SaveChangesAsync();
 
         ctx.DesignRevisions.Add(new DesignRevision
         {
-            StudioId = tenantId, DesignId = design.Id, VersionNumber = 1, FileUrl = fileUrl,
+            StudioId = tenantId,
+            DesignId = design.Id,
+            VersionNumber = 1,
+            FileUrl = fileUrl,
         });
         await ctx.SaveChangesAsync();
 

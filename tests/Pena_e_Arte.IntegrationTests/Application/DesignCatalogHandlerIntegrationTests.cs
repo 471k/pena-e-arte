@@ -44,7 +44,10 @@ public class DesignCatalogHandlerIntegrationTests(DatabaseFixture fixture)
         await seedCtx.SaveChangesAsync();
         seedCtx.Designs.Add(new Design
         {
-            StudioId = tenantId, ArtistId = artist.Id, ClientId = client.Id, Title = "Not catalog",
+            StudioId = tenantId,
+            ArtistId = artist.Id,
+            ClientId = client.Id,
+            Title = "Not catalog",
         });
         await seedCtx.SaveChangesAsync();
 
@@ -60,8 +63,12 @@ public class DesignCatalogHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         Studio studio = new()
         {
-            Id = tenantId, Name = $"Studio {slug}", Slug = slug, City = "Porto",
-            IsActive = true, IsPublished = true,
+            Id = tenantId,
+            Name = $"Studio {slug}",
+            Slug = slug,
+            City = "Porto",
+            IsActive = true,
+            IsPublished = true,
         };
         ctx.Studios.Add(studio);
 
@@ -71,8 +78,12 @@ public class DesignCatalogHandlerIntegrationTests(DatabaseFixture fixture)
 
         Design design = new()
         {
-            StudioId = tenantId, ArtistId = artist.Id, ClientId = null,
-            IsCatalogItem = true, Title = title, Price = 100m,
+            StudioId = tenantId,
+            ArtistId = artist.Id,
+            ClientId = null,
+            IsCatalogItem = true,
+            Title = title,
+            Price = 100m,
         };
         ctx.Designs.Add(design);
         await ctx.SaveChangesAsync();

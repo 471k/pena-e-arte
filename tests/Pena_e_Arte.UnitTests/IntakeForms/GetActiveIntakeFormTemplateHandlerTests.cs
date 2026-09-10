@@ -26,7 +26,9 @@ public class GetActiveIntakeFormTemplateHandlerTests
     {
         _db.IntakeFormTemplates.Add(new IntakeFormTemplate
         {
-            StudioId = _studioId, FieldSchemaJson = """[{"label":"X","type":"Text","required":false}]""", IsActive = false,
+            StudioId = _studioId,
+            FieldSchemaJson = """[{"label":"X","type":"Text","required":false}]""",
+            IsActive = false,
         });
         await _db.SaveChangesAsync();
 
@@ -40,7 +42,9 @@ public class GetActiveIntakeFormTemplateHandlerTests
     {
         _db.IntakeFormTemplates.Add(new IntakeFormTemplate
         {
-            StudioId = _studioId, FieldSchemaJson = """[{"label":"X","type":"Text","required":false}]""", IsActive = true,
+            StudioId = _studioId,
+            FieldSchemaJson = """[{"label":"X","type":"Text","required":false}]""",
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
