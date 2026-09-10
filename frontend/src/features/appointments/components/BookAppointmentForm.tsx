@@ -35,6 +35,8 @@ import { useGetDepositRulesQuery }                from "@/features/deposit-rules
 import { useGetPublicStudioQuery }                from "@/features/public/publicApi";
 import { useEnsureActiveStudio }                  from "@/features/auth/useEnsureActiveStudio";
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
+import { NotifyMeDialog }                         from "@/features/waitlist/components/NotifyMeDialog";
+import { useGetMyPackagePurchasesQuery }          from "@/features/session-packages/packagesApi";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
 import { FieldLabel }                             from "./FieldLabel";
 import { TattooIntakeFields } from "./TattooIntakeFields";
@@ -235,12 +237,15 @@ export function BookAppointmentForm() {
   });
   const { data: myClient }     = useGetMyClientQuery(undefined, { skip: !isClientRole || !studioReady });
   const { data: depositRules } = useGetDepositRulesQuery(undefined, { skip: !studioReady });
+  const { data: myPackagePurchases } = useGetMyPackagePurchasesQuery(undefined, { skip: !isClientRole || !studioReady });
+  const usablePackages = (myPackagePurchases ?? []).filter((p) => p.sessionsRemaining > 0);
 
   const [createAppointment, { isLoading }] = useCreateAppointmentMutation();
 
   const [booked,      setBooked]      = useState<AppointmentResponse | null>(null);
   const [depositDone, setDepositDone] = useState<"paid" | "cash" | "skipped" | null>(null);
   const [artistSearch, setArtistSearch] = useState("");
+  const [packagePurchaseId, setPackagePurchaseId] = useState<string | null>(null);
 
   // Area photo + reference images — uploaded to R2 as they're picked (same presign→PUT flow as
   // Design revisions), before the appointment itself exists, so objects live under a
@@ -373,6 +378,7 @@ export function BookAppointmentForm() {
       referralSource:             intake.referralSource || null,
       referralSourceOther:        intake.referralSourceOther || null,
       ...(images.length > 0 ? { images } : {}),
+      packagePurchaseId,
     });
     if ("data" in result) {
       toast.success("Appointment requested.");
@@ -385,6 +391,7 @@ export function BookAppointmentForm() {
         depositRuleId:   null,
       });
       setArtistSearch("");
+      setPackagePurchaseId(null);
       // No explicit debouncedCheck reset needed — useDebouncedSlotCheckArgs derives it from the
       // same watched fields resetForm() above already clears, so it naturally settles to null.
       areaPhotos.clear();
@@ -704,8 +711,48 @@ export function BookAppointmentForm() {
         <SlotAvailabilityIndicator checking={checkingSlot} status={slotStatus} />
       )}
 
+      {/* "Notify me" — offered once the requested slot comes back unavailable */}
+      {debouncedCheck !== null && !checkingSlot && slotStatus?.available === false && (
+        <NotifyMeDialog
+          studioSlug={studioSlug}
+          artistId={watchedBookAnyArtist ? null : (watchedArtistId || null)}
+          preferredDate={watchedDate ? new Date(watchedDate) : null}
+          isAuthenticated
+        />
+      )}
+
+      {/* Use a package — replaces the normal deposit step when selected; a package-covered
+          booking is already paid for, so the backend zeroes the deposit and skips DepositRule
+          entirely (see CreateAppointmentCommand.cs). */}
+      {isClientRole && usablePackages.length > 0 && (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="packagePurchaseId">Use a package</FieldLabel>
+          <Select
+            value={packagePurchaseId ?? "none"}
+            onValueChange={(v) => setPackagePurchaseId(v === "none" ? null : v)}
+          >
+            <SelectTrigger id="packagePurchaseId">
+              <SelectValue placeholder="Pay a deposit instead" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Pay a deposit instead</SelectItem>
+              {usablePackages.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.packageName ?? "Package"} — {p.sessionsRemaining} session{p.sessionsRemaining !== 1 ? "s" : ""} left
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {packagePurchaseId && (
+            <p className="text-xs text-muted-foreground">
+              This booking will use 1 session from your package — no deposit needed.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Deposit rule — shown when the studio has at least one active rule */}
-      {activeRules.length > 0 && (
+      {activeRules.length > 0 && !packagePurchaseId && (
         <div className="space-y-1.5">
           <FieldLabel htmlFor="depositRuleId">Deposit rule</FieldLabel>
           <Controller

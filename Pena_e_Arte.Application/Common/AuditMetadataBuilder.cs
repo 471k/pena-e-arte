@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Billing.Commands;
+using Pena_e_Arte.Application.GiftCards.Commands;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Application.Platform.Commands;
+using Pena_e_Arte.Application.Waitlists.Commands;
 
 namespace Pena_e_Arte.Application.Common;
 
@@ -35,6 +37,20 @@ public static class AuditMetadataBuilder
             // "who changed what" intent without risking a PII leak into the audit log.
             ["newDate"] = c.Request.NewDate,
             ["newDurationMinutes"] = c.Request.NewDurationMinutes,
+        },
+        CancelWaitlistEntryCommand c => new Dictionary<string, object?>
+        {
+            ["waitlistEntryId"] = c.WaitlistEntryId,
+        },
+        RedeemGiftCardCommand c => new Dictionary<string, object?>
+        {
+            // Amount and appointment id only — no purchaser/recipient email.
+            ["appointmentId"] = c.Request.AppointmentId,
+            ["amount"] = c.Request.Amount,
+        },
+        VoidGiftCardCommand c => new Dictionary<string, object?>
+        {
+            ["giftCardId"] = c.Id,
         },
         _ => new Dictionary<string, object?>(),
     });

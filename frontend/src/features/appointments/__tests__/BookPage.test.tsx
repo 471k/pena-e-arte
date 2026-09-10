@@ -19,6 +19,9 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi } from "@/features/public/publicApi";
 import { authApi } from "@/features/auth/authApi";
 import { filesApi } from "@/shared/api/filesApi";
+import { packagesApi } from "@/features/session-packages/packagesApi";
+import { waitlistApi } from "@/features/waitlist/waitlistApi";
+import { giftCardsApi } from "@/features/gift-cards/giftCardsApi";
 
 import { BookPage } from "@/features/appointments/components/BookPage";
 import { BookAppointmentForm } from "@/features/appointments/components/BookAppointmentForm";
@@ -135,6 +138,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/deposit-rules",           () => HttpResponse.json([ACTIVE_RULE, INACTIVE_RULE])),
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
+  // BookAppointmentForm's package toggle — empty means the toggle simply doesn't render,
+  // matching a client with no purchased packages (the common case these existing tests exercise).
+  http.get("http://localhost/api/v1/packages/purchases/mine", () => HttpResponse.json([])),
   http.post("http://localhost/api/v1/appointments",           () => HttpResponse.json(CREATED_APPT, { status: 201 })),
   http.delete("http://localhost/api/v1/appointments/:id",     () => new HttpResponse(null, { status: 204 })),
   http.patch("http://localhost/api/v1/appointments/:id/reschedule", () =>
@@ -165,6 +171,9 @@ function makeStore(role: Role = Role.Client) {
       [publicApi.reducerPath]:           publicApi.reducer,
       [authApi.reducerPath]:             authApi.reducer,
       [filesApi.reducerPath]:            filesApi.reducer,
+      [packagesApi.reducerPath]:         packagesApi.reducer,
+      [waitlistApi.reducerPath]:         waitlistApi.reducer,
+      [giftCardsApi.reducerPath]:       giftCardsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -176,7 +185,10 @@ function makeStore(role: Role = Role.Client) {
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
         .concat(authApi.middleware)
-        .concat(filesApi.middleware),
+        .concat(filesApi.middleware)
+        .concat(packagesApi.middleware)
+        .concat(waitlistApi.middleware)
+        .concat(giftCardsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
@@ -221,6 +233,9 @@ function renderFormWithNoTenant() {
       [publicApi.reducerPath]:       publicApi.reducer,
       [authApi.reducerPath]:         authApi.reducer,
       [filesApi.reducerPath]:        filesApi.reducer,
+      [packagesApi.reducerPath]:     packagesApi.reducer,
+      [waitlistApi.reducerPath]:     waitlistApi.reducer,
+      [giftCardsApi.reducerPath]:    giftCardsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -232,7 +247,10 @@ function renderFormWithNoTenant() {
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
         .concat(authApi.middleware)
-        .concat(filesApi.middleware),
+        .concat(filesApi.middleware)
+        .concat(packagesApi.middleware)
+        .concat(waitlistApi.middleware)
+        .concat(giftCardsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null } as any,

@@ -12,6 +12,7 @@ export const DepositStatus = {
   Paid:      "Paid",
   Forfeited: "Forfeited",
   Refunded:  "Refunded",
+  PrePaid:   "PrePaid",
 } as const;
 export type DepositStatus = (typeof DepositStatus)[keyof typeof DepositStatus];
 
@@ -82,6 +83,7 @@ export interface CreateAppointmentRequest {
   referralSource?:            string | null;
   referralSourceOther?:       string | null;
   images?:                    AppointmentImageRequest[];
+  packagePurchaseId?:         string | null;
 }
 
 export interface AssignAppointmentArtistRequest {

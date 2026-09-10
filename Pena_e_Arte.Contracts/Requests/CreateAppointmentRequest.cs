@@ -11,7 +11,11 @@ public record CreateAppointmentRequest(
     IReadOnlyList<string>? DesiredPlacementLocations = null,
     string? ReferralSource = null,          // enum name as string, nullable — "Other" requires ReferralSourceOther
     string? ReferralSourceOther = null,
-    IReadOnlyList<AppointmentImageRequest>? Images = null);
+    IReadOnlyList<AppointmentImageRequest>? Images = null,
+    // Appended at the end (positional record) rather than inserted mid-list — Group 4's PromoCode
+    // field is not present on this branch. When present, a confirmed PackagePurchase with
+    // SessionsRemaining > 0 covers this booking's deposit entirely; see CreateAppointmentCommand.
+    Guid? PackagePurchaseId = null);
 
 /// <summary>Category: "AreaPhoto" | "Reference" (matches AppointmentAttachmentCategory).</summary>
 public record AppointmentImageRequest(string Url, string Category);

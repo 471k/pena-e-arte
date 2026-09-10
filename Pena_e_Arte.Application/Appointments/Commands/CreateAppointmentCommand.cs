@@ -125,15 +125,40 @@ public class CreateAppointmentHandler(
                 if (conflict) throw new SlotAlreadyBookedException();
             }
 
-            // Single-active is enforced by the deposit rule handlers; ordering by
-            // UpdatedAt keeps selection deterministic even against legacy data.
-            DepositRule? rule = await db.DepositRules
-                .IgnoreQueryFilters()
-                .Where(r => r.StudioId == studioId && r.DeletedAt == null && r.IsActive)
-                .OrderByDescending(r => r.UpdatedAt)
-                .FirstOrDefaultAsync(ct);
+            // Package-covered booking: skip DepositCalculator entirely (already paid for via the
+            // package purchase) rather than computing a deposit that will just be zeroed out.
+            PackagePurchase? packagePurchase = null;
+            decimal depositAmount;
+            DepositStatus depositStatus;
 
-            decimal depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
+            if (req.PackagePurchaseId is Guid packagePurchaseId)
+            {
+                packagePurchase = await db.PackagePurchases.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(p => p.StudioId == studioId && p.DeletedAt == null && p.Id == packagePurchaseId, ct)
+                    ?? throw new NotFoundException(nameof(PackagePurchase), packagePurchaseId);
+
+                if (packagePurchase.ClientId != clientId)
+                    throw new NotFoundException(nameof(PackagePurchase), packagePurchaseId);
+
+                if (packagePurchase.SessionsRemaining <= 0)
+                    throw new BusinessRuleViolationException("This package has no sessions remaining.");
+
+                depositAmount = 0;
+                depositStatus = DepositStatus.PrePaid;
+            }
+            else
+            {
+                // Single-active is enforced by the deposit rule handlers; ordering by
+                // UpdatedAt keeps selection deterministic even against legacy data.
+                DepositRule? rule = await db.DepositRules
+                    .IgnoreQueryFilters()
+                    .Where(r => r.StudioId == studioId && r.DeletedAt == null && r.IsActive)
+                    .OrderByDescending(r => r.UpdatedAt)
+                    .FirstOrDefaultAsync(ct);
+
+                depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
+                depositStatus = DepositStatus.Pending;
+            }
 
             Appointment appointment = new()
             {
@@ -144,7 +169,7 @@ public class CreateAppointmentHandler(
                 EndDate = requestEnd,
                 DurationMinutes = req.DurationMinutes,
                 Status = AppointmentStatus.Pending,
-                DepositStatus = DepositStatus.Pending,
+                DepositStatus = depositStatus,
                 DepositAmount = depositAmount,
                 Notes = req.Notes
             };
@@ -173,6 +198,13 @@ public class CreateAppointmentHandler(
             }
 
             db.Appointments.Add(appointment);
+
+            if (packagePurchase is not null)
+            {
+                packagePurchase.SessionsRemaining--;
+                packagePurchase.UpdatedAt = DateTime.UtcNow;
+            }
+
             await db.SaveChangesAsync(ct);
 
             // Write-through cache invalidation — the next EnsureWithinLimitAsync call for

@@ -24,6 +24,11 @@ export function getClientTourSteps(hasMultipleStudios: boolean): TourStep[] {
       body: "Send a real-time message to your assigned or booked artist, or to the studio owner, right from here.",
     },
     {
+      targetSelector: '[data-tour="client-waitlist-nav"]',
+      title: "Your waitlist",
+      body: "If a slot you wanted wasn't available, see your waitlist entries here — you'll get an email the moment one opens up.",
+    },
+    {
       targetSelector: '[data-tour="client-designs-nav"]',
       title: "Your designs",
       body: "Once your artist uploads a design draft, you'll review and approve it here.",

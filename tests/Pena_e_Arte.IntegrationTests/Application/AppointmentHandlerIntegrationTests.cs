@@ -244,7 +244,7 @@ public class AppointmentHandlerIntegrationTests
         clientUser.UserId.Returns(userId);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime);
+        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender);
         DateTime newStart = DateTime.UtcNow.AddDays(11);
         AppointmentResponse result = await handler.Handle(
             new RescheduleAppointmentCommand(apptId, new RescheduleAppointmentRequest(newStart, 90, null)), default);
@@ -267,7 +267,7 @@ public class AppointmentHandlerIntegrationTests
         clientUser.UserId.Returns(userId);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime);
+        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender);
 
         Func<Task> act = () => handler.Handle(
             new RescheduleAppointmentCommand(apptId,

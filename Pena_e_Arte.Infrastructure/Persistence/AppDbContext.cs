@@ -40,6 +40,12 @@ public class AppDbContext(
     public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<Waitlist> WaitlistEntries => Set<Waitlist>();
+    public DbSet<BoothRentSchedule> BoothRentSchedules => Set<BoothRentSchedule>();
+    public DbSet<BoothRentCharge> BoothRentCharges => Set<BoothRentCharge>();
+    public DbSet<GiftCard> GiftCards => Set<GiftCard>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackagePurchase> PackagePurchases => Set<PackagePurchase>();
 
     // --- Admin-level (no tenant filter) ---
     public DbSet<Studio> Studios => Set<Studio>();
@@ -134,6 +140,12 @@ public class AppDbContext(
         builder.Entity<StudioNotificationPreference>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Conversation>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<ChatMessage>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);
+        builder.Entity<Waitlist>().HasQueryFilter(w => w.StudioId == tenant.StudioId && w.DeletedAt == null);
+        builder.Entity<BoothRentSchedule>().HasQueryFilter(b => b.StudioId == tenant.StudioId && b.DeletedAt == null);
+        builder.Entity<BoothRentCharge>().HasQueryFilter(b => b.StudioId == tenant.StudioId && b.DeletedAt == null);
+        builder.Entity<GiftCard>().HasQueryFilter(g => g.StudioId == tenant.StudioId && g.DeletedAt == null);
+        builder.Entity<Package>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+        builder.Entity<PackagePurchase>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         // ClientNotificationPreference — NOT filtered, dual-keyed by (UserId, StudioId); see ClientNotificationPreferenceConfiguration.
 
         builder.Entity<SavedPortfolioImage>(b =>

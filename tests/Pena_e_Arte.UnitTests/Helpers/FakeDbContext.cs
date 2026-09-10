@@ -55,9 +55,52 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ConductReport> ConductReports => Set<ConductReport>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<Waitlist> WaitlistEntries => Set<Waitlist>();
+    public DbSet<BoothRentSchedule> BoothRentSchedules => Set<BoothRentSchedule>();
+    public DbSet<BoothRentCharge> BoothRentCharges => Set<BoothRentCharge>();
+    public DbSet<GiftCard> GiftCards => Set<GiftCard>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackagePurchase> PackagePurchases => Set<PackagePurchase>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Waitlist>()
+            .HasOne(w => w.Artist)
+            .WithMany()
+            .HasForeignKey(w => w.ArtistId)
+            .IsRequired(false);
+
+        modelBuilder.Entity<Waitlist>()
+            .HasOne(w => w.Client)
+            .WithMany()
+            .HasForeignKey(w => w.ClientId)
+            .IsRequired(false);
+
+        modelBuilder.Entity<BoothRentSchedule>()
+            .HasOne(s => s.Artist)
+            .WithMany()
+            .HasForeignKey(s => s.ArtistId);
+
+        modelBuilder.Entity<BoothRentCharge>()
+            .HasOne(c => c.Artist)
+            .WithMany()
+            .HasForeignKey(c => c.ArtistId);
+
+        modelBuilder.Entity<BoothRentCharge>()
+            .HasOne(c => c.Schedule)
+            .WithMany(s => s.Charges)
+            .HasForeignKey(c => c.BoothRentScheduleId);
+
+        modelBuilder.Entity<PackagePurchase>()
+            .HasOne(p => p.Package)
+            .WithMany()
+            .HasForeignKey(p => p.PackageId);
+
+        modelBuilder.Entity<PackagePurchase>()
+            .HasOne(p => p.Client)
+            .WithMany()
+            .HasForeignKey(p => p.ClientId);
+
         modelBuilder.Entity<Studio>()
             .HasOne(s => s.Subscription)
             .WithOne(sub => sub.Studio)
