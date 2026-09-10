@@ -30,9 +30,16 @@ public class AuditLogBehavior<TRequest, TResponse>(
         {
             Guid? studioId = auditable.AuditStudioId ?? (tenant.IsSet ? tenant.StudioId : null);
 
+            // Distinguishes an impersonated admin's action from the admin's own direct
+            // action with zero schema change — ActorRole is already a plain string, and
+            // ActorUserId still correctly identifies the real admin either way (see
+            // IIdentityService.IssueImpersonationTokenAsync). See architecture.md Decisions
+            // Log — "Support Impersonation with Audit Trail".
+            string actorRole = currentUser.IsImpersonating ? "admin-impersonating" : currentUser.Role;
+
             AuditLogEntry entry = AuditLogEntry.Create(
                 actorUserId: currentUser.UserId,
-                actorRole: currentUser.Role,
+                actorRole: actorRole,
                 action: auditable.AuditAction,
                 targetType: auditable.AuditTargetType,
                 targetId: auditable.AuditTargetId,

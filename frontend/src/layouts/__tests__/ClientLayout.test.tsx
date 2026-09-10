@@ -43,6 +43,8 @@ type StoreOverrides = {
   readOnlyError?:   string | null;
   studioSuspended?: boolean;
   planLimitError?:  string | null;
+  impersonationScopeError?:     string | null;
+  impersonationSessionExpired?: boolean;
 };
 
 function makeStore(overrides: StoreOverrides = {}) {
@@ -61,8 +63,8 @@ function makeStore(overrides: StoreOverrides = {}) {
     ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: "client", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: overrides.studioSuspended ?? false, planLimitError: overrides.planLimitError ?? null },
+      auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: "client", pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: overrides.studioSuspended ?? false, planLimitError: overrides.planLimitError ?? null, impersonationScopeError: overrides.impersonationScopeError ?? null, impersonationSessionExpired: overrides.impersonationSessionExpired ?? false },
     },
   });
 }
@@ -165,12 +167,12 @@ describe("ClientLayout", () => {
   });
 
   it("PlanLimitBanner is hidden when there is no plan limit error", () => {
-    renderLayout({ planLimitError: null });
+    renderLayout({ planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false });
     expect(screen.queryByText(/upgrade the plan/i)).not.toBeInTheDocument();
   });
 
   it("PlanLimitBanner is visible for client role but with no upgrade link (client can't act on billing)", () => {
-    renderLayout({ planLimitError: "This studio's plan allows up to 6 artists. Upgrade the plan to continue." });
+    renderLayout({ planLimitError: "This studio's plan allows up to 6 artists. Upgrade the plan to continue.", impersonationScopeError: null, impersonationSessionExpired: false });
     expect(screen.getByText(/allows up to 6 artists/i)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /manage subscription/i })).not.toBeInTheDocument();
     expect(screen.getByText(/ask the studio owner to upgrade the plan/i)).toBeInTheDocument();

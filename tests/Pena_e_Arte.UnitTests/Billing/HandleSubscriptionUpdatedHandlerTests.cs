@@ -173,6 +173,87 @@ public class HandleSubscriptionUpdatedHandlerTests
     }
 
     [Fact]
+    public async Task Handle_TransitionsToPastDue_SetsPastDueSince()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.Active);
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "past_due", _nextPeriodEnd, null), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .PastDueSince.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyPastDue_DoesNotResetPastDueSince()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.PastDue);
+        DateTime originalPastDueSince = DateTime.UtcNow.AddDays(-3);
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId).PastDueSince = originalPastDueSince;
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "past_due", _nextPeriodEnd, null), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .PastDueSince.Should().BeCloseTo(originalPastDueSince, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task Handle_TransitionsFromPastDueToActive_ClearsPastDueSince()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.PastDue);
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId).PastDueSince = DateTime.UtcNow.AddDays(-3);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "active", _nextPeriodEnd, null), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .PastDueSince.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_TransitionsFromPastDueToCancelled_ClearsPastDueSince()
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.PastDue);
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId).PastDueSince = DateTime.UtcNow.AddDays(-3);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "canceled", _nextPeriodEnd, null), default);
+
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .PastDueSince.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_UnknownStripeStatus_LeavesPastDueSinceUnchanged()
+    {
+        string stripeSubId = "sub_paused_pd";
+        await SeedSubscription(stripeSubId, SubscriptionStatus.PastDue);
+        DateTime originalPastDueSince = DateTime.UtcNow.AddDays(-2);
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId).PastDueSince = originalPastDueSince;
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(
+            new HandleSubscriptionUpdatedCommand(stripeSubId, "paused", _nextPeriodEnd, null), default);
+
+        // Status stays PastDue (unknown Stripe status leaves it untouched) so PastDueSince
+        // must also stay untouched, not get cleared by the != PastDue branch.
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == stripeSubId)
+            .PastDueSince.Should().BeCloseTo(originalPastDueSince, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
     public async Task Handle_UnknownSubscription_DoesNotThrow()
     {
         Func<Task> act = () => CreateSut().Handle(

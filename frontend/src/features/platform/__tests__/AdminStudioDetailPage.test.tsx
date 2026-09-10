@@ -16,6 +16,27 @@ import type { StudioResponse } from "@/features/studios/studiosApi";
 import type { PlatformSubscriptionResponse, PlatformReferralCodeResponse } from "@/features/platform/platform.types";
 import type { PlanResponse } from "@/features/billing/billing.types";
 
+// ── Fake JWT helper ────────────────────────────────────────────────────────────
+// decodeToken() (used by authSlice's startImpersonation reducer) calls jwt-decode,
+// which throws on a non-JWT-shaped string — a plain placeholder like "fake-token"
+// is NOT enough here, unlike other tests in this file that never decode the token.
+
+const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+
+function toBase64Url(s: string) {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function fakeImpersonationJwt() {
+  const header = toBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = toBase64Url(JSON.stringify({
+    sub: "admin-1", email: "admin@test.com",
+    [ROLE_CLAIM]: "admin", tenant_id: "s1", imp: "sess-1",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  }));
+  return `${header}.${payload}.fakesig`;
+}
+
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const STUDIO: StudioResponse = {
@@ -103,6 +124,14 @@ const server = setupServer(
   http.get("http://localhost/api/v1/platform/referral-codes", () => HttpResponse.json([])),
   http.post("http://localhost/api/v1/platform/studios/:studioId/referral-codes", () =>
     HttpResponse.json(REFERRAL_CODE)),
+  http.post("http://localhost/api/v1/platform/studios/:studioId/impersonate", () =>
+    HttpResponse.json({
+      sessionId: "sess-1",
+      accessToken: fakeImpersonationJwt(),
+      expiresAt: new Date(Date.now() + 45 * 60_000).toISOString(),
+      studioId: "s1",
+      studioName: "Ink Soul",
+    })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -123,7 +152,7 @@ function makeStore() {
       gd().concat(platformApi.middleware, studiosApi.middleware, billingApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin", pendingReferralCode: null } as any,
+      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin", pendingReferralCode: null, impersonation: null } as any,
     },
   });
 }
@@ -135,6 +164,7 @@ function renderPage(studioId = "s1") {
       <MemoryRouter initialEntries={[`/platform/studios/${studioId}`]}>
         <Routes>
           <Route path="/platform/studios/:studioId" element={<AdminStudioDetailPage />} />
+          <Route path="/dashboard" element={<div data-testid="dashboard-landed" />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -401,6 +431,82 @@ describe("AdminStudioDetailPage", () => {
 
       expect(await screen.findByRole("button", { name: /generate code/i })).toBeInTheDocument();
       expect(capturedStudioId).toBe("s1");
+    });
+  });
+
+  // ── Support Impersonation ─────────────────────────────────────────────────────
+
+  describe("Impersonate", () => {
+    it("shows an Impersonate button", async () => {
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(screen.getByRole("button", { name: /impersonate/i })).toBeInTheDocument();
+    });
+
+    it("clicking Impersonate opens the reason form with the start button disabled", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      await user.click(screen.getByRole("button", { name: /impersonate/i }));
+
+      expect(screen.getByLabelText(/reason/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /start impersonating/i })).toBeDisabled();
+    });
+
+    it("a too-short reason keeps the start button disabled", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      await user.click(screen.getByRole("button", { name: /impersonate/i }));
+      await user.type(screen.getByLabelText(/reason/i), "hi");
+
+      expect(screen.getByRole("button", { name: /start impersonating/i })).toBeDisabled();
+    });
+
+    it("submitting a valid reason starts the session and navigates to /dashboard", async () => {
+      let capturedBody: { reasonCode?: string } | null = null;
+      const accessToken = fakeImpersonationJwt();
+      server.use(
+        http.post("http://localhost/api/v1/platform/studios/:studioId/impersonate", async ({ request }) => {
+          capturedBody = (await request.json()) as { reasonCode?: string };
+          return HttpResponse.json({
+            sessionId: "sess-1", accessToken,
+            expiresAt: new Date(Date.now() + 45 * 60_000).toISOString(),
+            studioId: "s1", studioName: "Ink Soul",
+          });
+        }),
+      );
+      const user = userEvent.setup();
+      const store = renderPage();
+      await screen.findAllByText("Ink Soul");
+      await user.click(screen.getByRole("button", { name: /impersonate/i }));
+      await user.type(screen.getByLabelText(/reason/i), "Investigating ticket #42");
+      await user.click(screen.getByRole("button", { name: /start impersonating/i }));
+
+      expect(await screen.findByTestId("dashboard-landed")).toBeInTheDocument();
+      expect(capturedBody).toEqual({ reasonCode: "Investigating ticket #42" });
+      expect(store.getState().auth.impersonation).toEqual({
+        sessionId: "sess-1", studioId: "s1", studioName: "Ink Soul",
+        expiresAt: expect.any(String),
+      });
+      expect(store.getState().auth.token).toBe(accessToken);
+    });
+
+    it("a failed start shows an error toast and does not navigate away", async () => {
+      server.use(
+        http.post("http://localhost/api/v1/platform/studios/:studioId/impersonate", () =>
+          HttpResponse.json({ message: "Failed" }, { status: 500 })),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      await user.click(screen.getByRole("button", { name: /impersonate/i }));
+      await user.type(screen.getByLabelText(/reason/i), "Investigating ticket #42");
+      await user.click(screen.getByRole("button", { name: /start impersonating/i }));
+
+      expect(screen.queryByTestId("dashboard-landed")).not.toBeInTheDocument();
+      // Still on the studio detail page, reason form remains
+      expect(await screen.findByLabelText(/reason/i)).toBeInTheDocument();
     });
   });
 });

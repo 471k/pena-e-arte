@@ -12,6 +12,7 @@ public record CreateAppointmentRequest(
     string? ReferralSource = null,          // enum name as string, nullable — "Other" requires ReferralSourceOther
     string? ReferralSourceOther = null,
     IReadOnlyList<AppointmentImageRequest>? Images = null,
+    string? PromoCode = null,
     // Reward-bearing client referral — distinct from ReferralSource ("how did you hear
     // about us" marketing attribution) above. ReferralCode redeems someone else's
     // ClientReferralCode; ReferralRewardId redeems the caller's own earned credit. Both

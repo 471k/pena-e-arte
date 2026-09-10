@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
@@ -8,6 +8,7 @@ import {
   Building2,
   Clock,
   ExternalLink,
+  Eye,
   Loader2,
   PauseCircle,
   PlayCircle,
@@ -32,9 +33,12 @@ import {
   useGetAdminStudioSummaryQuery,
   useGetPlatformReferralCodesQuery,
   useGenerateReferralCodeForStudioMutation,
+  useStartImpersonationMutation,
 } from "@/features/platform/platformApi";
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
+import { useAppDispatch } from "@/app/hooks";
+import { startImpersonation as beginImpersonationSession } from "@/features/auth/authSlice";
 import { ReferralCodeRow } from "./PlatformReferralPage";
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -68,6 +72,8 @@ function fmt(date: string | Date) {
 
 export function AdminStudioDetailPage() {
   const { studioId } = useParams<{ studioId: string }>();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   useDocumentMeta({ title: "Studio Details — Platform Admin", canonical: `/platform/studios/${studioId ?? ""}` });
 
@@ -99,6 +105,11 @@ export function AdminStudioDetailPage() {
   const [suspend,   { isLoading: suspending   }] = useSuspendStudioMutation();
   const [unsuspend, { isLoading: unsuspending }] = useUnsuspendStudioMutation();
 
+  // Support Impersonation
+  const [impersonating, setImpersonating] = useState(false);
+  const [impersonateReason, setImpersonateReason] = useState("");
+  const [startImpersonation, { isLoading: startingImpersonation }] = useStartImpersonationMutation();
+
   // Subscription actions
   const [extending,  setExtending]  = useState(false);
   const [activating, setActivating] = useState(false);
@@ -123,7 +134,7 @@ export function AdminStudioDetailPage() {
   const canExtendTrial = subStatus !== "Active";
   const canActivate    = CASH_ACTIVATABLE.has(subStatus);
   const canCancel      = CANCELLABLE.has(subStatus);
-  const anyExpanded    = extending || activating || confirming || confirmPlatform !== null;
+  const anyExpanded    = extending || activating || confirming || confirmPlatform !== null || impersonating;
 
   const trialDate    = sub?.trialExpiresAt ?? studio?.trialExpiresAt ?? "";
   const trialExpired = trialDate ? new Date(trialDate) < new Date() : false;
@@ -178,6 +189,25 @@ export function AdminStudioDetailPage() {
       setConfirming(false);
     } catch {
       toast.error("Failed to cancel subscription");
+    }
+  }
+
+  async function handleImpersonate() {
+    if (!studioId || impersonateReason.trim().length < 5) return;
+    try {
+      const result = await startImpersonation({ studioId, reasonCode: impersonateReason.trim() }).unwrap();
+      dispatch(beginImpersonationSession({
+        accessToken: result.accessToken,
+        sessionId: result.sessionId,
+        studioId: result.studioId,
+        studioName: result.studioName,
+        expiresAt: result.expiresAt,
+      }));
+      setImpersonating(false);
+      setImpersonateReason("");
+      navigate("/dashboard");
+    } catch {
+      toast.error("Failed to start impersonation session");
     }
   }
 
@@ -508,6 +538,15 @@ export function AdminStudioDetailPage() {
                     </Button>
                   )}
 
+                  {/* Impersonate — Support Impersonation, read-only, 45-minute session */}
+                  {!anyExpanded && (
+                    <Button size="sm" variant="outline" className="h-9 text-xs gap-1"
+                      onClick={() => setImpersonating(true)}>
+                      <Eye className="h-3.5 w-3.5" />
+                      Impersonate
+                    </Button>
+                  )}
+
                   {/* 3. Suspend / Reactivate */}
                   {confirmPlatform ? (
                     <div className="flex flex-col gap-1.5 pt-2 border-t">
@@ -622,6 +661,41 @@ export function AdminStudioDetailPage() {
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
                         onClick={() => { setActivating(false); setCashPlanId(""); setCashNote(""); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Impersonate form */}
+                {impersonating && (
+                  <div className="pt-2 space-y-2 border-t">
+                    <p className="text-xs font-medium text-muted-foreground">Impersonate — Support Session</p>
+                    <p className="text-xs text-muted-foreground">
+                      Opens a 45-minute, read-only view of this studio (appointments, artists,
+                      basic client identity, studio settings). Client medical/PII and all
+                      financial data stay hidden; no changes can be made while impersonating.
+                    </p>
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-impersonate-reason" className="text-xs">Reason</Label>
+                      <Input
+                        id="detail-impersonate-reason"
+                        value={impersonateReason}
+                        onChange={(e) => setImpersonateReason(e.target.value)}
+                        placeholder="e.g. Investigating ticket #123"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm" className="h-7 px-2 text-xs flex-1"
+                        disabled={startingImpersonation || impersonateReason.trim().length < 5}
+                        onClick={handleImpersonate}
+                      >
+                        {startingImpersonation ? <Loader2 className="h-3 w-3 animate-spin" /> : "Start impersonating"}
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                        onClick={() => { setImpersonating(false); setImpersonateReason(""); }}>
                         Cancel
                       </Button>
                     </div>

@@ -10,6 +10,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<AppointmentAttachment> AppointmentAttachments => Set<AppointmentAttachment>();
     public DbSet<DepositRule> DepositRules => Set<DepositRule>();
+    public DbSet<PromoCode> PromoCodes => Set<PromoCode>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientProfile> ClientProfiles => Set<ClientProfile>();
     public DbSet<TattooRecord> TattooRecords => Set<TattooRecord>();
@@ -25,6 +26,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
+    public DbSet<IntakeFormTemplate> IntakeFormTemplates => Set<IntakeFormTemplate>();
     public DbSet<BookingIntake> BookingIntakes => Set<BookingIntake>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
     public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
@@ -59,6 +61,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ClientReferralRedemption> ClientReferralRedemptions => Set<ClientReferralRedemption>();
     public DbSet<ClientReferralReward> ClientReferralRewards => Set<ClientReferralReward>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -25,6 +25,8 @@ const DESIGN_A: DesignResponse = {
   description: "Full sleeve concept",
   createdAt:   "2024-01-15T10:00:00Z",
   status:      "Draft",
+  isCatalogItem: false,
+  price:       null,
 };
 
 const DESIGN_B: DesignResponse = {
@@ -36,6 +38,8 @@ const DESIGN_B: DesignResponse = {
   description: null,
   createdAt:   "2024-02-01T10:00:00Z",
   status:      "InReview",
+  isCatalogItem: false,
+  price:       null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -63,8 +67,8 @@ function makeStore(role: Role = Role.Owner) {
     middleware: (gd) => gd().concat(designsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

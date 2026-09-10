@@ -11,6 +11,7 @@ public static class AuditActions
     public const string StudioTrialExtended = "Studio.TrialExtended";
     public const string SubscriptionCancelledByAdmin = "Subscription.CancelledByAdmin";
     public const string SubscriptionActivatedManually = "Subscription.ActivatedManually";
+    public const string SubscriptionDunningExclusionChanged = "Subscription.DunningExclusionChanged";
     public const string PlanUpdated = "Plan.Updated";
     public const string ReferralCodeDeactivated = "ReferralCode.Deactivated";
     public const string ReferralCodeReactivated = "ReferralCode.Reactivated";
@@ -41,6 +42,8 @@ public static class AuditActions
     public const string AdminAccountBootstrapped = "Admin.AccountBootstrapped";
 
     public const string CampaignSent = "Campaign.Sent";
+    public const string ImpersonationSessionStarted = "ImpersonationSession.Started";
+    public const string ImpersonationSessionEnded = "ImpersonationSession.Ended";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -58,4 +61,5 @@ public static class AuditTargetTypes
     public const string ConductReport = "ConductReport";
     public const string User = "User";
     public const string Campaign = "Campaign";
+    public const string ImpersonationSession = "ImpersonationSession";
 }

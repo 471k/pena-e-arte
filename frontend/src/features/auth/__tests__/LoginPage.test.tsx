@@ -72,7 +72,7 @@ function makeStore(preloadedRole: string | null = null) {
     preloadedState: preloadedRole
       ? {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake", tenantId: "t1", role: preloadedRole, pendingReferralCode: null } as any,
+          auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake", tenantId: "t1", role: preloadedRole, pendingReferralCode: null, impersonation: null } as any,
         }
       : undefined,
   });

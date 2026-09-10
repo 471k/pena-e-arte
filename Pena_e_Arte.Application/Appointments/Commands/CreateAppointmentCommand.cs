@@ -138,13 +138,44 @@ public class CreateAppointmentHandler(
             // ── Discount stacking order (documented once, here, rather than scattered across
             // uncoordinated edits): promo code → gift card → referral-code redemption →
             // referral-reward redemption, each applied to whatever remains after the previous
-            // one, floored at 0. Only the last two exist as of this commit — PromoCode (P1
-            // Group 4) and GiftCard (P1 Group 3) redemption are not yet merged into this branch;
-            // whoever reconciles those PRs with this one must insert their steps BEFORE the
-            // referral steps below, not after, to preserve this order. ──
+            // one, floored at 0. Gift card (P1 Group 3) redemption is not yet merged into this
+            // branch; whoever reconciles that PR with this one must insert its step here,
+            // between promo code and referral-code, to preserve this order. ──
             // IgnoreQueryFilters() throughout this block for the same reason as
             // Artists/DepositRules above — this core is shared with the anonymous
             // guest-booking path, which has no ambient tenant scope.
+            bool promoCodeApplied = false;
+            if (!string.IsNullOrWhiteSpace(req.PromoCode))
+            {
+                string normalizedCode = req.PromoCode.Trim().ToUpperInvariant();
+                DateTime now = DateTime.UtcNow;
+
+                PromoCode? promoCode = await db.PromoCodes
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(p =>
+                        p.StudioId == studioId &&
+                        p.DeletedAt == null &&
+                        p.IsActive &&
+                        p.Code == normalizedCode &&
+                        (p.ExpiresAt == null || p.ExpiresAt > now) &&
+                        (p.MaxRedemptions == null || p.RedemptionCount < p.MaxRedemptions.Value), ct);
+
+                // A guest fat-fingering a promo code should never block their booking — a
+                // missing/expired/exhausted/wrong-studio code is silently ignored rather than
+                // thrown; PromoCodeApplied on the response tells the frontend whether to show
+                // a "not recognized" note.
+                if (promoCode is not null)
+                {
+                    decimal discount = promoCode.AmountFixed
+                        ?? Math.Round(depositAmount * (promoCode.AmountPercent ?? 0m) / 100m, 2, MidpointRounding.AwayFromZero);
+
+                    depositAmount = Math.Max(0m, depositAmount - discount);
+                    promoCode.RedemptionCount++;
+                    promoCode.UpdatedAt = now;
+                    promoCodeApplied = true;
+                }
+            }
+
             ClientReferralCode? redeemedReferralCode = null;
             if (!string.IsNullOrWhiteSpace(req.ReferralCode))
             {
@@ -263,7 +294,7 @@ public class CreateAppointmentHandler(
 
             await db.SaveChangesAsync(ct);
 
-            AppointmentResponse response = Map(appointment);
+            AppointmentResponse response = Map(appointment, promoCodeApplied: promoCodeApplied);
             await realtime.NotifyStudioAsync(studioId, "AppointmentCreated", response, ct);
 
             await sender.Send(new SendAppointmentCreatedNotificationCommand(appointment.Id), ct);
@@ -278,7 +309,8 @@ public class CreateAppointmentHandler(
     }
 
     internal static AppointmentResponse Map(
-        Appointment a, string? clientName = null, string? artistName = null, Guid? clientUserId = null)
+        Appointment a, string? clientName = null, string? artistName = null, Guid? clientUserId = null,
+        bool promoCodeApplied = false)
     {
         List<AppointmentAttachmentResponse> attachments = a.Attachments
             .OrderBy(x => x.UploadedAt)
@@ -305,6 +337,7 @@ public class CreateAppointmentHandler(
             a.Intake?.DesiredPlacement.Locations,
             a.Intake?.ReferralSource?.ToString(),
             a.Intake?.ReferralSourceOther,
-            attachments);
+            attachments,
+            promoCodeApplied);
     }
 }

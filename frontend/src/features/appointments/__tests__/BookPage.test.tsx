@@ -20,6 +20,7 @@ import { publicApi } from "@/features/public/publicApi";
 import { authApi } from "@/features/auth/authApi";
 import { filesApi } from "@/shared/api/filesApi";
 import { clientReferralsApi } from "@/features/client-referrals/clientReferralsApi";
+import { designsApi } from "@/features/designs/designsApi";
 
 import { BookPage } from "@/features/appointments/components/BookPage";
 import { BookAppointmentForm } from "@/features/appointments/components/BookAppointmentForm";
@@ -172,6 +173,7 @@ function makeStore(role: Role = Role.Client) {
       [authApi.reducerPath]:             authApi.reducer,
       [filesApi.reducerPath]:            filesApi.reducer,
       [clientReferralsApi.reducerPath]:  clientReferralsApi.reducer,
+      [designsApi.reducerPath]:          designsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -184,11 +186,12 @@ function makeStore(role: Role = Role.Client) {
         .concat(publicApi.middleware)
         .concat(authApi.middleware)
         .concat(filesApi.middleware)
-        .concat(clientReferralsApi.middleware),
+        .concat(clientReferralsApi.middleware)
+        .concat(designsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }
@@ -245,8 +248,8 @@ function renderFormWithNoTenant() {
         .concat(clientReferralsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
   render(
@@ -1039,5 +1042,62 @@ describe("MyBookingsSection", () => {
     renderMyBookings();
     await screen.findByText("Completed");
     expect(screen.queryByRole("button", { name: /reschedule/i })).not.toBeInTheDocument();
+  });
+});
+
+// ── Flash catalog booking (arriving via "Book this design") ────────────────────
+
+function renderFormWithFlashDesign(
+  state: { flashDesignId?: string; flashDesignTitle?: string; flashDesignImageUrl?: string | null },
+  role: Role = Role.Client,
+) {
+  render(
+    <Provider store={makeStore(role)}>
+      <MemoryRouter initialEntries={[{ pathname: "/book", state }]}>
+        <BookAppointmentForm />
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
+describe("BookAppointmentForm — flash catalog booking", () => {
+  it("shows a banner naming the flash design when arriving via router state", async () => {
+    renderFormWithFlashDesign({ flashDesignId: "d-001", flashDesignTitle: "Rose", flashDesignImageUrl: null });
+    expect(await screen.findByText(/booking flash design/i)).toBeInTheDocument();
+    expect(screen.getByText("Rose")).toBeInTheDocument();
+  });
+
+  it("does not show the banner for a normal booking (no router state)", async () => {
+    renderForm();
+    await screen.findByText("Luna Artista");
+    expect(screen.queryByText(/booking flash design/i)).not.toBeInTheDocument();
+  });
+
+  it("submits through the catalog-booking endpoint instead of the normal create-appointment one", async () => {
+    let catalogRequestBody: Record<string, unknown> | undefined;
+    let normalCreateWasCalled = false;
+    server.use(
+      http.post("http://localhost/api/v1/designs/catalog/d-001/request", async ({ request }) => {
+        catalogRequestBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+      http.post("http://localhost/api/v1/appointments", () => {
+        normalCreateWasCalled = true;
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderFormWithFlashDesign({ flashDesignId: "d-001", flashDesignTitle: "Rose", flashDesignImageUrl: null });
+    await user.click(await screen.findByRole("combobox", { name: /select artist/i }));
+    await user.click(await screen.findByRole("option", { name: /luna artista/i }));
+    fireEvent.change(screen.getByLabelText(/date & time/i), { target: { value: "2099-01-01T10:00" } });
+    await user.click(screen.getByRole("combobox", { name: /appointment duration/i }));
+    await user.click(await screen.findByRole("option", { name: "1 hour" }));
+    fireEvent.change(screen.getByLabelText(/what are you looking to get done/i), { target: { value: "A small rose" } });
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await waitFor(() => expect(catalogRequestBody).toBeDefined());
+    expect(normalCreateWasCalled).toBe(false);
   });
 });

@@ -364,8 +364,28 @@ public class IdentityService(
         return Guid.TryParse(stored, out Guid id) ? id : null;
     }
 
+    public async Task<(bool Success, string? AccessToken, string? Error)> IssueImpersonationTokenAsync(
+        Guid adminUserId, Guid targetStudioId, Guid sessionId, DateTime expiresAt)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(adminUserId.ToString());
+        if (user is null) return (false, null, "Admin account not found.");
+
+        IList<string> roles = await userManager.GetRolesAsync(user);
+        IList<Claim> userClaims = await userManager.GetClaimsAsync(user);
+
+        // Role stays "admin" — see AuthorizationExtensions.cs / IIdentityService's doc
+        // comment on this method for why that's deliberate and sufficient.
+        string accessToken = GenerateJwt(
+            user, roles, userClaims, targetStudioId,
+            extraClaims: [new Claim("imp", sessionId.ToString())],
+            expiresAtOverride: expiresAt);
+
+        return (true, accessToken, null);
+    }
+
     private string GenerateJwt(
-        IdentityUser user, IList<string> roles, IList<Claim> userClaims, Guid? activeStudioId = null)
+        IdentityUser user, IList<string> roles, IList<Claim> userClaims, Guid? activeStudioId = null,
+        IReadOnlyList<Claim>? extraClaims = null, DateTime? expiresAtOverride = null)
     {
         string secretKey = configuration["Jwt:SecretKey"]!;
         string issuer = configuration["Jwt:Issuer"]!;
@@ -385,6 +405,8 @@ public class IdentityService(
 
         tokenClaims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         tokenClaims.AddRange(userClaims.Where(c => c.Type != "tenant_id"));
+        if (extraClaims is not null)
+            tokenClaims.AddRange(extraClaims);
 
         // A user may hold a "tenant_id" claim for every studio they belong to, but the
         // token must carry exactly one — the caller-selected active studio if given,
@@ -400,7 +422,9 @@ public class IdentityService(
             issuer: issuer,
             audience: audience,
             claims: tokenClaims,
-            expires: DateTime.UtcNow.AddMinutes(expiryMins),
+            // Impersonation caps expiry to the session's own hard limit (45 min), shorter
+            // than the normal access-token lifetime — see IssueImpersonationTokenAsync.
+            expires: expiresAtOverride ?? DateTime.UtcNow.AddMinutes(expiryMins),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

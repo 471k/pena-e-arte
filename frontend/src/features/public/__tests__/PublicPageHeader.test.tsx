@@ -20,7 +20,7 @@ function makeStore(token: string | null, role: Role | null = null) {
         tenantId: null,
         role,
         refreshToken: null,
-        pendingReferralCode: null,
+        pendingReferralCode: null, impersonation: null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
     },

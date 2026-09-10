@@ -16,7 +16,7 @@ function makeStore(role: "admin" | "owner" = "admin") {
         token: "tok",
         tenantId: null,
         role,
-        pendingReferralCode: null,
+        pendingReferralCode: null, impersonation: null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
     },

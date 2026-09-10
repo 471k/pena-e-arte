@@ -4,6 +4,7 @@ import {
   AtSign,
   ChevronLeft,
   Images,
+  Sparkles,
   X,
   ZoomIn,
 } from "lucide-react";
@@ -20,7 +21,9 @@ import {
   useGetPublicArtistQuery,
   useRecordArtistViewMutation,
   useGetArtistInstagramPostsQuery,
+  useGetDesignCatalogQuery,
   type ArtistPortfolioImage,
+  type DesignCatalogItemResponse,
 } from "../publicApi";
 import { useDocumentMeta }         from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }       from "@/shared/utils/useStructuredData";
@@ -242,6 +245,40 @@ function ProfileStrengthNudge({
   );
 }
 
+// ── Flash catalog ────────────────────────────────────────────────────────────
+
+function FlashCatalogCard({ item, ctaUrl }: { item: DesignCatalogItemResponse; ctaUrl: string }) {
+  return (
+    <div className="rounded-lg border overflow-hidden flex flex-col">
+      {item.imageUrl ? (
+        <img
+          src={item.imageUrl}
+          alt={item.title}
+          className="aspect-square w-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="aspect-square w-full bg-muted flex items-center justify-center">
+          <Sparkles className="h-6 w-6 text-muted-foreground/40" aria-hidden="true" />
+        </div>
+      )}
+      <div className="p-2.5 space-y-1.5">
+        <p className="text-xs font-medium truncate">{item.title}</p>
+        {item.price != null && (
+          <p className="text-xs text-muted-foreground">
+            {new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(item.price)}
+          </p>
+        )}
+        <Button asChild size="sm" variant="outline" className="w-full h-7 text-xs">
+          <Link to={ctaUrl} state={{ flashDesignId: item.id, flashDesignTitle: item.title, flashDesignImageUrl: item.imageUrl }}>
+            Book this design
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── Portfolio masonry ──────────────────────────────────────────────────────────
 
 function PortfolioGrid({
@@ -425,6 +462,11 @@ export function ArtistPortfolioPage() {
     useGetPublicArtistQuery(slug, { skip: !slug });
 
   const { data: instagramPosts = [] } = useGetArtistInstagramPostsQuery(slug, { skip: !slug });
+
+  const { data: studioDesignCatalog = [] } = useGetDesignCatalogQuery(
+    artist?.studioSlug ?? "", { skip: !artist?.studioSlug },
+  );
+  const flashCatalog = studioDesignCatalog.filter((item) => item.artistId === artist?.artistId);
 
   const [recordView] = useRecordArtistViewMutation();
 
@@ -697,6 +739,20 @@ export function ArtistPortfolioPage() {
                 }
               />
             </section>
+
+            {flashCatalog.length > 0 && (
+              <section aria-labelledby="flash-heading" className="space-y-3">
+                <h2 id="flash-heading" className="text-lg font-semibold flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-muted-foreground/70" aria-hidden="true" />
+                  Flash
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {flashCatalog.map((item) => (
+                    <FlashCatalogCard key={item.id} item={item} ctaUrl={ctaUrl} />
+                  ))}
+                </div>
+              </section>
+            )}
 
             {instagramPosts.length > 0 && (
               <section aria-labelledby="instagram-heading" className="space-y-3">
