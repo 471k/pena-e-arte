@@ -27,8 +27,15 @@ artifacts/
 ## NuGet
 *.nupkg
 *.snupkg
-**/[Pp]ackages/
-!**/[Pp]ackages/build/
+# NOTE: a legacy "**/[Pp]ackages/" rule used to live here — the packages.config-era
+# convention for NuGet's local restore folder. This repo uses SDK-style projects with
+# PackageReference exclusively (restored to the global ~/.nuget/packages cache, never a
+# project-local folder), so that rule was pure dead weight — and dangerous dead weight:
+# it silently swallowed real source directories named "Packages"/"packages" from git on
+# at least three separate occasions (a backend Application/Packages/ folder whose commands
+# were never committed, and a frontend features/packages/ folder that had to be renamed to
+# features/session-packages/ to work around it). Removed 2026-09-10 rather than scoped
+# more narrowly, since nothing in this repo needs it at all.
 *.nuget.props
 *.nuget.targets
 nuget.config
