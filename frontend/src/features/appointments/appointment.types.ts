@@ -12,6 +12,7 @@ export const DepositStatus = {
   Paid:      "Paid",
   Forfeited: "Forfeited",
   Refunded:  "Refunded",
+  PrePaid:   "PrePaid",
 } as const;
 export type DepositStatus = (typeof DepositStatus)[keyof typeof DepositStatus];
 
@@ -68,6 +69,7 @@ export interface AppointmentResponse {
   referralSource?:            string | null;
   referralSourceOther?:       string | null;
   attachments?:               AppointmentAttachmentResponse[] | null;
+  promoCodeApplied?:          boolean;
 }
 
 export interface CreateAppointmentRequest {
@@ -84,6 +86,16 @@ export interface CreateAppointmentRequest {
   referralSource?:            string | null;
   referralSourceOther?:       string | null;
   images?:                    AppointmentImageRequest[];
+  promoCode?:                 string | null;
+  // Reward-bearing client referral (P1 #4) — distinct from referralSource ("how did you
+  // hear about us"). referralCode redeems someone else's ClientReferralCode; referralRewardId
+  // redeems the caller's own earned credit.
+  referralCode?:               string | null;
+  referralRewardId?:           string | null;
+  // When present, a confirmed PackagePurchase with sessionsRemaining > 0 covers this
+  // booking's deposit entirely — mutually exclusive with promoCode/referralCode/
+  // referralRewardId in practice, see CreateAppointmentCommand.
+  packagePurchaseId?:         string | null;
 }
 
 export interface AssignAppointmentArtistRequest {

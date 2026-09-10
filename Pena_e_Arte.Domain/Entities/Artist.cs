@@ -10,6 +10,10 @@ public class Artist : TenantEntity
 
     /// <summary>Hourly rate in EUR — the base for percent deposit rules. Null = not set.</summary>
     public decimal? HourlyRate { get; set; }
+
+    /// <summary>Booth-rent commission percent, informational only — not used in any charge
+    /// calculation tonight (booth rent is a fixed AmountFixed per BoothRentSchedule). Null = not set.</summary>
+    public decimal? CommissionRate { get; set; }
     public string? Slug { get; private set; }
     public string? Bio { get; set; }
     public string? ProfileImageUrl { get; set; }

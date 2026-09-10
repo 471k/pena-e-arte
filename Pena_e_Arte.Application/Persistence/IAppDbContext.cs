@@ -9,6 +9,7 @@ public interface IAppDbContext
     DbSet<Appointment> Appointments { get; }
     DbSet<AppointmentAttachment> AppointmentAttachments { get; }
     DbSet<DepositRule> DepositRules { get; }
+    DbSet<PromoCode> PromoCodes { get; }
     DbSet<Client> Clients { get; }
     DbSet<ClientProfile> ClientProfiles { get; }
     DbSet<TattooRecord> TattooRecords { get; }
@@ -24,6 +25,7 @@ public interface IAppDbContext
     DbSet<Payment> Payments { get; }
     DbSet<SessionSplit> SessionSplits { get; }
     DbSet<IntakeForm> IntakeForms { get; }
+    DbSet<IntakeFormTemplate> IntakeFormTemplates { get; }
     DbSet<BookingIntake> BookingIntakes { get; }
     DbSet<ConsentForm> ConsentForms { get; }
     DbSet<ConsentTemplate> ConsentTemplates { get; }
@@ -33,6 +35,17 @@ public interface IAppDbContext
     DbSet<ManualReminder> ManualReminders { get; }
     DbSet<Conversation> Conversations { get; }
     DbSet<ChatMessage> ChatMessages { get; }
+    DbSet<Waitlist> WaitlistEntries { get; }
+    DbSet<BoothRentSchedule> BoothRentSchedules { get; }
+    DbSet<BoothRentCharge> BoothRentCharges { get; }
+    DbSet<GiftCard> GiftCards { get; }
+    DbSet<Package> Packages { get; }
+    DbSet<PackagePurchase> PackagePurchases { get; }
+    DbSet<ClientReferralCode> ClientReferralCodes { get; }
+    DbSet<ClientReferralRedemption> ClientReferralRedemptions { get; }
+    DbSet<ClientReferralReward> ClientReferralRewards { get; }
+    DbSet<Campaign> Campaigns { get; }
+    DbSet<ImpersonationSession> ImpersonationSessions { get; }
 
     // Admin-level
     DbSet<Studio> Studios { get; }

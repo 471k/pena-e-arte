@@ -19,6 +19,11 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi } from "@/features/public/publicApi";
 import { authApi } from "@/features/auth/authApi";
 import { filesApi } from "@/shared/api/filesApi";
+import { packagesApi } from "@/features/session-packages/packagesApi";
+import { waitlistApi } from "@/features/waitlist/waitlistApi";
+import { giftCardsApi } from "@/features/gift-cards/giftCardsApi";
+import { clientReferralsApi } from "@/features/client-referrals/clientReferralsApi";
+import { designsApi } from "@/features/designs/designsApi";
 
 import { BookPage } from "@/features/appointments/components/BookPage";
 import { BookAppointmentForm } from "@/features/appointments/components/BookAppointmentForm";
@@ -135,7 +140,15 @@ const server = setupServer(
   http.get("http://localhost/api/v1/deposit-rules",           () => HttpResponse.json([ACTIVE_RULE, INACTIVE_RULE])),
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
+  // BookAppointmentForm's package toggle — empty means the toggle simply doesn't render,
+  // matching a client with no purchased packages (the common case these existing tests exercise).
+  http.get("http://localhost/api/v1/packages/purchases/mine", () => HttpResponse.json([])),
   http.post("http://localhost/api/v1/appointments",           () => HttpResponse.json(CREATED_APPT, { status: 201 })),
+  http.get("http://localhost/api/v1/clients/me/referrals/rewards", () => HttpResponse.json([])),
+  http.post("http://localhost/api/v1/clients/me/referrals/code", () => HttpResponse.json({
+    id: "ref-code-001", code: "TESTREF1", shareUrl: "https://tattooos.co/book?studio=test-studio&referral=TESTREF1",
+    rewardPercent: 10, redemptionCount: 0,
+  })),
   http.delete("http://localhost/api/v1/appointments/:id",     () => new HttpResponse(null, { status: 204 })),
   http.patch("http://localhost/api/v1/appointments/:id/reschedule", () =>
     HttpResponse.json(APPT_UPCOMING)),
@@ -165,6 +178,11 @@ function makeStore(role: Role = Role.Client) {
       [publicApi.reducerPath]:           publicApi.reducer,
       [authApi.reducerPath]:             authApi.reducer,
       [filesApi.reducerPath]:            filesApi.reducer,
+      [packagesApi.reducerPath]:         packagesApi.reducer,
+      [waitlistApi.reducerPath]:         waitlistApi.reducer,
+      [giftCardsApi.reducerPath]:       giftCardsApi.reducer,
+      [clientReferralsApi.reducerPath]:  clientReferralsApi.reducer,
+      [designsApi.reducerPath]:          designsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -176,11 +194,16 @@ function makeStore(role: Role = Role.Client) {
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
         .concat(authApi.middleware)
-        .concat(filesApi.middleware),
+        .concat(filesApi.middleware)
+        .concat(packagesApi.middleware)
+        .concat(waitlistApi.middleware)
+        .concat(giftCardsApi.middleware)
+        .concat(clientReferralsApi.middleware)
+        .concat(designsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }
@@ -221,6 +244,10 @@ function renderFormWithNoTenant() {
       [publicApi.reducerPath]:       publicApi.reducer,
       [authApi.reducerPath]:         authApi.reducer,
       [filesApi.reducerPath]:        filesApi.reducer,
+      [packagesApi.reducerPath]:     packagesApi.reducer,
+      [waitlistApi.reducerPath]:     waitlistApi.reducer,
+      [giftCardsApi.reducerPath]:    giftCardsApi.reducer,
+      [clientReferralsApi.reducerPath]: clientReferralsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -232,11 +259,15 @@ function renderFormWithNoTenant() {
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
         .concat(authApi.middleware)
-        .concat(filesApi.middleware),
+        .concat(filesApi.middleware)
+        .concat(packagesApi.middleware)
+        .concat(waitlistApi.middleware)
+        .concat(giftCardsApi.middleware)
+        .concat(clientReferralsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
   render(
@@ -1079,5 +1110,62 @@ describe("MyBookingsSection", () => {
     renderMyBookings();
     await screen.findByText("Completed");
     expect(screen.queryByRole("button", { name: /reschedule/i })).not.toBeInTheDocument();
+  });
+});
+
+// ── Flash catalog booking (arriving via "Book this design") ────────────────────
+
+function renderFormWithFlashDesign(
+  state: { flashDesignId?: string; flashDesignTitle?: string; flashDesignImageUrl?: string | null },
+  role: Role = Role.Client,
+) {
+  render(
+    <Provider store={makeStore(role)}>
+      <MemoryRouter initialEntries={[{ pathname: "/book", state }]}>
+        <BookAppointmentForm />
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
+describe("BookAppointmentForm — flash catalog booking", () => {
+  it("shows a banner naming the flash design when arriving via router state", async () => {
+    renderFormWithFlashDesign({ flashDesignId: "d-001", flashDesignTitle: "Rose", flashDesignImageUrl: null });
+    expect(await screen.findByText(/booking flash design/i)).toBeInTheDocument();
+    expect(screen.getByText("Rose")).toBeInTheDocument();
+  });
+
+  it("does not show the banner for a normal booking (no router state)", async () => {
+    renderForm();
+    await screen.findByText("Luna Artista");
+    expect(screen.queryByText(/booking flash design/i)).not.toBeInTheDocument();
+  });
+
+  it("submits through the catalog-booking endpoint instead of the normal create-appointment one", async () => {
+    let catalogRequestBody: Record<string, unknown> | undefined;
+    let normalCreateWasCalled = false;
+    server.use(
+      http.post("http://localhost/api/v1/designs/catalog/d-001/request", async ({ request }) => {
+        catalogRequestBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+      http.post("http://localhost/api/v1/appointments", () => {
+        normalCreateWasCalled = true;
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderFormWithFlashDesign({ flashDesignId: "d-001", flashDesignTitle: "Rose", flashDesignImageUrl: null });
+    await user.click(await screen.findByRole("combobox", { name: /select artist/i }));
+    await user.click(await screen.findByRole("option", { name: /luna artista/i }));
+    fireEvent.change(screen.getByLabelText(/date & time/i), { target: { value: "2099-01-01T10:00" } });
+    await user.click(screen.getByRole("combobox", { name: /appointment duration/i }));
+    await user.click(await screen.findByRole("option", { name: "1 hour" }));
+    fireEvent.change(screen.getByLabelText(/what are you looking to get done/i), { target: { value: "A small rose" } });
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await waitFor(() => expect(catalogRequestBody).toBeDefined());
+    expect(normalCreateWasCalled).toBe(false);
   });
 });

@@ -19,7 +19,7 @@ function makeAuthStore(role: string | null) {
     reducer: { auth: authReducer },
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: role ? { id: "u1", email: "user@test.com" } : null, token: role ? "fake" : null, tenantId: role ? "t1" : null, role, pendingReferralCode: null } as any,
+      auth: { user: role ? { id: "u1", email: "user@test.com" } : null, token: role ? "fake" : null, tenantId: role ? "t1" : null, role, pendingReferralCode: null, impersonation: null } as any,
     },
   });
 }
@@ -29,8 +29,8 @@ function makeUiStore(sessionExpired: boolean, role: string | null = null) {
     reducer: { auth: authReducer, ui: uiReducer },
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: role ? { id: "u1", email: "user@test.com" } : null, token: role ? "fake" : null, tenantId: role ? "t1" : null, role, pendingReferralCode: null } as any,
-      ui: { readOnlyError: null, sessionExpired, studioSuspended: false, planLimitError: null },
+      auth: { user: role ? { id: "u1", email: "user@test.com" } : null, token: role ? "fake" : null, tenantId: role ? "t1" : null, role, pendingReferralCode: null, impersonation: null } as any,
+      ui: { readOnlyError: null, sessionExpired, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }
@@ -59,6 +59,14 @@ describe("getRoleRedirectPath", () => {
 
   it("returns /platform for admin", () => {
     expect(getRoleRedirectPath(Role.Admin)).toBe("/platform");
+  });
+
+  it("returns /dashboard for an impersonating admin, not /platform", () => {
+    expect(getRoleRedirectPath(Role.Admin, true)).toBe("/dashboard");
+  });
+
+  it("returns /platform for a non-impersonating admin (explicit false)", () => {
+    expect(getRoleRedirectPath(Role.Admin, false)).toBe("/platform");
   });
 });
 
@@ -245,7 +253,7 @@ describe("public policy routes", () => {
       middleware: (getDefault) => getDefault().concat(contactApi.middleware),
       preloadedState: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null } as any,
+        auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null, impersonation: null } as any,
       },
     });
     const testRouter = createMemoryRouter(routes, { initialEntries: [path] });

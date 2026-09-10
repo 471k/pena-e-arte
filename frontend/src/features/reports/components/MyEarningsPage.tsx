@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetMyEarningsQuery } from "../reportsApi";
 import { RevenueTrendChart } from "./RevenueTrendChart";
+import { MyBoothRentSection } from "@/features/booth-rent/components/MyBoothRentSection";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(value);
@@ -125,6 +126,8 @@ export function MyEarningsPage() {
                 )}
               </CardContent>
             </Card>
+
+            <MyBoothRentSection />
           </>
         )}
       </main>

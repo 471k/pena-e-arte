@@ -22,6 +22,29 @@ export interface GetIntakeFormsParams {
   appointmentId?: string;
 }
 
+export type IntakeFormFieldType = "Text" | "Textarea" | "Select" | "Checkbox" | "Date";
+
+export interface IntakeFormFieldDefinition {
+  label:     string;
+  type:      IntakeFormFieldType;
+  required:  boolean;
+  options?:  string[];
+}
+
+export interface IntakeFormTemplateResponse {
+  id:              string;
+  studioId:        string;
+  fieldSchemaJson: string;
+  isActive:        boolean;
+  createdAt:       string;
+  updatedAt:       string;
+}
+
+export interface UpsertIntakeFormTemplateRequest {
+  fieldSchemaJson: string;
+  isActive:        boolean;
+}
+
 export interface ConsentFormResponse {
   id:            string;
   studioId:      string;

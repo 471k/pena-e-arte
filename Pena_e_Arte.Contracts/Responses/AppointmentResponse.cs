@@ -25,6 +25,7 @@ public record AppointmentResponse(
     IReadOnlyList<string>? DesiredPlacementLocations = null,
     string? ReferralSource = null,
     string? ReferralSourceOther = null,
-    IReadOnlyList<AppointmentAttachmentResponse>? Attachments = null);
+    IReadOnlyList<AppointmentAttachmentResponse>? Attachments = null,
+    bool PromoCodeApplied = false);
 
 public record AppointmentAttachmentResponse(string Url, string Category);

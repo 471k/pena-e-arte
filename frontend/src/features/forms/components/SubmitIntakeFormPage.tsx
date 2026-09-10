@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,21 +20,118 @@ import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useGetActiveConsentTemplateQuery } from "@/features/forms/consentFormsApi";
-import { useSubmitIntakeFormMutation } from "../intakeFormsApi";
+import { useSubmitIntakeFormMutation, useGetActiveIntakeFormTemplateQuery } from "../intakeFormsApi";
+import type { IntakeFormFieldDefinition } from "../form.types";
 
 const DEFAULT_CONSENT_TEXT =
   "By submitting this form, you consent to sharing your medical history and " +
   "other health-related information you provide here with the studio, for the " +
   "purpose of preparing for and conducting your tattoo session.";
 
+// formData's own min-length rule is enforced imperatively in onSubmit instead of here — it only
+// applies on the no-template fallback path (see MIN_FORM_DATA_LENGTH below), while the
+// template path validates its own per-field `required` flags instead.
 const schema = z.object({
-  formData:        z.string().min(10, "Please provide at least 10 characters"),
+  formData:        z.string().optional(),
   appointmentId:   z.string().optional(),
   fileUrl:         z.string().url("Must be a valid URL").optional().or(z.literal("")),
   consentAccepted: z.boolean().refine((v) => v === true, "You must consent before submitting"),
 });
 
 type FormValues = z.infer<typeof schema>;
+
+const MIN_FORM_DATA_LENGTH = 10;
+
+type DynamicFieldValue = string | boolean;
+
+function defaultValueFor(field: IntakeFormFieldDefinition): DynamicFieldValue {
+  return field.type === "Checkbox" ? false : "";
+}
+
+function DynamicIntakeField({
+  field,
+  value,
+  onChange,
+  error,
+  disabled,
+  index,
+}: {
+  field:    IntakeFormFieldDefinition;
+  value:    DynamicFieldValue;
+  onChange: (v: DynamicFieldValue) => void;
+  error?:   string;
+  disabled: boolean;
+  index:    number;
+}) {
+  const id = `dynamic-field-${index}`;
+
+  return (
+    <div className="space-y-1.5">
+      {field.type !== "Checkbox" && (
+        <Label htmlFor={id}>
+          {field.label}{field.required && <span aria-hidden="true"> *</span>}
+        </Label>
+      )}
+
+      {field.type === "Text" && (
+        <Input
+          id={id}
+          value={value as string}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(error && "border-destructive")}
+        />
+      )}
+      {field.type === "Textarea" && (
+        <Textarea
+          id={id}
+          rows={4}
+          value={value as string}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn("resize-none", error && "border-destructive")}
+        />
+      )}
+      {field.type === "Date" && (
+        <Input
+          id={id}
+          type="date"
+          value={value as string}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(error && "border-destructive")}
+        />
+      )}
+      {field.type === "Select" && (
+        <Select value={(value as string) || undefined} onValueChange={onChange} disabled={disabled}>
+          <SelectTrigger id={id} className={cn(error && "border-destructive")}>
+            <SelectValue placeholder="Select…" />
+          </SelectTrigger>
+          <SelectContent>
+            {(field.options ?? []).map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      {field.type === "Checkbox" && (
+        <label htmlFor={id} className="flex items-center gap-2 cursor-pointer select-none text-sm">
+          <input
+            id={id}
+            type="checkbox"
+            checked={value as boolean}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.checked)}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          {field.label}{field.required && <span aria-hidden="true"> *</span>}
+        </label>
+      )}
+
+      {error && <p className="text-xs text-destructive-text">{error}</p>}
+    </div>
+  );
+}
 
 export function SubmitIntakeFormPage() {
   useDocumentMeta({ title: "Submit Intake Form — TattooOS", canonical: "/forms/intake/new" });
@@ -46,8 +144,31 @@ export function SubmitIntakeFormPage() {
     (a) => a.status === "Pending" || a.status === "Confirmed",
   );
   const { data: activeTemplate } = useGetActiveConsentTemplateQuery({ kind: "IntakeFormConsent" });
+  const { data: intakeTemplate } = useGetActiveIntakeFormTemplateQuery();
   const [submitIntakeForm, { isLoading, isSuccess, isError, reset: resetMutation }] =
     useSubmitIntakeFormMutation();
+
+  const fields: IntakeFormFieldDefinition[] = useMemo(() => {
+    if (!intakeTemplate) return [];
+    try {
+      const parsed = JSON.parse(intakeTemplate.fieldSchemaJson) as IntakeFormFieldDefinition[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [intakeTemplate]);
+
+  // When a studio has an active, correctly-configured template, this drives the dynamic
+  // fields; otherwise the page renders exactly today's single-textarea fallback.
+  const hasTemplate = fields.length > 0;
+
+  const [dynamicValues, setDynamicValues] = useState<Record<string, DynamicFieldValue>>({});
+  const [dynamicErrors, setDynamicErrors] = useState<Record<string, string>>({});
+  const [formDataError, setFormDataError] = useState<string | null>(null);
+
+  function dynamicValueFor(field: IntakeFormFieldDefinition): DynamicFieldValue {
+    return dynamicValues[field.label] ?? defaultValueFor(field);
+  }
 
   const {
     register,
@@ -62,14 +183,45 @@ export function SubmitIntakeFormPage() {
 
   async function onSubmit(values: FormValues) {
     if (!user) return;
+
+    let formData: string;
+
+    if (hasTemplate) {
+      const nextErrors: Record<string, string> = {};
+      for (const field of fields) {
+        const v = dynamicValueFor(field);
+        const empty = field.type === "Checkbox" ? v !== true : !String(v).trim();
+        if (field.required && empty) nextErrors[field.label] = "This field is required.";
+      }
+      setDynamicErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) return;
+
+      formData = JSON.stringify(
+        Object.fromEntries(fields.map((f) => [f.label, dynamicValueFor(f)])),
+      );
+    } else {
+      const trimmed = (values.formData ?? "").trim();
+      if (trimmed.length < MIN_FORM_DATA_LENGTH) {
+        setFormDataError(`Please provide at least ${MIN_FORM_DATA_LENGTH} characters`);
+        return;
+      }
+      setFormDataError(null);
+      formData = values.formData ?? "";
+    }
+
     const result = await submitIntakeForm({
       clientId:        user.id,
-      formData:        values.formData,
+      formData,
       appointmentId:   values.appointmentId || null,
       fileUrl:         values.fileUrl || null,
       consentAccepted: values.consentAccepted,
     });
-    if ("data" in result) resetForm();
+    if ("data" in result) {
+      resetForm();
+      setDynamicValues({});
+      setDynamicErrors({});
+      setFormDataError(null);
+    }
   }
 
   if (isSuccess) {
@@ -108,24 +260,40 @@ export function SubmitIntakeFormPage() {
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <p className="text-sm text-muted-foreground mb-6">
-          Please share your medical history and any details your artist should know before your session.
+          {hasTemplate
+            ? "Please fill out the details below your studio needs before your session — your studio's intake form may look different if your studio has customized it."
+            : "Please share your medical history and any details your artist should know before your session."}
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="space-y-1.5">
-            <Label htmlFor="formData">Medical history &amp; notes</Label>
-            <Textarea
-              id="formData"
-              rows={6}
-              placeholder="List any allergies, skin conditions, medications, or other relevant health information…"
-              disabled={isLoading}
-              {...register("formData")}
-              className={cn("resize-none", errors.formData && "border-destructive")}
-            />
-            {errors.formData && (
-              <p className="text-xs text-destructive-text">{errors.formData.message}</p>
-            )}
-          </div>
+          {hasTemplate ? (
+            fields.map((field, index) => (
+              <DynamicIntakeField
+                key={`${field.label}-${index}`}
+                field={field}
+                value={dynamicValueFor(field)}
+                onChange={(v) => setDynamicValues((prev) => ({ ...prev, [field.label]: v }))}
+                error={dynamicErrors[field.label]}
+                disabled={isLoading}
+                index={index}
+              />
+            ))
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor="formData">Medical history &amp; notes</Label>
+              <Textarea
+                id="formData"
+                rows={6}
+                placeholder="List any allergies, skin conditions, medications, or other relevant health information…"
+                disabled={isLoading}
+                {...register("formData")}
+                className={cn("resize-none", formDataError && "border-destructive")}
+              />
+              {formDataError && (
+                <p className="text-xs text-destructive-text">{formDataError}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="appointmentId">Appointment (optional)</Label>

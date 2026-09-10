@@ -244,7 +244,7 @@ public class AppointmentHandlerIntegrationTests
         clientUser.UserId.Returns(userId);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime);
+        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender);
         DateTime newStart = DateTime.UtcNow.AddDays(11);
         AppointmentResponse result = await handler.Handle(
             new RescheduleAppointmentCommand(apptId, new RescheduleAppointmentRequest(newStart, 90, null)), default);
@@ -267,7 +267,7 @@ public class AppointmentHandlerIntegrationTests
         clientUser.UserId.Returns(userId);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime);
+        RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender);
 
         Func<Task> act = () => handler.Handle(
             new RescheduleAppointmentCommand(apptId,
@@ -277,6 +277,84 @@ public class AppointmentHandlerIntegrationTests
     }
 
     // ── Seed helpers ─────────────────────────────────────────────────────────────
+
+    // ── CreateAppointment + PromoCode ───────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateAppointment_ValidPromoCodeWithRealSql_ReducesDepositAndIncrementsRedemption()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
+        await SeedDepositRule(tenantId, 100m);
+        Guid promoId = await SeedPromoCode(tenantId, "SAVE20", 20m, null, true);
+
+        CreateAppointmentRequest req = new(
+            artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null, PromoCode: "save20");
+        AppointmentResponse result = await RunCreateHandler(tenantId, req);
+
+        result.DepositAmount.Should().Be(80m);
+        result.PromoCodeApplied.Should().BeTrue();
+
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        PromoCode? promo = await verify.PromoCodes.FindAsync(promoId);
+        promo!.RedemptionCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CreateAppointment_InvalidPromoCodeWithRealSql_SucceedsWithoutApplying()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
+        await SeedDepositRule(tenantId, 100m);
+
+        CreateAppointmentRequest req = new(
+            artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null, PromoCode: "DOESNOTEXIST");
+        AppointmentResponse result = await RunCreateHandler(tenantId, req);
+
+        result.DepositAmount.Should().Be(100m);
+        result.PromoCodeApplied.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateAppointment_PromoCodeFromOtherTenantWithRealSql_NotApplied()
+    {
+        Guid tenantA = Guid.NewGuid();
+        Guid tenantB = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantA);
+        await SeedDepositRule(tenantA, 100m);
+        await SeedPromoCode(tenantB, "CROSSTENANT", 20m, null, true);
+
+        CreateAppointmentRequest req = new(
+            artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null, PromoCode: "CROSSTENANT");
+        AppointmentResponse result = await RunCreateHandler(tenantA, req);
+
+        result.DepositAmount.Should().Be(100m);
+        result.PromoCodeApplied.Should().BeFalse();
+    }
+
+    private async Task SeedDepositRule(Guid tenantId, decimal amountFixed)
+    {
+        await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
+        ctx.DepositRules.Add(new DepositRule { StudioId = tenantId, Name = "Standard", AmountFixed = amountFixed, IsActive = true });
+        await ctx.SaveChangesAsync();
+    }
+
+    private async Task<Guid> SeedPromoCode(
+        Guid tenantId, string code, decimal? amountFixed, decimal? amountPercent, bool isActive)
+    {
+        await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
+        PromoCode promo = new()
+        {
+            StudioId = tenantId,
+            Code = code,
+            AmountFixed = amountFixed,
+            AmountPercent = amountPercent,
+            IsActive = isActive,
+        };
+        ctx.PromoCodes.Add(promo);
+        await ctx.SaveChangesAsync();
+        return promo.Id;
+    }
 
     private Task<(Guid ArtistId, Guid ClientId)> SeedArtistAndClient(Guid tenantId) =>
         SeedArtistAndClient(tenantId, null);

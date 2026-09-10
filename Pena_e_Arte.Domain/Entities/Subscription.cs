@@ -33,6 +33,14 @@ public class Subscription
     public string? StripeSubscriptionId { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 
+    /// <summary>When Status most recently transitioned into PastDue. Null when not currently
+    /// past due. Drives PastDueReminderJob's day-1/3/7 escalation schedule.</summary>
+    public DateTime? PastDueSince { get; set; }
+
+    /// <summary>Admin-set opt-out of the automated dunning email schedule for this studio.
+    /// Does not affect the TenantMiddleware PastDue request block — only the reminder emails.</summary>
+    public bool DunningExcludedManually { get; set; }
+
     public Studio Studio { get; set; } = null!;
     public Plan? Plan { get; set; }
 }

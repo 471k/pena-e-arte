@@ -55,6 +55,10 @@ public class CreateGuestAppointmentValidator : AbstractValidator<CreateGuestAppo
             .WithMessage("Please tell us how you heard about us.")
             .When(x => x.Request.Booking.ReferralSource == "Other");
 
+        RuleFor(x => x.Request.Booking.ReferralCode)
+            .MaximumLength(12)
+            .When(x => x.Request.Booking.ReferralCode is not null);
+
         // Both categories required for the guest flow (Decision #6 — the authenticated form
         // leaves both optional, see Part 6d note).
         RuleFor(x => x.Request.Booking.Images)

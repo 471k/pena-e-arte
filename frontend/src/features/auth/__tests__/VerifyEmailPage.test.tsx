@@ -50,7 +50,7 @@ function makeStore(preloaded?: { token: string; refreshToken: string | null }) {
             refreshToken:        preloaded.refreshToken,
             tenantId:            "t-test",
             role:                "client",
-            pendingReferralCode: null,
+            pendingReferralCode: null, impersonation: null,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
         }

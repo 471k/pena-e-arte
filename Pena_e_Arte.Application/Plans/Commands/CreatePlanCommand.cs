@@ -29,6 +29,7 @@ public class CreatePlanHandler(IAppDbContext db)
             MaxLocations = req.MaxLocations,
             AllowApiAccess = req.AllowApiAccess,
             PrioritySupport = req.PrioritySupport,
+            AllowMarketingCampaigns = req.AllowMarketingCampaigns,
         };
 
         foreach (PlanPriceRequest pr in req.Prices)
@@ -53,6 +54,7 @@ public class CreatePlanHandler(IAppDbContext db)
         subscriberCount,
         plan.MaxArtists, plan.MaxAppointmentsPerMonth, plan.MaxNotificationsPerMonth,
         plan.MaxStorageGb, plan.MaxLocations, plan.AllowApiAccess, plan.PrioritySupport,
+        plan.AllowMarketingCampaigns,
         plan.Prices.Select(pp => new PlanPriceResponse(
             pp.Id, pp.Interval.ToString(), pp.Price, pp.StripePriceId, pp.IsActive)).ToList());
 }

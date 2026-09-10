@@ -14,6 +14,7 @@ import {
   useDeclareCashDepositMutation,
   useGetPaymentCapabilitiesQuery,
 } from "@/features/payments/paymentsApi";
+import { RedeemGiftCardField } from "@/features/gift-cards/components/RedeemGiftCardField";
 
 const stripeKey: string | undefined = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 // Missing key (e.g. .env.local not set up or dev server started before it existed)
@@ -234,6 +235,8 @@ export function PaymentMethodSelector({
 
   return (
     <div className="space-y-4">
+      {amount > 0 && <RedeemGiftCardField appointmentId={appointmentId} amount={amount} />}
+
       {/* Tab bar */}
       <div className="flex gap-1 rounded-lg bg-muted p-1">
         <button type="button" className={tabClass(tab === "card")} onClick={() => setTab("card")}>

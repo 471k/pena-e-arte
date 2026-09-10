@@ -40,6 +40,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             DesignAlreadyApprovedException => (StatusCodes.Status409Conflict, ex.Message, null),
             ConsentFormAlreadySignedException => (StatusCodes.Status409Conflict, ex.Message, null),
             ForbiddenException => (StatusCodes.Status403Forbidden, ex.Message, null),
+            ImpersonationScopeException => (StatusCodes.Status403Forbidden, ex.Message, "IMPERSONATION_SCOPE_DENIED"),
             TenantSuspendedException => (StatusCodes.Status403Forbidden, ex.Message, "STUDIO_SUSPENDED"),
             SubscriptionRequiredException => (StatusCodes.Status402PaymentRequired, ex.Message, null),
             PlanLimitExceededException => (StatusCodes.Status403Forbidden, ex.Message, "PLAN_LIMIT_EXCEEDED"),

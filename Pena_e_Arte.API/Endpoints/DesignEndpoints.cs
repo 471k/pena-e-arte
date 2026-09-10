@@ -17,6 +17,8 @@ public static class DesignEndpoints
         group.MapGet("/", GetDesigns).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}", GetDesign).RequireAuthorization("ClientAndAbove");
         group.MapPost("/", CreateDesign).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("{id:guid}/catalog", MarkDesignAsCatalogItem).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("catalog/{id:guid}/request", RequestCatalogDesign).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}/revisions", GetRevisions).RequireAuthorization("ClientAndAbove");
         group.MapPost("{id:guid}/revisions", UploadRevision).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{id:guid}/revisions/{revisionId:guid}", DeleteRevision).RequireAuthorization("ArtistAndAbove");
@@ -60,6 +62,26 @@ public static class DesignEndpoints
     {
         DesignResponse result = await mediator.Send(new CreateDesignCommand(request), ct);
         return Results.Created($"/api/v1/designs/{result.Id}", result);
+    }
+
+    private static async Task<IResult> MarkDesignAsCatalogItem(
+        Guid id,
+        MarkDesignAsCatalogItemRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        DesignResponse result = await mediator.Send(new MarkDesignAsCatalogItemCommand(id, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> RequestCatalogDesign(
+        Guid id,
+        CreateAppointmentRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AppointmentResponse result = await mediator.Send(new RequestCatalogDesignCommand(id, request), ct);
+        return Results.Created($"/api/v1/appointments/{result.Id}", result);
     }
 
     private static async Task<IResult> UploadRevision(

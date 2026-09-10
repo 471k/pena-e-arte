@@ -10,10 +10,15 @@ interface JwtClaims {
   exp?: number;
   tenant_id?: string;
   email_verified?: string | boolean;
+  // Support Impersonation session id — present only on an impersonation-scoped token.
+  // See TenantMiddleware's gate / IIdentityService.IssueImpersonationTokenAsync.
+  imp?: string;
   [ROLE_CLAIM]?: string;
 }
 
-export function decodeToken(token: string): AuthPayload & { exp?: number } {
+export function decodeToken(
+  token: string,
+): AuthPayload & { exp?: number; impersonationSessionId?: string | null } {
   const claims = jwtDecode<JwtClaims>(token);
 
   const user: User = {
@@ -35,5 +40,6 @@ export function decodeToken(token: string): AuthPayload & { exp?: number } {
     tenantId: claims.tenant_id ?? null,
     role,
     exp: claims.exp,
+    impersonationSessionId: claims.imp ?? null,
   };
 }

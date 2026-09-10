@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, Palette, FileText, ScrollText, User, PenLine, Building2, MessageCircle,
+  ListOrdered, Package as PackageIcon,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -22,6 +23,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Book Appointment", href: "/book",        icon: <CalendarDays className="h-4 w-4" />, tourId: "client-book-nav" },
   { label: "My Studios",       href: "/my-studios",  icon: <Building2    className="h-4 w-4" />, tourId: "client-my-studios-nav" },
   { label: "Messages",         href: "/messages",    icon: <MessageCircle className="h-4 w-4" />, tourId: "client-messages-nav" },
+  { label: "My Waitlist",      href: "/waitlist/mine", icon: <ListOrdered className="h-4 w-4" />, tourId: "client-waitlist-nav" },
+  { label: "Packages",         href: "/packages/buy", icon: <PackageIcon  className="h-4 w-4" /> },
   { label: "My Designs",       href: "/designs",       icon: <Palette      className="h-4 w-4" />, tourId: "client-designs-nav" },
   { label: "Intake Forms",     href: "/forms/intake",  icon: <FileText     className="h-4 w-4" /> },
   { label: "Consent Forms",    href: "/forms/consent", icon: <ScrollText   className="h-4 w-4" /> },

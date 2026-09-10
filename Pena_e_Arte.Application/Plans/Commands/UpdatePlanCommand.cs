@@ -43,6 +43,7 @@ public class UpdatePlanHandler(IAppDbContext db)
         plan.MaxLocations = req.MaxLocations;
         plan.AllowApiAccess = req.AllowApiAccess;
         plan.PrioritySupport = req.PrioritySupport;
+        plan.AllowMarketingCampaigns = req.AllowMarketingCampaigns;
 
         List<PlanPrice> existingPrices = plan.Prices.ToList();
         List<BillingInterval> requestedIntervals = req.Prices

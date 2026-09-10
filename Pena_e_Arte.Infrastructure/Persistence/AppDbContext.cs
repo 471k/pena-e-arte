@@ -16,6 +16,7 @@ public class AppDbContext(
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<AppointmentAttachment> AppointmentAttachments => Set<AppointmentAttachment>();
     public DbSet<DepositRule> DepositRules => Set<DepositRule>();
+    public DbSet<PromoCode> PromoCodes => Set<PromoCode>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientProfile> ClientProfiles => Set<ClientProfile>();
     public DbSet<TattooRecord> TattooRecords => Set<TattooRecord>();
@@ -31,6 +32,7 @@ public class AppDbContext(
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
+    public DbSet<IntakeFormTemplate> IntakeFormTemplates => Set<IntakeFormTemplate>();
     public DbSet<BookingIntake> BookingIntakes => Set<BookingIntake>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
     public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
@@ -40,6 +42,17 @@ public class AppDbContext(
     public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<Waitlist> WaitlistEntries => Set<Waitlist>();
+    public DbSet<BoothRentSchedule> BoothRentSchedules => Set<BoothRentSchedule>();
+    public DbSet<BoothRentCharge> BoothRentCharges => Set<BoothRentCharge>();
+    public DbSet<GiftCard> GiftCards => Set<GiftCard>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackagePurchase> PackagePurchases => Set<PackagePurchase>();
+    public DbSet<ClientReferralCode> ClientReferralCodes => Set<ClientReferralCode>();
+    public DbSet<ClientReferralRedemption> ClientReferralRedemptions => Set<ClientReferralRedemption>();
+    public DbSet<ClientReferralReward> ClientReferralRewards => Set<ClientReferralReward>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
 
     // --- Admin-level (no tenant filter) ---
     public DbSet<Studio> Studios => Set<Studio>();
@@ -111,6 +124,7 @@ public class AppDbContext(
         builder.Entity<Appointment>().HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
         builder.Entity<AppointmentAttachment>().HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
         builder.Entity<DepositRule>().HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
+        builder.Entity<PromoCode>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Client>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<ClientProfile>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<TattooRecord>().HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
@@ -126,6 +140,7 @@ public class AppDbContext(
         builder.Entity<Payment>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<SessionSplit>().HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<IntakeForm>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
+        builder.Entity<IntakeFormTemplate>().HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
         builder.Entity<BookingIntake>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         builder.Entity<ConsentForm>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>().HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);
@@ -134,6 +149,23 @@ public class AppDbContext(
         builder.Entity<StudioNotificationPreference>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Conversation>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<ChatMessage>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);
+        builder.Entity<Waitlist>().HasQueryFilter(w => w.StudioId == tenant.StudioId && w.DeletedAt == null);
+        builder.Entity<BoothRentSchedule>().HasQueryFilter(b => b.StudioId == tenant.StudioId && b.DeletedAt == null);
+        builder.Entity<BoothRentCharge>().HasQueryFilter(b => b.StudioId == tenant.StudioId && b.DeletedAt == null);
+        builder.Entity<GiftCard>().HasQueryFilter(g => g.StudioId == tenant.StudioId && g.DeletedAt == null);
+        builder.Entity<Package>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+        builder.Entity<PackagePurchase>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+        builder.Entity<ClientReferralCode>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
+        builder.Entity<ClientReferralRedemption>().HasQueryFilter(r => r.StudioId == tenant.StudioId && r.DeletedAt == null);
+        builder.Entity<ClientReferralReward>().HasQueryFilter(r => r.StudioId == tenant.StudioId && r.DeletedAt == null);
+        builder.Entity<Campaign>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
+        // StudioId is the TARGET studio being impersonated, not the platform — see
+        // ImpersonationSession's doc comment. Filtered like every other TenantEntity so
+        // GetMyStudioAuditLog-style owner reads work unmodified; the admin's own commands
+        // (StartImpersonationCommand has no tenant_id claim, EndImpersonationSessionCommand
+        // likewise) use IgnoreQueryFilters() — same approved precedent as ExtendTrialCommand,
+        // see architecture.md.
+        builder.Entity<ImpersonationSession>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         // ClientNotificationPreference — NOT filtered, dual-keyed by (UserId, StudioId); see ClientNotificationPreferenceConfiguration.
 
         builder.Entity<SavedPortfolioImage>(b =>
@@ -278,6 +310,13 @@ public class AppDbContext(
             // for a studio is resolved explicitly in the handlers via ConsentTemplateResolver,
             // narrowing to `StudioId == tenant.StudioId || StudioId == null`, never a filter.
             entity.HasIndex(t => new { t.StudioId, t.Kind, t.IsActive });
+        });
+
+        builder.Entity<ImpersonationSession>(entity =>
+        {
+            entity.Property(i => i.ReasonCode).HasMaxLength(500).IsRequired();
+            entity.HasIndex(i => i.ActorUserId);
+            entity.HasIndex(i => i.ExpiresAt);
         });
 
         builder.Entity<ConductReport>(entity =>
