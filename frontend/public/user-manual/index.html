@@ -463,6 +463,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#admin-live-traffic" data-nav-link>Live traffic</a></li>
           <li><a href="#admin-studios" data-nav-link>Studio list</a></li>
           <li><a href="#admin-studio-detail" data-nav-link>Studio detail</a></li>
+          <li><a href="#admin-impersonation" data-nav-link>Impersonate a studio</a></li>
           <li><a href="#admin-plans" data-nav-link>Plan management</a></li>
           <li><a href="#admin-subscriptions" data-nav-link>Subscription oversight</a></li>
           <li><a href="#admin-referrals" data-nav-link>Platform referral codes</a></li>
@@ -2985,7 +2986,37 @@ ol.steps li { margin: 6px 0; }
 <li>Use the <span class="step-title">Actions</span> card for the same extend/activate/suspend/cancel controls as the list view.</li>
 <li>Use the <span class="step-title">Referral codes</span> card to generate, deactivate, reactivate, or delete this studio's referral code without leaving the page.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-referrals">Manage platform referral codes</a></div>
+<div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-referrals">Manage platform referral codes</a>, <a href="#admin-impersonation">Impersonate a studio</a></div>
+</section>
+
+<section id="admin-impersonation" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> Impersonate a studio</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>From a studio's detail page: open a temporary, <strong>read-only</strong> view of the studio the way its owner sees it, for diagnosing a support ticket without needing their password. The session hard-expires after 45 minutes.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 260" role="img" aria-label="Impersonation banner wireframe">
+<rect width="760" height="34" fill="#4f46e5" fill-opacity="0.85"/>
+<text x="16" y="21" font-size="10" font-weight="700" fill="#fff">◉ Viewing as Ink &amp; Soul Studio</text>
+<text x="300" y="21" font-size="9" fill="#e0e7ff">44:12 left</text>
+<rect x="660" y="9" width="86" height="16" rx="4" fill="#ffffff" fill-opacity="0.2"/><text x="672" y="21" font-size="8" fill="#fff">End session</text>
+<rect width="760" height="226" y="34" fill="currentColor" fill-opacity="0.03"/>
+<text x="16" y="58" font-size="9" fill-opacity="0.6">Studio dashboard, appointments, artists, clients, and settings render normally below the banner —</text>
+<text x="16" y="72" font-size="9" fill-opacity="0.6">every create/edit/delete control is blocked; client medical/PII and financial pages are hidden entirely.</text>
+</svg>
+</figure>
+<figcaption>The purple banner stays pinned to the top of every page for the whole session</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>On the studio's detail page, click <span class="step-title">Impersonate</span>.</li>
+<li>Enter a short reason for the session (required) and click <span class="step-title">Start impersonating</span>.</li>
+<li>Browse the studio's own dashboard, appointments, artists, clients, and settings exactly as its owner would see them.</li>
+<li>Click <span class="step-title">End session</span> in the banner when finished, or let it run out — either way you're returned to your own admin session.</li>
+</ol>
+<div class="callout callout-warn"><strong>Read-only:</strong> every write action is blocked during a session — no appointment, client, artist, or settings change can be made while impersonating, full stop.</div>
+<div class="callout callout-warn"><strong>Hidden data:</strong> client medical/PII (profile, tattoo records, intake and consent forms) and every financial surface (payments, billing, revenue reports) stay completely inaccessible for the whole session, even to view.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> every session — who started it, which studio, the reason given, and when it started/ended — is recorded in the <a href="#admin-audit-log">audit log</a> under your own admin account, distinguishable from your normal admin actions.</div>
+<div class="crosslinks">See also: <a href="#admin-studio-detail">Studio detail</a>, <a href="#admin-audit-log">Audit log</a></div>
 </section>
 
 <section id="admin-plans" data-role="admin">
@@ -3224,7 +3255,7 @@ ol.steps li { margin: 6px 0; }
 <li>Each row shows when it happened, what happened, its target, which studio ("Platform-wide" for actions with no single studio target, e.g. a plan edit), and the actor's role.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> entries never contain names, emails, or free text — only IDs, roles, and structural values.</div>
-<div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile (Recent studio activity)</a></div>
+<div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile (Recent studio activity)</a>, <a href="#admin-impersonation">Impersonate a studio</a></div>
 </section>
 
 <section id="ref-design-statuses" data-role="reference">

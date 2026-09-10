@@ -33,6 +33,7 @@ public interface IAppDbContext
     DbSet<ManualReminder> ManualReminders { get; }
     DbSet<Conversation> Conversations { get; }
     DbSet<ChatMessage> ChatMessages { get; }
+    DbSet<ImpersonationSession> ImpersonationSessions { get; }
 
     // Admin-level
     DbSet<Studio> Studios { get; }

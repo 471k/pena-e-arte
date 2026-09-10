@@ -1,8 +1,11 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { RootState } from "@/app/store";
-import { setReadOnlyError, setSessionExpired, setStudioSuspended, setPlanLimitError } from "@/features/ui/uiSlice";
-import { setCredentials, logout } from "@/features/auth/authSlice";
+import {
+  setReadOnlyError, setSessionExpired, setStudioSuspended, setPlanLimitError,
+  setImpersonationScopeError, setImpersonationSessionExpired,
+} from "@/features/ui/uiSlice";
+import { setCredentials, logout, endImpersonation } from "@/features/auth/authSlice";
 import { decodeToken } from "@/shared/utils/jwt";
 
 const rawBaseQuery = fetchBaseQuery({
@@ -30,9 +33,18 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
         refreshLock = new Promise((res) => { unlock = res; });
 
         try {
-          const { refreshToken } = (api.getState() as RootState).auth;
+          const { refreshToken, impersonation } = (api.getState() as RootState).auth;
 
           if (!refreshToken) {
+            // An impersonation token has no refresh token by design (see authSlice's
+            // startImpersonation) — a 401 here means the session's own token expired.
+            // Restore the admin's own stashed token instead of a full logout, mirroring
+            // what "End session" does, rather than forcing the admin to log back in.
+            if (impersonation) {
+              api.dispatch(endImpersonation());
+              api.dispatch(setImpersonationSessionExpired());
+              return result;
+            }
             api.dispatch(logout());
             api.dispatch(setSessionExpired());
             return result;
@@ -89,6 +101,10 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
         api.dispatch(setStudioSuspended());
       } else if (data?.code === "PLAN_LIMIT_EXCEEDED") {
         api.dispatch(setPlanLimitError(data.message ?? "This studio's plan limit was reached."));
+      } else if (data?.code === "IMPERSONATION_SCOPE_DENIED") {
+        api.dispatch(setImpersonationScopeError(
+          data.message ?? "This action is not available while impersonating a studio.",
+        ));
       }
     }
 

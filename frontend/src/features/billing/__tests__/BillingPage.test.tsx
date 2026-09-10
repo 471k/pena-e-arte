@@ -179,8 +179,8 @@ function makeStore() {
     middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake-token", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake-token", tenantId: "t1", role: "owner", pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

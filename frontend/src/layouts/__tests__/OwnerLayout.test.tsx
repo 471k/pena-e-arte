@@ -94,6 +94,8 @@ afterAll(() => server.close());
 type StoreOverrides = {
   readOnlyError?:  string | null;
   planLimitError?: string | null;
+  impersonationScopeError?:     string | null;
+  impersonationSessionExpired?: boolean;
 };
 
 function makeStore(overrides: StoreOverrides = {}) {
@@ -117,8 +119,8 @@ function makeStore(overrides: StoreOverrides = {}) {
     ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: false, planLimitError: overrides.planLimitError ?? null },
+      auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake", tenantId: "t1", role: "owner", pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: overrides.readOnlyError ?? null, sessionExpired: false, studioSuspended: false, planLimitError: overrides.planLimitError ?? null, impersonationScopeError: overrides.impersonationScopeError ?? null, impersonationSessionExpired: overrides.impersonationSessionExpired ?? false },
     },
   });
 }
@@ -230,12 +232,12 @@ describe("OwnerLayout", () => {
   });
 
   it("PlanLimitBanner is hidden when there is no plan limit error", () => {
-    renderLayout({ planLimitError: null });
+    renderLayout({ planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false });
     expect(screen.queryByText(/upgrade the plan/i)).not.toBeInTheDocument();
   });
 
   it("PlanLimitBanner is visible when planLimitError is set in ui state", () => {
-    renderLayout({ planLimitError: "This studio's plan allows up to 6 artists. Upgrade the plan to continue." });
+    renderLayout({ planLimitError: "This studio's plan allows up to 6 artists. Upgrade the plan to continue.", impersonationScopeError: null, impersonationSessionExpired: false });
     expect(screen.getByText(/allows up to 6 artists/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /manage subscription/i })).toBeInTheDocument();
   });
