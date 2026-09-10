@@ -17,6 +17,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
 
 const mockUseGetPublicArtistQuery  = vi.fn();
 const mockUseGetArtistReviewsQuery = vi.fn();
+const mockUseGetDesignCatalogQuery = vi.fn();
 
 vi.mock("@/features/public/publicApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/public/publicApi")>();
@@ -32,6 +33,7 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     useGetReviewableStudioAppointmentsQuery: () => ({ data: [], isLoading: false }),
     useRecordArtistViewMutation:           () => [vi.fn(), { isLoading: false }],
     useGetArtistInstagramPostsQuery:       () => ({ data: [], isLoading: false }),
+    useGetDesignCatalogQuery:              (...args: unknown[]) => mockUseGetDesignCatalogQuery(...args),
   };
 });
 
@@ -86,11 +88,46 @@ describe("ArtistPortfolioPage", () => {
   beforeEach(() => {
     mockUseGetPublicArtistQuery.mockReturnValue({ data: ARTIST, isLoading: false, isError: false });
     mockUseGetArtistReviewsQuery.mockReturnValue({ data: [], isLoading: false });
+    mockUseGetDesignCatalogQuery.mockReturnValue({ data: [], isLoading: false });
   });
 
   it("renders artist name", () => {
     renderPage();
     expect(screen.getByRole("heading", { name: "Maria Silva" })).toBeInTheDocument();
+  });
+
+  describe("Flash catalog", () => {
+    it("does not render the Flash section when there are no catalog items", () => {
+      renderPage();
+      expect(screen.queryByRole("heading", { name: "Flash" })).not.toBeInTheDocument();
+    });
+
+    it("renders a Flash section with items belonging to this artist", () => {
+      mockUseGetDesignCatalogQuery.mockReturnValue({
+        data: [
+          { id: "d1", title: "Rose", description: null, price: 100, artistId: "artist-001", artistName: "Maria Silva", imageUrl: "https://cdn.example.com/flash1.jpg" },
+          { id: "d2", title: "Other artist's flash", description: null, price: 80, artistId: "artist-002", artistName: "Someone Else", imageUrl: null },
+        ],
+        isLoading: false,
+      });
+      renderPage();
+      expect(screen.getByRole("heading", { name: "Flash" })).toBeInTheDocument();
+      expect(screen.getByText("Rose")).toBeInTheDocument();
+      expect(screen.queryByText("Other artist's flash")).not.toBeInTheDocument();
+    });
+
+    it("shows the price and a 'Book this design' link for each item", () => {
+      mockUseGetDesignCatalogQuery.mockReturnValue({
+        data: [
+          { id: "d1", title: "Rose", description: null, price: 100, artistId: "artist-001", artistName: "Maria Silva", imageUrl: null },
+        ],
+        isLoading: false,
+      });
+      renderPage();
+      expect(screen.getByText(/100,00\s?€/)).toBeInTheDocument();
+      const link = screen.getByRole("link", { name: /book this design/i });
+      expect(link.getAttribute("href")).toContain("/book?studio=ink-soul&artist=maria-silva");
+    });
   });
 
   it("sets og:title meta tag with artist name", () => {

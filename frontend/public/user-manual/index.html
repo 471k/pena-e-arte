@@ -345,6 +345,7 @@ ol.steps li { margin: 6px 0; }
         <button class="nav-section-toggle" aria-expanded="true">Designs</button>
         <ul class="nav-section-list">
           <li><a href="#artist-designs" data-nav-link>Design list</a></li>
+          <li><a href="#artist-flash-catalog" data-nav-link>Flash catalog</a></li>
           <li><a href="#artist-create-design" data-nav-link>Create design</a></li>
           <li><a href="#artist-design-detail" data-nav-link>Design detail &amp; review</a></li>
           <li><a href="#artist-upload-revision" data-nav-link>Upload revision</a></li>
@@ -399,11 +400,25 @@ ol.steps li { margin: 6px 0; }
         </ul>
       </div>
       <div class="nav-section">
+        <button class="nav-section-toggle" aria-expanded="false">Intake form builder</button>
+        <ul class="nav-section-list collapsed">
+          <li><a href="#owner-intake-form-builder" data-nav-link>Customize intake form</a></li>
+        </ul>
+      </div>
+      <div class="nav-section">
         <button class="nav-section-toggle" aria-expanded="false">Deposit rules</button>
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-deposit-rules" data-nav-link>Deposit rule list</a></li>
           <li><a href="#owner-create-deposit-rule" data-nav-link>Create deposit rule</a></li>
           <li><a href="#owner-deposit-rule-detail" data-nav-link>Deposit rule detail</a></li>
+        </ul>
+      </div>
+      <div class="nav-section">
+        <button class="nav-section-toggle" aria-expanded="false">Promo codes</button>
+        <ul class="nav-section-list collapsed">
+          <li><a href="#owner-promo-codes" data-nav-link>Promo code list</a></li>
+          <li><a href="#owner-create-promo-code" data-nav-link>Create promo code</a></li>
+          <li><a href="#owner-promo-code-detail" data-nav-link>Promo code detail</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -640,7 +655,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Artist profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own profile shows a completion nudge)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>An individual artist's public page at <code>/artist/&lt;slug&gt;</code>: profile photo, bio, specialties, hourly rate, verified social media links, a filterable portfolio grid, connected Instagram posts, and reviews. Viewing the page records a "view" used to help rank the discovery feed.</p>
+<p>An individual artist's public page at <code>/artist/&lt;slug&gt;</code>: profile photo, bio, specialties, hourly rate, verified social media links, a filterable portfolio grid, connected Instagram posts, and reviews. Viewing the page records a "view" used to help rank the discovery feed. When the artist has marked any designs as flash catalog items (see <a href="#artist-flash-catalog">Artist: Flash catalog</a>), a "Flash" section appears between the portfolio grid and Instagram, showing each item's image and price with a "Book this design" button that jumps straight to the booking form with that design pre-attached.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist profile page wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -675,6 +690,7 @@ ol.steps li { margin: 6px 0; }
 <li>Avatar, name, studio link, star rating, bio, specialty chips, hourly rate.</li>
 <li><span class="step-title">Book an Appointment</span> button (also pinned to the bottom of the screen on mobile).</li>
 <li><span class="step-title">Portfolio</span> grid with category tabs (Fresh Tattoos / Healed Tattoos / Designs, shown only when the artist has at least 2 categories tagged) and style filter chips — click any photo for a lightbox with per-photo reviews.</li>
+<li><span class="step-title">Flash</span> section (only shown when the artist has catalog items) — a grid of pre-made designs with price and a <span class="step-title">Book this design</span> button per item.</li>
 <li><span class="step-title">Social links</span> next to the artist's name — Instagram, TikTok, Facebook, X, YouTube, whichever they've verified — plus an <span class="step-title">Instagram</span> photo section (only shown if the artist connected an account and has visible posts).</li>
 <li><span class="step-title">Reviews</span> at the bottom, with a form to leave one (requires a completed appointment with this artist).</li>
 </ol>
@@ -909,7 +925,7 @@ ol.steps li { margin: 6px 0; }
 <svg viewBox="0 0 760 480" role="img" aria-label="Book appointment wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="10" font-weight="700">Book · My Studios · My Designs · Intake · Consent · Profile</text>
-<rect x="260" y="60" width="240" height="330" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<rect x="260" y="60" width="240" height="360" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="280" y="88" font-size="12" font-weight="700">Book an appointment</text>
 <text x="280" y="112" font-size="9" fill-opacity="0.6">Artist</text><rect x="280" y="118" width="140" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <rect x="428" y="118" width="52" height="20" rx="10" fill="currentColor" fill-opacity="0.08"/><text x="454" y="131" font-size="7" text-anchor="middle" fill-opacity="0.55">Studio picks</text>
@@ -917,19 +933,21 @@ ol.steps li { margin: 6px 0; }
 <text x="385" y="150" font-size="9" fill-opacity="0.6">Session length</text><rect x="385" y="156" width="95" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="192" font-size="8" fill-opacity="0.6">✓ Slot available</text>
 <text x="280" y="212" font-size="9" fill-opacity="0.6">Deposit rule</text><rect x="280" y="218" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="250" font-size="9" fill-opacity="0.6">Notes</text><rect x="280" y="256" width="200" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="298" font-size="9" fill-opacity="0.6">Area photo · Reference images</text><rect x="280" y="304" width="200" height="40" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3"/><text x="330" y="328" font-size="8" fill-opacity="0.5">Click to add photos (up to 6 each)</text>
-<rect x="280" y="358" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="375" font-size="10" fill="#fff">Request Appointment</text>
-<text x="280" y="420" font-size="11" font-weight="700">My Bookings</text>
+<text x="280" y="250" font-size="9" fill-opacity="0.6">Promo code (optional)</text><rect x="280" y="256" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="288" font-size="9" fill-opacity="0.6">Notes</text><rect x="280" y="294" width="200" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="338" font-size="9" fill-opacity="0.6">Area photo · Reference images</text><rect x="280" y="344" width="200" height="40" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3"/><text x="330" y="368" font-size="8" fill-opacity="0.5">Click to add photos (up to 6 each)</text>
+<rect x="280" y="398" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="415" font-size="10" fill="#fff">Request Appointment</text>
+<text x="280" y="450" font-size="11" font-weight="700">My Bookings</text>
 </svg>
 </figure>
-<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), date/time, duration, deposit rule, tattoo description, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
+<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), date/time, duration, deposit rule, promo code, tattoo description, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li><strong>Guest checkout only</strong> — if you're not signed in, fill in your <span class="step-title">First name</span>, <span class="step-title">Last name</span>, <span class="step-title">Email</span>, and <span class="step-title">Phone</span>, and optionally toggle <span class="step-title">Sign up for news and updates</span>. An account is created for you as part of submitting the booking — see the callout below.</li>
 <li>Pick an <span class="step-title">Artist</span> (searchable dropdown), or toggle <span class="step-title">Let the studio choose my artist</span> to skip picking one — the artist selector hides and the studio assigns someone before confirming.</li>
 <li>Choose a <span class="step-title">Date &amp; time</span> and a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
 <li>If the studio has an active deposit rule, an estimated deposit amount is shown (signed-in clients can also pick the rule).</li>
+<li>Have a <span class="step-title">Promo code</span> from the studio? Enter it — it's applied to your deposit automatically on submission. A code that's expired, exhausted, or not recognized doesn't block the booking; you'll just see a note that it wasn't applied.</li>
 <li>Describe <span class="step-title">What are you looking to get done?</span> (required), optionally pick <span class="step-title">How did you hear about us?</span> (with a free-text field if you pick "Somewhere else"), and add any <span class="step-title">Safety notes</span> (medical conditions, allergies, medications, skin concerns).</li>
 <li>Use the <span class="step-title">Desired placement</span> body map to mark where you want the tattoo.</li>
 <li>Attach an <span class="step-title">Area photo</span> (a photo of the body area) and <span class="step-title">Reference images</span> (style/inspiration photos) — JPEG, PNG, or WebP, up to 6 each. Guest checkout requires both; already signed in, both stay optional.</li>
@@ -1045,7 +1063,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Submit intake form</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>At <code>/forms/intake/new</code>, share medical history and health notes with your studio before a session — optionally linked to a specific upcoming appointment. Because this form carries sensitive health information, you must tick a consent checkbox before you can submit it; the exact consent text you agreed to is saved with the form.</p>
+<p>At <code>/forms/intake/new</code>, share medical history and health notes with your studio before a session — optionally linked to a specific upcoming appointment. Because this form carries sensitive health information, you must tick a consent checkbox before you can submit it; the exact consent text you agreed to is saved with the form. <strong>If your studio has customized its intake form</strong> (see the Owner-side "Customize your client intake form" article), you'll see their own fields here instead of the default single textarea shown below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Submit intake form wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1571,7 +1589,34 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">New Design</span> to start one.</li>
 <li>Click a row to open its detail and upload revisions.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#artist-create-design">Create design</a>, <a href="#artist-design-detail">Design detail &amp; review</a></div>
+<div class="crosslinks">See also: <a href="#artist-create-design">Create design</a>, <a href="#artist-design-detail">Design detail &amp; review</a>, <a href="#artist-flash-catalog">Flash catalog</a></div>
+</section>
+
+<section id="artist-flash-catalog" data-role="artist">
+<h2><span class="role-badge role-artist">Artist</span> Flash catalog</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗ (browses/books on the public artist page instead)</td></tr><tr><td>Client</td><td>✗ (same — public page)</td></tr><tr><td>Artist</td><td>✓ (own designs)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>From the Designs list at <code>/designs</code>: mark any of your designs as a reusable "flash" catalog item with a price, so clients can browse and book it directly from your public artist page's Flash section — no custom design request needed first.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 200" role="img" aria-label="Flash catalog toggle wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="12" font-weight="700">Designs</text>
+<rect x="20" y="60" width="480" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<text x="32" y="80" font-size="10" font-weight="700">Rose sleeve panel</text>
+<rect x="20" y="106" width="480" height="30" rx="0" fill="currentColor" fill-opacity="0.03"/>
+<text x="32" y="125" font-size="8">☑ Flash catalog item</text><rect x="180" y="114" width="70" height="18" rx="4" fill="currentColor" fill-opacity="0.06"/><text x="188" y="126" font-size="7">Price (€)</text>
+</svg>
+</figure>
+<figcaption>Flash catalog toggle — shown on each design card in the Designs list</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Find the design on the Designs list and check <span class="step-title">Flash catalog item</span>.</li>
+<li>Enter a <span class="step-title">Price</span> — clients see this on your public profile.</li>
+<li>Uncheck it any time to remove the design from the catalog.</li>
+</ol>
+<div class="callout callout-warn"><strong>Can't always convert:</strong> a design already tied to a client with an approved revision can't become a catalog item — create a fresh design for the catalog instead.</div>
+<div class="callout callout-tip"><strong>Booking clones it:</strong> when a client books a flash design, it's cloned into its own independent design thread for them — your original catalog item is untouched and stays bookable by other clients. The clone's reference image is also attached to the new appointment.</div>
+<div class="crosslinks">See also: <a href="#artist-designs">Design list</a>, <a href="#client-book">Client: book an appointment</a></div>
 </section>
 
 <section id="artist-create-design" data-role="artist">
@@ -2216,6 +2261,36 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#artist-design-detail">Artist: design detail &amp; review</a></div>
 </section>
 
+<section id="owner-intake-form-builder" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Customize intake form</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/intake-form-builder</code>: replace the default single "Medical history &amp; notes" textarea clients see with your own set of fields — Short text, Long text, Dropdown, Checkbox, or Date, up to 20 fields.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Intake form builder wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Intake Form Builder</text>
+<rect x="240" y="60" width="280" height="80" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="256" y="80" font-size="9" fill-opacity="0.6">Label</text><rect x="256" y="86" width="200" height="18" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="470" y="80" font-size="12">🗑</text>
+<text x="256" y="116" font-size="9" fill-opacity="0.6">Type</text><rect x="256" y="122" width="120" height="16" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="400" y="132" font-size="8">☐ Required</text>
+<rect x="240" y="150" width="140" height="22" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="252" y="165" font-size="8">+ Add field</text>
+<text x="240" y="196" font-size="8">☑ Active</text>
+<rect x="240" y="210" width="280" height="26" rx="4" fill="#7c3aed"/><text x="290" y="227" font-size="10" fill="#fff">Save Intake Form</text>
+</svg>
+</figure>
+<figcaption>Intake form builder — one row per field: label, type, required toggle, and (for Dropdown) its options</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Edit each field's <span class="step-title">Label</span>, choose its <span class="step-title">Type</span>, and toggle <span class="step-title">Required</span> as needed.</li>
+<li>For a <span class="step-title">Dropdown</span> field, list its options one per line.</li>
+<li>Click <span class="step-title">Add field</span> for more (up to 20), or the trash icon to remove one.</li>
+<li>Leave <span class="step-title">Active</span> checked to use these fields, then click <span class="step-title">Save Intake Form</span>.</li>
+</ol>
+<div class="callout callout-tip"><strong>Fallback:</strong> leaving this inactive, or never configuring it, keeps the default single "Medical history &amp; notes" textarea for clients — nothing breaks if you skip this entirely.</div>
+<div class="callout callout-warn"><strong>No version history:</strong> editing your fields changes what every future submitter sees immediately. A past client's already-submitted answers aren't affected, but you also can't see what fields a client saw before you last edited them — unlike consent forms, which do version.</div>
+<div class="crosslinks">See also: <a href="#client-intake-submit">Client: submit intake form</a></div>
+</section>
+
 <section id="owner-deposit-rules" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Deposit rule list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -2300,6 +2375,92 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> deleting a deposit rule cannot be undone; existing appointments keep their already-calculated deposit.</div>
 <div class="crosslinks">See also: <a href="#owner-deposit-rules">Deposit rule list</a></div>
+</section>
+
+<section id="owner-promo-codes" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Promo code list</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/promo-codes</code>: every promo code your studio can offer clients a deposit discount with at booking time, either a fixed amount off or a percentage off.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Promo code list wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="12" font-weight="700">Promo Codes</text><text x="640" y="25" font-size="9">+ New Code</text>
+<rect x="20" y="60" width="480" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<text x="32" y="80" font-size="9" font-weight="700" font-family="monospace">SUMMER20</text><text x="32" y="94" font-size="8" fill-opacity="0.6">Fixed · €20.00 · 3/50 used</text>
+<rect x="440" y="70" width="45" height="14" rx="7" fill="#22c55e" fill-opacity="0.5"/><text x="448" y="80" font-size="7">Active</text>
+</svg>
+</figure>
+<figcaption>Promo codes — fixed-amount codes show a $ icon, percentage codes a % icon; the badge reflects Active/Inactive/Expired/Exhausted</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click a code to view, edit, or delete it.</li>
+<li>Click <span class="step-title">New Code</span> to create one.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-create-promo-code">Create promo code</a>, <a href="#client-book">Client: book an appointment</a></div>
+</section>
+
+<section id="owner-create-promo-code" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Create promo code</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/promo-codes/new</code>: enter a code, choose fixed-amount or percentage, optionally set an expiry and redemption cap, and set whether it's active.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 520" role="img" aria-label="Create promo code wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="10" font-weight="700">‹ Promo Codes</text>
+<rect x="260" y="60" width="240" height="320" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="280" y="88" font-size="12" font-weight="700">New Promo Code</text>
+<text x="280" y="108" font-size="9" fill-opacity="0.6">Code</text><rect x="280" y="114" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="146" font-size="9" fill-opacity="0.6">Discount type</text><text x="280" y="160" font-size="8">○ Fixed amount &nbsp;&nbsp; ○ Percentage</text>
+<text x="280" y="180" font-size="9" fill-opacity="0.6">Discount (€)</text><rect x="280" y="186" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="218" font-size="9" fill-opacity="0.6">Expires on (optional)</text><rect x="280" y="224" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="256" font-size="9" fill-opacity="0.6">Max redemptions (optional)</text><rect x="280" y="262" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="298" font-size="8">☑ Active</text>
+<rect x="280" y="312" width="200" height="26" rx="4" fill="#7c3aed"/><text x="325" y="329" font-size="10" fill="#fff">Create Code</text>
+</svg>
+</figure>
+<figcaption>Create promo code — fields in order: code, discount type, amount, expiry, max redemptions, active toggle</figcaption>
+<h3>Steps (in field order)</h3>
+<ol class="steps">
+<li>Enter the <span class="step-title">Code</span> exactly as clients should type it (e.g. "SUMMER20") — it's stored uppercased and matched case-insensitively.</li>
+<li>Choose <span class="step-title">Fixed amount</span> or <span class="step-title">Percentage</span>.</li>
+<li>Enter the <span class="step-title">Discount</span> (€ or %, 0.01–100 for percentages).</li>
+<li>Optionally set <span class="step-title">Expires on</span> — the code stops working after this date.</li>
+<li>Optionally set <span class="step-title">Max redemptions</span> — the code stops working once this many bookings have used it.</li>
+<li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
+<li>Click <span class="step-title">Create Code</span>.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-promo-codes">Promo code list</a></div>
+</section>
+
+<section id="owner-promo-code-detail" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Promo code detail</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (edit/delete)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/promo-codes/&lt;id&gt;</code>: view, edit, or delete a single promo code.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Promo code detail wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="10" font-weight="700">‹ Promo Codes</text><text x="600" y="25" font-size="9">✎ Edit</text><text x="660" y="25" font-size="9">🗑 Delete</text>
+<circle cx="300" cy="90" r="24" fill="#3b82f6" fill-opacity="0.15"/><text x="288" y="96" font-size="12">€</text>
+<text x="336" y="86" font-size="13" font-weight="700" font-family="monospace">SUMMER20</text>
+<rect x="336" y="96" width="45" height="14" rx="7" fill="#22c55e" fill-opacity="0.5"/><text x="344" y="106" font-size="7">Active</text>
+<rect x="260" y="140" width="240" height="90" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<text x="272" y="160" font-size="9">Fixed · €20.00</text>
+<text x="272" y="178" font-size="8" fill-opacity="0.6">Expires: 30 Sep 2026</text>
+<text x="272" y="192" font-size="8" fill-opacity="0.6">Redemptions: 3 / 50</text>
+<text x="272" y="212" font-size="8" fill-opacity="0.6">Created 3 Mar 2026</text>
+</svg>
+</figure>
+<figcaption>Promo code detail — view, edit, and confirm-delete modes</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click <span class="step-title">Edit</span> to change the code, type, amount, expiry, redemption cap, or active state.</li>
+<li>Click <span class="step-title">Delete</span> to remove it (with confirmation).</li>
+</ol>
+<div class="callout callout-warn"><strong>Warning:</strong> deleting a promo code cannot be undone; appointments already booked with it keep their already-applied discount.</div>
+<div class="crosslinks">See also: <a href="#owner-promo-codes">Promo code list</a></div>
 </section>
 
 <section id="owner-schedule" data-role="owner">
@@ -2764,6 +2925,7 @@ ol.steps li { margin: 6px 0; }
 <li>If cash-billed, a card offers to switch to self-serve card billing instead.</li>
 <li>If a downgrade is scheduled, a card lets you cancel that pending change and keep your current plan.</li>
 </ol>
+<div class="callout callout-warn"><strong>Payment failed?</strong> A banner appears at the top of every page showing how many days your payment has been overdue, and reminder emails go out on day 1, 3, and 7 after the failure. Click "Update billing details" in either place to fix it — the banner and emails stop automatically once a payment succeeds.</div>
 <div class="crosslinks">See also: <a href="#owner-subscribe">Choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
 </section>
 
@@ -3041,8 +3203,9 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Subscription oversight — status filter pills, search, and sort dropdown</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Filter by status pill (All / Active / Trialing / Grace Period / Past Due / Cancelled), search by studio name/slug, and sort by trial end, period end, or name.</li>
+<li>Filter by status pill (All / Active / Trialing / Grace Period / Past Due / Cancelled), search by studio name/slug, and sort by trial end, period end, days overdue, or name.</li>
 <li>Per row: <span class="step-title">Extend Trial</span>, <span class="step-title">Activate</span> (cash), or <span class="step-title">Cancel Subscription</span>, matching the studio list's inline pattern.</li>
+<li>A <span class="step-title">Past Due</span> row also shows its days-overdue count and an <span class="step-title">Exclude From Dunning</span> button — click it to stop that studio's automated day-1/3/7 reminder emails (e.g. while you handle their case manually by hand). Click <span class="step-title">Re-enable Reminders</span> to turn them back on.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-dashboard">Platform overview</a></div>
 </section>

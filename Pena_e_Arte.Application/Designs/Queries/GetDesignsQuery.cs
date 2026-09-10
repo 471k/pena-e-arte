@@ -53,7 +53,8 @@ public class GetDesignsHandler(IAppDbContext db, ICurrentUser currentUser)
     }
 
     internal static DesignResponse Map(Design d) =>
-        new(d.Id, d.StudioId, d.ClientId, d.ArtistId, d.Title, d.Description, d.CreatedAt, ComputeStatus(d));
+        new(d.Id, d.StudioId, d.ClientId, d.ArtistId, d.Title, d.Description, d.CreatedAt, ComputeStatus(d),
+            d.IsCatalogItem, d.Price);
 
     // A design has no status of its own — it's derived from its latest revision's
     // approval. Expired approvals are treated the same as ChangesRequested since both

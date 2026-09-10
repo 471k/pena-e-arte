@@ -14,6 +14,8 @@ public class DesignConfiguration : TenantEntityConfiguration<Design>
 
         builder.Property(d => d.Title).HasMaxLength(200).IsRequired();
         builder.Property(d => d.Description).HasMaxLength(2000);
+        builder.Property(d => d.Price).HasColumnType("decimal(18,2)");
+        builder.HasIndex(d => new { d.StudioId, d.IsCatalogItem });
 
         builder.HasOne(d => d.Client)
                .WithMany()

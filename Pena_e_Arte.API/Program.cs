@@ -154,6 +154,11 @@ try
             "r2-export",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 6)); // staggered after guest-pending-upload-cleanup (5am)
+
+        recurringJobs.AddOrUpdate<PastDueReminderJob>(
+            "past-due-reminder",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 7)); // staggered after r2-export (6am)
     }
 
     // k8s/base/migration-job.yaml runs this exact image as a one-off Job (restartPolicy:
@@ -227,6 +232,7 @@ try
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();
     app.MapDepositRuleEndpoints();
+    app.MapPromoCodeEndpoints();
     app.MapArtistEndpoints();
     app.MapInstagramEndpoints();
     app.MapInstagramCallbackEndpoint();

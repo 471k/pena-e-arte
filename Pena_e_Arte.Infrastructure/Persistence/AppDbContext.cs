@@ -16,6 +16,7 @@ public class AppDbContext(
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<AppointmentAttachment> AppointmentAttachments => Set<AppointmentAttachment>();
     public DbSet<DepositRule> DepositRules => Set<DepositRule>();
+    public DbSet<PromoCode> PromoCodes => Set<PromoCode>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientProfile> ClientProfiles => Set<ClientProfile>();
     public DbSet<TattooRecord> TattooRecords => Set<TattooRecord>();
@@ -31,6 +32,7 @@ public class AppDbContext(
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
+    public DbSet<IntakeFormTemplate> IntakeFormTemplates => Set<IntakeFormTemplate>();
     public DbSet<BookingIntake> BookingIntakes => Set<BookingIntake>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
     public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
@@ -111,6 +113,7 @@ public class AppDbContext(
         builder.Entity<Appointment>().HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
         builder.Entity<AppointmentAttachment>().HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
         builder.Entity<DepositRule>().HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
+        builder.Entity<PromoCode>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Client>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<ClientProfile>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<TattooRecord>().HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
@@ -126,6 +129,7 @@ public class AppDbContext(
         builder.Entity<Payment>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<SessionSplit>().HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<IntakeForm>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
+        builder.Entity<IntakeFormTemplate>().HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
         builder.Entity<BookingIntake>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         builder.Entity<ConsentForm>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<NotificationLog>().HasQueryFilter(n => n.StudioId == tenant.StudioId && n.DeletedAt == null);

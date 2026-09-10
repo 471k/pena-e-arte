@@ -135,6 +135,46 @@ public class CreateAppointmentHandler(
 
             decimal depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
 
+            // IgnoreQueryFilters(): same reasoning as the DepositRules query above — this
+            // core runs for both the authenticated and anonymous-guest paths with no ambient
+            // tenant scope, so every lookup here must bypass the global filter in favor of the
+            // explicit studioId predicate.
+            bool promoCodeApplied = false;
+            if (!string.IsNullOrWhiteSpace(req.PromoCode))
+            {
+                string normalizedCode = req.PromoCode.Trim().ToUpperInvariant();
+                DateTime now = DateTime.UtcNow;
+
+                PromoCode? promoCode = await db.PromoCodes
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(p =>
+                        p.StudioId == studioId &&
+                        p.DeletedAt == null &&
+                        p.IsActive &&
+                        p.Code == normalizedCode &&
+                        (p.ExpiresAt == null || p.ExpiresAt > now) &&
+                        (p.MaxRedemptions == null || p.RedemptionCount < p.MaxRedemptions.Value), ct);
+
+                // A guest fat-fingering a promo code should never block their booking — a
+                // missing/expired/exhausted/wrong-studio code is silently ignored rather than
+                // thrown; PromoCodeApplied on the response tells the frontend whether to show
+                // a "not recognized" note.
+                // NOTE: stacking with future item-4 (client-to-client referral) reward
+                // discounts is undecided — that item doesn't exist yet, so there is nothing
+                // to stack against today. Whichever session builds item 4 must decide the
+                // stacking rule against this discount.
+                if (promoCode is not null)
+                {
+                    decimal discount = promoCode.AmountFixed
+                        ?? Math.Round(depositAmount * (promoCode.AmountPercent ?? 0m) / 100m, 2, MidpointRounding.AwayFromZero);
+
+                    depositAmount = Math.Max(0m, depositAmount - discount);
+                    promoCode.RedemptionCount++;
+                    promoCode.UpdatedAt = now;
+                    promoCodeApplied = true;
+                }
+            }
+
             Appointment appointment = new()
             {
                 StudioId = studioId,
@@ -185,7 +225,7 @@ public class CreateAppointmentHandler(
                 appointment.Id, "24h", appointment.Date.AddHours(-24));
             await db.SaveChangesAsync(ct);
 
-            AppointmentResponse response = Map(appointment);
+            AppointmentResponse response = Map(appointment, promoCodeApplied: promoCodeApplied);
             await realtime.NotifyStudioAsync(studioId, "AppointmentCreated", response, ct);
 
             await sender.Send(new SendAppointmentCreatedNotificationCommand(appointment.Id), ct);
@@ -200,7 +240,8 @@ public class CreateAppointmentHandler(
     }
 
     internal static AppointmentResponse Map(
-        Appointment a, string? clientName = null, string? artistName = null, Guid? clientUserId = null)
+        Appointment a, string? clientName = null, string? artistName = null, Guid? clientUserId = null,
+        bool promoCodeApplied = false)
     {
         List<AppointmentAttachmentResponse> attachments = a.Attachments
             .OrderBy(x => x.UploadedAt)
@@ -227,6 +268,7 @@ public class CreateAppointmentHandler(
             a.Intake?.DesiredPlacement.Locations,
             a.Intake?.ReferralSource?.ToString(),
             a.Intake?.ReferralSourceOther,
-            attachments);
+            attachments,
+            promoCodeApplied);
     }
 }

@@ -345,6 +345,116 @@ public class CreateAppointmentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ValidFixedPromoCode_ReducesDepositAndMarksApplied()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
+        _db.PromoCodes.Add(new PromoCode { StudioId = _studioId, Code = "SAVE20", AmountFixed = 20m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { PromoCode = "save20" };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(55m);
+        result.PromoCodeApplied.Should().BeTrue();
+        _db.PromoCodes.Single(p => p.Code == "SAVE20").RedemptionCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_ValidPercentPromoCode_ReducesDepositByPercent()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 100m, IsActive = true });
+        _db.PromoCodes.Add(new PromoCode { StudioId = _studioId, Code = "TEN", AmountPercent = 10m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { PromoCode = "TEN" };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(90m);
+        result.PromoCodeApplied.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_PromoDiscountExceedsDeposit_FloorsAtZero()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 10m, IsActive = true });
+        _db.PromoCodes.Add(new PromoCode { StudioId = _studioId, Code = "BIG", AmountFixed = 50m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { PromoCode = "BIG" };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Handle_ExpiredPromoCode_IgnoredWithoutBlockingBooking()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
+        _db.PromoCodes.Add(new PromoCode
+        {
+            StudioId = _studioId, Code = "EXPIRED", AmountFixed = 20m, IsActive = true,
+            ExpiresAt = DateTime.UtcNow.AddDays(-1),
+        });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { PromoCode = "EXPIRED" };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(75m);
+        result.PromoCodeApplied.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_ExhaustedPromoCode_IgnoredWithoutBlockingBooking()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
+        _db.PromoCodes.Add(new PromoCode
+        {
+            StudioId = _studioId, Code = "MAXED", AmountFixed = 20m, IsActive = true,
+            MaxRedemptions = 1, RedemptionCount = 1,
+        });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { PromoCode = "MAXED" };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(75m);
+        result.PromoCodeApplied.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_WrongStudioPromoCode_IgnoredWithoutBlockingBooking()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
+        _db.PromoCodes.Add(new PromoCode { StudioId = Guid.NewGuid(), Code = "OTHER", AmountFixed = 20m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { PromoCode = "OTHER" };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(75m);
+        result.PromoCodeApplied.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_UnrecognizedPromoCode_IgnoredWithoutBlockingBooking()
+    {
+        CreateAppointmentRequest req = ValidRequest() with { PromoCode = "NOPE" };
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.PromoCodeApplied.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_NoPromoCode_DoesNotMarkApplied()
+    {
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        result.PromoCodeApplied.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Handle_WithImages_PersistsAttachmentsAndReturnsThemInOrder()
     {
         CreateAppointmentRequest req = ValidRequest() with

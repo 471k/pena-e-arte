@@ -64,7 +64,8 @@ import {
   useResendArtistInviteMutation,
 } from "../artistsApi";
 import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
-import { useGetDesignsQuery } from "@/features/designs/designsApi";
+import { useGetDesignsQuery, useMarkDesignAsCatalogItemMutation } from "@/features/designs/designsApi";
+import type { DesignResponse } from "@/features/designs/design.types";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
@@ -111,6 +112,61 @@ function formatDate(iso: string): string {
     month: "short",
     year: "numeric",
   });
+}
+
+function DesignCatalogControls({ design }: { design: DesignResponse }) {
+  const [markAsCatalogItem, { isLoading }] = useMarkDesignAsCatalogItemMutation();
+  const [priceInput, setPriceInput] = useState(design.price != null ? String(design.price) : "");
+
+  async function handleToggle(next: boolean) {
+    const price = next ? (parseFloat(priceInput) || null) : null;
+    const result = await markAsCatalogItem({ id: design.id, body: { isCatalogItem: next, price } });
+    if ("data" in result) {
+      toast.success(next ? "Marked as flash catalog item." : "Removed from flash catalog.");
+    } else {
+      toast.error("Failed to update — this design may already be tied to an approved client revision.");
+    }
+  }
+
+  async function handlePriceBlur() {
+    if (!design.isCatalogItem) return;
+    const price = parseFloat(priceInput) || null;
+    if (price === design.price) return;
+    const result = await markAsCatalogItem({ id: design.id, body: { isCatalogItem: true, price } });
+    if ("data" in result) toast.success("Flash price updated.");
+  }
+
+  return (
+    <div
+      className="flex items-center gap-3 px-3 pb-3 pt-1 border-t"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={design.isCatalogItem}
+          disabled={isLoading}
+          onChange={(e) => void handleToggle(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-input accent-primary"
+        />
+        <Tag className="h-3 w-3" />
+        Flash catalog item
+      </label>
+      {design.isCatalogItem && (
+        <Input
+          type="number"
+          min="0.01"
+          step="0.01"
+          placeholder="Price (€)"
+          value={priceInput}
+          onChange={(e) => setPriceInput(e.target.value)}
+          onBlur={() => void handlePriceBlur()}
+          disabled={isLoading}
+          className="h-7 w-24 text-xs"
+        />
+      )}
+    </div>
+  );
 }
 
 export function ArtistDetailPage() {
@@ -756,12 +812,11 @@ export function ArtistDetailPage() {
               {!designsLoading && designs.length > 0 && (
                 <div className="space-y-2">
                   {designs.map((design) => (
-                    <Link
-                      key={design.id}
-                      to={`/designs/${design.id}`}
-                      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
-                    >
-                      <Card className="hover:bg-muted/40 transition-colors">
+                    <Card key={design.id} className="hover:bg-muted/40 transition-colors">
+                      <Link
+                        to={`/designs/${design.id}`}
+                        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t-lg"
+                      >
                         <CardContent className="p-3 flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{design.title}</p>
@@ -773,8 +828,11 @@ export function ArtistDetailPage() {
                           </div>
                           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         </CardContent>
-                      </Card>
-                    </Link>
+                      </Link>
+                      {canManagePortfolio && (
+                        <DesignCatalogControls design={design} />
+                      )}
+                    </Card>
                   ))}
                 </div>
               )}
