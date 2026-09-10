@@ -28,6 +28,11 @@ export const artistTourSteps: TourStep[] = [
     body: "New bookings, form submissions, and other alerts show up here.",
   },
   {
+    targetSelector: '[data-tour="artist-waitlist-nav"]',
+    title: "Waitlist",
+    body: "See who's waiting for a slot near you — clients are notified automatically when one opens up.",
+  },
+  {
     targetSelector: '[data-tour="artist-earnings-nav"]',
     title: "Your earnings",
     body: "See what you've earned, month by month, and a breakdown of every payment behind it — including any session split the studio recorded.",

@@ -37,6 +37,11 @@ public static class AuditActions
     public const string PaymentRefunded = "Payment.Refunded";
     public const string CashDepositConfirmed = "Payment.CashDepositConfirmed";
 
+    public const string WaitlistEntryCancelled = "WaitlistEntry.Cancelled";
+
+    public const string GiftCardRedeemed = "GiftCard.Redeemed";
+    public const string GiftCardVoided = "GiftCard.Voided";
+
     /// <summary>One-time creation of the platform's first admin account by AdminBootstrapper,
     /// never a MediatR command — see AdminBootstrapper.RunAsync.</summary>
     public const string AdminAccountBootstrapped = "Admin.AccountBootstrapped";
@@ -60,6 +65,8 @@ public static class AuditTargetTypes
     public const string ManualReminder = "ManualReminder";
     public const string ConductReport = "ConductReport";
     public const string User = "User";
+    public const string WaitlistEntry = "WaitlistEntry";
+    public const string GiftCard = "GiftCard";
     public const string Campaign = "Campaign";
     public const string ImpersonationSession = "ImpersonationSession";
 }

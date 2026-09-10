@@ -125,88 +125,119 @@ public class CreateAppointmentHandler(
                 if (conflict) throw new SlotAlreadyBookedException();
             }
 
-            // Single-active is enforced by the deposit rule handlers; ordering by
-            // UpdatedAt keeps selection deterministic even against legacy data.
-            DepositRule? rule = await db.DepositRules
-                .IgnoreQueryFilters()
-                .Where(r => r.StudioId == studioId && r.DeletedAt == null && r.IsActive)
-                .OrderByDescending(r => r.UpdatedAt)
-                .FirstOrDefaultAsync(ct);
+            // Package-covered booking: skip DepositCalculator entirely (already paid for via the
+            // package purchase) rather than computing a deposit that will just be zeroed out.
+            PackagePurchase? packagePurchase = null;
+            decimal depositAmount;
+            DepositStatus depositStatus;
 
-            decimal depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
+            if (req.PackagePurchaseId is Guid packagePurchaseId)
+            {
+                packagePurchase = await db.PackagePurchases.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(p => p.StudioId == studioId && p.DeletedAt == null && p.Id == packagePurchaseId, ct)
+                    ?? throw new NotFoundException(nameof(PackagePurchase), packagePurchaseId);
+
+                if (packagePurchase.ClientId != clientId)
+                    throw new NotFoundException(nameof(PackagePurchase), packagePurchaseId);
+
+                if (packagePurchase.SessionsRemaining <= 0)
+                    throw new BusinessRuleViolationException("This package has no sessions remaining.");
+
+                depositAmount = 0;
+                depositStatus = DepositStatus.PrePaid;
+            }
+            else
+            {
+                // Single-active is enforced by the deposit rule handlers; ordering by
+                // UpdatedAt keeps selection deterministic even against legacy data.
+                DepositRule? rule = await db.DepositRules
+                    .IgnoreQueryFilters()
+                    .Where(r => r.StudioId == studioId && r.DeletedAt == null && r.IsActive)
+                    .OrderByDescending(r => r.UpdatedAt)
+                    .FirstOrDefaultAsync(ct);
+
+                depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
+                depositStatus = DepositStatus.Pending;
+            }
 
             // ── Discount stacking order (documented once, here, rather than scattered across
             // uncoordinated edits): promo code → gift card → referral-code redemption →
             // referral-reward redemption, each applied to whatever remains after the previous
-            // one, floored at 0. Gift card (P1 Group 3) redemption is not yet merged into this
-            // branch; whoever reconciles that PR with this one must insert its step here,
-            // between promo code and referral-code, to preserve this order. ──
+            // one, floored at 0. Gift card (P1 Group 3) redemption at booking time doesn't
+            // exist — gift cards are redeemed separately, not wired into this handler. Entire
+            // block skipped for a package-covered booking: depositAmount is already 0 (paid for
+            // via the package purchase), so applying a discount would do nothing except
+            // needlessly consume the client's code/reward for zero benefit.
             // IgnoreQueryFilters() throughout this block for the same reason as
             // Artists/DepositRules above — this core is shared with the anonymous
             // guest-booking path, which has no ambient tenant scope.
             bool promoCodeApplied = false;
-            if (!string.IsNullOrWhiteSpace(req.PromoCode))
-            {
-                string normalizedCode = req.PromoCode.Trim().ToUpperInvariant();
-                DateTime now = DateTime.UtcNow;
-
-                PromoCode? promoCode = await db.PromoCodes
-                    .IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(p =>
-                        p.StudioId == studioId &&
-                        p.DeletedAt == null &&
-                        p.IsActive &&
-                        p.Code == normalizedCode &&
-                        (p.ExpiresAt == null || p.ExpiresAt > now) &&
-                        (p.MaxRedemptions == null || p.RedemptionCount < p.MaxRedemptions.Value), ct);
-
-                // A guest fat-fingering a promo code should never block their booking — a
-                // missing/expired/exhausted/wrong-studio code is silently ignored rather than
-                // thrown; PromoCodeApplied on the response tells the frontend whether to show
-                // a "not recognized" note.
-                if (promoCode is not null)
-                {
-                    decimal discount = promoCode.AmountFixed
-                        ?? Math.Round(depositAmount * (promoCode.AmountPercent ?? 0m) / 100m, 2, MidpointRounding.AwayFromZero);
-
-                    depositAmount = Math.Max(0m, depositAmount - discount);
-                    promoCode.RedemptionCount++;
-                    promoCode.UpdatedAt = now;
-                    promoCodeApplied = true;
-                }
-            }
-
             ClientReferralCode? redeemedReferralCode = null;
-            if (!string.IsNullOrWhiteSpace(req.ReferralCode))
-            {
-                redeemedReferralCode = await db.ClientReferralCodes.IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(c => c.StudioId == studioId && c.DeletedAt == null && c.Code == req.ReferralCode, ct)
-                    ?? throw new BusinessRuleViolationException("That referral code isn't valid for this studio.");
-
-                if (redeemedReferralCode.ReferrerClientId == clientId)
-                    throw new BusinessRuleViolationException("You can't redeem your own referral code.");
-
-                bool alreadyRedeemed = await db.ClientReferralRedemptions.IgnoreQueryFilters().AnyAsync(r =>
-                    r.ClientReferralCodeId == redeemedReferralCode.Id && r.RedeemedByClientId == clientId, ct);
-                if (alreadyRedeemed)
-                    throw new BusinessRuleViolationException("You've already redeemed this referral code.");
-
-                depositAmount = Math.Max(0, depositAmount - depositAmount * redeemedReferralCode.RewardPercent / 100m);
-            }
-
             ClientReferralReward? spentReward = null;
-            if (req.ReferralRewardId is Guid rewardId)
+
+            if (packagePurchase is null)
             {
-                spentReward = await db.ClientReferralRewards.IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(r => r.Id == rewardId && r.DeletedAt == null, ct)
-                    ?? throw new NotFoundException(nameof(ClientReferralReward), rewardId);
+                if (!string.IsNullOrWhiteSpace(req.PromoCode))
+                {
+                    string normalizedCode = req.PromoCode.Trim().ToUpperInvariant();
+                    DateTime now = DateTime.UtcNow;
 
-                if (spentReward.ClientId != clientId)
-                    throw new BusinessRuleViolationException("This referral reward doesn't belong to you.");
-                if (spentReward.IsRedeemed)
-                    throw new BusinessRuleViolationException("This referral reward has already been redeemed.");
+                    PromoCode? promoCode = await db.PromoCodes
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(p =>
+                            p.StudioId == studioId &&
+                            p.DeletedAt == null &&
+                            p.IsActive &&
+                            p.Code == normalizedCode &&
+                            (p.ExpiresAt == null || p.ExpiresAt > now) &&
+                            (p.MaxRedemptions == null || p.RedemptionCount < p.MaxRedemptions.Value), ct);
 
-                depositAmount = Math.Max(0, depositAmount - depositAmount * spentReward.RewardPercent / 100m);
+                    // A guest fat-fingering a promo code should never block their booking — a
+                    // missing/expired/exhausted/wrong-studio code is silently ignored rather than
+                    // thrown; PromoCodeApplied on the response tells the frontend whether to show
+                    // a "not recognized" note.
+                    if (promoCode is not null)
+                    {
+                        decimal discount = promoCode.AmountFixed
+                            ?? Math.Round(depositAmount * (promoCode.AmountPercent ?? 0m) / 100m, 2, MidpointRounding.AwayFromZero);
+
+                        depositAmount = Math.Max(0m, depositAmount - discount);
+                        promoCode.RedemptionCount++;
+                        promoCode.UpdatedAt = now;
+                        promoCodeApplied = true;
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(req.ReferralCode))
+                {
+                    redeemedReferralCode = await db.ClientReferralCodes.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(c => c.StudioId == studioId && c.DeletedAt == null && c.Code == req.ReferralCode, ct)
+                        ?? throw new BusinessRuleViolationException("That referral code isn't valid for this studio.");
+
+                    if (redeemedReferralCode.ReferrerClientId == clientId)
+                        throw new BusinessRuleViolationException("You can't redeem your own referral code.");
+
+                    bool alreadyRedeemed = await db.ClientReferralRedemptions.IgnoreQueryFilters().AnyAsync(r =>
+                        r.ClientReferralCodeId == redeemedReferralCode.Id && r.RedeemedByClientId == clientId, ct);
+                    if (alreadyRedeemed)
+                        throw new BusinessRuleViolationException("You've already redeemed this referral code.");
+
+                    depositAmount = Math.Max(0, depositAmount - depositAmount * redeemedReferralCode.RewardPercent / 100m);
+                }
+
+                if (req.ReferralRewardId is Guid rewardId)
+                {
+                    spentReward = await db.ClientReferralRewards.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(r => r.Id == rewardId && r.DeletedAt == null, ct)
+                        ?? throw new NotFoundException(nameof(ClientReferralReward), rewardId);
+
+                    if (spentReward.ClientId != clientId)
+                        throw new BusinessRuleViolationException("This referral reward doesn't belong to you.");
+                    if (spentReward.IsRedeemed)
+                        throw new BusinessRuleViolationException("This referral reward has already been redeemed.");
+
+                    depositAmount = Math.Max(0, depositAmount - depositAmount * spentReward.RewardPercent / 100m);
+                }
             }
 
             Appointment appointment = new()
@@ -218,7 +249,7 @@ public class CreateAppointmentHandler(
                 EndDate = requestEnd,
                 DurationMinutes = req.DurationMinutes,
                 Status = AppointmentStatus.Pending,
-                DepositStatus = DepositStatus.Pending,
+                DepositStatus = depositStatus,
                 DepositAmount = depositAmount,
                 Notes = req.Notes
             };
@@ -247,6 +278,13 @@ public class CreateAppointmentHandler(
             }
 
             db.Appointments.Add(appointment);
+
+            if (packagePurchase is not null)
+            {
+                packagePurchase.SessionsRemaining--;
+                packagePurchase.UpdatedAt = DateTime.UtcNow;
+            }
+
             await db.SaveChangesAsync(ct);
 
             // Write-through cache invalidation — the next EnsureWithinLimitAsync call for

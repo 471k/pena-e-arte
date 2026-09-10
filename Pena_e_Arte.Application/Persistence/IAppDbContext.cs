@@ -35,6 +35,12 @@ public interface IAppDbContext
     DbSet<ManualReminder> ManualReminders { get; }
     DbSet<Conversation> Conversations { get; }
     DbSet<ChatMessage> ChatMessages { get; }
+    DbSet<Waitlist> WaitlistEntries { get; }
+    DbSet<BoothRentSchedule> BoothRentSchedules { get; }
+    DbSet<BoothRentCharge> BoothRentCharges { get; }
+    DbSet<GiftCard> GiftCards { get; }
+    DbSet<Package> Packages { get; }
+    DbSet<PackagePurchase> PackagePurchases { get; }
     DbSet<ClientReferralCode> ClientReferralCodes { get; }
     DbSet<ClientReferralRedemption> ClientReferralRedemptions { get; }
     DbSet<ClientReferralReward> ClientReferralRewards { get; }

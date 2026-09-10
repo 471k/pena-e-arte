@@ -30,6 +30,10 @@ import { reportsApi } from "@/features/reports/reportsApi";
 import { socialApi } from "@/features/social/socialApi";
 import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
 import { messagingApi } from "@/features/messaging/messagingApi";
+import { waitlistApi } from "@/features/waitlist/waitlistApi";
+import { boothRentApi } from "@/features/booth-rent/boothRentApi";
+import { giftCardsApi } from "@/features/gift-cards/giftCardsApi";
+import { packagesApi } from "@/features/session-packages/packagesApi";
 import { clientReferralsApi } from "@/features/client-referrals/clientReferralsApi";
 import { campaignsApi } from "@/features/campaigns/campaignsApi";
 import { marketingApi } from "@/features/public/marketingApi";
@@ -65,6 +69,10 @@ const appReducer = combineReducers({
   [socialApi.reducerPath]:         socialApi.reducer,
   [conductReportsApi.reducerPath]: conductReportsApi.reducer,
   [messagingApi.reducerPath]:      messagingApi.reducer,
+  [waitlistApi.reducerPath]:       waitlistApi.reducer,
+  [boothRentApi.reducerPath]:      boothRentApi.reducer,
+  [giftCardsApi.reducerPath]:      giftCardsApi.reducer,
+  [packagesApi.reducerPath]:       packagesApi.reducer,
   [clientReferralsApi.reducerPath]: clientReferralsApi.reducer,
   [campaignsApi.reducerPath]:      campaignsApi.reducer,
   [marketingApi.reducerPath]:      marketingApi.reducer,
@@ -141,6 +149,10 @@ export const store = configureStore({
       onboardingApi.middleware,
       reportsApi.middleware,
       socialApi.middleware,
+      waitlistApi.middleware,
+      boothRentApi.middleware,
+      giftCardsApi.middleware,
+      packagesApi.middleware,
       conductReportsApi.middleware,
       messagingApi.middleware,
       clientReferralsApi.middleware,

@@ -1152,6 +1152,9 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/studios/{slug}/booking/availability` | Public slot-availability check for guest booking | None — read-only boolean+reason, no PII |
 | `GET /api/v1/public/studios/{slug}/booking/deposit-rule` | Public deposit estimate for guest booking | None — read-only, single active rule's name/amounts only |
 | `POST /api/v1/public/studios/{slug}/booking/presign` | Anonymous image upload before a guest's account exists | Rate-limited (`public-booking`); image content-types only, no PDF; entire R2 key server-constructed, no client-supplied path component; orphan-cleanup job (`GuestPendingUploadCleanupJob`) |
+| `POST /api/v1/waitlist` | Guest waitlist join, no prior account needed | Rate-limited (`public-booking`); no PII beyond what guest booking already collects; `JoinWaitlistHandler` still resolves a signed-in client from the JWT when one is present, so a real account never falls back to the guest path unnecessarily |
+| `POST /api/v1/gift-cards` | Guest gift-card purchase, no prior account needed | Rate-limited (`public-booking`); same posture as guest checkout — card is `Pending` until `IPaymentProvider` confirms payment |
+| `GET /api/v1/gift-cards/{code}/balance` | Public balance lookup by code alone (no per-studio scope in the route) | Rate-limited (`public-read`); enumeration risk from brute-forcing 12-char codes is accepted at that rate limit; response (`GiftCardBalanceResponse`) carries only `RemainingBalance`/`Status` — never `PurchaserEmail`/`RecipientEmail` |
 | `GET /api/v1/public/studios/{slug}/design-catalog` | Public flash/design catalog browse (P1 backlog Group 4, item #9) | None — read-only, only `IsCatalogItem && ClientId == null` designs, no client PII |
 | `POST /api/v1/marketing/unsubscribe` | Anonymous unsubscribe link in campaign emails | Signed token (HMAC-SHA256, `IMarketingOptOutSigner`, own key — separate from `IInstagramStateSigner`/`ISocialOAuthStateSigner`) validated before trusting clientId; rate-limited (`public-write`); single studio+client pair per token |
 
@@ -3847,6 +3850,194 @@ Verified after every batch of changes (not just at the end): `dotnet build` clea
 final `dotnet test` — 1914 unit + 388 integration, all passing (the +1 vs. the `a768f68` count is
 the new `CreateGuestAppointmentHandlerTests` coverage for the enumeration-resistance redesign);
 `pnpm tsc --noEmit` and `pnpm build` clean throughout.
+
+---
+
+## P1 Backlog Group 3 — Waitlist, Booth Rent, Gift Cards, Packages — 2026-09-10
+
+Built the four decision-gated Group 3 backlog items on `feat/p1-group3-2026-09-09`, branched off
+`main` (Groups 1/2/4 are not merged into `main` as of this session, so none of PromoCode, studio
+hours/timezone, CSV export, or dunning code is present on this branch — every phase below was
+written to stand on its own against plain `main`, per the master prompt's own contingency for
+that ordering). The studio owner resolved each item's open product question before this session
+started: Waitlist auto-FIFO with a 24-hour claim window, booth rent tracked as bookkeeping-only
+(no card charges), gift cards that never expire, and prepaid packages that are non-refundable once
+purchased. Support Impersonation (#15) was deliberately not attempted — it still needs a separate
+product/security conversation about its admin-endpoint allow-list before any code is written.
+
+**Waitlist (#1).** New `Waitlist` entity (`waitlist_entries` table), `WaitlistStatus` enum
+(Waiting/Notified/Booked/Expired/Cancelled). `JoinWaitlistCommand` mirrors
+`CreateGuestAppointmentCommand`'s guest-vs-account duality: a signed-in client resolves through
+the ambient tenant exactly like every other authenticated command, while a guest — who has no
+ambient tenant on this `AllowAnonymous` endpoint — must name the studio explicitly via a
+`StudioSlug` field the original backlog spec's route shape didn't call for (`POST /api/v1/waitlist`
+carries no slug segment); this was a genuine gap in the given endpoint shape, not a deviation from
+a resolved decision, and is documented as its own `AllowAnonymous Exceptions` table row. The
+auto-FIFO match itself lives in `WaitlistMatchExtensions.ClaimNextMatchAsync` — a shared helper
+called from three places: `CancelAppointmentHandler`, `RescheduleAppointmentHandler` (a
+reschedule frees the *original* slot, captured before the entity is mutated), and
+`WaitlistNotificationExpiryJob`'s daily re-run against a just-expired entry, which is what makes
+the 24-hour claim window actually cascade to the next person in line instead of dead-ending after
+one missed claim. Only `AppointmentStatus.Cancelled` assignments were grepped and hooked per the
+prompt's own explicit scoping — `MarkNoShowCommand` was deliberately left alone, since a no-show
+fires after the appointment's own time has already passed and has no future slot to offer against
+a waitlist entry's preferred-date window. A client marks their own claimed slot booked via a thin
+`MarkWaitlistEntryBookedCommand` fired from the frontend right after a successful booking submit,
+exactly as the spec directs, rather than threading waitlist state through
+`CreateAppointmentCoreAsync`. Shared `WaitlistQueuePage` serves both artist (self-scoped) and
+owner (studio-wide) — `GetWaitlistQuery`'s own artist-self-scoping made a second, separate
+artist-facing page unnecessary, the same call the spec asked to resolve by checking the query's
+actual scoping behavior rather than assuming a split. Frontend `NotifyMeDialog` is wired into
+`BookAppointmentForm.tsx` (the authenticated booking form) only, per the spec's explicit naming;
+`GuestBookAppointmentForm.tsx` does not get the same CTA in this pass, a real, flagged gap since
+the backend command itself fully supports a guest join.
+
+**Booth Rent (#8).** `Artist.CommissionRate` (nullable decimal, informational only — no charge
+calculation reads it, since every charge is `BoothRentSchedule.AmountFixed`) plus two new
+entities: `BoothRentSchedule` and `BoothRentCharge` — the ledger, deliberately NOT a `Payment` row.
+`Payment.AppointmentId` is non-nullable with a database-enforced one-payment-per-appointment
+unique index, and `Payment.ClientId` is also non-nullable; booth rent has neither an appointment
+nor a client the way every other `Payment` row does (the artist owes the *studio*, the reverse
+direction from client-to-studio money), so extending `Payment` would have meant relaxing a real
+schema invariant for no benefit now that the confirmed decision is bookkeeping-only, no card
+charge at all. `BoothRentChargeJob` runs daily, creates one charge per due schedule, and advances
+`NextChargeDate` by the schedule's own frequency — verified by a unit test that runs the job twice
+in the same tick and asserts no double-charge. Owner-only `BoothRentManagementPage` (schedules +
+charges, "Mark settled" action); artist's own read-only schedule/charge history is embedded
+directly on `/earnings` (`MyBoothRentSection`) next to the existing earnings report, per the spec's
+own "natural home" call — not a separate nav item.
+
+**Gift Cards (#2).** `GiftCard` entity, studio-scoped (`(StudioId, Code)` unique index, not a
+platform-wide code space) — the original spec's own stated default when no other instruction is
+given. Corrects the original spec's "reuse `IStripePaymentService`" instruction: that interface
+was deleted, not migrated, on 2026-07-31 (Article 4(g)/Amendment A) — the correct, current pattern
+is `IPaymentProvider`/`CreatePaymentHoldAsync`, the exact shape `CreateDepositPaymentCommand`
+already uses. `PurchaseGiftCardCommand` is a structural clone of that call shape; `GiftCard`
+carries its own `ProviderReferenceId`/`ClientSecret`/`Provider` fields (copied from `Payment`'s own
+three fields for exactly this purpose) rather than sharing the `Payment` table, for the identical
+non-nullable-FK reason booth rent avoided it. No `ExpiresAt` at all — balances never expire, so
+there is no breakage/reversion-to-studio behavior to build, and the "who eats a post-spend
+chargeback" question is explicitly out of scope (a support/ops risk-acceptance question, not a
+schema question). `GetGiftCardBalanceQuery` is a genuinely cross-tenant anonymous lookup — the
+route carries only a code, no studio slug — searched via `IgnoreQueryFilters()` across every
+studio; a 12-char base32 code space makes a real cross-studio collision astronomically unlikely,
+and the response type (`GiftCardBalanceResponse`) structurally excludes
+`PurchaserEmail`/`RecipientEmail`, so the "never leaks" guarantee is compiler-enforced, not just
+convention. `RedeemGiftCardCommand` is deliberately NOT `IAuditableCommand` — that interface's
+`AuditTargetId` is read off the command object before the handler runs, but the `GiftCard`'s real
+id is only known after resolving it by code inside the handler; the audit entry is written
+manually once the real id is known, the same "manual, not pipeline-driven" precedent
+`AuditActions.AdminAccountBootstrapped` already established. `VoidGiftCardCommand` was not in the
+original spec's command list but is implied by its own frontend section's "void action" bullet;
+added since that bullet requires a backend counterpart. `GiftCardReconciliationJob` is a small
+parallel job, not a branch inside `PaymentReconciliationJob` — that job's three passes are written
+tightly around the `Payment` entity specifically (its `Include(p => p.Appointment)`, its
+`Payment`-only stale/hold-expiry checks), not generic enough to extend cleanly; a gift-card
+purchase has no appointment and no hold-expiry concept, so it only needs the one "did the hold
+succeed" pass. Since Group 4's `PromoCode` isn't on this branch, `RedeemGiftCardCommand`'s
+"apply the redeemed amount, whatever remains after promo" ordering has nothing to compose with
+yet — it reduces `Appointment.DepositAmount` directly (partial redemption allowed, clamped to what
+remains), and the exact combined order needs revisiting once Group 4 actually merges.
+
+**Packages (#3).** `Package` (catalog) and `PackagePurchase` (per-client, session-bundle owning)
+entities. `PurchasePackageCommand` is a structural clone of Phase 3's `PurchaseGiftCardCommand` —
+copied from that code, not independently re-derived from `CreateDepositPaymentCommand` a second
+time, to keep the two provider-integration call sites textually consistent, per the build-order
+note. One real correction to the original backlog spec's own schema: it describes
+`PackagePurchase` with no status field at all, `SessionsRemaining == 0` doubling as the
+"unconfirmed" sentinel. That sentinel is provably ambiguous — a real, already-confirmed purchase
+legitimately reaches `SessionsRemaining == 0` the moment a client uses every session, and
+`PackagePurchaseReconciliationJob` polling that same field would then silently refill sessions a
+client already spent, the instant the provider's underlying (already-succeeded) hold status is
+checked again. Added a plain nullable `ConfirmedAt` timestamp instead — not a `Status` enum, so it
+doesn't violate the spirit of "no status field needed," just closes a real correctness gap in the
+literal schema as given. `CreateAppointmentCommand.cs`'s core flow branches on
+`req.PackagePurchaseId`: verifies the purchase belongs to the booking client and has sessions
+remaining, sets `DepositAmount = 0` and the new `DepositStatus.PrePaid` enum member (added
+specifically so `AssignAppointmentArtistCommand`'s existing `DepositStatus == Pending` deferred-
+deposit-recompute check — matched by value, not just "amount is zero" — never fires for a package-
+covered booking), decrements `SessionsRemaining` on save, and skips `DepositCalculator` entirely.
+`CreateAppointmentRequest.PackagePurchaseId` was appended at the end of the positional record
+(Group 4's `PromoCode` field isn't present to append after, per the prompt's own fallback). Owner
+`PackageListPage` (create + active/inactive toggle); client `PurchasePackagePage` and a "Use a
+package" toggle in `BookAppointmentForm.tsx` that replaces the deposit-rule step when a package is
+selected. The frontend feature folder is named `session-packages`, not `packages` — this repo's
+`.gitignore` has a pre-existing `**/[Pp]ackages/` rule (a NuGet-restore convention) that silently
+swallowed a `frontend/src/features/packages/` folder from `git status` entirely; caught before
+commit by noticing the folder was absent from `git status --short` despite `ls` showing its files
+on disk, not by any tool erroring.
+
+**Known gaps, flagged rather than silently shipped:** `GuestBookAppointmentForm.tsx` has no
+"Notify me" CTA (Waitlist backend fully supports a guest join; only the authenticated
+`BookAppointmentForm.tsx` got the frontend affordance, per the spec's own explicit naming).
+Redeeming a gift card at the payment step (`RedeemGiftCardField`, embedded in
+`PaymentMethodSelector.tsx`) reduces the appointment's real deposit server-side immediately, but
+the card tab's own payment-intent amount is a snapshot taken when that tab first mounts — applying
+a code after the card tab has already loaded needs a page refresh to reflect the lower amount, not
+a live recalculation. `MarkBoothRentChargeSettledCommand`'s `OwnerOnly` enforcement (and the other
+new endpoints' RBAC policies generally) is verified by policy-name registration and by
+handler-level ownership/scope tests, not by a full `TestServer`+JWT round-trip per new endpoint —
+the heavier authorization-pipeline test pattern already established elsewhere in this codebase
+(`AppointmentArtistEndpointAuthorizationTests` and siblings) was not replicated for these four
+endpoint groups, a real scope reduction under this session's time budget.
+
+### Follow-ups (not yet scheduled)
+- [ ] Add the "Notify me" waitlist CTA to `GuestBookAppointmentForm.tsx` — `NotifyMeDialog`
+      already exists as a reusable component (used today in `BookAppointmentForm.tsx`); the
+      backend (`JoinWaitlistCommand`) already fully supports the guest path. Real gap, low effort.
+- [ ] Make gift-card redemption at checkout update the card tab's payment-intent amount live,
+      instead of requiring a page refresh — on `RedeemGiftCardField` success, invalidate the
+      payment-intent RTK Query cache and reset `CardTab`'s "already requested" guard
+      (`PaymentMethodSelector.tsx`) so it re-creates the intent at the new (lower) amount.
+- [ ] Optional, lower priority: add `TestServer`+JWT authorization-pipeline tests (the
+      `AppointmentArtistEndpointAuthorizationTests` pattern) for the Waitlist/BoothRent/
+      GiftCard/Package endpoint groups. Not a security gap today — every endpoint already carries
+      the correct policy, verified by policy-registration + handler-level ownership tests — this
+      would only add regression insurance matching this repo's existing test depth elsewhere.
+
+Verified: backend `dotnet build` clean across `API`/`Application`/`Domain`/`Infrastructure`/
+`Contracts` and both test projects; `dotnet test` — 1967 unit + 410 integration, all passing, zero
+regressions against the pre-existing suite. New coverage: 22 backend unit tests (FIFO
+match ordering/artist-null-matches-any/notified-at, `BoothRentChargeJob`'s exactly-once-per-due-
+schedule and no-double-charge-same-day, the 24h expiry cascade, gift-card redemption math,
+package-covered booking's deposit/session-decrement behavior) and 21 backend integration tests
+against real MySQL (guest and authenticated `JoinWaitlistCommand` paths, waitlist ownership
+boundary, cancel-appointment→waitlist-notify end-to-end, booth-rent artist/owner/tenant scoping,
+gift-card purchase→reconciliation confirm flow and the balance-lookup email-leak guarantee,
+package purchase→reconciliation confirm flow, and a package-covered booking's real
+`DepositAmount == 0`/`DepositStatus == PrePaid` outcome). `pnpm tsc --noEmit`, `pnpm lint`, and `pnpm build` all clean; `pnpm test` — 2048 frontend tests,
+all passing, zero regressions. Three pre-existing test files (`MyEarningsPage.test.tsx`,
+`PaymentMethodSelector.test.tsx`, `BookPage.test.tsx`) needed their local test-store setups
+extended with the new API slices' reducers/middleware and matching MSW handlers: several of these
+test files build a curated, minimal Redux store per file rather than importing the real
+`store.ts`, so a component gaining a new RTK Query hook dependency breaks any test file that
+renders it without also being told about the new slice — caught by actually running the suite,
+not by `tsc`/`lint`/`build` (none of which exercise a component's runtime hook dependencies against
+a test-local store).
+
+A second real gotcha caught only by `git status`, not by any tool erroring: this repo's
+`.gitignore` has a pre-existing `**/[Pp]ackages/` rule (a NuGet-restore convention) that silently
+excluded the entire `frontend/src/features/packages/` folder from version control. Renamed to
+`frontend/src/features/session-packages/` (import path `@/features/session-packages`) rather than
+touching the shared `.gitignore` pattern — the route paths themselves (`/packages`, `/packages/buy`)
+are unaffected, only the source folder and import alias changed.
+
+**Follow-up correction (found and fixed while reconciling this branch with Groups 4/5/6):**
+the backend counterpart of the `.gitignore` `**/[Pp]ackages/` bug — `Pena_e_Arte.Application/Packages/`
+(three command/query files: `CreatePackageCommand`/`UpdatePackageCommand`, `PurchasePackageCommand`,
+`GetPackagesQuery`/`GetMyPackagePurchasesQuery`, plus their validators) — was never actually
+committed to this branch despite `PackageEndpoints.cs`, the `Package`/`PackagePurchase` entities,
+`PackagePurchaseReconciliationJob`, and the frontend `session-packages` feature all referencing it.
+Flagged but not fixed in the Group 5 entry below (that session moved the orphaned local files aside
+without committing them, since fixing another group's open PR was out of its scope). Reconstructed
+from the committed contracts (`PackageEndpoints.cs`'s exact request/response shapes) and the
+`PurchaseGiftCardCommand`/`CreateDepositPaymentCommand` provider-interaction pattern this same
+group's own `GiftCards` commands already established — same auth-hold-now/reconcile-later shape,
+`IPaymentProvider.CreatePaymentHoldAsync`, `Provider = "pok"`. Verified against the pre-existing
+(also previously uncommitted-code-adjacent but present) test files
+`PackageHandlerIntegrationTests.cs`/`CreateAppointmentPackageBookingTests.cs`, which passed
+unmodified once the handlers existed — confirming the reconstruction matches what those tests
+(and the frontend) already expected.
 
 ## P1 Backlog Group 5 — Client Referrals, Marketing Campaigns, Storage Quota Completion — 2026-09-10
 

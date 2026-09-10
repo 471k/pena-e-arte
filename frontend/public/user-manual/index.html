@@ -291,6 +291,14 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list">
           <li><a href="#client-book" data-nav-link>Book an appointment</a></li>
           <li><a href="#client-my-studios" data-nav-link>My Studios</a></li>
+          <li><a href="#client-waitlist" data-nav-link>Join a waitlist</a></li>
+        </ul>
+      </div>
+      <div class="nav-section">
+        <button class="nav-section-toggle" aria-expanded="true">Purchases</button>
+        <ul class="nav-section-list">
+          <li><a href="#client-gift-cards" data-nav-link>Gift cards</a></li>
+          <li><a href="#client-packages" data-nav-link>Packages</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -332,6 +340,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#artist-schedule" data-nav-link>Weekly schedule</a></li>
           <li><a href="#artist-appointment-detail" data-nav-link>Appointment detail</a></li>
           <li><a href="#artist-messaging" data-nav-link>Messages</a></li>
+          <li><a href="#owner-waitlist" data-nav-link>Waitlist</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -445,6 +454,15 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#owner-payments" data-nav-link>Payment list</a></li>
           <li><a href="#owner-payment-detail" data-nav-link>Payment detail</a></li>
           <li><a href="#owner-create-payment" data-nav-link>Create payment</a></li>
+        </ul>
+      </div>
+      <div class="nav-section">
+        <button class="nav-section-toggle" aria-expanded="false">Waitlist &amp; extras</button>
+        <ul class="nav-section-list collapsed">
+          <li><a href="#owner-waitlist" data-nav-link>Waitlist</a></li>
+          <li><a href="#owner-booth-rent" data-nav-link>Booth rent</a></li>
+          <li><a href="#owner-gift-cards" data-nav-link>Gift cards</a></li>
+          <li><a href="#owner-packages" data-nav-link>Packages</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -1004,6 +1022,81 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> leaving a studio removes your access to its booking flow; if you leave your currently active studio, you're signed out and returned to Discover. Your appointment history is preserved and you can rejoin any time.</div>
 <div class="crosslinks">See also: <a href="#client-book">Book an appointment</a>, <a href="#guest-discover">Discover feed</a></div>
+</section>
+
+<section id="client-waitlist" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Join a waitlist</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✓ (guest fields required)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>When your requested date or artist shows no availability on the booking form, a <strong>Notify me when a slot opens up</strong> button lets you join the studio's waitlist. Auto-FIFO: the oldest matching entry is notified first when a slot frees up, with a 24-hour window to claim it before it cascades to the next person in line. See all your entries at <code>/waitlist/mine</code>.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 300" role="img" aria-label="Waitlist wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">My Waitlist</text>
+<rect x="20" y="60" width="720" height="50" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="82" font-size="10" font-weight="700">Any artist</text>
+<text x="36" y="98" font-size="8" fill-opacity="0.6">Mar 10 – Mar 24</text>
+<rect x="640" y="72" width="60" height="20" rx="10" fill="#eab308" fill-opacity="0.25"/><text x="650" y="86" font-size="8">Waiting</text>
+</svg>
+</figure>
+<figcaption>My Waitlist — status badge shows Waiting, Notified, Booked, Expired, or Cancelled</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>On the booking form, when your requested slot is unavailable, click <span class="step-title">Notify me when a slot opens up</span>.</li>
+<li>Confirm your details (pre-filled if signed in) and submit.</li>
+<li>Check <code>/waitlist/mine</code> to see status, or remove yourself at any time.</li>
+<li>When notified, you have 24 hours to book before the slot is offered to the next person in line.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#client-book">Book an appointment</a></div>
+</section>
+
+<section id="client-gift-cards" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Gift cards</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✓ (purchase only)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (see also owner section)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>Buy a studio gift card from its public page, or redeem a code at the deposit/payment step of booking to reduce what you owe by card. Balances never expire.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 260" role="img" aria-label="Gift card purchase wireframe">
+<rect x="280" y="30" width="200" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="300" y="60" font-size="12" font-weight="700">Buy a gift card</text>
+<rect x="300" y="76" width="50" height="24" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="313" y="92" font-size="9">€25</text>
+<rect x="358" y="76" width="50" height="24" rx="4" fill="#7c3aed" fill-opacity="0.2"/><text x="371" y="92" font-size="9">€50</text>
+<rect x="300" y="150" width="160" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="308" y="164" font-size="8" fill-opacity="0.5">your email</text>
+<rect x="300" y="196" width="160" height="24" rx="4" fill="#7c3aed"/><text x="336" y="212" font-size="9" fill="#fff">Buy</text>
+</svg>
+</figure>
+<figcaption>Gift card purchase — preset amounts, purchaser/recipient email</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>From the studio's public page, choose an amount and enter your email (and optionally a recipient's).</li>
+<li>Check your email to complete payment once your purchase is confirmed.</li>
+<li>At the deposit/payment step of a later booking, enter the code in <span class="step-title">Gift card code</span> and click <span class="step-title">Apply</span>.</li>
+</ol>
+<div class="callout callout-tip"><strong>Note:</strong> a partial redemption is fine — the remaining balance stays on the card.</div>
+<div class="crosslinks">See also: <a href="#owner-gift-cards">Owner: Gift cards</a>, <a href="#client-deposit">Pay a deposit</a></div>
+</section>
+
+<section id="client-packages" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Packages</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓ (see also owner section)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>At <code>/packages/buy</code>, buy a prepaid multi-session bundle. Once confirmed, toggle <strong>Use a package</strong> on the booking form to cover a session — no deposit needed for that booking. Non-refundable once purchased; unused sessions don't expire.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 220" role="img" aria-label="Package purchase wireframe">
+<rect x="20" y="30" width="720" height="70" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="58" font-size="11" font-weight="700">5-Session Sleeve Package</text>
+<text x="36" y="76" font-size="8" fill-opacity="0.6">5 sessions</text>
+<rect x="650" y="50" width="50" height="24" rx="4" fill="#7c3aed"/><text x="665" y="66" font-size="9" fill="#fff">Buy</text>
+</svg>
+</figure>
+<figcaption>Package purchase list — session count, price, buy button</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Go to <code>/packages/buy</code> to see packages available at your studio.</li>
+<li>Click <span class="step-title">Buy</span> and check your email to complete payment.</li>
+<li>When booking, toggle <span class="step-title">Use a package</span> and pick one with sessions remaining.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-packages">Owner: Packages</a>, <a href="#client-book">Book an appointment</a></div>
 </section>
 
 <section id="client-designs" data-role="client">
@@ -2697,6 +2790,106 @@ ol.steps li { margin: 6px 0; }
 <li>Submit — Card produces a shareable checkout link plus a session-splits editor; Cash records a pending cash payment to confirm later.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-payment-detail">Payment detail</a>, <a href="#owner-appointment-detail">Appointment detail</a></div>
+</section>
+
+<section id="owner-waitlist" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Waitlist</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own matches only)</td></tr><tr><td>Owner</td><td>✓ (studio-wide)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>At <code>/waitlist</code>: everyone waiting for a slot, filterable by status. When a slot frees up (cancellation or reschedule), the oldest matching entry is automatically notified by email — this page is for visibility, not manual selection. A notified entry has 24 hours to become a booking before it expires and cascades to the next person in line.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 300" role="img" aria-label="Waitlist queue wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Waitlist</text>
+<rect x="20" y="60" width="700" height="26" fill="currentColor" fill-opacity="0.04"/>
+<text x="30" y="78" font-size="8">Client</text><text x="180" y="78" font-size="8">Artist</text><text x="320" y="78" font-size="8">Preferred window</text><text x="520" y="78" font-size="8">Status</text><text x="620" y="78" font-size="8">Joined</text>
+<rect x="20" y="90" width="700" height="26" fill="currentColor" fill-opacity="0.02"/>
+</svg>
+</figure>
+<figcaption>Waitlist — client, artist, preferred window, status, joined-date columns</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Go to Waitlist and optionally filter by status: Waiting, Notified, Booked, Expired, Cancelled.</li>
+<li>As an artist, you only see entries matching you (or "any artist"); owners see the full studio-wide list.</li>
+</ol>
+<div class="callout callout-tip"><strong>Note:</strong> notification is fully automatic — there's no manual "notify" action on this page.</div>
+<div class="crosslinks">See also: <a href="#client-waitlist">Client: Join a waitlist</a></div>
+</section>
+
+<section id="owner-booth-rent" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Booth rent</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own schedule/charges, on My Earnings)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>At <code>/booth-rent</code>: bookkeeping-only tracking of what each artist owes for booth rent — no card is ever charged automatically. A daily job creates a charge row whenever a schedule comes due and advances its next-charge date; you mark a charge settled once you've collected it outside the app.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 320" role="img" aria-label="Booth rent wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Booth Rent</text><text x="640" y="25" font-size="9">+ New schedule</text>
+<text x="20" y="70" font-size="9" font-weight="700">Schedules</text>
+<rect x="20" y="78" width="700" height="30" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="30" y="97" font-size="8">Jane Doe — €75.00 / weekly — next charge Mar 14</text>
+<text x="20" y="140" font-size="9" font-weight="700">Charges</text>
+<rect x="20" y="148" width="700" height="26" fill="currentColor" fill-opacity="0.04"/>
+<text x="30" y="166" font-size="8">Artist</text><text x="180" y="166" font-size="8">Amount</text><text x="300" y="166" font-size="8">Charged</text><text x="440" y="166" font-size="8">Status</text>
+</svg>
+</figure>
+<figcaption>Booth Rent — schedules above, charges with a "Mark settled" action below</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click <span class="step-title">New schedule</span>, pick an artist, a fixed amount, weekly or monthly, and a first charge date.</li>
+<li>Charges appear automatically as they come due — no action needed to create them.</li>
+<li>Once you've collected the rent yourself (cash, transfer, etc.), click <span class="step-title">Mark settled</span> on that charge.</li>
+</ol>
+<div class="callout callout-warn"><strong>Note:</strong> this never charges anyone's card — it's a bookkeeping record only.</div>
+<div class="crosslinks">See also: <a href="#artist-earnings">Artist: My Earnings</a></div>
+</section>
+
+<section id="owner-gift-cards" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Gift cards</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>At <code>/gift-cards</code>: every gift card issued at your studio, its balance, and status. A card is <strong>Pending</strong> until payment is confirmed, then <strong>Active</strong>; void a card that shouldn't be usable anymore. Balances never expire.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 260" role="img" aria-label="Gift card list wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Gift Cards</text>
+<rect x="20" y="60" width="700" height="26" fill="currentColor" fill-opacity="0.04"/>
+<text x="30" y="78" font-size="8">Code</text><text x="180" y="78" font-size="8">Balance</text><text x="360" y="78" font-size="8">Status</text><text x="520" y="78" font-size="8">Purchased</text>
+<rect x="20" y="90" width="700" height="26" fill="currentColor" fill-opacity="0.02"/>
+<text x="650" y="107" font-size="8" fill="#dc2626">Void</text>
+</svg>
+</figure>
+<figcaption>Gift Cards — code, balance, status, void action</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Go to Gift Cards to see every card issued, remaining balance, and status.</li>
+<li>Click <span class="step-title">Void</span> on an active or pending card to cancel it — this can't be undone.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#client-gift-cards">Client: Gift cards</a></div>
+</section>
+
+<section id="owner-packages" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Packages</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>At <code>/packages</code>: create prepaid multi-session bundles clients can buy. Toggle a package's status badge to activate/deactivate it — inactive packages aren't offered to clients. Non-refundable once purchased; unused sessions don't expire.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 220" role="img" aria-label="Package management wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="11" font-weight="700">Packages</text><text x="640" y="25" font-size="9">+ New package</text>
+<rect x="20" y="60" width="700" height="40" rx="6" fill="currentColor" fill-opacity="0.04"/>
+<text x="30" y="82" font-size="9" font-weight="700">5-Session Sleeve Package</text>
+<text x="30" y="96" font-size="8" fill-opacity="0.6">5 sessions — €500.00</text>
+<rect x="640" y="72" width="60" height="18" rx="9" fill="currentColor" fill-opacity="0.12"/><text x="650" y="85" font-size="7">Active</text>
+</svg>
+</figure>
+<figcaption>Packages — name, session count, price, active/inactive toggle</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click <span class="step-title">New package</span>, set a name, session count, and price.</li>
+<li>Click a package's status badge to toggle it active/inactive.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#client-packages">Client: Packages</a></div>
 </section>
 
 <section id="owner-studio-profile" data-role="owner">

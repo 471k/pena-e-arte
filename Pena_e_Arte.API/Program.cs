@@ -164,6 +164,26 @@ try
             "storage-reconciliation",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 8)); // staggered after past-due-reminder (7am)
+
+        recurringJobs.AddOrUpdate<WaitlistNotificationExpiryJob>(
+            "waitlist-notification-expiry",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 9)); // staggered after storage-reconciliation (8am)
+
+        recurringJobs.AddOrUpdate<BoothRentChargeJob>(
+            "booth-rent-charge",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 10)); // staggered after waitlist-notification-expiry (9am)
+
+        recurringJobs.AddOrUpdate<GiftCardReconciliationJob>(
+            "gift-card-reconciliation",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 11)); // staggered after booth-rent-charge (10am)
+
+        recurringJobs.AddOrUpdate<PackagePurchaseReconciliationJob>(
+            "package-purchase-reconciliation",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 11, minute: 30)); // staggered after gift-card-reconciliation (11am)
     }
 
     // k8s/base/migration-job.yaml runs this exact image as a one-off Job (restartPolicy:
@@ -263,6 +283,10 @@ try
     app.MapReportEndpoints();
     app.MapConductReportEndpoints();
     app.MapMessagingEndpoints();
+    app.MapWaitlistEndpoints();
+    app.MapBoothRentEndpoints();
+    app.MapGiftCardEndpoints();
+    app.MapPackageEndpoints();
 
     app.Run();
 }

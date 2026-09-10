@@ -40,6 +40,10 @@ import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { MessagesInboxPage } from "@/features/messaging";
+import { WaitlistQueuePage, MyWaitlistPage } from "@/features/waitlist";
+import { BoothRentManagementPage } from "@/features/booth-rent";
+import { GiftCardListPage, PurchaseGiftCardPage } from "@/features/gift-cards";
+import { PackageListPage, PurchasePackagePage } from "@/features/session-packages";
 import { CampaignsPage } from "@/features/campaigns";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { ImpersonationBanner } from "@/shared/components/ImpersonationBanner";
@@ -154,6 +158,7 @@ export const routes = [
   { path: "/artist/:slug",            element: <ArtistPortfolioPage /> },
   { path: "/share/:token",            element: <SharedDesignPage /> },
   { path: "/embed/:studioSlug",       element: <EmbedPage /> },
+  { path: "/s/:slug/gift-cards/buy",  element: <PurchaseGiftCardPage /> },
 
   // ── Public policy / legal surfaces (PENA-101, PENA-102) ─────────────────────
   // Top-level, outside the authenticated AppRoot tree. Before these existed,
@@ -306,6 +311,57 @@ export const routes = [
                     children: [{ index: true, element: <ErrorBoundary><CreateDepositRulePage /></ErrorBoundary> }],
                   },
                   { path: ":id", element: <ErrorBoundary><DepositRuleDetailPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Shared: waitlist ─────────────────────────────────────────────
+              {
+                path: "waitlist",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><WaitlistQueuePage /></ErrorBoundary> },
+                ],
+              },
+              {
+                path: "waitlist/mine",
+                element: <RoleGuard allowedRoles={[Role.Client]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><MyWaitlistPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: booth rent ────────────────────────────────────────────
+              {
+                path: "booth-rent",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><BoothRentManagementPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: gift cards ────────────────────────────────────────────
+              {
+                path: "gift-cards",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><GiftCardListPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Shared: packages ─────────────────────────────────────────────
+              {
+                path: "packages",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Owner, Role.Admin]} />,
+                children: [
+                  {
+                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                    children: [{ index: true, element: <ErrorBoundary><PackageListPage /></ErrorBoundary> }],
+                  },
+                  {
+                    path: "buy",
+                    element: <RoleGuard allowedRoles={[Role.Client]} />,
+                    children: [{ index: true, element: <ErrorBoundary><PurchasePackagePage /></ErrorBoundary> }],
+                  },
                 ],
               },
 
