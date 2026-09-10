@@ -69,6 +69,7 @@ const PLANS: PlanResponse[] = [
     maxLocations:             null,
     allowApiAccess:           false,
     prioritySupport:          false,
+    allowMarketingCampaigns: false,
     prices: [
       { id: "price-1-m", interval: "Monthly", price: 29, stripePriceId: null, isActive: true },
     ],

@@ -84,6 +84,11 @@ export interface CreateAppointmentRequest {
   referralSourceOther?:       string | null;
   images?:                    AppointmentImageRequest[];
   promoCode?:                 string | null;
+  // Reward-bearing client referral (P1 #4) — distinct from referralSource ("how did you
+  // hear about us"). referralCode redeems someone else's ClientReferralCode; referralRewardId
+  // redeems the caller's own earned credit.
+  referralCode?:               string | null;
+  referralRewardId?:           string | null;
 }
 
 export interface AssignAppointmentArtistRequest {

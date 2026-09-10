@@ -41,6 +41,7 @@ public static class AuditActions
     /// never a MediatR command — see AdminBootstrapper.RunAsync.</summary>
     public const string AdminAccountBootstrapped = "Admin.AccountBootstrapped";
 
+    public const string CampaignSent = "Campaign.Sent";
     public const string ImpersonationSessionStarted = "ImpersonationSession.Started";
     public const string ImpersonationSessionEnded = "ImpersonationSession.Ended";
 }
@@ -59,5 +60,6 @@ public static class AuditTargetTypes
     public const string ManualReminder = "ManualReminder";
     public const string ConductReport = "ConductReport";
     public const string User = "User";
+    public const string Campaign = "Campaign";
     public const string ImpersonationSession = "ImpersonationSession";
 }

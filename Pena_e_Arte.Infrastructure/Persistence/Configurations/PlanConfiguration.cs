@@ -14,6 +14,7 @@ public class PlanConfiguration : IEntityTypeConfiguration<Plan>
         builder.Property(p => p.Name).HasMaxLength(100).IsRequired();
         builder.Property(p => p.AllowApiAccess).HasDefaultValue(false);
         builder.Property(p => p.PrioritySupport).HasDefaultValue(false);
+        builder.Property(p => p.AllowMarketingCampaigns).HasDefaultValue(false);
 
         builder.HasMany(p => p.Prices)
                .WithOne(pp => pp.Plan)

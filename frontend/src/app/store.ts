@@ -30,6 +30,9 @@ import { reportsApi } from "@/features/reports/reportsApi";
 import { socialApi } from "@/features/social/socialApi";
 import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
 import { messagingApi } from "@/features/messaging/messagingApi";
+import { clientReferralsApi } from "@/features/client-referrals/clientReferralsApi";
+import { campaignsApi } from "@/features/campaigns/campaignsApi";
+import { marketingApi } from "@/features/public/marketingApi";
 
 const appReducer = combineReducers({
   auth:          authReducer,
@@ -62,6 +65,9 @@ const appReducer = combineReducers({
   [socialApi.reducerPath]:         socialApi.reducer,
   [conductReportsApi.reducerPath]: conductReportsApi.reducer,
   [messagingApi.reducerPath]:      messagingApi.reducer,
+  [clientReferralsApi.reducerPath]: clientReferralsApi.reducer,
+  [campaignsApi.reducerPath]:      campaignsApi.reducer,
+  [marketingApi.reducerPath]:      marketingApi.reducer,
 });
 
 type AppState = ReturnType<typeof appReducer>;
@@ -137,6 +143,9 @@ export const store = configureStore({
       socialApi.middleware,
       conductReportsApi.middleware,
       messagingApi.middleware,
+      clientReferralsApi.middleware,
+      campaignsApi.middleware,
+      marketingApi.middleware,
     ),
 });
 

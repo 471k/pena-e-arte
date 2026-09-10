@@ -199,6 +199,7 @@ export interface CreateGuestAppointmentRequest {
     desiredPlacementLocations?: string[];
     referralSource?:            string | null;
     referralSourceOther?:       string | null;
+    referralCode?:              string | null;
     images?: { url: string; category: string }[];
     promoCode?: string | null;
   };

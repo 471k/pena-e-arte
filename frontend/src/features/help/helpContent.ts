@@ -329,6 +329,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     relatedArticleIds: ["client-book-appointment"],
   },
+  {
+    id: "client-referrals",
+    roles: [Client],
+    title: "Refer a friend",
+    route: "/book",
+    keywords: ["refer a friend", "referral code", "referral credit", "invite a friend", "discount", "share code"],
+    summary: "Share your referral code — your friend gets a percentage off their deposit, and you earn a matching credit toward your own next booking.",
+    steps: [
+      "On the Book page, find the \"Refer a friend\" card and copy your referral link (or share your code directly).",
+      "When a friend books using your code, their deposit is discounted by the reward percentage shown on your card.",
+      "You automatically earn a matching percentage credit — check the \"Refer a friend\" card for any unredeemed credit.",
+      "The next time you book, toggle \"Apply your referral credit\" to spend it on that booking's deposit.",
+      "To redeem someone else's code instead, enter it in the \"Referral code\" field on the booking form.",
+    ],
+    tips: [
+      "You can't redeem your own referral code, and each code can only be redeemed once per person.",
+      "Your earned credit doesn't expire until you spend it, and only applies to your own bookings.",
+      "The referral code field is separate from \"How did you hear about us\" — that's unrelated marketing attribution, not a reward code.",
+    ],
+    relatedArticleIds: ["client-book-appointment"],
+  },
 
   // ── Artist ──────────────────────────────────────────────────────────────
   {
@@ -1152,6 +1173,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Scroll down to \"Revenue by artist\" for a breakdown of the last 30 days, sorted highest first.",
     ],
     tips: ["Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't."],
+  },
+  {
+    id: "owner-campaigns",
+    roles: [Owner],
+    title: "Marketing email campaigns",
+    route: "/campaigns",
+    keywords: ["marketing", "campaign", "email blast", "newsletter", "promo email", "no recent visit", "unsubscribe"],
+    summary: "Send a one-off marketing email to your clients who've opted in — everyone, or just clients who haven't visited recently.",
+    steps: [
+      "Go to Campaigns and fill in a subject and message, then choose an audience: all opted-in clients, or only those with no recent visit.",
+      "For \"no recent visit,\" set how many days count as recent.",
+      "Click \"Save draft\" to save it without sending.",
+      "When ready, click \"Send\" next to a draft — it fans out in the background and the send history shows delivered/total counts as it progresses.",
+    ],
+    tips: [
+      "Only clients who've opted in to marketing email ever receive a campaign — this is separate from appointment reminders and booking confirmations, which every client still gets.",
+      "Every campaign email includes an unsubscribe link automatically; a client who clicks it won't receive future campaigns.",
+      "Campaigns are included on Growth, Premium, and Pro plans — not Free or Starter.",
+    ],
   },
   {
     id: "artist-earnings",

@@ -159,6 +159,11 @@ try
             "past-due-reminder",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 7)); // staggered after r2-export (6am)
+
+        recurringJobs.AddOrUpdate<StorageReconciliationJob>(
+            "storage-reconciliation",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 8)); // staggered after past-due-reminder (7am)
     }
 
     // k8s/base/migration-job.yaml runs this exact image as a one-off Job (restartPolicy:
@@ -248,6 +253,9 @@ try
     app.MapManualReminderEndpoints();
     app.MapFileEndpoints();
     app.MapReferralEndpoints();
+    app.MapClientReferralEndpoints();
+    app.MapCampaignEndpoints();
+    app.MapMarketingEndpoints();
     app.MapPlatformEndpoints();
     app.MapFeedbackEndpoints();
     app.MapReviewEndpoints();

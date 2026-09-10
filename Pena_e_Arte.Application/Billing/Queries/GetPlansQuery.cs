@@ -28,6 +28,7 @@ public class GetPlansHandler(IAppDbContext db)
                 p.MaxLocations,
                 p.AllowApiAccess,
                 p.PrioritySupport,
+                p.AllowMarketingCampaigns,
                 p.Prices.Select(pp => new PlanPriceResponse(
                     pp.Id, pp.Interval.ToString(), pp.Price, pp.StripePriceId, pp.IsActive)).ToList()))
             .ToListAsync(ct);

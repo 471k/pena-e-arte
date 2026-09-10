@@ -156,6 +156,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
   const [tattooDescriptionError, setTattooDescriptionError] = useState<string | null>(null);
   const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
   const [desiredPlacement, setDesiredPlacement] = useState<string[]>([]);
+  const [referralCode, setReferralCode] = useState("");
   const [areaPhotoError, setAreaPhotoError] = useState<string | null>(null);
   const [referenceImageError, setReferenceImageError] = useState<string | null>(null);
 
@@ -237,6 +238,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
           desiredPlacementLocations: desiredPlacement,
           referralSource:            intake.referralSource || null,
           referralSourceOther:       intake.referralSourceOther || null,
+          referralCode:              referralCode.trim() || null,
           images,
           promoCode: values.promoCode || null,
         },
@@ -460,6 +462,18 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
       />
 
       <DesiredPlacementField locations={desiredPlacement} onChange={setDesiredPlacement} />
+
+      {/* Referral code — distinct from "how did you hear about us" above. */}
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="guestReferralCode">Referral code (optional)</FieldLabel>
+        <Input
+          id="guestReferralCode"
+          placeholder="e.g. ABC12345"
+          value={referralCode}
+          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+          disabled={submitting}
+        />
+      </div>
 
       {/* Both required for guest checkout (Decision #6) — unlike the existing authenticated
           form, which keeps both optional (Part 6d note). */}

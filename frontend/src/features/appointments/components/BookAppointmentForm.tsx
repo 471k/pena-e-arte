@@ -36,6 +36,7 @@ import { useGetDepositRulesQuery }                from "@/features/deposit-rules
 import { useGetPublicStudioQuery }                from "@/features/public/publicApi";
 import { useEnsureActiveStudio }                  from "@/features/auth/useEnsureActiveStudio";
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
+import { useGetMyReferralRewardsQuery }           from "@/features/client-referrals/clientReferralsApi";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
 import { FieldLabel }                             from "./FieldLabel";
 import { TattooIntakeFields } from "./TattooIntakeFields";
@@ -290,6 +291,14 @@ export function BookAppointmentForm() {
   const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
   const [desiredPlacement, setDesiredPlacement] = useState<string[]>([]);
 
+  // Reward-bearing client referral (P1 #4) — distinct from the "how did you hear about
+  // us" referralSource above. referralCode redeems someone else's code; applyOwnReward
+  // spends the client's own earned credit (pre-checked when one exists).
+  const [referralCode, setReferralCode] = useState("");
+  const { data: myRewards } = useGetMyReferralRewardsQuery(undefined, { skip: !isClientRole });
+  const unredeemedReward = myRewards?.find((r) => !r.isRedeemed) ?? null;
+  const [applyOwnReward, setApplyOwnReward] = useState(true);
+
   const {
     register,
     control,
@@ -385,6 +394,8 @@ export function BookAppointmentForm() {
       desiredPlacementLocations:  desiredPlacement,
       referralSource:             intake.referralSource || null,
       referralSourceOther:        intake.referralSourceOther || null,
+      referralCode:               referralCode.trim() || null,
+      referralRewardId:           (isClientRole && applyOwnReward && unredeemedReward) ? unredeemedReward.id : null,
       ...(images.length > 0 ? { images } : {}),
     };
     const result = flashDesign?.flashDesignId
@@ -409,6 +420,8 @@ export function BookAppointmentForm() {
       referenceImages.clear();
       setIntake({ tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "" });
       setDesiredPlacement([]);
+      setReferralCode("");
+      setApplyOwnReward(true);
     } else {
       const errMsg =
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
@@ -820,6 +833,36 @@ export function BookAppointmentForm() {
           className="resize-none"
         />
       </div>
+
+      {/* Referral code — distinct from "how did you hear about us" above, and from any
+          promo-code/gift-card fields other features add at this same site. Keep these
+          clearly labeled ("Promo code", "Gift card", "Referral code") rather than one
+          ambiguous "discount code" field, since a booking can carry all three. */}
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="referralCode">Referral code (optional)</FieldLabel>
+        <Input
+          id="referralCode"
+          placeholder="e.g. ABC12345"
+          value={referralCode}
+          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+        />
+      </div>
+
+      {isClientRole && unredeemedReward && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed p-3">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Apply your referral credit</p>
+            <p className="text-xs text-muted-foreground">
+              {unredeemedReward.rewardPercent}% off this booking's deposit.
+            </p>
+          </div>
+          <ToggleSwitch
+            checked={applyOwnReward}
+            onChange={() => setApplyOwnReward((v) => !v)}
+            aria-label="Apply your referral credit"
+          />
+        </div>
+      )}
 
       {/* Area photo + reference images */}
       <CategorizedImagesField

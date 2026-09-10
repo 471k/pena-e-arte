@@ -1,11 +1,21 @@
 using MediatR;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Files.Queries;
 
-public record GetPresignedUploadUrlQuery(PresignUploadRequest Request) : IRequest<PresignUploadResponse>;
+// IQuotaCheckedCommand on a query, not just a command — PlanLimitBehavior's pipeline
+// registration (Program.cs) is generic over IRequest<TResponse>, not command-only, and this
+// is the best real-time enforcement available for storage (see StorageReconciliationJob's
+// doc comment): it stops a studio already over quota per yesterday's reconciliation from
+// minting further upload URLs, even though the reconciliation itself is up to ~24h stale.
+public record GetPresignedUploadUrlQuery(PresignUploadRequest Request)
+    : IRequest<PresignUploadResponse>, IQuotaCheckedCommand
+{
+    public QuotaType QuotaType => QuotaType.StorageBytes;
+}
 
 public class GetPresignedUploadUrlHandler(IR2Service r2, ICurrentTenant tenant)
     : IRequestHandler<GetPresignedUploadUrlQuery, PresignUploadResponse>

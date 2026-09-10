@@ -30,6 +30,7 @@ const PLAN_STARTER: PlanResponse = {
   maxLocations:             null,
   allowApiAccess:           false,
   prioritySupport:          false,
+  allowMarketingCampaigns: false,
   prices: [
     { id: "price-starter-m", interval: "Monthly", price: 29, stripePriceId: null, isActive: true },
   ],
@@ -50,6 +51,7 @@ const PLAN_PREMIUM: PlanResponse = {
   maxLocations:             null,
   allowApiAccess:           false,
   prioritySupport:          false,
+  allowMarketingCampaigns: false,
   prices: [
     { id: "price-premium-m", interval: "Monthly", price: 49, stripePriceId: "price_premium_m", isActive: true },
     { id: "price-premium-y", interval: "Yearly", price: 490, stripePriceId: "price_premium_y", isActive: true },
@@ -71,6 +73,7 @@ const FREE_PLAN: PlanResponse = {
   maxLocations:             1,
   allowApiAccess:           false,
   prioritySupport:          false,
+  allowMarketingCampaigns: false,
   prices: [
     { id: "price-free-m", interval: "Monthly", price: 0, stripePriceId: null, isActive: true },
   ],

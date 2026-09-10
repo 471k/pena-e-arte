@@ -19,6 +19,7 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi } from "@/features/public/publicApi";
 import { authApi } from "@/features/auth/authApi";
 import { filesApi } from "@/shared/api/filesApi";
+import { clientReferralsApi } from "@/features/client-referrals/clientReferralsApi";
 import { designsApi } from "@/features/designs/designsApi";
 
 import { BookPage } from "@/features/appointments/components/BookPage";
@@ -137,6 +138,11 @@ const server = setupServer(
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
   http.post("http://localhost/api/v1/appointments",           () => HttpResponse.json(CREATED_APPT, { status: 201 })),
+  http.get("http://localhost/api/v1/clients/me/referrals/rewards", () => HttpResponse.json([])),
+  http.post("http://localhost/api/v1/clients/me/referrals/code", () => HttpResponse.json({
+    id: "ref-code-001", code: "TESTREF1", shareUrl: "https://tattooos.co/book?studio=test-studio&referral=TESTREF1",
+    rewardPercent: 10, redemptionCount: 0,
+  })),
   http.delete("http://localhost/api/v1/appointments/:id",     () => new HttpResponse(null, { status: 204 })),
   http.patch("http://localhost/api/v1/appointments/:id/reschedule", () =>
     HttpResponse.json(APPT_UPCOMING)),
@@ -166,6 +172,7 @@ function makeStore(role: Role = Role.Client) {
       [publicApi.reducerPath]:           publicApi.reducer,
       [authApi.reducerPath]:             authApi.reducer,
       [filesApi.reducerPath]:            filesApi.reducer,
+      [clientReferralsApi.reducerPath]:  clientReferralsApi.reducer,
       [designsApi.reducerPath]:          designsApi.reducer,
     },
     middleware: (gd) =>
@@ -179,6 +186,7 @@ function makeStore(role: Role = Role.Client) {
         .concat(publicApi.middleware)
         .concat(authApi.middleware)
         .concat(filesApi.middleware)
+        .concat(clientReferralsApi.middleware)
         .concat(designsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -224,6 +232,7 @@ function renderFormWithNoTenant() {
       [publicApi.reducerPath]:       publicApi.reducer,
       [authApi.reducerPath]:         authApi.reducer,
       [filesApi.reducerPath]:        filesApi.reducer,
+      [clientReferralsApi.reducerPath]: clientReferralsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -235,7 +244,8 @@ function renderFormWithNoTenant() {
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
         .concat(authApi.middleware)
-        .concat(filesApi.middleware),
+        .concat(filesApi.middleware)
+        .concat(clientReferralsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null, impersonation: null } as any,
