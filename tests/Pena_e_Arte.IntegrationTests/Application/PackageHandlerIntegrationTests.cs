@@ -119,8 +119,11 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
         {
             ctx.ArtistSchedules.Add(new ArtistSchedule
             {
-                ArtistId = artist.Id, StudioId = tenantId, DayOfWeek = day,
-                StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                ArtistId = artist.Id,
+                StudioId = tenantId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
         }
@@ -133,9 +136,13 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         PackagePurchase purchase = new()
         {
-            StudioId = tenantId, PackageId = packageId, ClientId = clientId,
-            SessionsRemaining = sessionsRemaining, ProviderReferenceId = "pi_confirmed",
-            Provider = "pok", ConfirmedAt = DateTime.UtcNow,
+            StudioId = tenantId,
+            PackageId = packageId,
+            ClientId = clientId,
+            SessionsRemaining = sessionsRemaining,
+            ProviderReferenceId = "pi_confirmed",
+            Provider = "pok",
+            ConfirmedAt = DateTime.UtcNow,
         };
         ctx.PackagePurchases.Add(purchase);
         await ctx.SaveChangesAsync();

@@ -104,7 +104,10 @@ public class BoothRentHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         Artist artist = new()
         {
-            StudioId = tenantId, UserId = userId, FirstName = "A", LastName = "B",
+            StudioId = tenantId,
+            UserId = userId,
+            FirstName = "A",
+            LastName = "B",
             Email = $"{Guid.NewGuid()}@a.com",
         };
         ctx.Artists.Add(artist);
@@ -117,16 +120,24 @@ public class BoothRentHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         BoothRentSchedule schedule = new()
         {
-            StudioId = tenantId, ArtistId = artistId, AmountFixed = 50m,
-            Frequency = Domain.Enums.RentFrequency.Weekly, NextChargeDate = DateTime.UtcNow.AddDays(7), IsActive = true,
+            StudioId = tenantId,
+            ArtistId = artistId,
+            AmountFixed = 50m,
+            Frequency = Domain.Enums.RentFrequency.Weekly,
+            NextChargeDate = DateTime.UtcNow.AddDays(7),
+            IsActive = true,
         };
         ctx.BoothRentSchedules.Add(schedule);
         await ctx.SaveChangesAsync();
 
         BoothRentCharge charge = new()
         {
-            StudioId = tenantId, BoothRentScheduleId = schedule.Id, ArtistId = artistId,
-            Amount = 50m, ChargedDate = DateTime.UtcNow, IsSettled = false,
+            StudioId = tenantId,
+            BoothRentScheduleId = schedule.Id,
+            ArtistId = artistId,
+            Amount = 50m,
+            ChargedDate = DateTime.UtcNow,
+            IsSettled = false,
         };
         ctx.BoothRentCharges.Add(charge);
         await ctx.SaveChangesAsync();

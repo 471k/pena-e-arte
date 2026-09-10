@@ -171,7 +171,10 @@ public class WaitlistHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         Client client = new()
         {
-            StudioId = tenantId, UserId = userId, FirstName = "C", LastName = "L",
+            StudioId = tenantId,
+            UserId = userId,
+            FirstName = "C",
+            LastName = "L",
             Email = $"{Guid.NewGuid()}@c.com",
         };
         ctx.Clients.Add(client);
@@ -221,8 +224,11 @@ public class WaitlistHandlerIntegrationTests(DatabaseFixture fixture)
         {
             ctx.ArtistSchedules.Add(new ArtistSchedule
             {
-                ArtistId = artist.Id, StudioId = tenantId, DayOfWeek = day,
-                StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                ArtistId = artist.Id,
+                StudioId = tenantId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
         }
@@ -237,9 +243,14 @@ public class WaitlistHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
         Appointment appt = new()
         {
-            StudioId = tenantId, ArtistId = artistId, ClientId = clientId,
-            Date = start, EndDate = end, DurationMinutes = (int)(end - start).TotalMinutes,
-            Status = AppointmentStatus.Pending, DepositStatus = DepositStatus.Pending,
+            StudioId = tenantId,
+            ArtistId = artistId,
+            ClientId = clientId,
+            Date = start,
+            EndDate = end,
+            DurationMinutes = (int)(end - start).TotalMinutes,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
         };
         ctx.Appointments.Add(appt);
         await ctx.SaveChangesAsync();

@@ -84,8 +84,13 @@ public class GiftCardHandlerIntegrationTests(DatabaseFixture fixture)
         string code = $"BAL{Guid.NewGuid():N}"[..12].ToUpperInvariant();
         ctx.GiftCards.Add(new GiftCard
         {
-            StudioId = tenantId, Code = code, InitialBalance = balance, RemainingBalance = balance,
-            PurchaserEmail = "buyer@example.com", Status = GiftCardStatus.Active, Provider = "pok",
+            StudioId = tenantId,
+            Code = code,
+            InitialBalance = balance,
+            RemainingBalance = balance,
+            PurchaserEmail = "buyer@example.com",
+            Status = GiftCardStatus.Active,
+            Provider = "pok",
         });
         await ctx.SaveChangesAsync();
         return code;

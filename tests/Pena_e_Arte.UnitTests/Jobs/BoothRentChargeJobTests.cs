@@ -104,7 +104,11 @@ public class BoothRentChargeJobTests
     {
         _db.Artists.Add(new Artist
         {
-            Id = _artistId, StudioId = _studioId, FirstName = "A", LastName = "B", Email = "a@b.com",
+            Id = _artistId,
+            StudioId = _studioId,
+            FirstName = "A",
+            LastName = "B",
+            Email = "a@b.com",
         });
         await _db.SaveChangesAsync(default);
     }
