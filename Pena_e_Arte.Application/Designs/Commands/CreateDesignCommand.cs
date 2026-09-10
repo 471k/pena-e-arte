@@ -48,5 +48,6 @@ public class CreateDesignHandler(IAppDbContext db, ICurrentTenant tenant, ICurre
     }
 
     internal static DesignResponse Map(Design d) =>
-        new(d.Id, d.StudioId, d.ClientId, d.ArtistId, d.Title, d.Description, d.CreatedAt);
+        new(d.Id, d.StudioId, d.ClientId, d.ArtistId, d.Title, d.Description, d.CreatedAt,
+            IsCatalogItem: d.IsCatalogItem, Price: d.Price);
 }

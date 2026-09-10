@@ -34,6 +34,7 @@ const PLANS: PlanResponse[] = [
     maxLocations:             null,
     allowApiAccess:           false,
     prioritySupport:          false,
+    allowMarketingCampaigns: false,
     prices: [
       { id: "price-1-m", interval: "Monthly", price: 29, stripePriceId: null, isActive: true },
     ],
@@ -51,6 +52,7 @@ const PLANS: PlanResponse[] = [
     maxLocations:             null,
     allowApiAccess:           false,
     prioritySupport:          false,
+    allowMarketingCampaigns: false,
     prices: [
       { id: "price-2-m", interval: "Monthly", price: 49, stripePriceId: null, isActive: true },
       { id: "price-2-y", interval: "Yearly", price: 490, stripePriceId: null, isActive: true },
@@ -118,6 +120,7 @@ const FREE_PLAN: PlanResponse = {
   maxLocations:             1,
   allowApiAccess:           false,
   prioritySupport:          false,
+  allowMarketingCampaigns: false,
   prices: [
     { id: "price-free-m", interval: "Monthly", price: 0, stripePriceId: null, isActive: true },
   ],
@@ -179,8 +182,8 @@ function makeStore() {
     middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake-token", tenantId: "t1", role: "owner", pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u3", email: "owner@ink.test" }, token: "fake-token", tenantId: "t1", role: "owner", pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

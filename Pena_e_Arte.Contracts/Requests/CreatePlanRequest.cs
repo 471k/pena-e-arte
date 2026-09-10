@@ -11,4 +11,5 @@ public record CreatePlanRequest(
     int? MaxLocations = null,
     bool AllowApiAccess = false,
     bool PrioritySupport = false,
-    bool AllowBrandingRemoval = false);
+    bool AllowBrandingRemoval = false,
+    bool AllowMarketingCampaigns = false);

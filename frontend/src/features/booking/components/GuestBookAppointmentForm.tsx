@@ -63,6 +63,7 @@ const schema = z.object({
     (v) => (VALID_DURATIONS as readonly number[]).includes(v),
     "Select a valid appointment duration",
   ),
+  promoCode: z.string().optional(),
   notes: z.string().optional(),
 }).refine(
   (data) => data.bookAnyArtist || (!!data.artistId && data.artistId.length > 0),
@@ -155,6 +156,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
   const [tattooDescriptionError, setTattooDescriptionError] = useState<string | null>(null);
   const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
   const [desiredPlacement, setDesiredPlacement] = useState<string[]>([]);
+  const [referralCode, setReferralCode] = useState("");
   const [areaPhotoError, setAreaPhotoError] = useState<string | null>(null);
   const [referenceImageError, setReferenceImageError] = useState<string | null>(null);
 
@@ -236,7 +238,9 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
           desiredPlacementLocations: desiredPlacement,
           referralSource:            intake.referralSource || null,
           referralSourceOther:       intake.referralSourceOther || null,
+          referralCode:              referralCode.trim() || null,
           images,
+          promoCode: values.promoCode || null,
         },
       },
     });
@@ -438,6 +442,17 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
         />
       )}
 
+      {/* Promo code */}
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
+        <Input
+          id="promoCode"
+          placeholder="Optional"
+          autoCapitalize="characters"
+          {...register("promoCode")}
+        />
+      </div>
+
       {/* Tattoo description, referral source, safety notes */}
       <TattooIntakeFields
         value={intake}
@@ -447,6 +462,18 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
       />
 
       <DesiredPlacementField locations={desiredPlacement} onChange={setDesiredPlacement} />
+
+      {/* Referral code — distinct from "how did you hear about us" above. */}
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="guestReferralCode">Referral code (optional)</FieldLabel>
+        <Input
+          id="guestReferralCode"
+          placeholder="e.g. ABC12345"
+          value={referralCode}
+          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+          disabled={submitting}
+        />
+      </div>
 
       {/* Both required for guest checkout (Decision #6) — unlike the existing authenticated
           form, which keeps both optional (Part 6d note). */}

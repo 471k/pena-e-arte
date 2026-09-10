@@ -282,5 +282,6 @@ public class RetentionPurgeJobIntegrationTests(DatabaseFixture fixture)
     private sealed record StubCurrentUser(Guid UserId, string Role, string? Email = null) : ICurrentUser
     {
         public bool IsAuthenticated => true;
+        public bool IsImpersonating => false;
     }
 }

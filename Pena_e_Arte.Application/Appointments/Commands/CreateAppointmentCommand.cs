@@ -160,6 +160,86 @@ public class CreateAppointmentHandler(
                 depositStatus = DepositStatus.Pending;
             }
 
+            // ── Discount stacking order (documented once, here, rather than scattered across
+            // uncoordinated edits): promo code → gift card → referral-code redemption →
+            // referral-reward redemption, each applied to whatever remains after the previous
+            // one, floored at 0. Gift card (P1 Group 3) redemption at booking time doesn't
+            // exist — gift cards are redeemed separately, not wired into this handler. Entire
+            // block skipped for a package-covered booking: depositAmount is already 0 (paid for
+            // via the package purchase), so applying a discount would do nothing except
+            // needlessly consume the client's code/reward for zero benefit.
+            // IgnoreQueryFilters() throughout this block for the same reason as
+            // Artists/DepositRules above — this core is shared with the anonymous
+            // guest-booking path, which has no ambient tenant scope.
+            bool promoCodeApplied = false;
+            ClientReferralCode? redeemedReferralCode = null;
+            ClientReferralReward? spentReward = null;
+
+            if (packagePurchase is null)
+            {
+                if (!string.IsNullOrWhiteSpace(req.PromoCode))
+                {
+                    string normalizedCode = req.PromoCode.Trim().ToUpperInvariant();
+                    DateTime now = DateTime.UtcNow;
+
+                    PromoCode? promoCode = await db.PromoCodes
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(p =>
+                            p.StudioId == studioId &&
+                            p.DeletedAt == null &&
+                            p.IsActive &&
+                            p.Code == normalizedCode &&
+                            (p.ExpiresAt == null || p.ExpiresAt > now) &&
+                            (p.MaxRedemptions == null || p.RedemptionCount < p.MaxRedemptions.Value), ct);
+
+                    // A guest fat-fingering a promo code should never block their booking — a
+                    // missing/expired/exhausted/wrong-studio code is silently ignored rather than
+                    // thrown; PromoCodeApplied on the response tells the frontend whether to show
+                    // a "not recognized" note.
+                    if (promoCode is not null)
+                    {
+                        decimal discount = promoCode.AmountFixed
+                            ?? Math.Round(depositAmount * (promoCode.AmountPercent ?? 0m) / 100m, 2, MidpointRounding.AwayFromZero);
+
+                        depositAmount = Math.Max(0m, depositAmount - discount);
+                        promoCode.RedemptionCount++;
+                        promoCode.UpdatedAt = now;
+                        promoCodeApplied = true;
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(req.ReferralCode))
+                {
+                    redeemedReferralCode = await db.ClientReferralCodes.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(c => c.StudioId == studioId && c.DeletedAt == null && c.Code == req.ReferralCode, ct)
+                        ?? throw new BusinessRuleViolationException("That referral code isn't valid for this studio.");
+
+                    if (redeemedReferralCode.ReferrerClientId == clientId)
+                        throw new BusinessRuleViolationException("You can't redeem your own referral code.");
+
+                    bool alreadyRedeemed = await db.ClientReferralRedemptions.IgnoreQueryFilters().AnyAsync(r =>
+                        r.ClientReferralCodeId == redeemedReferralCode.Id && r.RedeemedByClientId == clientId, ct);
+                    if (alreadyRedeemed)
+                        throw new BusinessRuleViolationException("You've already redeemed this referral code.");
+
+                    depositAmount = Math.Max(0, depositAmount - depositAmount * redeemedReferralCode.RewardPercent / 100m);
+                }
+
+                if (req.ReferralRewardId is Guid rewardId)
+                {
+                    spentReward = await db.ClientReferralRewards.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(r => r.Id == rewardId && r.DeletedAt == null, ct)
+                        ?? throw new NotFoundException(nameof(ClientReferralReward), rewardId);
+
+                    if (spentReward.ClientId != clientId)
+                        throw new BusinessRuleViolationException("This referral reward doesn't belong to you.");
+                    if (spentReward.IsRedeemed)
+                        throw new BusinessRuleViolationException("This referral reward has already been redeemed.");
+
+                    depositAmount = Math.Max(0, depositAmount - depositAmount * spentReward.RewardPercent / 100m);
+                }
+            }
+
             Appointment appointment = new()
             {
                 StudioId = studioId,
@@ -215,9 +295,44 @@ public class CreateAppointmentHandler(
                 appointment.Id, "48h", appointment.Date.AddHours(-48));
             appointment.ReminderJobId24h = jobs.ScheduleAppointmentReminder(
                 appointment.Id, "24h", appointment.Date.AddHours(-24));
+
+            if (redeemedReferralCode is not null)
+            {
+                // Ids are client-generated (TenantEntity.Id = Guid.NewGuid() at construction),
+                // not DB-assigned — safe to reference redemption.Id before SaveChangesAsync.
+                ClientReferralRedemption redemption = new()
+                {
+                    StudioId = studioId,
+                    ClientReferralCodeId = redeemedReferralCode.Id,
+                    RedeemedByClientId = clientId,
+                    AppointmentId = appointment.Id,
+                };
+                db.ClientReferralRedemptions.Add(redemption);
+                redeemedReferralCode.RedemptionCount++;
+                redeemedReferralCode.UpdatedAt = DateTime.UtcNow;
+
+                // Two-sided: the referrer doesn't get their discount applied to anything right
+                // now (they aren't necessarily booking) — they get a spendable credit instead.
+                db.ClientReferralRewards.Add(new ClientReferralReward
+                {
+                    StudioId = studioId,
+                    ClientId = redeemedReferralCode.ReferrerClientId,
+                    SourceRedemptionId = redemption.Id,
+                    RewardPercent = redeemedReferralCode.RewardPercent,
+                    IsRedeemed = false,
+                });
+            }
+
+            if (spentReward is not null)
+            {
+                spentReward.IsRedeemed = true;
+                spentReward.RedeemedOnAppointmentId = appointment.Id;
+                spentReward.UpdatedAt = DateTime.UtcNow;
+            }
+
             await db.SaveChangesAsync(ct);
 
-            AppointmentResponse response = Map(appointment);
+            AppointmentResponse response = Map(appointment, promoCodeApplied: promoCodeApplied);
             await realtime.NotifyStudioAsync(studioId, "AppointmentCreated", response, ct);
 
             await sender.Send(new SendAppointmentCreatedNotificationCommand(appointment.Id), ct);
@@ -232,7 +347,8 @@ public class CreateAppointmentHandler(
     }
 
     internal static AppointmentResponse Map(
-        Appointment a, string? clientName = null, string? artistName = null, Guid? clientUserId = null)
+        Appointment a, string? clientName = null, string? artistName = null, Guid? clientUserId = null,
+        bool promoCodeApplied = false)
     {
         List<AppointmentAttachmentResponse> attachments = a.Attachments
             .OrderBy(x => x.UploadedAt)
@@ -259,6 +375,7 @@ public class CreateAppointmentHandler(
             a.Intake?.DesiredPlacement.Locations,
             a.Intake?.ReferralSource?.ToString(),
             a.Intake?.ReferralSourceOther,
-            attachments);
+            attachments,
+            promoCodeApplied);
     }
 }

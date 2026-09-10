@@ -13,4 +13,5 @@ public record PlanResponse(
     int? MaxLocations,
     bool AllowApiAccess,
     bool PrioritySupport,
+    bool AllowMarketingCampaigns,
     List<PlanPriceResponse> Prices);

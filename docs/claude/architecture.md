@@ -1105,6 +1105,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 49 | `GetPublicDepositRuleHandler` | `Studio` slug lookup + cross-tenant `DepositRule` lookup ("single active rule, if any" — same query `CreateAppointmentCoreAsync` itself runs) for the guest deposit-preview estimate | Anonymous |
 | 50 | `GetPresignedGuestUploadUrlHandler` | `Studio` slug lookup, scoping the server-constructed R2 key for anonymous image upload (Decision #10, guest-checkout prompt) | Anonymous |
 | 51 | `ArtistAvailabilityExtensions` (`IsAnyArtistAvailableAsync`, `CheckArtistScheduleAsync`, `CheckArtistSlotAvailabilityAsync`) + `CreateAppointmentCommand.CreateAppointmentCoreAsync` | Cross-tenant `Artist`/`ArtistSchedule`/`ArtistTimeOff`/`Appointment`/`StudioClosure`/`DepositRule` queries, every one explicitly scoped by an `studioId` parameter rather than the ambient tenant filter — required because these are shared by both an authenticated caller (`CreateAppointmentCommand`, `RescheduleAppointmentCommand`, `CheckSlotAvailabilityQuery` — real `ICurrentTenant.StudioId`) and an anonymous one (`CreateGuestAppointmentHandler`, `CheckPublicSlotAvailabilityHandler` — no JWT at all, `ICurrentTenant.StudioId` defaults to `Guid.Empty`). Found as a real bug during the guest-checkout prompt (2026-08-31): without `IgnoreQueryFilters()`, EF Core's global filter (`StudioId == tenant.StudioId`) still ANDs against the explicit predicate, silently zeroing every result for an anonymous caller regardless of the real studio — caught by a real-`AppDbContext` integration test (`GuestCheckoutBookingIntegrationTests`), not unit tests, since the unit-test `FakeDbContext` never registers query filters at all | Authenticated (`ClientAndAbove`) + Anonymous |
+| 52 | `StartImpersonationHandler`, `EndImpersonationSessionHandler`, `GetImpersonationSessionsHandler` | AdminOnly cross-tenant `Studio`/`ImpersonationSession` lookups — the calling admin's own JWT carries no `tenant_id` claim while starting/ending/browsing sessions (they are not impersonating yet, or ever, for these three commands themselves), so the normal tenant filter would match nothing | AdminOnly |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -1154,6 +1155,8 @@ The following are the only documented exceptions:
 | `POST /api/v1/waitlist` | Guest waitlist join, no prior account needed | Rate-limited (`public-booking`); no PII beyond what guest booking already collects; `JoinWaitlistHandler` still resolves a signed-in client from the JWT when one is present, so a real account never falls back to the guest path unnecessarily |
 | `POST /api/v1/gift-cards` | Guest gift-card purchase, no prior account needed | Rate-limited (`public-booking`); same posture as guest checkout — card is `Pending` until `IPaymentProvider` confirms payment |
 | `GET /api/v1/gift-cards/{code}/balance` | Public balance lookup by code alone (no per-studio scope in the route) | Rate-limited (`public-read`); enumeration risk from brute-forcing 12-char codes is accepted at that rate limit; response (`GiftCardBalanceResponse`) carries only `RemainingBalance`/`Status` — never `PurchaserEmail`/`RecipientEmail` |
+| `GET /api/v1/public/studios/{slug}/design-catalog` | Public flash/design catalog browse (P1 backlog Group 4, item #9) | None — read-only, only `IsCatalogItem && ClientId == null` designs, no client PII |
+| `POST /api/v1/marketing/unsubscribe` | Anonymous unsubscribe link in campaign emails | Signed token (HMAC-SHA256, `IMarketingOptOutSigner`, own key — separate from `IInstagramStateSigner`/`ISocialOAuthStateSigner`) validated before trusting clientId; rate-limited (`public-write`); single studio+client pair per token |
 
 The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`,
 `/auth/register/solo-artist`, `/auth/oauth/*`, `/auth/forgot-password`,
@@ -1822,6 +1825,10 @@ to the repo, not a live production deploy. No Help Menu/user-manual/onboarding-t
 | Country-code phone inputs — shared `PhoneInput` component (2026-08-26) | New `frontend/src/shared/components/ui/phone-input.tsx` (country-code `Select` + national-number `Input`, backed by `libphonenumber-js/min` for country/calling-code metadata, `AsYouType` formatting, and validity checks) replaces the plain `<Input type="tel">` on the three real phone-entry surfaces in the app: `CreateClientPage.tsx` (`Client.Phone`), `StudioProfilePage.tsx` (`Studio.PhoneNumber`), and `ReminderDialog.tsx`'s raw-contact path (`CreateManualReminderCommand.RecipientPhone`) — confirmed by reading every `phone`/`Phone` reference in `frontend/src/features/**`; everything else is a display-only surface. The component always emits a single E.164 string (no DB schema change — `Client.Phone`/`ManualReminder.RecipientPhone` are `varchar(20)`, already wide enough; `Studio.PhoneNumber` is `longtext`), and derives its initial country from an existing E.164 value or falls back to showing pre-existing legacy freeform data verbatim (not discarded) when it can't parse. Default country is Portugal (`PT`) — matches every pre-existing phone placeholder/test fixture in the codebase, not independently chosen. Backend gained a matching `Matches(E164Format)` FluentValidation rule (`^\+[1-9]\d{1,14}$`, the canonical ITU E.164 shape) in `CreateClientValidator`, `CreateManualReminderValidator`, and — this one previously had **no** phone rule at all — `UpdateMyStudioCommand.cs`'s `UpdateMyStudioValidator`. The regex is duplicated across the three validator classes rather than factored into a shared constant, mirroring this codebase's existing `NiptFormat` duplication between `RegisterStudioValidator` and `UpdateMyStudioValidator`. Motivating bug, not just cosmetics: `NotificationService.SendSmsAsync` passes the stored phone straight into Twilio's `PhoneNumber`, which requires E.164 — before this change nothing guaranteed that shape anywhere in the write path. `CreateManualReminderValidator`'s `RecipientPhone` rule needed an explicit `.Cascade(CascadeMode.Stop)` the source prompt's own code sample didn't include — without it, an empty raw-contact phone failed both `NotEmpty()` **and** `Matches()` simultaneously (two error messages for one empty field), caught by a test the prompt itself asked for ("confirm the two rules don't produce a confusing double message"), not assumed safe. `PhoneInput`'s internal prop-resync tracking uses `useState` (a state-tracked "last emitted" value, sentinel-seeded as `undefined`, never from the live `value` prop — this codebase's own established fix for exactly this sentinel-seeding bug class), not `useRef` as the source prompt's sample code used — mutating a ref during render is flagged as a hard ESLint error under this project's React Compiler lint rules (`react-hooks/refs`), confirmed by running lint, not assumed compatible. `PhoneCountryCode` is aliased to libphonenumber-js's own `CountryCode` literal-union type, not a bare `string` as the source prompt's sample had it — `pnpm tsc --noEmit` didn't catch the mismatch, but `pnpm build`'s `tsc -b` (stricter project-reference build) did, surfacing 8 real type errors; `flagEmoji` itself keeps a plain `string` parameter since it's a general-purpose case-insensitive transform (its own required test passes a lowercase, non-`CountryCode`-shaped input). New dependency: `libphonenumber-js` (`/min` entry point) — version resolved: `1.13.11`. `tsconfig.json`'s `lib` array needed no change (`ES2023` already covers `Intl.DisplayNames`) — verified before editing, not assumed. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — Fresha/Vagaro/Boulevard/GlossGenius-tier booking forms all use a country-code phone picker, not a bare text field, precisely because their SMS reminder pipelines (this app's own `NotificationService`/Twilio integration included) depend on E.164 input. No new UI-combobox dependency for the ~240-country dropdown — Radix `Select`'s built-in typeahead was judged sufficient, consistent with this codebase's "use the shadcn/Radix primitive before reaching for something heavier" convention. Verified: `dotnet build` clean, `dotnet test` on `Pena_e_Arte.UnitTests` green (1845 unit tests, up from 1834 — new `phoneCountries`/`phoneValidation`/`phone-input`/validator test coverage); integration tests not run in this session's sandbox (no local Redis — a pre-existing, already-documented environment gap unrelated to this change, not this feature's own regression); `pnpm tsc --noEmit` and `pnpm build` both clean; every changed/new frontend file individually confirmed lint-clean (`npx eslint <files>`) — a full-repo `eslint .` run crashed on this sandbox's available memory both before and after this change, an environment constraint (not a code issue) also hit earlier the same day on an unrelated PR, so CI's own lint run is the authoritative check; `pnpm vitest run` full suite green (1989 tests, up from 1963 — one unrelated pre-existing flake in `ConductReportInboxPage.test.tsx` during the full-suite run confirmed passing cleanly in isolation, a known class of noise in this sandbox's constrained-memory parallel test runs, not a real failure). |
 | `BookingIntake` vs `IntakeForm` naming (2026-08-31) | The guest-checkout booking prompt's spec named its new booking-content entity (tattoo description, desired placement, referral source, safety notes — 1:1 with `Appointment`) `IntakeForm`. That name was already taken by a real, shipped, different feature (`09ed943`, 2026-07-26): `IntakeForm` is `ClientId` + nullable `AppointmentId` + `FormData`/`FileUrl`/`SubmittedAt` — a studio-sent intake/consent-style form, with its own Commands/Queries, `FormEndpoints.cs`, and a frontend `features/forms` module. The spec's own Context section claimed `IntakeForm` "does not exist anywhere in the codebase," which was simply false and stale by five weeks. Renamed the new entity to `BookingIntake` (table `booking_intakes`) rather than either colliding with or retrofitting unrelated fields onto the existing `IntakeForm` — a "god entity" mixing two different domain concepts (a studio-sent form vs. booking-time intake) is worse than a longer name. The existing `IntakeForm` feature is completely untouched by this work. | Best-practice call, not a re-litigation of the guest-checkout product decision — only the entity's identity/name changed, not its purpose or shape. Verified via `git log` that the real `IntakeForm` predates this prompt; Feature Module Map row #02 ("Consultation & Consent Forms") already correctly lists it as implemented and was left unedited. |
 | Guest checkout `IgnoreQueryFilters()` requirement — every shared availability/booking query (2026-08-31) | `ArtistAvailabilityExtensions` (`IsAnyArtistAvailableAsync`, `CheckArtistScheduleAsync`, `CheckArtistSlotAvailabilityAsync`) and `CreateAppointmentCommand.CreateAppointmentCoreAsync` were extracted/reused for the guest-checkout booking prompt with an explicit `studioId` parameter, on the assumption that an explicit `.Where(x => x.StudioId == studioId)` predicate alone was sufficient to make them safe for an anonymous caller with no tenant JWT. That assumption was wrong: EF Core's global query filter (`HasQueryFilter(x => x.StudioId == tenant.StudioId)`) still applies in addition to any explicit predicate, and `ICurrentTenant.StudioId` defaults to `Guid.Empty` for an anonymous request (`CurrentTenantService`, never `SetTenant`'d) — so every query in both files silently returned zero rows for every guest request (always "unavailable," "no deposit rule," "artist not found") regardless of the real studio, until `IgnoreQueryFilters()` was added to each one (approved usage #51). Also fixed as the same class of bug, one level up: `CreateAppointmentCoreAsync`'s specific-artist path never checked `StudioClosures` before this extraction (only the any-artist path did) — closed as a side effect of sharing one chain, confirmed by the full existing `CreateAppointmentHandlerTests`/`CheckSlotAvailabilityHandlerTests` suites passing unchanged. | Caught by a new integration test class, `GuestCheckoutBookingIntegrationTests`, run against a real MySQL-backed `AppDbContext` with `ICurrentTenant.StudioId == Guid.Empty` (mirroring `PublicPortfolioIntegrationTests`' `fixture.CreateDbContext(Guid.Empty)` pattern) — **not** by unit tests against `FakeDbContext`, which never registers query filters at all and so cannot exercise this bug class. Any future shared query helper reused by both an authenticated and an anonymous/guest caller must be verified the same way — an explicit `studioId`/`tenantId` parameter is necessary but not sufficient; `IgnoreQueryFilters()` is also required, and only a real-context integration test proves it. |
+| P1 backlog Group 4, item #11: Promo codes standalone, not sharing item 4's reward system (2026-09-10) | The original backlog spec told this pass to reuse a `RewardType` enum "from item 4" (Client-to-Client Referral Program). Verified before writing any code: item 4 is unbuilt — no `ClientReferralCode` entity, no `RewardType` enum anywhere in `Pena_e_Arte.Domain` — and sits in the decision-gated Group 3 backlog with no scheduled build date. `PromoCode` (`TenantEntity`, `Code`/`AmountFixed`/`AmountPercent`/`ExpiresAt`/`MaxRedemptions`/`RedemptionCount`/`IsActive`) mirrors `DepositRule`'s existing fixed-or-percent idiom instead of inventing a discriminator enum for a system that doesn't exist yet. Lookup happens inside `CreateAppointmentCommand.CreateAppointmentCoreAsync`, immediately after the existing deposit-rule calculation, using `IgnoreQueryFilters()` for the same reason the `DepositRules` query three lines above it already does — this static method serves both the authenticated and anonymous guest-booking paths with no ambient `ICurrentTenant`. An unresolved code (missing/expired/exhausted/wrong-studio) is silently ignored rather than thrown — a guest fat-fingering a promo code must never block their booking — and `AppointmentResponse.PromoCodeApplied` (new, trailing/optional) lets the frontend show a "not recognized" note without treating it as a hard validation error. A one-line comment at the discount-application site flags that a future item-4 build must decide the stacking rule against this discount; nothing here designs that rule. `Design.ClientId`/`AppointmentResponse`/`CreateAppointmentRequest`/`PlatformSubscriptionResponse`/`DesignResponse` etc. all extend via trailing positional-record parameters with defaults — every construction call site across the codebase (including tests) was grepped and confirmed unaffected before relying on that pattern. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — discount codes at booking are standard on Fresha/Vagaro/GlossGenius-tier platforms. Verified: dotnet build/test green (2016 unit + 411 integration, both up from the pre-Group-4 2005/411 baseline once catalog/intake/dunning tests below are counted too — see that phase's entry for the split); pnpm tsc/lint/build green. |
+| P1 backlog Group 4, item #14: Dunning follows the daily-recurring-scan job pattern, not a one-shot per-studio job (2026-09-10) | The original spec pointed at grepping for a `"TrialWarning"` job to mirror — that literal name doesn't exist; the real jobs (`TrialExpiryWarningJob`, `GracePeriodEndJob`) are one-shot, per-studio, scheduled via `IJobScheduler.ScheduleX(studioId, enqueueAt)` at a single computed instant, the wrong shape for "scan every past-due subscription once a day." `PastDueReminderJob` instead follows the existing daily-scan pattern (`TrafficRollupJob`/`RetentionPurgeJob`/`PaymentReconciliationJob`), registered via `IRecurringJobManager.AddOrUpdate` at 07:00 UTC — continuing the existing 02:00/02:30/03:00/04:00/05:00/06:00 stagger. It sends an email only on exactly day 1/3/7 since `Subscription.PastDueSince` (new, set on transition into `PastDue`, cleared on transition out — both in `HandleSubscriptionUpdatedCommand`, the single place `Status` is mutated by the Stripe webhook), not "on or after" — a studio checked daily gets exactly three escalating emails, not one every day. **A real, previously-undiscovered bug was found and fixed as a load-bearing prerequisite, not a nice-to-have**: `TenantMiddleware`'s existing `GET /api/v1/studios/me` suspension exemption only bypassed the *admin-suspended* (`Studio.IsActive == false`) branch of `EnforceAsync` — a studio that is merely `PastDue` (not admin-suspended) fell through to the unconditional `SubscriptionRequiredException` throw for every method including GET, meaning the frontend could never have fetched `subscriptionStatus`/`pastDueSince` to render the PastDue banner this same phase adds — the exact feature this phase exists to ship would have been dead code without this fix. Extended the same GET-studios/me exemption to the PastDue branch too (`IsStudiosMeGet` helper, shared by both branches). `SetDunningExclusionCommand` (admin per-studio opt-out of the reminder schedule only, not of the `TenantMiddleware` block itself) mirrors `ExtendTrialCommand.cs`'s shape exactly — same `IgnoreQueryFilters()` "usage #5, AdminOnly" precedent, same `IAuditableCommand` wiring. `SuspensionBanner.tsx` gained PastDue-specific owner copy (days-overdue count) without touching the artist/client generic-suspension branches. | Vertical-booking-SaaS billing-health-visibility is standard, and the TenantMiddleware gap was a genuine correctness bug independent of this feature's own scope, not scope creep — fixing it was necessary for the banner to ever render, and it was flagged and fixed rather than worked around. Verified: dotnet build/test green; new `TenantMiddlewareTests` cases (`PastDueSubscription_GetStudiosMe_BypassesEnforcement`, `PastDueSubscription_PostStudiosMe_StillBlocked`) prove the fix and that it does not weaken the write-path block; `PastDueReminderJobTests` prove the exact-day-match schedule and the dunning-exclusion skip; pnpm tsc/lint/build green. |
+| P1 backlog Group 4, item #12: Custom intake fields target `IntakeForm.FormData`, not `Appointment`/`BookingIntake` (2026-09-10) | The original spec described today's intake form as "a single freeform textarea (`TattooDescription`/`SafetyNotes` on `Appointment`)" and proposed adding `Appointment.IntakeFormResponsesJson`. Both premises were wrong: `TattooDescription`/`SafetyNotes` live on `BookingIntake` (see the "`BookingIntake` vs `IntakeForm` naming" entry above — captures what a client wants done at booking time, not a studio-configured form) and are unrelated to this item. The actual freeform-textarea system this item means to replace is `IntakeForm.FormData` (`SubmitIntakeFormCommand`/`SubmitIntakeFormPage.tsx`, a single string field rendered as one "Medical history & notes" textarea) — a separate, already-shipped feature with its own consent-versioning plumbing (`ConsentTemplateId`/`ConsentTextSnapshot`/`ConsentedAt`, kind `IntakeFormConsent`) that this item does not touch. New `IntakeFormTemplate` (plain `TenantEntity` — deliberately NOT shaped like `ConsentTemplate`, which is StudioId-nullable with a platform-default fallback; one template per studio, upserted in place, no version history) holds `FieldSchemaJson`, a JSON array of `{label, type, required, options?}` capped at 20 fields, type one of Text/Textarea/Select/Checkbox/Date. When no active template exists, `SubmitIntakeFormPage.tsx` renders exactly today's single-textarea behavior — same 10-character minimum, same error message, moved from a static Zod rule to an imperative check since the schema is now conditionally dynamic (Zod schemas can't branch on async-loaded data cleanly). No change to `IntakeForm`'s schema or `SubmitIntakeFormCommand`'s persistence — `FormData`'s existing 65535-char cap already covers serialized-JSON responses. `IntakeFormBuilderPage.tsx`'s "seed local field-editor state from the loaded query result once" logic uses React's documented render-phase state-adjustment pattern (a guarded `if (!isLoading && !loaded) { setX(...) }` in the component body) instead of a `useEffect`, after the effect version tripped this project's `react-hooks/set-state-in-effect` lint rule — matches this codebase's own established preference (see the React State-Sync Sentinel Bug memory) for deriving/seeding state during render over an effect where possible. | No competitor-benchmark rationale needed — this corrects the previous session's stale premises about its own codebase, not a product-parity decision. Verified: dotnet build/test green (new `IntakeFormTemplate` validator/handler/query unit tests + `IntakeFormTemplateHandlerIntegrationTests` proving tenant isolation); pnpm tsc/lint/build green; `SubmitIntakeFormPage.test.tsx` proves the no-template fallback renders identically (same label, same 10-char minimum, same error text) to today's shipped behavior, and separately proves all five field types render and serialize correctly with a template configured — the two states this phase's own risk note flagged as needing more than unit-test confidence. |
+| P1 backlog Group 4, item #9: Flash/design catalog — clone-on-book, no new FK, corrected management-page target (2026-09-10) | `Design.ClientId` widened to `Guid?` (`Client?` nav, matching the `Appointment.ArtistId`/`Artist?` nullable-FK-nullable-nav precedent) plus new `IsCatalogItem`/`Price` — all six call sites the spec flagged for review (`CreateDesignCommand`, `ReviewDesignCommand`, `GetDesignsQuery`, `CreateDesignValidator`, `DesignConfiguration`, the FK itself) were individually checked; only `DesignResponse.ClientId` needed a contract-type change (`Guid` → `Guid?`, plus new trailing `IsCatalogItem`/`Price`), the rest already compiled and behaved correctly against a nullable FK (`Guid != Guid?` lifts cleanly). **Corrected the original spec's frontend target**: the "mark as flash catalog item, set price" controls belong on `frontend/src/features/artists/components/ArtistDetailPage.tsx` (the artist-facing Designs tab), not `frontend/src/features/public/components/ArtistPortfolioPage.tsx` (confirmed by direct read to be the public, guest-facing view — an artist doesn't manage their own catalog there); the public page correctly gets the client-facing "Flash" browsing section and "Book this design" CTA, exactly as the original spec said. **Clone-on-book, no new schema**: `Design` has no `AppointmentId` FK at all, even for organic (non-catalog) designs, so `RequestCatalogDesignCommand` doesn't invent one — it clones the catalog `Design` + latest `DesignRevision` into an independent client-owned design thread (new ids, `IsCatalogItem = false`, `ClientId` = the booking client, title suffixed "(flash booking)"), exactly as if the artist had created it manually, then separately attaches the flash image to the new `Appointment` as a `Reference`-category `AppointmentAttachment` (a mechanism that already existed, no schema change) — the attachment is the booking-visible link, the cloned Design is the artist's ongoing thread, neither points at the other, matching how a non-catalog booking already works. New `AllowAnonymous` row added for `GET /api/v1/public/studios/{slug}/design-catalog` in the same change that added the endpoint (CLAUDE.md hard rule). Guest catalog booking was flagged as an open question in the spec; built authenticated-client-only for this pass (`RequestCatalogDesignCommand` resolves `clientId` from the JWT when `role == "client"`, else trusts the request body for a staff caller) — the guest-checkout mirror (`CreateGuestAppointmentHandler`'s shape) is deliberately not built and is called out here as a real, tracked gap, not a silent omission. Frontend wiring: `BookAppointmentForm.tsx` reads an optional `location.state.flashDesignId` (passed via router `state` from the new `FlashCatalogCard`, no query-string leak of internal ids) and swaps its submit call from `useCreateAppointmentMutation` to `useRequestCatalogDesignMutation` when present, showing a small "Booking flash design: {title}" banner — same form, same validation, one different endpoint underneath. No tour step added (Phase 4's own "recommended" note, not required) — a per-design-card toggle has no single stable nav target a tour step can point at, unlike every other tour step in this file. | Current vertical-booking-SaaS standard (CLAUDE.md rule 6) — Fresha/Vagaro/Boulevard/GlossGenius-tier artist profiles commonly sell pre-made "flash" designs for instant booking. Verified: dotnet build/test green — new `MarkDesignAsCatalogItemHandlerTests`/`GetDesignCatalogHandlerTests`/`RequestCatalogDesignHandlerTests` (unit) plus `RequestCatalogDesignHandlerIntegrationTests`/`DesignCatalogHandlerIntegrationTests` (real MySQL) including the specific regression this phase exists to prevent — booking the same catalog item twice as two different clients produces two independent `Design` rows and leaves the catalog original completely untouched; pnpm tsc/lint/build green; `ArtistPortfolioPage.test.tsx` and `BookPage.test.tsx` both extended and re-verified green (the latter needed `designsApi` added to two existing test-store constructions that didn't have it, since `BookAppointmentForm.tsx` now imports a `designsApi` hook unconditionally). Full end-to-end phase totals across all four Group 4 items: dotnet test 2016 unit + 411 integration (up from the 2005/411 pre-session baseline); pnpm vitest full-suite run showed 2065 passed / 23 failed pre-existing `phone-input.test.tsx` timeout flakes under sandbox load (documented in that file as a known flake, re-confirmed unrelated to this session's changes by every touched-file's own targeted, isolated test run passing cleanly) — no other file failed in that full run. |
 
 ---
 
@@ -4014,3 +4021,341 @@ excluded the entire `frontend/src/features/packages/` folder from version contro
 `frontend/src/features/session-packages/` (import path `@/features/session-packages`) rather than
 touching the shared `.gitignore` pattern — the route paths themselves (`/packages`, `/packages/buy`)
 are unaffected, only the source folder and import alias changed.
+
+**Follow-up correction (found and fixed while reconciling this branch with Groups 4/5/6):**
+the backend counterpart of the `.gitignore` `**/[Pp]ackages/` bug — `Pena_e_Arte.Application/Packages/`
+(three command/query files: `CreatePackageCommand`/`UpdatePackageCommand`, `PurchasePackageCommand`,
+`GetPackagesQuery`/`GetMyPackagePurchasesQuery`, plus their validators) — was never actually
+committed to this branch despite `PackageEndpoints.cs`, the `Package`/`PackagePurchase` entities,
+`PackagePurchaseReconciliationJob`, and the frontend `session-packages` feature all referencing it.
+Flagged but not fixed in the Group 5 entry below (that session moved the orphaned local files aside
+without committing them, since fixing another group's open PR was out of its scope). Reconstructed
+from the committed contracts (`PackageEndpoints.cs`'s exact request/response shapes) and the
+`PurchaseGiftCardCommand`/`CreateDepositPaymentCommand` provider-interaction pattern this same
+group's own `GiftCards` commands already established — same auth-hold-now/reconcile-later shape,
+`IPaymentProvider.CreatePaymentHoldAsync`, `Provider = "pok"`. Verified against the pre-existing
+(also previously uncommitted-code-adjacent but present) test files
+`PackageHandlerIntegrationTests.cs`/`CreateAppointmentPackageBookingTests.cs`, which passed
+unmodified once the handlers existed — confirming the reconstruction matches what those tests
+(and the frontend) already expected.
+
+## P1 Backlog Group 5 — Client Referrals, Marketing Campaigns, Storage Quota Completion — 2026-09-10
+
+Final master prompt of the 2026-09-09 P1 backlog audit, covering the three items that had open
+product questions or were "completion, not new-build" work: Client-to-Client Referral (#4),
+Marketing Email Campaigns (#10), and Plan Usage-Limit Enforcement completion (#19). Branched off
+plain `main` (Groups 3/4 were still open, unmerged PRs at the time — same posture Group 3 itself
+took relative to Group 4), so `CreateAppointmentCommand.cs` carries only the referral discount
+step for now; a comment at the insertion point documents the intended four-way stacking order
+(promo code → gift card → referral-code redemption → referral-reward redemption) for whoever
+reconciles this branch with Groups 3/4.
+
+**Pre-existing bug found before any of this work started, not caused by it**: a `.gitignore`
+pattern (`**/[Pp]ackages/`, the same one already known to have eaten a frontend folder from Group
+3 — see the Group 3 log entry) had also silently swallowed an entire *backend* directory,
+`Pena_e_Arte.Application/Packages/` — three command/query files that existed on disk (from an
+earlier session) but were never committed to *any* branch, including Group 3's own open PR, which
+is therefore currently missing its Packages command handlers. These orphaned, uncompilable files
+were moved out of the working tree (not deleted) before this session's own build could succeed.
+Not fixed as part of this prompt — flagged here since it's a real gap in an already-open PR,
+outside this prompt's scope to correct.
+
+### Phase 1 — Client-to-Client Referral Program (#4)
+
+Product decision (confirmed by the studio owner): **two-sided** — both referrer and referee are
+rewarded — with the reward form fixed as **percent off the next deposit** for both sides (no
+per-code fixed-vs-percent choice, unlike `PromoCode`; this is a platform-standard mechanic, not
+studio-configurable). Three new tenant-scoped entities: `ClientReferralCode` (one per client per
+studio, unique `(StudioId, Code)` and `(StudioId, ReferrerClientId)` indexes), `ClientReferralRedemption`
+(records a referee redeeming someone else's code; unique `(ClientReferralCodeId, RedeemedByClientId)`
+index — DB-enforced, not just application-checked, same posture as `Payment.AppointmentId`),
+and `ClientReferralReward` (the referrer's own earned, spendable credit). `GetOrCreateMyReferralCodeCommand`
+is idempotent (checks for an existing code before generating one). Redemption is hooked into
+`CreateAppointmentCoreAsync` — the same core shared by the authenticated and guest booking paths
+— so a referral code can be redeemed by a brand-new guest referee, not only an existing client;
+every new referral query in that shared core uses `IgnoreQueryFilters()` + an explicit `StudioId`
+predicate, mirroring the existing `Artists`/`DepositRules` treatment there, since the guest path
+has no ambient tenant.
+
+**Correction to the original spec's proposed reward mechanism.** The spec's own required reading
+flagged the existing two-sided referral precedent
+(`docs/claude/overnight-prompt-two-sided-referral-rewards-2026-07-18.md`) as *not* directly
+reusable, and live-codebase verification confirmed why: that mechanism rewards a referring
+*studio* via a Stripe coupon applied to the studio's own platform subscription (Stripe Billing,
+unaffected by the payment-provider restriction) — there is no equivalent surface for a *client's*
+deposit payment on Flow A, which has no live Stripe provider (`NullPaymentProvider`, fails closed
+pending POK) and doesn't use Stripe coupons even when it does have one. Built instead: the
+referee's discount is applied inline at booking time (the same in-app pattern any future
+promo-code/gift-card discount would use), and the referrer's reward is a redeemable credit
+(`ClientReferralReward`) spent on their own future booking via an optional `ReferralRewardId` on
+`CreateAppointmentRequest`, since the referrer isn't necessarily booking anything at the moment
+their code gets redeemed.
+
+Frontend: `ReferAFriendCard` (client-facing, mounted on `/book` below `MyBookingsSection`) shows
+the client's code, a copyable share link, redemption count, and any unredeemed reward credit. Both
+`BookAppointmentForm.tsx` (authenticated) and `GuestBookAppointmentForm.tsx` (guest checkout) gained
+a "Referral code" field, visually and semantically distinct from the pre-existing "how did you hear
+about us" `ReferralSource` field. A pre-checked "Apply your referral credit" toggle appears on the
+authenticated form only, when the signed-in client has an unredeemed reward.
+
+Tests: unit coverage in `CreateAppointmentHandlerTests.cs` for self-referral rejection, invalid/
+already-redeemed codes, referrer-reward creation with matching percent, reward ownership/already-
+redeemed checks, and the two-step (code + reward) stacking floored at 0; `GetOrCreateMyReferralCodeHandlerTests`
+for idempotency. Integration: `ClientReferralFlowIntegrationTests` — `GetOrCreateMyReferralCodeCommand`
+idempotency against a real database, and the full flow end-to-end (referrer gets a code → referee
+books with it → referee's deposit reduced → referrer has a new unredeemed reward → referrer books
+spending that reward → referrer's deposit reduced, reward marked redeemed).
+
+### Phase 2 — Marketing Email Campaigns (#10, email-only)
+
+Product decision (confirmed): existing clients are opted **out** of marketing email by default;
+the studio must get explicit opt-in. Verified this is already the codebase's existing default —
+`Client.MarketingOptIn` (bool, defaults `false`) already exists with exactly this semantics,
+captured at guest checkout and manual Add Client. **Used directly, no redundant second field
+added** — the original spec's proposed `ClientProfile.MarketingEmailOptOut` was not built; that
+would have created two sources of truth for the same consent. `Campaign` (new tenant-scoped
+entity: subject, body, audience enum, status, recipient/delivered counts) resolves its audience
+via `CampaignAudienceExtensions.ResolveCampaignAudienceAsync`, which hard-filters
+`Client.MarketingOptIn == true` on every audience mode — including `Custom` (a supplied client-id
+list is a starting set to narrow, never a way to bypass consent). `SendCampaignJob` (Hangfire,
+enqueued once per send, not a recurring job) re-resolves the audience at send time rather than
+trusting the count snapshotted when the send was requested, so a client who opts out in between is
+never emailed; each email gets a per-client signed unsubscribe link
+(`IMarketingOptOutSigner`, new HMAC-SHA256 signer with its own key — deliberately not
+`IInstagramStateSigner`/`ISocialOAuthStateSigner`, which stay scoped to their own OAuth flows) that
+`WithdrawMarketingOptInCommand` (`POST /api/v1/marketing/unsubscribe`, `AllowAnonymous`) validates
+before flipping `MarketingOptIn` to `false`.
+
+**`Plan.AllowMarketingCampaigns` is a real, enforced flag from day one** — checked directly in
+`SendCampaignHandler`, throwing `BusinessRuleViolationException` when the studio's resolved plan
+doesn't carry it, verified by `SendCampaignHandlerTests`. **Correction to the original spec's
+instruction to "mirror `AllowApiAccess`/`PrioritySupport`'s enforcement mechanism"**: live-codebase
+verification (re-reading this same log's own Phase 6 entry above) found those two flags are *not*
+enforced anywhere — they were deliberately hidden from every UI/Help surface for being sold-but-
+undelivered, zero-backing-implementation flags. There was no enforcement site to mirror;
+`AllowMarketingCampaigns` is the first Plan boolean flag this codebase actually enforces. Wired
+through the full admin Plan CRUD path (`CreatePlanRequest`/`UpdatePlanRequest`/`PlanResponse`,
+`CreatePlanHandler.Map`, `UpdatePlanHandler`, `GetPlansHandler`) and into `DataSeeder`'s core-tier
+reconciliation — granted to Growth, Premium, and Pro (not Free/Starter), consistent with
+`AllowBrandingRemoval`'s own tier cutoff — so the flag is real and demoable, not a column with no
+seed data ever setting it `true`.
+
+Frontend: `/campaigns` (owner-only route, added to `OwnerLayout`'s nav) — compose form (subject,
+body, audience picker, conditional "no recent visit" day threshold), draft save, send, and a send-
+history table with live delivered/total counts; renders an upgrade prompt instead of the compose
+form when the owner's current plan lacks `allowMarketingCampaigns`. `/unsubscribe` (public,
+`AllowAnonymous`) — plain confirmation page, no auth.
+
+Tests: unit coverage for `CampaignAudienceExtensions` across all three audience modes (confirming
+`Custom` still hard-filters on opt-in), `SendCampaignHandler`'s plan gate (blocks when `false`,
+succeeds and enqueues when `true`), and `WithdrawMarketingOptInHandler`. Integration:
+`CampaignFlowIntegrationTests` — full send flow against a real database (create draft → send →
+`SendCampaignJob` processes the audience → `DeliveredCount`/`Status` updated) and the unsubscribe
+flow (flips `MarketingOptIn`, a second send afterward excludes that client).
+
+### Phase 3 — Plan Usage-Limit Enforcement completion (#19)
+
+Not a from-scratch build — `Artists`, `AppointmentsPerMonth`, and `NotificationsPerMonth` were
+already gated via `IQuotaCheckedCommand`; this phase completes the `StorageBytes` dimension and
+deliberately leaves `Locations` unenforced (confirmed: `PlanLimitService` still always reports `1`
+for that dimension by explicit design, pending multi-location support — enforcing against a
+permanent `1` would be a no-op dressed as a feature).
+
+**Correction to the original spec's proposed approach.** The spec proposed finding every command
+that writes to R2 and gating it directly. Live-codebase verification found this doesn't fit: file
+uploads go through `GetPresignedUploadUrlQuery`/`GetPresignedGuestUploadUrlQuery`, which mint a
+presigned direct-to-R2 PUT URL — the backend never observes the upload completing or its size, and
+no entity anywhere stores a per-file `SizeBytes`. Built instead: `StorageReconciliationJob` (new
+daily Hangfire job, registered at hour 7 — the next free stagger slot after `r2-export`'s hour 6),
+which lists every object under each studio's own `{studioId}/` prefix via the pre-existing
+`IR2Service.ListByPrefixAsync` (the same primitive `GuestPendingUploadCleanupJob` already used for
+prefix-scoped listing) and sums `SizeBytes` into `Studio.StorageUsageBytes` — a field
+`PlanLimitService` already read for `QuotaType.StorageBytes` checks but that, before this job, no
+code anywhere ever wrote. Storage quota enforcement is therefore **eventual** (up to ~24h stale
+between reconciliation runs), not synchronous — an accepted trade-off given the alternative would
+mean abandoning direct-to-R2 presigned uploads or adding a "confirm upload" round-trip to every
+upload flow in the app, a far larger change than this completion item warrants.
+
+`GetPresignedUploadUrlQuery` (authenticated — `ICurrentTenant` reliably set via the JWT
+`tenant_id` claim) now implements `IQuotaCheckedCommand`/`QuotaType.StorageBytes`, confirming first
+that `PlanLimitBehavior`'s pipeline registration is generic over `IRequest<TResponse>` and not
+scoped to commands only. **A second correction, found while wiring the guest counterpart**:
+`GetPresignedGuestUploadUrlQuery` genuinely cannot use the same marker-interface approach —
+`PlanLimitBehavior` fires before the handler runs and would check `ICurrentTenant.StudioId`, which
+`TenantMiddleware` never sets for an anonymous caller (it resolves the real studio from the route
+slug *inside* the handler, after the pipeline behavior has already run). `IPlanLimitService`'s
+explicit-`studioId` overload exists exactly for this "no ambient tenant" shape — its own doc
+comment already said "do not force-fit this overload into the `IQuotaCheckedCommand` pipeline" —
+so the guest handler calls it directly after resolving the studio, rather than implementing the
+marker interface at all.
+
+Tests: unit coverage for `StorageReconciliationJob` (sums correctly per studio, no cross-
+contamination between studios, a zero-object studio writes `0` rather than skipping, an inactive
+studio is never listed) and a quota-marker test for both presign queries (one via
+`IQuotaCheckedCommand`, one via a mocked `PlanLimitExceededException` propagating through the
+explicit-overload path). Integration: `StorageQuotaIntegrationTests` runs the real
+`StorageReconciliationJob` → `Studio.StorageUsageBytes` → real `PlanLimitService` →
+`GetPresignedGuestUploadUrlHandler` pipeline end to end against a real database (a studio over its
+`MaxStorageGb` after reconciliation throws `PlanLimitExceededException` on the next presign
+request; a studio under its limit is unaffected).
+
+This closes the 2026-09-09 P1 backlog audit in full except **Support Impersonation (#15)**, which
+remains pending a separate product/security conversation about its admin-endpoint allow-list, as
+flagged in the Group 3 prompt.
+
+Verified: `dotnet build` clean throughout; final `dotnet test` on this branch (built independently
+off plain `main`, not stacked on Groups 3/4) — 1967 unit + 402 integration, all passing;
+`pnpm tsc --noEmit` clean; full `pnpm test` (frontend) — 2048 tests, all passing after fixing two
+pre-existing test-local Redux stores (`BookPage.test.tsx`) that predated the new `clientReferralsApi`
+slice and needed its middleware/reducer added, the same class of fix any new RTK Query API slice
+requires wherever a test builds its own store instead of importing the real one.
+
+### Support Impersonation with Audit Trail — 2026-09-10
+
+Final item (#15) of the 2026-09-09 P1 backlog audit, held back from every earlier group
+pending an explicit product/security sign-off on its admin-endpoint allow-list — the sign-off
+happened, this phase builds it. Lets a platform admin open a temporary, read-only,
+allow-listed view of a studio's own data (`POST /api/v1/platform/studios/{id}/impersonate`,
+`POST /api/v1/platform/impersonation-sessions/{id}/end`,
+`GET /api/v1/platform/impersonation-sessions`) to diagnose a support ticket without needing
+the owner's password.
+
+**Sign-off decisions this phase was built against** (quoted from the master prompt):
+
+| Question | Decision |
+|---|---|
+| Should an impersonating admin be able to read client medical/PII data (allergies, medical notes, body maps, intake/consent form content)? | **No — denied even as read-only** |
+| Should an impersonating admin be able to read financial data (payments, billing, revenue reports, invoices)? | **No — denied entirely** |
+
+- **The real security surface, and the one insight that shapes everything else here**:
+  `AuthorizationExtensions.cs` already grants `"admin"` every role-based permission every
+  studio-scoped policy checks (`ClientAndAbove`/`ArtistAndAbove`/`OwnerOnly` all
+  `RequireRole(..., "admin")`), and `TenantMiddleware` already exempts `IsInRole("admin")`
+  from its own subscription-enforcement check. So an admin token that simply carried a
+  `tenant_id` claim for a target studio would, on its own, already satisfy every single
+  authorization check on every studio-scoped endpoint in the app. There is no RBAC gap to
+  close — the entire security surface this feature protects is (1) whether a `tenant_id`
+  claim for an arbitrary studio ever gets minted onto an admin's token outside the normal
+  login flow, and (2) once minted (deliberately, via this feature), which endpoints that
+  now-unrestricted combination may reach. `TenantMiddleware`'s new impersonation gate (the
+  `"imp"` claim check, `ImpersonationAllowList.IsAllowed`, and a per-request
+  `ImpersonationSession.IsActive` DB check) is not a defense-in-depth layer on top of RBAC —
+  it is the *entire* enforcement mechanism.
+- **`ImpersonationSession`** — a `TenantEntity` with `StudioId` = the TARGET studio (not the
+  platform), matching every other audit-adjacent entity's shape; `ActorUserId` (the real
+  admin, never overwritten), `ReasonCode`, `ExpiresAt` (hard-capped 45 min from `Start`),
+  `EndedAt`. `IgnoreQueryFilters()` approved as usage #52 (architecture.md table above) for
+  `StartImpersonationHandler`/`EndImpersonationSessionHandler`/`GetImpersonationSessionsHandler`
+  — the calling admin's own JWT carries no `tenant_id` claim while starting/ending/browsing
+  sessions, so the ambient tenant filter would otherwise match nothing.
+- **JWT minting** (`IIdentityService.IssueImpersonationTokenAsync`, a new method alongside
+  `IssueTokensForTenantAsync` rather than a hand-rolled second issuance path): role stays
+  `"admin"` (see the insight above — changing it to `"owner"` would silently grant genuine
+  `OwnerOnly` superpowers with no distinguishing marker, and an unrecognized role would break
+  every policy check outright), `tenant_id` = target studio, a new `"imp"` claim = the
+  session id (not just `"true"` — lets the gate and the audit behavior both reference the
+  exact session without a second lookup key), `Sub`/`NameIdentifier` stays the real admin's
+  own id, expiry capped to the session's own `ExpiresAt` (45 min) rather than the standard
+  `Jwt:AccessTokenExpiryMinutes`. No refresh token is issued — the session is meant to
+  hard-expire, not renew.
+- **Gate enforcement, `TenantMiddleware`** (extended rather than a new middleware — it
+  already runs early in the pipeline and already inspects claims): if the request carries an
+  `"imp"` claim, check the route against `ImpersonationAllowList` (GET-only, explicit
+  regex-anchored array, deny by default) and look the session up by id — `EndedAt is not
+  null || ExpiresAt < now` rejects it. A no-op for every request without an `"imp"` claim.
+  Both failure modes throw `ImpersonationScopeException` (mapped to 403,
+  `IMPERSONATION_SCOPE_DENIED`) — distinct from `ForbiddenException` so it's unambiguous in
+  logs which mechanism blocked a request, and unified so `EndImpersonationSessionCommand`
+  takes effect immediately (checked per-request against the DB row) rather than waiting for
+  the JWT's own `exp` to pass.
+- **Allow-list, as shipped** — `GET /appointments`, `/appointments/{id}`,
+  `/appointments/check-slot`, `/artists`, `/artists/{id}`, `/artists/{id}/schedule`,
+  `/clients`, `/clients/{id}` (response is already name/email/phone/artist-assignment only —
+  no PII trimming needed), `/studios/me`, `/studios/{id}/closures`, `/deposit-rules`,
+  `/deposit-rules/{id}`, `/reminders`, `/notifications`. Every route explicitly excludes
+  `/clients/{id}/profile|/tattoos|/portable-profile`, every `Payment`/`Billing`/`Report`
+  route, `/studios/me/audit-log`, and everything under `/platform` — denied by omission, not
+  by a separate deny-list.
+- **Correction to the original spec text**: it referenced `/api/v1/manual-reminders` for the
+  allow-list — the actual route group (`ManualReminderEndpoints.cs`) is `/api/v1/reminders`.
+  Corrected in `ImpersonationAllowList` to the real path; same kind of stale-reference fix as
+  the next one.
+- **Correction to the original spec text (frontend)**: it referenced
+  `IssuerStudioDetailPage.tsx` for the "Impersonate" action — that file no longer exists,
+  renamed to `AdminStudioDetailPage.tsx` when the platform-admin role itself was renamed
+  issuer → admin (`0845e57`, already on `main`). Verified the current file exists before
+  adding the action there.
+- **Audit trail** — `AuditLogBehavior` now records `ActorRole` as `"admin-impersonating"`
+  instead of the raw `"admin"` role claim whenever `ICurrentUser.IsImpersonating` (a new
+  member, backed by checking for the `"imp"` claim) is true — zero schema change,
+  `AuditLogEntry.ActorRole` was already a plain string. `ActorUserId` continues to correctly
+  identify the real admin either way. `StartImpersonationCommand`/`EndImpersonationSessionCommand`
+  are themselves `IAuditableCommand` (not required by the spec, but starting/ending a session
+  is itself a security-sensitive admin action worth its own audit trail, consistent with
+  every other admin action in this codebase). **Stated plainly, not implied**: because this
+  phase's allow-list is GET-only, no write is ever reachable during an actual impersonation
+  session — the "admin-impersonating" distinguishing behavior is currently exercised only by
+  the Start/End commands themselves (both run under the admin's own, non-impersonating
+  token), never by a real write made *while* impersonating. The mechanism is fully in place
+  and tested (`AuditLogBehaviorTests` asserts the actor-role substitution directly against a
+  fake auditable command), but it has not yet been exercised end-to-end against a live write
+  reached through an impersonation token, since none exists yet — true by construction, not
+  an oversight, and worth re-checking the moment the allow-list is ever extended to include one.
+- **Frontend layout-routing gap, found while building** — `AppLayout` in `router.tsx` picks
+  the rendered layout shell purely by `auth.role`, and `getRoleRedirectPath`/`IndexRedirect`/
+  `CatchAllRedirect` did the same. Since impersonation keeps `role: "admin"` unchanged (by
+  design, see above), naively this would leave an impersonating admin sitting in
+  `AdminLayout` (the platform console's own nav) even though `RoleGuard` already permits
+  Admin on most owner-scoped routes (`/dashboard`, `/schedule`, `/clients`, etc. all already
+  list `Role.Admin` in their `allowedRoles`) — reachable by URL but with the wrong nav shell
+  around it, which would have made the feature nearly unusable. Fixed by threading
+  `auth.impersonation !== null` through all four call sites: `AppLayout` renders
+  `OwnerLayout` (not `AdminLayout`) for an impersonating admin, and
+  `getRoleRedirectPath(role, impersonating)` returns `/dashboard` instead of `/platform` in
+  that case. `OwnerLayout`'s own nav still links to two Admin-excluded routes
+  (`/conduct-reports`, `/messages`) — clicking either bounces back to `/dashboard` via
+  `RoleGuard`'s existing redirect, a graceful dead-end rather than a broken one; not worth
+  hiding those two nav items for this phase.
+- **Write-affordance handling — deliberate scope decision, not an oversight.** The spec
+  offered a choice between fully disabling every owner-UI write control while impersonating,
+  or a clear-error-message fallback if the former was too large a change. Chose the
+  fallback: `baseQuery.ts` now dispatches `setImpersonationScopeError` on a 403 carrying
+  `IMPERSONATION_SCOPE_DENIED`, surfaced as a dismissible notice under the persistent
+  "Viewing as {studio}" banner (`ImpersonationBanner.tsx`, mounted once at the layout root in
+  `AppRoot`, unconditionally, never a dismissible toast) — an attempted write still fails
+  server-side (the gate is the real enforcement either way) but the admin sees why instead of
+  a generic error. Auditing and individually disabling every create/edit/delete control
+  threaded through the existing owner UI was judged too large a change for this phase.
+- **Token-storage design, frontend** — `authSlice.ts`'s existing model holds exactly one
+  active token under a fixed storage key. `startImpersonation` stashes the admin's real
+  token/refresh-token/remember-flag aside in a dedicated `sessionStorage`-only slot (never
+  `localStorage`, regardless of the admin's own "remember me" choice) before swapping the
+  active token for the impersonation one (also written to `sessionStorage` only, and with no
+  refresh token — matches the backend's hard-expire intent); `endImpersonation` restores it.
+  A 401 on the impersonation token specifically (no refresh token to fall back to, unlike a
+  normal session) now restores the admin's own token and shows a toast, rather than the
+  existing session-expired flow's full logout — the admin never has to re-authenticate just
+  because a 45-minute window closed.
+- Help sync: new `admin-impersonation` article in `helpContent.ts` (cross-linked with
+  `admin-audit-log` and `admin-studio-detail`) and a matching section in the standalone
+  manual (`public/user-manual/index.html`), admin-only per the spec (not a studio-facing
+  feature studio users need documented). No onboarding-tour step added — `adminTourSteps` is
+  strictly a nav walkthrough tied to `data-tour` attributes on `AdminLayout`'s sidebar links,
+  and this feature adds no new nav item (same reasoning already applies to every other
+  `AdminStudioDetailPage` action — Suspend, Extend Trial, Activate — none of which have tour
+  steps either).
+
+**Verification**: `dotnet build` clean; `dotnet test` — 1992 unit + 408 integration, all
+green (unit total includes new `ImpersonationAllowListTests`, `ImpersonationGateTests`
+(TenantMiddleware's gate exercised directly against a real in-memory `FakeDbContext`, not a
+substitute — the gate runs a real EF query), `StartImpersonationHandlerTests`,
+`EndImpersonationSessionHandlerTests`, and two new `AuditLogBehaviorTests` cases; integration
+total includes a new `SupportImpersonationEndpointTests` — full session lifecycle through the
+real ASP.NET Core pipeline (allow-listed GET succeeds, non-allow-listed GET denied, write to
+an allow-listed resource denied, session end makes the same token immediately unusable even
+on an allow-listed route, an already-expired session denied) — and new
+`IdentityServiceTests` cases asserting the real `IssueImpersonationTokenAsync` JWT claim
+shape against a real MySQL-backed `UserManager`, not a stand-in. `pnpm tsc -b`/`pnpm build`
+clean; `pnpm lint` clean (0 errors); full `pnpm test` — 2056 frontend tests, all passing
+except one pre-existing, already-documented flake in `StudioProfilePage.test.tsx` unrelated
+to this change (a `testTimeout` flake noted in that file's own comment since 2026-09-05).

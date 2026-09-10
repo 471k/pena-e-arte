@@ -723,6 +723,72 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("booth_rent_schedules", (string)null);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Campaign", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Audience")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("BodyHtml")
+                        .IsRequired()
+                        .HasColumnType("mediumtext");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CustomClientIds")
+                        .IsRequired()
+                        .HasColumnType("json")
+                        .HasColumnName("custom_client_ids");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DeliveredCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NoRecentVisitDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecipientCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_campaigns");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_campaigns_studio_id");
+
+                    b.HasIndex("StudioId", "Status")
+                        .HasDatabaseName("ix_campaigns_studio_id_status");
+
+                    b.ToTable("campaigns", (string)null);
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ChatMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -951,6 +1017,142 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasDatabaseName("ix_client_profiles_studio_id");
 
                     b.ToTable("client_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ClientReferralCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("varchar(12)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("RedemptionCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ReferrerClientId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal>("RewardPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_client_referral_codes");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_client_referral_codes_studio_id");
+
+                    b.HasIndex("StudioId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_client_referral_codes_studio_id_code");
+
+                    b.HasIndex("StudioId", "ReferrerClientId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_client_referral_codes_studio_id_referrer_client_id");
+
+                    b.ToTable("client_referral_codes", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ClientReferralRedemption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ClientReferralCodeId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("RedeemedByClientId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_client_referral_redemptions");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_client_referral_redemptions_studio_id");
+
+                    b.HasIndex("ClientReferralCodeId", "RedeemedByClientId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_client_referral_redemptions_code_id_redeemed_by_client_id");
+
+                    b.ToTable("client_referral_redemptions", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ClientReferralReward", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsRedeemed")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid?>("RedeemedOnAppointmentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal>("RewardPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<Guid>("SourceRedemptionId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_client_referral_rewards");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_client_referral_rewards_studio_id");
+
+                    b.HasIndex("StudioId", "ClientId")
+                        .HasDatabaseName("ix_client_referral_rewards_studio_id_client_id");
+
+                    b.ToTable("client_referral_rewards", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ConductReport", b =>
@@ -1230,7 +1432,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("ArtistId")
                         .HasColumnType("char(36)");
 
-                    b.Property<Guid>("ClientId")
+                    b.Property<Guid?>("ClientId")
                         .HasColumnType("char(36)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1242,6 +1444,12 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("varchar(2000)");
+
+                    b.Property<bool>("IsCatalogItem")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<decimal?>("Price")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("StudioId")
                         .HasColumnType("char(36)");
@@ -1263,6 +1471,8 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasIndex("StudioId")
                         .HasDatabaseName("ix_designs_studio_id");
+
+                    b.HasIndex("StudioId", "IsCatalogItem");
 
                     b.ToTable("designs", (string)null);
                 });
@@ -1635,6 +1845,47 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("help_search_logs", (string)null);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ImpersonationSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.ToTable("ImpersonationSessions");
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.InstagramConnection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1800,6 +2051,40 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasDatabaseName("ix_intake_forms_studio_id");
 
                     b.ToTable("intake_forms", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.IntakeFormTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("FieldSchemaJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_intake_form_templates");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_intake_form_templates_studio_id");
+
+                    b.ToTable("intake_form_templates", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ManualReminder", b =>
@@ -2149,6 +2434,11 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<bool>("AllowBrandingRemoval")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<bool>("AllowMarketingCampaigns")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -2266,6 +2556,60 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasDatabaseName("ix_PortfolioImages_studio_id");
 
                     b.ToTable("PortfolioImages", (string)null);
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.PromoCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal?>("AmountFixed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("AmountPercent")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("MaxRedemptions")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RedemptionCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_promo_codes");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_promo_codes_studio_id");
+
+                    b.HasIndex("StudioId", "Code");
+
+                    b.ToTable("promo_codes", (string)null);
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.ReferralCode", b =>
@@ -2860,7 +3204,13 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<DateTime>("CurrentPeriodEnd")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<bool>("DunningExcludedManually")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<DateTime>("GracePeriodEnd")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("PastDueSince")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("PendingBillingInterval")
@@ -3422,7 +3772,6 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ClientId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_designs_clients");
 
                     b.Navigation("Artist");

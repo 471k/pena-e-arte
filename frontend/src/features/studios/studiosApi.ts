@@ -31,6 +31,8 @@ export interface StudioResponse {
   nipt:                 string | null;
   isSolo:               boolean;
   isPublished:          boolean;
+  subscriptionStatus?:  string | null;
+  pastDueSince?:        string | null;
 }
 
 export interface InviteSoloArtistToJoinRequest {

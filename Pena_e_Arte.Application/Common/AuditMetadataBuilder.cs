@@ -4,6 +4,7 @@ using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.GiftCards.Commands;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Application.Platform.Commands;
+using Pena_e_Arte.Application.Support.Commands;
 using Pena_e_Arte.Application.Waitlists.Commands;
 
 namespace Pena_e_Arte.Application.Common;
@@ -51,6 +52,16 @@ public static class AuditMetadataBuilder
         VoidGiftCardCommand c => new Dictionary<string, object?>
         {
             ["giftCardId"] = c.Id,
+        },
+        StartImpersonationCommand c => new Dictionary<string, object?>
+        {
+            // Free-text reason code — a support-entered justification, not PII about the
+            // studio/client, so it's fine in the audit log same as ActivateSubscriptionManuallyCommand's note.
+            ["reasonCode"] = c.Request.ReasonCode,
+        },
+        EndImpersonationSessionCommand c => new Dictionary<string, object?>
+        {
+            ["sessionId"] = c.SessionId,
         },
         _ => new Dictionary<string, object?>(),
     });

@@ -35,7 +35,7 @@ function makeStore() {
     middleware: (gd) => gd().concat(artistsApi.middleware, billingApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake", tenantId: "t1", role: "artist", pendingReferralCode: null } as any,
+      auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake", tenantId: "t1", role: "artist", pendingReferralCode: null, impersonation: null } as any,
     },
   });
 }

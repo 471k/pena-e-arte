@@ -8,17 +8,30 @@ type SuspensionBannerProps = {
   role?:   "owner" | "artist" | "client";
 };
 
+// Defined outside the component so the impure Date.now() read happens in a plain helper, not
+// directly in render — matches SubscriptionOversightPage.tsx's daysPastDue helper.
+function daysPastDueFrom(pastDueSince: string): number {
+  return Math.max(1, Math.floor((Date.now() - new Date(pastDueSince).getTime()) / (1000 * 60 * 60 * 24)));
+}
+
 export function SuspensionBanner({ studio, role = "owner" }: SuspensionBannerProps) {
   const studioSuspended = useAppSelector((s) => s.ui.studioSuspended);
 
   const isSuspended = studio?.isActive === false || studioSuspended;
   if (!isSuspended) return null;
 
+  // Only the owner branch gets PastDue-specific copy — artist/client messages stay generic
+  // regardless of the underlying subscription status, since neither role can act on billing.
+  const isPastDue = role === "owner" && studio?.subscriptionStatus === "PastDue" && !!studio?.pastDueSince;
+  const daysPastDue = isPastDue ? daysPastDueFrom(studio!.pastDueSince!) : 0;
+
   const message =
     role === "artist"
       ? "Your studio's account has been suspended by the platform. Contact your studio owner or platform support to resolve this."
       : role === "client"
       ? "This studio's account has been suspended. Your bookings and records are safe, but access is temporarily unavailable. Contact the studio for assistance."
+      : isPastDue
+      ? `Your subscription payment is ${daysPastDue} day${daysPastDue === 1 ? "" : "s"} overdue. Update your billing details to avoid service interruption.`
       : "Your studio has been suspended by the platform administrator. Contact support or reactivate your subscription to resolve this.";
 
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,6 +29,7 @@ import {
   useCreateAppointmentMutation,
   useCheckSlotAvailabilityQuery,
 } from "../appointmentsApi";
+import { useRequestCatalogDesignMutation } from "@/features/designs/designsApi";
 import { useGetArtistsQuery }                     from "@/features/artists/artistsApi";
 import { useGetClientsQuery, useGetMyClientQuery } from "@/features/clients/clientsApi";
 import { useGetDepositRulesQuery }                from "@/features/deposit-rules/depositRulesApi";
@@ -37,6 +38,7 @@ import { useEnsureActiveStudio }                  from "@/features/auth/useEnsur
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
 import { NotifyMeDialog }                         from "@/features/waitlist/components/NotifyMeDialog";
 import { useGetMyPackagePurchasesQuery }          from "@/features/session-packages/packagesApi";
+import { useGetMyReferralRewardsQuery }           from "@/features/client-referrals/clientReferralsApi";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
 import { FieldLabel }                             from "./FieldLabel";
 import { TattooIntakeFields } from "./TattooIntakeFields";
@@ -83,6 +85,7 @@ const schema = z.object({
     "Select a valid appointment duration"
   ),
   depositRuleId:   z.string().nullable().optional(),
+  promoCode:       z.string().optional(),
   notes:           z.string().optional(),
 }).refine(
   (data) => data.bookAnyArtist || (!!data.artistId && data.artistId.length > 0),
@@ -204,6 +207,13 @@ export function BookAppointmentForm() {
   const [searchParams] = useSearchParams();
   const studioSlug = searchParams.get("studio");
 
+  // Arriving from a studio's public "Flash" catalog via "Book this design" — see
+  // FlashCatalogCard in ArtistPortfolioPage.tsx. Booking then goes through
+  // RequestCatalogDesignCommand instead of the normal create-appointment path.
+  const location = useLocation();
+  const flashDesign = location.state as
+    { flashDesignId?: string; flashDesignTitle?: string; flashDesignImageUrl?: string } | null;
+
   const {
     data:       targetStudio,
     isFetching: resolvingStudioSlug,
@@ -240,12 +250,15 @@ export function BookAppointmentForm() {
   const { data: myPackagePurchases } = useGetMyPackagePurchasesQuery(undefined, { skip: !isClientRole || !studioReady });
   const usablePackages = (myPackagePurchases ?? []).filter((p) => p.sessionsRemaining > 0);
 
-  const [createAppointment, { isLoading }] = useCreateAppointmentMutation();
+  const [createAppointment, { isLoading: isCreating }] = useCreateAppointmentMutation();
+  const [requestCatalogDesign, { isLoading: isRequestingCatalog }] = useRequestCatalogDesignMutation();
+  const isLoading = isCreating || isRequestingCatalog;
 
   const [booked,      setBooked]      = useState<AppointmentResponse | null>(null);
   const [depositDone, setDepositDone] = useState<"paid" | "cash" | "skipped" | null>(null);
   const [artistSearch, setArtistSearch] = useState("");
   const [packagePurchaseId, setPackagePurchaseId] = useState<string | null>(null);
+  const [promoCodeNotRecognized, setPromoCodeNotRecognized] = useState(false);
 
   // Area photo + reference images — uploaded to R2 as they're picked (same presign→PUT flow as
   // Design revisions), before the appointment itself exists, so objects live under a
@@ -282,6 +295,14 @@ export function BookAppointmentForm() {
   const [tattooDescriptionError, setTattooDescriptionError] = useState<string | null>(null);
   const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
   const [desiredPlacement, setDesiredPlacement] = useState<string[]>([]);
+
+  // Reward-bearing client referral (P1 #4) — distinct from the "how did you hear about
+  // us" referralSource above. referralCode redeems someone else's code; applyOwnReward
+  // spends the client's own earned credit (pre-checked when one exists).
+  const [referralCode, setReferralCode] = useState("");
+  const { data: myRewards } = useGetMyReferralRewardsQuery(undefined, { skip: !isClientRole });
+  const unredeemedReward = myRewards?.find((r) => !r.isRedeemed) ?? null;
+  const [applyOwnReward, setApplyOwnReward] = useState(true);
 
   const {
     register,
@@ -362,7 +383,7 @@ export function BookAppointmentForm() {
       ...areaPhotos.doneUrls().map((url) => ({ url, category: AppointmentAttachmentCategory.AreaPhoto })),
       ...referenceImages.doneUrls().map((url) => ({ url, category: AppointmentAttachmentCategory.Reference })),
     ];
-    const result = await createAppointment({
+    const body = {
       artistId:        values.bookAnyArtist ? null : values.artistId,
       clientId,
       date:            new Date(values.scheduledAt).toISOString(),
@@ -371,24 +392,32 @@ export function BookAppointmentForm() {
       // single active DepositRule if any — a pre-existing mismatch, not fixed in this pass
       // (see docs/claude/overnight-prompt-guest-checkout-booking-2026-08-31.md Part 6d).
       depositRuleId:   values.depositRuleId ?? null,
+      promoCode:       values.promoCode || null,
       notes:           values.notes || null,
       tattooDescription:          intake.tattooDescription,
       safetyNotes:                intake.safetyNotes || null,
       desiredPlacementLocations:  desiredPlacement,
       referralSource:             intake.referralSource || null,
       referralSourceOther:        intake.referralSourceOther || null,
+      referralCode:               referralCode.trim() || null,
+      referralRewardId:           (isClientRole && applyOwnReward && unredeemedReward) ? unredeemedReward.id : null,
       ...(images.length > 0 ? { images } : {}),
       packagePurchaseId,
-    });
+    };
+    const result = flashDesign?.flashDesignId
+      ? await requestCatalogDesign({ catalogDesignId: flashDesign.flashDesignId, booking: body })
+      : await createAppointment(body);
     if ("data" in result) {
       toast.success("Appointment requested.");
       setBooked(result.data ?? null);
+      setPromoCodeNotRecognized(!!values.promoCode && !result.data?.promoCodeApplied);
       resetForm({
         artistId:        "",
         bookAnyArtist:   false,
         durationMinutes: 60,
         clientId:        isClientRole ? (myClient?.id ?? user?.id ?? "") : "",
         depositRuleId:   null,
+        promoCode:       "",
       });
       setArtistSearch("");
       setPackagePurchaseId(null);
@@ -398,6 +427,8 @@ export function BookAppointmentForm() {
       referenceImages.clear();
       setIntake({ tattooDescription: "", referralSource: "", referralSourceOther: "", safetyNotes: "" });
       setDesiredPlacement([]);
+      setReferralCode("");
+      setApplyOwnReward(true);
     } else {
       const errMsg =
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
@@ -409,6 +440,7 @@ export function BookAppointmentForm() {
   function startOver() {
     setBooked(null);
     setDepositDone(null);
+    setPromoCodeNotRecognized(false);
   }
 
   // Step 0 — resolving/switching to the studio linked from ?studio=<slug>
@@ -474,6 +506,11 @@ export function BookAppointmentForm() {
             Secure your slot with a deposit of{" "}
             <span className="font-medium text-foreground">€{booked.depositAmount.toFixed(2)}</span>.
           </p>
+          {promoCodeNotRecognized && (
+            <p className="text-[11px] text-muted-foreground">
+              Promo code not recognized or expired — booked without a discount.
+            </p>
+          )}
         </div>
 
         <PaymentMethodSelector
@@ -521,6 +558,11 @@ export function BookAppointmentForm() {
             ? "The artist will confirm soon."
             : "The studio will assign an artist and confirm soon."}
         </p>
+        {promoCodeNotRecognized && (
+          <p className="text-[11px] text-muted-foreground">
+            Promo code not recognized or expired — booked without a discount.
+          </p>
+        )}
         <Button variant="outline" size="sm" onClick={startOver}>
           Book another
         </Button>
@@ -533,6 +575,22 @@ export function BookAppointmentForm() {
       {/* text-muted-foreground/75 ≈ 4.7:1 on the dark theme's #09090b background — passes WCAG
           AA (measured 2026-09-05 while adding axe-core e2e coverage; /60 measured 3.38:1). */}
       <p className="text-xs text-muted-foreground">* Required</p>
+
+      {flashDesign?.flashDesignId && (
+        <div className="flex items-center gap-3 rounded-md border border-border/40 bg-muted/20 p-2">
+          {flashDesign.flashDesignImageUrl && (
+            <img
+              src={flashDesign.flashDesignImageUrl}
+              alt=""
+              aria-hidden="true"
+              className="h-10 w-10 rounded object-cover shrink-0"
+            />
+          )}
+          <p className="text-xs">
+            Booking flash design: <span className="font-medium">{flashDesign.flashDesignTitle}</span>
+          </p>
+        </div>
+      )}
 
       {/* Let the studio choose */}
       <div className="flex items-center justify-between rounded-md border border-border/40
@@ -789,6 +847,17 @@ export function BookAppointmentForm() {
         </div>
       )}
 
+      {/* Promo code */}
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
+        <Input
+          id="promoCode"
+          placeholder="Optional"
+          autoCapitalize="characters"
+          {...register("promoCode")}
+        />
+      </div>
+
       {/* Tattoo description, referral source, safety notes — shared with guest checkout */}
       <TattooIntakeFields
         value={intake}
@@ -811,6 +880,36 @@ export function BookAppointmentForm() {
           className="resize-none"
         />
       </div>
+
+      {/* Referral code — distinct from "how did you hear about us" above, and from any
+          promo-code/gift-card fields other features add at this same site. Keep these
+          clearly labeled ("Promo code", "Gift card", "Referral code") rather than one
+          ambiguous "discount code" field, since a booking can carry all three. */}
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="referralCode">Referral code (optional)</FieldLabel>
+        <Input
+          id="referralCode"
+          placeholder="e.g. ABC12345"
+          value={referralCode}
+          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+        />
+      </div>
+
+      {isClientRole && unredeemedReward && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed p-3">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Apply your referral credit</p>
+            <p className="text-xs text-muted-foreground">
+              {unredeemedReward.rewardPercent}% off this booking's deposit.
+            </p>
+          </div>
+          <ToggleSwitch
+            checked={applyOwnReward}
+            onChange={() => setApplyOwnReward((v) => !v)}
+            aria-label="Apply your referral credit"
+          />
+        </div>
+      )}
 
       {/* Area photo + reference images */}
       <CategorizedImagesField

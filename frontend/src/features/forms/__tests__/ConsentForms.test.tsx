@@ -105,10 +105,10 @@ function makeStore(role: Role = Role.Client) {
         token: "fake-token",
         tenantId: "s-001",
         role,
-        pendingReferralCode: null,
+        pendingReferralCode: null, impersonation: null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
-      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

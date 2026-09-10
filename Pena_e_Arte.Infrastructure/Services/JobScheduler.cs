@@ -47,4 +47,7 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
 
     public void EnqueueNewMessageEmail(Guid chatMessageId) =>
         backgroundJobs.Enqueue<ChatNotificationJob>(j => j.SendNewMessageEmailAsync(chatMessageId, default));
+
+    public void EnqueueCampaignSend(Guid campaignId) =>
+        backgroundJobs.Enqueue<SendCampaignJob>(j => j.RunAsync(campaignId, default));
 }

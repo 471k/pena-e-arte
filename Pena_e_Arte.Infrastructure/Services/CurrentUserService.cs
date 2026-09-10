@@ -19,4 +19,7 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 
     public bool IsAuthenticated =>
         httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
+
+    public bool IsImpersonating =>
+        httpContextAccessor.HttpContext?.User.FindFirst("imp") is not null;
 }

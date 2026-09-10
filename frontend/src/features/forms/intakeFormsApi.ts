@@ -4,12 +4,14 @@ import type {
   IntakeFormResponse,
   SubmitIntakeFormRequest,
   GetIntakeFormsParams,
+  IntakeFormTemplateResponse,
+  UpsertIntakeFormTemplateRequest,
 } from "./form.types";
 
 export const intakeFormsApi = createApi({
   reducerPath: "intakeFormsApi",
   baseQuery,
-  tagTypes: ["IntakeForm"],
+  tagTypes: ["IntakeForm", "IntakeFormTemplate"],
   endpoints: (builder) => ({
     getIntakeForms: builder.query<IntakeFormResponse[], GetIntakeFormsParams>({
       query: ({ clientId, appointmentId } = {}) => ({
@@ -29,6 +31,18 @@ export const intakeFormsApi = createApi({
       query: (body) => ({ url: "intake-forms", method: "POST", body }),
       invalidatesTags: ["IntakeForm"],
     }),
+    getActiveIntakeFormTemplate: builder.query<IntakeFormTemplateResponse | null, void>({
+      query: () => "intake-forms/active-template",
+      providesTags: ["IntakeFormTemplate"],
+    }),
+    getMyIntakeFormTemplate: builder.query<IntakeFormTemplateResponse | null, void>({
+      query: () => "intake-forms/template/mine",
+      providesTags: ["IntakeFormTemplate"],
+    }),
+    upsertIntakeFormTemplate: builder.mutation<IntakeFormTemplateResponse, UpsertIntakeFormTemplateRequest>({
+      query: (body) => ({ url: "intake-forms/template", method: "PUT", body }),
+      invalidatesTags: ["IntakeFormTemplate"],
+    }),
   }),
 });
 
@@ -36,4 +50,7 @@ export const {
   useGetIntakeFormsQuery,
   useGetIntakeFormByIdQuery,
   useSubmitIntakeFormMutation,
+  useGetActiveIntakeFormTemplateQuery,
+  useGetMyIntakeFormTemplateQuery,
+  useUpsertIntakeFormTemplateMutation,
 } = intakeFormsApi;

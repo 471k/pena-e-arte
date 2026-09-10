@@ -1,14 +1,31 @@
 export type DesignStatus = "Draft" | "InReview" | "Approved" | "ChangesRequested";
 
 export interface DesignResponse {
-  id:          string;
-  studioId:    string;
-  clientId:    string;
-  artistId:    string;
-  title:       string;
+  id:            string;
+  studioId:      string;
+  clientId:      string | null;
+  artistId:      string;
+  title:         string;
+  description:   string | null;
+  createdAt:     string;
+  status:        DesignStatus;
+  isCatalogItem: boolean;
+  price:         number | null;
+}
+
+export interface MarkDesignAsCatalogItemRequest {
+  isCatalogItem: boolean;
+  price:         number | null;
+}
+
+export interface DesignCatalogItemResponse {
+  id:         string;
+  title:      string;
   description: string | null;
-  createdAt:   string;
-  status:      DesignStatus;
+  price:      number | null;
+  artistId:   string;
+  artistName: string;
+  imageUrl:   string | null;
 }
 
 export interface GetDesignsParams {

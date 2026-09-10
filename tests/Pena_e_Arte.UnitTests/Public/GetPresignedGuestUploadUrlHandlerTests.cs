@@ -4,6 +4,7 @@ using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
@@ -14,8 +15,9 @@ public class GetPresignedGuestUploadUrlHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IR2Service _r2 = Substitute.For<IR2Service>();
+    private readonly IPlanLimitService _planLimits = Substitute.For<IPlanLimitService>();
 
-    private GetPresignedGuestUploadUrlHandler CreateSut() => new(_db, _r2);
+    private GetPresignedGuestUploadUrlHandler CreateSut() => new(_db, _r2, _planLimits);
 
     private static Studio MakeStudio(string slug = "guest-studio") => new()
     {
@@ -93,5 +95,24 @@ public class GetPresignedGuestUploadUrlHandlerTests
         List<string> keys = _r2.ReceivedCalls().Select(c => (string)c.GetArguments()[0]!).ToList();
         keys.Should().HaveCount(2);
         keys[0].Should().NotBe(keys[1]);
+    }
+
+    [Fact]
+    public async Task Handle_StudioOverStorageQuota_ThrowsPlanLimitExceededException()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        _planLimits.EnsureWithinLimitAsync(studio.Id, QuotaType.StorageBytes, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new PlanLimitExceededException("over quota")));
+
+        Func<Task> act = () => CreateSut().Handle(
+            new GetPresignedGuestUploadUrlQuery(studio.Slug, new PresignGuestUploadRequest("image/png", "area")),
+            default);
+
+        await act.Should().ThrowAsync<PlanLimitExceededException>();
+        await _r2.DidNotReceiveWithAnyArgs()
+            .GeneratePresignedUploadUrlAsync(default!, default!, default);
     }
 }

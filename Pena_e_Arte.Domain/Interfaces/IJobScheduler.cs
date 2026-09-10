@@ -15,4 +15,5 @@ public interface IJobScheduler
     string ScheduleManualReminder(Guid manualReminderId, DateTimeOffset sendAt);
     void CancelJob(string jobId);
     void EnqueueNewMessageEmail(Guid chatMessageId);
+    void EnqueueCampaignSend(Guid campaignId);
 }

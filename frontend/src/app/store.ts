@@ -14,6 +14,7 @@ import { billingApi } from "@/features/billing/billingApi";
 import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
+import { promoCodesApi } from "@/features/promo-codes/promoCodesApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { remindersApi } from "@/features/reminders/remindersApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
@@ -33,6 +34,9 @@ import { waitlistApi } from "@/features/waitlist/waitlistApi";
 import { boothRentApi } from "@/features/booth-rent/boothRentApi";
 import { giftCardsApi } from "@/features/gift-cards/giftCardsApi";
 import { packagesApi } from "@/features/session-packages/packagesApi";
+import { clientReferralsApi } from "@/features/client-referrals/clientReferralsApi";
+import { campaignsApi } from "@/features/campaigns/campaignsApi";
+import { marketingApi } from "@/features/public/marketingApi";
 
 const appReducer = combineReducers({
   auth:          authReducer,
@@ -49,6 +53,7 @@ const appReducer = combineReducers({
   [intakeFormsApi.reducerPath]:    intakeFormsApi.reducer,
   [consentFormsApi.reducerPath]:   consentFormsApi.reducer,
   [depositRulesApi.reducerPath]:   depositRulesApi.reducer,
+  [promoCodesApi.reducerPath]:     promoCodesApi.reducer,
   [notificationsApi.reducerPath]:  notificationsApi.reducer,
   [remindersApi.reducerPath]:      remindersApi.reducer,
   [paymentsApi.reducerPath]:       paymentsApi.reducer,
@@ -68,6 +73,9 @@ const appReducer = combineReducers({
   [boothRentApi.reducerPath]:      boothRentApi.reducer,
   [giftCardsApi.reducerPath]:      giftCardsApi.reducer,
   [packagesApi.reducerPath]:       packagesApi.reducer,
+  [clientReferralsApi.reducerPath]: clientReferralsApi.reducer,
+  [campaignsApi.reducerPath]:      campaignsApi.reducer,
+  [marketingApi.reducerPath]:      marketingApi.reducer,
 });
 
 type AppState = ReturnType<typeof appReducer>;
@@ -127,6 +135,7 @@ export const store = configureStore({
       intakeFormsApi.middleware,
       consentFormsApi.middleware,
       depositRulesApi.middleware,
+      promoCodesApi.middleware,
       notificationsApi.middleware,
       remindersApi.middleware,
       paymentsApi.middleware,
@@ -146,6 +155,9 @@ export const store = configureStore({
       packagesApi.middleware,
       conductReportsApi.middleware,
       messagingApi.middleware,
+      clientReferralsApi.middleware,
+      campaignsApi.middleware,
+      marketingApi.middleware,
     ),
 });
 

@@ -34,6 +34,8 @@ public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentCom
             .WithMessage("Please tell us how you heard about us.")
             .When(x => x.Request.ReferralSource == "Other");
 
+        RuleFor(x => x.Request.ReferralCode).MaximumLength(12).When(x => x.Request.ReferralCode is not null);
+
         RuleForEach(x => x.Request.Images).ChildRules(image =>
         {
             image.RuleFor(i => i.Url).NotEmpty().MaximumLength(2048).Must(r2.IsR2Url)

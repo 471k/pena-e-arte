@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Banknote,
+  BellOff,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -25,6 +26,7 @@ import {
   useExtendTrialMutation,
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
+  useSetDunningExclusionMutation,
 } from "@/features/platform/platformApi";
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
@@ -43,6 +45,11 @@ function fmt(date: string): string {
   return new Date(date).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
   });
+}
+
+function daysPastDue(pastDueSince?: string | null): number | null {
+  if (!pastDueSince) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(pastDueSince).getTime()) / (1000 * 60 * 60 * 24)));
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -145,14 +152,32 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   const showNoPlanWarning =
     sub.status !== "Trialing" && sub.status !== "NoSubscription" && !sub.planName;
 
+  const overdueDays = sub.status === "PastDue" ? daysPastDue(sub.pastDueSince) : null;
+
   const periodText = (() => {
     if (sub.status === "Active" && sub.cancelAtPeriodEnd) return `Cancels: ${fmt(sub.currentPeriodEnd)}`;
     if (sub.status === "Active")       return `Renews: ${fmt(sub.currentPeriodEnd)}`;
     if (sub.status === "GracePeriod")  return `Grace ends: ${fmt(sub.currentPeriodEnd)}`;
-    if (sub.status === "PastDue")      return `Overdue since: ${fmt(sub.currentPeriodEnd)}`;
+    if (sub.status === "PastDue") {
+      const overdueSuffix = overdueDays !== null ? ` · ${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue` : "";
+      return `Overdue since: ${fmt(sub.currentPeriodEnd)}${overdueSuffix}`;
+    }
     if (sub.status === "Cancelled")    return `Cancelled — expired ${fmt(sub.currentPeriodEnd)}`;
     return null;
   })();
+
+  const [setDunningExclusion, { isLoading: settingExclusion }] = useSetDunningExclusionMutation();
+
+  async function handleToggleDunningExclusion() {
+    try {
+      await setDunningExclusion({ studioId: sub.studioId, excluded: !sub.dunningExcludedManually }).unwrap();
+      toast.success(sub.dunningExcludedManually
+        ? "Dunning reminders re-enabled for this studio"
+        : "Dunning reminders excluded for this studio");
+    } catch {
+      toast.error("Failed to update dunning exclusion");
+    }
+  }
 
   async function handleCancel() {
     try {
@@ -264,6 +289,21 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
               >
                 <XCircle className="h-3.5 w-3.5" />
                 Cancel Subscription
+              </Button>
+            )}
+            {sub.status === "PastDue" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1"
+                disabled={settingExclusion}
+                onClick={handleToggleDunningExclusion}
+                aria-label={sub.dunningExcludedManually
+                  ? `Re-enable dunning reminders for ${sub.studioName}`
+                  : `Exclude ${sub.studioName} from dunning reminders`}
+              >
+                {settingExclusion ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BellOff className="h-3.5 w-3.5" />}
+                {sub.dunningExcludedManually ? "Re-enable Reminders" : "Exclude From Dunning"}
               </Button>
             )}
           </div>
@@ -382,7 +422,7 @@ export function SubscriptionOversightPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get("status") ?? "";
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<"name" | "trialEnd" | "periodEnd">("trialEnd");
+  const [sortKey, setSortKey] = useState<"name" | "trialEnd" | "periodEnd" | "daysOverdue">("trialEnd");
   const [page, setPage] = useState(1);
 
   // Refetch on mount so the admin always sees current subscription state.
@@ -411,6 +451,12 @@ export function SubscriptionOversightPage() {
       return aTime - bTime;
     }
     if (sortKey === "periodEnd") return new Date(a.currentPeriodEnd).getTime() - new Date(b.currentPeriodEnd).getTime();
+    if (sortKey === "daysOverdue") {
+      // Studios not currently overdue sort to the end regardless of direction.
+      const aDays = daysPastDue(a.pastDueSince) ?? -1;
+      const bDays = daysPastDue(b.pastDueSince) ?? -1;
+      return bDays - aDays;
+    }
     return 0;
   });
 
@@ -459,6 +505,7 @@ export function SubscriptionOversightPage() {
           >
             <option value="trialEnd">Trial end (soonest first)</option>
             <option value="periodEnd">Period end (soonest first)</option>
+            <option value="daysOverdue">Days overdue (most first)</option>
             <option value="name">Studio name (A–Z)</option>
           </select>
         </div>
