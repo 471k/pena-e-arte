@@ -181,3 +181,28 @@ export interface TrafficBreakdownResponse {
   topPages:         TrafficNamedCount[];
   topNetworks:      TrafficNamedCount[];
 }
+
+export interface ImpersonationTokenResponse {
+  sessionId:   string;
+  accessToken: string;
+  expiresAt:   string;
+  studioId:    string;
+  studioName:  string;
+}
+
+export interface ImpersonationSessionResponse {
+  id:          string;
+  actorUserId: string;
+  studioId:    string;
+  reasonCode:  string;
+  createdAt:   string;
+  expiresAt:   string;
+  endedAt:     string | null;
+}
+
+export interface ImpersonationSessionPageResponse {
+  items:      ImpersonationSessionResponse[];
+  totalCount: number;
+  page:       number;
+  pageSize:   number;
+}

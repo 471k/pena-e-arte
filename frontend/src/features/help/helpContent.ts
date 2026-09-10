@@ -1245,6 +1245,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
     warnings: ["Suspending a studio immediately hides it from Discover and blocks logins for its owner and all its artists — this takes effect right away, though it can be undone anytime with \"Reactivate Studio\"."],
   },
   {
+    id: "admin-impersonation",
+    roles: [Admin],
+    title: "Impersonate a studio for support",
+    route: "/platform/studios",
+    keywords: ["impersonate", "view as", "support session", "troubleshoot", "sudo", "act as owner"],
+    summary: "Open a temporary, read-only view of a studio the way its owner sees it — for diagnosing a support ticket (\"why can't this studio see appointment X\") without needing their password.",
+    steps: [
+      "Open the studio's detail page and click \"Impersonate\".",
+      "Enter a short reason for the session (required — e.g. \"Investigating ticket #123\") and click \"Start impersonating\".",
+      "You're dropped into the studio's own dashboard, appointments, artists, clients, and settings — a purple \"Viewing as {studio}\" banner stays pinned to the top of every page for the whole session.",
+      "Click \"End session\" in the banner when you're done, or just let it run out — sessions hard-expire after 45 minutes either way.",
+    ],
+    tips: [
+      "The session is strictly read-only — every create/edit/delete action is blocked, so you can look around freely without any risk of changing the studio's data.",
+      "Client medical/PII (profile, tattoo records, intake and consent forms) and every financial surface (payments, billing, revenue reports) are hidden entirely, even to look at, for the whole session.",
+      "If you try something that isn't allowed, you'll see a small dismissible notice under the banner explaining it isn't available while impersonating — that's expected, not a bug.",
+    ],
+    warnings: ["Every session is recorded in the platform audit log with your own admin account as the actor, distinguishable from your normal admin actions — impersonation is not anonymous."],
+    relatedArticleIds: ["admin-audit-log", "admin-studio-detail"],
+  },
+  {
     id: "admin-plans",
     roles: [Admin],
     title: "Manage subscription plans",
@@ -1404,7 +1425,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Filter by action, target type, or a date range.",
       "Each row shows when it happened, what happened, what it targeted, which studio (or \"Platform-wide\" for actions with no single studio target), and the actor's role.",
     ],
-    tips: ["Entries never contain names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data."],
+    tips: ["Entries never contain names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin."],
+    relatedArticleIds: ["admin-impersonation"],
   },
   {
     id: "owner-audit-log",

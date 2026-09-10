@@ -42,6 +42,7 @@ public class AppDbContext(
     public DbSet<ManualReminder> ManualReminders => Set<ManualReminder>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
 
     // --- Admin-level (no tenant filter) ---
     public DbSet<Studio> Studios => Set<Studio>();
@@ -138,6 +139,13 @@ public class AppDbContext(
         builder.Entity<StudioNotificationPreference>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Conversation>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<ChatMessage>().HasQueryFilter(m => m.StudioId == tenant.StudioId && m.DeletedAt == null);
+        // StudioId is the TARGET studio being impersonated, not the platform — see
+        // ImpersonationSession's doc comment. Filtered like every other TenantEntity so
+        // GetMyStudioAuditLog-style owner reads work unmodified; the admin's own commands
+        // (StartImpersonationCommand has no tenant_id claim, EndImpersonationSessionCommand
+        // likewise) use IgnoreQueryFilters() — same approved precedent as ExtendTrialCommand,
+        // see architecture.md.
+        builder.Entity<ImpersonationSession>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         // ClientNotificationPreference — NOT filtered, dual-keyed by (UserId, StudioId); see ClientNotificationPreferenceConfiguration.
 
         builder.Entity<SavedPortfolioImage>(b =>
@@ -282,6 +290,13 @@ public class AppDbContext(
             // for a studio is resolved explicitly in the handlers via ConsentTemplateResolver,
             // narrowing to `StudioId == tenant.StudioId || StudioId == null`, never a filter.
             entity.HasIndex(t => new { t.StudioId, t.Kind, t.IsActive });
+        });
+
+        builder.Entity<ImpersonationSession>(entity =>
+        {
+            entity.Property(i => i.ReasonCode).HasMaxLength(500).IsRequired();
+            entity.HasIndex(i => i.ActorUserId);
+            entity.HasIndex(i => i.ExpiresAt);
         });
 
         builder.Entity<ConductReport>(entity =>

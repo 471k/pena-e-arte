@@ -2,6 +2,8 @@ using MediatR;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Platform.Commands;
 using Pena_e_Arte.Application.Platform.Queries;
+using Pena_e_Arte.Application.Support.Commands;
+using Pena_e_Arte.Application.Support.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 
@@ -35,6 +37,11 @@ public static class PlatformEndpoints
         group.MapGet("traffic/live", GetLiveTrafficSnapshot);
         group.MapGet("traffic/history", GetTrafficHistory);
         group.MapGet("traffic/breakdown", GetTrafficBreakdown);
+
+        // Support Impersonation — see docs/claude/architecture.md Decisions Log.
+        group.MapPost("studios/{studioId:guid}/impersonate", StartImpersonation);
+        group.MapPost("impersonation-sessions/{sessionId:guid}/end", EndImpersonationSession);
+        group.MapGet("impersonation-sessions", GetImpersonationSessions);
     }
 
     private static async Task<IResult> GetStats(
@@ -238,6 +245,38 @@ public static class PlatformEndpoints
         // Range clamping is the handler's job (GetTrafficBreakdownQuery.cs) — the sole source of
         // truth, so the bound only needs to change in one place.
         TrafficBreakdownResponse result = await mediator.Send(new GetTrafficBreakdownQuery(days ?? 30), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> StartImpersonation(
+        Guid studioId,
+        StartImpersonationRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ImpersonationTokenResponse result =
+            await mediator.Send(new StartImpersonationCommand(studioId, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> EndImpersonationSession(
+        Guid sessionId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new EndImpersonationSessionCommand(sessionId), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetImpersonationSessions(
+        ISender mediator,
+        CancellationToken ct,
+        Guid? studioId = null,
+        int page = 1,
+        int pageSize = 20)
+    {
+        ImpersonationSessionPageResponse result =
+            await mediator.Send(new GetImpersonationSessionsQuery(studioId, page, pageSize), ct);
         return Results.Ok(result);
     }
 }

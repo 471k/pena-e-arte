@@ -1105,6 +1105,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 49 | `GetPublicDepositRuleHandler` | `Studio` slug lookup + cross-tenant `DepositRule` lookup ("single active rule, if any" — same query `CreateAppointmentCoreAsync` itself runs) for the guest deposit-preview estimate | Anonymous |
 | 50 | `GetPresignedGuestUploadUrlHandler` | `Studio` slug lookup, scoping the server-constructed R2 key for anonymous image upload (Decision #10, guest-checkout prompt) | Anonymous |
 | 51 | `ArtistAvailabilityExtensions` (`IsAnyArtistAvailableAsync`, `CheckArtistScheduleAsync`, `CheckArtistSlotAvailabilityAsync`) + `CreateAppointmentCommand.CreateAppointmentCoreAsync` | Cross-tenant `Artist`/`ArtistSchedule`/`ArtistTimeOff`/`Appointment`/`StudioClosure`/`DepositRule` queries, every one explicitly scoped by an `studioId` parameter rather than the ambient tenant filter — required because these are shared by both an authenticated caller (`CreateAppointmentCommand`, `RescheduleAppointmentCommand`, `CheckSlotAvailabilityQuery` — real `ICurrentTenant.StudioId`) and an anonymous one (`CreateGuestAppointmentHandler`, `CheckPublicSlotAvailabilityHandler` — no JWT at all, `ICurrentTenant.StudioId` defaults to `Guid.Empty`). Found as a real bug during the guest-checkout prompt (2026-08-31): without `IgnoreQueryFilters()`, EF Core's global filter (`StudioId == tenant.StudioId`) still ANDs against the explicit predicate, silently zeroing every result for an anonymous caller regardless of the real studio — caught by a real-`AppDbContext` integration test (`GuestCheckoutBookingIntegrationTests`), not unit tests, since the unit-test `FakeDbContext` never registers query filters at all | Authenticated (`ClientAndAbove`) + Anonymous |
+| 52 | `StartImpersonationHandler`, `EndImpersonationSessionHandler`, `GetImpersonationSessionsHandler` | AdminOnly cross-tenant `Studio`/`ImpersonationSession` lookups — the calling admin's own JWT carries no `tenant_id` claim while starting/ending/browsing sessions (they are not impersonating yet, or ever, for these three commands themselves), so the normal tenant filter would match nothing | AdminOnly |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -3845,3 +3846,153 @@ Verified after every batch of changes (not just at the end): `dotnet build` clea
 final `dotnet test` — 1914 unit + 388 integration, all passing (the +1 vs. the `a768f68` count is
 the new `CreateGuestAppointmentHandlerTests` coverage for the enumeration-resistance redesign);
 `pnpm tsc --noEmit` and `pnpm build` clean throughout.
+
+### Support Impersonation with Audit Trail — 2026-09-10
+
+Final item (#15) of the 2026-09-09 P1 backlog audit, held back from every earlier group
+pending an explicit product/security sign-off on its admin-endpoint allow-list — the sign-off
+happened, this phase builds it. Lets a platform admin open a temporary, read-only,
+allow-listed view of a studio's own data (`POST /api/v1/platform/studios/{id}/impersonate`,
+`POST /api/v1/platform/impersonation-sessions/{id}/end`,
+`GET /api/v1/platform/impersonation-sessions`) to diagnose a support ticket without needing
+the owner's password.
+
+**Sign-off decisions this phase was built against** (quoted from the master prompt):
+
+| Question | Decision |
+|---|---|
+| Should an impersonating admin be able to read client medical/PII data (allergies, medical notes, body maps, intake/consent form content)? | **No — denied even as read-only** |
+| Should an impersonating admin be able to read financial data (payments, billing, revenue reports, invoices)? | **No — denied entirely** |
+
+- **The real security surface, and the one insight that shapes everything else here**:
+  `AuthorizationExtensions.cs` already grants `"admin"` every role-based permission every
+  studio-scoped policy checks (`ClientAndAbove`/`ArtistAndAbove`/`OwnerOnly` all
+  `RequireRole(..., "admin")`), and `TenantMiddleware` already exempts `IsInRole("admin")`
+  from its own subscription-enforcement check. So an admin token that simply carried a
+  `tenant_id` claim for a target studio would, on its own, already satisfy every single
+  authorization check on every studio-scoped endpoint in the app. There is no RBAC gap to
+  close — the entire security surface this feature protects is (1) whether a `tenant_id`
+  claim for an arbitrary studio ever gets minted onto an admin's token outside the normal
+  login flow, and (2) once minted (deliberately, via this feature), which endpoints that
+  now-unrestricted combination may reach. `TenantMiddleware`'s new impersonation gate (the
+  `"imp"` claim check, `ImpersonationAllowList.IsAllowed`, and a per-request
+  `ImpersonationSession.IsActive` DB check) is not a defense-in-depth layer on top of RBAC —
+  it is the *entire* enforcement mechanism.
+- **`ImpersonationSession`** — a `TenantEntity` with `StudioId` = the TARGET studio (not the
+  platform), matching every other audit-adjacent entity's shape; `ActorUserId` (the real
+  admin, never overwritten), `ReasonCode`, `ExpiresAt` (hard-capped 45 min from `Start`),
+  `EndedAt`. `IgnoreQueryFilters()` approved as usage #52 (architecture.md table above) for
+  `StartImpersonationHandler`/`EndImpersonationSessionHandler`/`GetImpersonationSessionsHandler`
+  — the calling admin's own JWT carries no `tenant_id` claim while starting/ending/browsing
+  sessions, so the ambient tenant filter would otherwise match nothing.
+- **JWT minting** (`IIdentityService.IssueImpersonationTokenAsync`, a new method alongside
+  `IssueTokensForTenantAsync` rather than a hand-rolled second issuance path): role stays
+  `"admin"` (see the insight above — changing it to `"owner"` would silently grant genuine
+  `OwnerOnly` superpowers with no distinguishing marker, and an unrecognized role would break
+  every policy check outright), `tenant_id` = target studio, a new `"imp"` claim = the
+  session id (not just `"true"` — lets the gate and the audit behavior both reference the
+  exact session without a second lookup key), `Sub`/`NameIdentifier` stays the real admin's
+  own id, expiry capped to the session's own `ExpiresAt` (45 min) rather than the standard
+  `Jwt:AccessTokenExpiryMinutes`. No refresh token is issued — the session is meant to
+  hard-expire, not renew.
+- **Gate enforcement, `TenantMiddleware`** (extended rather than a new middleware — it
+  already runs early in the pipeline and already inspects claims): if the request carries an
+  `"imp"` claim, check the route against `ImpersonationAllowList` (GET-only, explicit
+  regex-anchored array, deny by default) and look the session up by id — `EndedAt is not
+  null || ExpiresAt < now` rejects it. A no-op for every request without an `"imp"` claim.
+  Both failure modes throw `ImpersonationScopeException` (mapped to 403,
+  `IMPERSONATION_SCOPE_DENIED`) — distinct from `ForbiddenException` so it's unambiguous in
+  logs which mechanism blocked a request, and unified so `EndImpersonationSessionCommand`
+  takes effect immediately (checked per-request against the DB row) rather than waiting for
+  the JWT's own `exp` to pass.
+- **Allow-list, as shipped** — `GET /appointments`, `/appointments/{id}`,
+  `/appointments/check-slot`, `/artists`, `/artists/{id}`, `/artists/{id}/schedule`,
+  `/clients`, `/clients/{id}` (response is already name/email/phone/artist-assignment only —
+  no PII trimming needed), `/studios/me`, `/studios/{id}/closures`, `/deposit-rules`,
+  `/deposit-rules/{id}`, `/reminders`, `/notifications`. Every route explicitly excludes
+  `/clients/{id}/profile|/tattoos|/portable-profile`, every `Payment`/`Billing`/`Report`
+  route, `/studios/me/audit-log`, and everything under `/platform` — denied by omission, not
+  by a separate deny-list.
+- **Correction to the original spec text**: it referenced `/api/v1/manual-reminders` for the
+  allow-list — the actual route group (`ManualReminderEndpoints.cs`) is `/api/v1/reminders`.
+  Corrected in `ImpersonationAllowList` to the real path; same kind of stale-reference fix as
+  the next one.
+- **Correction to the original spec text (frontend)**: it referenced
+  `IssuerStudioDetailPage.tsx` for the "Impersonate" action — that file no longer exists,
+  renamed to `AdminStudioDetailPage.tsx` when the platform-admin role itself was renamed
+  issuer → admin (`0845e57`, already on `main`). Verified the current file exists before
+  adding the action there.
+- **Audit trail** — `AuditLogBehavior` now records `ActorRole` as `"admin-impersonating"`
+  instead of the raw `"admin"` role claim whenever `ICurrentUser.IsImpersonating` (a new
+  member, backed by checking for the `"imp"` claim) is true — zero schema change,
+  `AuditLogEntry.ActorRole` was already a plain string. `ActorUserId` continues to correctly
+  identify the real admin either way. `StartImpersonationCommand`/`EndImpersonationSessionCommand`
+  are themselves `IAuditableCommand` (not required by the spec, but starting/ending a session
+  is itself a security-sensitive admin action worth its own audit trail, consistent with
+  every other admin action in this codebase). **Stated plainly, not implied**: because this
+  phase's allow-list is GET-only, no write is ever reachable during an actual impersonation
+  session — the "admin-impersonating" distinguishing behavior is currently exercised only by
+  the Start/End commands themselves (both run under the admin's own, non-impersonating
+  token), never by a real write made *while* impersonating. The mechanism is fully in place
+  and tested (`AuditLogBehaviorTests` asserts the actor-role substitution directly against a
+  fake auditable command), but it has not yet been exercised end-to-end against a live write
+  reached through an impersonation token, since none exists yet — true by construction, not
+  an oversight, and worth re-checking the moment the allow-list is ever extended to include one.
+- **Frontend layout-routing gap, found while building** — `AppLayout` in `router.tsx` picks
+  the rendered layout shell purely by `auth.role`, and `getRoleRedirectPath`/`IndexRedirect`/
+  `CatchAllRedirect` did the same. Since impersonation keeps `role: "admin"` unchanged (by
+  design, see above), naively this would leave an impersonating admin sitting in
+  `AdminLayout` (the platform console's own nav) even though `RoleGuard` already permits
+  Admin on most owner-scoped routes (`/dashboard`, `/schedule`, `/clients`, etc. all already
+  list `Role.Admin` in their `allowedRoles`) — reachable by URL but with the wrong nav shell
+  around it, which would have made the feature nearly unusable. Fixed by threading
+  `auth.impersonation !== null` through all four call sites: `AppLayout` renders
+  `OwnerLayout` (not `AdminLayout`) for an impersonating admin, and
+  `getRoleRedirectPath(role, impersonating)` returns `/dashboard` instead of `/platform` in
+  that case. `OwnerLayout`'s own nav still links to two Admin-excluded routes
+  (`/conduct-reports`, `/messages`) — clicking either bounces back to `/dashboard` via
+  `RoleGuard`'s existing redirect, a graceful dead-end rather than a broken one; not worth
+  hiding those two nav items for this phase.
+- **Write-affordance handling — deliberate scope decision, not an oversight.** The spec
+  offered a choice between fully disabling every owner-UI write control while impersonating,
+  or a clear-error-message fallback if the former was too large a change. Chose the
+  fallback: `baseQuery.ts` now dispatches `setImpersonationScopeError` on a 403 carrying
+  `IMPERSONATION_SCOPE_DENIED`, surfaced as a dismissible notice under the persistent
+  "Viewing as {studio}" banner (`ImpersonationBanner.tsx`, mounted once at the layout root in
+  `AppRoot`, unconditionally, never a dismissible toast) — an attempted write still fails
+  server-side (the gate is the real enforcement either way) but the admin sees why instead of
+  a generic error. Auditing and individually disabling every create/edit/delete control
+  threaded through the existing owner UI was judged too large a change for this phase.
+- **Token-storage design, frontend** — `authSlice.ts`'s existing model holds exactly one
+  active token under a fixed storage key. `startImpersonation` stashes the admin's real
+  token/refresh-token/remember-flag aside in a dedicated `sessionStorage`-only slot (never
+  `localStorage`, regardless of the admin's own "remember me" choice) before swapping the
+  active token for the impersonation one (also written to `sessionStorage` only, and with no
+  refresh token — matches the backend's hard-expire intent); `endImpersonation` restores it.
+  A 401 on the impersonation token specifically (no refresh token to fall back to, unlike a
+  normal session) now restores the admin's own token and shows a toast, rather than the
+  existing session-expired flow's full logout — the admin never has to re-authenticate just
+  because a 45-minute window closed.
+- Help sync: new `admin-impersonation` article in `helpContent.ts` (cross-linked with
+  `admin-audit-log` and `admin-studio-detail`) and a matching section in the standalone
+  manual (`public/user-manual/index.html`), admin-only per the spec (not a studio-facing
+  feature studio users need documented). No onboarding-tour step added — `adminTourSteps` is
+  strictly a nav walkthrough tied to `data-tour` attributes on `AdminLayout`'s sidebar links,
+  and this feature adds no new nav item (same reasoning already applies to every other
+  `AdminStudioDetailPage` action — Suspend, Extend Trial, Activate — none of which have tour
+  steps either).
+
+**Verification**: `dotnet build` clean; `dotnet test` — 1992 unit + 408 integration, all
+green (unit total includes new `ImpersonationAllowListTests`, `ImpersonationGateTests`
+(TenantMiddleware's gate exercised directly against a real in-memory `FakeDbContext`, not a
+substitute — the gate runs a real EF query), `StartImpersonationHandlerTests`,
+`EndImpersonationSessionHandlerTests`, and two new `AuditLogBehaviorTests` cases; integration
+total includes a new `SupportImpersonationEndpointTests` — full session lifecycle through the
+real ASP.NET Core pipeline (allow-listed GET succeeds, non-allow-listed GET denied, write to
+an allow-listed resource denied, session end makes the same token immediately unusable even
+on an allow-listed route, an already-expired session denied) — and new
+`IdentityServiceTests` cases asserting the real `IssueImpersonationTokenAsync` JWT claim
+shape against a real MySQL-backed `UserManager`, not a stand-in. `pnpm tsc -b`/`pnpm build`
+clean; `pnpm lint` clean (0 errors); full `pnpm test` — 2056 frontend tests, all passing
+except one pre-existing, already-documented flake in `StudioProfilePage.test.tsx` unrelated
+to this change (a `testTimeout` flake noted in that file's own comment since 2026-09-05).

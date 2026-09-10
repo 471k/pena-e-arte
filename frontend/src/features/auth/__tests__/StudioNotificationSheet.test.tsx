@@ -63,9 +63,9 @@ function makeStore() {
         refreshToken: null,
         tenantId: "studio-aaa",
         role: Role.Client,
-        pendingReferralCode: null,
+        pendingReferralCode: null, impersonation: null,
       },
-      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

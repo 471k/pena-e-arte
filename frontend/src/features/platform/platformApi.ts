@@ -14,13 +14,15 @@ import type {
   LiveTrafficSnapshotResponse,
   TrafficHistoryResponse,
   TrafficBreakdownResponse,
+  ImpersonationTokenResponse,
+  ImpersonationSessionPageResponse,
 } from "./platform.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
 export const platformApi = createApi({
   reducerPath: "platformApi",
   baseQuery,
-  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "AdminStudioSummary", "PlanUsageReport", "AuditLog", "LiveTraffic", "TrafficHistory", "TrafficBreakdown"],
+  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "AdminStudioSummary", "PlanUsageReport", "AuditLog", "LiveTraffic", "TrafficHistory", "TrafficBreakdown", "ImpersonationSession"],
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStatsResponse, void>({
       query: () => "platform/stats",
@@ -144,6 +146,25 @@ export const platformApi = createApi({
       query: (args) => `platform/traffic/breakdown${args?.days ? `?days=${args.days}` : ""}`,
       providesTags: ["TrafficBreakdown"],
     }),
+    startImpersonation: builder.mutation<ImpersonationTokenResponse, { studioId: string; reasonCode: string }>({
+      query: ({ studioId, reasonCode }) => ({
+        url:    `platform/studios/${studioId}/impersonate`,
+        method: "POST",
+        body:   { reasonCode },
+      }),
+      invalidatesTags: ["ImpersonationSession"],
+    }),
+    endImpersonationSession: builder.mutation<void, string>({
+      query: (sessionId) => ({
+        url:    `platform/impersonation-sessions/${sessionId}/end`,
+        method: "POST",
+      }),
+      invalidatesTags: ["ImpersonationSession"],
+    }),
+    getImpersonationSessions: builder.query<ImpersonationSessionPageResponse, { studioId?: string; page?: number; pageSize?: number } | void>({
+      query: (params) => ({ url: "platform/impersonation-sessions", params: params ?? undefined }),
+      providesTags: ["ImpersonationSession"],
+    }),
   }),
 });
 
@@ -169,4 +190,7 @@ export const {
   useGetLiveTrafficSnapshotQuery,
   useGetTrafficHistoryQuery,
   useGetTrafficBreakdownQuery,
+  useStartImpersonationMutation,
+  useEndImpersonationSessionMutation,
+  useGetImpersonationSessionsQuery,
 } = platformApi;

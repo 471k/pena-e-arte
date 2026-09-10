@@ -134,8 +134,8 @@ function makeStore(role: Role = Role.Client) {
     middleware: (gd) => gd().concat(designsApi.middleware, clientsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

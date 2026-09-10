@@ -46,8 +46,8 @@ function makeStoreWithSuspension(suspended: boolean) {
     reducer: { auth: authReducer, ui: uiReducer },
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: suspended, planLimitError: null },
+      auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: suspended, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

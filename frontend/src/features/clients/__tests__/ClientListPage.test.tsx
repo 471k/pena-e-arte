@@ -92,10 +92,10 @@ function makeStore() {
         token: "fake-token",
         tenantId: "stud-0001",
         role: "owner",
-        pendingReferralCode: null,
+        pendingReferralCode: null, impersonation: null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
-      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      ui: { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }
