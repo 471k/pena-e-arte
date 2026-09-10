@@ -4,6 +4,8 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetMyEarningsQuery } from "../reportsApi";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
 import { RevenueTrendChart } from "./RevenueTrendChart";
 import { MyBoothRentSection } from "@/features/booth-rent/components/MyBoothRentSection";
 
@@ -11,15 +13,17 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(value);
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, studioTimezone: string | undefined): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString(
+    "en-GB", withStudioTimeZone({ day: "numeric", month: "short", year: "numeric" }, studioTimezone));
 }
 
 export function MyEarningsPage() {
   useDocumentMeta({ title: "My Earnings — TattooOS", canonical: "/earnings" });
 
   const { data, isLoading, isError, error, refetch } = useGetMyEarningsQuery();
+  const { data: studio } = useGetMyStudioQuery();
 
   // A 404 here means the caller (an owner who hasn't enabled their own artist profile, or
   // no longer has one) has no Artist row to attribute earnings to — not a transient failure,
@@ -105,7 +109,7 @@ export function MyEarningsPage() {
                           <span className="text-xs tabular-nums font-semibold">{formatCurrency(line.amount)}</span>
                         </div>
                         <div className="text-[11px] text-muted-foreground">
-                          {formatDate(line.appointmentDate)}
+                          {formatDate(line.appointmentDate, studio?.timezone)}
                         </div>
                         {line.splits.length > 0 && (
                           <ul className="mt-1 space-y-0.5">

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
+import { useGetMyStudioQuery, useGetStudioHoursQuery } from "@/features/studios/studiosApi";
 
 interface ChecklistItem {
   label:  string;
@@ -17,12 +18,15 @@ export function SetupChecklist() {
   const navigate = useNavigate();
   const { data: artists = [], isLoading: artistsLoading }           = useGetArtistsQuery(undefined);
   const { data: depositRules = [], isLoading: depositRulesLoading } = useGetDepositRulesQuery(undefined);
+  const { data: studio, isLoading: studioLoading }                  = useGetMyStudioQuery();
+  const { data: hours = [], isLoading: hoursLoading } =
+    useGetStudioHoursQuery(studio?.id ?? "", { skip: !studio?.id });
 
-  // Both queries default to [] while their first request is in flight, which would
-  // otherwise render "0/2 complete" for a moment on every dashboard load — even for a
-  // fully-set-up studio — before the real data arrives. Wait for both to resolve at
+  // All queries default to [] while their first request is in flight, which would
+  // otherwise render "0/3 complete" for a moment on every dashboard load — even for a
+  // fully-set-up studio — before the real data arrives. Wait for all to resolve at
   // least once rather than flash a false "incomplete" state.
-  if (artistsLoading || depositRulesLoading) return null;
+  if (artistsLoading || depositRulesLoading || studioLoading || (studio?.id && hoursLoading)) return null;
 
   const items: ChecklistItem[] = [
     {
@@ -37,6 +41,19 @@ export function SetupChecklist() {
       href:   "/deposit-rules/new",
       cta:    "Set rule",
       tourId: "owner-deposit-rules-nav",
+    },
+    {
+      // Simplification, explicitly noted: this tracks "hours rows exist," not "the owner
+      // has ever saved the hours form" — RegisterStudioHandler seeds a default Mon–Fri
+      // schedule at registration, so this item is done immediately for every new studio.
+      // There's no existing precedent elsewhere in this file for the stronger
+      // "has ever saved" distinction, so this mirrors the simpler rows-exist check the
+      // other two items already use.
+      label:  "Set your hours",
+      done:   hours.length > 0,
+      href:   "/studios/me",
+      cta:    "Set hours",
+      tourId: "owner-studio-profile-nav",
     },
   ];
 

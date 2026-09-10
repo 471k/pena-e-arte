@@ -74,6 +74,7 @@ const STUDIOS: StudioResponse[] = [
     nipt:                 null,
     isSolo:               false,
     isPublished:          true,
+    timezone:             "Europe/Tirane",
   },
 ];
 

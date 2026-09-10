@@ -941,3 +941,48 @@ previously tracked anywhere in this backlog):
   multi-select of `TattooStyle.All` values, enabling real client-facing
   artist/style matching. Separate, larger product decision — noted while
   scoping item 17, not scheduled.
+
+## Addendum — 2026-09-09, P1 Group 2 shipped
+
+Items **18 (Studio Structured Hours Field)** and **16 (Timezone Handling)** —
+Group 2 of the suggested build order above — shipped this pass. Moving both
+out of the open backlog:
+
+- **Item 18 (hours):** `StudioHours` entity + `{id}/hours` GET/PUT endpoints +
+  hard gate in `ArtistAvailabilityExtensions`; `StudioHoursCard.tsx` on
+  `/studios/me`; `openingHoursSpecification` JSON-LD + visible hours block on
+  `StudioPortfolioPage.tsx`; default hours seeded at registration (both
+  `RegisterStudioHandler` and `RegisterSoloArtistCommand`) and in `DataSeeder`.
+- **Item 16 (timezone):** `Studio.Timezone` field + owner-editable select on
+  `/studios/me`; `Pena_e_Arte.Application.Common.TimezoneUtils.ToStudioLocal`
+  used in the three appointment-notification command handlers and in
+  `AppointmentCard.tsx`/`AppointmentDetailPage.tsx`/`MyEarningsPage.tsx`.
+- Full file list, and every deviation from this spec's own assumptions
+  (`RegisterSoloArtistCommand` needing hours too; `EmailRenderer` left
+  untouched in favor of converting once per handler; `SchedulePage.tsx` and
+  `RevenueTrendChart.tsx` excluded from the timezone sweep; `MyBookingsSection.tsx`
+  confirmed unreachable without a data-plumbing change): see
+  `docs/claude/architecture.md`'s Decisions Log, "Studio structured hours +
+  timezone handling — P1 Group 2 (2026-09-09)" entry.
+
+**Precedent for later items:** `StudioHours` now being a real, enforced gate
+(not just a display field) is something a later Group-3/4 item may want to
+cite if it needs to reason about "when can a client interact with this studio
+at all" — no such item currently does; noted here so a future spec doesn't
+have to rediscover that this gate exists.
+
+**New follow-up candidates identified during this pass** (not previously on
+this backlog):
+
+- A full UTC-storage audit beyond the cheap `DateTime.Now`-grep this spec's
+  item 16 asked for — `DateTimeKind` coercion on MySQL/Pomelo reads, any raw
+  SQL or migration-authored `DateTime` literals. The cheap check came back
+  clean; a full read-path audit is a separate, more invasive verification pass.
+- `MyBookingsSection.tsx`'s missing studio context — a client's own bookings
+  list has no way to reach the studio's timezone per booking today
+  (`GetMyAppointmentsQuery`/`AppointmentResponse` carry no studio field, and a
+  client's appointments can legitimately span several studios). Needs its own
+  data-plumbing design, not a quick fix.
+- Per-viewer timezone display ("your appointment is 3pm studio time, 9am for
+  you") — deliberately out of scope for this pass, which only fixed
+  studio-local display; a materially larger feature if ever prioritized.

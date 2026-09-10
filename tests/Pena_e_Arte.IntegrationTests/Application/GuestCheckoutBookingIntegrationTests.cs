@@ -211,6 +211,14 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
                 EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
+            seed.StudioHours.Add(new StudioHours
+            {
+                StudioId = studio.Id,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsOpen = true,
+            });
         }
         await seed.SaveChangesAsync();
 

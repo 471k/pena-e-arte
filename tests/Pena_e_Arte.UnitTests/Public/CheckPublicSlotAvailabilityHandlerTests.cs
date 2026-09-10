@@ -90,6 +90,14 @@ public class CheckPublicSlotAvailabilityHandlerTests
             EndTime = TimeSpan.FromHours(23),
             IsAvailable = true,
         });
+        _db.StudioHours.Add(new StudioHours
+        {
+            StudioId = studio.Id,
+            DayOfWeek = DayOfWeek.Monday,
+            StartTime = TimeSpan.Zero,
+            EndTime = TimeSpan.FromHours(23),
+            IsOpen = true,
+        });
         await _db.SaveChangesAsync();
 
         SlotAvailabilityResult result = await CreateSut().Handle(

@@ -78,6 +78,7 @@ const ACTIVE_STUDIO: StudioResponse = {
   nipt:                 null,
   isSolo:               false,
   isPublished:          true,
+  timezone:             "Europe/Tirane",
 };
 
 const SUSPENDED_STUDIO: StudioResponse = { ...ACTIVE_STUDIO, isActive: false };

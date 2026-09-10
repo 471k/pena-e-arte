@@ -13,6 +13,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { remindersApi } from "@/features/reminders/remindersApi";
 import { artistsApi } from "@/features/artists/artistsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { AppointmentDetailPage } from "@/features/appointments/components/AppointmentDetailPage";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -107,6 +108,9 @@ const server = setupServer(
     HttpResponse.json({ available: true, reason: null }),
   ),
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
+  ),
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json([
     { id: "a-002", studioId: "s-001", firstName: "New", lastName: "Artist", slug: "new-artist", email: "new@a.com", specializations: null, hourlyRate: null, isActive: true },
   ])),
@@ -141,8 +145,10 @@ function makeStore(role: Role = Role.Artist) {
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
       [remindersApi.reducerPath]:    remindersApi.reducer,
       [artistsApi.reducerPath]:      artistsApi.reducer,
+      [studiosApi.reducerPath]:      studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware),
+    middleware: (gd) => gd().concat(
+      appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -179,6 +185,24 @@ describe("AppointmentDetailPage", () => {
   it("shows an error message when the appointment is not found", async () => {
     renderPage("appt-999");
     expect(await screen.findByText(/appointment not found/i)).toBeInTheDocument();
+  });
+
+  it("renders 'Date & time' in the studio's timezone, not the test environment's local timezone", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "America/New_York" }),
+      ),
+      http.get("http://localhost/api/v1/appointments/:id", () =>
+        HttpResponse.json({ ...APPT_PENDING, date: "2026-06-15T20:00:00Z" }),
+      ),
+    );
+    renderPage("appt-001");
+
+    const expected = new Date("2026-06-15T20:00:00Z").toLocaleString("en-GB", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric",
+      hour: "2-digit", minute: "2-digit", timeZone: "America/New_York",
+    });
+    expect(await screen.findByText(expected)).toBeInTheDocument();
   });
 
   // ── Detail rendering ────────────────────────────────────────────────────────

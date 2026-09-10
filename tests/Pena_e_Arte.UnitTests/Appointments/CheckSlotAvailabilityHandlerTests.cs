@@ -35,11 +35,28 @@ public class CheckSlotAvailabilityHandlerTests
         _db.SaveChanges();
     }
 
+    // Studio-wide hours gate (added 2026-09-09) — separate helper since not every test
+    // that seeds an ArtistSchedule also wants studio hours open (e.g. none needed for the
+    // "no artist available" case).
+    private void SeedStudioHours(DayOfWeek day)
+    {
+        _db.StudioHours.Add(new StudioHours
+        {
+            StudioId = _studioId,
+            DayOfWeek = day,
+            StartTime = TimeSpan.FromHours(9),
+            EndTime = TimeSpan.FromHours(18),
+            IsOpen = true,
+        });
+        _db.SaveChanges();
+    }
+
     [Fact]
     public async Task Handle_NoClosureAndWithinSchedule_ReturnsAvailable()
     {
         DateTime slot = NextDateForDay(DayOfWeek.Monday);
         SeedSchedule(slot.DayOfWeek);
+        SeedStudioHours(slot.DayOfWeek);
 
         SlotAvailabilityResult result = await CreateSut().Handle(
             new CheckSlotAvailabilityQuery(_artistId, slot.AddHours(10), 60), default);
@@ -74,6 +91,7 @@ public class CheckSlotAvailabilityHandlerTests
     {
         DateTime slot = NextDateForDay(DayOfWeek.Monday);
         SeedSchedule(slot.DayOfWeek);
+        SeedStudioHours(slot.DayOfWeek);
 
         _db.StudioClosures.Add(new StudioClosure
         {
@@ -119,6 +137,7 @@ public class CheckSlotAvailabilityHandlerTests
             IsAvailable = true,
         });
         _db.SaveChanges();
+        SeedStudioHours(slot.DayOfWeek);
 
         SlotAvailabilityResult result = await CreateSut().Handle(
             new CheckSlotAvailabilityQuery(null, slot.AddHours(10), 60), default);

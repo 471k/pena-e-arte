@@ -74,6 +74,14 @@ public class CreateGuestAppointmentHandlerTests
                 EndTime = TimeSpan.FromHours(23),
                 IsAvailable = true,
             });
+            _db.StudioHours.Add(new StudioHours
+            {
+                StudioId = studio.Id,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23),
+                IsOpen = true,
+            });
         }
         _db.SaveChangesAsync().GetAwaiter().GetResult();
 

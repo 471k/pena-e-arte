@@ -12,6 +12,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMutation } from "../studiosApi";
@@ -19,6 +20,7 @@ import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 import { StudioClosuresCard } from "./StudioClosuresCard";
+import { StudioHoursCard } from "./StudioHoursCard";
 import { StudioAuditLogCard } from "./StudioAuditLogCard";
 import { StudioSocialLinksCard } from "./StudioSocialLinksCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
@@ -28,12 +30,26 @@ import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValid
 
 const NIPT_HELP = "NIPT format looks wrong — expected a letter, 8 digits, then a letter (e.g. L01234567A)";
 
+// Intl.supportedValuesOf is a native, no-dependency source of every IANA timezone the
+// browser's own Intl.DateTimeFormat can use — the same identifiers TimeZoneInfo accepts
+// backend-side. Fall back to a short curated list for the rare browser without it, so the
+// field degrades to "still usable" rather than empty.
+const FALLBACK_TIMEZONES = [
+  "Europe/Tirane", "Europe/London", "Europe/Lisbon", "Europe/Berlin", "Europe/Athens",
+  "America/New_York", "America/Chicago", "America/Los_Angeles", "UTC",
+];
+const TIMEZONE_OPTIONS: string[] =
+  typeof Intl.supportedValuesOf === "function"
+    ? Intl.supportedValuesOf("timeZone")
+    : FALLBACK_TIMEZONES;
+
 const schema = z.object({
   name:            z.string().min(1, "Name is required").max(200),
   city:            z.string().min(1, "City is required").max(200),
   latitude:        z.number({ message: "Must be a number" }).min(-90).max(90),
   longitude:       z.number({ message: "Must be a number" }).min(-180).max(180),
   phoneNumber:     z.string().refine(isValidE164Phone, PHONE_ERROR_MESSAGE).optional(),
+  timezone:        z.string().min(1).optional(),
   nipt: z
     .string()
     .trim()
@@ -154,6 +170,7 @@ export function StudioProfilePage() {
         longitude:       studio.longitude,
         phoneNumber:     studio.phoneNumber ?? "",
         nipt:            studio.nipt ?? "",
+        timezone:        studio.timezone,
       });
     }
   }, [studio, reset]);
@@ -377,6 +394,32 @@ export function StudioProfilePage() {
                 />
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="timezone">Timezone</Label>
+                <Controller
+                  control={control}
+                  name="timezone"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="timezone" aria-invalid={!!errors.timezone}>
+                        <SelectValue placeholder="Select a timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIMEZONE_OPTIONS.map((tz) => (
+                          <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Appointment times in emails, texts, and reports are shown in this timezone.
+                </p>
+                {errors.timezone && (
+                  <p className="text-xs text-destructive-text">{errors.timezone.message}</p>
+                )}
+              </div>
+
               <SubscriptionGatedButton
                 type="submit"
                 className="w-full gap-2"
@@ -391,6 +434,7 @@ export function StudioProfilePage() {
 
         <StudioSocialLinksCard />
         <BrandingSettingsCard />
+        <StudioHoursCard />
         <StudioClosuresCard />
         <QrCodeSection />
         <EmbedCodeCard />

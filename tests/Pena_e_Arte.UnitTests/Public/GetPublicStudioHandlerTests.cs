@@ -376,5 +376,65 @@ public class GetPublicStudioHandlerTests
         result!.GalleryImages.Should().HaveCount(3);
         result.GalleryImages.Should().Contain(["design-1", "design-2", "design-3"]);
     }
+
+    [Fact]
+    public async Task Handle_StudioWithHours_ReturnsHoursOrderedByDayOfWeek()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        _db.StudioHours.Add(new StudioHours
+        {
+            StudioId = studio.Id,
+            DayOfWeek = DayOfWeek.Friday,
+            StartTime = TimeSpan.FromHours(9),
+            EndTime = TimeSpan.FromHours(18),
+            IsOpen = true,
+        });
+        _db.StudioHours.Add(new StudioHours
+        {
+            StudioId = studio.Id,
+            DayOfWeek = DayOfWeek.Monday,
+            StartTime = TimeSpan.FromHours(10),
+            EndTime = TimeSpan.FromHours(17),
+            IsOpen = true,
+        });
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.Hours.Should().HaveCount(2);
+        result.Hours[0].DayOfWeek.Should().Be(DayOfWeek.Monday);
+        result.Hours[1].DayOfWeek.Should().Be(DayOfWeek.Friday);
+    }
+
+    [Fact]
+    public async Task Handle_StudioWithNoHours_HoursIsEmpty()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.Hours.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_ActiveStudio_ReturnsTimezone()
+    {
+        Studio studio = MakeStudio();
+        studio.Timezone = "America/New_York";
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.Timezone.Should().Be("America/New_York");
+    }
 }
 

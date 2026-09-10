@@ -18,6 +18,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ArtistSchedule> ArtistSchedules => Set<ArtistSchedule>();
     public DbSet<ArtistTimeOff> ArtistTimeOffs => Set<ArtistTimeOff>();
     public DbSet<StudioClosure> StudioClosures => Set<StudioClosure>();
+    public DbSet<StudioHours> StudioHours => Set<StudioHours>();
     public DbSet<PortfolioImage> PortfolioImages => Set<PortfolioImage>();
     public DbSet<Design> Designs => Set<Design>();
     public DbSet<DesignRevision> DesignRevisions => Set<DesignRevision>();

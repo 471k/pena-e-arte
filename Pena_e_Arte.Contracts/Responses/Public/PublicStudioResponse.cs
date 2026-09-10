@@ -1,5 +1,7 @@
 namespace Pena_e_Arte.Contracts.Responses.Public;
 
+public record PublicStudioHoursResponse(DayOfWeek DayOfWeek, TimeSpan StartTime, TimeSpan EndTime, bool IsOpen);
+
 public record PublicStudioResponse(
     Guid StudioId,
     string Name,
@@ -15,4 +17,6 @@ public record PublicStudioResponse(
     IReadOnlyList<string> GalleryImages,
     IReadOnlyList<PublicArtistSummary> Artists,
     bool ShowBookingCta,
-    IReadOnlyList<PublicSocialLinkResponse> SocialLinks);
+    IReadOnlyList<PublicSocialLinkResponse> SocialLinks,
+    IReadOnlyList<PublicStudioHoursResponse> Hours,
+    string Timezone);

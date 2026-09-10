@@ -48,6 +48,14 @@ public class RequestCatalogDesignHandlerTests
                 EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
+            _db.StudioHours.Add(new StudioHours
+            {
+                StudioId = _studioId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsOpen = true,
+            });
         }
         Design design = new() { StudioId = _studioId, ArtistId = artist.Id, ClientId = null, IsCatalogItem = true, Title = "Flash" };
         _db.Designs.Add(design);

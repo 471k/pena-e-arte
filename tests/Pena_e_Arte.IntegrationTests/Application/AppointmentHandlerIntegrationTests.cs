@@ -369,7 +369,12 @@ public class AppointmentHandlerIntegrationTests
         ctx.Clients.Add(client);
         await ctx.SaveChangesAsync();
 
-        // Seed open schedule for every day so CreateAppointmentHandler availability check passes
+        // Seed open schedule for every day so CreateAppointmentHandler availability check passes.
+        // StudioHours is seeded once per studio, not once per artist — this helper can be
+        // called more than once for the same tenantId (a second artist at the same studio),
+        // and StudioHours has a unique (StudioId, DayOfWeek) index unlike ArtistSchedule's
+        // per-artist one.
+        bool studioHoursAlreadySeeded = await ctx.StudioHours.AnyAsync(h => h.StudioId == tenantId);
         foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
         {
             ctx.ArtistSchedules.Add(new ArtistSchedule
@@ -381,6 +386,17 @@ public class AppointmentHandlerIntegrationTests
                 EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
+            if (!studioHoursAlreadySeeded)
+            {
+                ctx.StudioHours.Add(new StudioHours
+                {
+                    StudioId = tenantId,
+                    DayOfWeek = day,
+                    StartTime = TimeSpan.Zero,
+                    EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                    IsOpen = true,
+                });
+            }
         }
         await ctx.SaveChangesAsync();
 

@@ -50,6 +50,7 @@ const STUDIO: StudioResponse = {
   nipt: null,
   isSolo: false,
   isPublished: true,
+  timezone: "Europe/Tirane",
 };
 
 const ARTIST: ArtistResponse = {

@@ -31,6 +31,7 @@ export interface StudioResponse {
   nipt:                 string | null;
   isSolo:               boolean;
   isPublished:          boolean;
+  timezone:             string;
   subscriptionStatus?:  string | null;
   pastDueSince?:        string | null;
 }
@@ -84,6 +85,7 @@ export interface UpdateStudioRequest {
   phoneNumber?:     string | null;
   instagramHandle?: string | null;
   nipt?:            string | null;
+  timezone?:        string | null;
 }
 
 export interface StudioClosureResponse {
@@ -99,10 +101,21 @@ export interface AddStudioClosureRequest {
   reason:    string;
 }
 
+export interface StudioHoursEntry {
+  dayOfWeek: number;
+  startTime: string;
+  endTime:   string;
+  isOpen:    boolean;
+}
+
+export interface UpsertStudioHoursRequest {
+  entries: StudioHoursEntry[];
+}
+
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
-  tagTypes: ["Studio", "Referral", "StudioClosure", "StudioAuditLog"],
+  tagTypes: ["Studio", "Referral", "StudioClosure", "StudioAuditLog", "StudioHours"],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),
@@ -216,6 +229,18 @@ export const studiosApi = createApi({
       }),
       invalidatesTags: ["StudioClosure"],
     }),
+    getStudioHours: builder.query<StudioHoursEntry[], string>({
+      query: (id) => `studios/${id}/hours`,
+      providesTags: ["StudioHours"],
+    }),
+    upsertStudioHours: builder.mutation<void, { id: string; body: UpsertStudioHoursRequest }>({
+      query: ({ id, body }) => ({
+        url:    `studios/${id}/hours`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: ["StudioHours"],
+    }),
   }),
 });
 
@@ -238,6 +263,8 @@ export const {
   useGetStudioClosuresQuery,
   useAddStudioClosureMutation,
   useDeleteStudioClosureMutation,
+  useGetStudioHoursQuery,
+  useUpsertStudioHoursMutation,
   useGetMyStudioAuditLogQuery,
   useInviteSoloArtistToJoinMutation,
 } = studiosApi;

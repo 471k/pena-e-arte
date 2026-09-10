@@ -22,6 +22,7 @@ public class StudioConfiguration : IEntityTypeConfiguration<Studio>
         builder.Property(s => s.Nipt).HasMaxLength(10);
         builder.Property(s => s.IsSolo).HasDefaultValue(false);
         builder.Property(s => s.IsPublished).HasDefaultValue(true);
+        builder.Property(s => s.Timezone).HasMaxLength(100).HasDefaultValue("Europe/Tirane");
 
         builder.HasIndex(s => s.Slug).IsUnique().HasDatabaseName("ix_studios_slug");
         builder.HasIndex(s => s.IsActive).HasDatabaseName("ix_studios_is_active");

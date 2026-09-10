@@ -169,6 +169,38 @@ public class SendAppointmentConfirmationHandlerTests
     }
 
     [Fact]
+    public async Task Handle_NonUtcStudioTimezone_RendersAndFormatsInStudioLocalTime()
+    {
+        // America/New_York deliberately far from UTC to make a bug (raw UTC leaking through
+        // unconverted) obvious in a failing assertion.
+        Studio studio = new() { Name = "NY Studio", Slug = "ny-studio", City = "New York", Timezone = "America/New_York" };
+        _db.Studios.Add(studio);
+        Client client = new() { StudioId = studio.Id, FirstName = "Ana", LastName = "Silva", Email = "ana@example.com" };
+        _db.Clients.Add(client);
+        DateTime utcDate = new(2026, 6, 15, 20, 0, 0, DateTimeKind.Utc); // 16:00 EDT
+        Appointment appointment = new()
+        {
+            StudioId = studio.Id,
+            ArtistId = Guid.NewGuid(),
+            ClientId = client.Id,
+            Client = client,
+            Date = utcDate,
+            EndDate = utcDate.AddHours(1),
+            DurationMinutes = 60,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid,
+        };
+        _db.Appointments.Add(appointment);
+        await _db.SaveChangesAsync();
+
+        await CreateSut().Handle(new SendAppointmentConfirmationCommand(appointment.Id), default);
+
+        DateTime expectedLocal = Pena_e_Arte.Application.Common.TimezoneUtils.ToStudioLocal(utcDate, "America/New_York");
+        _emailRenderer.Received(1).RenderAppointmentConfirmation(
+            Arg.Any<string>(), expectedLocal, Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<bool>());
+    }
+
+    [Fact]
     public async Task Handle_ValidAppointment_PushesNotificationReceivedEvent()
     {
         (Guid appointmentId, Studio studio) = await SeedData(showBranding: true);

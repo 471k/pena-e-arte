@@ -14,6 +14,12 @@ public class Studio
     public string? Nipt { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }
+
+    /// <summary>IANA/Olson timezone identifier (e.g. "Europe/Tirane"). Used only to format
+    /// UTC timestamps for display/notifications — never for storage or business-logic
+    /// comparisons, which stay UTC throughout. Defaults to the platform's primary market at
+    /// registration; owner-correctable in studio settings.</summary>
+    public string Timezone { get; set; } = "Europe/Tirane";
     /// <summary>
     /// Gates tenant access entirely — a deactivated studio's owner/artists cannot use the
     /// app. Distinct from <c>IsPublished</c> (below), which gates only studio-directory

@@ -140,6 +140,9 @@ public class RequestCatalogDesignHandlerIntegrationTests
         ctx.Clients.Add(client);
         await ctx.SaveChangesAsync();
 
+        // StudioHours is seeded once per studio, not once per artist — see the identical
+        // comment in AppointmentHandlerIntegrationTests.SeedArtistAndClient.
+        bool studioHoursAlreadySeeded = await ctx.StudioHours.AnyAsync(h => h.StudioId == tenantId);
         foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
         {
             ctx.ArtistSchedules.Add(new ArtistSchedule
@@ -151,6 +154,17 @@ public class RequestCatalogDesignHandlerIntegrationTests
                 EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
+            if (!studioHoursAlreadySeeded)
+            {
+                ctx.StudioHours.Add(new StudioHours
+                {
+                    StudioId = tenantId,
+                    DayOfWeek = day,
+                    StartTime = TimeSpan.Zero,
+                    EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                    IsOpen = true,
+                });
+            }
         }
         await ctx.SaveChangesAsync();
 

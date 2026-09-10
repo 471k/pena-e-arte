@@ -24,6 +24,7 @@ const BASE_STUDIO: StudioResponse = {
   nipt:                 null,
   isSolo:               true,
   isPublished:          false,
+  timezone:             "Europe/Tirane",
 };
 
 function renderBanner(studio?: StudioResponse) {

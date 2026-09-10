@@ -375,6 +375,28 @@ public static class DataSeeder
             GracePeriodEnd = now.AddDays(17)
         });
 
+        // Default Mon–Fri, 09:00–18:00 hours for both demo studios — without this, every demo
+        // appointment/booking-flow scenario would fail the ArtistAvailabilityExtensions hard
+        // gate (StudioHours' "no entry = closed" rule) on a fresh database.
+        foreach (Guid studioId in new[] { Studio1Id, Studio2Id })
+        {
+            foreach (DayOfWeek day in new[]
+                     {
+                         DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+                         DayOfWeek.Thursday, DayOfWeek.Friday,
+                     })
+            {
+                db.StudioHours.Add(new StudioHours
+                {
+                    StudioId = studioId,
+                    DayOfWeek = day,
+                    StartTime = new TimeSpan(9, 0, 0),
+                    EndTime = new TimeSpan(18, 0, 0),
+                    IsOpen = true,
+                });
+            }
+        }
+
         await db.SaveChangesAsync();
     }
 

@@ -43,6 +43,34 @@ public class RegisterStudioHandlerTests
     }
 
     [Fact]
+    public async Task Handle_NewStudio_DefaultsToPlatformPrimaryTimezone()
+    {
+        // Confirms the entity's own C# property-initializer default ("Europe/Tirane") survives
+        // through the object initializer + EF Core Add()/SaveChangesAsync flow — RegisterStudioCommand
+        // never explicitly assigns Timezone, per 2-C's design decision.
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(ValidRequest()), default);
+
+        result.Timezone.Should().Be("Europe/Tirane");
+        _db.Studios.Single().Timezone.Should().Be("Europe/Tirane");
+    }
+
+    [Fact]
+    public async Task Handle_NewStudio_SeedsDefaultWeekdayHours()
+    {
+        await CreateSut().Handle(new RegisterStudioCommand(ValidRequest()), default);
+
+        Studio studio = _db.Studios.Single();
+        List<StudioHours> hours = _db.StudioHours.Where(h => h.StudioId == studio.Id).ToList();
+        hours.Should().HaveCount(5);
+        hours.Should().OnlyContain(h =>
+            h.IsOpen && h.StartTime == TimeSpan.FromHours(9) && h.EndTime == TimeSpan.FromHours(18));
+        hours.Select(h => h.DayOfWeek).Should().BeEquivalentTo(new[]
+        {
+            DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday,
+        });
+    }
+
+    [Fact]
     public async Task Handle_NewStudio_CreatesTrialingSubscription()
     {
         await CreateSut().Handle(new RegisterStudioCommand(ValidRequest()), default);

@@ -154,6 +154,17 @@ public class RescheduleAppointmentHandlerTests
                 EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
                 IsAvailable = true,
             });
+
+            // Studio-wide hours gate (added alongside ArtistSchedule, 2026-09-09) — same
+            // wide-open-every-day seeding so it never spuriously narrows availability here.
+            _db.StudioHours.Add(new StudioHours
+            {
+                StudioId = _studioId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsOpen = true,
+            });
         }
         _db.SaveChanges();
         return artist.Id;

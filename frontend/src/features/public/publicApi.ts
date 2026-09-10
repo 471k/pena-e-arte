@@ -22,6 +22,13 @@ export interface PublicSocialLinkResponse {
   profileUrl: string;
 }
 
+export interface PublicStudioHoursResponse {
+  dayOfWeek: number;
+  startTime: string;
+  endTime:   string;
+  isOpen:    boolean;
+}
+
 export interface PublicStudioResponse {
   studioId:       string;
   name:           string;
@@ -38,6 +45,8 @@ export interface PublicStudioResponse {
   artists:        PublicArtistSummary[];
   showBookingCta: boolean;
   socialLinks:    PublicSocialLinkResponse[];
+  hours:          PublicStudioHoursResponse[];
+  timezone:       string;
 }
 
 export interface ArtistPortfolioImage {

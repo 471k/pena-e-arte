@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
@@ -48,7 +49,7 @@ public class SendAppointmentArtistAssignedNotificationHandler(
         string body = emailRenderer.RenderAppointmentArtistAssigned(
             appointment.Client.FirstName,
             $"{appointment.Artist.FirstName} {appointment.Artist.LastName}",
-            appointment.Date,
+            TimezoneUtils.ToStudioLocal(appointment.Date, studio.Timezone),
             studio.Name,
             studio.ShowPlatformBranding);
 

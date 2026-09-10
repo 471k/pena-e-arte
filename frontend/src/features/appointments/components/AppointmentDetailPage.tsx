@@ -19,6 +19,8 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
 import { useAppSelector } from "@/app/hooks";
 import { useCreateConversationMutation } from "@/features/messaging";
 import { AppointmentStatus, AppointmentAttachmentCategory, DepositStatus, ReferralSource } from "../appointment.types";
@@ -35,15 +37,15 @@ import {
   useAssignAppointmentArtistMutation,
 } from "../appointmentsApi";
 
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString("en-GB", {
+function formatDateTime(dateStr: string, studioTimezone: string | undefined): string {
+  return new Date(dateStr).toLocaleString("en-GB", withStudioTimeZone({
     weekday: "long",
     day:     "numeric",
     month:   "long",
     year:    "numeric",
     hour:    "2-digit",
     minute:  "2-digit",
-  });
+  }, studioTimezone));
 }
 
 function formatCurrency(amount: number): string {
@@ -127,6 +129,7 @@ export function AppointmentDetailPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const { data: studio } = useGetMyStudioQuery();
 
   const { data: appt, isLoading, isError } = useGetAppointmentQuery(id ?? "", {
     skip: !id,
@@ -280,7 +283,7 @@ export function AppointmentDetailPage() {
                   }
                 />
                 <Separator />
-                <Row label="Date &amp; time" value={formatDateTime(appt.date)} />
+                <Row label="Date &amp; time" value={formatDateTime(appt.date, studio?.timezone)} />
                 <Separator />
                 <Row label="Duration"  value={`${appt.durationMinutes} min`} />
                 <Separator />

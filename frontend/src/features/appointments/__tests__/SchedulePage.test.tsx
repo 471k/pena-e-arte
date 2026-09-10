@@ -14,6 +14,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { remindersApi } from "@/features/reminders/remindersApi";
 import { artistsApi } from "@/features/artists/artistsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { SchedulePage } from "@/features/appointments/components/SchedulePage";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -86,6 +87,9 @@ const server = setupServer(
     new HttpResponse(null, { status: 204 }),
   ),
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -108,8 +112,10 @@ function makeStore(role: Role = Role.Artist) {
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
       [remindersApi.reducerPath]:    remindersApi.reducer,
       [artistsApi.reducerPath]:      artistsApi.reducer,
+      [studiosApi.reducerPath]:      studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware),
+    middleware: (gd) => gd().concat(
+      appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,

@@ -7,4 +7,5 @@ public record UpdateStudioRequest(
     double Longitude,
     string? PhoneNumber = null,
     string? InstagramHandle = null,
-    string? Nipt = null);
+    string? Nipt = null,
+    string? Timezone = null);

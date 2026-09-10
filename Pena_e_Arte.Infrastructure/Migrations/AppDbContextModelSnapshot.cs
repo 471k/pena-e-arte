@@ -2990,6 +2990,13 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("Timezone")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasDefaultValue("Europe/Tirane");
+
                     b.Property<DateTime>("TrialExpiresAt")
                         .HasColumnType("datetime(6)");
 
@@ -3083,6 +3090,48 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("StudioCredentialRefs");
+                });
+
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.StudioHours", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<bool>("IsOpen")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_studio_hours_studio_id");
+
+                    b.HasIndex("StudioId", "DayOfWeek")
+                        .IsUnique()
+                        .HasDatabaseName("uix_studio_hours_studio_day");
+
+                    b.ToTable("StudioHours");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.StudioJoinInvite", b =>

@@ -49,6 +49,12 @@ export const ownerTourSteps: TourStep[] = [
     body: "Edit your studio's public details, branding, booking widget, QR code, and referral code here.",
   },
   {
+    targetSelector: '[data-tour="owner-studio-hours-card"]',
+    title: "Set your hours",
+    body: "Set your weekly opening hours — clients can only book within these hours, regardless of any individual artist's own working hours. A default Mon–Fri, 9am–6pm schedule is applied automatically; adjust it here anytime.",
+    route: "/studios/me",
+  },
+  {
     targetSelector: '[data-tour="owner-billing-nav"]',
     title: "Billing & subscription",
     body: "Check your trial status, plan usage, and manage your subscription here.",

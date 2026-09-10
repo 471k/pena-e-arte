@@ -7,6 +7,8 @@ import { Button } from "@/shared/components/ui/button";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { cn } from "@/shared/utils/cn";
+import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
@@ -37,8 +39,9 @@ const STATUS_BORDER: Record<AppointmentStatus, string> = {
   NoShow:    "border-l-4 border-l-destructive/30 opacity-50",
 };
 
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function formatTime(dateStr: string, studioTimezone: string | undefined): string {
+  return new Date(dateStr).toLocaleTimeString(
+    [], withStudioTimeZone({ hour: "2-digit", minute: "2-digit" }, studioTimezone));
 }
 
 function formatCurrency(amount: number): string {
@@ -53,6 +56,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
 
   const [cancel,   { isLoading: cancelling  }] = useCancelAppointmentMutation();
+  const { data: studio } = useGetMyStudioQuery();
   const [confirm,  { isLoading: confirming  }] = useConfirmAppointmentMutation();
   const [complete, { isLoading: completing  }] = useCompleteAppointmentMutation();
   const [noShow,   { isLoading: markingNoShow }] = useMarkNoShowMutation();
@@ -108,7 +112,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm">
-              {formatTime(appointment.date)} – {formatTime(appointment.endDate)}
+              {formatTime(appointment.date, studio?.timezone)} – {formatTime(appointment.endDate, studio?.timezone)}
             </span>
             {appointment.clientName && (
               <span className="text-sm truncate">{appointment.clientName}</span>
