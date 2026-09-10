@@ -1,0 +1,2469 @@
+{
+  "info": {
+    "_postman_id": "e483178d-51fa-4c02-b514-7f9bbb4f398a",
+    "name": "POK Payments API",
+    "description": "Production base url: [https://api.pokpay.io](https://api.pokpay.io)\n\n  \nStaging base url: [https://api-staging.pokpay.io](https://api-staging.pokpay.io)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "57094955",
+    "_collection_link": "https://go.postman.co/collection/57094955-e483178d-51fa-4c02-b514-7f9bbb4f398a?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Authentication API",
+      "item": [
+        {
+          "name": "Login to Payments API using keyId and keySecret",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"keyId\": \"{{keyId}}\",\n    \"keySecret\": \"{{keySecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/sdk/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sdk",
+                "login"
+              ]
+            },
+            "description": "**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| keyId | String | Received when adding new API key | Yes |\n| keySecret | String | Received when adding new API key | Yes |\n\n**RESPONSE**\n\n**General response structure:**\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| statusCode | Number | HTTP status code |\n| serverStatusCode | Number | Server status code |\n| data | Object | Response payload. |\n| message | String | Response message. In case of an unsuccessful request it is a message describing the error/s. |\n| errors | Array | List of errors in the request if any. |\n\nThe **data** field for each successful request contains different information. For this request its structure is given below:\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| accessToken | String | Bearer token to authenticate API calls |\n| expiresIn | Number | Time until the access token expires. |\n| tokenType | String | Token type |\n| expiresAt | Date | Date and time when the access token will expire |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"keyId\": \"{{keyId}}\",\n    \"keySecret\": \"{{keySecret}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/auth/sdk/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sdk",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 11:59:36 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "683"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-headers",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-methods",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 200,\n    \"data\": {\n        \"accessToken\": \"{{accessToken}}\",\n        \"expiresIn\": \"3600000\",\n        \"tokenType\": \"bearer\",\n        \"expiresAt\": \"2022-01-20T12:59:36.400Z\"\n    },\n    \"message\": \"Success\",\n    \"errors\": []\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"keyId\": \"{{keyId}}\",\n    \"keySecret\": \"{{keySecret}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/auth/sdk/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sdk",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 11:56:28 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "176"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 403,\n    \"error\": \"Forbidden\",\n    \"message\": \"Your credentials are incorrect. Please change your credentials and try again\",\n    \"data\": {},\n    \"serverStatusCode\": 1000403,\n    \"errors\": []\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"keyId\": \"{{keyId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/auth/sdk/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sdk",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 21 Jan 2022 14:11:46 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "202"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 400,\n    \"error\": \"Bad Request\",\n    \"message\": \"\\\"keySecret\\\" is required\",\n    \"errors\": [\n        {\n            \"key\": \"keySecret\",\n            \"message\": \"\\\"keySecret\\\" is required\",\n            \"type\": \"any.required\"\n        }\n    ],\n    \"data\": {},\n    \"serverStatusCode\": 400\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Authentication API provides an `accessToken` which can be used to access Payments API."
+    },
+    {
+      "name": "Merchant Orders API",
+      "item": [
+        {
+          "name": "Create an Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 15000,\n    \"splitWith\": {\n        \"merchantId\": \"{{splitWithMerchantId}}\",\n        \"amount\": 1000\n    },\n    \"currencyCode\": \"ALL\",\n    \"autoCapture\": false,\n    \"shippingCost\": 0,\n    \"webhookUrl\": \"{{webhookUrl}}\",\n    \"redirectUrl\": \"{{redirectUrl}}\",\n    \"failRedirectUrl\": \"{{failRedirectUrl}}\",\n    \"deeplink\": \"{{deeplink}}\",\n    \"expiresAfterMinutes\": 1440\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "merchants",
+                ":merchantId",
+                "sdk-orders"
+              ],
+              "variable": [
+                {
+                  "key": "merchantId",
+                  "value": "{{merchantId}}"
+                }
+              ]
+            },
+            "description": "**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| amount | Positive number | The total amount of the order. | Required if **products** is not supplied. |\n| currencyCode | String | The currency code of the order. | Yes |\n| autoCapture | Boolean | `true` if the order's payment should be captured automatically, `false` if the merchant wants to capture it manually via Capture the Payment for Order. | Yes |\n| description | String | Description of the new order. | No |\n| shippingCost | Non-negative number | The shipping cost of the order. | No |\n| webhookUrl | String | Webhook URL | No |\n| redirectUrl | String | URL to redirect after order is confirmed | No |\n| failRedirectUrl | String | URL to redirect if order payment fails | No |\n| deeplink | String | Deeplink URL | No |\n| products | Array of products | The structure of a product is given below. | Required if **`amount`** is not supplied. |\n| splitWith | Object | Parameters needed when the merchant is splitting the order's payment amount with another merchant. | No |\n| splitWith.merchantId | String UUIDv4 | The ID of the merchant to split the order's payment with. This merchant must have an account with the order currency, otherwise the payments will fail. | No |\n| splitWith.amount | Positive Number | The amount of the payment to split with the specified merchant. It has to be less than **amount.** | Yes |\n| splitWith.userPhoneNumber | String (phone number of the format +355xxxxxxxxx) | The phone number of the user to split the payment with | Required if `splitWith.merchantId` is not supplied |\n| merchantCustomReference | String | Merchant-generated order reference. It is recommended that you send a unique value for each order so that you can perform meaningful searches for the order. | No |\n| selectedBranchId | String UUIDv4 | The branch id where the order was created. | No |\n| expiresAfterMinutes | Positive number | Set the `expiresAt` field of the created sdk order. If the given amount of minutes passes the sdk order can no longer be paid. | No |\n\nProduct\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| name | String | Name of the product | Yes |\n| quantity | Positive number | Quantity of the product | Yes |\n| price | Positive number | Price per product | Yes |\n\n**RESPONSE**\n\nsdkOrder: The created order matching the supplied payload.\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| id | String UUIDv4 | Unique identifier for the order. |\n| amount | Positive number | Total amount of the products in the order. If the `currencyCode` used to process the payment is different from `originalCurrencyCode`, this is the total converted amount. |\n| currencyCode | String | Currency code which will be used to process the payment. |\n| originalCurrencyCode | String | Currency code on which the order is requested to be created. |\n| originalAmount | Positive number | Original total amount paid in the original currency code. |\n| appliedExchangeRate | Positive number | Applied exchange rate to calculate `amount` from `originalAmount` |\n| products | Array | Array of products that are contained in the order. |\n| shippingCost | Non-negative number | Cost for shipping the order. |\n| finalAmount | Positive number | Amount of the order including shipping cost. |\n| createdAt | Date | Date of creation of order. |\n| expiresAt | Date | Date of expiration of order. |\n| redirectUrl | String | URL to redirect to after confirming the order. |\n| failRedirectUrl | String | URL to redirect if order payment fails. |\n| merchant | Object | Information about the merchant who created the order. |\n| __self.confirmUrl | String | Webpage URL to confirm the order. |\n| __self.confirmDeeplink | String | Deeplink to POK app to confirm the order. |\n| description | String | Description of the order. |\n| isCompleted | Boolean | `true` if the order is completed successfully, `false` otherwise. |\n| isRefunded | Boolean | `true` if the order is refunded by the merchant, `false` otherwise. |\n| merchantCustomReference | String | Merchant-generated order reference, specified when creating the order. |\n| selectedBranchId | String UUIDv4 | Branch id where the order is created. |\n| transactionId | String UUIDv4 | Transaction id of the order payment. |\n\ncommissions\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| netAmount | Positive number | Total amount of the order and shipping without including commission. |\n| totalCommissionAmount | Positive number | Total commissions for the order. |\n| grossAmount | Positive number | Total amount to be paid including commission. |\n\nIn order to prefill the client information in the order confirmation page, the following query parameters can be added to the `confirmUrl` obtained by the response of creating a new order:\n\n| **Key** |  |\n| --- | --- |\n| firstName | Client's first name |\n| lastName | Client's last name |\n| email | Client's email |\n| phone | Client's phone number |\n| country | Client's country ISO 3166-1 alpha-2 code |\n| state | Client's state if applicable |\n| city | Client's city |\n| address | Client's address |\n| zip | Client's postal code |\n| language | The language of the payment page. It can be any of the following: AL, EN, IT. Page default is EN. |\n\nExample url to redirect the client to:\n\n`{confirmUrl}?firstName=Test&lastName=Client&email=testclient@email.com&country=AL&city=Tirana&language=AL`"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "default"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"amount\": 100,\n    \"currencyCode\": \"EUR\",\n    \"autoCapture\": true,\n    \"shippingCost\": 0,\n    \"webhookUrl\": \"{{webhookUrl}}\",\n    \"redirectUrl\": \"{{redirectUrl}}\",\n    \"deeplink\": \"{{deeplink}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 12:30:19 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "448"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-headers",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-methods",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 201,\n    \"data\": {\n        \"sdkOrder\": {\n            \"id\": \"{{sdkOrderId}}\",\n            \"amount\": 100,\n            \"currencyCode\": \"ALL\",\n            \"products\": [\n                {\n                    \"name\": \"testProduct\",\n                    \"quantity\": 1,\n                    \"price\": 100\n                }\n            ],\n            \"originalCurrencyCode\": \"ALL\",\n            \"originalAmount\": 110,\n            \"appliedExchangeRate\": 1,\n            \"shippingCost\": 10,\n            \"finalAmount\": 110,\n            \"createdAt\": \"2022-12-28T13:40:10.625Z\",\n            \"expiresAt\": \"2022-12-29T13:40:10.625Z\",\n            \"redirectUrl\": null,\n            \"failRedirectUrl\": null,\n            \"_self\": {\n                \"confirmUrl\": \"{{confirmUrl}}\",\n                \"confirmDeeplink\": \"\"\n            },\n            \"description\": \"testSdk\",\n            \"isCompleted\": false,\n            \"isRefunded\": false,\n            \"merchantCustomReference\": null,\n            \"selectedBranchId\": null,\n            \"transactionId\": null\n        }\n    },\n    \"message\": \"Order created\",\n    \"errors\": []\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"amount\": 15000,\n    \"currencyCode\": \"ALL\",\n    \"shippingCost\": 0,\n    \"webhookUrl\": \"{{webhookUrl}}\",\n    \"redirectUrl\": \"{{redirectUrl}}\",\n    \"deeplink\": \"{{deeplink}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "",
+                      "value": null,
+                      "type": "default",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}"
+                    }
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 21 Jan 2022 14:14:59 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "112"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "WWW-Authenticate",
+                  "value": "Token error=\"Invalid token format\""
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 401,\n    \"error\": \"Unauthorized\",\n    \"message\": \"Token expired\",\n    \"data\": {},\n    \"serverStatusCode\": 401,\n    \"errors\": []\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"amount\": 15000,\n    \"currencyCode\": \"ALL\",\n    \"shippingCost\": 0,\n    \"webhookUrl\": \"{{webhookUrl}}\",\n    \"redirectUrl\": \"{{redirectUrl}}\",\n    \"deeplink\": \"{{deeplink}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "",
+                      "value": null,
+                      "type": "default",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 21 Jan 2022 14:23:08 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "577"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 400,\n    \"error\": \"Bad Request\",\n    \"message\": \"\\\"autoCapture\\\" is required. \\\"webhookUrl\\\" must be a valid uri. \\\"redirectUrl\\\" must be a valid uri. \\\"deeplink\\\" must be a valid uri\",\n    \"errors\": [\n        {\n            \"key\": \"autoCapture\",\n            \"message\": \"\\\"autoCapture\\\" is required\",\n            \"type\": \"any.required\"\n        },\n        {\n            \"key\": \"webhookUrl\",\n            \"message\": \"\\\"webhookUrl\\\" must be a valid uri\",\n            \"type\": \"string.uri\"\n        },\n        {\n            \"key\": \"redirectUrl\",\n            \"message\": \"\\\"redirectUrl\\\" must be a valid uri\",\n            \"type\": \"string.uri\"\n        },\n        {\n            \"key\": \"deeplink\",\n            \"message\": \"\\\"deeplink\\\" must be a valid uri\",\n            \"type\": \"string.uri\"\n        }\n    ],\n    \"data\": {},\n    \"serverStatusCode\": 400\n}"
+            }
+          ]
+        },
+        {
+          "name": "Capture the Payment for Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{merchantAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 1000,\n    \"splitWith\": {\n        \"merchantId\": \"8ee5193a-7592-464d-91ba-dc2206edd133\",\n        \"amount\": 100\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/capture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "merchants",
+                ":merchantId",
+                "sdk-orders",
+                ":sdkOrderId",
+                "capture"
+              ],
+              "variable": [
+                {
+                  "key": "merchantId",
+                  "value": "{{merchantId}}",
+                  "description": "(Required) "
+                },
+                {
+                  "key": "sdkOrderId",
+                  "value": "{{sdkOrderId}}",
+                  "description": "(Required) "
+                }
+              ]
+            },
+            "description": "Captures the payment of an order. When the client confirms the order and the order `autoCapture` is `false`, calling this endpoint will result on the capture of the payment.\n\n**RESPONSE**\n\nsdkOrder: The order whose payment was captured.\n\n**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| amount | Positive Number | Amount to capture from the sdk order. This amount should be less than or equal to the sdk order total amount. | Yes |\n| splitWith | Object. Structure given below | Information regarding the splitting of the captured payment with another merchant | No |\n\n**splitWith**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| merchantId | String (uuidv4) | ID of the merchant to split the payment with | Yes |\n| amount | Positive Number | Amount from the order payment capture to send to the merchant with whom the payment will be split. | Yes |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "{{accessToken}}",
+                    "type": "default"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"amount\": 100\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/capture",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "capture"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}",
+                      "description": "(Required) "
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}",
+                      "description": "(Required) "
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 23:47:34 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "665"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-headers",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-methods",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 201,\n    \"data\": {\n        \"sdkOrder\": {\n            \"id\": \"{{sdkOrderId}}\",\n            \"amount\": 100,\n            \"currencyCode\": \"ALL\",\n            \"products\": [\n                {\n                    \"name\": \"testProduct\",\n                    \"quantity\": 1,\n                    \"price\": 100\n                }\n            ],\n            \"originalCurrencyCode\": \"ALL\",\n            \"originalAmount\": 110,\n            \"appliedExchangeRate\": 1,\n            \"shippingCost\": 10,\n            \"finalAmount\": 110,\n            \"createdAt\": \"2022-12-28T13:40:10.625Z\",\n            \"expiresAt\": \"2022-12-29T13:40:10.625Z\",\n            \"redirectUrl\": null,\n            \"failRedirectUrl\": null,\n            \"_self\": {\n                \"confirmUrl\": \"{{confirmUrl}}\",\n                \"confirmDeeplink\": \"\"\n            },\n            \"description\": \"testSdk\",\n            \"isCompleted\": false,\n            \"isCanceled\": false,\n            \"isRefunded\": false,\n            \"merchantCustomReference\": null,\n            \"selectedBranchId\": null,\n            \"transactionId\": null\n        }\n    },\n    \"message\": \"Order created\",\n    \"errors\": []\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "default"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"amount\": 100\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/capture",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "capture"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}",
+                      "description": "(Required) "
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}",
+                      "description": "(Required) "
+                    }
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 23:45:45 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "120"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 404,\n    \"error\": \"Not Found\",\n    \"message\": \"SDK order not found\",\n    \"data\": {},\n    \"serverStatusCode\": 99900404,\n    \"errors\": []\n}"
+            },
+            {
+              "name": "402 Insufficient Balance",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "default"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"amount\": 100\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/capture",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "capture"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}",
+                      "description": "(Required) "
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}",
+                      "description": "(Required) "
+                    }
+                  ]
+                }
+              },
+              "status": "Payment Required",
+              "code": 402,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 23:44:38 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "185"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 402,\n    \"error\": \"Payment Required\",\n    \"message\": \"You do not have sufficient funds. Please top up your account!\",\n    \"data\": {\n        \"knownError\": true\n    },\n    \"serverStatusCode\": 2000402,\n    \"errors\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refund the Payment for Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refundReason\": \"Example reason\",\n    \"refundAmount\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/refund",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "merchants",
+                ":merchantId",
+                "sdk-orders",
+                ":sdkOrderId",
+                "refund"
+              ],
+              "variable": [
+                {
+                  "key": "merchantId",
+                  "value": "{{merchantId}}"
+                },
+                {
+                  "key": "sdkOrderId",
+                  "value": "{{sdkOrderId}}"
+                }
+              ]
+            },
+            "description": "**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| refundReason | String | The reason for refunding the order | No |\n| refundAmount | Positive number | The amount to refund from the order payment. If not specified the order will be fully refunded. | No |"
+          },
+          "response": [
+            {
+              "name": "200  Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer ",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"refundReason\": \"Example reason\",\n    \"refundAmount\": 100\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://api-staging.pokpay.io/merchants/:merchantId/sdk-orders/:sdkOrderId/refund",
+                  "protocol": "https",
+                  "host": [
+                    "api-staging",
+                    "pokpay",
+                    "io"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "refund"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": ""
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Mon, 31 Jan 2022 11:05:40 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "105"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 201,\n    \"data\": {\n        \"sdkOrder\": {\n            \"id\": \"{{sdkOrderId}}\",\n            \"amount\": 100,\n            \"currencyCode\": \"ALL\",\n            \"products\": [\n                {\n                    \"name\": \"testProduct\",\n                    \"quantity\": 1,\n                    \"price\": 100\n                }\n            ],\n            \"originalCurrencyCode\": \"ALL\",\n            \"originalAmount\": 110,\n            \"appliedExchangeRate\": 1,\n            \"shippingCost\": 10,\n            \"finalAmount\": 110,\n            \"createdAt\": \"2022-12-28T13:40:10.625Z\",\n            \"expiresAt\": \"2022-12-29T13:40:10.625Z\",\n            \"redirectUrl\": null,\n            \"failRedirectUrl\": null,\n            \"_self\": {\n                \"confirmUrl\": \"{{confirmUrl}}\",\n                \"confirmDeeplink\": \"\"\n            },\n            \"description\": \"testSdk\",\n            \"isCompleted\": false,\n            \"isCanceled\": false,\n            \"isRefunded\": true,\n            \"merchantCustomReference\": null,\n            \"selectedBranchId\": null,\n            \"transactionId\": \"{{transactionId}}\"\n        }\n    },\n    \"message\": \"Order created\",\n    \"errors\": []\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "default"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "name": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"refundReason\": \"example reason\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/refund",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "refund"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}",
+                      "description": "(Required) "
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}",
+                      "description": "(Required) "
+                    }
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 23:45:45 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "120"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 404,\n    \"error\": \"Not Found\",\n    \"message\": \"SDK order not found\",\n    \"data\": {},\n    \"serverStatusCode\": 99900404,\n    \"errors\": []\n}"
+            },
+            {
+              "name": "402 Insufficient Balance",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "default"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "name": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"refundReason\": \"example reason\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/refund",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "refund"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}",
+                      "description": "(Required) "
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}",
+                      "description": "(Required) "
+                    }
+                  ]
+                }
+              },
+              "status": "Payment Required",
+              "code": 402,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 23:44:38 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "185"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 402,\n    \"error\": \"Payment Required\",\n    \"message\": \"You do not have sufficient funds. Please top up your account!\",\n    \"data\": {\n        \"knownError\": true\n    },\n    \"serverStatusCode\": 2000402,\n    \"errors\": []\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/refund",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "refund"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}"
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 21 Jan 2022 14:11:46 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "202"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 400,\n    \"error\": \"Bad Request\",\n    \"message\": \"\\\"refundReason\\\" is required\",\n    \"errors\": [\n        {\n            \"key\": \"refundReason\",\n            \"message\": \"\\\"refundReason\\\" is required\",\n            \"type\": \"any.required\"\n        }\n    ],\n    \"data\": {},\n    \"serverStatusCode\": 400\n}"
+            }
+          ]
+        },
+        {
+          "name": "Retrieve an Order (Detailed)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "merchants",
+                ":merchantId",
+                "sdk-orders",
+                ":sdkOrderId"
+              ],
+              "query": [
+                {
+                  "key": "loadTransaction",
+                  "value": "true",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "merchantId",
+                  "value": "{{merchantId}}"
+                },
+                {
+                  "key": "sdkOrderId",
+                  "value": "{{sdkOrderId}}"
+                }
+              ]
+            },
+            "description": "Get order details, along with merchant details and payment trials.\n\nQuery Params\n\n| Key | Type | **Description** |\n| --- | --- | --- |\n| loadTransaction | Boolean(true, false) | Retrieve transacion information in the response payload. |\n\n**RESPONSE**\n\nsdkOrder\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| id | String UUIDv4 | Unique identifier for the order. |\n| amount | Positive number | Total amount of the products in the order. If the `currencyCode` used to process the payment is different from `originalCurrencyCode`, this is the total converted amount. |\n| currencyCode | String | Currency code which will be used to process the payment. |\n| originalCurrencyCode | String | Currency code on which the order is requested to be created. |\n| originalAmount | Positive number | Original total amount paid in the original currency code. |\n| appliedExchangeRate | Positive number | Applied exchange rate to calculate `amount` from `originalAmount` |\n| products | Array | Array of products that are contained in the order. |\n| shippingCost | Non-negative number | Cost for shipping the order. |\n| finalAmount | Positive number | Amount of the order including shipping cost. |\n| createdAt | Date | Date of creation of order. |\n| expiresAt | Date | Date of expiration of order. |\n| redirectUrl | String | URL to redirect to after confirming the order. |\n| failRedirectUrl | String | URL to redirect to after the order payment fails. |\n| paymentMethod | String('rpay-credit' or 'credit-debit-card') | Whether the order is paid by POK credit or credit card. |\n| cardType | String | The brand of the card if the payment is made by card i.e. VISA, MasterCard etc |\n| merchant | Object | Information about the merchant who created the order. |\n| __self.confirmUrl | String | Webpage URL to confirm the order. |\n| __self.confirmDeeplink | String | Deeplink to POK app to confirm the order. |\n| description | String | Description of the order. |\n| isCompleted | Boolean | `true` if the order is completed successfully, `false` otherwise. |\n| isRefunded | Boolean | `true` if the order is refunded by the merchant, `false` otherwise. |\n| merchantCustomReference | String | Merchant-generated order reference, specified when creating the order. |\n| paymentMethod | String | Payment method used to pay the order. |\n| transactionId | String UUIDv4 | The id of the transaction when the order is paid. |\n| sdkOrderPaymentFlows | Array | An array of all payment flows that are executed when trying to make the payment of the order. Each flow has steps which can be successful or not. |\n| issuer | String | Employee who created the order. |\n| selectedBranchId | String UUIDv4 | Id of the branch where the order was created. |\n| hasFailedPaymentFlow | Boolean | Indicates if one of the payment flows faced any errors. |\n\ncommissions\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| netAmount | Positive number | Total amount of the order and shipping without including commission. |\n| totalCommissionAmount | Positive number | Total commissions for the order. |\n| grossAmount | Positive number | Total amount to be paid including commission. |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}"
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}"
+                    }
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "name": "Content-Type",
+                  "value": "application/json",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 200,\n    \"data\": {\n        \"sdkOrder\": {\n            \"id\": \"{{sdkOrderId}}\",\n            \"amount\": 100,\n            \"currencyCode\": \"EUR\",\n            \"originalCurrencyCode\": \"EUR\",\n            \"originalAmount\": 110,\n            \"appliedExchangeRate\": 1,\n            \"products\": [\n                {\n                    \"name\": \"test\",\n                    \"quantity\": 1,\n                    \"price\": 100\n                }\n            ],\n            \"shippingCost\": 10,\n            \"finalAmount\": 110,\n            \"createdAt\": \"2022-12-27T14:20:42.101Z\",\n            \"expiresAt\": \"2022-12-28T14:20:42.101Z\",\n            \"webhookUrl\": \"{{webhookUrl}}\",\n            \"redirectUrl\": \"{{redirectUrl}}\",\n            \"merchant\": {\n                \"id\": \"{{merchantId}}\",\n                \"name\": \"RPay\",\n                \"tradeName\": \"RPay\",\n                \"description\": null,\n                \"address\": \"Tirana\",\n                \"fieldsOfOperation\": [],\n                \"nuis\": \"E45326798K\",\n                \"verificationStatus\": \"verified\",\n                \"isVerified\": true,\n                \"isActive\": true,\n                \"logoUri\": \"{{logoUri}}\",\n                \"logoUrl\": \"{{logoUrl}}\",\n                \"websiteUrl\": \"\",\n                \"mainPosId\": \"6a5c2b75-5e9f-451b-96dc-b99b77bb7714\",\n                \"canBeTipped\": true,\n                \"isAffiliate\": false\n            },\n            \"_self\": {\n                \"confirmUrl\": \"https://pay-staging.pokpay.io/sdk-orders/{{sdkOrderId}}\",\n                \"confirmDeeplink\": \"\"\n            },\n            \"description\": \"testDescription\",\n            \"isCompleted\": false,\n            \"isCanceled\": false,\n            \"isRefunded\": false,\n            \"merchantCustomReference\": null,\n            \"paymentMethod\": null,\n            \"transactionId\": null,\n            \"sdkOrderPaymentFlows\": [\n                {\n                    \"isGuest\": true,\n                    \"isSuccessful\": false,\n                    \"createdAt\": \"2022-12-27T14:25:12.722Z\",\n                    \"sdkOrderPaymentFlowSteps\": [\n                        {\n                            \"step\": \"3DS_SETUP\",\n                            \"createdAt\": \"2022-12-27T14:25:12.728Z\",\n                            \"isSuccessful\": true,\n                            \"errorMessage\": \"Unknown Error\"\n                        },\n                        {\n                            \"step\": \"3DS_CHECK\",\n                            \"createdAt\": \"2022-12-27T14:25:16.104Z\",\n                            \"isSuccessful\": true,\n                            \"errorMessage\": \"Unknown Error\"\n                        },\n                        {\n                            \"step\": \"3DS_VALIDATION\",\n                            \"createdAt\": \"2022-12-27T14:25:21.581Z\",\n                            \"isSuccessful\": false,\n                            \"errorMessage\": \"The maximum amount of 300 EUR per transaction was exceeded\"\n                        }\n                    ]\n                },\n                {\n                    \"isGuest\": true,\n                    \"isSuccessful\": false,\n                    \"createdAt\": \"2022-12-27T14:26:06.906Z\",\n                    \"sdkOrderPaymentFlowSteps\": [\n                        {\n                            \"step\": \"3DS_SETUP\",\n                            \"createdAt\": \"2022-12-27T14:26:06.915Z\",\n                            \"isSuccessful\": true,\n                            \"errorMessage\": \"Unknown Error\"\n                        },\n                        {\n                            \"step\": \"3DS_CHECK\",\n                            \"createdAt\": \"2022-12-27T14:26:09.798Z\",\n                            \"isSuccessful\": true,\n                            \"errorMessage\": \"Unknown Error\"\n                        },\n                        {\n                            \"step\": \"3DS_VALIDATION\",\n                            \"createdAt\": \"2022-12-27T14:26:14.995Z\",\n                            \"isSuccessful\": false,\n                            \"errorMessage\": \"The maximum amount of 300 EUR per transaction was exceeded\"\n                        }\n                    ]\n                }\n            ],\n            \"issuer\": \"John Doe\",\n            \"selectedBranchId\": null,\n            \"hasFailedPaymentFlow\": true\n        },\n        \"commissions\": {\n            \"netAmount\": 110,\n            \"totalCommissionAmount\": 0,\n            \"grossAmount\": 110\n        }\n    },\n    \"message\": \"Success\",\n    \"errors\": []\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}"
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}"
+                    }
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "name": "Content-Type",
+                  "value": "application/json",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 404,\n    \"error\": \"Not Found\",\n    \"message\": \"Order not found\",\n    \"data\": {},\n    \"serverStatusCode\": 99900404,\n    \"errors\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Cancel the Payment for Order",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{merchantAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cancellationReason\": \"sold out\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "merchants",
+                ":merchantId",
+                "sdk-orders",
+                ":sdkOrderId",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "merchantId",
+                  "value": "{{merchantId}}",
+                  "description": "(Required)"
+                },
+                {
+                  "key": "sdkOrderId",
+                  "value": "{{merchantId}}",
+                  "description": "(Required)"
+                }
+              ]
+            },
+            "description": "Cancels the payment of an order. When the client confirms the order and the order `autoCapture` is `false`, calling this endpoint will cancel the payment and release the frozen funds from the client and the merchant.\n\n**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| cancellationReason | String | Reason for cancelling the order. | No |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "{{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"cancellationReason\": \"sold out\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "cancel"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}",
+                      "description": "(Required)"
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}",
+                      "description": "(Required)"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "name": "Content-Type",
+                  "value": "application/json",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 201,\n    \"data\": {\n        \"sdkOrder\": {\n            \"id\": \"{{sdkOrderId}}\",\n            \"amount\": 100,\n            \"currencyCode\": \"ALL\",\n            \"products\": [\n                {\n                    \"name\": \"testProduct\",\n                    \"quantity\": 1,\n                    \"price\": 100\n                }\n            ],\n            \"originalCurrencyCode\": \"ALL\",\n            \"originalAmount\": 110,\n            \"appliedExchangeRate\": 1,\n            \"shippingCost\": 10,\n            \"finalAmount\": 110,\n            \"createdAt\": \"2022-12-28T13:40:10.625Z\",\n            \"expiresAt\": \"2022-12-29T13:40:10.625Z\",\n            \"redirectUrl\": null,\n            \"failRedirectUrl\": null,\n            \"_self\": {\n                \"confirmUrl\": \"{{confirmUrl}}\",\n                \"confirmDeeplink\": \"\"\n            },\n            \"description\": \"testSdk\",\n            \"isCompleted\": false,\n            \"isCanceled\": true,\n            \"isRefunded\": false,\n            \"merchantCustomReference\": null,\n            \"selectedBranchId\": null,\n            \"transactionId\": null\n        }\n    },\n    \"message\": \"Order created\",\n    \"errors\": []\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"cancellationReason\": \"sold out\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/sdk-orders/:sdkOrderId/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "sdk-orders",
+                    ":sdkOrderId",
+                    "cancel"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}",
+                      "description": "(Required)"
+                    },
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{merchantId}}",
+                      "description": "(Required)"
+                    }
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "name": "Content-Type",
+                  "value": "application/json",
+                  "description": "",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 404,\n    \"error\": \"Not Found\",\n    \"message\": \"SDK order not found\",\n    \"data\": {},\n    \"serverStatusCode\": 99900404,\n    \"errors\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "[Staging environment only] Perform MOTO transaction",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Transaction Description\",\n  \"autoCapture\": true,\n  \"csFlexCard\": {\n    \"keyId\": \"{{keyId}}\",\n    \"encryptedCardNumber\": \"{{encryptedCardNumber}}\",\n    \"numericCardType\": \"{{numericCardType}}\",\n    \"expirationYear\": \"{{expirationYear}}\",\n    \"expirationMonth\": \"{{expirationMonth}}\",\n    \"jwe\": \"{{jwe}}\"\n  },\n  \"billingInfo\": {\n    \"name\": \"{{name}}\",\n    \"firstName\": \"{{firstName}}\",\n    \"lastName\": \"{{lastName}}\",\n    \"address1\": \"{{address1}}\",\n    \"address2\": \"{{address2}}\",\n    \"locality\": \"{{locality}}\",\n    \"administrativeArea\": \"{{administrativeArea}}\",\n    \"postalCode\": \"{{postalCode}}\",\n    \"countryCode\": \"{{countryCode}}\",\n    \"sameAsShipping\": true,\n    \"email\": \"{{email}}\",\n    \"phoneNumber\": \"{{phoneNumber}}\"\n  },\n  \"nickname\": \"{{nickname}}\",\n  \"securityCode\": \"{{securityCode}}\",\n  \"amount\": 1000,\n  \"currencyCode\": \"ALL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/merchants/:merchantId/moto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "merchants",
+                ":merchantId",
+                "moto"
+              ],
+              "variable": [
+                {
+                  "key": "merchantId",
+                  "value": "{{merchantId}}"
+                }
+              ]
+            },
+            "description": "**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| csFlexCard | Structure given below | Flex card information | Yes |\n| billingInfo | Structure given below | Client billing address information | Yes |\n| nickname | string | Card nickname | No |\n| securityCode | string | Card security code | Yes |\n| amount | Positive number | The amount of the transaction | Yes |\n| currencyCode | string | Transaction currency code | Yes |\n\ncsFlexCard\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| keyId | string | Key ID | No |\n| numericCardType | string | Numeric Card Type | Yes |\n| expirationYear | string (YYYY) | Card expiration year | Yes |\n| expirationMonth | string (MM) | Card expiration month | Yes |\n| jwe | string | Encrypted Card Information | Yes |\n\nbillingInfo\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| name | string | Billing info nickname | No |\n| firstName | string | Client first name | Yes |\n| lastName | string | Client last name | Yes |\n| address1 | string | Client's address' first line | Yes |\n| address2 | string | Client's address' second line | No |\n| locality | string |  | Yes |\n| administrativeArea | string | Client's administrative area (if applicable) | No |\n| postalCode | string | Client's postal code | No |\n| countryCode | string | Client's country code | Yes |\n| sameAsShipping | boolean | `true` if clients billing address is same as shipping address, `false` otherwise | No (default `false` |\n| email | string (email) | Client's email address | Yes |\n| phoneNumber | string (phone number) | Client's phone number | No |\n\n**RESPONSE**\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| sdkOrder | Object | Confirmed sdk order information |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Transaction Description\",\n  \"autoCapture\": true,\n  \"csFlexCard\": {\n    \"keyId\": \"{{keyId}}\",\n    \"encryptedCardNumber\": \"{{encryptedCardNumber}}\",\n    \"numericCardType\": \"{{numericCardType}}\",\n    \"expirationYear\": \"{{expirationYear}}\",\n    \"expirationMonth\": \"{{expirationMonth}}\",\n    \"jwe\": \"{{jwe}}\"\n  },\n  \"billingInfo\": {\n    \"name\": \"{{name}}\",\n    \"firstName\": \"{{firstName}}\",\n    \"lastName\": \"{{lastName}}\",\n    \"address1\": \"{{address1}}\",\n    \"address2\": \"{{address2}}\",\n    \"locality\": \"{{locality}}\",\n    \"administrativeArea\": \"{{administrativeArea}}\",\n    \"postalCode\": \"{{postalCode}}\",\n    \"countryCode\": \"{{countryCode}}\",\n    \"sameAsShipping\": true,\n    \"email\": \"{{email}}\",\n    \"phoneNumber\": \"{{phoneNumber}}\"\n  },\n  \"nickname\": \"{{nickname}}\",\n  \"securityCode\": \"{{securityCode}}\",\n  \"amount\": 1000,\n  \"currencyCode\": \"ALL\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/merchants/:merchantId/moto",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "merchants",
+                    ":merchantId",
+                    "moto"
+                  ],
+                  "variable": [
+                    {
+                      "key": "merchantId",
+                      "value": "{{merchantId}}"
+                    }
+                  ]
+                }
+              },
+              "_postman_previewlanguage": "Text",
+              "header": null,
+              "cookie": [],
+              "body": "{\n  \"statusCode\": 200,\n  \"serverStatusCode\": 99900202,\n  \"data\": {\n    \"sdkOrder\": {\n      \"id\": \"{{sdkOrderId}}\",\n      \"amount\": 1000,\n      \"capturedAmount\": 1000,\n      \"currencyCode\": \"ALL\",\n      \"products\": [],\n      \"originalCurrencyCode\": \"ALL\",\n      \"originalAmount\": 1000,\n      \"appliedExchangeRate\": 1,\n      \"shippingCost\": 0,\n      \"finalAmount\": 1000,\n      \"createdAt\": \"2026-04-07T13:43:04.924Z\",\n      \"expiresAt\": \"2026-04-08T13:43:04.924Z\",\n      \"redirectUrl\": \"https://www.pokpay.io/?orderId={{sdkOrderId}}\",\n      \"failRedirectUrl\": null,\n      \"merchant\": {\n        \"id\": \"{{creatorMerchantId}}\",\n        \"name\": \"{{creatorMerchantName}}\",\n        \"tradeName\": \"{{creatorMerchantTradeName}}\",\n        \"description\": null,\n        \"address\": \"{{creatorMerchantAddress}}\",\n        \"fieldsOfOperation\": [],\n        \"nuis\": \"{{creatorMerchantNuis}}\",\n        \"verificationStatus\": \"verified\",\n        \"isVerified\": true,\n        \"isActive\": true,\n        \"logoUri\": null,\n        \"logoUrl\": null,\n        \"websiteUrl\": null,\n        \"legalForm\": \"{{legalForm}}\",\n        \"mainPosId\": \"{{mainPosId}}\",\n        \"canBeTipped\": true,\n        \"isAffiliate\": false,\n        \"sdkOrdersEnabled\": true,\n        \"hasStagingAccount\": false\n      },\n      \"_self\": {\n        \"confirmUrl\": \"{{sdkOrderConfirmUrl}}\",\n        \"confirmDeeplink\": \"\"\n      },\n      \"description\": null,\n      \"isCompleted\": true,\n      \"isRefunded\": false,\n      \"isCanceled\": false,\n      \"merchantCustomReference\": null,\n      \"selectedBranchId\": null,\n      \"transactionId\": \"{{transactionId}}\",\n      \"canBeCaptured\": false,\n      \"autoCapture\": true,\n      \"supportedPaymentMethods\": [\n        \"rpay-credit\",\n        \"credit-debit-card\"\n      ]\n    }\n  },\n  \"message\": \"Payment completed\",\n  \"requestId\": \"{{requestId}}\",\n  \"errors\": []\n}\n"
+            }
+          ]
+        }
+      ],
+      "description": "An order is a payment made from the client to the merchant. Merchant Orders API is used to create, capture and refund orders."
+    },
+    {
+      "name": "Orders Retrieval API",
+      "item": [
+        {
+          "name": "Retrieve an Order",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sdk-orders/:sdkOrderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sdk-orders",
+                ":sdkOrderId"
+              ],
+              "variable": [
+                {
+                  "key": "sdkOrderId",
+                  "value": "{{sdkOrderId}}"
+                }
+              ]
+            },
+            "description": "Provides the order details, by ID.\n\n**RESPONSE**\n\nsdkOrder\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| id | String UUIDv4 | Unique identifier for the order. |\n| amount | Positive number | Total amount of the products in the order. If the `currencyCode` used to process the payment is different from `originalCurrencyCode`, this is the total converted amount. |\n| currencyCode | String | Currency code which will be used to process the payment. |\n| originalCurrencyCode | String | Currency code on which the order is requested to be created. |\n| originalAmount | Positive number | Original total amount paid in the original currency code. |\n| appliedExchangeRate | Positive number | Applied exchange rate to calculate `amount` from `originalAmount` |\n| products | Array | Array of products that are contained in the order. |\n| shippingCost | Non-negative number | Cost for shipping the order. |\n| finalAmount | Positive number | Amount of the order including shipping cost. |\n| createdAt | Date | Date of creation of order. |\n| expiresAt | Date | Date of expiration of order. |\n| redirectUrl | String | URL to redirect to after confirming the order. |\n| failRedirectUrl | String | URL to redirect to after the order payment fails. |\n| paymentMethod | String('rpay-credit' or 'credit-debit-card') | Whether the order is paid by POK credit or credit card. |\n| cardType | String | The brand of the card if the payment is made by card i.e. VISA, MasterCard etc |\n| merchant | Object | Information about the merchant who created the order. |\n| __self.confirmUrl | String | Webpage URL to confirm the order. |\n| __self.confirmDeeplink | String | Deeplink to POK app to confirm the order. |\n| description | String | Description of the order. |\n| isCompleted | Boolean | `true` if the order is completed successfully, `false` otherwise. |\n| isRefunded | Boolean | `true` if the order is refunded by the merchant, `false` otherwise. |\n| merchantCustomReference | String | Merchant-generated order reference, specified when creating the order. |\n\ncommissions\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| netAmount | Positive number | Total amount of the order and shipping without including commission. |\n| totalCommissionAmount | Positive number | Total commissions for the order. |\n| grossAmount | Positive number | Total amount to be paid including commission. |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/sdk-orders/:sdkOrderId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "sdk-orders",
+                    ":sdkOrderId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 12:33:57 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "741"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-headers",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-methods",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                },
+                {
+                  "key": "accept-ranges",
+                  "value": "bytes"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 200,\n    \"data\": {\n        \"sdkOrder\": {\n            \"id\": \"{{sdkOrderId}}\",\n            \"amount\": 100,\n            \"currencyCode\": \"EUR\",\n            \"originalCurrencyCode\": \"EUR\",\n            \"originalAmount\": 100,\n            \"appliedExchangeRate\": 1,\n            \"products\": [],\n            \"shippingCost\": 0,\n            \"finalAmount\": 100,\n            \"createdAt\": \"2022-01-20T12:30:19.299Z\",\n            \"expiresAt\": \"2022-01-20T12:45:19.299Z\",\n            \"redirectUrl\": null,\n            \"merchant\": {\n                \"id\": \"{{merchantId}}\",\n                \"name\": \"Rpay\",\n                \"address\": \"Tirana\",\n                \"fieldsOfOperation\": [],\n                \"nuis\": \"A88888888A\",\n                \"verificationStatus\": \"verified\",\n                \"isVerified\": true,\n                \"logoUri\": null,\n                \"logoUrl\": null\n            },\n            \"_self\": {\n                \"confirmUrl\": \"https://isdk-web-staging.pokpay.io/sdk-orders/{{sdkOrderId}}\",\n                \"confirmDeeplink\": \"\"\n            }\n        },\n        \"commissions\": {\n            \"netAmount\": 100,\n            \"totalCommissionAmount\": 0.2,\n            \"grossAmount\": 100.2\n        }\n    },\n    \"message\": \"Success\",\n    \"errors\": []\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/sdk-orders/:sdkOrderId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "sdk-orders",
+                    ":sdkOrderId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}"
+                    }
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 12:36:43 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "120"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 404,\n    \"error\": \"Not Found\",\n    \"message\": \"SDK order not found\",\n    \"data\": {},\n    \"serverStatusCode\": 99900404,\n    \"errors\": []\n}"
+            },
+            {
+              "name": "410 Gone",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/sdk-orders/:sdkOrderId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "sdk-orders",
+                    ":sdkOrderId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "sdkOrderId",
+                      "value": "{{sdkOrderId}}"
+                    }
+                  ]
+                }
+              },
+              "status": "Gone",
+              "code": 410,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Thu, 20 Jan 2022 12:39:38 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "113"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "access-control-allow-origin",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 410,\n    \"error\": \"Gone\",\n    \"message\": \"SDK order expired\",\n    \"data\": {},\n    \"serverStatusCode\": 99900406,\n    \"errors\": []\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Provides information about orders."
+    },
+    {
+      "name": "Card Tokenization API",
+      "item": [
+        {
+          "name": "🛑 [DEPRECATED] Get flex card encryption key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/credit-debit-cards/flex-card-encryption-key",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "credit-debit-cards",
+                "flex-card-encryption-key"
+              ]
+            },
+            "description": "⚠️ **Deprecated**  \nThis request is deprecated and will be removed in future versions. Use `{{baseUrl}}/v2/credit-debit-cards/flex-card-encryption-key` instead.\n\nThis endpoint is used to generate the flex card encryption keys, which will be used to encrypt the card data.\n\n**RESPONSE**\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| keyId | string | Key Identifier |\n| der | Object | Object including the format, algorithm and public key used for card data encryption |\n| jwk | Object | Object including the format, algorithm and public key used for card data encryption, using jwk |"
+          },
+          "response": []
+        },
+        {
+          "name": "Get flex card encryption key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/credit-debit-cards/flex-card-encryption-key",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "credit-debit-cards",
+                "flex-card-encryption-key"
+              ]
+            },
+            "description": "This endpoint is used to generate the flex card encryption keys, which will be used to encrypt the card data.\n\nNote: When using the `pok-payments-js` package the `encryptCard` function sends a request to this endpoint and encrypts the card using the response.\n\n**RESPONSE**\n\n| **Key** | **Type** |\n| --- | --- |\n| context | Object |\n| contextRaw | string |"
+          },
+          "response": []
+        },
+        {
+          "name": "Tokenize card",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOjYxMDk4LCJ1c2VyIjoiNDBlZDNkOTQtYjY0MC00NDRlLWJkZDYtZjk0Y2MyZDJmYmQwIiwiYXV0aFR5cGUiOiJzZGsiLCJrZXlJZCI6IjI4OGE1YTlhLTZiYzgtNDU2NC1hMTIyLTE1MzI1NzE4NTc3YiIsImlhdCI6MTY4MDg1OTc0MCwiZXhwIjoxNjgwODk1NzQwfQ.9210XqmT7DmPigowOXNTjyXeysQGr8KyQPsRhxu2NS0",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"csFlexCard\": {\n        \"jwe\": \"{{jwe}}\",\n        \"expirationYear\": \"{{expirationYear}}\",\n        \"expirationMonth\": \"{{expirationMonth}}\"\n    },\n    \"billingInfo\": {\n        \"firstName\": \"{{firstName}}\",\n        \"lastName\": \"{{lastName}}\",\n        \"address1\": \"{{address1}}\",\n        \"locality\": \"{{locality}}\",\n        \"postalCode\": {{postalCode}},\n        \"countryCode\": \"{{countryCode}}\",\n        \"administrativeArea\": \"{{administrativeArea}}\",\n        \"sameAsShipping\": {{sameAsShipping}},\n        \"email\": \"{{email}}\"\n    },\n    \"securityCode\": \"{{securityCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/credit-debit-cards/tokenize-guest-card",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "credit-debit-cards",
+                "tokenize-guest-card"
+              ]
+            },
+            "description": "**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| csFlexCard | Structure given below | Flex card information | Yes |\n| billingInfo | Structure given below | Client billing address information | Yes |\n| nickname | string | Card nickname | No |\n| securityCode | string | Card security code | Yes |\n\ncsFlexCard\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| numericCardType | string | Numeric Card Type | Yes |\n| expirationYear | string (YYYY) | Card expiration year | Yes |\n| expirationMonth | string (MM) | Card expiration month | Yes |\n| jwe | string | Encrypted Card Information | Yes |\n\nbillingInfo\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| name | string | Billing info nickname | No |\n| firstName | string | Client first name | Yes |\n| lastName | string | Client last name | Yes |\n| address1 | string | Client's address' first line | Yes |\n| address2 | string | Client's address' second line | No |\n| locality | string |  | Yes |\n| administrativeArea | string | Client's administrative area (if applicable) | No |\n| postalCode | string | Client's postal code | No |\n| countryCode | string | Client's country code | Yes |\n| sameAsShipping | boolean | `true` if clients billing address is same as shipping address, `false` otherwise | No (default `false` |\n| email | string (email) | Client's email address | Yes |\n| phoneNumber | string (phone number) | Client's phone number | No |\n\n**RESPONSE**\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| creditDebitCard | Object (structure below) | Newly created tokenized credit debit card |\n\ncreditDebitCard\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| id | string | Unique identifier for this credit debit card. This id will be used when setting up 3ds. |\n| holderFirstName | string | Card holder's first name |\n| holderLastName | string | Card holder's last name |\n| hiddenNumber | string | Hidden card number |\n| billingInfo | Object | Client's billing information |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"csFlexCard\": {\n        \"jwe\": \"{{jwe}}\",\n        \"expirationYear\": \"2027\",\n        \"expirationMonth\": \"11\"\n    },\n    \"billingInfo\": {\n        \"firstName\": \"test\",\n        \"lastName\": \"test\",\n        \"address1\": \"test\",\n        \"locality\": \"Tirana\",\n        \"postalCode\": null,\n        \"countryCode\": \"AL\",\n        \"administrativeArea\": \"\",\n        \"sameAsShipping\": false,\n        \"email\": \"test@example.com\"\n    },\n    \"securityCode\": \"123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/credit-debit-cards/tokenize-guest-card",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "credit-debit-cards",
+                    "tokenize-guest-card"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "access-control-allow-headers",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-methods",
+                  "value": "*"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "vary",
+                  "value": "origin"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                },
+                {
+                  "key": "content-length",
+                  "value": "520"
+                },
+                {
+                  "key": "Date",
+                  "value": "Fri, 07 Apr 2023 12:33:55 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 200,\n    \"data\": {\n        \"creditDebitCard\": {\n            \"id\": \"{{creditDebitCardId}}\",\n            \"holderFirstName\": \"test\",\n            \"holderLastName\": \"test\",\n            \"hiddenNumber\": \"400000XXXXXX1091\",\n            \"billingInfo\": {\n                \"firstName\": \"test\",\n                \"lastName\": \"test\",\n                \"address1\": \"test\",\n                \"locality\": \"Tirana\",\n                \"administrativeArea\": \"\",\n                \"postalCode\": null,\n                \"countryCode\": \"AL\",\n                \"sameAsShipping\": false,\n                \"email\": \"test@example.com\",\n                \"billableType\": \"guest\"\n            }\n        }\n    },\n    \"message\": \"Success\",\n    \"requestId\": \"1680870833573:adn20.icc-al.org:31689:lg6j3bs5:10000\",\n    \"errors\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Setup tokenized card 3ds",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOjYxMDk4LCJ1c2VyIjoiNDBlZDNkOTQtYjY0MC00NDRlLWJkZDYtZjk0Y2MyZDJmYmQwIiwiYXV0aFR5cGUiOiJzZGsiLCJrZXlJZCI6IjI4OGE1YTlhLTZiYzgtNDU2NC1hMTIyLTE1MzI1NzE4NTc3YiIsImlhdCI6MTY4MDg1OTc0MCwiZXhwIjoxNjgwODk1NzQwfQ.9210XqmT7DmPigowOXNTjyXeysQGr8KyQPsRhxu2NS0",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sdkOrder\": {\n        \"id\": \"{{sdkOrderId}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/credit-debit-cards/{{creditDebitCardId}}/setup-tokenized-3ds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "credit-debit-cards",
+                "{{creditDebitCardId}}",
+                "setup-tokenized-3ds"
+              ]
+            },
+            "description": "**PATH PARAMS**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| creditDebitCardId | string | Unique ID of credit debit card. This is returned as a response from the 'Create tokenized credit card' request. | Yes |\n\n**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| sdkOrder | Object: { id: string } | ID of the order that is going to be paid by the client. | Yes |\n\n**RESPONSE**\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| payerAuthentication | Object (structure below) | Payer authentication |\n\npayerAuthentication\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| deviceDataCollection | Object { accessToken, url } | Device data collection information |\n| creditDebitCard | Object { id } | Created credit debit card ID |\n| payerAuthSetupReferenceId | string | Payer authentication reference id |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"sdkOrder\": {\n        \"id\": \"{{sdkOrderId}}\"\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/credit-debit-cards/{{creditDebitCardId}}/setup-tokenized-3ds",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "credit-debit-cards",
+                    "{{creditDebitCardId}}",
+                    "setup-tokenized-3ds"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "access-control-allow-headers",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-methods",
+                  "value": "*"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "vary",
+                  "value": "origin"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                },
+                {
+                  "key": "content-length",
+                  "value": "771"
+                },
+                {
+                  "key": "Date",
+                  "value": "Fri, 07 Apr 2023 12:39:07 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 200,\n    \"data\": {\n        \"payerAuthentication\": {\n            \"deviceDataCollection\": {\n                \"accessToken\": \"{{accessToken}}\",\n                \"url\": \"{{dataCollectionUrl}}\"\n            },\n            \"creditDebitCard\": {\n                \"id\": \"{{creditDebitCardId}}\"\n            },\n            \"payerAuthSetupReferenceId\": \"{{payerAuthSetupReferenceId}}\"\n        }\n    },\n    \"message\": \"Success\",\n    \"requestId\": \"1680871146932:adn20.icc-al.org:31689:lg6j3bs5:10001\",\n    \"errors\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Check 3ds enrollment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"csAuthentication\": {\n        \"amount\": {{sdkOrderAmount}},\n        \"currencyCode\": \"{{sdkOrderCurrencyCode}}\"\n    },\n    \"sdkOrderId\": \"{{sdkOrderId}}\",\n    \"payerAuthSetupReferenceId\": \"{{payerAuthSetupReferenceId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/credit-debit-cards/{{creditDebitCardId}}/check-3ds-enrollment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "credit-debit-cards",
+                "{{creditDebitCardId}}",
+                "check-3ds-enrollment"
+              ]
+            },
+            "description": "**PATH PARAMS**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| creditDebitCardId | string | Unique ID of credit debit card. This is returned as a response from the 'Create tokenized credit card' request. | Yes |\n\n**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| csAuthentication | Object (structure below) | Authentication | Yes |\n| sdkOrderId | string | Sdk order id | No |\n| payerAuthSetupReferenceId | string | Auth setup reference id | Yes |\n\n**RESPONSE**\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| payerAuthenticationEnrollment | Object (structure below) | Payer authentication enrollment information |\n\npayerAuthenticationEnrollment\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| status | string | Auth enrollment status |\n| stepUp | Object |  |\n| stepUp.accessToken | string | 3ds step up access token |\n| stepUp.url | string | 3ds step up url |\n| MD | string | Credit debit card id |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"csAuthentication\": {\n        \"amount\": 100,\n        \"currencyCode\": \"EUR\"\n    },\n    \"sdkOrderId\": \"{{sdkOrderId}}\",\n    \"payerAuthSetupReferenceId\": \"{{payerAuthSetupReferenceId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/credit-debit-cards/{{creditDebitCardId}}/check-3ds-enrollment",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "credit-debit-cards",
+                    "{{creditDebitCardId}}",
+                    "check-3ds-enrollment"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "access-control-allow-headers",
+                  "value": "*"
+                },
+                {
+                  "key": "access-control-allow-methods",
+                  "value": "*"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "vary",
+                  "value": "origin,accept-encoding"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                },
+                {
+                  "key": "content-encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Date",
+                  "value": "Fri, 07 Apr 2023 13:14:17 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 200,\n    \"data\": {\n        \"payerAuthenticationEnrollment\": {\n            \"status\": \"PENDING_AUTHENTICATION\",\n            \"stepUp\": {\n                \"accessToken\": \"{{acessToken}}\",\n                \"url\": \"{{stepUpUrl}}\"\n            },\n            \"MD\": \"{{creditDebitCardId}}\"\n        }\n    },\n    \"message\": \"Success\",\n    \"requestId\": \"1680873256167:adn20.icc-al.org:31689:lg6j3bs5:10002\",\n    \"errors\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Guest confirm",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"creditCardId\": \"{{creditCardId}}\",\n    \"consumerAuthenticationInformation\": {{consumerAuthenticationInformation}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sdk-orders/{{sdkOrderId}}/guest-confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sdk-orders",
+                "{{sdkOrderId}}",
+                "guest-confirm"
+              ]
+            },
+            "description": "This endpoint is used as the last step of the payment process to confirm the sdk order.\n\n**PATH PARAMS**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| sdkOrderId | string | ID of order to be paid by the client | Yes |\n\n**PAYLOAD**\n\n| **Key** | **Type** | **Description** | **Required** |\n| --- | --- | --- | --- |\n| creditCardId | string | Credit card id | Yes |\n| consumerAuthenticationInformation | Object | Consumer Authentication Information | Retrieved from socket response |\n\n**RESPONSE**\n\n| **Key** | **Type** | **Description** |\n| --- | --- | --- |\n| sdkOrder | Object | Confirmed sdk order information |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"creditCardId\": \"{{creditDebitCardId}}\",\n    \"consumerAuthenticationInformation\": {{consumerAuthenticationInformation}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/sdk-orders/{{sdkOrderId}}/guest-confirm",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "sdk-orders",
+                    "{{sdkOrderId}}",
+                    "guest-confirm"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "server-status-code",
+                  "value": "7000402"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "vary",
+                  "value": "origin"
+                },
+                {
+                  "key": "access-control-expose-headers",
+                  "value": "WWW-Authenticate,Server-Authorization"
+                },
+                {
+                  "key": "cache-control",
+                  "value": "no-cache"
+                },
+                {
+                  "key": "content-length",
+                  "value": "226"
+                },
+                {
+                  "key": "Date",
+                  "value": "Fri, 07 Apr 2023 13:41:48 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"statusCode\": 200,\n  \"serverStatusCode\": 99900202,\n  \"data\": {\n    \"sdkOrder\": {\n      \"id\": \"{{sdkOrderId}}\",\n      \"amount\": 10,\n      \"capturedAmount\": 10,\n      \"currencyCode\": \"EUR\",\n      \"products\": [],\n      \"originalCurrencyCode\": \"EUR\",\n      \"originalAmount\": 10,\n      \"appliedExchangeRate\": 1,\n      \"shippingCost\": 0,\n      \"finalAmount\": 10,\n      \"createdAt\": \"2023-04-07T13:43:04.924Z\",\n      \"expiresAt\": \"2023-04-08T13:43:04.924Z\",\n      \"redirectUrl\": \"https://www.pokpay.io/?orderId={{sdkOrderId}}\",\n      \"failRedirectUrl\": null,\n      \"merchant\": {\n        \"id\": \"{{creatorMerchantId}}\",\n        \"name\": \"{{creatorMerchantName}}\",\n        \"tradeName\": \"{{creatorMerchantTradeName}}\",\n        \"description\": null,\n        \"address\": \"{{creatorMerchantAddress}}\",\n        \"fieldsOfOperation\": [],\n        \"nuis\": \"{{creatorMerchantNuis}}\",\n        \"verificationStatus\": \"verified\",\n        \"isVerified\": true,\n        \"isActive\": true,\n        \"logoUri\": null,\n        \"logoUrl\": null,\n        \"websiteUrl\": null,\n        \"legalForm\": \"{{legalForm}}\",\n        \"mainPosId\": \"{{mainPosId}}\",\n        \"canBeTipped\": true,\n        \"isAffiliate\": false,\n        \"sdkOrdersEnabled\": true,\n        \"hasStagingAccount\": false\n      },\n      \"_self\": {\n        \"confirmUrl\": \"{{sdkOrderConfirmUrl}}\",\n        \"confirmDeeplink\": \"\"\n      },\n      \"description\": null,\n      \"isCompleted\": true,\n      \"isRefunded\": false,\n      \"isCanceled\": false,\n      \"merchantCustomReference\": null,\n      \"selectedBranchId\": null,\n      \"transactionId\": \"{{transactionId}}\",\n      \"canBeCaptured\": false,\n      \"autoCapture\": true,\n      \"supportedPaymentMethods\": [\n        \"rpay-credit\",\n        \"credit-debit-card\"\n      ]\n    }\n  },\n  \"message\": \"Payment completed\",\n  \"requestId\": \"1680875022115:adn20.icc-al.org:31689:lg6j3bs5:10021\",\n  \"errors\": []\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Get Guest Cards Information",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cardIds\": [\n        \"{{cardId1}}\",\n        \"{{cardId2}}\"\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/credit-debit-cards/get-guest-cards-information",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "credit-debit-cards",
+                "get-guest-cards-information"
+              ]
+            },
+            "description": "Get information about specified guest cards.\n\n**PAYLOAD**\n\n| Key | Type | **Description** | **Required** |\n| --- | --- | --- | --- |\n| cardIds | Array of strings (uuids) | IDs of cards to get information about. | Yes.  <br>(Minimum array length is 1) |"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"cardIds\": [\n        \"7c592ad9-54c5-4f64-a9c0-452f6d37a5a2\",\n        \"482080c0-bcd4-47de-8e7c-601f27b824a9\"\n    ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/credit-debit-cards/get-guest-cards-information",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "credit-debit-cards",
+                    "get-guest-cards-information"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": null,
+              "cookie": [],
+              "body": "{\n    \"statusCode\": 200,\n    \"serverStatusCode\": 200,\n    \"data\": {\n        \"cards\": [\n            {\n                \"type\": null,\n                \"brand\": \"VISA\",\n                \"number\": \"**** **** **** 0023\",\n                \"label\": \"VISA - **** **** **** 0023\",\n                \"logo\": \"https://dibb9k7auw9pm.cloudfront.net/public/assets/img/creditCard/visa.svg\",\n                \"billingInfo\": {\n                    \"billableType\": \"guest\",\n                    \"firstName\": \"John\",\n                    \"lastName\": \"Doe\",\n                    \"address1\": \"Rr 233\",\n                    \"address2\": null,\n                    \"locality\": \"Tirana\",\n                    \"administrativeArea\": \"Tirana\",\n                    \"postalCode\": \"2222\",\n                    \"countryCode\": \"AL\",\n                    \"sameAsShipping\": false,\n                    \"email\": \"nikotili@live.com\",\n                    \"phoneNumber\": \"\"\n                }\n            },\n            {\n                \"type\": null,\n                \"brand\": \"VISA\",\n                \"number\": \"**** **** **** 1111\",\n                \"label\": \"VISA - **** **** **** 1111\",\n                \"logo\": \"https://dibb9k7auw9pm.cloudfront.net/public/assets/img/creditCard/visa.svg\",\n                \"billingInfo\": {\n                    \"billableType\": \"guest\",\n                    \"firstName\": \"sonila\",\n                    \"lastName\": \"allaraj\",\n                    \"address1\": \"mine peza\",\n                    \"address2\": null,\n                    \"locality\": \"new york\",\n                    \"administrativeArea\": \"new york\",\n                    \"postalCode\": \"12345\",\n                    \"countryCode\": \"AL\",\n                    \"sameAsShipping\": false,\n                    \"email\": \"sonila@example.com\",\n                    \"phoneNumber\": \"+355686700043\"\n                }\n            }\n        ]\n    },\n    \"message\": \"Success\",\n    \"requestId\": \"1712910726244:Marins-MacBook-Pro-2.local:4972:luwetfoq:10000\",\n    \"errors\": []\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Tokenized Cards API provides endpoints to use credit or debit cards for paying orders created by a merchant.\n\nFor this API the following cards can be used for testing:\n\n|  | Card Number | **Expiration Date** | **Security Code** |\n| --- | --- | --- | --- |\n| Without 3DS | 4111 1111 1111 1111 | 12/26 | 111 |\n| With 3DS | 4000 0000 0000 1091 | 12/26 | 111 |"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}
