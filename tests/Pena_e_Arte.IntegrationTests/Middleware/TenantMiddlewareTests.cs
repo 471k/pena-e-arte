@@ -262,7 +262,7 @@ public class TenantMiddlewareTests
         DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "GET");
 
         Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
-            .InvokeAsync(context, _tenant, _subscriptions);
+            .InvokeAsync(context, _tenant, _subscriptions, _db);
 
         await act.Should().NotThrowAsync();
     }
@@ -274,7 +274,7 @@ public class TenantMiddlewareTests
         DefaultHttpContext context = ContextWithTenant(_studioId, "/api/v1/studios/me", "POST");
 
         Func<Task> act = () => CreateSut(_ => Task.CompletedTask)
-            .InvokeAsync(context, _tenant, _subscriptions);
+            .InvokeAsync(context, _tenant, _subscriptions, _db);
 
         await act.Should().ThrowAsync<SubscriptionRequiredException>();
     }
