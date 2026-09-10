@@ -7,6 +7,7 @@ import { useGetMyEarningsQuery } from "../reportsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
 import { RevenueTrendChart } from "./RevenueTrendChart";
+import { MyBoothRentSection } from "@/features/booth-rent/components/MyBoothRentSection";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(value);
@@ -129,6 +130,8 @@ export function MyEarningsPage() {
                 )}
               </CardContent>
             </Card>
+
+            <MyBoothRentSection />
           </>
         )}
       </main>

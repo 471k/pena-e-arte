@@ -184,13 +184,19 @@ public class GetStudioHoursQueryTests
         Guid studioId = Guid.NewGuid();
         _db.StudioHours.Add(new StudioHours
         {
-            StudioId = studioId, DayOfWeek = DayOfWeek.Friday,
-            StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(18), IsOpen = true,
+            StudioId = studioId,
+            DayOfWeek = DayOfWeek.Friday,
+            StartTime = TimeSpan.FromHours(9),
+            EndTime = TimeSpan.FromHours(18),
+            IsOpen = true,
         });
         _db.StudioHours.Add(new StudioHours
         {
-            StudioId = studioId, DayOfWeek = DayOfWeek.Monday,
-            StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(18), IsOpen = true,
+            StudioId = studioId,
+            DayOfWeek = DayOfWeek.Monday,
+            StartTime = TimeSpan.FromHours(9),
+            EndTime = TimeSpan.FromHours(18),
+            IsOpen = true,
         });
         await _db.SaveChangesAsync();
 

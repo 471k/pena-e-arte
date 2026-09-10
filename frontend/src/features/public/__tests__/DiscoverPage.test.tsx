@@ -49,7 +49,7 @@ function makeAuthStore() {
         refreshToken:        null,
         tenantId:            "t-1",
         role:                "owner" as const,
-        pendingReferralCode: null,
+        pendingReferralCode: null, impersonation: null,
       },
     },
   });

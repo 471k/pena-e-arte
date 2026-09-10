@@ -24,3 +24,13 @@ createRoot(document.getElementById("root")!).render(
     </ErrorBoundary>
   </StrictMode>
 );
+
+// Installable PWA (backlog item 7) — registered after the initial render so it never blocks
+// first paint. Caches only the static app shell (see sw.js); never intercepts /api/ or /hubs/.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.error("Service worker registration failed:", err);
+    });
+  });
+}

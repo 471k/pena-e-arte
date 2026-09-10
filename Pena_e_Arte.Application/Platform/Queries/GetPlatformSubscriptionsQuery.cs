@@ -31,6 +31,8 @@ public class GetPlatformSubscriptionsHandler(IAppDbContext db)
             s.Subscription?.TrialExpiresAt,
             s.Subscription?.CurrentPeriodEnd ?? DateTime.MinValue,
             !s.IsActive,
-            s.Subscription?.CancelAtPeriodEnd ?? false)).ToList();
+            s.Subscription?.CancelAtPeriodEnd ?? false,
+            s.Subscription?.PastDueSince,
+            s.Subscription?.DunningExcludedManually ?? false)).ToList();
     }
 }

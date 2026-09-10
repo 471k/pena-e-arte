@@ -35,7 +35,7 @@ function renderSection() {
     middleware: (getDefault) => getDefault().concat(clientsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "c@test.com" }, token: "t", tenantId: "s1", role: "client", pendingReferralCode: null } as any,
+      auth: { user: { id: "u1", email: "c@test.com" }, token: "t", tenantId: "s1", role: "client", pendingReferralCode: null, impersonation: null } as any,
     },
   });
   render(

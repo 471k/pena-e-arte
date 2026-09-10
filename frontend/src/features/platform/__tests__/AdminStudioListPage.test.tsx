@@ -92,6 +92,7 @@ const PLANS: PlanResponse[] = [
     maxLocations:             null,
     allowApiAccess:           false,
     prioritySupport:          false,
+    allowMarketingCampaigns: false,
     prices: [
       { id: "price-1-m", interval: "Monthly", price: 29, stripePriceId: null, isActive: true },
     ],
@@ -152,7 +153,7 @@ function makeStore() {
       gd().concat(platformApi.middleware, studiosApi.middleware, billingApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin", pendingReferralCode: null } as any,
+      auth: { user: { id: "u4", email: "admin@platform.test" }, token: "fake", tenantId: null, role: "admin", pendingReferralCode: null, impersonation: null } as any,
     },
   });
 }

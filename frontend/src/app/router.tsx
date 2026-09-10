@@ -12,12 +12,14 @@ import { DesignListPage, CreateDesignPage, UploadRevisionPage, DesignDetailPage 
 import {
   SubmitIntakeFormPage,
   IntakeFormListPage,
+  IntakeFormBuilderPage,
   IntakeFormDetailPage,
   SignConsentFormPage,
   ConsentFormListPage,
   ConsentFormDetailPage,
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
+import { PromoCodeListPage, PromoCodeDetailPage, CreatePromoCodePage } from "@/features/promo-codes";
 import { ReportsPage, MyEarningsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
 import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
@@ -35,29 +37,43 @@ import {
   LiveTrafficPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
-import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage } from "@/features/public";
+import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { MessagesInboxPage } from "@/features/messaging";
+import { WaitlistQueuePage, MyWaitlistPage } from "@/features/waitlist";
+import { BoothRentManagementPage } from "@/features/booth-rent";
+import { GiftCardListPage, PurchaseGiftCardPage } from "@/features/gift-cards";
+import { PackageListPage, PurchasePackagePage } from "@/features/session-packages";
+import { CampaignsPage } from "@/features/campaigns";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
+import { ImpersonationBanner } from "@/shared/components/ImpersonationBanner";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { Role } from "@/shared/types/roles";
 import { logout } from "@/features/auth/authSlice";
-import { clearSessionExpired } from "@/features/ui/uiSlice";
+import { clearSessionExpired, clearImpersonationSessionExpired } from "@/features/ui/uiSlice";
 import { useAppDispatch, useAppSelector } from "./hooks";
+import { toast } from "sonner";
 
 export function RoleGuard({ allowedRoles }: { allowedRoles: Role[] }) {
   const role = useAppSelector((s) => s.auth.role);
+  const impersonating = useAppSelector((s) => s.auth.impersonation !== null);
 
   if (!role) return <Navigate to="/login" replace />;
-  if (!allowedRoles.includes(role)) return <Navigate to={getRoleRedirectPath(role)} replace />;
+  if (!allowedRoles.includes(role)) return <Navigate to={getRoleRedirectPath(role, impersonating)} replace />;
 
   return <Outlet />;
 }
 
-export function getRoleRedirectPath(role: Role): string {
+// While an admin holds an active Support Impersonation session, their effective "home" is
+// the studio they're viewing (the owner dashboard), not the platform admin console — the
+// whole point of the session is to browse studio-scoped pages. The "admin" role itself
+// never changes (see AuthorizationExtensions.cs), so this is the one place that distinction
+// has to be threaded through explicitly.
+export function getRoleRedirectPath(role: Role, impersonating = false): string {
+  if (role === Role.Admin && impersonating) return "/dashboard";
   switch (role) {
     case Role.Client: return "/book";
     case Role.Artist: return "/schedule";
@@ -68,23 +84,26 @@ export function getRoleRedirectPath(role: Role): string {
 
 function IndexRedirect() {
   const role = useAppSelector((s) => s.auth.role);
+  const impersonating = useAppSelector((s) => s.auth.impersonation !== null);
   // Unauthenticated root visit now lands on the public Home surface (PENA-102)
   // instead of being bounced straight into /discover. Authenticated users still
   // go to their role home.
   if (!role) return <HomePage />;
-  return <Navigate to={getRoleRedirectPath(role)} replace />;
+  return <Navigate to={getRoleRedirectPath(role, impersonating)} replace />;
 }
 
 function CatchAllRedirect() {
   const role = useAppSelector((s) => s.auth.role);
+  const impersonating = useAppSelector((s) => s.auth.impersonation !== null);
   if (!role) return <Navigate to="/discover" replace />;
-  return <Navigate to={getRoleRedirectPath(role)} replace />;
+  return <Navigate to={getRoleRedirectPath(role, impersonating)} replace />;
 }
 
 export function AppRoot() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const sessionExpired = useAppSelector((s) => s.ui.sessionExpired);
+  const impersonationSessionExpired = useAppSelector((s) => s.ui.impersonationSessionExpired);
 
   useEffect(() => {
     if (sessionExpired) {
@@ -94,11 +113,28 @@ export function AppRoot() {
     }
   }, [sessionExpired, dispatch, navigate]);
 
-  return <Outlet />;
+  useEffect(() => {
+    if (impersonationSessionExpired) {
+      dispatch(clearImpersonationSessionExpired());
+      toast.info("Impersonation session ended — you're back in your own admin session.");
+      navigate("/platform", { replace: true });
+    }
+  }, [impersonationSessionExpired, dispatch, navigate]);
+
+  return (
+    <>
+      <ImpersonationBanner />
+      <Outlet />
+    </>
+  );
 }
 
 function AppLayout() {
   const role = useAppSelector((s) => s.auth.role);
+  const impersonating = useAppSelector((s) => s.auth.impersonation !== null);
+  // See getRoleRedirectPath's doc comment — an impersonating admin gets the owner shell,
+  // not the platform admin console, so its nav actually points at studio-scoped pages.
+  if (role === Role.Admin && impersonating) return <OwnerLayout />;
   switch (role) {
     case Role.Owner:  return <OwnerLayout />;
     case Role.Artist: return <ArtistLayout />;
@@ -122,6 +158,7 @@ export const routes = [
   { path: "/artist/:slug",            element: <ArtistPortfolioPage /> },
   { path: "/share/:token",            element: <SharedDesignPage /> },
   { path: "/embed/:studioSlug",       element: <EmbedPage /> },
+  { path: "/s/:slug/gift-cards/buy",  element: <PurchaseGiftCardPage /> },
 
   // ── Public policy / legal surfaces (PENA-101, PENA-102) ─────────────────────
   // Top-level, outside the authenticated AppRoot tree. Before these existed,
@@ -130,6 +167,7 @@ export const routes = [
   { path: "/terms",           element: <TermsOfServicePage /> },
   { path: "/refund-policy",   element: <RefundPolicyPage /> },
   { path: "/contact",         element: <ContactPage /> },
+  { path: "/unsubscribe",     element: <UnsubscribePage /> },
 
   {
     path: "/",
@@ -276,6 +314,75 @@ export const routes = [
                 ],
               },
 
+              // ── Shared: waitlist ─────────────────────────────────────────────
+              {
+                path: "waitlist",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><WaitlistQueuePage /></ErrorBoundary> },
+                ],
+              },
+              {
+                path: "waitlist/mine",
+                element: <RoleGuard allowedRoles={[Role.Client]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><MyWaitlistPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: booth rent ────────────────────────────────────────────
+              {
+                path: "booth-rent",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><BoothRentManagementPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: gift cards ────────────────────────────────────────────
+              {
+                path: "gift-cards",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><GiftCardListPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Shared: packages ─────────────────────────────────────────────
+              {
+                path: "packages",
+                element: <RoleGuard allowedRoles={[Role.Client, Role.Owner, Role.Admin]} />,
+                children: [
+                  {
+                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                    children: [{ index: true, element: <ErrorBoundary><PackageListPage /></ErrorBoundary> }],
+                  },
+                  {
+                    path: "buy",
+                    element: <RoleGuard allowedRoles={[Role.Client]} />,
+                    children: [{ index: true, element: <ErrorBoundary><PurchasePackagePage /></ErrorBoundary> }],
+                  },
+                ],
+              },
+
+              // ── Owner: intake form builder ───────────────────────────────────
+              {
+                path: "intake-form-builder",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [{ index: true, element: <ErrorBoundary><IntakeFormBuilderPage /></ErrorBoundary> }],
+              },
+
+              // ── Owner: promo codes ──────────────────────────────────────────
+              {
+                path: "promo-codes",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><PromoCodeListPage /></ErrorBoundary> },
+                  { path: "new", element: <ErrorBoundary><CreatePromoCodePage /></ErrorBoundary> },
+                  { path: ":id", element: <ErrorBoundary><PromoCodeDetailPage /></ErrorBoundary> },
+                ],
+              },
+
               // ── Shared: forms ────────────────────────────────────────────────
               {
                 path: "forms",
@@ -344,6 +451,15 @@ export const routes = [
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true, element: <ErrorBoundary><ReportsPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Owner: marketing campaigns ──────────────────────────────────
+              {
+                path: "campaigns",
+                element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><CampaignsPage /></ErrorBoundary> },
                 ],
               },
 

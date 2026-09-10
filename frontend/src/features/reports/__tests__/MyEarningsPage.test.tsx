@@ -11,6 +11,7 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { reportsApi } from "@/features/reports/reportsApi";
 import { studiosApi } from "@/features/studios/studiosApi";
+import { boothRentApi } from "@/features/booth-rent/boothRentApi";
 import { MyEarningsPage } from "@/features/reports/components/MyEarningsPage";
 import type { ArtistEarningsResponse } from "@/features/reports/report.types";
 import { Role } from "@/shared/types/roles";
@@ -47,6 +48,11 @@ const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () =>
     HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
   ),
+  // MyEarningsPage embeds MyBoothRentSection — empty schedules means it renders nothing,
+  // matching the typical "no booth-rent schedule" artist and leaving existing assertions
+  // about the earnings content itself unaffected.
+  http.get("http://localhost/api/v1/booth-rent/schedules", () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/booth-rent/charges", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -62,12 +68,13 @@ function makeStore(role: Role = Role.Artist) {
       ui:                         uiReducer,
       [reportsApi.reducerPath]:   reportsApi.reducer,
       [studiosApi.reducerPath]:   studiosApi.reducer,
+      [boothRentApi.reducerPath]: boothRentApi.reducer,
     },
-    middleware: (gd) => gd().concat(reportsApi.middleware, studiosApi.middleware),
+    middleware: (gd) => gd().concat(reportsApi.middleware, studiosApi.middleware, boothRentApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }

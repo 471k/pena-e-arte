@@ -8,6 +8,8 @@ using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Domain.Services;
+using Pena_e_Arte.Application.Waitlists.Commands;
+using Pena_e_Arte.Application.Waitlists.Common;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
@@ -75,6 +77,15 @@ public class CancelAppointmentHandler(
         appointment.CancellationReason = isClient ? CancellationReason.ClientCancelled : command.Reason;
         appointment.UpdatedAt = DateTime.UtcNow;
 
+        // Auto-FIFO waitlist match: notify only the first still-Waiting entry that covers this
+        // now-freed slot (ArtistId null-or-matching, PreferredDateFrom/To covering the
+        // appointment's date). The entity mutation is included in this same SaveChangesAsync
+        // below; the actual notification dispatch happens after the existing
+        // SendAppointmentCancellationCommand send, matching this handler's own "notify after
+        // save" convention.
+        Guid? waitlistMatchId = await db.ClaimNextMatchAsync(
+            appointment.StudioId, appointment.ArtistId, appointment.Date, ct);
+
         // Refund deposit. Studio-initiated cancellation always refunds 100% (unchanged).
         // Client self-cancellation refunds per ClientCancellationPolicy — full refund with
         // enough notice, otherwise the studio's configured late-cancel percentage (0% by
@@ -140,6 +151,9 @@ public class CancelAppointmentHandler(
             tenant.StudioId, "AppointmentCancelled", new { command.AppointmentId }, ct);
 
         await sender.Send(new SendAppointmentCancellationCommand(appointment.Id), ct);
+
+        if (waitlistMatchId is Guid matchId)
+            await sender.Send(new SendWaitlistSlotAvailableNotificationCommand(matchId), ct);
     }
 
     private async Task<int> ResolveClientRefundPercentAsync(

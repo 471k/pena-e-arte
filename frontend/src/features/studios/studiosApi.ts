@@ -32,6 +32,8 @@ export interface StudioResponse {
   isSolo:               boolean;
   isPublished:          boolean;
   timezone:             string;
+  subscriptionStatus?:  string | null;
+  pastDueSince?:        string | null;
 }
 
 export interface InviteSoloArtistToJoinRequest {

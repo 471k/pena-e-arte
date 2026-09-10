@@ -386,13 +386,19 @@ public class GetPublicStudioHandlerTests
 
         _db.StudioHours.Add(new StudioHours
         {
-            StudioId = studio.Id, DayOfWeek = DayOfWeek.Friday,
-            StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(18), IsOpen = true,
+            StudioId = studio.Id,
+            DayOfWeek = DayOfWeek.Friday,
+            StartTime = TimeSpan.FromHours(9),
+            EndTime = TimeSpan.FromHours(18),
+            IsOpen = true,
         });
         _db.StudioHours.Add(new StudioHours
         {
-            StudioId = studio.Id, DayOfWeek = DayOfWeek.Monday,
-            StartTime = TimeSpan.FromHours(10), EndTime = TimeSpan.FromHours(17), IsOpen = true,
+            StudioId = studio.Id,
+            DayOfWeek = DayOfWeek.Monday,
+            StartTime = TimeSpan.FromHours(10),
+            EndTime = TimeSpan.FromHours(17),
+            IsOpen = true,
         });
         await _db.SaveChangesAsync();
 

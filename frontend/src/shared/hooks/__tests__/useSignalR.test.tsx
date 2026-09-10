@@ -74,7 +74,7 @@ function makeStore(): EnhancedStore<any> {
         token:               "fake-jwt-token",
         tenantId:            "studio-0001",
         role:                Role.Owner,
-        pendingReferralCode: null,
+        pendingReferralCode: null, impersonation: null,
         refreshToken:        null,
       },
     },
@@ -126,7 +126,7 @@ describe("useSignalR", () => {
         [notificationsApi.reducerPath]: notificationsApi.reducer,
       },
       preloadedState: {
-        auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null, refreshToken: null },
+        auth: { user: null, token: null, tenantId: null, role: null, pendingReferralCode: null, impersonation: null, refreshToken: null },
       },
     });
 

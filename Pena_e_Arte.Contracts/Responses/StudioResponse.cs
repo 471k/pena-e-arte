@@ -18,4 +18,6 @@ public record StudioResponse(
     string? Nipt = null,
     bool IsSolo = false,
     bool IsPublished = true,
-    string Timezone = "Europe/Tirane");
+    string Timezone = "Europe/Tirane",
+    string? SubscriptionStatus = null,
+    DateTime? PastDueSince = null);

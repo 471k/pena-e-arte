@@ -172,6 +172,56 @@ describe("GuestBookAppointmentForm", () => {
     // past the 10s default under load even though nothing is actually broken.
   }, 40000);
 
+  it("includes the selected style in the booking payload, or null when unset", async () => {
+    mockCreateGuestAppointment.mockReturnValue(
+      Promise.resolve({ data: { message: "Thanks — check your email to continue." } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
+    );
+
+    const user = userEvent.setup();
+    renderForm();
+
+    await fillIdentityFields(user);
+    await fillBookingFields(user);
+    await user.click(screen.getByLabelText(/style \(optional\)/i));
+    await user.click(await screen.findByRole("option", { name: "Japanese" }));
+    await uploadImages(user);
+
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Check your email");
+    expect(mockCreateGuestAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          booking: expect.objectContaining({ style: "japanese" }),
+        }),
+      }),
+    );
+  }, 40000);
+
+  it("sends style: null when no style is selected", async () => {
+    mockCreateGuestAppointment.mockReturnValue(
+      Promise.resolve({ data: { message: "Thanks — check your email to continue." } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
+    );
+
+    const user = userEvent.setup();
+    renderForm();
+
+    await fillIdentityFields(user);
+    await fillBookingFields(user);
+    await uploadImages(user);
+
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Check your email");
+    expect(mockCreateGuestAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          booking: expect.objectContaining({ style: null }),
+        }),
+      }),
+    );
+  }, 40000);
+
   // Enumeration-resistance (2026-09-01, /code-review finding): the backend now returns the
   // exact same ack whether a new booking was created or the email collided with an existing
   // account — it never sends a 409 for this case anymore. This test confirms the frontend

@@ -8,7 +8,9 @@ import type {
   UploadRevisionRequest,
   ReviewRevisionRequest,
   DesignShareTokenResponse,
+  MarkDesignAsCatalogItemRequest,
 } from "./design.types";
+import type { AppointmentResponse, CreateAppointmentRequest } from "@/features/appointments/appointment.types";
 
 export const designsApi = createApi({
   reducerPath: "designsApi",
@@ -72,6 +74,15 @@ export const designsApi = createApi({
         method: "DELETE",
       }),
     }),
+    markDesignAsCatalogItem: builder.mutation<DesignResponse, { id: string; body: MarkDesignAsCatalogItemRequest }>({
+      query: ({ id, body }) => ({ url: `designs/${id}/catalog`, method: "POST", body }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: "Design", id }, "Design"],
+    }),
+    requestCatalogDesign: builder.mutation<AppointmentResponse, { catalogDesignId: string; booking: CreateAppointmentRequest }>({
+      query: ({ catalogDesignId, booking }) => ({
+        url: `designs/catalog/${catalogDesignId}/request`, method: "POST", body: booking,
+      }),
+    }),
   }),
 });
 
@@ -85,4 +96,6 @@ export const {
   useDeleteRevisionMutation,
   useCreateShareTokenMutation,
   useRevokeShareTokenMutation,
+  useMarkDesignAsCatalogItemMutation,
+  useRequestCatalogDesignMutation,
 } = designsApi;

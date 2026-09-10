@@ -39,6 +39,11 @@ export const ownerTourSteps: TourStep[] = [
     body: "Deposit rules decide how much clients pay upfront to secure a booking.",
   },
   {
+    targetSelector: '[data-tour="owner-waitlist-nav"]',
+    title: "Waitlist",
+    body: "See everyone waiting for a slot — clients are notified automatically, in order, when one opens up.",
+  },
+  {
     targetSelector: '[data-tour="owner-studio-profile-nav"]',
     title: "Your studio profile",
     body: "Edit your studio's public details, branding, booking widget, QR code, and referral code here.",

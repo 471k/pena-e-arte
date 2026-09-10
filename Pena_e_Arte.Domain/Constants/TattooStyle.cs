@@ -1,8 +1,9 @@
 namespace Pena_e_Arte.Domain.Constants;
 
 /// <summary>
-/// Canonical tattoo style identifiers. Used on PortfolioImage.Style and as filter
-/// chip values on the DiscoverPage. Keep in sync with STYLES constant in PortfolioFeed.tsx.
+/// Canonical tattoo style identifiers. Used on PortfolioImage.Style, BookingIntake.Style, and as
+/// filter chip values on the DiscoverPage. Keep in sync with TATTOO_STYLE_OPTIONS in
+/// frontend/src/shared/constants/tattooStyles.ts.
 /// </summary>
 public static class TattooStyle
 {

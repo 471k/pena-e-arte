@@ -126,6 +126,26 @@ public class CreateGuestAppointmentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RequestWithStyle_PersistsStyleOnBookingIntake()
+    {
+        Studio studio = SeedStudioWithAvailableArtist();
+        string email = "jamie@example.com";
+
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "client", studio.Id, "Jamie")
+                 .Returns((true, Guid.NewGuid(), Array.Empty<string>()));
+        _identity.GeneratePasswordResetTokenAsync(email).Returns((true, "reset-token", (string?)null));
+        _identity.GenerateEmailConfirmationTokenAsync(Arg.Any<Guid>()).Returns("confirm-token");
+
+        CreateGuestAppointmentRequest request = ValidRequest(studio, email);
+        request = request with { Booking = request.Booking with { Style = "japanese" } };
+
+        await CreateSut().Handle(new CreateGuestAppointmentCommand(studio.Slug, request), default);
+
+        _db.BookingIntakes.Single().Style.Should().Be("japanese");
+    }
+
+    [Fact]
     public async Task Handle_ValidRequest_SendsWelcomeEmail()
     {
         Studio studio = SeedStudioWithAvailableArtist();

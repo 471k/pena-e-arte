@@ -20,10 +20,12 @@ public record AppointmentResponse(
     string? ArtistName = null,
     Guid? ClientUserId = null,
     string? TattooDescription = null,
+    string? Style = null,
     string? SafetyNotes = null,
     IReadOnlyList<string>? DesiredPlacementLocations = null,
     string? ReferralSource = null,
     string? ReferralSourceOther = null,
-    IReadOnlyList<AppointmentAttachmentResponse>? Attachments = null);
+    IReadOnlyList<AppointmentAttachmentResponse>? Attachments = null,
+    bool PromoCodeApplied = false);
 
 public record AppointmentAttachmentResponse(string Url, string Category);

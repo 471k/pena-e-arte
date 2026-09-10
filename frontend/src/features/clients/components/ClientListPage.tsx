@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Plus, Search, Users } from "lucide-react";
+import { ChevronRight, Download, Plus, Search, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -16,6 +17,8 @@ import {
 } from "@/shared/components/ui/select";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
+import { useAppSelector } from "@/app/hooks";
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { useGetClientsQuery } from "../clientsApi";
 import type { ClientResponse } from "../clientsApi";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
@@ -42,9 +45,23 @@ export function ClientListPage() {
 
   const navigate  = useNavigate();
   const canCreate = usePermission(Role.Artist);
+  const canExport = usePermission(Role.Owner);
+  const { token, tenantId } = useAppSelector((s) => s.auth);
   const [inputValue, setInputValue] = useState("");
   const [search, setSearch]         = useState<string | undefined>(undefined);
   const [artistFilter, setArtistFilter] = useState<string>("all");
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      await downloadAuthenticatedFile("clients/export.csv", "clients.csv", token, tenantId);
+    } catch {
+      toast.error("Couldn't export clients. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(inputValue.trim() || undefined), 300);
@@ -86,6 +103,18 @@ export function ClientListPage() {
               <Users className="h-3.5 w-3.5" />
               <span>{filteredClients.length} client{filteredClients.length !== 1 ? "s" : ""}</span>
             </div>
+          )}
+          {canExport && (isLoading || hasAnyClients || isFiltered) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={exporting}
+              className="gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </Button>
           )}
           {canCreate && (isLoading || hasAnyClients || isFiltered) && (
             <Button size="sm" onClick={() => navigate("/clients/new")} className="gap-1.5">

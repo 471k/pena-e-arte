@@ -10,6 +10,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<AppointmentAttachment> AppointmentAttachments => Set<AppointmentAttachment>();
     public DbSet<DepositRule> DepositRules => Set<DepositRule>();
+    public DbSet<PromoCode> PromoCodes => Set<PromoCode>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientProfile> ClientProfiles => Set<ClientProfile>();
     public DbSet<TattooRecord> TattooRecords => Set<TattooRecord>();
@@ -26,6 +27,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
+    public DbSet<IntakeFormTemplate> IntakeFormTemplates => Set<IntakeFormTemplate>();
     public DbSet<BookingIntake> BookingIntakes => Set<BookingIntake>();
     public DbSet<ConsentForm> ConsentForms => Set<ConsentForm>();
     public DbSet<ConsentTemplate> ConsentTemplates => Set<ConsentTemplate>();
@@ -56,9 +58,57 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<ConductReport> ConductReports => Set<ConductReport>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<Waitlist> WaitlistEntries => Set<Waitlist>();
+    public DbSet<BoothRentSchedule> BoothRentSchedules => Set<BoothRentSchedule>();
+    public DbSet<BoothRentCharge> BoothRentCharges => Set<BoothRentCharge>();
+    public DbSet<GiftCard> GiftCards => Set<GiftCard>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackagePurchase> PackagePurchases => Set<PackagePurchase>();
+    public DbSet<ClientReferralCode> ClientReferralCodes => Set<ClientReferralCode>();
+    public DbSet<ClientReferralRedemption> ClientReferralRedemptions => Set<ClientReferralRedemption>();
+    public DbSet<ClientReferralReward> ClientReferralRewards => Set<ClientReferralReward>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Waitlist>()
+            .HasOne(w => w.Artist)
+            .WithMany()
+            .HasForeignKey(w => w.ArtistId)
+            .IsRequired(false);
+
+        modelBuilder.Entity<Waitlist>()
+            .HasOne(w => w.Client)
+            .WithMany()
+            .HasForeignKey(w => w.ClientId)
+            .IsRequired(false);
+
+        modelBuilder.Entity<BoothRentSchedule>()
+            .HasOne(s => s.Artist)
+            .WithMany()
+            .HasForeignKey(s => s.ArtistId);
+
+        modelBuilder.Entity<BoothRentCharge>()
+            .HasOne(c => c.Artist)
+            .WithMany()
+            .HasForeignKey(c => c.ArtistId);
+
+        modelBuilder.Entity<BoothRentCharge>()
+            .HasOne(c => c.Schedule)
+            .WithMany(s => s.Charges)
+            .HasForeignKey(c => c.BoothRentScheduleId);
+
+        modelBuilder.Entity<PackagePurchase>()
+            .HasOne(p => p.Package)
+            .WithMany()
+            .HasForeignKey(p => p.PackageId);
+
+        modelBuilder.Entity<PackagePurchase>()
+            .HasOne(p => p.Client)
+            .WithMany()
+            .HasForeignKey(p => p.ClientId);
+
         modelBuilder.Entity<Studio>()
             .HasOne(s => s.Subscription)
             .WithOne(sub => sub.Studio)

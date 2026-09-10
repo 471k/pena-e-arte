@@ -8,6 +8,7 @@ import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { giftCardsApi } from "@/features/gift-cards/giftCardsApi";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
 import type {
   PaymentResponse,
@@ -88,8 +89,9 @@ function makeStore() {
     reducer: {
       auth:                      authReducer,
       [paymentsApi.reducerPath]: paymentsApi.reducer,
+      [giftCardsApi.reducerPath]: giftCardsApi.reducer,
     },
-    middleware: (gd) => gd().concat(paymentsApi.middleware),
+    middleware: (gd) => gd().concat(paymentsApi.middleware, giftCardsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: "Client" } as any,

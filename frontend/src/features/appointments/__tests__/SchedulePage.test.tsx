@@ -6,7 +6,9 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+import { Toaster } from "sonner";
 
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
@@ -34,6 +36,10 @@ vi.mock("@microsoft/signalr", () => {
   }
   return { HubConnectionBuilder, LogLevel: { Warning: 2 } };
 });
+
+vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
+  downloadAuthenticatedFile: vi.fn().mockResolvedValue(undefined),
+}));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -87,7 +93,12 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => {
+  server.resetHandlers();
+  cleanup();
+  vi.mocked(downloadAuthenticatedFile).mockClear();
+  vi.mocked(downloadAuthenticatedFile).mockResolvedValue(undefined);
+});
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -107,8 +118,8 @@ function makeStore(role: Role = Role.Artist) {
       appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null } as any,
-      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null },
+      auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
+      ui:   { readOnlyError: null, sessionExpired: false, studioSuspended: false, planLimitError: null, impersonationScopeError: null, impersonationSessionExpired: false },
     },
   });
 }
@@ -116,6 +127,7 @@ function makeStore(role: Role = Role.Artist) {
 function renderPage(role: Role = Role.Artist) {
   render(
     <Provider store={makeStore(role)}>
+      <Toaster />
       <MemoryRouter>
         <Routes>
           <Route path="/"                 element={<SchedulePage />} />
@@ -399,5 +411,42 @@ describe("SchedulePage", () => {
     await screen.findByText("No appointments this week");
 
     expect(screen.queryByRole("button", { name: /quick reminder/i })).not.toBeInTheDocument();
+  });
+
+  // ── Export CSV ──────────────────────────────────────────────────────────────
+
+  it("owner sees an Export CSV button", async () => {
+    renderPage(Role.Owner);
+    await screen.findByText("No appointments this week");
+    expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+  });
+
+  it("artist does NOT see the Export CSV button", async () => {
+    renderPage(Role.Artist);
+    await screen.findByText("No appointments this week");
+    expect(screen.queryByRole("button", { name: /export csv/i })).not.toBeInTheDocument();
+  });
+
+  it("clicking Export CSV downloads appointments.csv from the export endpoint", async () => {
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await screen.findByText("No appointments this week");
+
+    await user.click(screen.getByRole("button", { name: /export csv/i }));
+
+    expect(downloadAuthenticatedFile).toHaveBeenCalledWith(
+      "appointments/export.csv", "appointments.csv", "fake-token", "s-001",
+    );
+  });
+
+  it("shows an error toast when the CSV export fails", async () => {
+    vi.mocked(downloadAuthenticatedFile).mockRejectedValueOnce(new Error("boom"));
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await screen.findByText("No appointments this week");
+
+    await user.click(screen.getByRole("button", { name: /export csv/i }));
+
+    expect(await screen.findByText(/couldn't export appointments/i)).toBeInTheDocument();
   });
 });

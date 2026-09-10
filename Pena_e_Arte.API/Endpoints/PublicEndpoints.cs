@@ -53,6 +53,7 @@ public static class PublicEndpoints
         group.MapPost("/artists/{slug}/view", RecordArtistView)
              .AllowAnonymous().RequireRateLimiting("public-write");
         group.MapGet("/portfolio/feed", GetPortfolioFeed).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/design-catalog", GetDesignCatalog).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/portfolio/{imageId:guid}/reviews", CreatePortfolioImageReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
@@ -333,6 +334,15 @@ public static class PublicEndpoints
 
         List<PortfolioImageResponse> result = await mediator.Send(
             new GetPortfolioFeedQuery(lat, lng, radiusKm, page, pageSize, style, category, search), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetDesignCatalog(
+        string slug,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        List<DesignCatalogItemResponse> result = await mediator.Send(new GetDesignCatalogQuery(slug), ct);
         return Results.Ok(result);
     }
 

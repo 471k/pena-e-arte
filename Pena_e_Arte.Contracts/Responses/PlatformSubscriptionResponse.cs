@@ -10,4 +10,6 @@ public record PlatformSubscriptionResponse(
     DateTime? TrialExpiresAt,
     DateTime CurrentPeriodEnd,
     bool IsSuspended,
-    bool CancelAtPeriodEnd = false);
+    bool CancelAtPeriodEnd = false,
+    DateTime? PastDueSince = null,
+    bool DunningExcludedManually = false);

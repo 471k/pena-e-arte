@@ -3,6 +3,7 @@ using FluentAssertions;
 using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.Common.Behaviors;
+using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
@@ -129,6 +130,34 @@ public class AuditLogBehaviorTests
             new AuditableFakeCommand(Guid.NewGuid()), _ => Task.FromResult("ok"), CancellationToken.None);
 
         _db.AuditLogEntries.Single().StudioId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ImpersonatingAdmin_RecordsAdminImpersonatingActorRole()
+    {
+        _currentUser.IsImpersonating.Returns(true);
+        _currentUser.Role.Returns("admin");
+        AuditLogBehavior<AuditableFakeCommand, string> behavior = CreateSut<AuditableFakeCommand>();
+
+        await behavior.Handle(
+            new AuditableFakeCommand(Guid.NewGuid()), _ => Task.FromResult("ok"), CancellationToken.None);
+
+        AuditLogEntry entry = _db.AuditLogEntries.Single();
+        entry.ActorRole.Should().Be("admin-impersonating");
+        entry.ActorUserId.Should().Be(_actorId); // still the real admin, never a synthetic identity
+    }
+
+    [Fact]
+    public async Task Handle_NonImpersonatingAdmin_RecordsRawAdminActorRole()
+    {
+        _currentUser.IsImpersonating.Returns(false);
+        _currentUser.Role.Returns("admin");
+        AuditLogBehavior<AuditableFakeCommand, string> behavior = CreateSut<AuditableFakeCommand>();
+
+        await behavior.Handle(
+            new AuditableFakeCommand(Guid.NewGuid()), _ => Task.FromResult("ok"), CancellationToken.None);
+
+        _db.AuditLogEntries.Single().ActorRole.Should().Be("admin");
     }
 
     [Fact]

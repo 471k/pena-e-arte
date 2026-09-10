@@ -213,7 +213,7 @@ public static class DataSeeder
 
     private sealed record CoreTier(
         Guid Id, string Name, int YearlyDiscountPercent, bool AllowBrandingRemoval,
-        bool AllowApiAccess, bool PrioritySupport,
+        bool AllowApiAccess, bool PrioritySupport, bool AllowMarketingCampaigns,
         int? MaxArtists, int? MaxAppointmentsPerMonth, int? MaxNotificationsPerMonth,
         int? MaxStorageGb, int? MaxLocations, TierPrice[] Prices);
 
@@ -243,21 +243,23 @@ public static class DataSeeder
     {
         CoreTier[] tiers =
         [
-            new CoreTier(FreePlanId, "Free", 0, false, false, false,
+            new CoreTier(FreePlanId, "Free", 0, false, false, false, false,
                 1, 15, 50, 1, 1,
                 [new TierPrice(BillingInterval.Monthly, 0m)]),
-            new CoreTier(StarterPlanId, "Starter", 17, false, false, false,
+            new CoreTier(StarterPlanId, "Starter", 17, false, false, false, false,
                 1, 40, 150, 2, 1,
                 [new TierPrice(BillingInterval.Monthly, 29m)]),
-            new CoreTier(GrowthPlanId, "Growth", 17, true, false, false,
+            // Marketing campaigns (P1 #10) included from Growth up — Starter/Free stay
+            // without it, consistent with AllowBrandingRemoval's own tier cutoff.
+            new CoreTier(GrowthPlanId, "Growth", 17, true, false, false, true,
                 3, 150, 600, 10, 1,
                 [new TierPrice(BillingInterval.Monthly, 59m)]),
-            new CoreTier(PremiumPlanId, "Premium", 17, true, false, true,
+            new CoreTier(PremiumPlanId, "Premium", 17, true, false, true, true,
                 6, 400, 1200, 25, 2,
                 [new TierPrice(BillingInterval.Monthly, 79m), new TierPrice(BillingInterval.Yearly, 790m)]),
             // Soft caps, not true unlimited — protects against a single runaway account
             // inflating Twilio/Hangfire/DB load (owner decision, 2026-07-18).
-            new CoreTier(ProPlanId, "Pro", 17, true, true, true,
+            new CoreTier(ProPlanId, "Pro", 17, true, true, true, true,
                 10, 1000, 2500, 50, 10,
                 [new TierPrice(BillingInterval.Monthly, 99m)]),
         ];
@@ -276,6 +278,7 @@ public static class DataSeeder
             plan.AllowBrandingRemoval = tier.AllowBrandingRemoval;
             plan.AllowApiAccess = tier.AllowApiAccess;
             plan.PrioritySupport = tier.PrioritySupport;
+            plan.AllowMarketingCampaigns = tier.AllowMarketingCampaigns;
             plan.MaxArtists = tier.MaxArtists;
             plan.MaxAppointmentsPerMonth = tier.MaxAppointmentsPerMonth;
             plan.MaxNotificationsPerMonth = tier.MaxNotificationsPerMonth;

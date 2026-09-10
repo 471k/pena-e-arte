@@ -22,6 +22,8 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
 
         if (subscription is null) return;
 
+        SubscriptionStatus previousStatus = subscription.Status;
+
         subscription.Status = command.StripeStatus switch
         {
             "active" => SubscriptionStatus.Active,
@@ -30,6 +32,14 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
             "canceled" => SubscriptionStatus.Cancelled,
             _ => subscription.Status
         };
+
+        // PastDueReminderJob's day-1/3/7 escalation schedule is computed off this timestamp —
+        // set it only on the transition INTO PastDue (not on every webhook while already
+        // PastDue), and clear it the moment the subscription leaves PastDue for any reason.
+        if (subscription.Status == SubscriptionStatus.PastDue && previousStatus != SubscriptionStatus.PastDue)
+            subscription.PastDueSince = DateTime.UtcNow;
+        else if (subscription.Status != SubscriptionStatus.PastDue)
+            subscription.PastDueSince = null;
 
         subscription.CurrentPeriodEnd = command.CurrentPeriodEnd;
         subscription.CancelAtPeriodEnd = command.CancelAtPeriodEnd;

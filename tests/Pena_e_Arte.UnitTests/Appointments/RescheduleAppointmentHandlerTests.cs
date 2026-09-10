@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -16,6 +17,7 @@ public class RescheduleAppointmentHandlerTests
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly ISender _sender = Substitute.For<ISender>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _artistId = Guid.NewGuid();
 
@@ -25,7 +27,7 @@ public class RescheduleAppointmentHandlerTests
         _currentUser.Role.Returns("artist");
     }
 
-    private RescheduleAppointmentHandler CreateSut() => new(_db, _tenant, _currentUser, _realtime);
+    private RescheduleAppointmentHandler CreateSut() => new(_db, _tenant, _currentUser, _realtime, _sender);
 
     [Fact]
     public async Task Handle_PendingAppointment_UpdatesDateAndDuration()

@@ -11,6 +11,8 @@ using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Domain.Services;
+using Pena_e_Arte.Application.Waitlists.Commands;
+using Pena_e_Arte.Application.Waitlists.Common;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
@@ -28,7 +30,8 @@ public class RescheduleAppointmentHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ICurrentUser currentUser,
-    IRealtimeNotifier realtime)
+    IRealtimeNotifier realtime,
+    ISender sender)
     : IRequestHandler<RescheduleAppointmentCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(RescheduleAppointmentCommand command, CancellationToken ct)
@@ -88,16 +91,27 @@ public class RescheduleAppointmentHandler(
 
         if (conflict) throw new SlotAlreadyBookedException();
 
+        // The original slot (pre-mutation Date/ArtistId) is what frees up — capture it before
+        // overwriting, then run the same auto-FIFO waitlist match CancelAppointmentHandler uses.
+        DateTime freedDate = appointment.Date;
+        Guid? freedArtistId = appointment.ArtistId;
+
         appointment.Date = req.NewDate;
         appointment.EndDate = newEnd;
         appointment.DurationMinutes = req.NewDurationMinutes;
         appointment.Notes = req.Notes;
         appointment.UpdatedAt = DateTime.UtcNow;
 
+        Guid? waitlistMatchId = await db.ClaimNextMatchAsync(
+            appointment.StudioId, freedArtistId, freedDate, ct);
+
         await db.SaveChangesAsync(ct);
 
         AppointmentResponse response = CreateAppointmentHandler.Map(appointment);
         await realtime.NotifyStudioAsync(tenant.StudioId, "AppointmentUpdated", response, ct);
+
+        if (waitlistMatchId is Guid matchId)
+            await sender.Send(new SendWaitlistSlotAvailableNotificationCommand(matchId), ct);
 
         return response;
     }

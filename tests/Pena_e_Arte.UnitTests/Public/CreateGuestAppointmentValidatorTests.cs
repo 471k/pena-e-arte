@@ -136,6 +136,25 @@ public class CreateGuestAppointmentValidatorTests
     }
 
     [Fact]
+    public void Validate_InvalidStyle_FailsOnStyle()
+    {
+        _sut.ShouldFailOn(
+            ValidCommand() with
+            {
+                Request = ValidRequest() with { Booking = ValidBooking() with { Style = "not-a-real-style" } }
+            },
+            "Request.Booking.Style");
+    }
+
+    [Fact]
+    public void Validate_NullStyle_IsValid()
+    {
+        ValidationResult result = _sut.Validate(
+            ValidCommand() with { Request = ValidRequest() with { Booking = ValidBooking() with { Style = null } } });
+        result.Errors.Should().NotContain(e => e.PropertyName == "Request.Booking.Style");
+    }
+
+    [Fact]
     public void Validate_TooManyImagesInOneCategory_FailsOnImages()
     {
         List<AppointmentImageRequest> images =

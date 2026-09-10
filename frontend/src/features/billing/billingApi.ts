@@ -21,6 +21,7 @@ export interface CreatePlanRequest {
   allowApiAccess?:          boolean;
   prioritySupport?:         boolean;
   allowBrandingRemoval?:    boolean;
+  allowMarketingCampaigns?: boolean;
 }
 
 export interface UpdatePlanRequest {
@@ -35,6 +36,7 @@ export interface UpdatePlanRequest {
   maxLocations?:            number | null;
   allowApiAccess?:          boolean;
   prioritySupport?:         boolean;
+  allowMarketingCampaigns?: boolean;
 }
 
 export const billingApi = createApi({

@@ -29,6 +29,7 @@ public class GetMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             allowBrandingRemoval,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
-            studio.IsSolo, studio.IsPublished, studio.Timezone);
+            studio.IsSolo, studio.IsPublished, studio.Timezone,
+            studio.Subscription?.Status.ToString(), studio.Subscription?.PastDueSince);
     }
 }

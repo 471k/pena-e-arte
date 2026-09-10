@@ -105,6 +105,16 @@ export interface ReviewResponse {
   ownerResponseAt:   string | null;
 }
 
+export interface DesignCatalogItemResponse {
+  id:          string;
+  title:       string;
+  description: string | null;
+  price:       number | null;
+  artistId:    string;
+  artistName:  string;
+  imageUrl:    string | null;
+}
+
 export interface PortfolioImageResponse {
   imageId:             string;
   imageUrl:            string;
@@ -194,11 +204,14 @@ export interface CreateGuestAppointmentRequest {
     durationMinutes: number;
     notes:           string | null;
     tattooDescription:          string;
+    style?:                     string | null;
     safetyNotes?:               string | null;
     desiredPlacementLocations?: string[];
     referralSource?:            string | null;
     referralSourceOther?:       string | null;
+    referralCode?:              string | null;
     images?: { url: string; category: string }[];
+    promoCode?: string | null;
   };
 }
 
@@ -243,7 +256,7 @@ export const publicApi = createApi({
   tagTypes: [
     "PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios",
     "StudioReviews", "ArtistReviews", "PortfolioImageReviews", "PortfolioFeed",
-    "StudioReportableAppointments", "ArtistReportableAppointments",
+    "StudioReportableAppointments", "ArtistReportableAppointments", "DesignCatalog",
   ],
   endpoints: (builder) => ({
     getPublicStudio: builder.query<PublicStudioResponse, string>({
@@ -265,6 +278,10 @@ export const publicApi = createApi({
       query: ({ lat, lng, radiusKm }) =>
         `studios/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
       providesTags: ["NearbyStudios"],
+    }),
+    getDesignCatalog: builder.query<DesignCatalogItemResponse[], string>({
+      query: (slug) => `studios/${slug}/design-catalog`,
+      providesTags: ["DesignCatalog"],
     }),
     getPortfolioFeed: builder.query<PortfolioImageResponse[], PortfolioFeedArgs>({
       query: ({ lat, lng, radiusKm, page, pageSize = 24, style, category, search }) => {
@@ -390,6 +407,7 @@ export const {
   useGetPublicArtistQuery,
   useGetSharedDesignQuery,
   useGetNearbyStudiosQuery,
+  useGetDesignCatalogQuery,
   useGetPortfolioFeedQuery,
   useRecordArtistViewMutation,
   useGetStudioReviewsQuery,

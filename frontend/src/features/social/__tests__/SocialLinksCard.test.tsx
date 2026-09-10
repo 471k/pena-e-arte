@@ -78,7 +78,7 @@ function makeStore() {
         token: "fake-token",
         tenantId: SUBJECT_ID,
         role: "owner",
-        pendingReferralCode: null,
+        pendingReferralCode: null, impersonation: null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
     },

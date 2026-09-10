@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { useAppSelector } from "@/app/hooks";
+import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import {
   useGetPortfolioFeedQuery,
   type PortfolioImageResponse,
@@ -42,15 +43,8 @@ interface PortfolioFeedProps {
 
 // Keep in sync with TattooStyle.cs constants on the backend.
 const STYLES: ReadonlyArray<{ value: string; label: string }> = [
-  { value: "",               label: "All"             },
-  { value: "blackwork",      label: "Blackwork"       },
-  { value: "realism",        label: "Realism"         },
-  { value: "traditional",    label: "Traditional"     },
-  { value: "geometric",      label: "Geometric"       },
-  { value: "fineline",       label: "Fineline"        },
-  { value: "watercolor",     label: "Watercolor"      },
-  { value: "neo-traditional", label: "Neo-Traditional" },
-  { value: "japanese",       label: "Japanese"        },
+  { value: "", label: "All" },
+  ...TATTOO_STYLE_OPTIONS,
 ];
 
 interface StyleChipsProps {

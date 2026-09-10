@@ -57,7 +57,7 @@ function renderChecklist() {
     middleware: (gd) => gd().concat(artistsApi.middleware, depositRulesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "owner@ink.test" }, token: "fake-token", tenantId: "stud-0001", role: "owner", pendingReferralCode: null } as any,
+      auth: { user: { id: "u1", email: "owner@ink.test" }, token: "fake-token", tenantId: "stud-0001", role: "owner", pendingReferralCode: null, impersonation: null } as any,
     },
   });
   render(
