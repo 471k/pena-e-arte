@@ -30,7 +30,7 @@ const SENT: ManualReminderResponse = {
 const ARTIST: ArtistResponse = {
   id: "artist-001", studioId: "t1",
   firstName: "Luna", lastName: "Artista",
-  email: "luna@studio.test", specializations: null,
+  email: "luna@studio.test", specializations: [],
   hourlyRate: null, portfolioImages: [],
   isActive: true, avatarUrl: null, slug: null,
   userId: null,

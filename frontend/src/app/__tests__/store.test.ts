@@ -34,7 +34,7 @@ const MARCO: ArtistResponse = {
   firstName:       "Marco",
   lastName:        "Santos",
   email:           "marco.santos@ink-soul.test",
-  specializations: null,
+  specializations: [],
   hourlyRate:      null,
   isActive:        true,
   avatarUrl:       null,

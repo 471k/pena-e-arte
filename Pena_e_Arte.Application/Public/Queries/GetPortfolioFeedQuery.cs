@@ -77,11 +77,24 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             string search = query.Search.Trim().ToLower();
+
+            // Specializations is a JSON-converted List<string> column — EF Core can't translate
+            // a LINQ predicate over its pre-conversion collection shape into SQL, so matching it
+            // against the search term has to happen after a small, separate materialization
+            // (same pattern as the Haversine studio pre-filter above), not inside imageQuery.
+            List<Guid> specializationMatchArtistIds = (await db.Artists
+                    .IgnoreQueryFilters()
+                    .Select(a => new { a.Id, a.Specializations })
+                    .ToListAsync(ct))
+                .Where(a => a.Specializations.Any(s => s.Contains(search)))
+                .Select(a => a.Id)
+                .ToList();
+
             imageQuery = imageQuery.Where(p =>
                 (p.Style != null && p.Style.ToLower().Contains(search)) ||
                 p.Artist.FirstName.ToLower().Contains(search) ||
                 p.Artist.LastName.ToLower().Contains(search) ||
-                (p.Artist.Specializations != null && p.Artist.Specializations.ToLower().Contains(search)));
+                specializationMatchArtistIds.Contains(p.ArtistId));
         }
 
         List<PortfolioImage> images = await imageQuery

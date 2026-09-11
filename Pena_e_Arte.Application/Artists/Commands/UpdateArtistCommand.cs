@@ -35,7 +35,7 @@ public class UpdateArtistHandler(IAppDbContext db, ICurrentUser currentUser)
         artist.FirstName = req.FirstName;
         artist.LastName = req.LastName;
         artist.Email = req.Email;
-        artist.Specializations = req.Specializations;
+        artist.Specializations = req.Specializations ?? [];
         artist.HourlyRate = req.HourlyRate;
         artist.UpdatedAt = DateTime.UtcNow;
 

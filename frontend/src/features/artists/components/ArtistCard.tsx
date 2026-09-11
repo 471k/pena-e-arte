@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ChevronRight, Mail, Tag } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
+import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import type { ArtistResponse } from "../artistsApi";
 
 interface ArtistCardProps {
@@ -10,6 +11,10 @@ interface ArtistCardProps {
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
+}
+
+function specializationLabel(style: string): string {
+  return TATTOO_STYLE_OPTIONS.find((o) => o.value === style)?.label ?? style;
 }
 
 export function ArtistCard({ artist }: ArtistCardProps) {
@@ -29,10 +34,10 @@ export function ArtistCard({ artist }: ArtistCardProps) {
               <Mail className="h-3 w-3 shrink-0" />
               <span className="truncate">{artist.email}</span>
             </p>
-            {artist.specializations && (
+            {artist.specializations.length > 0 && (
               <p className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Tag className="h-3 w-3 shrink-0" />
-                <span className="truncate">{artist.specializations}</span>
+                <span className="truncate">{artist.specializations.map(specializationLabel).join(", ")}</span>
               </p>
             )}
           </div>

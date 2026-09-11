@@ -3,6 +3,7 @@ using NSubstitute;
 using Pena_e_Arte.Application.Artists.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -39,7 +40,7 @@ public class CreateOwnArtistProfileHandlerTests
     [Fact]
     public async Task Handle_NoExistingProfile_CreatesArtistLinkedToCallersOwnUserId()
     {
-        CreateOwnArtistProfileRequest req = new("Rui", "Tavares", "Neo-traditional", 90m);
+        CreateOwnArtistProfileRequest req = new("Rui", "Tavares", [TattooStyle.NeoTraditional], 90m);
 
         ArtistResponse result = await CreateSut().Handle(new CreateOwnArtistProfileCommand(req), default);
 
@@ -47,7 +48,7 @@ public class CreateOwnArtistProfileHandlerTests
         result.Email.Should().Be("owner@studio.com");
         result.StudioId.Should().Be(_studioId);
         result.FirstName.Should().Be("Rui");
-        result.Specializations.Should().Be("Neo-traditional");
+        result.Specializations.Should().BeEquivalentTo([TattooStyle.NeoTraditional]);
         result.HourlyRate.Should().Be(90m);
     }
 

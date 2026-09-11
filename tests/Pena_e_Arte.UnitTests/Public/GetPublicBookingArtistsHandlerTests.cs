@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Responses.Public;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.UnitTests.Helpers;
@@ -33,7 +34,7 @@ public class GetPublicBookingArtistsHandlerTests
             FirstName = "Luna",
             LastName = "Artista",
             Email = "luna@test.com",
-            Specializations = "Neo-trad",
+            Specializations = [TattooStyle.NeoTraditional],
             HourlyRate = 80,
             IsActive = true,
         });
@@ -45,7 +46,7 @@ public class GetPublicBookingArtistsHandlerTests
         result.Should().ContainSingle();
         result[0].Name.Should().Be("Luna Artista");
         result[0].HourlyRate.Should().Be(80);
-        result[0].Specializations.Should().Be("Neo-trad");
+        result[0].Specializations.Should().BeEquivalentTo([TattooStyle.NeoTraditional]);
     }
 
     [Fact]

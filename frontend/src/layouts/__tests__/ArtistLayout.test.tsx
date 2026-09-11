@@ -28,7 +28,7 @@ const MY_ARTIST: ArtistResponse = {
   firstName:       "Test",
   lastName:        "Artist",
   email:           "artist@ink.test",
-  specializations: null,
+  specializations: [],
   hourlyRate:      null,
   isActive:        true,
   avatarUrl:       null,

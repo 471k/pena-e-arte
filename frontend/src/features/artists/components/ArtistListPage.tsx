@@ -13,6 +13,8 @@ import {
 } from "@/shared/components/ui/dialog";
 import { DataTable } from "@/shared/components/DataTable";
 import type { ColumnDef } from "@/shared/components/DataTable";
+import { SpecializationsField } from "@/shared/components/SpecializationsField";
+import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
@@ -23,6 +25,10 @@ import {
 } from "../artistsApi";
 import { useGetPlanUsageQuery } from "@/features/billing/billingApi";
 import type { ArtistResponse } from "../artistsApi";
+
+function specializationLabel(style: string): string {
+  return TATTOO_STYLE_OPTIONS.find((o) => o.value === style)?.label ?? style;
+}
 
 function ArtistRowSkeleton() {
   return (
@@ -69,7 +75,7 @@ export function ArtistListPage() {
   const [becomeArtistOpen, setBecomeArtistOpen] = useState(false);
   const [baFirstName, setBaFirstName]           = useState(currentUserName ?? "");
   const [baLastName, setBaLastName]             = useState("");
-  const [baSpecializations, setBaSpecializations] = useState("");
+  const [baSpecializations, setBaSpecializations] = useState<string[]>([]);
   const [baHourlyRate, setBaHourlyRate]         = useState("");
 
   // Guided onboarding: OwnerLayout redirects a solo owner with no artist profile of their
@@ -93,7 +99,7 @@ export function ArtistListPage() {
       const result = await createOwnArtistProfile({
         firstName:       baFirstName.trim(),
         lastName:        baLastName.trim(),
-        specializations: baSpecializations.trim() || null,
+        specializations: baSpecializations.length > 0 ? baSpecializations : null,
         hourlyRate:      baHourlyRate.trim() ? Number(baHourlyRate) : null,
       }).unwrap();
       toast.success("Your artist profile is ready.");
@@ -110,27 +116,14 @@ export function ArtistListPage() {
   const allSpecs = useMemo<string[]>(() => {
     if (!artists) return [];
     const set = new Set<string>();
-    artists.forEach((a) => {
-      if (a.specializations) {
-        a.specializations
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .forEach((s) => set.add(s));
-      }
-    });
+    artists.forEach((a) => a.specializations.forEach((s) => set.add(s)));
     return [...set].sort();
   }, [artists]);
 
   const filteredArtists = useMemo<ArtistResponse[]>(() => {
     if (!artists) return [];
     if (!selectedSpec) return artists;
-    return artists.filter((a) =>
-      a.specializations
-        ?.split(",")
-        .map((s) => s.trim())
-        .includes(selectedSpec),
-    );
+    return artists.filter((a) => a.specializations.includes(selectedSpec));
   }, [artists, selectedSpec]);
 
   useEffect(() => {
@@ -143,7 +136,7 @@ export function ArtistListPage() {
   const tableEmptyMessage = search
     ? `No artists match "${search}".`
     : selectedSpec
-    ? `No artists with "${selectedSpec}" specialization.`
+    ? `No artists with "${specializationLabel(selectedSpec)}" specialization.`
     : "No artists in this studio yet.";
 
   const columns: ColumnDef<ArtistResponse>[] = [
@@ -162,24 +155,17 @@ export function ArtistListPage() {
     {
       header: "Specializations",
       cell: (a) => {
-        if (!a.specializations) {
-          return <span className="text-muted-foreground">—</span>;
-        }
-        const chips = a.specializations
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        if (chips.length === 0) {
+        if (a.specializations.length === 0) {
           return <span className="text-muted-foreground">—</span>;
         }
         return (
           <div className="flex flex-wrap gap-1">
-            {chips.map((spec) => (
+            {a.specializations.map((spec) => (
               <span
                 key={spec}
                 className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium"
               >
-                {spec}
+                {specializationLabel(spec)}
               </span>
             ))}
           </div>
@@ -373,7 +359,7 @@ export function ArtistListPage() {
                         : "border-border bg-background text-muted-foreground hover:border-foreground hover:text-foreground",
                     )}
                   >
-                    {spec}
+                    {specializationLabel(spec)}
                   </button>
                 ))}
               </div>
@@ -396,10 +382,10 @@ export function ArtistListPage() {
                       <p className="text-xs text-muted-foreground truncate">{a.email}</p>
                     </div>
                   </div>
-                  {a.specializations && (
+                  {a.specializations.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      {a.specializations.split(",").map((s) => s.trim()).filter(Boolean).map((spec) => (
-                        <span key={spec} className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">{spec}</span>
+                      {a.specializations.map((spec) => (
+                        <span key={spec} className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">{specializationLabel(spec)}</span>
                       ))}
                     </div>
                   )}
@@ -458,12 +444,7 @@ export function ArtistListPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="ba-specializations">Specializations (optional)</Label>
-              <Input
-                id="ba-specializations"
-                placeholder="e.g. Traditional, Realism"
-                value={baSpecializations}
-                onChange={(e) => setBaSpecializations(e.target.value)}
-              />
+              <SpecializationsField id="ba-specializations" value={baSpecializations} onChange={setBaSpecializations} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="ba-hourly-rate">Hourly rate (€, optional)</Label>

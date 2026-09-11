@@ -2,6 +2,7 @@ using FluentAssertions;
 using Pena_e_Arte.Application.Artists.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.UnitTests.Helpers;
@@ -16,7 +17,7 @@ public class UpdateArtistHandlerTests
 
     private UpdateArtistHandler CreateSut() => new(_db, _currentUser);
 
-    private async Task<Artist> SeedArtist(string firstName, string lastName, string email, string? specializations = null, Guid? userId = null)
+    private async Task<Artist> SeedArtist(string firstName, string lastName, string email, List<string>? specializations = null, Guid? userId = null)
     {
         Artist artist = new()
         {
@@ -25,7 +26,7 @@ public class UpdateArtistHandlerTests
             FirstName = firstName,
             LastName = lastName,
             Email = email,
-            Specializations = specializations
+            Specializations = specializations ?? []
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
@@ -36,14 +37,14 @@ public class UpdateArtistHandlerTests
     public async Task Handle_ExistingArtist_ReturnsUpdatedResponse()
     {
         Artist artist = await SeedArtist("Rui", "Tavares", "rui@studio.com");
-        UpdateArtistRequest req = new("Ricardo", "Tavares", "ricardo@studio.com", "Realism");
+        UpdateArtistRequest req = new("Ricardo", "Tavares", "ricardo@studio.com", [TattooStyle.Realism]);
 
         ArtistResponse result = await CreateSut().Handle(new UpdateArtistCommand(artist.Id, req), default);
 
         result.FirstName.Should().Be("Ricardo");
         result.LastName.Should().Be("Tavares");
         result.Email.Should().Be("ricardo@studio.com");
-        result.Specializations.Should().Be("Realism");
+        result.Specializations.Should().BeEquivalentTo([TattooStyle.Realism]);
     }
 
     [Fact]
@@ -64,7 +65,7 @@ public class UpdateArtistHandlerTests
     public async Task Handle_SameEmail_DoesNotThrow()
     {
         Artist artist = await SeedArtist("Rui", "Tavares", "rui@studio.com");
-        UpdateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", "Realism");
+        UpdateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", [TattooStyle.Realism]);
 
         Func<Task> act = () => CreateSut().Handle(new UpdateArtistCommand(artist.Id, req), default);
 
@@ -101,7 +102,7 @@ public class UpdateArtistHandlerTests
         DateTime before = artist.UpdatedAt;
 
         await Task.Delay(10);
-        UpdateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", "Neo-trad");
+        UpdateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", [TattooStyle.NeoTraditional]);
         await CreateSut().Handle(new UpdateArtistCommand(artist.Id, req), default);
 
         _db.Artists.Single(a => a.Id == artist.Id).UpdatedAt.Should().BeAfter(before);
@@ -113,7 +114,7 @@ public class UpdateArtistHandlerTests
         FakeCurrentUser artistUser = FakeCurrentUser.Artist();
         Artist artist = await SeedArtist("Rui", "Tavares", "rui@studio.com", userId: artistUser.UserId);
         UpdateArtistHandler sut = new(_db, artistUser);
-        UpdateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", "Realism");
+        UpdateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", [TattooStyle.Realism]);
 
         Func<Task> act = () => sut.Handle(new UpdateArtistCommand(artist.Id, req), default);
 

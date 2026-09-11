@@ -86,7 +86,7 @@ public class CreateArtistHandler(
             FirstName = req.FirstName,
             LastName = req.LastName,
             Email = req.Email,
-            Specializations = req.Specializations,
+            Specializations = req.Specializations ?? [],
             HourlyRate = req.HourlyRate
         };
         artist.SetSlug(slug);

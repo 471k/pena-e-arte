@@ -1,6 +1,7 @@
 using Pena_e_Arte.Application.Artists.Commands;
 using Pena_e_Arte.Application.Artists.Validators;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Artists;
@@ -46,9 +47,17 @@ public class UpdateArtistValidatorTests
     }
 
     [Fact]
-    public void Validate_SpecializationsExceedsMaxLength_FailsOnSpecializations()
+    public void Validate_UnknownStyleValue_FailsOnSpecializations()
     {
-        _sut.ShouldFailOn(Command("Rui", "Tavares", "rui@studio.com", new('x', 1001)), "Request.Specializations");
+        _sut.ShouldFailOn(Command("Rui", "Tavares", "rui@studio.com", ["not-a-real-style"]), "Request.Specializations");
+    }
+
+    [Fact]
+    public void Validate_DuplicateStyleValues_FailsOnSpecializations()
+    {
+        _sut.ShouldFailOn(
+            Command("Rui", "Tavares", "rui@studio.com", [TattooStyle.Realism, TattooStyle.Realism]),
+            "Request.Specializations");
     }
 
     [Fact]
@@ -58,8 +67,8 @@ public class UpdateArtistValidatorTests
     }
 
     private static UpdateArtistCommand ValidCommand() =>
-        Command("Rui", "Tavares", "rui@studio.com", "Neo-traditional");
+        Command("Rui", "Tavares", "rui@studio.com", [TattooStyle.NeoTraditional]);
 
-    private static UpdateArtistCommand Command(string first, string last, string email, string? specializations) =>
+    private static UpdateArtistCommand Command(string first, string last, string email, List<string>? specializations) =>
         new(Guid.NewGuid(), new UpdateArtistRequest(first, last, email, specializations));
 }

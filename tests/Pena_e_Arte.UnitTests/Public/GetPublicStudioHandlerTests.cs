@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Responses.Public;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.UnitTests.Helpers;
@@ -36,7 +37,7 @@ public class GetPublicStudioHandlerTests
             FirstName = "Ana",
             LastName = "Sousa",
             Email = $"{slug}@test.com",
-            Specializations = "Blackwork, Mandala",
+            Specializations = [TattooStyle.Blackwork],
         };
         artist.SetSlug(slug);
         return artist;

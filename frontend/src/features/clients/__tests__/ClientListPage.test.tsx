@@ -30,7 +30,7 @@ const ARTIST_A: ArtistResponse = {
   firstName:       "Luna",
   lastName:        "Artista",
   email:           "luna@ink.test",
-  specializations: null,
+  specializations: [],
   hourlyRate:      null,
   isActive:        true,
   avatarUrl:       null,

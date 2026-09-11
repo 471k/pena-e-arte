@@ -56,7 +56,7 @@ const STUDIO: StudioResponse = {
 const ARTIST: ArtistResponse = {
   id: "a-001", studioId: "s-001",
   firstName: "Luna", lastName: "Artista",
-  email: "luna@studio.test", specializations: "Neo-trad",
+  email: "luna@studio.test", specializations: ["neo-traditional"],
   hourlyRate: 80, portfolioImages: [],
   isActive: true,
   avatarUrl: null,
@@ -455,7 +455,7 @@ describe("BookAppointmentForm", () => {
         HttpResponse.json([
           ARTIST,
           { ...ARTIST, id: "a-002", firstName: "Marco", lastName: "Rivera",
-            specializations: "Blackwork" },
+            specializations: ["blackwork"] },
         ]),
       ),
     );

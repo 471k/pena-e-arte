@@ -6,6 +6,6 @@ public record PublicArtistSummary(
     string Slug,
     string? Bio,
     string? ProfileImageUrl,   // circular avatar; null → show monogram
-    string? Specializations,   // comma-separated e.g. "Blackwork, Mandala"
+    List<string> Specializations,   // canonical TattooStyle values, e.g. ["blackwork", "geometric"]
     double? AverageRating,     // null = no reviews yet
     int ReviewCount);

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Responses.Public;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.UnitTests.Helpers;
 
@@ -15,7 +16,7 @@ public class GetPublicArtistHandlerTests
     private async Task<(Artist artist, Studio studio)> SeedArtistWithStudioAsync(
         Guid? userId = null,
         string? profileImageUrl = null,
-        string? specializations = null,
+        List<string>? specializations = null,
         decimal? hourlyRate = null)
     {
         Guid studioId = Guid.NewGuid();
@@ -37,7 +38,7 @@ public class GetPublicArtistHandlerTests
             LastName = "Silva",
             Email = "maria@example.com",
             ProfileImageUrl = profileImageUrl,
-            Specializations = specializations,
+            Specializations = specializations ?? [],
             HourlyRate = hourlyRate,
         };
         artist.SetSlug("maria-silva");
@@ -178,12 +179,12 @@ public class GetPublicArtistHandlerTests
     [Fact]
     public async Task Specializations_are_projected_correctly()
     {
-        await SeedArtistWithStudioAsync(specializations: "Blackwork, Mandala");
+        await SeedArtistWithStudioAsync(specializations: [TattooStyle.Blackwork, TattooStyle.Geometric]);
 
         PublicArtistResponse? result = await CreateSut().Handle(
             new GetPublicArtistQuery("maria-silva", null), CancellationToken.None);
 
-        result!.Specializations.Should().Be("Blackwork, Mandala");
+        result!.Specializations.Should().BeEquivalentTo([TattooStyle.Blackwork, TattooStyle.Geometric]);
     }
 
     [Fact]

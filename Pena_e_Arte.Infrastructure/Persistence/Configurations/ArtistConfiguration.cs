@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Pena_e_Arte.Domain.Entities;
@@ -16,7 +17,13 @@ public class ArtistConfiguration : TenantEntityConfiguration<Artist>
         builder.Property(a => a.FirstName).HasMaxLength(100).IsRequired();
         builder.Property(a => a.LastName).HasMaxLength(100).IsRequired();
         builder.Property(a => a.Email).HasMaxLength(256).IsRequired();
-        builder.Property(a => a.Specializations).HasMaxLength(1000);
+
+        builder.Property(a => a.Specializations)
+               .HasConversion(
+                   v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                   v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
+               .HasColumnType("json");
+
         builder.Property(a => a.HourlyRate).HasColumnType("decimal(18,2)");
         builder.Property(a => a.CommissionRate).HasColumnType("decimal(5,2)");
         builder.Property(a => a.Slug).HasMaxLength(60).IsRequired(false);

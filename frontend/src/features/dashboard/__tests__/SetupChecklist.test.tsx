@@ -16,7 +16,7 @@ import type { ArtistResponse } from "@/features/artists/artistsApi";
 
 const ARTIST: ArtistResponse = {
   id: "artist-0001", studioId: "stud-0001", firstName: "Ana", lastName: "Costa",
-  email: "ana@ink.test", specializations: null, hourlyRate: null, isActive: true,
+  email: "ana@ink.test", specializations: [], hourlyRate: null, isActive: true,
   avatarUrl: null, portfolioImages: [], slug: null, userId: null,
   createdAt: "2024-01-01T00:00:00Z", updatedAt: "2024-01-01T00:00:00Z",
 };
