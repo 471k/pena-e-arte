@@ -8,13 +8,13 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Payments.Queries;
 
-public record GetPaymentClientSecretQuery(Guid PaymentId) : IRequest<PaymentClientSecretResponse>;
+public record GetPaymentClientTokenQuery(Guid PaymentId) : IRequest<PaymentClientTokenResponse>;
 
-public class GetPaymentClientSecretHandler(IAppDbContext db, ICurrentUser currentUser)
-    : IRequestHandler<GetPaymentClientSecretQuery, PaymentClientSecretResponse>
+public class GetPaymentClientTokenHandler(IAppDbContext db, ICurrentUser currentUser)
+    : IRequestHandler<GetPaymentClientTokenQuery, PaymentClientTokenResponse>
 {
-    public async Task<PaymentClientSecretResponse> Handle(
-        GetPaymentClientSecretQuery query, CancellationToken ct)
+    public async Task<PaymentClientTokenResponse> Handle(
+        GetPaymentClientTokenQuery query, CancellationToken ct)
     {
         Payment? payment = await db.Payments
             .FirstOrDefaultAsync(p => p.Id == query.PaymentId, ct);
@@ -31,9 +31,9 @@ public class GetPaymentClientSecretHandler(IAppDbContext db, ICurrentUser curren
                 throw new UnauthorizedAccessException("You can only access your own payment details.");
         }
 
-        if (payment.ClientSecret is null)
-            throw new NotFoundException("ClientSecret", query.PaymentId);
+        if (payment.ClientToken is null)
+            throw new NotFoundException("ClientToken", query.PaymentId);
 
-        return new PaymentClientSecretResponse(payment.ClientSecret);
+        return new PaymentClientTokenResponse(payment.ClientToken);
     }
 }

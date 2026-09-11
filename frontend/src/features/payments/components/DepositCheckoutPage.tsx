@@ -1,51 +1,48 @@
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { GuestCheckoutForm } from "@nebula-ltd/pok-payments-js/react";
+import type { PaymentErrorResponse } from "@nebula-ltd/pok-payments-js";
 import { CreditCard, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { useGetPaymentClientSecretQuery, useGetPaymentCapabilitiesQuery } from "../paymentsApi";
+import {
+  useGetPaymentClientTokenQuery,
+  useGetPaymentCapabilitiesQuery,
+  useConfirmCardPaymentMutation,
+} from "../paymentsApi";
+import { PaymentStatus } from "../payment.types";
 
-// Lazily initialised so Stripe.js (and its iframe) only loads when this page
-// actually mounts, not whenever this module is bundled into the app.
-let stripePromise: ReturnType<typeof loadStripe> | null = null;
-function getStripePromise() {
-  stripePromise ??= loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "");
-  return stripePromise;
-}
-
-function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: string | null }) {
-  const stripe   = useStripe();
-  const elements = useElements();
+function CheckoutForm({
+  paymentId,
+  orderId,
+  pokEnvironment,
+  amount,
+}: { paymentId: string; orderId: string; pokEnvironment: "staging" | "production"; amount?: string | null }) {
   const navigate = useNavigate();
+  const [confirmCardPayment] = useConfirmCardPaymentMutation();
+  const [succeeded, setSucceeded] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [succeeded,    setSucceeded]    = useState(false);
-  const [errorMsg,     setErrorMsg]     = useState<string | null>(null);
-
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setIsProcessing(true);
-    setErrorMsg(null);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${import.meta.env.VITE_PUBLIC_URL ?? window.location.origin}/pay/${paymentId}?status=complete`,
-      },
-      redirect: "if_required",
-    });
-
-    if (error) {
-      setErrorMsg(error.message ?? "Payment failed. Please try again.");
-      setIsProcessing(false);
-    } else {
-      setSucceeded(true);
-      setIsProcessing(false);
+  async function handleSuccess() {
+    // The widget's own onSuccess is UX only — never the source of truth (ADR-0001: a webhook,
+    // and by extension a client-side callback, is a trigger, not a fact). Re-fetch the real
+    // status from POK server-side before showing "authorised" — a 200 response here does not by
+    // itself mean the deposit cleared; ConfirmCardPaymentCommand can legitimately return the
+    // payment still Pending if POK hasn't finished authorizing server-side yet.
+    setConfirming(true);
+    try {
+      const result = await confirmCardPayment(paymentId).unwrap();
+      if (result.status === PaymentStatus.Captured || result.status === PaymentStatus.Paid) {
+        setSucceeded(true);
+      } else {
+        setErrorMsg("Your card was submitted, but the payment hasn't been confirmed yet. Refresh in a moment to check again.");
+      }
+    } catch {
+      setErrorMsg("Payment completed, but we couldn't confirm it yet. Refresh in a moment.");
+    } finally {
+      setConfirming(false);
     }
   }
 
@@ -64,8 +61,17 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
     );
   }
 
+  if (confirming) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">Confirming payment…</span>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
       {amount && (
         <p className="text-sm text-muted-foreground">
           You are authorising a deposit of{" "}
@@ -73,30 +79,22 @@ function CheckoutForm({ paymentId, amount }: { paymentId: string; amount?: strin
           Your card will not be charged until the studio confirms your appointment.
         </p>
       )}
-      <PaymentElement />
+      <GuestCheckoutForm
+        orderId={orderId}
+        onSuccess={() => void handleSuccess()}
+        onError={(error: PaymentErrorResponse) => setErrorMsg(error.message ?? "Payment failed. Please try again.")}
+        options={{ env: pokEnvironment, locale: "en", countrySelect: "modal" }}
+      />
       {errorMsg && (
         <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2">
           <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
           <p className="text-sm text-destructive-text">{errorMsg}</p>
         </div>
       )}
-      <Button type="submit" className="w-full gap-2" disabled={!stripe || isProcessing}>
-        {isProcessing ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Processing…
-          </>
-        ) : (
-          <>
-            <CreditCard className="h-4 w-4" />
-            Authorise deposit
-          </>
-        )}
-      </Button>
       <p className="text-xs text-center text-muted-foreground">
-        Secured by Stripe. Your card details are never shared with the studio.
+        Secured by POK. Your card details are never shared with the studio.
       </p>
-    </form>
+    </div>
   );
 }
 
@@ -108,15 +106,17 @@ export function DepositCheckoutPage() {
   const [searchParams] = useSearchParams();
   const redirectStatus = searchParams.get("status");
   const amount         = searchParams.get("amount");
-  const isDark          = document.documentElement.classList.contains("dark");
 
-  const { data, isLoading, isError } = useGetPaymentClientSecretQuery(paymentId!, {
+  const { data, isLoading, isError } = useGetPaymentClientTokenQuery(paymentId!, {
     skip: !paymentId || redirectStatus === "complete",
   });
   const { data: capabilities } = useGetPaymentCapabilitiesQuery(undefined, {
     skip: redirectStatus === "complete",
   });
-  const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
+  // pokEnvironment must be present whenever the backend reports card payments available — if it's
+  // ever not (e.g. a stale cached response), treat cards as unavailable rather than guess an env.
+  const pokEnvironment = capabilities?.pokEnvironment;
+  const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable === true && !!pokEnvironment;
 
   if (redirectStatus === "complete") {
     return (
@@ -168,7 +168,7 @@ export function DepositCheckoutPage() {
               </div>
             )}
 
-            {data?.clientSecret && !cardPaymentsAvailable && (
+            {data?.clientToken && !cardPaymentsAvailable && (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <AlertCircle className="h-8 w-8 text-destructive" />
                 <p className="text-sm text-destructive-text">
@@ -177,16 +177,13 @@ export function DepositCheckoutPage() {
               </div>
             )}
 
-            {data?.clientSecret && cardPaymentsAvailable && (
-              <Elements
-                stripe={getStripePromise()}
-                options={{
-                  clientSecret: data.clientSecret,
-                  appearance:   { theme: isDark ? "night" : "stripe" },
-                }}
-              >
-                <CheckoutForm paymentId={paymentId!} amount={amount} />
-              </Elements>
+            {data?.clientToken && cardPaymentsAvailable && (
+              <CheckoutForm
+                paymentId={paymentId!}
+                orderId={data.clientToken}
+                pokEnvironment={pokEnvironment as "staging" | "production"}
+                amount={amount}
+              />
             )}
           </CardContent>
         </Card>

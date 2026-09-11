@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.GiftCards.Commands;
 using Pena_e_Arte.Application.GiftCards.Queries;
@@ -25,7 +26,7 @@ public class GiftCardHandlerIntegrationTests(DatabaseFixture fixture)
         string slug = await SeedPublishedStudio(tenantId);
 
         IPaymentProvider provider = Substitute.For<IPaymentProvider>();
-        provider.CreatePaymentHoldAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
             .Returns(("pi_gift_test", "secret_gift_test"));
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
@@ -38,10 +39,11 @@ public class GiftCardHandlerIntegrationTests(DatabaseFixture fixture)
         GiftCard card = await verify1.GiftCards.IgnoreQueryFilters().FirstAsync(g => g.Id == purchaseResult.GiftCardId);
         card.Status.Should().Be(GiftCardStatus.Pending);
 
-        provider.GetStatusAsync("pi_gift_test", Arg.Any<CancellationToken>()).Returns("succeeded");
+        provider.GetStatusAsync(Arg.Any<Guid>(), "pi_gift_test", Arg.Any<CancellationToken>())
+            .Returns(PaymentProviderStatus.Captured);
 
         await using AppDbContext reconcileDb = fixture.CreateDbContext(Guid.Empty);
-        GiftCardReconciliationJob job = new(reconcileDb, provider);
+        GiftCardReconciliationJob job = new(reconcileDb, provider, NullLogger<GiftCardReconciliationJob>.Instance);
         await job.RunAsync();
 
         await using AppDbContext verify2 = fixture.CreateDbContext(tenantId);

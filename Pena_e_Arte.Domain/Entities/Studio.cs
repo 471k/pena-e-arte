@@ -63,5 +63,14 @@ public class Studio
 
     public Guid? PendingReferralCodeId { get; set; }
 
+    /// <summary>
+    /// This studio's own POK merchant id — the routing value in every
+    /// <c>/merchants/{merchantId}/...</c> call POK makes on its behalf (ADR-0001 Flow A).
+    /// Not a secret: it identifies the merchant, it doesn't authenticate as one (that's
+    /// <see cref="StudioCredentialRef"/>'s job, resolved via Vault). Null until the owner
+    /// connects their POK account in studio settings.
+    /// </summary>
+    public string? PokMerchantId { get; set; }
+
     public Subscription? Subscription { get; set; }
 }

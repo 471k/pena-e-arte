@@ -146,10 +146,16 @@ public static class InfrastructureServiceExtensions
         services.AddTransient<GuestPendingUploadCleanupJob>();
 
         // Secrets backend (Vault by default — see docs/infra/ADR-0002-secrets-management.md).
-        // Construction does not connect; a call resolves against Vault:Address at use time and
-        // fails closed if it can't. Registered always — nothing consumes it yet (per-tenant
-        // provider credentials are ADR-0001 follow-up work; this is the mechanism only).
+        // Real VaultClient construction is deferred to first use via LazyVaultClient — its
+        // constructor validates Vault:Address eagerly and throws on an empty/invalid URI, which
+        // would otherwise crash DI resolution (not just "fails closed at use time") in any
+        // environment where Vault isn't configured, since PokPaymentProvider resolves
+        // ISecretsProvider in its own constructor. Real consumer: ConnectPokAccountCommand writes
+        // here, PokPaymentProvider reads here (ADR-0001 per-tenant POK credentials).
+        // IVaultClient is its own registration so VaultSecretsProvider can be unit-tested against
+        // a substitute client instead of a real Vault server.
         services.Configure<VaultOptions>(configuration.GetSection(VaultOptions.Section));
+        services.AddSingleton<VaultSharp.IVaultClient, LazyVaultClient>();
         services.AddSingleton<ISecretsProvider, VaultSecretsProvider>();
 
         services.AddHttpContextAccessor();
@@ -159,9 +165,12 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
         services.AddScoped<IJobScheduler, JobScheduler>();
         services.AddScoped<ISlotLocker, SlotLocker>();
-        // Flow A card provider: NullPaymentProvider (fails closed) until POK is wired in — the
-        // Stripe aggregator IStripePaymentService/StripePaymentService were deleted (Amendment A).
-        services.AddScoped<IPaymentProvider, NullPaymentProvider>();
+        // Flow A card provider: POK (ADR-0001). Per-studio credentials, resolved inside the
+        // provider — a studio with none connected gets PaymentProviderNotConnectedException, not
+        // NullPaymentProvider (kept only as a standalone class for tests/seeder compilation).
+        services.Configure<PokOptions>(configuration.GetSection(PokOptions.Section));
+        services.AddHttpClient("Pok", client => client.Timeout = TimeSpan.FromSeconds(20));
+        services.AddScoped<IPaymentProvider, PokPaymentProvider>();
         services.AddScoped<IStripeBillingService, StripeBillingService>();
         services.AddScoped<IStripeDiscountService, StripeDiscountService>();
         services.AddScoped<IReferralRewardService, ReferralRewardService>();

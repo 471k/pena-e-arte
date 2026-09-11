@@ -16,4 +16,11 @@ public interface ISecretsProvider
     /// with no ":" reads the field "value" at that path.
     /// </param>
     Task<string> GetSecretAsync(string key, CancellationToken ct);
+
+    /// <summary>
+    /// Writes one or more fields to a secret at <paramref name="path"/>, merging with whatever
+    /// already exists there (a KV v2 path can hold several fields — e.g. a studio's POK entry
+    /// holds both "keyId" and "keySecret" under one path). Never logs the values.
+    /// </summary>
+    Task SetSecretAsync(string path, IReadOnlyDictionary<string, string> fields, CancellationToken ct);
 }

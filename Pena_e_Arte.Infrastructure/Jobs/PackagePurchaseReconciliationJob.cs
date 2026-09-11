@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Infrastructure.Jobs;
@@ -11,7 +13,7 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// package purchase (ConfirmedAt == null) once the provider hold succeeds, granting the purchased
 /// SessionCount.
 /// </summary>
-public class PackagePurchaseReconciliationJob(IAppDbContext db, IPaymentProvider paymentProvider)
+public class PackagePurchaseReconciliationJob(IAppDbContext db, IPaymentProvider paymentProvider, ILogger<PackagePurchaseReconciliationJob> logger)
 {
     public async Task RunAsync(CancellationToken ct = default)
     {
@@ -25,12 +27,22 @@ public class PackagePurchaseReconciliationJob(IAppDbContext db, IPaymentProvider
 
         foreach (PackagePurchase purchase in pending)
         {
-            string? status = await paymentProvider.GetStatusAsync(purchase.ProviderReferenceId, ct);
-            if (status is "succeeded")
+            try
             {
-                purchase.SessionsRemaining = purchase.Package.SessionCount;
-                purchase.ConfirmedAt = DateTime.UtcNow;
-                purchase.UpdatedAt = DateTime.UtcNow;
+                PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
+                    purchase.StudioId, purchase.ProviderReferenceId, ct);
+                if (status == PaymentProviderStatus.Captured)
+                {
+                    purchase.SessionsRemaining = purchase.Package.SessionCount;
+                    purchase.ConfirmedAt = DateTime.UtcNow;
+                    purchase.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // One studio's provider failure must not abort reconciliation for every other
+                // studio's package purchases in this batch — log and move on, picked up on the next run.
+                logger.LogError(ex, "Failed to reconcile package purchase {PurchaseId} for studio {StudioId}.", purchase.Id, purchase.StudioId);
             }
         }
 

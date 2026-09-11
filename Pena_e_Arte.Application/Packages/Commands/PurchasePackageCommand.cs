@@ -32,11 +32,8 @@ public class PurchasePackageHandler(IAppDbContext db, ICurrentTenant tenant, ICu
         Guid purchaseId = Guid.NewGuid();
         long amountInCents = (long)(package.Price * 100);
 
-        // Same hardcoded "EUR" argument CreateDepositPaymentCommand/PurchaseGiftCardCommand pass —
-        // pre-existing inconsistency with Payment.Currency's own "ALL" default; matched for
-        // consistency rather than "fixed" as an unrelated side effect of this phase.
-        (string providerReferenceId, string clientSecret) = await paymentProvider.CreatePaymentHoldAsync(
-            amountInCents, "EUR", purchaseId, ct);
+        (string providerReferenceId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
+            new PaymentHoldRequest(tenant.StudioId, purchaseId, amountInCents, "ALL"), ct);
 
         PackagePurchase purchase = new()
         {
@@ -46,13 +43,13 @@ public class PurchasePackageHandler(IAppDbContext db, ICurrentTenant tenant, ICu
             ClientId = client.Id,
             SessionsRemaining = 0,
             ProviderReferenceId = providerReferenceId,
-            ClientSecret = clientSecret,
+            ClientToken = clientToken,
             Provider = "pok",
         };
 
         db.PackagePurchases.Add(purchase);
         await db.SaveChangesAsync(ct);
 
-        return new PurchasePackageResponse(purchase.Id, clientSecret);
+        return new PurchasePackageResponse(purchase.Id, clientToken);
     }
 }

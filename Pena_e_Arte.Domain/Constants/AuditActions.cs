@@ -36,6 +36,7 @@ public static class AuditActions
 
     public const string PaymentRefunded = "Payment.Refunded";
     public const string CashDepositConfirmed = "Payment.CashDepositConfirmed";
+    public const string PokAccountConnected = "Studio.PokAccountConnected";
 
     public const string WaitlistEntryCancelled = "WaitlistEntry.Cancelled";
 

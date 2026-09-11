@@ -7,7 +7,7 @@ public record PaymentResponse(
     string Status,
     string Method,
     string? ProviderReferenceId,
-    string? ClientSecret,
+    string? ClientToken,
     string? CashNote,
     DateTime? PaidAt,
     string ClientName,

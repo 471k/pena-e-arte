@@ -108,7 +108,7 @@ const CASH_PAYMENT: PaymentResponse = {
   status:                "CashPending",
   method:                "Cash",
   providerReferenceId: null,
-  clientSecret:          null,
+  clientToken:          null,
   cashNote:              null,
   paidAt:                null,
   clientName:            "João Silva",

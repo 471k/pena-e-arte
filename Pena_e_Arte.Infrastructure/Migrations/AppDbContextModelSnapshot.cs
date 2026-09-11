@@ -1737,7 +1737,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("ClientSecret")
+                    b.Property<string>("ClientToken")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
@@ -2283,7 +2283,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("ClientId")
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("ClientSecret")
+                    b.Property<string>("ClientToken")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
@@ -2357,7 +2357,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<Guid>("ClientId")
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("ClientSecret")
+                    b.Property<string>("ClientToken")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
@@ -2969,6 +2969,10 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("longtext");
+
+                    b.Property<string>("PokMerchantId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<bool>("ShowPlatformBranding")
                         .HasColumnType("tinyint(1)");

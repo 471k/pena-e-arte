@@ -68,7 +68,7 @@ const APPT_PAID_DEPOSIT: AppointmentResponse = {
 
 const CARD_RESULT: PaymentIntentResponse = {
   paymentId:    "pay-001",
-  clientSecret: "pi_test_secret",
+  clientToken: "pi_test_secret",
   status:       "Pending",
 };
 
@@ -79,7 +79,7 @@ const CASH_RESULT: PaymentResponse = {
   status:                "CashPending",
   method:                "Cash",
   providerReferenceId: null,
-  clientSecret:          null,
+  clientToken:          null,
   cashNote:              null,
   paidAt:                null,
   clientName:            "Maria Silva",

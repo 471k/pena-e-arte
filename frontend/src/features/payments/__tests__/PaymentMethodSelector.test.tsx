@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -16,21 +16,15 @@ import type {
   PaymentCapabilitiesResponse,
 } from "@/features/payments/payment.types";
 
-// ── Stripe mock ────────────────────────────────────────────────────────────────
-// Stripe Elements require a real browser context; mock the entire module.
+// ── POK widget mock ──────────────────────────────────────────────────────────
+// GuestCheckoutForm mounts a real card form against POK's servers — mock the whole module.
 
-vi.mock("@stripe/react-stripe-js", () => ({
-  loadStripe:     vi.fn().mockResolvedValue({}),
-  Elements:       ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  PaymentElement: () => <div data-testid="stripe-payment-element" />,
-  useStripe:      () => ({
-    confirmPayment: vi.fn().mockResolvedValue({ error: null }),
-  }),
-  useElements: () => ({}),
-}));
-
-vi.mock("@stripe/stripe-js", () => ({
-  loadStripe: vi.fn().mockResolvedValue({}),
+vi.mock("@nebula-ltd/pok-payments-js/react", () => ({
+  GuestCheckoutForm: (props: { orderId: string; onSuccess?: () => void }) => (
+    <div data-testid="pok-checkout-form" data-order-id={props.orderId}>
+      <button type="button" onClick={() => props.onSuccess?.()}>Authorise deposit</button>
+    </div>
+  ),
 }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -41,7 +35,7 @@ const AMOUNT         = 75;
 
 const INTENT_RESP: PaymentIntentResponse = {
   paymentId:    PAYMENT_ID,
-  clientSecret: "pi_test_secret_abcdefg",
+  clientToken: "order-test-abcdefg",
   status:       "Pending",
 };
 
@@ -52,14 +46,14 @@ const CASH_PAYMENT: PaymentResponse = {
   status:                "CashPending",
   method:                "Cash",
   providerReferenceId: null,
-  clientSecret:          null,
+  clientToken:          null,
   cashNote:              null,
   paidAt:                null,
   clientName:            "",
   appointmentDate:       null,
 };
 
-const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true };
+const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true, pokEnvironment: "staging" };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
@@ -125,12 +119,13 @@ describe("PaymentMethodSelector", () => {
     expect(screen.getByRole("button", { name: /cash/i })).toBeInTheDocument();
   });
 
-  it("card tab creates the deposit intent and shows Stripe PaymentElement", async () => {
+  it("card tab creates the deposit intent and shows the POK checkout widget", async () => {
     renderSelector();
 
-    const paymentElement = await screen.findByTestId("stripe-payment-element");
-    expect(paymentElement).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /authorise deposit/i })).toBeInTheDocument();
+    const form = await screen.findByTestId("pok-checkout-form");
+    expect(form).toBeInTheDocument();
+    expect(form.dataset.orderId).toBe("order-test-abcdefg");
+    expect(within(form).getByRole("button", { name: /authorise deposit/i })).toBeInTheDocument();
   });
 
   it("card tab shows loading state before the intent is ready", () => {
@@ -146,7 +141,7 @@ describe("PaymentMethodSelector", () => {
 
     renderSelector();
 
-    expect(screen.queryByTestId("stripe-payment-element")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
     expect(screen.getByText(/preparing payment form/i)).toBeInTheDocument();
   });
 
@@ -165,6 +160,29 @@ describe("PaymentMethodSelector", () => {
     expect(
       await screen.findByText(/does not require a deposit/i),
     ).toBeInTheDocument();
+  });
+
+  it("widget onSuccess re-confirms the deposit with the backend before calling onSuccess", async () => {
+    const user      = userEvent.setup();
+    const onSuccess = vi.fn();
+    let depositCalls = 0;
+    server.use(
+      http.post("http://localhost/api/v1/payments/deposit", () => {
+        depositCalls += 1;
+        return HttpResponse.json({ ...INTENT_RESP, status: depositCalls > 1 ? "Captured" : "Pending" });
+      }),
+    );
+    renderSelector(onSuccess);
+
+    const form = await screen.findByTestId("pok-checkout-form");
+    await user.click(within(form).getByRole("button", { name: /authorise deposit/i }));
+
+    await vi.waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledExactlyOnceWith("card");
+    });
+    // Once on tab open, once more from the widget's onSuccess re-confirm — never trusts the
+    // client-side callback alone (ADR-0001).
+    expect(depositCalls).toBe(2);
   });
 
   it("switches to cash tab on click", async () => {
@@ -234,7 +252,7 @@ describe("PaymentMethodSelector", () => {
     renderSelector();
 
     expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
-    expect(screen.queryByTestId("stripe-payment-element")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
     expect(depositRequested).toBe(false);
   });
 });

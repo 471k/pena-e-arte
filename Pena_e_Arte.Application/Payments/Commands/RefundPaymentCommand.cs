@@ -22,7 +22,7 @@ public record RefundPaymentCommand(Guid PaymentId, decimal? Amount)
 
 public class RefundPaymentHandler(
     IAppDbContext db,
-    IPaymentProvider stripePayments,
+    IPaymentProvider paymentProvider,
     IRealtimeNotifier realtime,
     ISender sender)
     : IRequestHandler<RefundPaymentCommand, PaymentResponse>
@@ -39,15 +39,15 @@ public class RefundPaymentHandler(
             throw new BusinessRuleViolationException("Only paid payments can be refunded.");
 
         if (payment.ProviderReferenceId is null)
-            throw new BusinessRuleViolationException("Payment has no associated Stripe intent.");
+            throw new BusinessRuleViolationException("Payment has no associated provider reference.");
 
         decimal refundAmount = command.Amount ?? payment.Amount;
         if (refundAmount > payment.Amount)
             throw new BusinessRuleViolationException("Refund amount cannot exceed the original payment amount.");
 
         long amountInCents = (long)(refundAmount * 100);
-        await stripePayments.RefundAsync(
-            payment.ProviderReferenceId, amountInCents, ct);
+        await paymentProvider.RefundAsync(
+            payment.StudioId, payment.ProviderReferenceId, amountInCents, ct);
 
         payment.Status = PaymentStatus.Refunded;
         payment.RefundedAmount = refundAmount;

@@ -138,7 +138,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
   test("deposit payment page (not-found state) has no violations", async ({ page }) => {
     await mockApiFallback(page);
     await mockAuthLogin(page, CLIENT_TOKEN);
-    await page.route(`**/api/v1/payments/${PAYMENT_ID}/client-secret`, async (route) => {
+    await page.route(`**/api/v1/payments/${PAYMENT_ID}/client-token`, async (route) => {
       await route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
     });
 

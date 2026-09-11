@@ -31,16 +31,15 @@ public class PaymentHandlerIntegrationTests
         _realtime = Substitute.For<IRealtimeNotifier>();
 
         _stripe.CreatePaymentHoldAsync(
-                Arg.Any<long>(), Arg.Any<string>(),
-                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
             .Returns(($"pi_{Guid.NewGuid():N}", $"pi_{Guid.NewGuid():N}_secret"));
 
         _stripe.RefundAsync(
-                Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Returns($"re_{Guid.NewGuid():N}");
 
         _stripe.CaptureAsync(
-                Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
     }
 
@@ -62,7 +61,7 @@ public class PaymentHandlerIntegrationTests
     }
 
     [Fact]
-    public async Task CreatePaymentIntent_WithValidAppointment_ReturnsClientSecret()
+    public async Task CreatePaymentIntent_WithValidAppointment_ReturnsClientToken()
     {
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
@@ -71,7 +70,7 @@ public class PaymentHandlerIntegrationTests
 
         PaymentIntentResponse result = await RunCreateHandler(tenantId, appointmentId, clientId);
 
-        result.ClientSecret.Should().NotBeNullOrEmpty();
+        result.ClientToken.Should().NotBeNullOrEmpty();
         result.Status.Should().Be(PaymentStatus.Pending.ToString());
     }
 
@@ -345,7 +344,7 @@ public class PaymentHandlerIntegrationTests
         await RunCaptureHandler(tenantId, paymentId);
 
         await _stripe.Received(1).CaptureAsync(
-            intentId, Arg.Any<CancellationToken>());
+            tenantId, intentId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -404,7 +403,7 @@ public class PaymentHandlerIntegrationTests
 
         // SeedPendingPayment seeds Amount = 100m → 10000 cents
         await _stripe.Received(1).RefundAsync(
-            intentId, 10000L, Arg.Any<CancellationToken>());
+            tenantId, intentId, 10000L, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -418,7 +417,7 @@ public class PaymentHandlerIntegrationTests
         await RunRefundHandler(tenantId, paymentId, refundAmount: 40m);
 
         await _stripe.Received(1).RefundAsync(
-            intentId, 4000L, Arg.Any<CancellationToken>());
+            tenantId, intentId, 4000L, Arg.Any<CancellationToken>());
     }
 
     [Fact]

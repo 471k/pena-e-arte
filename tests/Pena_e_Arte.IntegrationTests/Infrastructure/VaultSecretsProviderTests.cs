@@ -34,7 +34,7 @@ public class VaultSecretsProviderTests
             data: new Dictionary<string, object> { ["apiKey"] = "s3cr3t-value" },
             mountPoint: "secret");
 
-        VaultSecretsProvider provider = new(Options.Create(opts));
+        VaultSecretsProvider provider = new(client, Options.Create(opts));
 
         // Happy path — resolves the field.
         string value = await provider.GetSecretAsync($"{path}:apiKey", default);
@@ -55,7 +55,8 @@ public class VaultSecretsProviderTests
     {
         // No container needed — a dead address must throw, never yield a null credential.
         VaultOptions opts = new() { Address = "http://127.0.0.1:1", Token = "x", MountPoint = "secret" };
-        VaultSecretsProvider provider = new(Options.Create(opts));
+        IVaultClient client = new VaultClient(new VaultClientSettings(opts.Address, new TokenAuthMethodInfo(opts.Token)));
+        VaultSecretsProvider provider = new(client, Options.Create(opts));
 
         Func<Task> act = () => provider.GetSecretAsync("any/path:field", default);
         await act.Should().ThrowAsync<InvalidOperationException>();

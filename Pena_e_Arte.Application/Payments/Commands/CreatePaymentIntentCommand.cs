@@ -15,7 +15,7 @@ public record CreatePaymentIntentCommand(CreatePaymentIntentRequest Request) : I
 public class CreatePaymentIntentHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
-    IPaymentProvider stripePayments,
+    IPaymentProvider paymentProvider,
     IRealtimeNotifier realtime)
     : IRequestHandler<CreatePaymentIntentCommand, PaymentIntentResponse>
 {
@@ -38,8 +38,8 @@ public class CreatePaymentIntentHandler(
         Guid paymentId = existing?.Id ?? Guid.NewGuid();
         long amountInCents = (long)(req.Amount * 100);
 
-        (string intentId, string clientSecret) = await stripePayments.CreatePaymentHoldAsync(
-            amountInCents, req.Currency, paymentId, ct);
+        (string intentId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
+            new PaymentHoldRequest(tenant.StudioId, paymentId, amountInCents, req.Currency), ct);
 
         Payment payment;
         if (existing is null)
@@ -53,8 +53,9 @@ public class CreatePaymentIntentHandler(
                 Amount = req.Amount,
                 Status = PaymentStatus.Pending,
                 Method = ClientPaymentMethod.Card,
+                Provider = "pok",
                 ProviderReferenceId = intentId,
-                ClientSecret = clientSecret
+                ClientToken = clientToken
             };
             db.Payments.Add(payment);
         }
@@ -65,8 +66,9 @@ public class CreatePaymentIntentHandler(
             payment.Amount = req.Amount;
             payment.Status = PaymentStatus.Pending;
             payment.Method = ClientPaymentMethod.Card;
+            payment.Provider = "pok";
             payment.ProviderReferenceId = intentId;
-            payment.ClientSecret = clientSecret;
+            payment.ClientToken = clientToken;
             payment.UpdatedAt = DateTime.UtcNow;
         }
 
@@ -74,6 +76,6 @@ public class CreatePaymentIntentHandler(
 
         await realtime.NotifyStudioAsync(tenant.StudioId, "PaymentIntentCreated", payment.ToResponse(), ct);
 
-        return new PaymentIntentResponse(payment.Id, clientSecret, payment.Status.ToString());
+        return new PaymentIntentResponse(payment.Id, clientToken, payment.Status.ToString());
     }
 }

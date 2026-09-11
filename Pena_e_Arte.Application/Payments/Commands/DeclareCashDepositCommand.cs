@@ -16,7 +16,7 @@ public class DeclareCashDepositHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ICurrentUser currentUser,
-    IPaymentProvider stripePayments)
+    IPaymentProvider paymentProvider)
     : IRequestHandler<DeclareCashDepositCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(DeclareCashDepositCommand command, CancellationToken ct)
@@ -43,14 +43,14 @@ public class DeclareCashDepositHandler(
                      or { Status: PaymentStatus.Failed })
         {
             // Client changed their mind before authorizing, or retries after a failure.
-            // Reconcile with Stripe first — if the card was already authorized/captured
+            // Reconcile with the provider first — if the card was already authorized/captured
             // (webhook missed), heal the local state instead of discarding the hold.
             if (existing.ProviderReferenceId is not null && existing.Status == PaymentStatus.Pending)
             {
-                string? piStatus = await stripePayments.GetStatusAsync(
-                    existing.ProviderReferenceId, ct);
+                PaymentProviderStatus? providerStatus = await paymentProvider.GetStatusAsync(
+                    existing.StudioId, existing.ProviderReferenceId, ct);
 
-                if (piStatus == "requires_capture")
+                if (providerStatus == PaymentProviderStatus.Authorized)
                 {
                     existing.Status = PaymentStatus.Captured;
                     existing.UpdatedAt = DateTime.UtcNow;
@@ -59,7 +59,7 @@ public class DeclareCashDepositHandler(
                         "The card deposit is already authorized — there is nothing to pay in cash.");
                 }
 
-                if (piStatus == "succeeded")
+                if (providerStatus == PaymentProviderStatus.Captured)
                 {
                     existing.Status = PaymentStatus.Paid;
                     existing.PaidAt = DateTime.UtcNow;
@@ -70,16 +70,16 @@ public class DeclareCashDepositHandler(
                     throw new BusinessRuleViolationException("The deposit has already been paid by card.");
                 }
 
-                // Cancel only intents that can still be cancelled; canceled/missing need no call
-                if (piStatus is "requires_payment_method" or "requires_confirmation" or "requires_action" or "processing")
-                    await stripePayments.CancelAsync(existing.ProviderReferenceId, ct);
+                // Cancel only holds that can still be cancelled; canceled/missing need no call
+                if (providerStatus == PaymentProviderStatus.Pending)
+                    await paymentProvider.CancelAsync(existing.StudioId, existing.ProviderReferenceId, ct);
             }
 
             existing.Method = ClientPaymentMethod.Cash;
             existing.Status = PaymentStatus.CashPending;
             existing.CashNote = command.Note;
             existing.ProviderReferenceId = null;
-            existing.ClientSecret = null;
+            existing.ClientToken = null;
             existing.UpdatedAt = DateTime.UtcNow;
 
             await db.SaveChangesAsync(ct);

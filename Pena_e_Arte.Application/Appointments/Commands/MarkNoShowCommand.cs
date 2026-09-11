@@ -43,7 +43,7 @@ public class MarkNoShowHandler(
                 && !string.IsNullOrEmpty(payment.ProviderReferenceId)
                 && payment.Status == PaymentStatus.Captured)
             {
-                await paymentProvider.CaptureAsync(payment.ProviderReferenceId, ct);
+                await paymentProvider.CaptureAsync(payment.StudioId, payment.ProviderReferenceId, ct);
                 payment.Status = PaymentStatus.Paid;
                 payment.UpdatedAt = DateTime.UtcNow;
             }

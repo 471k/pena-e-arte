@@ -2,7 +2,7 @@ namespace Pena_e_Arte.Domain.Entities;
 
 /// <summary>
 /// No Status enum: ConfirmedAt (null until the provider hold succeeds) is the confirmation flag.
-/// The row is created at purchase time (to hold ProviderReferenceId/ClientSecret while the client
+/// The row is created at purchase time (to hold ProviderReferenceId/ClientToken while the client
 /// completes payment) with SessionsRemaining = 0 and ConfirmedAt = null;
 /// PackagePurchaseReconciliationJob sets ConfirmedAt and SessionsRemaining = Package.SessionCount
 /// once the provider confirms payment. A plain nullable timestamp rather than
@@ -18,7 +18,7 @@ public class PackagePurchase : TenantEntity
     public Guid ClientId { get; set; }
     public int SessionsRemaining { get; set; }
     public string ProviderReferenceId { get; set; } = string.Empty;
-    public string? ClientSecret { get; set; }
+    public string? ClientToken { get; set; }
     public string Provider { get; set; } = string.Empty;
     public DateTime? ConfirmedAt { get; set; }
 

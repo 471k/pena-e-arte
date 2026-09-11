@@ -32,9 +32,13 @@ public class BillingEndpointsRateLimitingTests
     [InlineData("POST", "/api/v1/payments/deposit")]
     [InlineData("POST", "/api/v1/payments/{id:guid}/capture")]
     [InlineData("POST", "/api/v1/payments/{id:guid}/refund")]
+    [InlineData("POST", "/api/v1/payments/{id:guid}/confirm")]
+    [InlineData("POST", "/api/v1/payments/pok/connect")]
+    [InlineData("GET", "/api/v1/payments/pok/connection")]
+    [InlineData("POST", "/api/v1/webhooks/pok")]
     [InlineData("POST", "/api/v1/billing/subscription/checkout")]
     [InlineData("POST", "/api/v1/billing/subscription/checkout/finalize")]
-    public void StripeCallingEndpoint_CarriesBillingRateLimitingPolicy(string method, string pattern)
+    public void ProviderCallingEndpoint_CarriesBillingRateLimitingPolicy(string method, string pattern)
     {
         using WebApplication app = BuildApp();
 
@@ -51,7 +55,7 @@ public class BillingEndpointsRateLimitingTests
     [InlineData("POST", "/api/v1/payments/{id:guid}/cash/confirm")]
     [InlineData("GET", "/api/v1/payments/")]
     [InlineData("GET", "/api/v1/payments/appointment/{appointmentId:guid}")]
-    [InlineData("GET", "/api/v1/payments/{id:guid}/client-secret")]
+    [InlineData("GET", "/api/v1/payments/{id:guid}/client-token")]
     [InlineData("GET", "/api/v1/payments/{id:guid}/invoice")]
     public void NonStripeCallingOrReadEndpoint_DoesNotCarryBillingRateLimitingPolicy(
         string method, string pattern)

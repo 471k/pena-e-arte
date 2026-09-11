@@ -3,9 +3,9 @@ using Pena_e_Arte.Application.Payments.Queries;
 
 namespace Pena_e_Arte.Application.Payments.Validators;
 
-public class GetPaymentClientSecretValidator : AbstractValidator<GetPaymentClientSecretQuery>
+public class GetPaymentClientTokenValidator : AbstractValidator<GetPaymentClientTokenQuery>
 {
-    public GetPaymentClientSecretValidator()
+    public GetPaymentClientTokenValidator()
     {
         RuleFor(x => x.PaymentId).NotEmpty();
     }
