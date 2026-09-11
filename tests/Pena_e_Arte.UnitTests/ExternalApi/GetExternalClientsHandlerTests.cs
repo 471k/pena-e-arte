@@ -32,8 +32,11 @@ public class GetExternalClientsHandlerTests
     {
         _db.Clients.Add(new Client
         {
-            StudioId = _studioId, FirstName = "Ana", LastName = "Silva",
-            Email = "ana@test.com", Phone = "+351900000000",
+            StudioId = _studioId,
+            FirstName = "Ana",
+            LastName = "Silva",
+            Email = "ana@test.com",
+            Phone = "+351900000000",
         });
         await _db.SaveChangesAsync();
 

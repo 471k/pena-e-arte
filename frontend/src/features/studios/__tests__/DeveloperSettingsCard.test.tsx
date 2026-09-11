@@ -43,7 +43,7 @@ const NO_KEY_STATUS: StudioApiKeyStatusResponse = {
 };
 
 const ACTIVE_KEY_STATUS: StudioApiKeyStatusResponse = {
-  hasActiveKey: true, keyPrefix: "tos_live_ab12", createdAt: "2026-01-01T00:00:00Z", lastUsedAt: null,
+  hasActiveKey: true, keyPrefix: "tos_live_ab12", createdAt: "2026-01-01T00:00:00Z", lastUsedAt: null, // gitleaks:allow
 };
 
 // ── MSW server ────────────────────────────────────────────────────────────────

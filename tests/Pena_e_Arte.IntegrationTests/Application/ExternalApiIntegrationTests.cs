@@ -86,15 +86,25 @@ public class ExternalApiIntegrationTests(DatabaseFixture fixture)
         seedDb.Appointments.AddRange(
             new Appointment
             {
-                StudioId = studioAId, ArtistId = artistA.Id, ClientId = clientA.Id,
-                Date = DateTime.UtcNow.AddDays(1), EndDate = DateTime.UtcNow.AddDays(1).AddHours(1),
-                DurationMinutes = 60, Status = AppointmentStatus.Pending, DepositStatus = DepositStatus.Pending,
+                StudioId = studioAId,
+                ArtistId = artistA.Id,
+                ClientId = clientA.Id,
+                Date = DateTime.UtcNow.AddDays(1),
+                EndDate = DateTime.UtcNow.AddDays(1).AddHours(1),
+                DurationMinutes = 60,
+                Status = AppointmentStatus.Pending,
+                DepositStatus = DepositStatus.Pending,
             },
             new Appointment
             {
-                StudioId = studioBId, ArtistId = artistB.Id, ClientId = clientB.Id,
-                Date = DateTime.UtcNow.AddDays(2), EndDate = DateTime.UtcNow.AddDays(2).AddHours(1),
-                DurationMinutes = 60, Status = AppointmentStatus.Pending, DepositStatus = DepositStatus.Pending,
+                StudioId = studioBId,
+                ArtistId = artistB.Id,
+                ClientId = clientB.Id,
+                Date = DateTime.UtcNow.AddDays(2),
+                EndDate = DateTime.UtcNow.AddDays(2).AddHours(1),
+                DurationMinutes = 60,
+                Status = AppointmentStatus.Pending,
+                DepositStatus = DepositStatus.Pending,
             });
         await seedDb.SaveChangesAsync();
 
@@ -150,7 +160,10 @@ public class ExternalApiIntegrationTests(DatabaseFixture fixture)
         seedDb.Plans.Add(plan);
         seedDb.Studios.Add(new Studio
         {
-            Id = studioId, Name = "Test Studio", Slug = $"studio-{Guid.NewGuid():N}", City = "Lisbon",
+            Id = studioId,
+            Name = "Test Studio",
+            Slug = $"studio-{Guid.NewGuid():N}",
+            City = "Lisbon",
         });
         seedDb.Subscriptions.Add(new Subscription { StudioId = studioId, PlanId = plan.Id });
         await seedDb.SaveChangesAsync();

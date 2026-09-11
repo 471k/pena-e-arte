@@ -28,7 +28,9 @@ public class GetStudioApiKeyStatusHandlerTests
     {
         _db.StudioApiKeys.Add(new StudioApiKey
         {
-            StudioId = _studioId, KeyHash = "hash", KeyPrefix = "tos_live_abcd",
+            StudioId = _studioId,
+            KeyHash = "hash",
+            KeyPrefix = "tos_live_abcd",
             RevokedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync();
@@ -45,7 +47,9 @@ public class GetStudioApiKeyStatusHandlerTests
         DateTime lastUsed = DateTime.UtcNow.AddHours(-1);
         _db.StudioApiKeys.Add(new StudioApiKey
         {
-            StudioId = _studioId, KeyHash = "hash", KeyPrefix = "tos_live_abcd",
+            StudioId = _studioId,
+            KeyHash = "hash",
+            KeyPrefix = "tos_live_abcd",
             LastUsedAt = lastUsed,
         });
         await _db.SaveChangesAsync();
