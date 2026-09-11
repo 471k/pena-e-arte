@@ -24,18 +24,12 @@ import {
   useSendTestWebhookEventMutation,
   useGetWebhookDeliveriesQuery,
 } from "../studiosApi";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-GB", {
     day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
-}
-
-function extractErrorMessage(err: unknown, fallback: string): string {
-  return err && typeof err === "object" && "data" in err && err.data &&
-    typeof err.data === "object" && "message" in err.data
-    ? String((err.data as { message: string }).message)
-    : fallback;
 }
 
 export function WebhookSettingsCard() {

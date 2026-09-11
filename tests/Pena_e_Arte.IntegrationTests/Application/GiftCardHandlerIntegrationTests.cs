@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.GiftCards.Commands;
 using Pena_e_Arte.Application.GiftCards.Queries;
@@ -42,7 +43,7 @@ public class GiftCardHandlerIntegrationTests(DatabaseFixture fixture)
             .Returns(PaymentProviderStatus.Captured);
 
         await using AppDbContext reconcileDb = fixture.CreateDbContext(Guid.Empty);
-        GiftCardReconciliationJob job = new(reconcileDb, provider);
+        GiftCardReconciliationJob job = new(reconcileDb, provider, NullLogger<GiftCardReconciliationJob>.Instance);
         await job.RunAsync();
 
         await using AppDbContext verify2 = fixture.CreateDbContext(tenantId);

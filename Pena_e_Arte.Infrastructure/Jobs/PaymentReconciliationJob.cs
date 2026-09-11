@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -6,7 +7,7 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Infrastructure.Jobs;
 
-public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider paymentProvider)
+public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider paymentProvider, ILogger<PaymentReconciliationJob> logger)
 {
     public async Task RunAsync(CancellationToken ct = default)
     {
@@ -27,12 +28,22 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
 
         foreach (Payment payment in captured)
         {
-            PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
-                payment.StudioId, payment.ProviderReferenceId!, ct);
-            if (status == PaymentProviderStatus.Captured)
+            try
             {
-                payment.Status = PaymentStatus.Paid;
-                payment.PaidAt = DateTime.UtcNow;
+                PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
+                    payment.StudioId, payment.ProviderReferenceId!, ct);
+                if (status == PaymentProviderStatus.Captured)
+                {
+                    payment.Status = PaymentStatus.Paid;
+                    payment.PaidAt = DateTime.UtcNow;
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // One studio's provider failure (e.g. a disconnected POK account) must not abort
+                // reconciliation for every other studio's payments in this batch — log and move on;
+                // this payment is picked up again on the next scheduled run.
+                logger.LogError(ex, "Failed to reconcile captured payment {PaymentId} for studio {StudioId}.", payment.Id, payment.StudioId);
             }
         }
 
@@ -55,8 +66,15 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
 
         foreach (Payment payment in stale)
         {
-            await paymentProvider.CancelAsync(payment.StudioId, payment.ProviderReferenceId!, ct);
-            payment.Status = PaymentStatus.Failed;
+            try
+            {
+                await paymentProvider.CancelAsync(payment.StudioId, payment.ProviderReferenceId!, ct);
+                payment.Status = PaymentStatus.Failed;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Failed to cancel stale pending payment {PaymentId} for studio {StudioId}.", payment.Id, payment.StudioId);
+            }
         }
 
         await db.SaveChangesAsync(ct);
@@ -84,8 +102,15 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
 
         foreach (Payment payment in expiredHolds)
         {
-            await paymentProvider.CancelAsync(payment.StudioId, payment.ProviderReferenceId!, ct);
-            payment.Status = PaymentStatus.Failed;
+            try
+            {
+                await paymentProvider.CancelAsync(payment.StudioId, payment.ProviderReferenceId!, ct);
+                payment.Status = PaymentStatus.Failed;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Failed to release expired hold for payment {PaymentId} for studio {StudioId}.", payment.Id, payment.StudioId);
+            }
         }
 
         await db.SaveChangesAsync(ct);

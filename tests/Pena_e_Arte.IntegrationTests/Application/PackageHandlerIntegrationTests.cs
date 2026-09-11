@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Packages.Commands;
@@ -58,7 +59,7 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
             .Returns(PaymentProviderStatus.Captured);
 
         await using AppDbContext reconcileDb = fixture.CreateDbContext(Guid.Empty);
-        PackagePurchaseReconciliationJob job = new(reconcileDb, provider);
+        PackagePurchaseReconciliationJob job = new(reconcileDb, provider, NullLogger<PackagePurchaseReconciliationJob>.Instance);
         await job.RunAsync();
 
         await using AppDbContext verify2 = fixture.CreateDbContext(tenantId);

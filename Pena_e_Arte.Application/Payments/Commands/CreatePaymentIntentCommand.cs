@@ -53,6 +53,7 @@ public class CreatePaymentIntentHandler(
                 Amount = req.Amount,
                 Status = PaymentStatus.Pending,
                 Method = ClientPaymentMethod.Card,
+                Provider = "pok",
                 ProviderReferenceId = intentId,
                 ClientToken = clientToken
             };
@@ -65,6 +66,7 @@ public class CreatePaymentIntentHandler(
             payment.Amount = req.Amount;
             payment.Status = PaymentStatus.Pending;
             payment.Method = ClientPaymentMethod.Card;
+            payment.Provider = "pok";
             payment.ProviderReferenceId = intentId;
             payment.ClientToken = clientToken;
             payment.UpdatedAt = DateTime.UtcNow;

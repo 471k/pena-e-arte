@@ -11,6 +11,7 @@ import {
   useGetPaymentCapabilitiesQuery,
   useConfirmCardPaymentMutation,
 } from "../paymentsApi";
+import { PaymentStatus } from "../payment.types";
 
 function CheckoutForm({
   paymentId,
@@ -27,11 +28,17 @@ function CheckoutForm({
   async function handleSuccess() {
     // The widget's own onSuccess is UX only — never the source of truth (ADR-0001: a webhook,
     // and by extension a client-side callback, is a trigger, not a fact). Re-fetch the real
-    // status from POK server-side before showing "authorised".
+    // status from POK server-side before showing "authorised" — a 200 response here does not by
+    // itself mean the deposit cleared; ConfirmCardPaymentCommand can legitimately return the
+    // payment still Pending if POK hasn't finished authorizing server-side yet.
     setConfirming(true);
     try {
-      await confirmCardPayment(paymentId).unwrap();
-      setSucceeded(true);
+      const result = await confirmCardPayment(paymentId).unwrap();
+      if (result.status === PaymentStatus.Captured || result.status === PaymentStatus.Paid) {
+        setSucceeded(true);
+      } else {
+        setErrorMsg("Your card was submitted, but the payment hasn't been confirmed yet. Refresh in a moment to check again.");
+      }
     } catch {
       setErrorMsg("Payment completed, but we couldn't confirm it yet. Refresh in a moment.");
     } finally {

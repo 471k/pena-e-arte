@@ -9,13 +9,7 @@ import {
   useConnectPokAccountMutation,
   useGetPokConnectionStatusQuery,
 } from "@/features/payments/paymentsApi";
-
-function extractErrorMessage(err: unknown, fallback: string): string {
-  return err && typeof err === "object" && "data" in err && err.data &&
-    typeof err.data === "object" && "message" in err.data
-    ? String((err.data as { message: string }).message)
-    : fallback;
-}
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 
 /**
  * ADR-0001: every studio brings its own POK merchant account — there is no platform-level key.

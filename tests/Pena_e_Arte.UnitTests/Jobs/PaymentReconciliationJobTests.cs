@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -14,7 +15,7 @@ public class PaymentReconciliationJobTests
     private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    private PaymentReconciliationJob CreateSut() => new(_db, _stripe);
+    private PaymentReconciliationJob CreateSut() => new(_db, _stripe, NullLogger<PaymentReconciliationJob>.Instance);
 
     // ── ReconcileCaptured ─────────────────────────────────────────────────────────
 

@@ -1,9 +1,7 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
-using Pena_e_Arte.Domain.Entities;
-using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Payments.Queries;
@@ -28,11 +26,7 @@ public class GetPaymentCapabilitiesHandler(IPaymentProvider paymentProvider, IAp
         if (!paymentProvider.Capabilities.SupportsAuthCapture)
             return new PaymentCapabilitiesResponse(CardPaymentsAvailable: false);
 
-        Studio? studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == tenant.StudioId, ct);
-        bool hasCredentialRef = await db.StudioCredentialRefs
-            .AnyAsync(c => c.StudioId == tenant.StudioId && c.Provider == CredentialProvider.Pok, ct);
-
-        bool connected = studio?.PokMerchantId is not null && hasCredentialRef;
+        (bool connected, _) = await PokConnectionCheck.ResolveAsync(db, tenant.StudioId, ct);
         return new PaymentCapabilitiesResponse(
             CardPaymentsAvailable: connected,
             PokEnvironment: connected ? paymentProvider.Capabilities.Environment : null);

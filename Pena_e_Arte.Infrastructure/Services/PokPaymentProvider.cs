@@ -71,9 +71,7 @@ public sealed class PokPaymentProvider : IPaymentProvider
     public async Task<(string ProviderReferenceId, string ClientToken)> CreatePaymentHoldAsync(
         PaymentHoldRequest request, CancellationToken ct)
     {
-        (string keyId, string keySecret, string merchantId) = await ResolveCredentialsAsync(request.StudioId, ct);
-        string token = await GetAccessTokenAsync(request.StudioId, keyId, keySecret, ct);
-        HttpClient http = httpClientFactory.CreateClient("Pok");
+        (string merchantId, string token, HttpClient http) = await PrepareRequestAsync(request.StudioId, ct);
 
         var body = new CreateOrderRequestBody
         {
@@ -109,9 +107,7 @@ public sealed class PokPaymentProvider : IPaymentProvider
 
     public async Task CaptureAsync(Guid studioId, string providerReferenceId, CancellationToken ct)
     {
-        (string keyId, string keySecret, string merchantId) = await ResolveCredentialsAsync(studioId, ct);
-        string token = await GetAccessTokenAsync(studioId, keyId, keySecret, ct);
-        HttpClient http = httpClientFactory.CreateClient("Pok");
+        (string merchantId, string token, HttpClient http) = await PrepareRequestAsync(studioId, ct);
 
         // Capture requires the amount in its body — fetch the order first rather than widen the
         // interface with an amount CaptureAsync doesn't otherwise need (we always capture in full;
@@ -132,9 +128,7 @@ public sealed class PokPaymentProvider : IPaymentProvider
 
     public async Task CancelAsync(Guid studioId, string providerReferenceId, CancellationToken ct)
     {
-        (string keyId, string keySecret, string merchantId) = await ResolveCredentialsAsync(studioId, ct);
-        string token = await GetAccessTokenAsync(studioId, keyId, keySecret, ct);
-        HttpClient http = httpClientFactory.CreateClient("Pok");
+        (string merchantId, string token, HttpClient http) = await PrepareRequestAsync(studioId, ct);
 
         using HttpRequestMessage req = new(
             HttpMethod.Post, $"{_options.BaseUrl}/merchants/{merchantId}/sdk-orders/{providerReferenceId}/cancel");
@@ -146,9 +140,7 @@ public sealed class PokPaymentProvider : IPaymentProvider
 
     public async Task<PaymentProviderStatus?> GetStatusAsync(Guid studioId, string providerReferenceId, CancellationToken ct)
     {
-        (string keyId, string keySecret, string merchantId) = await ResolveCredentialsAsync(studioId, ct);
-        string token = await GetAccessTokenAsync(studioId, keyId, keySecret, ct);
-        HttpClient http = httpClientFactory.CreateClient("Pok");
+        (string merchantId, string token, HttpClient http) = await PrepareRequestAsync(studioId, ct);
 
         SdkOrderDto? order = await GetOrderAsync(http, token, merchantId, providerReferenceId, studioId, ct);
         return order is null ? null : MapStatus(order);
@@ -156,9 +148,7 @@ public sealed class PokPaymentProvider : IPaymentProvider
 
     public async Task<string> RefundAsync(Guid studioId, string providerReferenceId, long? amountInCents, CancellationToken ct)
     {
-        (string keyId, string keySecret, string merchantId) = await ResolveCredentialsAsync(studioId, ct);
-        string token = await GetAccessTokenAsync(studioId, keyId, keySecret, ct);
-        HttpClient http = httpClientFactory.CreateClient("Pok");
+        (string merchantId, string token, HttpClient http) = await PrepareRequestAsync(studioId, ct);
 
         using HttpRequestMessage req = new(
             HttpMethod.Post, $"{_options.BaseUrl}/merchants/{merchantId}/sdk-orders/{providerReferenceId}/refund");
@@ -173,6 +163,19 @@ public sealed class PokPaymentProvider : IPaymentProvider
         // POK's refund response echoes the sdkOrder, not a distinct refund id — the order id
         // itself is the only stable handle available for this operation.
         return providerReferenceId;
+    }
+
+    /// <summary>
+    /// Every IPaymentProvider method needs the same three things before it can call POK:
+    /// this studio's merchant id, a valid bearer token, and an HttpClient. Factored out so a
+    /// future change to how any of those three is obtained only needs to happen once.
+    /// </summary>
+    private async Task<(string MerchantId, string Token, HttpClient Http)> PrepareRequestAsync(Guid studioId, CancellationToken ct)
+    {
+        (string keyId, string keySecret, string merchantId) = await ResolveCredentialsAsync(studioId, ct);
+        string token = await GetAccessTokenAsync(studioId, keyId, keySecret, ct);
+        HttpClient http = httpClientFactory.CreateClient("Pok");
+        return (merchantId, token, http);
     }
 
     private async Task<SdkOrderDto?> GetOrderAsync(
@@ -220,13 +223,22 @@ public sealed class PokPaymentProvider : IPaymentProvider
     private async Task<(string KeyId, string KeySecret, string MerchantId)> ResolveCredentialsAsync(
         Guid studioId, CancellationToken ct)
     {
-        Studio? studio = await db.Studios.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.Id == studioId, ct);
+        // One query instead of two separate round trips against Studios/StudioCredentialRefs —
+        // both rows are needed together on every single payment operation. The Vault reads below
+        // stay separate calls, and their result stays uncached here (unlike the bearer token):
+        // caching a raw keySecret in Redis would put a live credential outside Vault, which is a
+        // bigger security tradeoff than the extra round trip is worth.
+        var row = await db.Studios.IgnoreQueryFilters()
+            .Where(s => s.Id == studioId)
+            .Select(s => new
+            {
+                s.PokMerchantId,
+                CredentialRef = db.StudioCredentialRefs.IgnoreQueryFilters()
+                    .FirstOrDefault(c => c.StudioId == studioId && c.Provider == CredentialProvider.Pok)
+            })
+            .FirstOrDefaultAsync(ct);
 
-        StudioCredentialRef? credentialRef = await db.StudioCredentialRefs.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.StudioId == studioId && c.Provider == CredentialProvider.Pok, ct);
-
-        if (studio?.PokMerchantId is null || credentialRef is null)
+        if (row?.PokMerchantId is null || row.CredentialRef is null)
         {
             throw new PaymentProviderNotConnectedException(
                 "This studio has not connected a POK account yet. Connect POK in Payment Settings before taking card deposits.");
@@ -235,10 +247,25 @@ public sealed class PokPaymentProvider : IPaymentProvider
         // Convention: StudioCredentialRef.SecretPath holds the Vault PATH only (one KV object per
         // studio+provider, two fields inside it) — not a full "path:field" key. GetSecretAsync's
         // ":field" suffix is appended here for each of the two fields it holds.
-        string keyId = await secrets.GetSecretAsync($"{credentialRef.SecretPath}:keyId", ct);
-        string keySecret = await secrets.GetSecretAsync($"{credentialRef.SecretPath}:keySecret", ct);
-
-        return (keyId, keySecret, studio.PokMerchantId);
+        //
+        // A missing/unreadable secret here (Vault down, or the crash-consistency gap between
+        // ConnectPokAccountCommand's DB commit and its Vault write — see that command's own
+        // comment) surfaces the same actionable message as "never connected": ISecretsProvider
+        // doesn't distinguish "unreachable" from "missing" (both throw InvalidOperationException),
+        // and ExceptionMiddleware has no mapping for that type, which would otherwise bubble up as
+        // a bare 500 instead of the 422 PAYMENT_PROVIDER_NOT_CONNECTED every other "not set up yet"
+        // path in this class already returns.
+        try
+        {
+            string keyId = await secrets.GetSecretAsync($"{row.CredentialRef.SecretPath}:keyId", ct);
+            string keySecret = await secrets.GetSecretAsync($"{row.CredentialRef.SecretPath}:keySecret", ct);
+            return (keyId, keySecret, row.PokMerchantId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new PaymentProviderNotConnectedException(
+                "This studio's POK connection is incomplete or unreadable. Reconnect POK in Payment Settings.");
+        }
     }
 
     /// <summary>
@@ -253,19 +280,19 @@ public sealed class PokPaymentProvider : IPaymentProvider
         IDatabase cache = redis.GetDatabase();
         string cacheKey = $"pok:token:{studioId}";
 
-        string? cached = await cache.StringGetAsync(cacheKey);
+        string? cached = await TryRedisGetAsync(cache, cacheKey);
         if (cached is not null)
             return cached;
 
         string lockKey = $"pok:token-lock:{studioId}";
-        bool acquired = await cache.StringSetAsync(lockKey, "1", TimeSpan.FromSeconds(15), When.NotExists);
+        bool acquired = await TryRedisAcquireLockAsync(cache, lockKey, TimeSpan.FromSeconds(15));
 
         if (!acquired)
         {
             for (int attempt = 0; attempt < 10; attempt++)
             {
                 await Task.Delay(200, ct);
-                cached = await cache.StringGetAsync(cacheKey);
+                cached = await TryRedisGetAsync(cache, cacheKey);
                 if (cached is not null)
                     return cached;
             }
@@ -274,21 +301,48 @@ public sealed class PokPaymentProvider : IPaymentProvider
 
         try
         {
-            cached = await cache.StringGetAsync(cacheKey);
+            cached = await TryRedisGetAsync(cache, cacheKey);
             if (cached is not null)
                 return cached;
 
             (string token, TimeSpan ttl) = await LoginAsync(keyId, keySecret, studioId, ct);
             // Refresh 60s early so a request never hands out a token that expires mid-flight.
             TimeSpan cacheTtl = ttl > TimeSpan.FromSeconds(90) ? ttl - TimeSpan.FromSeconds(60) : ttl;
-            await cache.StringSetAsync(cacheKey, token, cacheTtl);
+            await TryRedisSetAsync(cache, cacheKey, token, cacheTtl);
             return token;
         }
         finally
         {
             if (acquired)
-                await cache.KeyDeleteAsync(lockKey);
+                await TryRedisDeleteAsync(cache, lockKey);
         }
+    }
+
+    // Redis here is a best-effort cache/lock, not the source of truth for a POK login — same
+    // fail-open convention as SlotLocker.cs. A Redis outage must degrade to "log in every call"
+    // (slower, extra POK auth traffic), never to a hard failure of every payment operation.
+    private static async Task<string?> TryRedisGetAsync(IDatabase cache, string key)
+    {
+        try { return await cache.StringGetAsync(key); }
+        catch (RedisConnectionException) { return null; }
+    }
+
+    private static async Task TryRedisSetAsync(IDatabase cache, string key, string value, TimeSpan ttl)
+    {
+        try { await cache.StringSetAsync(key, value, ttl); }
+        catch (RedisConnectionException) { /* best-effort cache write; a miss just means re-login next call */ }
+    }
+
+    private static async Task TryRedisDeleteAsync(IDatabase cache, string key)
+    {
+        try { await cache.KeyDeleteAsync(key); }
+        catch (RedisConnectionException) { /* the lock key expires on its own TTL */ }
+    }
+
+    private static async Task<bool> TryRedisAcquireLockAsync(IDatabase cache, string key, TimeSpan ttl)
+    {
+        try { return await cache.StringSetAsync(key, "1", ttl, When.NotExists); }
+        catch (RedisConnectionException) { return true; } // fail-open: skip contention handling entirely
     }
 
     private async Task<(string Token, TimeSpan Ttl)> LoginAsync(string keyId, string keySecret, Guid studioId, CancellationToken ct)

@@ -37,11 +37,16 @@ function CardCheckoutForm({
     // The widget's own onSuccess is UX only — never the source of truth (ADR-0001: a webhook,
     // and by extension a client-side callback, is a trigger, not a fact). Re-run the same
     // create/resume call, which reconciles against POK's real order status server-side before
-    // this deposit is trusted as authorised.
+    // this deposit is trusted as authorised — a 200 response alone doesn't mean that; it can
+    // legitimately still report Pending if POK hasn't finished authorizing server-side yet.
     setConfirming(true);
     try {
-      await createDeposit({ appointmentId }).unwrap();
-      onSuccess("card");
+      const result = await createDeposit({ appointmentId }).unwrap();
+      if (result.status === "Captured" || result.status === "Paid") {
+        onSuccess("card");
+      } else {
+        onError("Your card was submitted, but the payment hasn't been confirmed yet. Refresh in a moment to check again.");
+      }
     } catch {
       onError("Payment completed, but we couldn't confirm it yet. Refresh in a moment.");
     } finally {

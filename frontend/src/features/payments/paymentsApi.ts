@@ -86,6 +86,10 @@ export const paymentsApi = createApi({
     }),
     getPaymentCapabilities: builder.query<PaymentCapabilitiesResponse, void>({
       query: () => "payments/capabilities",
+      // Tagged so connectPokAccount's invalidatesTags: ["Payment"] refreshes this too — otherwise
+      // an owner who already loaded a page caching cardPaymentsAvailable:false keeps seeing that
+      // after connecting POK, until a full page reload.
+      providesTags: ["Payment"],
     }),
     connectPokAccount: builder.mutation<void, ConnectPokAccountRequest>({
       query: (body) => ({ url: "payments/pok/connect", method: "POST", body }),

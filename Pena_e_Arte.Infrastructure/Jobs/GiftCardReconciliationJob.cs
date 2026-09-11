@@ -16,7 +16,7 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// this only needs the one "did the hold succeed" pass, same check
 /// PaymentReconciliationJob.ReconcileCapturedAsync runs for Payment.
 /// </summary>
-public class GiftCardReconciliationJob(IAppDbContext db, IPaymentProvider paymentProvider)
+public class GiftCardReconciliationJob(IAppDbContext db, IPaymentProvider paymentProvider, ILogger<GiftCardReconciliationJob> logger)
 {
     public async Task RunAsync(CancellationToken ct = default)
     {
@@ -29,12 +29,21 @@ public class GiftCardReconciliationJob(IAppDbContext db, IPaymentProvider paymen
 
         foreach (GiftCard giftCard in pending)
         {
-            PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
-                giftCard.StudioId, giftCard.ProviderReferenceId!, ct);
-            if (status == PaymentProviderStatus.Captured)
+            try
             {
-                giftCard.Status = GiftCardStatus.Active;
-                giftCard.UpdatedAt = DateTime.UtcNow;
+                PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
+                    giftCard.StudioId, giftCard.ProviderReferenceId!, ct);
+                if (status == PaymentProviderStatus.Captured)
+                {
+                    giftCard.Status = GiftCardStatus.Active;
+                    giftCard.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // One studio's provider failure must not abort reconciliation for every other
+                // studio's gift cards in this batch — log and move on, picked up on the next run.
+                logger.LogError(ex, "Failed to reconcile gift card {GiftCardId} for studio {StudioId}.", giftCard.Id, giftCard.StudioId);
             }
         }
 
