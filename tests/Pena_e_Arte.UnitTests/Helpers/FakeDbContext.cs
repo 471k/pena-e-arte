@@ -20,6 +20,8 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<StudioClosure> StudioClosures => Set<StudioClosure>();
     public DbSet<StudioHours> StudioHours => Set<StudioHours>();
     public DbSet<StudioApiKey> StudioApiKeys => Set<StudioApiKey>();
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<PortfolioImage> PortfolioImages => Set<PortfolioImage>();
     public DbSet<Design> Designs => Set<Design>();
     public DbSet<DesignRevision> DesignRevisions => Set<DesignRevision>();

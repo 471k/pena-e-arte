@@ -15,12 +15,13 @@ public class CreateClientHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly FakeCurrentUser _currentUser = FakeCurrentUser.Owner();
+    private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateClientHandlerTests() =>
         _tenant.StudioId.Returns(_studioId);
 
-    private CreateClientHandler CreateSut() => new(_db, _tenant, _currentUser);
+    private CreateClientHandler CreateSut() => new(_db, _tenant, _currentUser, _jobs);
 
     private Artist AddArtist()
     {
@@ -129,7 +130,7 @@ public class CreateClientHandlerTests
         await _db.SaveChangesAsync();
 
         CreateClientRequest req = new("Ana", "Costa", "ana@example.com", null, otherArtist.Id);
-        CreateClientHandler sut = new(_db, _tenant, artistUser);
+        CreateClientHandler sut = new(_db, _tenant, artistUser, _jobs);
 
         ClientResponse result = await sut.Handle(new CreateClientCommand(req), default);
 
@@ -144,7 +145,7 @@ public class CreateClientHandlerTests
         Artist artist = AddArtist();
         FakeCurrentUser artistUser = FakeCurrentUser.Artist();
         CreateClientRequest req = new("Ana", "Costa", "ana@example.com", null, artist.Id);
-        CreateClientHandler sut = new(_db, _tenant, artistUser);
+        CreateClientHandler sut = new(_db, _tenant, artistUser, _jobs);
 
         Func<Task> act = () => sut.Handle(new CreateClientCommand(req), default);
 

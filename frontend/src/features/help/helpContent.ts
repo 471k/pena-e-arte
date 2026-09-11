@@ -1165,7 +1165,28 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Only available on plans that include API access — if you don't see this section, your current plan doesn't include it.",
       "If you lose the key, there's no way to retrieve it — generate a new one, which immediately replaces (and disables) the old one.",
     ],
-    relatedArticleIds: ["owner-billing"],
+    relatedArticleIds: ["owner-billing", "owner-developer-webhooks"],
+  },
+  {
+    id: "owner-developer-webhooks",
+    roles: [Owner],
+    title: "Get notified instantly with webhooks",
+    keywords: ["webhook", "webhooks", "real-time", "notification", "integration", "zapier", "push", "event"],
+    summary: "Instead of your integration repeatedly checking the API for new appointments, give us a URL and we'll POST a signed event to it the instant a booking is created, cancelled, rescheduled, or a new client is added.",
+    steps: [
+      "Go to Studio Settings and scroll to \"Developer — Webhooks\".",
+      "Enter the URL your tool should receive events at, then click \"Save\".",
+      "Copy the signing secret shown once — use it to verify the X-Webhook-Signature header on each delivery, so you know the event really came from us.",
+      "Click \"Send test event\" to confirm your URL is receiving deliveries correctly before relying on it.",
+      "Check \"Recent deliveries\" any time to see whether recent events succeeded or failed, and why.",
+    ],
+    tips: [
+      "We automatically retry a failed delivery several times with increasing delay — a brief outage on your end won't lose the event.",
+      "If an endpoint keeps failing, it's automatically disabled after repeated failures to stop wasting retries — re-saving the URL reactivates it.",
+      "Only one webhook URL per studio; saving a new one replaces the old one (and issues a new signing secret).",
+      "Same plan requirement as the API key above — both ship together on plans that include API access.",
+    ],
+    relatedArticleIds: ["owner-developer-api", "owner-billing"],
   },
   {
     id: "owner-notifications",
@@ -1194,7 +1215,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If you're on a paid card-billed plan, click \"Change plan\" or \"Manage billing\".",
       "If a plan change is scheduled, click \"Keep current plan\" to cancel it before it takes effect.",
     ],
-    relatedArticleIds: ["owner-subscribe", "owner-past-due", "owner-developer-api"],
+    relatedArticleIds: ["owner-subscribe", "owner-past-due", "owner-developer-api", "owner-developer-webhooks"],
   },
   {
     id: "owner-past-due",

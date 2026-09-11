@@ -50,4 +50,7 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
 
     public void EnqueueCampaignSend(Guid campaignId) =>
         backgroundJobs.Enqueue<SendCampaignJob>(j => j.RunAsync(campaignId, default));
+
+    public void EnqueueWebhookDelivery(Guid studioId, string eventType, Guid resourceId) =>
+        backgroundJobs.Enqueue<WebhookDeliveryJob>(j => j.DeliverAsync(studioId, eventType, resourceId, default));
 }

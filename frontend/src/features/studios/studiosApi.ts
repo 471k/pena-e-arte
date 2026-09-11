@@ -50,6 +50,30 @@ export interface GenerateApiKeyResponse {
   createdAt: string;
 }
 
+export interface WebhookEndpointStatusResponse {
+  hasEndpoint:          boolean;
+  url:                  string | null;
+  isActive:             boolean;
+  createdAt:            string | null;
+  lastDeliveryAt:       string | null;
+  lastDeliverySucceeded: boolean | null;
+}
+
+export interface GenerateWebhookSecretResponse {
+  url:       string;
+  secret:    string;
+  createdAt: string;
+}
+
+export interface WebhookDeliveryResponse {
+  id:                 string;
+  eventType:          string;
+  responseStatusCode: number | null;
+  succeeded:          boolean;
+  errorMessage:       string | null;
+  attemptedAt:        string;
+}
+
 export interface InviteSoloArtistToJoinRequest {
   firstName:        string;
   lastName:         string;
@@ -129,7 +153,10 @@ export interface UpsertStudioHoursRequest {
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
-  tagTypes: ["Studio", "Referral", "StudioClosure", "StudioAuditLog", "StudioHours", "StudioApiKey"],
+  tagTypes: [
+    "Studio", "Referral", "StudioClosure", "StudioAuditLog", "StudioHours", "StudioApiKey",
+    "WebhookEndpoint", "WebhookDeliveries",
+  ],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),
@@ -181,6 +208,26 @@ export const studiosApi = createApi({
     revokeApiKey: builder.mutation<void, void>({
       query: () => ({ url: "studios/me/api-key", method: "DELETE" }),
       invalidatesTags: ["StudioApiKey"],
+    }),
+    getWebhookStatus: builder.query<WebhookEndpointStatusResponse, void>({
+      query: () => "studios/me/webhook",
+      providesTags: ["WebhookEndpoint"],
+    }),
+    upsertWebhook: builder.mutation<GenerateWebhookSecretResponse, { url: string }>({
+      query: (body) => ({ url: "studios/me/webhook", method: "POST", body }),
+      invalidatesTags: ["WebhookEndpoint", "WebhookDeliveries"],
+    }),
+    deleteWebhook: builder.mutation<void, void>({
+      query: () => ({ url: "studios/me/webhook", method: "DELETE" }),
+      invalidatesTags: ["WebhookEndpoint", "WebhookDeliveries"],
+    }),
+    sendTestWebhookEvent: builder.mutation<void, void>({
+      query: () => ({ url: "studios/me/webhook/test", method: "POST" }),
+      invalidatesTags: ["WebhookEndpoint", "WebhookDeliveries"],
+    }),
+    getWebhookDeliveries: builder.query<WebhookDeliveryResponse[], void>({
+      query: () => "studios/me/webhook/deliveries",
+      providesTags: ["WebhookDeliveries"],
     }),
     suspendStudio: builder.mutation<void, string>({
       query: (id) => ({ url: `studios/${id}/suspend`, method: "PATCH" }),
@@ -279,6 +326,11 @@ export const {
   useGetApiKeyStatusQuery,
   useGenerateApiKeyMutation,
   useRevokeApiKeyMutation,
+  useGetWebhookStatusQuery,
+  useUpsertWebhookMutation,
+  useDeleteWebhookMutation,
+  useSendTestWebhookEventMutation,
+  useGetWebhookDeliveriesQuery,
   useGetStudiosQuery,
   useGetStudioByIdQuery,
   useSuspendStudioMutation,

@@ -26,6 +26,8 @@ public class AppDbContext(
     public DbSet<StudioClosure> StudioClosures => Set<StudioClosure>();
     public DbSet<StudioHours> StudioHours => Set<StudioHours>();
     public DbSet<StudioApiKey> StudioApiKeys => Set<StudioApiKey>();
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<PortfolioImage> PortfolioImages => Set<PortfolioImage>();
     public DbSet<Design> Designs => Set<Design>();
     public DbSet<DesignRevision> DesignRevisions => Set<DesignRevision>();
@@ -136,6 +138,8 @@ public class AppDbContext(
         builder.Entity<StudioClosure>().HasQueryFilter(c => c.StudioId == tenant.StudioId && c.DeletedAt == null);
         builder.Entity<StudioHours>().HasQueryFilter(h => h.StudioId == tenant.StudioId && h.DeletedAt == null);
         builder.Entity<StudioApiKey>().HasQueryFilter(k => k.StudioId == tenant.StudioId && k.DeletedAt == null);
+        builder.Entity<WebhookEndpoint>().HasQueryFilter(w => w.StudioId == tenant.StudioId && w.DeletedAt == null);
+        builder.Entity<WebhookDelivery>().HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<PortfolioImage>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
         builder.Entity<Design>().HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<DesignRevision>().HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);

@@ -31,7 +31,8 @@ public class RescheduleAppointmentHandler(
     ICurrentTenant tenant,
     ICurrentUser currentUser,
     IRealtimeNotifier realtime,
-    ISender sender)
+    ISender sender,
+    IJobScheduler jobs)
     : IRequestHandler<RescheduleAppointmentCommand, AppointmentResponse>
 {
     public async Task<AppointmentResponse> Handle(RescheduleAppointmentCommand command, CancellationToken ct)
@@ -109,6 +110,7 @@ public class RescheduleAppointmentHandler(
 
         AppointmentResponse response = CreateAppointmentHandler.Map(appointment);
         await realtime.NotifyStudioAsync(tenant.StudioId, "AppointmentUpdated", response, ct);
+        jobs.EnqueueWebhookDelivery(tenant.StudioId, "appointment.rescheduled", appointment.Id);
 
         if (waitlistMatchId is Guid matchId)
             await sender.Send(new SendWaitlistSlotAvailableNotificationCommand(matchId), ct);

@@ -4,6 +4,8 @@ using Pena_e_Arte.Application.ExternalApi.Queries;
 using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Application.Studios.Queries;
 using Pena_e_Arte.Application.Studios.StudioJoinInvites;
+using Pena_e_Arte.Application.Webhooks.Commands;
+using Pena_e_Arte.Application.Webhooks.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +35,14 @@ public static class StudioEndpoints
         group.MapGet("/me/api-key", GetApiKeyStatus).RequireAuthorization("OwnerOnly");
         group.MapPost("/me/api-key", GenerateApiKey).RequireAuthorization("OwnerOnly");
         group.MapDelete("/me/api-key", RevokeApiKey).RequireAuthorization("OwnerOnly");
+
+        // Owner: outbound webhook configuration — the write-side pair to the read-only
+        // external API above; see docs/claude/architecture.md's "Webhooks" entry.
+        group.MapGet("/me/webhook", GetWebhookStatus).RequireAuthorization("OwnerOnly");
+        group.MapPost("/me/webhook", UpsertWebhook).RequireAuthorization("OwnerOnly");
+        group.MapDelete("/me/webhook", DeleteWebhook).RequireAuthorization("OwnerOnly");
+        group.MapPost("/me/webhook/test", SendTestWebhookEvent).RequireAuthorization("OwnerOnly");
+        group.MapGet("/me/webhook/deliveries", GetWebhookDeliveries).RequireAuthorization("OwnerOnly");
 
         // Owner: manage branding and slug for their studio
         group.MapPatch("{id:guid}/branding", UpdateBranding).RequireAuthorization("OwnerOnly");
@@ -246,5 +256,39 @@ public static class StudioEndpoints
     {
         await mediator.Send(new RevokeStudioApiKeyCommand(), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetWebhookStatus(ISender mediator, CancellationToken ct)
+    {
+        WebhookEndpointStatusResponse result = await mediator.Send(new GetWebhookEndpointStatusQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpsertWebhook(
+        ISender mediator, [FromBody] UpsertWebhookEndpointRequest request, CancellationToken ct)
+    {
+        GenerateWebhookSecretResponse result = await mediator.Send(
+            new UpsertWebhookEndpointCommand(request.Url), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> DeleteWebhook(ISender mediator, CancellationToken ct)
+    {
+        await mediator.Send(new DeleteWebhookEndpointCommand(), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> SendTestWebhookEvent(ISender mediator, CancellationToken ct)
+    {
+        await mediator.Send(new SendTestWebhookEventCommand(), ct);
+        return Results.Accepted();
+    }
+
+    private static async Task<IResult> GetWebhookDeliveries(
+        ISender mediator, CancellationToken ct, int page = 1, int pageSize = 20)
+    {
+        List<WebhookDeliveryResponse> result =
+            await mediator.Send(new GetWebhookDeliveriesQuery(page, pageSize), ct);
+        return Results.Ok(result);
     }
 }

@@ -16,4 +16,6 @@ public interface IJobScheduler
     void CancelJob(string jobId);
     void EnqueueNewMessageEmail(Guid chatMessageId);
     void EnqueueCampaignSend(Guid campaignId);
+
+    void EnqueueWebhookDelivery(Guid studioId, string eventType, Guid resourceId);
 }

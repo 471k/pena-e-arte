@@ -205,6 +205,11 @@ public static class InfrastructureServiceExtensions
         services.AddTransient<StorageReconciliationJob>();
         services.AddTransient<SendCampaignJob>();
 
+        // Webhooks — reuses the Instagram token encryptor above (see ITokenEncryptor's own
+        // "generalise this" note) rather than a second encryption key just for this.
+        services.AddHttpClient("Webhooks", client => client.Timeout = TimeSpan.FromSeconds(10));
+        services.AddTransient<WebhookDeliveryJob>();
+
         services.AddScoped<ISocialOAuthProvider, InstagramSocialOAuthProvider>();
         services.AddScoped<ISocialOAuthProvider, TikTokSocialOAuthProvider>();
         services.AddScoped<ISocialOAuthProvider, FacebookSocialOAuthProvider>();

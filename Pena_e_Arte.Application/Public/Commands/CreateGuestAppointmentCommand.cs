@@ -96,6 +96,7 @@ public class CreateGuestAppointmentHandler(
         Client? client = await db.Clients
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.StudioId == studio.Id && c.Email == req.Email && c.UserId == null, ct);
+        bool isNewClient = client is null;
 
         string randomPassword = GenerateRandomPassword();
 
@@ -172,6 +173,9 @@ public class CreateGuestAppointmentHandler(
             // Part 3c.
             await CreateAppointmentHandler.CreateAppointmentCoreAsync(
                 db, studio.Id, client.Id, req.Booking, slotLocker, jobs, realtime, sender, planLimits, ct);
+
+            if (isNewClient)
+                jobs.EnqueueWebhookDelivery(studio.Id, "client.created", client.Id);
         }
         catch (Exception ex)
         {

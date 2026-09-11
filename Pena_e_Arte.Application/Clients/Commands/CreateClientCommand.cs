@@ -11,7 +11,8 @@ namespace Pena_e_Arte.Application.Clients.Commands;
 
 public record CreateClientCommand(CreateClientRequest Request) : IRequest<ClientResponse>;
 
-public class CreateClientHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser)
+public class CreateClientHandler(
+    IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser, IJobScheduler jobs)
     : IRequestHandler<CreateClientCommand, ClientResponse>
 {
     public async Task<ClientResponse> Handle(CreateClientCommand command, CancellationToken ct)
@@ -53,6 +54,7 @@ public class CreateClientHandler(IAppDbContext db, ICurrentTenant tenant, ICurre
 
         db.Clients.Add(client);
         await db.SaveChangesAsync(ct);
+        jobs.EnqueueWebhookDelivery(tenant.StudioId, "client.created", client.Id);
 
         return Map(client, artist);
     }
