@@ -38,12 +38,14 @@ public class UpdateStudioBrandingHandler(IAppDbContext db, ICurrentTenant tenant
         await db.SaveChangesAsync(ct);
 
         bool allowBrandingRemoval = studio.Subscription?.Plan?.AllowBrandingRemoval ?? false;
+        bool allowApiAccess = studio.Subscription?.Plan?.AllowApiAccess ?? false;
 
         return new StudioResponse(
             studio.Id, studio.Name, studio.Slug, studio.City,
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
             allowBrandingRemoval,
+            allowApiAccess,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
             studio.IsSolo, studio.IsPublished, studio.Timezone);

@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Pena_e_Arte.API.Authentication;
 
 namespace Pena_e_Arte.API.Extensions;
 
@@ -57,7 +58,11 @@ public static class AuthenticationExtensions
                         return Task.CompletedTask;
                     }
                 };
-            });
+            })
+            // Additional scheme, never the default — only endpoints that explicitly opt in
+            // via the "ExternalApiAccess" policy (see AuthorizationExtensions) accept it.
+            .AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+                ApiKeyAuthenticationSchemeOptions.Scheme, _ => { });
 
         return services;
     }

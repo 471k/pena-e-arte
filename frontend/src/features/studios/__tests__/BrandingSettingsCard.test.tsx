@@ -21,7 +21,7 @@ const STUDIO_BRANDING_ON: StudioResponse = {
   latitude:             38.7169,
   longitude:            -9.1395,
   showPlatformBranding: true,
-  allowBrandingRemoval: false,
+  allowBrandingRemoval: false, allowApiAccess: false,
   trialExpiresAt:       "2099-01-01T00:00:00Z",
   createdAt:            "2025-01-01T00:00:00Z",
   isActive:             true,
@@ -37,13 +37,13 @@ const STUDIO_BRANDING_ON: StudioResponse = {
 const STUDIO_BRANDING_REMOVABLE: StudioResponse = {
   ...STUDIO_BRANDING_ON,
   showPlatformBranding: true,
-  allowBrandingRemoval: true,
+  allowBrandingRemoval: true, allowApiAccess: false,
 };
 
 const STUDIO_BRANDING_OFF: StudioResponse = {
   ...STUDIO_BRANDING_REMOVABLE,
   showPlatformBranding: false,
-  allowBrandingRemoval: true,
+  allowBrandingRemoval: true, allowApiAccess: false,
 };
 
 // ── MSW server ────────────────────────────────────────────────────────────────

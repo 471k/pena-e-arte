@@ -41,7 +41,7 @@ import { Role } from "@/shared/types/roles";
 const STUDIO: StudioResponse = {
   id: "s-001", name: "Test Studio", slug: "test-studio",
   city: "Tirana", latitude: 41.3, longitude: 19.8,
-  showPlatformBranding: false, allowBrandingRemoval: false,
+  showPlatformBranding: false, allowBrandingRemoval: false, allowApiAccess: false,
   trialExpiresAt: "2030-01-01T00:00:00Z",
   createdAt: "2024-01-01T00:00:00Z", isActive: true,
   slugLockedAt: null,

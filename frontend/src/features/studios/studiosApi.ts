@@ -22,6 +22,7 @@ export interface StudioResponse {
   longitude:            number;
   showPlatformBranding: boolean;
   allowBrandingRemoval: boolean;
+  allowApiAccess:       boolean;
   trialExpiresAt:       string;
   createdAt:            string;
   isActive:             boolean;
@@ -34,6 +35,19 @@ export interface StudioResponse {
   timezone:             string;
   subscriptionStatus?:  string | null;
   pastDueSince?:        string | null;
+}
+
+export interface StudioApiKeyStatusResponse {
+  hasActiveKey: boolean;
+  keyPrefix:    string | null;
+  createdAt:    string | null;
+  lastUsedAt:   string | null;
+}
+
+export interface GenerateApiKeyResponse {
+  apiKey:    string;
+  keyPrefix: string;
+  createdAt: string;
 }
 
 export interface InviteSoloArtistToJoinRequest {
@@ -115,7 +129,7 @@ export interface UpsertStudioHoursRequest {
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
-  tagTypes: ["Studio", "Referral", "StudioClosure", "StudioAuditLog", "StudioHours"],
+  tagTypes: ["Studio", "Referral", "StudioClosure", "StudioAuditLog", "StudioHours", "StudioApiKey"],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
       query: (body) => ({ url: "studios", method: "POST", body }),
@@ -155,6 +169,18 @@ export const studiosApi = createApi({
         body:   { showPlatformBranding },
       }),
       invalidatesTags: ["Studio"],
+    }),
+    getApiKeyStatus: builder.query<StudioApiKeyStatusResponse, void>({
+      query: () => "studios/me/api-key",
+      providesTags: ["StudioApiKey"],
+    }),
+    generateApiKey: builder.mutation<GenerateApiKeyResponse, void>({
+      query: () => ({ url: "studios/me/api-key", method: "POST" }),
+      invalidatesTags: ["StudioApiKey"],
+    }),
+    revokeApiKey: builder.mutation<void, void>({
+      query: () => ({ url: "studios/me/api-key", method: "DELETE" }),
+      invalidatesTags: ["StudioApiKey"],
     }),
     suspendStudio: builder.mutation<void, string>({
       query: (id) => ({ url: `studios/${id}/suspend`, method: "PATCH" }),
@@ -250,6 +276,9 @@ export const {
   useGetMyStudioQuery,
   useUpdateMyStudioMutation,
   useUpdateStudioBrandingMutation,
+  useGetApiKeyStatusQuery,
+  useGenerateApiKeyMutation,
+  useRevokeApiKeyMutation,
   useGetStudiosQuery,
   useGetStudioByIdQuery,
   useSuspendStudioMutation,

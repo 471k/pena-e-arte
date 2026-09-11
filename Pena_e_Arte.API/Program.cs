@@ -287,6 +287,7 @@ try
     app.MapBoothRentEndpoints();
     app.MapGiftCardEndpoints();
     app.MapPackageEndpoints();
+    app.MapExternalApiEndpoints();
 
     app.Run();
 }

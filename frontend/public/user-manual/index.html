@@ -474,6 +474,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#owner-branding" data-nav-link>Branding</a></li>
           <li><a href="#owner-embed" data-nav-link>Embed code</a></li>
           <li><a href="#owner-referral" data-nav-link>Referral programme</a></li>
+          <li><a href="#owner-developer-api" data-nav-link>Developer — API access</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -3060,6 +3061,33 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#guest-register-studio">Guest: register a studio</a>, <a href="#admin-referrals">Admin: platform referral codes</a></div>
 </section>
 
+<section id="owner-developer-api" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Developer — API access</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>Generate an API key to connect your own tools — accounting software, a spreadsheet, a custom booking form on your website — directly to your studio's appointment, client, and revenue data, instead of exporting and re-entering it by hand. Read-only: a connected tool can never create, change, or cancel anything in TattooOS. Only available on plans that include API access.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Developer API access card wireframe">
+<rect x="200" y="140" width="360" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="220" y="166" font-size="11" font-weight="700">Developer — API access</text>
+<rect x="220" y="180" width="320" height="26" rx="4" fill="currentColor" fill-opacity="0.06"/>
+<text x="228" y="197" font-size="8" font-family="monospace">tos_live_ab12••••••••••••••••••••••</text>
+<text x="220" y="230" font-size="8" fill-opacity="0.6">Created 3 Sep 2026 · Last used 1 hour ago</text>
+<rect x="220" y="250" width="90" height="26" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="265" y="267" font-size="8" text-anchor="middle">↻ Regenerate</text>
+<rect x="320" y="250" width="70" height="26" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="355" y="267" font-size="8" text-anchor="middle">Revoke</text>
+</svg>
+</figure>
+<figcaption>Developer — API access card, showing an active key's prefix, creation date, and last-used time</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click <span class="step-title">Generate API key</span>. The full key is shown exactly once — copy it immediately, it can't be viewed again afterward.</li>
+<li>Give the key to whatever tool or integration you're connecting. It's sent as an <code>X-Api-Key</code> header on each request.</li>
+<li>If you ever suspect the key has leaked, click <span class="step-title">Regenerate</span> (replaces it with a new one) or <span class="step-title">Revoke</span> (disables it with nothing to replace it) — either way, the old key stops working immediately.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> there's no way to retrieve a key after its one-time display — if you lose it, generate a new one.</div>
+<div class="crosslinks">See also: <a href="#owner-billing">Plan &amp; billing</a></div>
+</section>
+
 <section id="owner-notifications-log" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Notification log</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -3141,7 +3169,7 @@ ol.steps li { margin: 6px 0; }
 <li>If a downgrade is scheduled, a card lets you cancel that pending change and keep your current plan.</li>
 </ol>
 <div class="callout callout-warn"><strong>Payment failed?</strong> A banner appears at the top of every page showing how many days your payment has been overdue, and reminder emails go out on day 1, 3, and 7 after the failure. Click "Update billing details" in either place to fix it — the banner and emails stop automatically once a payment succeeds.</div>
-<div class="crosslinks">See also: <a href="#owner-subscribe">Choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
+<div class="crosslinks">See also: <a href="#owner-subscribe">Choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a>, <a href="#owner-developer-api">Developer — API access</a></div>
 </section>
 
 <section id="owner-subscribe" data-role="owner">

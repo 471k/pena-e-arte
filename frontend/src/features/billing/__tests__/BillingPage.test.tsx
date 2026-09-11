@@ -68,7 +68,7 @@ const ACTIVE_STUDIO: StudioResponse = {
   latitude:             41.1,
   longitude:            -8.6,
   showPlatformBranding: true,
-  allowBrandingRemoval: false,
+  allowBrandingRemoval: false, allowApiAccess: false,
   trialExpiresAt:       "2099-01-01T00:00:00Z",
   createdAt:            "2024-01-01T00:00:00Z",
   isActive:             true,

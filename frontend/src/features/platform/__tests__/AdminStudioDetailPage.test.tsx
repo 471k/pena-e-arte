@@ -47,7 +47,7 @@ const STUDIO: StudioResponse = {
   latitude:             41.1,
   longitude:            -8.6,
   showPlatformBranding: true,
-  allowBrandingRemoval: false,
+  allowBrandingRemoval: false, allowApiAccess: false,
   trialExpiresAt:       new Date(Date.now() + 14 * 86_400_000).toISOString(),
   createdAt:            "2024-01-01T00:00:00Z",
   isActive:             true,
