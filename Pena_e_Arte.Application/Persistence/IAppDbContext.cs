@@ -18,6 +18,7 @@ public interface IAppDbContext
     DbSet<ArtistTimeOff> ArtistTimeOffs { get; }
     DbSet<StudioClosure> StudioClosures { get; }
     DbSet<StudioHours> StudioHours { get; }
+    DbSet<StudioApiKey> StudioApiKeys { get; }
     DbSet<PortfolioImage> PortfolioImages { get; }
     DbSet<Design> Designs { get; }
     DbSet<DesignRevision> DesignRevisions { get; }

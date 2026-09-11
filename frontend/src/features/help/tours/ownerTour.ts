@@ -46,7 +46,7 @@ export const ownerTourSteps: TourStep[] = [
   {
     targetSelector: '[data-tour="owner-studio-profile-nav"]',
     title: "Your studio profile",
-    body: "Edit your studio's public details, branding, booking widget, QR code, and referral code here.",
+    body: "Edit your studio's public details, branding, booking widget, QR code, referral code, and API access here.",
   },
   {
     targetSelector: '[data-tour="owner-studio-hours-card"]',

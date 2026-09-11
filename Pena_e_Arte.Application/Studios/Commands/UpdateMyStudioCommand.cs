@@ -77,6 +77,7 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
             AllowBrandingRemoval: false,
+            AllowApiAccess: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
             studio.IsSolo, studio.IsPublished, studio.Timezone);

@@ -14,7 +14,7 @@ const BASE_STUDIO: StudioResponse = {
   latitude:             0,
   longitude:            0,
   showPlatformBranding: true,
-  allowBrandingRemoval: false,
+  allowBrandingRemoval: false, allowApiAccess: false,
   trialExpiresAt:       "2099-01-01T00:00:00Z",
   createdAt:            "2024-01-01T00:00:00Z",
   isActive:             true,

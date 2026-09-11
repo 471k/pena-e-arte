@@ -23,6 +23,7 @@ public class GetStudioByIdHandler(IAppDbContext db)
                 s.Latitude, s.Longitude,
                 s.ShowPlatformBranding,
                 AllowBrandingRemoval: false,
+                AllowApiAccess: false,
                 s.TrialExpiresAt, s.CreatedAt, s.IsActive,
                 s.SlugLockedAt, s.PhoneNumber, s.InstagramHandle, s.Nipt,
                 s.IsSolo, s.IsPublished, s.Timezone))

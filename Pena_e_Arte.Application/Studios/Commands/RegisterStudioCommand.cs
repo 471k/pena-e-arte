@@ -123,6 +123,7 @@ public class RegisterStudioHandler(
             studio.Latitude, studio.Longitude,
             studio.ShowPlatformBranding,
             AllowBrandingRemoval: false,
+            AllowApiAccess: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, PhoneNumber: null, InstagramHandle: null, Nipt: studio.Nipt,
             IsSolo: studio.IsSolo, IsPublished: studio.IsPublished, Timezone: studio.Timezone);

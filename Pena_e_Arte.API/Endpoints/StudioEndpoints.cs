@@ -1,4 +1,6 @@
 using MediatR;
+using Pena_e_Arte.Application.ExternalApi.Commands;
+using Pena_e_Arte.Application.ExternalApi.Queries;
 using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Application.Studios.Queries;
 using Pena_e_Arte.Application.Studios.StudioJoinInvites;
@@ -25,6 +27,12 @@ public static class StudioEndpoints
 
         // Owner: invite an independent solo artist to dissolve their solo studio and join here
         group.MapPost("/me/join-invites", InviteSoloArtistToJoin).RequireAuthorization("OwnerOnly");
+
+        // Owner: external API key management — see docs/claude/architecture.md's
+        // "External API Access" entry for what this unlocks and why it's plan-gated.
+        group.MapGet("/me/api-key", GetApiKeyStatus).RequireAuthorization("OwnerOnly");
+        group.MapPost("/me/api-key", GenerateApiKey).RequireAuthorization("OwnerOnly");
+        group.MapDelete("/me/api-key", RevokeApiKey).RequireAuthorization("OwnerOnly");
 
         // Owner: manage branding and slug for their studio
         group.MapPatch("{id:guid}/branding", UpdateBranding).RequireAuthorization("OwnerOnly");
@@ -220,5 +228,23 @@ public static class StudioEndpoints
         AuditLogPageResponse result = await mediator.Send(
             new GetMyStudioAuditLogQuery(action, from, to, page, pageSize), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetApiKeyStatus(ISender mediator, CancellationToken ct)
+    {
+        StudioApiKeyStatusResponse result = await mediator.Send(new GetStudioApiKeyStatusQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GenerateApiKey(ISender mediator, CancellationToken ct)
+    {
+        GenerateApiKeyResponse result = await mediator.Send(new GenerateStudioApiKeyCommand(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> RevokeApiKey(ISender mediator, CancellationToken ct)
+    {
+        await mediator.Send(new RevokeStudioApiKeyCommand(), ct);
+        return Results.NoContent();
     }
 }

@@ -9,6 +9,7 @@ public record StudioResponse(
     double Longitude,
     bool ShowPlatformBranding,
     bool AllowBrandingRemoval,
+    bool AllowApiAccess,
     DateTime TrialExpiresAt,
     DateTime CreatedAt,
     bool IsActive,

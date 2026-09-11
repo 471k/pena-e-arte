@@ -50,6 +50,7 @@ public static class RateLimitingExtensions
                     //                                          found via /code-review, 2026-09-01
                     //   public-read    |   120    | 1 min   ← portfolio feed, studio/artist pages
                     //   billing        |    20    | 1 min   ← Stripe-calling billing mutations, per user
+                    //   external-api   |    60    | 1 min   ← third-party integrations, per API key
 
                     AddRedisPolicy(opt, db, logger, "auth", permitLimit: 10, window: TimeSpan.FromMinutes(1));
                     AddRedisPolicy(opt, db, logger, "public-write", permitLimit: 30, window: TimeSpan.FromMinutes(1));
@@ -57,20 +58,25 @@ public static class RateLimitingExtensions
                     AddRedisPolicy(opt, db, logger, "public-read", permitLimit: 120, window: TimeSpan.FromMinutes(1));
                     AddRedisPolicy(
                         opt, db, logger, "billing", permitLimit: 20, window: TimeSpan.FromMinutes(1),
-                        partitionKeySelector: BillingPartitionKey);
+                        partitionKeySelector: AuthenticatedPartitionKey);
+                    AddRedisPolicy(
+                        opt, db, logger, "external-api", permitLimit: 60, window: TimeSpan.FromMinutes(1),
+                        partitionKeySelector: AuthenticatedPartitionKey);
                 });
 
         return services;
     }
 
-    // Every "billing" endpoint requires authentication, so partitioning by user id (rather than
-    // IP) is both more precise and immune to many users sharing one office/NAT IP. Reads the
+    // Every "billing"/"external-api" endpoint requires authentication, so partitioning by the
+    // NameIdentifier claim (rather than IP) is both more precise and immune to many users/keys
+    // sharing one office/NAT IP — for "external-api" this is the StudioApiKey's own id, so each
+    // key gets its own bucket regardless of which IP the integration calls from. Reads the
     // claim directly instead of resolving ICurrentUser, matching CurrentUserService's own
     // extraction logic — this callback runs inside UseRateLimiter, which Program.cs now places
     // after UseAuthentication specifically so HttpContext.User is already populated here
     // (verified empirically: with the old ordering, IsAuthenticated was still false at this
     // point for every policy, so a user-id claim would never have been present).
-    private static string BillingPartitionKey(HttpContext httpContext) =>
+    private static string AuthenticatedPartitionKey(HttpContext httpContext) =>
         httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
 
     private static void AddRedisPolicy(

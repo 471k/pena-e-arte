@@ -1,0 +1,13 @@
+# False positives allowlisted per CI's documented convention (see ci.yml's
+# guardrails job comment): gitleaks flags a hardcoded "secret" only because
+# it's a fake test fixture matching the API key prefix pattern used by
+# ApiKeyHasher, not a real credential.
+
+# frontend/src/features/studios/__tests__/DeveloperSettingsCard.test.tsx:46
+# Fake key-status fixture: a truncated display-prefix value in the shape the
+# real status endpoint returns, not a usable secret.
+e71069d621f6aa3f9398f734f7baeb526b847bc4:frontend/src/features/studios/__tests__/DeveloperSettingsCard.test.tsx:generic-api-key:46
+
+# This file's own now-corrected comment (a93e558) briefly quoted the same
+# fake fixture value above, which self-triggered this ignore file's own scan.
+a93e558d05b4fd944585e41fa20bf26bf8df08c2:.gitleaksignore:generic-api-key:7

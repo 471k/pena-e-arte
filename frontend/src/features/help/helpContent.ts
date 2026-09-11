@@ -1149,6 +1149,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
+    id: "owner-developer-api",
+    roles: [Owner],
+    title: "Connect your own tools with the API",
+    keywords: ["api", "api key", "developer", "integration", "webhook", "export automatically", "accounting software", "zapier"],
+    summary: "Generate an API key to connect your own tools — accounting software, a spreadsheet, a custom booking form on your website — directly to your studio's appointment, client, and revenue data, instead of exporting and re-entering it by hand.",
+    steps: [
+      "Go to Studio Settings and scroll to \"Developer — API access\".",
+      "Click \"Generate API key\". The full key is shown once — copy it immediately, it can't be viewed again.",
+      "Give the key to whatever tool or integration you're connecting (it's sent as an X-Api-Key header on each request).",
+      "If you ever suspect the key has leaked, click \"Regenerate\" or \"Revoke\" — the old key stops working immediately.",
+    ],
+    tips: [
+      "This is read-only: a connected tool can read your appointments, clients, and revenue, but it can never create, change, or cancel anything in TattooOS.",
+      "Only available on plans that include API access — if you don't see this section, your current plan doesn't include it.",
+      "If you lose the key, there's no way to retrieve it — generate a new one, which immediately replaces (and disables) the old one.",
+    ],
+    relatedArticleIds: ["owner-billing"],
+  },
+  {
     id: "owner-notifications",
     roles: [Owner],
     title: "Review sent notifications",
@@ -1175,7 +1194,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If you're on a paid card-billed plan, click \"Change plan\" or \"Manage billing\".",
       "If a plan change is scheduled, click \"Keep current plan\" to cancel it before it takes effect.",
     ],
-    relatedArticleIds: ["owner-subscribe", "owner-past-due"],
+    relatedArticleIds: ["owner-subscribe", "owner-past-due", "owner-developer-api"],
   },
   {
     id: "owner-past-due",
