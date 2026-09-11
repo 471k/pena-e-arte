@@ -337,6 +337,7 @@ public class CreateAppointmentHandler(
             await realtime.NotifyStudioAsync(studioId, "AppointmentCreated", response, ct);
 
             await sender.Send(new SendAppointmentCreatedNotificationCommand(appointment.Id), ct);
+            jobs.EnqueueWebhookDelivery(studioId, "appointment.created", appointment.Id);
 
             return response;
         }

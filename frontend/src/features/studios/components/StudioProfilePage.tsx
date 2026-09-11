@@ -18,6 +18,7 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMutation } from "../studiosApi";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { DeveloperSettingsCard } from "./DeveloperSettingsCard";
+import { WebhookSettingsCard } from "./WebhookSettingsCard";
 import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 import { StudioClosuresCard } from "./StudioClosuresCard";
@@ -436,6 +437,7 @@ export function StudioProfilePage() {
         <StudioSocialLinksCard />
         <BrandingSettingsCard />
         <DeveloperSettingsCard />
+        <WebhookSettingsCard />
         <StudioHoursCard />
         <StudioClosuresCard />
         <QrCodeSection />

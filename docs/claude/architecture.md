@@ -4361,3 +4361,119 @@ shape against a real MySQL-backed `UserManager`, not a stand-in. `pnpm tsc -b`/`
 clean; `pnpm lint` clean (0 errors); full `pnpm test` — 2056 frontend tests, all passing
 except one pre-existing, already-documented flake in `StudioProfilePage.test.tsx` unrelated
 to this change (a `testTimeout` flake noted in that file's own comment since 2026-09-05).
+
+### External API Access — 2026-09-11
+
+Delivers `Plan.AllowApiAccess` (PR #126) — previously a live, help-documented, zero-backend
+flag flagged as a "sold but undelivered" billing-integrity risk during the 2026-07-20 audit
+and hidden from `PlanEditPage.tsx`/Help pending a real implementation. Scoped via
+`AskUserQuestion` before building: **read-only data access** (no write actions through the
+key at all) and **webhooks explicitly deferred** to a separate change (see the next entry —
+it shipped the same day, in a follow-up conversation).
+
+**What was built:**
+- `StudioApiKey` (new `TenantEntity`) — one active key per studio; generating a new one
+  revokes whatever was active before rather than accumulating keys. `KeyHash` (SHA-256,
+  looked up by hash with `IgnoreQueryFilters()` before the caller's tenant is known — same
+  cross-tenant-lookup shape as refresh tokens) is stored, never the raw key; the raw key is
+  returned exactly once, at generation time.
+- A second, parallel ASP.NET Core auth scheme (`ApiKeyAuthenticationHandler`, header
+  `X-Api-Key`) coexisting with JWT Bearer. Its `ClaimsPrincipal` carries a `scope=external-api`
+  claim and deliberately no role claim, so it's authorized by a dedicated `ExternalApiAccess`
+  policy completely isolated from the role-based policies (Client/Artist/Owner/Admin) — a
+  leaked API key can reach `/api/v1/external/*` and nothing else, no matter what.
+- `/api/v1/external/{appointments,clients,revenue}` — trimmed, purpose-built response DTOs
+  (`ExternalAppointmentResponse`/`ExternalClientResponse`) separate from the internal
+  `AppointmentResponse`/`ClientResponse` shapes, so the integration contract can evolve
+  independently of internal UI needs. Own rate-limit tier (60/min, partitioned by claim).
+- Owner-only key management under `/api/v1/studios/me/api-key` (GET status, POST generate,
+  DELETE revoke) — none of which appear in `ImpersonationAllowList`, so all three (including
+  the GET) are denied by default during support impersonation with zero extra code.
+
+**Critical bug found + fixed**: `StudioApiKey` was initially missing from `AppDbContext`'s
+manually-enumerated `HasQueryFilter` list (tenant isolation here is NOT automatic per
+`TenantEntity` subtype — every one needs an explicit line). This left
+`GenerateStudioApiKeyCommand`'s "revoke whatever is currently active" query completely
+unscoped: generating a key for Studio B silently revoked Studio A's already-active key.
+Invisible to unit tests (`FakeDbContext`/EF Core InMemory applies no query filter at all —
+already a known gap, see the Support Impersonation entry above) — caught only by a real-MySQL
+integration test. Fixed, with a dedicated regression test
+(`GenerateApiKey_ForStudioB_DoesNotRevokeStudioAsExistingKey`) added so it can't regress silently.
+
+Help sync: new `owner-developer-api` article (`helpContent.ts`), a matching
+`#owner-developer-api` section in the standalone manual, and the existing
+`owner-studio-profile-nav` onboarding-tour step extended (not a new step — no new nav item)
+to mention API access.
+
+**Verification**: 2219 backend unit + 466 integration tests green; frontend
+`DeveloperSettingsCard` component tests (7) covering the upgrade hint, one-time key reveal,
+regenerate, and revoke flows; `pnpm lint` clean (0 errors).
+
+### Webhooks — 2026-09-11 (same day, follow-up conversation)
+
+Delivers the half of API access deliberately deferred above: instead of an integration
+polling `/api/v1/external/*`, a studio can register one URL and receive a signed HTTP POST
+the instant an appointment is created, cancelled, or rescheduled, or a new client is added
+(via booking, guest checkout, or manual client creation). User said "go ahead with webhooks"
+directly, without a fresh scoping round — the design below follows the same MVP posture
+already established for the API key (single credential, regenerate/replace rather than a
+list) rather than re-asking.
+
+**What was built:**
+- `WebhookEndpoint` (new `TenantEntity`, one per studio) — `EncryptedSecret` is
+  round-trippable (AES-256-GCM via the existing `ITokenEncryptor`/`AesTokenEncryptor`, reused
+  as-is rather than adding a second encryption key — this is exactly the "generalise this"
+  direction already flagged in `docs/payments/implementation-readiness-status-2026-07-31.md`)
+  rather than hashed like `StudioApiKey.KeyHash`, since delivery needs the raw secret to sign
+  each request. `ConsecutiveFailureCount`/`IsActive` auto-disable an endpoint after 20
+  consecutive failed attempts (Stripe-style), reactivated by re-saving the URL.
+- `WebhookDelivery` (new `TenantEntity`) — one row per delivery *attempt*, not per event;
+  Hangfire's own default `AutomaticRetryAttribute` (no custom override) retries a failed
+  delivery automatically, so a single event can and deliberately does produce several rows
+  here as it's retried — exactly the per-attempt log a studio needs to debug a failing
+  endpoint. Surfaced as a delivery-log table in `WebhookSettingsCard.tsx`.
+- `WebhookSigner` (`Application/Common`) — HMAC-SHA256 over `{timestamp}.{body}` (not the
+  body alone, so a captured-and-replayed delivery is at least detectable by timestamp on the
+  receiving end), same scheme Stripe/GitHub webhooks use. Headers: `X-Webhook-Id`,
+  `X-Webhook-Timestamp`, `X-Webhook-Signature: sha256=<hex>`.
+- `WebhookUrlValidator` — a basic SSRF guard, since this makes the server POST to a
+  studio-supplied URL: requires HTTPS, rejects loopback/private/link-local/reserved address
+  space (`System.Net.IPNetwork` range checks) at save time (`IsAllowed`, literal-IP-only —
+  synchronous, used by the FluentValidation rule) and again at delivery time
+  (`IsAllowedAsync`, resolves the hostname and checks every returned address — closes the
+  DNS-rebinding gap the save-time check alone leaves open, run immediately before each POST
+  in `WebhookDeliveryJob`).
+- `WebhookDeliveryJob` (Hangfire) — runs with no ambient tenant (`IgnoreQueryFilters()` +
+  explicit `studioId` predicate throughout, same pattern as `ChatNotificationJob`). No active
+  endpoint → silent no-op (nothing recorded). Missing resource (e.g. appointment already hard
+  deleted by the time the job runs) → skip, log a warning, no delivery row. A non-2xx response
+  or transport exception is recorded as a failed `WebhookDelivery` row and then re-thrown, so
+  Hangfire's own retry/backoff takes over — the job only decides *whether* to retry, never
+  *how long* to wait.
+- Owner-only endpoint management under `/api/v1/studios/me/webhook` (GET status, POST
+  upsert/replace, DELETE, POST `/test` for an on-demand `ping` event, GET `/deliveries` for
+  the log) — same `ExternalApiAccess`-adjacent plan gate as the API key
+  (`Plan.AllowApiAccess`), and none of these routes are in `ImpersonationAllowList` either, so
+  all five are denied by default during support impersonation.
+- Dispatch call sites (direct `IJobScheduler.EnqueueWebhookDelivery` calls, not a new MediatR
+  command/pipeline-behavior — `CreateAppointmentCoreAsync`, `CancelAppointmentCommand`,
+  `RescheduleAppointmentCommand`, `CreateClientCommand`, and `CreateGuestAppointmentCommand`
+  each already inject `IJobScheduler` for reminders/other background work, so this reuses that
+  existing dependency rather than introducing a new domain-event abstraction for four call
+  sites) fire `appointment.created`/`appointment.cancelled`/`appointment.rescheduled`/
+  `client.created` after each command's own `SaveChangesAsync` succeeds.
+
+Help sync: new `owner-developer-webhooks` article (`helpContent.ts`, cross-linked both ways
+with `owner-developer-api` and `owner-billing`), a matching `#owner-developer-webhooks`
+section in the standalone manual, and the same `owner-studio-profile-nav` onboarding-tour
+step extended again ("API access" → "API/webhook access").
+
+**Verification**: 2258 backend unit + 474 integration tests green, including a tenant-isolation
+test for the new entities (mirroring the API-access feature's own regression test — proven
+this time on the first pass, the query filter was added immediately) and delivery-job tests
+covering successful delivery with signature verification, a non-2xx response triggering the
+Hangfire-retry throw, the 20th-consecutive-failure auto-disable threshold, no-active-endpoint
+no-op, and missing-resource skip; `WebhookSettingsCard` component tests (11) covering the
+upgrade hint, save/one-time-secret-reveal, a server validation error surfacing inline, active/
+disabled endpoint states, send-test-event, remove, and the delivery log; `pnpm lint` clean
+(0 errors); `pnpm build` clean.

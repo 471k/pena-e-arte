@@ -475,6 +475,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#owner-embed" data-nav-link>Embed code</a></li>
           <li><a href="#owner-referral" data-nav-link>Referral programme</a></li>
           <li><a href="#owner-developer-api" data-nav-link>Developer — API access</a></li>
+          <li><a href="#owner-developer-webhooks" data-nav-link>Developer — Webhooks</a></li>
         </ul>
       </div>
       <div class="nav-section">
@@ -3085,7 +3086,38 @@ ol.steps li { margin: 6px 0; }
 <li>If you ever suspect the key has leaked, click <span class="step-title">Regenerate</span> (replaces it with a new one) or <span class="step-title">Revoke</span> (disables it with nothing to replace it) — either way, the old key stops working immediately.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> there's no way to retrieve a key after its one-time display — if you lose it, generate a new one.</div>
-<div class="crosslinks">See also: <a href="#owner-billing">Plan &amp; billing</a></div>
+<div class="crosslinks">See also: <a href="#owner-billing">Plan &amp; billing</a>, <a href="#owner-developer-webhooks">Developer — Webhooks</a></div>
+</section>
+
+<section id="owner-developer-webhooks" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Developer — Webhooks</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>Instead of an integration repeatedly polling the API for new data, give us a URL and we'll POST a signed event to it the instant a booking is created, cancelled, or rescheduled, or a new client is added. Same plan requirement as the API key above.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Developer Webhooks card wireframe">
+<rect x="180" y="120" width="400" height="240" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="200" y="146" font-size="11" font-weight="700">Developer — Webhooks</text>
+<rect x="200" y="160" width="360" height="26" rx="4" fill="currentColor" fill-opacity="0.06"/>
+<text x="208" y="177" font-size="8" font-family="monospace">https://example.com/hooks/pea</text>
+<text x="200" y="204" font-size="8" fill-opacity="0.6">Last delivery 2 min ago — succeeded</text>
+<rect x="200" y="216" width="80" height="24" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="240" y="232" font-size="8" text-anchor="middle">Edit</text>
+<rect x="288" y="216" width="110" height="24" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="343" y="232" font-size="8" text-anchor="middle">▶ Send test event</text>
+<text x="200" y="266" font-size="8" font-weight="700" fill-opacity="0.7">Recent deliveries</text>
+<rect x="200" y="274" width="360" height="20" fill="currentColor" fill-opacity="0.05"/>
+<text x="208" y="288" font-size="8" font-family="monospace">appointment.created</text><text x="480" y="288" font-size="8" fill="#22c55e">Delivered</text>
+</svg>
+</figure>
+<figcaption>Developer — Webhooks card, showing the configured URL, last delivery status, and a recent-deliveries log</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Enter the URL your tool should receive events at, then click <span class="step-title">Save</span>.</li>
+<li>Copy the signing secret shown exactly once — use it to verify the <code>X-Webhook-Signature</code> header on each delivery, confirming it really came from us.</li>
+<li>Click <span class="step-title">Send test event</span> to confirm your URL is receiving deliveries correctly before relying on it.</li>
+<li>Check <span class="step-title">Recent deliveries</span> any time to see whether recent events succeeded or failed, and why.</li>
+</ol>
+<div class="callout callout-tip"><strong>Tip:</strong> a failed delivery is retried automatically several times with increasing delay; an endpoint that keeps failing is disabled automatically to stop wasting retries — re-saving its URL reactivates it. Only one webhook URL per studio: saving a new one replaces the old one (and issues a new signing secret).</div>
+<div class="crosslinks">See also: <a href="#owner-developer-api">Developer — API access</a>, <a href="#owner-billing">Plan &amp; billing</a></div>
 </section>
 
 <section id="owner-notifications-log" data-role="owner">
@@ -3169,7 +3201,7 @@ ol.steps li { margin: 6px 0; }
 <li>If a downgrade is scheduled, a card lets you cancel that pending change and keep your current plan.</li>
 </ol>
 <div class="callout callout-warn"><strong>Payment failed?</strong> A banner appears at the top of every page showing how many days your payment has been overdue, and reminder emails go out on day 1, 3, and 7 after the failure. Click "Update billing details" in either place to fix it — the banner and emails stop automatically once a payment succeeds.</div>
-<div class="crosslinks">See also: <a href="#owner-subscribe">Choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a>, <a href="#owner-developer-api">Developer — API access</a></div>
+<div class="crosslinks">See also: <a href="#owner-subscribe">Choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a>, <a href="#owner-developer-api">Developer — API access</a>, <a href="#owner-developer-webhooks">Developer — Webhooks</a></div>
 </section>
 
 <section id="owner-subscribe" data-role="owner">

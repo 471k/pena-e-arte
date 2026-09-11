@@ -19,6 +19,8 @@ public interface IAppDbContext
     DbSet<StudioClosure> StudioClosures { get; }
     DbSet<StudioHours> StudioHours { get; }
     DbSet<StudioApiKey> StudioApiKeys { get; }
+    DbSet<WebhookEndpoint> WebhookEndpoints { get; }
+    DbSet<WebhookDelivery> WebhookDeliveries { get; }
     DbSet<PortfolioImage> PortfolioImages { get; }
     DbSet<Design> Designs { get; }
     DbSet<DesignRevision> DesignRevisions { get; }

@@ -114,7 +114,7 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
         db.Artists.Add(callerArtist);
         await db.SaveChangesAsync();
 
-        CreateClientHandler handler = new(db, tenant, artistUser);
+        CreateClientHandler handler = new(db, tenant, artistUser, Substitute.For<IJobScheduler>());
         CreateClientRequest req = new("Ana", "Costa", $"{Guid.NewGuid()}@example.com", null, otherArtistId);
         ClientResponse result = await handler.Handle(new CreateClientCommand(req), default);
 
@@ -434,7 +434,7 @@ public class ClientHandlerIntegrationTests(DatabaseFixture fixture)
         ICurrentUser ownerUser = Substitute.For<ICurrentUser>();
         ownerUser.UserId.Returns(Guid.NewGuid());
         ownerUser.Role.Returns("owner");
-        CreateClientHandler handler = new(db, tenant, ownerUser);
+        CreateClientHandler handler = new(db, tenant, ownerUser, Substitute.For<IJobScheduler>());
         CreateClientRequest req = new(fields.FirstName, fields.LastName, fields.Email, fields.Phone, resolvedArtistId);
         return await handler.Handle(new CreateClientCommand(req), default);
     }

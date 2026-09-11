@@ -18,6 +18,7 @@ public class RescheduleAppointmentHandlerTests
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
     private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _artistId = Guid.NewGuid();
 
@@ -27,7 +28,7 @@ public class RescheduleAppointmentHandlerTests
         _currentUser.Role.Returns("artist");
     }
 
-    private RescheduleAppointmentHandler CreateSut() => new(_db, _tenant, _currentUser, _realtime, _sender);
+    private RescheduleAppointmentHandler CreateSut() => new(_db, _tenant, _currentUser, _realtime, _sender, _jobs);
 
     [Fact]
     public async Task Handle_PendingAppointment_UpdatesDateAndDuration()

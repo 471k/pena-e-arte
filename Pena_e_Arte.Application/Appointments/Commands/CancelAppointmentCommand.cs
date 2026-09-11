@@ -151,6 +151,7 @@ public class CancelAppointmentHandler(
             tenant.StudioId, "AppointmentCancelled", new { command.AppointmentId }, ct);
 
         await sender.Send(new SendAppointmentCancellationCommand(appointment.Id), ct);
+        jobs.EnqueueWebhookDelivery(tenant.StudioId, "appointment.cancelled", appointment.Id);
 
         if (waitlistMatchId is Guid matchId)
             await sender.Send(new SendWaitlistSlotAvailableNotificationCommand(matchId), ct);
