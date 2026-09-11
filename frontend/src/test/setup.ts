@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
+import { toast } from "sonner";
 import { configure } from "@testing-library/react";
 
 // Default findBy*/waitFor timeout (1000ms) assumes near-instant async resolution.
@@ -82,8 +83,14 @@ window.matchMedia = window.matchMedia || ((query: string) => ({
 
 // globals: false means @testing-library/react never auto-registers afterEach(cleanup).
 // Each test would otherwise accumulate the previous test's DOM.
+//
+// toast.dismiss() (no id) clears sonner's module-level toast queue too — sonner keeps
+// its own store independent of React's tree, so a toast fired in one test stays queued
+// and gets rendered by the NEXT test's freshly-mounted <Toaster/>, surfacing as
+// "found multiple elements" once two tests in a row fire the same success message.
 afterEach(() => {
   cleanup();
+  toast.dismiss();
 });
 
 // RTK Query calls `new Request(url, config)` directly before calling fetchFn.
