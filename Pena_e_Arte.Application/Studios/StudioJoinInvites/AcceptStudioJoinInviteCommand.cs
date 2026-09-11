@@ -91,7 +91,7 @@ public class AcceptStudioJoinInviteHandler(
             FirstName = invite.FirstName,
             LastName = invite.LastName,
             Email = currentUser.Email,
-            Specializations = [..invite.Specializations],
+            Specializations = [.. invite.Specializations],
             HourlyRate = invite.HourlyRate,
         };
         artist.SetSlug(slug);

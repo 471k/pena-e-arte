@@ -83,8 +83,13 @@ public class ArtistSpecializationsIntegrationTests(DatabaseFixture fixture)
 
         db.Studios.Add(new Studio
         {
-            Id = studioId, Name = "Ink Palace", Slug = $"ink-{Guid.NewGuid():N}",
-            City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true,
+            Id = studioId,
+            Name = "Ink Palace",
+            Slug = $"ink-{Guid.NewGuid():N}",
+            City = "Lisbon",
+            Latitude = 38.7169,
+            Longitude = -9.1395,
+            IsActive = true,
         });
 
         Artist artist = new()
@@ -101,7 +106,10 @@ public class ArtistSpecializationsIntegrationTests(DatabaseFixture fixture)
 
         db.PortfolioImages.Add(new PortfolioImage
         {
-            ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img.jpg", Style = "blackwork",
+            ArtistId = artist.Id,
+            StudioId = studioId,
+            ImageUrl = "img.jpg",
+            Style = "blackwork",
         });
         await db.SaveChangesAsync();
 
