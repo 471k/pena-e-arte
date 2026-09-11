@@ -23,7 +23,7 @@ const ARTIST: ArtistResponse = {
   firstName:       "Ana",
   lastName:        "Costa",
   email:           "ana@ink.test",
-  specializations: null,
+  specializations: [],
   hourlyRate:      null,
   isActive:        true,
   avatarUrl:       null,

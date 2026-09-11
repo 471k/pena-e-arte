@@ -22,6 +22,7 @@ import {
 import { StarRating }              from "@/shared/components/ui/StarRating";
 import { useAppSelector }          from "@/app/hooks";
 import { useGetPublicStudioQuery } from "../publicApi";
+import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import type { PublicArtistSummary, PublicStudioHoursResponse } from "../publicApi";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
@@ -136,7 +137,10 @@ function ArtistAvatar({ name, profileImageUrl }: { name: string; profileImageUrl
 }
 
 function ArtistCard({ artist }: { artist: PublicArtistSummary }) {
-  const primarySpec = artist.specializations?.split(",")[0]?.trim() ?? null;
+  const primarySpecValue = artist.specializations[0] ?? null;
+  const primarySpec = primarySpecValue
+    ? (TATTOO_STYLE_OPTIONS.find((o) => o.value === primarySpecValue)?.label ?? primarySpecValue)
+    : null;
 
   return (
     <Link

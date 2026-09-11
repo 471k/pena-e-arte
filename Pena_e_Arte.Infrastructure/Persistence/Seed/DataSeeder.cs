@@ -472,7 +472,7 @@ public static class DataSeeder
             FirstName = "Elena",
             LastName = "Martins",
             Email = "elena.martins@ink-soul.test",
-            Specializations = "Traditional,Japanese,Neo-Traditional",
+            Specializations = [TattooStyle.Traditional, TattooStyle.Japanese, TattooStyle.NeoTraditional],
             HourlyRate = 100m,
             UpdatedAt = now
         };
@@ -485,7 +485,7 @@ public static class DataSeeder
             FirstName = "Marco",
             LastName = "Santos",
             Email = "marco.santos@ink-soul.test",
-            Specializations = "Realism,Portraits,Black & Grey",
+            Specializations = [TattooStyle.Realism],
             HourlyRate = 120m,
             UpdatedAt = now
         };
@@ -498,7 +498,7 @@ public static class DataSeeder
             FirstName = "Sofia",
             LastName = "Alves",
             Email = S1Artist3Email,
-            Specializations = "Geometric,Minimalist,Fine Line",
+            Specializations = [TattooStyle.Geometric, TattooStyle.Fineline],
             HourlyRate = 90m,
             UpdatedAt = now
         };
@@ -1568,7 +1568,7 @@ public static class DataSeeder
             FirstName = "Luís",
             LastName = "Rodrigues",
             Email = "luis.rodrigues@dark-canvas.test",
-            Specializations = "Black & Grey,Lettering,Blackwork",
+            Specializations = [TattooStyle.Blackwork],
             HourlyRate = 80m,
             UpdatedAt = now
         };

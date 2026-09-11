@@ -21,6 +21,7 @@ import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { useAppSelector } from "@/app/hooks";
 import { useCreateConversationMutation } from "@/features/messaging";
 import { AppointmentStatus, AppointmentAttachmentCategory, DepositStatus, ReferralSource } from "../appointment.types";
@@ -50,10 +51,6 @@ function formatDateTime(dateStr: string, studioTimezone: string | undefined): st
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
-
-function buildIcsUrl(apptId: string): string {
-  return `/api/v1/appointments/${apptId}/calendar.ics`;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -126,9 +123,11 @@ export function AppointmentDetailPage() {
   const isArtistPlus = usePermission(Role.Artist);
   const canOwner     = usePermission(Role.Owner);
   const role         = useAppSelector((s) => s.auth.role);
+  const { token, tenantId } = useAppSelector((s) => s.auth);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [downloadingIcs, setDownloadingIcs] = useState(false);
   const { data: studio } = useGetMyStudioQuery();
 
   const { data: appt, isLoading, isError } = useGetAppointmentQuery(id ?? "", {
@@ -208,6 +207,23 @@ export function AppointmentDetailPage() {
     const result = await assignArtist({ id: appt!.id, body: { artistId } });
     if ("data" in result) toast.success("Artist assigned.");
     else                  toast.error("Failed to assign artist.");
+  }
+
+  async function handleDownloadIcs() {
+    if (!appt) return;
+    setDownloadingIcs(true);
+    try {
+      await downloadAuthenticatedFile(
+        `appointments/${appt.id}/calendar.ics`,
+        `appointment-${appt.id}.ics`,
+        token,
+        tenantId,
+      );
+    } catch {
+      toast.error("Couldn't download the calendar file. Please try again.");
+    } finally {
+      setDownloadingIcs(false);
+    }
   }
 
   return (
@@ -388,15 +404,18 @@ export function AppointmentDetailPage() {
             )}
 
             {/* P-09: Add to Calendar */}
-            <a
-              href={buildIcsUrl(appt.id)}
-              download
-              className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+            <button
+              type="button"
+              onClick={handleDownloadIcs}
+              disabled={downloadingIcs}
+              className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-60"
               aria-label="Add to calendar"
             >
-              <Download className="h-4 w-4" aria-hidden="true" />
+              {downloadingIcs
+                ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                : <Download className="h-4 w-4" aria-hidden="true" />}
               Add to Calendar (.ics)
-            </a>
+            </button>
 
             {isArtistPlus && !isTerminal && (
               <div className="flex flex-col gap-2">

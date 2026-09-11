@@ -8,7 +8,7 @@ import { GuestBookAppointmentForm } from "@/features/booking/components/GuestBoo
 
 const ARTIST = {
   artistId: "a-001", name: "Luna Artista", avatarUrl: null,
-  specializations: "Neo-trad", hourlyRate: 80,
+  specializations: ["neo-traditional"], hourlyRate: 80,
 };
 
 const mockCreateGuestAppointment = vi.fn();

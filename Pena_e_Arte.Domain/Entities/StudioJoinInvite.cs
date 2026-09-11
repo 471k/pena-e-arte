@@ -16,7 +16,7 @@ public class StudioJoinInvite
     public string InvitedEmail { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
-    public string? Specializations { get; set; }
+    public List<string> Specializations { get; set; } = [];
     public decimal? HourlyRate { get; set; }
     public StudioJoinInviteStatus Status { get; set; } = StudioJoinInviteStatus.Pending;
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;

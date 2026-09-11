@@ -10,17 +10,17 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { SpecializationsField } from "@/shared/components/SpecializationsField";
 import { useInviteSoloArtistToJoinMutation } from "@/features/studios/studiosApi";
 import { useCreateArtistMutation } from "../artistsApi";
 
 const ALREADY_TAKEN_MARKER = "already belongs to an existing account";
 
 const createSchema = z.object({
-  firstName:       z.string().min(1, "First name is required"),
-  lastName:        z.string().min(1, "Last name is required"),
-  email:           z.string().email("Invalid email"),
-  specializations: z.string().optional(),
-  hourlyRate:      z.number({ message: "Must be a number" }).positive("Must be positive").max(10_000).optional(),
+  firstName:  z.string().min(1, "First name is required"),
+  lastName:   z.string().min(1, "Last name is required"),
+  email:      z.string().email("Invalid email"),
+  hourlyRate: z.number({ message: "Must be a number" }).positive("Must be positive").max(10_000).optional(),
 });
 
 type CreateFormValues = z.infer<typeof createSchema>;
@@ -29,7 +29,10 @@ export function CreateArtistPage() {
   const navigate = useNavigate();
   const [createArtist, { isLoading }] = useCreateArtistMutation();
   const [inviteToJoin, { isLoading: isInviting }] = useInviteSoloArtistToJoinMutation();
-  const [alreadyTakenValues, setAlreadyTakenValues] = useState<CreateFormValues | null>(null);
+  const [specializations, setSpecializations] = useState<string[]>([]);
+  const [alreadyTakenValues, setAlreadyTakenValues] = useState<
+    (CreateFormValues & { specializations: string[] }) | null
+  >(null);
 
   const {
     register,
@@ -43,7 +46,7 @@ export function CreateArtistPage() {
       firstName:       values.firstName,
       lastName:        values.lastName,
       email:           values.email,
-      specializations: values.specializations?.trim() || null,
+      specializations: specializations.length > 0 ? specializations : null,
       hourlyRate:      values.hourlyRate ?? null,
     });
     if ("data" in result) {
@@ -54,7 +57,7 @@ export function CreateArtistPage() {
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
         ?? "Failed to create artist.";
       if (errMsg.includes(ALREADY_TAKEN_MARKER)) {
-        setAlreadyTakenValues(values);
+        setAlreadyTakenValues({ ...values, specializations });
       } else {
         toast.error(errMsg);
       }
@@ -68,7 +71,7 @@ export function CreateArtistPage() {
         firstName:       alreadyTakenValues.firstName,
         lastName:        alreadyTakenValues.lastName,
         email:            alreadyTakenValues.email,
-        specializations: alreadyTakenValues.specializations?.trim() || null,
+        specializations: alreadyTakenValues.specializations.length > 0 ? alreadyTakenValues.specializations : null,
         hourlyRate:      alreadyTakenValues.hourlyRate ?? null,
       }).unwrap();
       toast.success("Join request sent — they'll see it next time they sign in.");
@@ -142,11 +145,7 @@ export function CreateArtistPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="specializations">Specializations (optional)</Label>
-            <Input
-              id="specializations"
-              placeholder="e.g. Traditional, Realism"
-              {...register("specializations")}
-            />
+            <SpecializationsField id="specializations" value={specializations} onChange={setSpecializations} />
           </div>
 
           <div className="space-y-1.5">

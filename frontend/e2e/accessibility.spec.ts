@@ -47,7 +47,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify([
-          { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", specializations: "Fine line", hourlyRate: 80, avatarUrl: null },
+          { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", specializations: ["fineline"], hourlyRate: 80, avatarUrl: null },
         ]),
       });
     });
@@ -116,7 +116,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify([
-          { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", email: "rafaela@tinta-alma.com" },
+          { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", email: "rafaela@tinta-alma.com", specializations: [] },
         ]),
       });
     });
@@ -156,7 +156,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify([
-          { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", email: "rafaela@tinta-alma.com" },
+          { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", email: "rafaela@tinta-alma.com", specializations: [] },
         ]),
       });
     });

@@ -26,7 +26,7 @@ const ARTIST_A: ArtistResponse = {
   firstName:       "Ana",
   lastName:        "Costa",
   email:           "ana@ink.test",
-  specializations: "Realism, Blackwork",
+  specializations: ["realism", "blackwork"],
   hourlyRate:      null,
   isActive:        true,
   avatarUrl:       null,
@@ -43,7 +43,7 @@ const ARTIST_B: ArtistResponse = {
   firstName:       "Marco",
   lastName:        "Silva",
   email:           "marco@ink.test",
-  specializations: null,
+  specializations: [],
   hourlyRate:      null,
   isActive:        true,
   avatarUrl:       null,
@@ -186,7 +186,7 @@ describe("ArtistListPage", () => {
     expect(screen.getAllByText("Blackwork").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders em-dash placeholder when specializations are null", async () => {
+  it("renders em-dash placeholder when specializations are empty", async () => {
     renderPage();
     await screen.findAllByText("Marco Silva");
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);

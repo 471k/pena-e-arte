@@ -2,6 +2,7 @@ using FluentAssertions;
 using NSubstitute;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Responses.Public;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.UnitTests.Helpers;
 using StackExchange.Redis;
@@ -191,12 +192,12 @@ public class GetPortfolioFeedHandlerTests
         _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Palace", Slug = "ink-palace", City = "Lisbon", Latitude = 38.7169, Longitude = -9.1395, IsActive = true });
 
         Artist artist = await SeedArtist(studioId, "ana-lima", "a@x.com", []);
-        artist.Specializations = "dragon motifs, oni masks";
-        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img.jpg", Style = "japanese" });
+        artist.Specializations = [TattooStyle.Japanese];
+        _db.PortfolioImages.Add(new PortfolioImage { ArtistId = artist.Id, StudioId = studioId, ImageUrl = "img.jpg", Style = "blackwork" });
         await _db.SaveChangesAsync();
 
         List<PortfolioImageResponse> result = await CreateSut().Handle(
-            new GetPortfolioFeedQuery(null, null, 50, 1, Search: "dragon"), CancellationToken.None);
+            new GetPortfolioFeedQuery(null, null, 50, 1, Search: "japan"), CancellationToken.None);
 
         result.Should().OnlyContain(r => r.ArtistSlug == "ana-lima");
     }

@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -26,8 +27,7 @@ public class CreateOwnArtistProfileValidator : AbstractValidator<CreateOwnArtist
         RuleFor(x => x.Request.LastName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Request.HourlyRate).InclusiveBetween(0.01m, 10_000m)
             .When(x => x.Request.HourlyRate is not null);
-        RuleFor(x => x.Request.Specializations).MaximumLength(1000)
-            .When(x => x.Request.Specializations is not null);
+        RuleFor(x => x.Request.Specializations).MustBeValidTattooStyles();
     }
 }
 
@@ -67,7 +67,7 @@ public class CreateOwnArtistProfileHandler(
             FirstName = req.FirstName,
             LastName = req.LastName,
             Email = currentUser.Email!,
-            Specializations = req.Specializations,
+            Specializations = req.Specializations ?? [],
             HourlyRate = req.HourlyRate
         };
         artist.SetSlug(slug);

@@ -40,7 +40,7 @@ const ELENA: ArtistResponse = {
   firstName: "Elena",
   lastName: "Martins",
   email: "elena.martins@ink-soul.test",
-  specializations: "Traditional, Realism",
+  specializations: ["traditional", "realism"],
   hourlyRate: 100,
   isActive:        true,
   avatarUrl:       null,
@@ -59,7 +59,7 @@ const ARTISTS: ArtistResponse[] = [
     firstName: "Marco",
     lastName: "Silva",
     email: "marco.silva@ink-soul.test",
-    specializations: "Neo-Traditional",
+    specializations: ["neo-traditional"],
     hourlyRate: null,
     isActive:        true,
     avatarUrl:       null,
@@ -75,7 +75,7 @@ const ARTISTS: ArtistResponse[] = [
     firstName: "Sara",
     lastName: "Costa",
     email: "sara.costa@ink-soul.test",
-    specializations: null,
+    specializations: [],
     hourlyRate: null,
     isActive:        true,
     avatarUrl:       null,
@@ -115,11 +115,14 @@ const server = setupServer(
       firstName: string;
       lastName: string;
       email: string;
-      specializations: string | null;
+      specializations: string[] | null;
     };
     const artist = ARTISTS.find((a) => a.id === params.id);
     if (!artist) return new HttpResponse(null, { status: 404 });
-    return HttpResponse.json({ ...artist, ...body });
+    // Mutate in place so a subsequent GET (triggered by RTK Query's invalidatesTags
+    // refetch) reflects the update too, not just this mutation's own response.
+    Object.assign(artist, body, { specializations: body.specializations ?? [] });
+    return HttpResponse.json(artist);
   }),
 
   http.delete("http://localhost/api/v1/artists/:id", () =>
@@ -282,7 +285,8 @@ describe("Artists feature", () => {
 
     // Email, specializations, join date
     expect(screen.getByText(ELENA.email)).toBeInTheDocument();
-    expect(screen.getByText("Traditional, Realism")).toBeInTheDocument();
+    expect(screen.getByText("Traditional")).toBeInTheDocument();
+    expect(screen.getByText("Realism")).toBeInTheDocument();
     expect(screen.getByText(/joined/i)).toBeInTheDocument();
 
     // Edit + Delete visible (Owner role)
@@ -317,6 +321,31 @@ describe("Artists feature", () => {
     // Returns to view mode: form gone, Edit button back
     await screen.findByRole("button", { name: /edit/i });
     expect(screen.queryByLabelText(/first name/i)).not.toBeInTheDocument();
+  });
+
+  it("edit mode: pre-selects the artist's specializations as toggled chips and toggling + saving persists the change", async () => {
+    const user = userEvent.setup();
+    renderDetail(ELENA.id);
+
+    await screen.findByText("EM");
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+
+    // Pre-populated from ELENA.specializations = ["traditional", "realism"]
+    expect(screen.getByRole("checkbox", { name: "Traditional" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Realism" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Blackwork" })).toHaveAttribute("aria-checked", "false");
+
+    // Toggle Blackwork on, Realism off
+    await user.click(screen.getByRole("checkbox", { name: "Blackwork" }));
+    await user.click(screen.getByRole("checkbox", { name: "Realism" }));
+    expect(screen.getByRole("checkbox", { name: "Blackwork" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Realism" })).toHaveAttribute("aria-checked", "false");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await screen.findByRole("button", { name: /edit/i });
+    expect(screen.getByText("Traditional")).toBeInTheDocument();
+    await screen.findByText("Blackwork");
+    expect(screen.queryByText("Realism")).not.toBeInTheDocument();
   });
 
   // 4. Confirm-delete mode

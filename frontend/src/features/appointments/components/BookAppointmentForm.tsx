@@ -31,6 +31,7 @@ import {
 } from "../appointmentsApi";
 import { useRequestCatalogDesignMutation } from "@/features/designs/designsApi";
 import { useGetArtistsQuery }                     from "@/features/artists/artistsApi";
+import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import { useGetClientsQuery, useGetMyClientQuery } from "@/features/clients/clientsApi";
 import { useGetDepositRulesQuery }                from "@/features/deposit-rules/depositRulesApi";
 import { useGetPublicStudioQuery }                from "@/features/public/publicApi";
@@ -144,9 +145,9 @@ function ArtistSelectItem({ artist }: { artist: ArtistResponse }) {
           <SelectPrimitive.ItemText>
             {artist.firstName} {artist.lastName}
           </SelectPrimitive.ItemText>
-          {artist.specializations && (
+          {artist.specializations.length > 0 && (
             <span aria-hidden="true" className="text-[10px] text-muted-foreground truncate max-w-[180px]">
-              {artist.specializations}
+              {artist.specializations.map((s) => TATTOO_STYLE_OPTIONS.find((o) => o.value === s)?.label ?? s).join(", ")}
             </span>
           )}
         </span>
@@ -350,7 +351,7 @@ export function BookAppointmentForm() {
     if (!term) return uniqueArtists;
     return uniqueArtists.filter((a) =>
       `${a.firstName} ${a.lastName}`.toLowerCase().includes(term) ||
-      (a.specializations ?? "").toLowerCase().includes(term),
+      a.specializations.some((s) => s.toLowerCase().includes(term)),
     );
   }, [uniqueArtists, artistSearch]);
 

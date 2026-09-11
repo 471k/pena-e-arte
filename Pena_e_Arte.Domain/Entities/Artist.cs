@@ -6,7 +6,8 @@ public class Artist : TenantEntity
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string? Specializations { get; set; }
+    /// <summary>Canonical <see cref="Pena_e_Arte.Domain.Constants.TattooStyle"/> values this artist specializes in.</summary>
+    public List<string> Specializations { get; set; } = [];
 
     /// <summary>Hourly rate in EUR — the base for percent deposit rules. Null = not set.</summary>
     public decimal? HourlyRate { get; set; }

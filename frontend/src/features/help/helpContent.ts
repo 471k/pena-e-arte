@@ -657,7 +657,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Go to Artists and click \"New Artist\".",
       "Enter the artist's first and last name and email address.",
-      "Optionally list their specializations (e.g. Traditional, Realism).",
+      "Optionally tap the styles they specialize in (e.g. Traditional, Realism) — pick as many as apply.",
       "Optionally set an hourly rate — used to calculate percentage-based deposits.",
       "Click \"Create Artist\".",
     ],
@@ -696,7 +696,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Go to Artists.",
       "Click \"Enable my artist profile\" in the banner near the top of the list.",
-      "Enter your first and last name, and optionally your specializations and hourly rate.",
+      "Enter your first and last name, and optionally tap the styles you specialize in and your hourly rate.",
       "Click \"Enable my artist profile\".",
     ],
     tips: [
@@ -819,7 +819,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "The Discover page's category tabs (All / Fresh Tattoos / Healed Tattoos / Designs) and style filter chips only match an image's own tags — they combine, so a client can filter to \"Healed Tattoos\" and \"Blackwork\" at once.",
-      "An image left uncategorized or without a style still shows in the artist's portfolio, but it won't appear when a client filters Discover by that category or style. The separate keyword search box (\"Search styles, artists…\") also matches an artist's name and their \"Specializations\" text, so a well-filled-in Specializations field helps your work surface there even for untagged images.",
+      "An image left uncategorized or without a style still shows in the artist's portfolio, but it won't appear when a client filters Discover by that category or style. The separate keyword search box (\"Search styles, artists…\") also matches an artist's name and the styles selected in their profile's Specializations, so picking your specialties there helps your work surface there even for untagged images.",
     ],
     relatedArticleIds: ["owner-artists-list"],
   },

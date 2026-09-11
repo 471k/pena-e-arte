@@ -1,5 +1,6 @@
 using Pena_e_Arte.Application.Studios.StudioJoinInvites;
 using Pena_e_Arte.Contracts.Requests;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Studios.StudioJoinInvites;
@@ -39,18 +40,18 @@ public class InviteSoloArtistToJoinValidatorTests
     }
 
     [Fact]
-    public void Validate_SpecializationsExceedsMaxLength_FailsOnSpecializations()
+    public void Validate_UnknownStyleValue_FailsOnSpecializations()
     {
-        // StudioJoinInvite.Specializations is varchar(1000), matching Artist.Specializations
-        // exactly — this value is copied verbatim onto the real Artist at accept time.
+        // StudioJoinInvite.Specializations matches Artist.Specializations exactly — this
+        // value is copied verbatim onto the real Artist at accept time.
         _sut.ShouldFailOn(
-            Command("Jane", "Doe", "jane@example.com", new('x', 1001), null), "Request.Specializations");
+            Command("Jane", "Doe", "jane@example.com", ["not-a-real-style"], null), "Request.Specializations");
     }
 
     [Fact]
-    public void Validate_SpecializationsAtMaxLength_IsValid()
+    public void Validate_ValidStyleValues_IsValid()
     {
-        _sut.ShouldBeValid(Command("Jane", "Doe", "jane@example.com", new('x', 1000), null));
+        _sut.ShouldBeValid(Command("Jane", "Doe", "jane@example.com", [TattooStyle.Blackwork], null));
     }
 
     [Fact]
@@ -78,6 +79,6 @@ public class InviteSoloArtistToJoinValidatorTests
     }
 
     private static InviteSoloArtistToJoinCommand Command(
-        string first, string last, string email, string? specializations, decimal? hourlyRate) =>
+        string first, string last, string email, List<string>? specializations, decimal? hourlyRate) =>
         new(new CreateArtistRequest(first, last, email, specializations, hourlyRate));
 }

@@ -3,6 +3,7 @@ using NSubstitute;
 using Pena_e_Arte.Application.Artists.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
@@ -39,14 +40,14 @@ public class CreateArtistHandlerTests
     [Fact]
     public async Task Handle_NewEmail_ReturnsArtistResponse()
     {
-        CreateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", "Neo-traditional, Realism");
+        CreateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", [TattooStyle.NeoTraditional, TattooStyle.Realism]);
 
         ArtistResponse result = await CreateSut().Handle(new CreateArtistCommand(req), default);
 
         result.FirstName.Should().Be("Rui");
         result.LastName.Should().Be("Tavares");
         result.Email.Should().Be("rui@studio.com");
-        result.Specializations.Should().Be("Neo-traditional, Realism");
+        result.Specializations.Should().BeEquivalentTo([TattooStyle.NeoTraditional, TattooStyle.Realism]);
         result.StudioId.Should().Be(_studioId);
         result.Id.Should().NotBeEmpty();
     }
@@ -62,13 +63,13 @@ public class CreateArtistHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NullSpecializations_ReturnsArtistWithNullSpecializations()
+    public async Task Handle_NullSpecializations_ReturnsArtistWithEmptySpecializations()
     {
         CreateArtistRequest req = new("Ana", "Lima", "ana@studio.com", null);
 
         ArtistResponse result = await CreateSut().Handle(new CreateArtistCommand(req), default);
 
-        result.Specializations.Should().BeNull();
+        result.Specializations.Should().BeEmpty();
     }
 
     [Fact]

@@ -7,7 +7,7 @@ public record PublicArtistResponse(
     string? Bio,
     string? ProfileImageUrl,
     IReadOnlyList<ArtistPortfolioImageResponse> PortfolioImages,
-    string? Specializations,
+    List<string> Specializations,
     decimal? HourlyRate,
     double? AverageRating,
     int ReviewCount,

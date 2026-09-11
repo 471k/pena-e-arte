@@ -37,6 +37,8 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Badge } from "@/shared/components/ui/badge";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { SpecializationsField } from "@/shared/components/SpecializationsField";
+import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import {
   Dialog,
   DialogContent,
@@ -92,15 +94,18 @@ const CATEGORY_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
 ];
 
 const editSchema = z.object({
-  firstName:       z.string().min(1, "First name is required"),
-  lastName:        z.string().min(1, "Last name is required"),
-  email:           z.string().email("Invalid email"),
-  specializations: z.string().optional(),
-  hourlyRate:      z.number({ message: "Must be a number" }).positive("Must be positive").max(10_000).optional(),
-  slug:            z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase letters, numbers, hyphens only").optional().or(z.literal("")),
+  firstName:  z.string().min(1, "First name is required"),
+  lastName:   z.string().min(1, "Last name is required"),
+  email:      z.string().email("Invalid email"),
+  hourlyRate: z.number({ message: "Must be a number" }).positive("Must be positive").max(10_000).optional(),
+  slug:       z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase letters, numbers, hyphens only").optional().or(z.literal("")),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
+
+function specializationLabel(style: string): string {
+  return TATTOO_STYLE_OPTIONS.find((o) => o.value === style)?.label ?? style;
+}
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
@@ -195,6 +200,7 @@ export function ArtistDetailPage() {
 
   const [isEditing,  setIsEditing]  = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [specializations, setSpecializations] = useState<string[]>([]);
 
   const { data: designs = [], isLoading: designsLoading } =
     useGetDesignsQuery({ artistId: id! }, { skip: !id });
@@ -230,13 +236,13 @@ export function ArtistDetailPage() {
   function startEdit() {
     if (!artist) return;
     reset({
-      firstName:       artist.firstName,
-      lastName:        artist.lastName,
-      email:           artist.email,
-      specializations: artist.specializations ?? "",
-      hourlyRate:      artist.hourlyRate ?? undefined,
-      slug:            artist.slug ?? "",
+      firstName:  artist.firstName,
+      lastName:   artist.lastName,
+      email:      artist.email,
+      hourlyRate: artist.hourlyRate ?? undefined,
+      slug:       artist.slug ?? "",
     });
+    setSpecializations(artist.specializations);
     setIsEditing(true);
   }
 
@@ -248,7 +254,7 @@ export function ArtistDetailPage() {
         firstName:       values.firstName,
         lastName:        values.lastName,
         email:           values.email,
-        specializations: values.specializations?.trim() || null,
+        specializations: specializations.length > 0 ? specializations : null,
         hourlyRate:      values.hourlyRate ?? null,
         slug:            values.slug?.trim() || undefined,
       },
@@ -478,11 +484,7 @@ export function ArtistDetailPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="specializations">Specializations (optional)</Label>
-              <Input
-                id="specializations"
-                placeholder="e.g. Traditional, Realism"
-                {...register("specializations")}
-              />
+              <SpecializationsField id="specializations" value={specializations} onChange={setSpecializations} />
             </div>
 
             <div className="space-y-1.5">
@@ -567,10 +569,14 @@ export function ArtistDetailPage() {
                     )}
                   </div>
 
-                  {artist.specializations && (
+                  {artist.specializations.length > 0 && (
                     <div className="flex items-start gap-2 text-sm">
                       <Tag className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                      <span>{artist.specializations}</span>
+                      <div className="flex flex-wrap gap-1">
+                        {artist.specializations.map((style) => (
+                          <Badge key={style} variant="secondary">{specializationLabel(style)}</Badge>
+                        ))}
+                      </div>
                     </div>
                   )}
 

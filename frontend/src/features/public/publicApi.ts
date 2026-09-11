@@ -10,7 +10,7 @@ export interface PublicArtistSummary {
   slug:            string;
   bio:             string | null;
   profileImageUrl: string | null;
-  specializations: string | null;
+  specializations: string[];
   averageRating:   number | null;
   reviewCount:     number;
 }
@@ -63,7 +63,7 @@ export interface PublicArtistResponse {
   bio:             string | null;
   profileImageUrl: string | null;
   portfolioImages: ArtistPortfolioImage[];
-  specializations: string | null;
+  specializations: string[];
   hourlyRate:      number | null;
   averageRating:   number | null;
   reviewCount:     number;
@@ -174,7 +174,7 @@ export interface PublicBookingArtistResponse {
   artistId:        string;
   name:            string;
   avatarUrl:       string | null;
-  specializations: string | null;
+  specializations: string[];
   hourlyRate:      number | null;
 }
 

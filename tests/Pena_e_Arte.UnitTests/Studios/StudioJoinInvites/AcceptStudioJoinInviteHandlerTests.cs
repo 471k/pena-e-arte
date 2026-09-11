@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Studios.StudioJoinInvites;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -60,7 +61,7 @@ public class AcceptStudioJoinInviteHandlerTests
             InvitedEmail = "jane@example.com",
             FirstName = "Jane",
             LastName = "Doe",
-            Specializations = "Blackwork",
+            Specializations = [TattooStyle.Blackwork],
             HourlyRate = 80m,
             Status = StudioJoinInviteStatus.Pending,
             ExpiresAt = expiresAt ?? DateTime.UtcNow.AddDays(1),
@@ -81,7 +82,7 @@ public class AcceptStudioJoinInviteHandlerTests
         Artist artist = _db.Artists.Single();
         artist.StudioId.Should().Be(_newStudioId);
         artist.UserId.Should().Be(_currentUser.UserId);
-        artist.Specializations.Should().Be("Blackwork");
+        artist.Specializations.Should().BeEquivalentTo([TattooStyle.Blackwork]);
         artist.HourlyRate.Should().Be(80m);
     }
 

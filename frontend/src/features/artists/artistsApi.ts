@@ -15,7 +15,7 @@ export interface ArtistResponse {
   firstName:       string;
   lastName:        string;
   email:           string;
-  specializations: string | null;
+  specializations: string[];
   hourlyRate:      number | null;
   isActive:        boolean;
   avatarUrl:       string | null;
@@ -29,14 +29,14 @@ export interface CreateArtistRequest {
   firstName:       string;
   lastName:        string;
   email:           string;
-  specializations: string | null;
+  specializations: string[] | null;
   hourlyRate:      number | null;
 }
 
 export interface CreateOwnArtistProfileRequest {
   firstName:       string;
   lastName:        string;
-  specializations: string | null;
+  specializations: string[] | null;
   hourlyRate:      number | null;
 }
 
@@ -44,7 +44,7 @@ export interface UpdateArtistRequest {
   firstName:       string;
   lastName:        string;
   email:           string;
-  specializations: string | null;
+  specializations: string[] | null;
   hourlyRate:      number | null;
   slug?:           string;
 }

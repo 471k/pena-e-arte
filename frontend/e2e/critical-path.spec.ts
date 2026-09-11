@@ -77,7 +77,7 @@ async function mockBookingApis(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify([
-        { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", email: "rafaela@tinta-alma.com" },
+        { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", email: "rafaela@tinta-alma.com", specializations: [] },
       ]),
     });
   });

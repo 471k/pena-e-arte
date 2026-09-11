@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Pena_e_Arte.Application.Artists.Queries;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.UnitTests.Helpers;
@@ -23,7 +24,7 @@ public class GetArtistHandlerTests
             FirstName = "Rui",
             LastName = "Tavares",
             Email = "rui@studio.com",
-            Specializations = "Realism"
+            Specializations = [TattooStyle.Realism]
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
@@ -34,7 +35,7 @@ public class GetArtistHandlerTests
         result.FirstName.Should().Be("Rui");
         result.LastName.Should().Be("Tavares");
         result.Email.Should().Be("rui@studio.com");
-        result.Specializations.Should().Be("Realism");
+        result.Specializations.Should().BeEquivalentTo([TattooStyle.Realism]);
     }
 
     [Fact]

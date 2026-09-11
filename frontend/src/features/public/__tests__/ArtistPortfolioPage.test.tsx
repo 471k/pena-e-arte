@@ -49,7 +49,7 @@ const ARTIST: PublicArtistResponse = {
     { imageId: "img-001", imageUrl: "https://cdn.example.com/port1.jpg", style: null, category: null },
     { imageId: "img-002", imageUrl: "https://cdn.example.com/port2.jpg", style: null, category: null },
   ] satisfies ArtistPortfolioImage[],
-  specializations: "Blackwork, Neo-Trad",
+  specializations: ["blackwork", "neo-traditional"],
   hourlyRate:      120,
   averageRating:   4.5,
   reviewCount:     8,
@@ -189,12 +189,12 @@ describe("ArtistPortfolioPage", () => {
   it("renders specialization chips when specializations is set", () => {
     renderPage();
     expect(screen.getByText("Blackwork")).toBeInTheDocument();
-    expect(screen.getByText("Neo-Trad")).toBeInTheDocument();
+    expect(screen.getByText("Neo-Traditional")).toBeInTheDocument();
   });
 
-  it("does not render specialization chips when specializations is null", () => {
+  it("does not render specialization chips when specializations is empty", () => {
     mockUseGetPublicArtistQuery.mockReturnValue({
-      data: { ...ARTIST, specializations: null },
+      data: { ...ARTIST, specializations: [] },
       isLoading: false,
       isError: false,
     });
@@ -260,7 +260,7 @@ describe("ArtistPortfolioPage", () => {
       isOwnProfile:    true,
       bio:             null,
       profileImageUrl: null,
-      specializations: null,
+      specializations: [],
       hourlyRate:      null,
       portfolioImages: [] as ArtistPortfolioImage[],
     };

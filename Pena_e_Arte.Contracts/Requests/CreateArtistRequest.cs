@@ -4,5 +4,5 @@ public record CreateArtistRequest(
     string FirstName,
     string LastName,
     string Email,
-    string? Specializations,
+    List<string>? Specializations,
     decimal? HourlyRate = null);

@@ -63,7 +63,7 @@ describe("CreateArtistPage", () => {
       http.post("http://localhost/api/v1/artists", () =>
         HttpResponse.json({
           id: "artist-1", studioId: "t1", userId: "u9", firstName: "Rui", lastName: "Tavares",
-          email: "rui@studio.com", specializations: null, hourlyRate: null, isActive: true,
+          email: "rui@studio.com", specializations: [], hourlyRate: null, isActive: true,
           avatarUrl: null, portfolioImages: [], slug: "rui-tavares",
           createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z",
         }),

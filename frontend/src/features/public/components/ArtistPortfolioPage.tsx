@@ -114,19 +114,18 @@ function chipClass(active: boolean): string {
 
 // ── Specialization chips ───────────────────────────────────────────────────────
 
-function SpecializationChips({ value }: { value: string }) {
-  const tags = value.split(",").map((s) => s.trim()).filter(Boolean);
-  if (tags.length === 0) return null;
+function SpecializationChips({ value }: { value: string[] }) {
+  if (value.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {tags.map((tag) => (
+      {value.map((tag) => (
         <span
           key={tag}
           className="text-xs px-2.5 py-1 rounded-full
                      bg-muted/60 text-muted-foreground
                      border border-border/50"
         >
-          {tag}
+          {TATTOO_STYLE_OPTIONS.find((o) => o.value === tag)?.label ?? tag}
         </span>
       ))}
     </div>
@@ -565,7 +564,7 @@ export function ArtistPortfolioPage() {
               <ProfileStrengthNudge
                 hasBio={!!artist.bio}
                 hasAvatar={!!artist.profileImageUrl}
-                hasSpecializations={!!artist.specializations}
+                hasSpecializations={artist.specializations.length > 0}
                 hasPortfolio={artist.portfolioImages.length > 0}
                 hasRate={artist.hourlyRate != null}
               />
@@ -601,7 +600,7 @@ export function ArtistPortfolioPage() {
               </p>
             )}
 
-            {artist.specializations && (
+            {artist.specializations.length > 0 && (
               <SpecializationChips value={artist.specializations} />
             )}
 

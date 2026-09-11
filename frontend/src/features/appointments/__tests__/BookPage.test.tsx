@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -56,7 +56,7 @@ const STUDIO: StudioResponse = {
 const ARTIST: ArtistResponse = {
   id: "a-001", studioId: "s-001",
   firstName: "Luna", lastName: "Artista",
-  email: "luna@studio.test", specializations: "Neo-trad",
+  email: "luna@studio.test", specializations: ["neo-traditional"],
   hourlyRate: 80, portfolioImages: [],
   isActive: true,
   avatarUrl: null,
@@ -446,7 +446,8 @@ describe("BookAppointmentForm", () => {
     renderForm();
     await screen.findByText("Luna Artista");
     await user.click(screen.getByLabelText("Select artist"));
-    expect(await screen.findByText("Neo-trad")).toBeInTheDocument();
+    const option = await screen.findByRole("option", { name: "Luna Artista" });
+    expect(within(option).getByText("Neo-Traditional")).toBeInTheDocument();
   });
 
   it("artist search filters by name", async () => {
@@ -455,7 +456,7 @@ describe("BookAppointmentForm", () => {
         HttpResponse.json([
           ARTIST,
           { ...ARTIST, id: "a-002", firstName: "Marco", lastName: "Rivera",
-            specializations: "Blackwork" },
+            specializations: ["blackwork"] },
         ]),
       ),
     );

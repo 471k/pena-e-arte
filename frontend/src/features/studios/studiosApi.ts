@@ -40,7 +40,7 @@ export interface InviteSoloArtistToJoinRequest {
   firstName:        string;
   lastName:         string;
   email:            string;
-  specializations?: string | null;
+  specializations?: string[] | null;
   hourlyRate?:      number | null;
 }
 

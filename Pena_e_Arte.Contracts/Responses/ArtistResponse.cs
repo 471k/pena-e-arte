@@ -9,7 +9,7 @@ public record ArtistResponse(
     string FirstName,
     string LastName,
     string Email,
-    string? Specializations,
+    List<string> Specializations,
     decimal? HourlyRate,
     bool IsActive,
     string? AvatarUrl,

@@ -15,11 +15,15 @@ import { remindersApi } from "@/features/reminders/remindersApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { AppointmentDetailPage } from "@/features/appointments/components/AppointmentDetailPage";
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import { Role } from "@/shared/types/roles";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
+  downloadAuthenticatedFile: vi.fn().mockResolvedValue(undefined),
+}));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -112,7 +116,7 @@ const server = setupServer(
     HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
   ),
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json([
-    { id: "a-002", studioId: "s-001", firstName: "New", lastName: "Artist", slug: "new-artist", email: "new@a.com", specializations: null, hourlyRate: null, isActive: true },
+    { id: "a-002", studioId: "s-001", firstName: "New", lastName: "Artist", slug: "new-artist", email: "new@a.com", specializations: [], hourlyRate: null, isActive: true },
   ])),
   http.patch("http://localhost/api/v1/appointments/:id/artist", async ({ params, request }) => {
     const body = await request.json() as { artistId: string };
@@ -490,6 +494,27 @@ describe("AppointmentDetailPage", () => {
     expect(within(dialog).getByText(/send reminder/i)).toBeInTheDocument();
     // Appointment-linked mode never shows the raw-contact name/phone inputs.
     expect(within(dialog).queryByLabelText(/^name$/i)).not.toBeInTheDocument();
+  });
+
+  // ── Add to Calendar (.ics) ──────────────────────────────────────────────────
+
+  it("clicking 'Add to Calendar' downloads the .ics file with auth headers, not a plain link navigation", async () => {
+    const user = userEvent.setup();
+    renderPage("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /add to calendar/i }));
+
+    expect(downloadAuthenticatedFile).toHaveBeenCalledWith(
+      "appointments/appt-001/calendar.ics", "appointment-appt-001.ics", "fake-token", "s-001",
+    );
+  });
+
+  it("shows an error toast when the .ics download fails", async () => {
+    vi.mocked(downloadAuthenticatedFile).mockRejectedValueOnce(new Error("boom"));
+    const user = userEvent.setup();
+    renderPage("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /add to calendar/i }));
+
+    expect(toast.error).toHaveBeenCalledWith("Couldn't download the calendar file. Please try again.");
   });
 
   // ── Artist assignment ───────────────────────────────────────────────────────

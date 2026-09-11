@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Pena_e_Arte.Domain.Entities;
@@ -16,7 +17,11 @@ public class StudioJoinInviteConfiguration : IEntityTypeConfiguration<StudioJoin
         builder.Property(i => i.LastName).HasMaxLength(100).IsRequired();
         // Matches Artist.Specializations (ArtistConfiguration) exactly — this value is copied
         // verbatim onto the real Artist row at accept time, so the columns must agree.
-        builder.Property(i => i.Specializations).HasMaxLength(1000);
+        builder.Property(i => i.Specializations)
+               .HasConversion(
+                   v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                   v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
+               .HasColumnType("json");
         builder.Property(i => i.HourlyRate).HasColumnType("decimal(18,2)");
         builder.Property(i => i.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
 
