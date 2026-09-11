@@ -4,6 +4,6 @@
 # ApiKeyHasher, not a real credential.
 
 # frontend/src/features/studios/__tests__/DeveloperSettingsCard.test.tsx:46
-# Fake key-status fixture: "tos_live_ab12" is a truncated display prefix
-# (the format the real status endpoint returns), not a usable secret.
+# Fake key-status fixture: a truncated display-prefix value in the shape the
+# real status endpoint returns, not a usable secret.
 e71069d621f6aa3f9398f734f7baeb526b847bc4:frontend/src/features/studios/__tests__/DeveloperSettingsCard.test.tsx:generic-api-key:46
