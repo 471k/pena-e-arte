@@ -59,6 +59,7 @@ export function NotificationDetailModal({ log, onClose }: Props) {
               srcDoc={log.body}
               title="Email body"
               data-testid="email-body-iframe"
+              tabIndex={-1}
               className="w-full rounded border bg-white"
               style={{ height: "480px" }}
               sandbox="allow-same-origin"
