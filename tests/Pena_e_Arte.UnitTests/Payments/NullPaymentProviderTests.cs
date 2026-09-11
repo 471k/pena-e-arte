@@ -22,20 +22,22 @@ public class NullPaymentProviderTests
     [Fact]
     public async Task CreatePaymentHoldAsync_FailsClosed()
     {
-        Func<Task> act = () => _sut.CreatePaymentHoldAsync(1000, "ALL", Guid.NewGuid(), default);
+        Func<Task> act = () => _sut.CreatePaymentHoldAsync(
+            new PaymentHoldRequest(Guid.NewGuid(), Guid.NewGuid(), 1000, "ALL"), default);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
     public async Task CaptureCancelStatusRefund_AllFailClosed()
     {
-        await ((Func<Task>)(() => _sut.CaptureAsync("ref", default)))
+        Guid studioId = Guid.NewGuid();
+        await ((Func<Task>)(() => _sut.CaptureAsync(studioId, "ref", default)))
             .Should().ThrowAsync<InvalidOperationException>();
-        await ((Func<Task>)(() => _sut.CancelAsync("ref", default)))
+        await ((Func<Task>)(() => _sut.CancelAsync(studioId, "ref", default)))
             .Should().ThrowAsync<InvalidOperationException>();
-        await ((Func<Task>)(() => _sut.GetStatusAsync("ref", default)))
+        await ((Func<Task>)(() => _sut.GetStatusAsync(studioId, "ref", default)))
             .Should().ThrowAsync<InvalidOperationException>();
-        await ((Func<Task>)(() => _sut.RefundAsync("ref", null, default)))
+        await ((Func<Task>)(() => _sut.RefundAsync(studioId, "ref", null, default)))
             .Should().ThrowAsync<InvalidOperationException>();
     }
 }

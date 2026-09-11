@@ -1010,6 +1010,30 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
+    id: "owner-connect-pok",
+    roles: [Owner],
+    title: "Connect your POK account for card deposits",
+    route: "/studios/me",
+    keywords: ["pok", "connect pok", "card payments", "keyId", "keySecret", "merchant id", "payment provider"],
+    summary: "Connect your studio's own POK merchant account so clients can pay deposits by card — every studio brings its own account, there's no shared platform account.",
+    steps: [
+      "Log in to your POK merchant dashboard and open the E-payments → API Keys section.",
+      "Create an API key if you don't have one yet, and copy its Key ID and Key Secret.",
+      "In TattooOS, go to Studio Profile and find the \"Card deposits — POK\" section.",
+      "Paste your Key ID, Key Secret, and Merchant ID, then click \"Connect\".",
+    ],
+    tips: [
+      "Your Key Secret is written straight to our secrets vault and is never shown again after you connect — only your Merchant ID stays visible so you can confirm which account is connected.",
+      "Until you connect an account, the Card option is unavailable at checkout and clients see Cash only.",
+      "To switch to a different POK account, click \"Reconnect / change account\" and enter the new credentials — this replaces the old ones.",
+    ],
+    warnings: [
+      "Use your POK production credentials, not the staging/sandbox pair — sandbox keys will not process real payments.",
+      "POK only opens merchant accounts for businesses registered in Albania. If your studio isn't registered there, you won't be able to get POK credentials to connect — use Cash for deposits instead.",
+    ],
+    relatedArticleIds: ["owner-payments", "owner-payment-create"],
+  },
+  {
     id: "owner-payments",
     roles: [Owner],
     title: "Track deposits and payments",
@@ -1022,6 +1046,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"New payment\" to record a new one.",
       "Click \"View\" on any row to open its details, or \"Load more\" to see older payments.",
     ],
+    relatedArticleIds: ["owner-connect-pok", "owner-payment-create"],
   },
   {
     id: "owner-payment-create",
@@ -1042,6 +1067,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If no deposit rule applies to the appointment, you'll need to type in the amount manually.",
       "If card payments are temporarily unavailable, the \"Card\" option is disabled with an explanatory message — use \"Cash\" instead.",
     ],
+    relatedArticleIds: ["owner-connect-pok"],
   },
   {
     id: "owner-cash-confirm",
@@ -1075,7 +1101,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Your timezone controls how appointment times are shown in emails, texts, and reports — pick the zone your studio actually operates in.",
       "To manage your studio's Instagram, TikTok, Facebook, X, and YouTube links, use the \"Social Media\" card further down this page — see \"Verify your studio's or artist's social media accounts\".",
     ],
-    relatedArticleIds: ["owner-branding", "owner-embed", "owner-qr-code", "owner-referral", "owner-social-verification"],
+    relatedArticleIds: ["owner-branding", "owner-embed", "owner-qr-code", "owner-referral", "owner-social-verification", "owner-connect-pok"],
   },
   {
     id: "owner-social-verification",

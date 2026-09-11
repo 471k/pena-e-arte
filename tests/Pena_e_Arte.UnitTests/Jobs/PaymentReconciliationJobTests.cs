@@ -19,11 +19,11 @@ public class PaymentReconciliationJobTests
     // ── ReconcileCaptured ─────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task RunAsync_CapturedPaymentStripeSucceeded_MarksAsPaid()
+    public async Task RunAsync_CapturedPaymentProviderCaptured_MarksAsPaid()
     {
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_test_001");
-        _stripe.GetStatusAsync("pi_test_001", Arg.Any<CancellationToken>())
-               .Returns("succeeded");
+        _stripe.GetStatusAsync(_studioId, "pi_test_001", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
 
         await CreateSut().RunAsync();
 
@@ -31,11 +31,11 @@ public class PaymentReconciliationJobTests
     }
 
     [Fact]
-    public async Task RunAsync_CapturedPaymentStripeSucceeded_SetsPaidAt()
+    public async Task RunAsync_CapturedPaymentProviderCaptured_SetsPaidAt()
     {
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_test_002");
-        _stripe.GetStatusAsync("pi_test_002", Arg.Any<CancellationToken>())
-               .Returns("succeeded");
+        _stripe.GetStatusAsync(_studioId, "pi_test_002", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
 
         await CreateSut().RunAsync();
 
@@ -43,11 +43,11 @@ public class PaymentReconciliationJobTests
     }
 
     [Fact]
-    public async Task RunAsync_CapturedPaymentStripePending_DoesNotMarkAsPaid()
+    public async Task RunAsync_CapturedPaymentProviderAuthorized_DoesNotMarkAsPaid()
     {
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_test_003");
-        _stripe.GetStatusAsync("pi_test_003", Arg.Any<CancellationToken>())
-               .Returns("requires_capture");
+        _stripe.GetStatusAsync(_studioId, "pi_test_003", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Authorized);
 
         await CreateSut().RunAsync();
 
@@ -55,11 +55,11 @@ public class PaymentReconciliationJobTests
     }
 
     [Fact]
-    public async Task RunAsync_CapturedPaymentStripeNull_DoesNotMarkAsPaid()
+    public async Task RunAsync_CapturedPaymentProviderNull_DoesNotMarkAsPaid()
     {
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_test_004");
-        _stripe.GetStatusAsync("pi_test_004", Arg.Any<CancellationToken>())
-               .Returns((string?)null);
+        _stripe.GetStatusAsync(_studioId, "pi_test_004", Arg.Any<CancellationToken>())
+               .Returns((PaymentProviderStatus?)null);
 
         await CreateSut().RunAsync();
 
@@ -76,7 +76,7 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.Received(1).CancelAsync("pi_stale_001", Arg.Any<CancellationToken>());
+        await _stripe.Received(1).CancelAsync(_studioId, "pi_stale_001", Arg.Any<CancellationToken>());
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Failed);
     }
 
@@ -88,7 +88,7 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().CancelAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Pending);
     }
 
@@ -100,7 +100,7 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().CancelAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Pending);
     }
 
@@ -127,7 +127,7 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.Received(1).CancelAsync("pi_hold_expired", Arg.Any<CancellationToken>());
+        await _stripe.Received(1).CancelAsync(_studioId, "pi_hold_expired", Arg.Any<CancellationToken>());
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Failed);
     }
 
@@ -151,7 +151,7 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().CancelAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Pending);
     }
 
@@ -159,8 +159,8 @@ public class PaymentReconciliationJobTests
     public async Task RunAsync_AlreadyPaidPayment_IsNotTouched()
     {
         Payment payment = await SeedPayment(PaymentStatus.Paid, "pi_paid_001");
-        _stripe.GetStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-               .Returns("succeeded");
+        _stripe.GetStatusAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
 
         await CreateSut().RunAsync();
 

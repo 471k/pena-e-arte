@@ -1157,6 +1157,7 @@ The following are the only documented exceptions:
 | `GET /api/v1/gift-cards/{code}/balance` | Public balance lookup by code alone (no per-studio scope in the route) | Rate-limited (`public-read`); enumeration risk from brute-forcing 12-char codes is accepted at that rate limit; response (`GiftCardBalanceResponse`) carries only `RemainingBalance`/`Status` — never `PurchaserEmail`/`RecipientEmail` |
 | `GET /api/v1/public/studios/{slug}/design-catalog` | Public flash/design catalog browse (P1 backlog Group 4, item #9) | None — read-only, only `IsCatalogItem && ClientId == null` designs, no client PII |
 | `POST /api/v1/marketing/unsubscribe` | Anonymous unsubscribe link in campaign emails | Signed token (HMAC-SHA256, `IMarketingOptOutSigner`, own key — separate from `IInstagramStateSigner`/`ISocialOAuthStateSigner`) validated before trusting clientId; rate-limited (`public-write`); single studio+client pair per token |
+| `POST /api/v1/webhooks/pok` | Called by POK's servers, no JWT | **None** — POK documents no webhook signature at all (ADR-0001 accepted risk), weaker than the two Stripe rows above. The handler never reads the request body to decide payment state; it only enqueues an immediate `PaymentReconciliationJob` run, which re-fetches every in-flight payment's real status from POK directly. Rate-limited (`billing`) as the only abuse guard available. `PaymentArchitectureTests.PokWebhookHandler_NeverReadsRequestBodyOrAssignsPaymentState` fails the build if this handler is ever changed to trust the body. |
 
 The core auth-bootstrap endpoints (`/auth/login`, `/auth/register`,
 `/auth/register/solo-artist`, `/auth/oauth/*`, `/auth/forgot-password`,
@@ -3915,7 +3916,7 @@ given. Corrects the original spec's "reuse `IStripePaymentService`" instruction:
 was deleted, not migrated, on 2026-07-31 (Article 4(g)/Amendment A) — the correct, current pattern
 is `IPaymentProvider`/`CreatePaymentHoldAsync`, the exact shape `CreateDepositPaymentCommand`
 already uses. `PurchaseGiftCardCommand` is a structural clone of that call shape; `GiftCard`
-carries its own `ProviderReferenceId`/`ClientSecret`/`Provider` fields (copied from `Payment`'s own
+carries its own `ProviderReferenceId`/`ClientToken`/`Provider` fields (copied from `Payment`'s own
 three fields for exactly this purpose) rather than sharing the `Payment` table, for the identical
 non-nullable-FK reason booth rent avoided it. No `ExpiresAt` at all — balances never expire, so
 there is no breakage/reversion-to-studio behavior to build, and the "who eats a post-spend

@@ -107,7 +107,7 @@ public class CancelAppointmentHandler(
 
                 if (refundPercent >= 100)
                 {
-                    await paymentProvider.RefundAsync(payment.ProviderReferenceId, null, ct);
+                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, null, ct);
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = payment.Amount;
                     appointment.DepositStatus = DepositStatus.Refunded;
@@ -117,7 +117,7 @@ public class CancelAppointmentHandler(
                     decimal refundAmount = Math.Round(
                         appointment.DepositAmount * refundPercent / 100m, 2, MidpointRounding.AwayFromZero);
                     long refundCents = (long)Math.Round(refundAmount * 100m, MidpointRounding.AwayFromZero);
-                    await paymentProvider.RefundAsync(payment.ProviderReferenceId, refundCents, ct);
+                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, refundCents, ct);
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = refundAmount;
                     appointment.DepositStatus = DepositStatus.Refunded;

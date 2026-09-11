@@ -19,6 +19,7 @@ import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMuta
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { DeveloperSettingsCard } from "./DeveloperSettingsCard";
 import { WebhookSettingsCard } from "./WebhookSettingsCard";
+import { PokSettingsCard } from "./PokSettingsCard";
 import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 import { StudioClosuresCard } from "./StudioClosuresCard";
@@ -435,6 +436,7 @@ export function StudioProfilePage() {
         </Card>
 
         <StudioSocialLinksCard />
+        <PokSettingsCard />
         <BrandingSettingsCard />
         <DeveloperSettingsCard />
         <WebhookSettingsCard />

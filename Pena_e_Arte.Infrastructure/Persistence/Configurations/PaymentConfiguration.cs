@@ -23,7 +23,7 @@ public class PaymentConfiguration : TenantEntityConfiguration<Payment>
         builder.Property(p => p.Provider).HasMaxLength(32).IsRequired();
         builder.Property(p => p.Currency).HasMaxLength(3).IsRequired();
         builder.Property(p => p.PlatformFeeAmount).HasColumnType("decimal(18,2)").IsRequired();
-        builder.Property(p => p.ClientSecret).HasMaxLength(500);
+        builder.Property(p => p.ClientToken).HasMaxLength(500);
         builder.Property(p => p.CashNote).HasMaxLength(500);
         builder.Property(p => p.CashConfirmedByUserId).IsRequired(false);
 

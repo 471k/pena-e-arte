@@ -19,7 +19,7 @@ public class GiftCardConfiguration : TenantEntityConfiguration<GiftCard>
         builder.Property(g => g.RecipientEmail).HasMaxLength(320);
         builder.Property(g => g.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(g => g.ProviderReferenceId).HasMaxLength(255);
-        builder.Property(g => g.ClientSecret).HasMaxLength(500);
+        builder.Property(g => g.ClientToken).HasMaxLength(500);
         builder.Property(g => g.Provider).HasMaxLength(32).IsRequired();
 
         // Codes are looked up per studio; not globally unique (studio-scoped balances).

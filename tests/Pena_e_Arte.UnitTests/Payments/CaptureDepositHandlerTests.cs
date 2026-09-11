@@ -29,7 +29,7 @@ public class CaptureDepositHandlerTests
     private CaptureDepositHandler CreateSut() => new(_db, _tenant, _stripe, _realtime, _sender);
 
     [Fact]
-    public async Task Handle_AuthorizedPayment_CallsStripeCapture()
+    public async Task Handle_AuthorizedPayment_CallsProviderCapture()
     {
         await SeedStudio();
         Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_test");
@@ -37,7 +37,7 @@ public class CaptureDepositHandlerTests
         await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
         await _stripe.Received(1)
-            .CaptureAsync("pi_test", Arg.Any<CancellationToken>());
+            .CaptureAsync(_studioId, "pi_test", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class CaptureDepositHandlerTests
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*not completed card authorization*");
-        await _stripe.DidNotReceive().CaptureAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().CaptureAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class CaptureDepositHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NoStripeIntentId_ThrowsBusinessRuleViolationException()
+    public async Task Handle_NoProviderReferenceId_ThrowsBusinessRuleViolationException()
     {
         await SeedStudio();
         Guid paymentId = await SeedPayment(PaymentStatus.Captured, stripeIntentId: null);
@@ -143,7 +143,7 @@ public class CaptureDepositHandlerTests
         Func<Task> act = () => CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
-            .WithMessage("*Stripe intent*");
+            .WithMessage("*provider reference*");
     }
 
     private async Task SeedStudio()

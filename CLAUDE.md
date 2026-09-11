@@ -89,7 +89,11 @@ Infra         Docker · K3s · Traefik · GitHub Actions
    unless the role is `admin`.
 
 2. **RBAC at the endpoint.** Every endpoint must have `.RequireAuthorization()`
-   with the correct policy. No unprotected endpoints except `/auth` and `/health`.
+   with the correct policy. No unprotected endpoints except `/auth`, `/health`, and
+   the documented, individually-justified rows in `docs/claude/architecture.md`'s
+   "AllowAnonymous Exceptions" table (e.g. public read-only pages, signed-token
+   links, provider webhooks). A new `AllowAnonymous` endpoint is not allowed unless
+   it is added to that table with its specific mitigation in the same change.
 
 3. **Never log PII.** Logs must include `tenant_id`, `user_id`, `request_id`.
    Never include names, emails, phone numbers, or card data.

@@ -59,6 +59,9 @@ vi.mock("@/features/notifications/components/NotificationPreferencesCard", () =>
 vi.mock("@/features/studios/components/StudioSocialLinksCard", () => ({
   StudioSocialLinksCard: () => <div data-testid="studio-social-links-card" />,
 }));
+vi.mock("@/features/studios/components/PokSettingsCard", () => ({
+  PokSettingsCard: () => <div data-testid="pok-settings-card" />,
+}));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 

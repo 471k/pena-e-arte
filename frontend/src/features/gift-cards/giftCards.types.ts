@@ -33,7 +33,7 @@ export interface PurchaseGiftCardRequest {
 
 export interface PurchaseGiftCardResponse {
   giftCardId:   string;
-  clientSecret: string | null;
+  clientToken: string | null;
   status:       string;
 }
 

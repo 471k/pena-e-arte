@@ -14,7 +14,7 @@ public class PackagePurchaseConfiguration : TenantEntityConfiguration<PackagePur
 
         builder.Property(p => p.SessionsRemaining).IsRequired();
         builder.Property(p => p.ProviderReferenceId).HasMaxLength(255).IsRequired();
-        builder.Property(p => p.ClientSecret).HasMaxLength(500);
+        builder.Property(p => p.ClientToken).HasMaxLength(500);
         builder.Property(p => p.Provider).HasMaxLength(32).IsRequired();
 
         builder.HasIndex(p => new { p.StudioId, p.ClientId });

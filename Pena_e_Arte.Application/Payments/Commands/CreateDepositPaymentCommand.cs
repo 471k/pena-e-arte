@@ -11,9 +11,9 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Payments.Commands;
 
 /// <summary>
-/// Client-facing card deposit: creates (or resumes) the Stripe PaymentIntent for the
-/// caller's own appointment. The amount always comes from the appointment's
-/// DepositAmount — never from the request — so a client cannot choose what to pay.
+/// Client-facing card deposit: creates (or resumes) the provider hold for the caller's own
+/// appointment. The amount always comes from the appointment's DepositAmount — never from the
+/// request — so a client cannot choose what to pay.
 /// </summary>
 public record CreateDepositPaymentCommand(Guid AppointmentId) : IRequest<PaymentIntentResponse>;
 
@@ -21,9 +21,18 @@ public class CreateDepositPaymentHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ICurrentUser currentUser,
-    IPaymentProvider stripePayments)
+    IPaymentProvider paymentProvider)
     : IRequestHandler<CreateDepositPaymentCommand, PaymentIntentResponse>
 {
+    // ADR-0001: POK is native-ALL; every deposit is quoted and charged in lek. A studio wanting a
+    // different settlement currency configures that on the POK side, not here.
+    private const string DepositCurrency = "ALL";
+
+    // Matches the Postman/REST example (expiresAfterMinutes: 1440) — a full day for the client to
+    // complete the card step before the hold self-expires. PaymentReconciliationJob's 3-day stale
+    // sweep is the backstop if this and POK's own expiry both somehow miss.
+    private const int HoldDurationMinutes = 1440;
+
     public async Task<PaymentIntentResponse> Handle(CreateDepositPaymentCommand command, CancellationToken ct)
     {
         Appointment appointment = await db.Appointments
@@ -47,32 +56,32 @@ public class CreateDepositPaymentHandler(
         Payment? existing = await db.Payments
             .FirstOrDefaultAsync(p => p.AppointmentId == appointment.Id, ct);
 
-        // An unauthorized card intent may be resumable — but never trust the stored
-        // secret blindly: reconcile with Stripe first. This also heals local state
-        // when webhooks were missed (e.g. the client authorized but we never heard).
+        // An unauthorized card hold may be resumable — but never trust the stored token
+        // blindly: reconcile with the provider first. This also heals local state when
+        // webhooks were missed (e.g. the client authorized but we never heard).
         if (existing is
             {
                 Method: ClientPaymentMethod.Card, Status: PaymentStatus.Pending,
-                ClientSecret: not null, ProviderReferenceId: not null
+                ClientToken: not null, ProviderReferenceId: not null
             })
         {
-            string? piStatus = await stripePayments.GetStatusAsync(
-                existing.ProviderReferenceId, ct);
+            PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
+                existing.StudioId, existing.ProviderReferenceId, ct);
 
-            switch (piStatus)
+            switch (status)
             {
-                case "requires_payment_method" or "requires_confirmation" or "requires_action" or "processing":
-                    // Still awaiting the client — resume with the same intent
-                    return new PaymentIntentResponse(existing.Id, existing.ClientSecret, PaymentStatus.Pending.ToString());
+                case PaymentProviderStatus.Pending:
+                    // Still awaiting the client — resume with the same hold
+                    return new PaymentIntentResponse(existing.Id, existing.ClientToken, PaymentStatus.Pending.ToString());
 
-                case "requires_capture":
+                case PaymentProviderStatus.Authorized:
                     // Authorized but the webhook never arrived — heal and report
                     existing.Status = PaymentStatus.Captured;
                     existing.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
-                    return new PaymentIntentResponse(existing.Id, existing.ClientSecret, PaymentStatus.Captured.ToString());
+                    return new PaymentIntentResponse(existing.Id, existing.ClientToken, PaymentStatus.Captured.ToString());
 
-                case "succeeded":
+                case PaymentProviderStatus.Captured:
                     // Captured but the webhook never arrived — heal and report
                     existing.Status = PaymentStatus.Paid;
                     existing.PaidAt = DateTime.UtcNow;
@@ -80,9 +89,9 @@ public class CreateDepositPaymentHandler(
                     appointment.DepositStatus = DepositStatus.Paid;
                     appointment.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
-                    return new PaymentIntentResponse(existing.Id, existing.ClientSecret, PaymentStatus.Paid.ToString());
+                    return new PaymentIntentResponse(existing.Id, existing.ClientToken, PaymentStatus.Paid.ToString());
 
-                    // canceled / gone at Stripe — fall through and mint a fresh intent
+                    // Canceled / Failed / null (gone) at the provider — fall through and mint a fresh hold
             }
         }
 
@@ -95,8 +104,16 @@ public class CreateDepositPaymentHandler(
         Guid paymentId = existing?.Id ?? Guid.NewGuid();
         long amountInCents = (long)(appointment.DepositAmount * 100);
 
-        (string intentId, string clientSecret) = await stripePayments.CreatePaymentHoldAsync(
-            amountInCents, "EUR", paymentId, ct);
+        (string providerReferenceId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
+            new PaymentHoldRequest(
+                StudioId: tenant.StudioId,
+                PaymentId: paymentId,
+                AmountInCents: amountInCents,
+                Currency: DepositCurrency,
+                PlatformFeeAmountInCents: 0, // ADR-0001 monetization: wired in, deferred at 0%
+                HoldDurationMinutes: HoldDurationMinutes),
+            ct);
+        DateTime holdExpiresAt = DateTime.UtcNow.AddMinutes(HoldDurationMinutes);
 
         if (existing is null)
         {
@@ -109,8 +126,11 @@ public class CreateDepositPaymentHandler(
                 Amount = appointment.DepositAmount,
                 Status = PaymentStatus.Pending,
                 Method = ClientPaymentMethod.Card,
-                ProviderReferenceId = intentId,
-                ClientSecret = clientSecret,
+                Provider = "pok",
+                Currency = DepositCurrency,
+                ProviderReferenceId = providerReferenceId,
+                ClientToken = clientToken,
+                HoldExpiresAt = holdExpiresAt,
             });
         }
         else
@@ -118,13 +138,16 @@ public class CreateDepositPaymentHandler(
             // Convert in place: cash declaration switched to card, or a failed attempt retried
             existing.Method = ClientPaymentMethod.Card;
             existing.Status = PaymentStatus.Pending;
-            existing.ProviderReferenceId = intentId;
-            existing.ClientSecret = clientSecret;
+            existing.Provider = "pok";
+            existing.Currency = DepositCurrency;
+            existing.ProviderReferenceId = providerReferenceId;
+            existing.ClientToken = clientToken;
+            existing.HoldExpiresAt = holdExpiresAt;
             existing.CashNote = null;
             existing.UpdatedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);
-        return new PaymentIntentResponse(paymentId, clientSecret, PaymentStatus.Pending.ToString());
+        return new PaymentIntentResponse(paymentId, clientToken, PaymentStatus.Pending.ToString());
     }
 }

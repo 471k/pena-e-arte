@@ -15,4 +15,4 @@ public record GiftCardResponse(
 /// (enumeration-risk endpoint; see architecture.md AllowAnonymous Exceptions table).</summary>
 public record GiftCardBalanceResponse(decimal RemainingBalance, string Status);
 
-public record PurchaseGiftCardResponse(Guid GiftCardId, string? ClientSecret, string Status);
+public record PurchaseGiftCardResponse(Guid GiftCardId, string? ClientToken, string Status);

@@ -13,7 +13,11 @@ public class Payment : TenantEntity
     // Card (provider) fields — null for cash payments.
     /// <summary>The payment provider's own reference id (formerly StripePaymentIntentId).</summary>
     public string? ProviderReferenceId { get; set; }
-    public string? ClientSecret { get; set; }
+
+    /// <summary>The client-facing token the front end uses to complete the payment — a Stripe
+    /// PaymentIntent client secret, or a POK sdkOrder id. Not necessarily a cryptographic
+    /// secret; named ClientToken (not ClientSecret) for that reason.</summary>
+    public string? ClientToken { get; set; }
 
     /// <summary>Which provider issued <see cref="ProviderReferenceId"/> (e.g. "pok"). Empty for
     /// cash or legacy rows. Tells reconciliation/webhooks which IPaymentProvider to call.</summary>

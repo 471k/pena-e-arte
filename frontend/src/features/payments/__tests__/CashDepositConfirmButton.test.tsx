@@ -23,7 +23,7 @@ const CONFIRMED_PAYMENT: PaymentResponse = {
   status:                "Paid",
   method:                "Cash",
   providerReferenceId: null,
-  clientSecret:          null,
+  clientToken:          null,
   cashNote:              null,
   paidAt:                "2026-06-11T14:00:00.000Z",
   clientName:            "",

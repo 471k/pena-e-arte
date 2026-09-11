@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Infrastructure.Jobs;
@@ -25,8 +26,9 @@ public class PackagePurchaseReconciliationJob(IAppDbContext db, IPaymentProvider
 
         foreach (PackagePurchase purchase in pending)
         {
-            string? status = await paymentProvider.GetStatusAsync(purchase.ProviderReferenceId, ct);
-            if (status is "succeeded")
+            PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
+                purchase.StudioId, purchase.ProviderReferenceId, ct);
+            if (status == PaymentProviderStatus.Captured)
             {
                 purchase.SessionsRemaining = purchase.Package.SessionCount;
                 purchase.ConfirmedAt = DateTime.UtcNow;

@@ -36,7 +36,7 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
             .Returns(true);
 
         IPaymentProvider provider = Substitute.For<IPaymentProvider>();
-        provider.CreatePaymentHoldAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
             .Returns(("pi_pkg_test", "secret_pkg_test"));
 
         ICurrentUser clientUser = Substitute.For<ICurrentUser>();
@@ -54,7 +54,8 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
         purchase.SessionsRemaining.Should().Be(0);
         purchase.ConfirmedAt.Should().BeNull();
 
-        provider.GetStatusAsync("pi_pkg_test", Arg.Any<CancellationToken>()).Returns("succeeded");
+        provider.GetStatusAsync(Arg.Any<Guid>(), "pi_pkg_test", Arg.Any<CancellationToken>())
+            .Returns(PaymentProviderStatus.Captured);
 
         await using AppDbContext reconcileDb = fixture.CreateDbContext(Guid.Empty);
         PackagePurchaseReconciliationJob job = new(reconcileDb, provider);

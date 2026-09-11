@@ -15,7 +15,7 @@ public class CreateDepositPaymentHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
-    private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
+    private readonly IPaymentProvider _provider = Substitute.For<IPaymentProvider>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _clientUserId = Guid.NewGuid();
 
@@ -24,11 +24,11 @@ public class CreateDepositPaymentHandlerTests
         _tenant.StudioId.Returns(_studioId);
         _currentUser.UserId.Returns(_clientUserId);
         _currentUser.Role.Returns("client");
-        _stripe.CreatePaymentHoldAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
                .Returns(("pi_new", "secret_new"));
     }
 
-    private CreateDepositPaymentHandler CreateSut() => new(_db, _tenant, _currentUser, _stripe);
+    private CreateDepositPaymentHandler CreateSut() => new(_db, _tenant, _currentUser, _provider);
 
     [Fact]
     public async Task Handle_OwnAppointment_CreatesPendingCardPayment()
@@ -39,12 +39,14 @@ public class CreateDepositPaymentHandlerTests
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
 
-        result.ClientSecret.Should().Be("secret_new");
+        result.ClientToken.Should().Be("secret_new");
         Payment stored = _db.Payments.Single(p => p.AppointmentId == appointmentId);
         stored.Method.Should().Be(ClientPaymentMethod.Card);
         stored.Status.Should().Be(PaymentStatus.Pending);
         stored.Amount.Should().Be(80m);
-        await _stripe.Received(1).CreatePaymentHoldAsync(8000, "EUR", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _provider.Received(1).CreatePaymentHoldAsync(
+            Arg.Is<PaymentHoldRequest>(r => r.AmountInCents == 8000 && r.Currency == "ALL"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -53,33 +55,33 @@ public class CreateDepositPaymentHandlerTests
         Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
-            intentId: "pi_old", clientSecret: "secret_old");
-        _stripe.GetStatusAsync("pi_old", Arg.Any<CancellationToken>())
-               .Returns("requires_payment_method");
+            intentId: "pi_old", clientToken: "secret_old");
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_old", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Pending);
 
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
 
-        result.ClientSecret.Should().Be("secret_old");
-        await _stripe.DidNotReceive().CreatePaymentHoldAsync(
-            Arg.Any<long>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        result.ClientToken.Should().Be("secret_old");
+        await _provider.DidNotReceive().CreatePaymentHoldAsync(
+            Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_ExistingCardIntentCancelledAtStripe_MintsFreshIntent()
+    public async Task Handle_ExistingCardIntentCancelledAtProvider_MintsFreshIntent()
     {
         Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
-            intentId: "pi_dead", clientSecret: "secret_dead");
-        _stripe.GetStatusAsync("pi_dead", Arg.Any<CancellationToken>())
-               .Returns("canceled");
+            intentId: "pi_dead", clientToken: "secret_dead");
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_dead", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Canceled);
 
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
 
         result.PaymentId.Should().Be(paymentId); // same row, fresh intent
-        result.ClientSecret.Should().Be("secret_new");
+        result.ClientToken.Should().Be("secret_new");
         _db.Payments.Single(p => p.Id == paymentId).ProviderReferenceId.Should().Be("pi_new");
     }
 
@@ -89,9 +91,9 @@ public class CreateDepositPaymentHandlerTests
         Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
-            intentId: "pi_held", clientSecret: "secret_held");
-        _stripe.GetStatusAsync("pi_held", Arg.Any<CancellationToken>())
-               .Returns("requires_capture");
+            intentId: "pi_held", clientToken: "secret_held");
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_held", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Authorized);
 
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
@@ -106,9 +108,9 @@ public class CreateDepositPaymentHandlerTests
         Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
-            intentId: "pi_done", clientSecret: "secret_done");
-        _stripe.GetStatusAsync("pi_done", Arg.Any<CancellationToken>())
-               .Returns("succeeded");
+            intentId: "pi_done", clientToken: "secret_done");
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_done", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
 
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
@@ -124,7 +126,7 @@ public class CreateDepositPaymentHandlerTests
         Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Cash, PaymentStatus.CashPending,
-            intentId: null, clientSecret: null, cashNote: "will pay at studio");
+            intentId: null, clientToken: null, cashNote: "will pay at studio");
 
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
@@ -158,7 +160,7 @@ public class CreateDepositPaymentHandlerTests
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
 
-        result.ClientSecret.Should().Be("secret_new");
+        result.ClientToken.Should().Be("secret_new");
     }
 
     [Fact]
@@ -179,7 +181,7 @@ public class CreateDepositPaymentHandlerTests
         Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Failed,
-            intentId: "pi_failed", clientSecret: "secret_failed");
+            intentId: "pi_failed", clientToken: "secret_failed");
 
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
@@ -196,7 +198,7 @@ public class CreateDepositPaymentHandlerTests
         Guid clientId = await SeedClient(_clientUserId);
         Guid appointmentId = await SeedAppointment(clientId);
         await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Captured,
-            intentId: "pi_held", clientSecret: "secret_held");
+            intentId: "pi_held", clientToken: "secret_held");
 
         Func<Task> act = () => CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
 
@@ -242,7 +244,7 @@ public class CreateDepositPaymentHandlerTests
 
     private async Task<Guid> SeedPayment(
         Guid appointmentId, ClientPaymentMethod method, PaymentStatus status,
-        string? intentId, string? clientSecret, string? cashNote = null)
+        string? intentId, string? clientToken, string? cashNote = null)
     {
         Payment payment = new()
         {
@@ -253,7 +255,7 @@ public class CreateDepositPaymentHandlerTests
             Method = method,
             Status = status,
             ProviderReferenceId = intentId,
-            ClientSecret = clientSecret,
+            ClientToken = clientToken,
             CashNote = cashNote,
         };
         _db.Payments.Add(payment);

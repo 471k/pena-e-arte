@@ -27,8 +27,9 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
 
         foreach (Payment payment in captured)
         {
-            string? status = await paymentProvider.GetStatusAsync(payment.ProviderReferenceId!, ct);
-            if (status is "succeeded")
+            PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
+                payment.StudioId, payment.ProviderReferenceId!, ct);
+            if (status == PaymentProviderStatus.Captured)
             {
                 payment.Status = PaymentStatus.Paid;
                 payment.PaidAt = DateTime.UtcNow;
@@ -54,7 +55,7 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
 
         foreach (Payment payment in stale)
         {
-            await paymentProvider.CancelAsync(payment.ProviderReferenceId!, ct);
+            await paymentProvider.CancelAsync(payment.StudioId, payment.ProviderReferenceId!, ct);
             payment.Status = PaymentStatus.Failed;
         }
 
@@ -83,7 +84,7 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
 
         foreach (Payment payment in expiredHolds)
         {
-            await paymentProvider.CancelAsync(payment.ProviderReferenceId!, ct);
+            await paymentProvider.CancelAsync(payment.StudioId, payment.ProviderReferenceId!, ct);
             payment.Status = PaymentStatus.Failed;
         }
 

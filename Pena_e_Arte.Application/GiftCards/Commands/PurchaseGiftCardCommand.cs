@@ -36,11 +36,8 @@ public class PurchaseGiftCardHandler(IAppDbContext db, IPaymentProvider paymentP
         Guid giftCardId = Guid.NewGuid();
         long amountInCents = (long)(req.Amount * 100);
 
-        // Same hardcoded "EUR" argument CreateDepositPaymentCommand passes — pre-existing
-        // inconsistency with Payment.Currency's own "ALL" default; matched for consistency
-        // rather than "fixed" as an unrelated side effect of this phase.
-        (string providerReferenceId, string clientSecret) = await paymentProvider.CreatePaymentHoldAsync(
-            amountInCents, "EUR", giftCardId, ct);
+        (string providerReferenceId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
+            new PaymentHoldRequest(studio.Id, giftCardId, amountInCents, "ALL"), ct);
 
         GiftCard giftCard = new()
         {
@@ -53,14 +50,14 @@ public class PurchaseGiftCardHandler(IAppDbContext db, IPaymentProvider paymentP
             RecipientEmail = req.RecipientEmail,
             Status = GiftCardStatus.Pending,
             ProviderReferenceId = providerReferenceId,
-            ClientSecret = clientSecret,
+            ClientToken = clientToken,
             Provider = "pok",
         };
 
         db.GiftCards.Add(giftCard);
         await db.SaveChangesAsync(ct);
 
-        return new PurchaseGiftCardResponse(giftCard.Id, clientSecret, giftCard.Status.ToString());
+        return new PurchaseGiftCardResponse(giftCard.Id, clientToken, giftCard.Status.ToString());
     }
 
     // 12-char base32 (Crockford-style, no ambiguous 0/O/1/I/L) — collision-checked per studio via

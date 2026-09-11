@@ -2732,7 +2732,8 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">New payment</span> to charge or record a deposit for an appointment.</li>
 <li>Click <span class="step-title">Load more</span> at the bottom for older payments.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#owner-payment-detail">Payment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
+<div class="callout callout-tip"><strong>Tip:</strong> card deposits only work once your studio has connected its own POK merchant account — see <a href="#owner-studio-profile">Studio profile</a>'s "Card deposits — POK" card. Until then, the Card option is unavailable at checkout and clients see Cash only.</div>
+<div class="crosslinks">See also: <a href="#owner-payment-detail">Payment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a>, <a href="#owner-studio-profile">Studio profile</a></div>
 </section>
 
 <section id="owner-payment-detail" data-role="owner">
@@ -2900,7 +2901,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>The studio settings hub at <code>/studios/me</code>: name, phone, business tax ID (NIPT), location, and timezone at the top (URL slug in its own card above), followed by a Social Media card, then branding, studio hours, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
+<p>The studio settings hub at <code>/studios/me</code>: name, phone, business tax ID (NIPT), location, and timezone at the top (URL slug in its own card above), followed by a Social Media card, a Card deposits — POK card, then branding, studio hours, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2923,10 +2924,10 @@ ol.steps li { margin: 6px 0; }
 <li>Edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
 <li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span> (choose the country, then type the number), <span class="step-title">Location</span> (drag the map pin), and <span class="step-title">Timezone</span> (controls how appointment times are shown in emails, texts, and reports), then <span class="step-title">Save changes</span>.</li>
 <li>If you haven't added your <span class="step-title">Business tax ID (NIPT)</span> yet, a banner prompts you to add it — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, the field becomes read-only; contact support to change it. It's never shown to clients.</li>
-<li>Below: <a href="#owner-social-verification">Social Media</a> (connect/verify Instagram, TikTok, Facebook, X, YouTube), <a href="#owner-branding">Branding</a>, <span class="step-title">Studio hours</span> (weekly opening hours — clients can only book within these, regardless of any individual artist's own working hours; a default Mon–Fri, 9am–6pm schedule is applied automatically at registration), QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
+<li>Below: <a href="#owner-social-verification">Social Media</a> (connect/verify Instagram, TikTok, Facebook, X, YouTube), <span class="step-title">Card deposits — POK</span> (paste your studio's own POK <span class="step-title">Key ID</span>, <span class="step-title">Key Secret</span>, and <span class="step-title">Merchant ID</span> from your POK dashboard's API Keys section, then <span class="step-title">Connect</span> — every studio brings its own POK account, there is no shared platform account, and card deposits stay unavailable to clients until this is connected), <a href="#owner-branding">Branding</a>, <span class="step-title">Studio hours</span> (weekly opening hours — clients can only book within these, regardless of any individual artist's own working hours; a default Mon–Fri, 9am–6pm schedule is applied automatically at registration), QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
 </ol>
-<div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully.</div>
-<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#admin-audit-log">Admin: audit log</a>, <a href="#owner-social-verification">Verify social media accounts</a></div>
+<div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully. Use your POK <em>production</em> credentials, not the staging/sandbox pair — sandbox keys will not process real payments, and your Key Secret is never shown again after you connect. POK only opens merchant accounts for businesses registered in Albania — if your studio isn't registered there, you won't be able to get POK credentials to connect, and should use Cash for deposits instead.</div>
+<div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#admin-audit-log">Admin: audit log</a>, <a href="#owner-social-verification">Verify social media accounts</a>, <a href="#owner-payments">Payment list</a></div>
 </section>
 
 <section id="owner-publish-studio" data-role="owner">

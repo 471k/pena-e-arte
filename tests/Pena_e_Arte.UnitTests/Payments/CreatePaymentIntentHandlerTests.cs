@@ -26,8 +26,7 @@ public class CreatePaymentIntentHandlerTests
     {
         _tenant.StudioId.Returns(_studioId);
         _stripe.CreatePaymentHoldAsync(
-                Arg.Any<long>(), Arg.Any<string>(),
-                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
             .Returns(("pi_test_123", "pi_test_123_secret"));
     }
 
@@ -35,14 +34,14 @@ public class CreatePaymentIntentHandlerTests
         new(_db, _tenant, _stripe, _realtime);
 
     [Fact]
-    public async Task Handle_ValidRequest_ReturnsClientSecret()
+    public async Task Handle_ValidRequest_ReturnsClientToken()
     {
         await SeedStudioAndAppointment();
 
         PaymentIntentResponse result = await CreateSut()
             .Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
 
-        result.ClientSecret.Should().Be("pi_test_123_secret");
+        result.ClientToken.Should().Be("pi_test_123_secret");
         result.Status.Should().Be(PaymentStatus.Pending.ToString());
     }
 

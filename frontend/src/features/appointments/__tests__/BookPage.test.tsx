@@ -982,7 +982,7 @@ describe("MyBookingsSection", () => {
       http.get("http://localhost/api/v1/payments/appointment/:id", () =>
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
-          providerReferenceId: "pi_1", clientSecret: null, cashNote: null,
+          providerReferenceId: "pi_1", clientToken: null, cashNote: null,
           paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null,
         }),
       ),
@@ -1002,7 +1002,7 @@ describe("MyBookingsSection", () => {
       http.get("http://localhost/api/v1/payments/appointment/:id", () =>
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
-          providerReferenceId: "pi_1", clientSecret: null, cashNote: null,
+          providerReferenceId: "pi_1", clientToken: null, cashNote: null,
           paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null,
         }),
       ),
@@ -1022,7 +1022,7 @@ describe("MyBookingsSection", () => {
       http.get("http://localhost/api/v1/payments/appointment/:id", () =>
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "CashPending", method: "Cash",
-          providerReferenceId: null, clientSecret: null, cashNote: null,
+          providerReferenceId: null, clientToken: null, cashNote: null,
           paidAt: null, clientName: "Marco Cliente", appointmentDate: null,
         }),
       ),

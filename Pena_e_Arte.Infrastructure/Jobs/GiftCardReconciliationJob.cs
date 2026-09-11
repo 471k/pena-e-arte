@@ -29,8 +29,9 @@ public class GiftCardReconciliationJob(IAppDbContext db, IPaymentProvider paymen
 
         foreach (GiftCard giftCard in pending)
         {
-            string? status = await paymentProvider.GetStatusAsync(giftCard.ProviderReferenceId!, ct);
-            if (status is "succeeded")
+            PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
+                giftCard.StudioId, giftCard.ProviderReferenceId!, ct);
+            if (status == PaymentProviderStatus.Captured)
             {
                 giftCard.Status = GiftCardStatus.Active;
                 giftCard.UpdatedAt = DateTime.UtcNow;

@@ -22,7 +22,7 @@ public class RefundPaymentHandlerTests
     public RefundPaymentHandlerTests()
     {
         _stripe.RefundAsync(
-                Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Returns("re_test_123");
     }
 
@@ -60,7 +60,7 @@ public class RefundPaymentHandlerTests
         await CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
 
         await _stripe.Received(1).RefundAsync(
-            "pi_test", 20000L, Arg.Any<CancellationToken>());
+            _studioId, "pi_test", 20000L, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class RefundPaymentHandlerTests
         await CreateSut().Handle(new RefundPaymentCommand(paymentId, 50m), default);
 
         await _stripe.Received(1).RefundAsync(
-            "pi_test", 5000L, Arg.Any<CancellationToken>());
+            _studioId, "pi_test", 5000L, Arg.Any<CancellationToken>());
     }
 
     [Fact]

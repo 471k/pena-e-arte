@@ -21,7 +21,7 @@ export interface PaymentResponse {
   status:                PaymentStatus;
   method:                PaymentMethod;
   providerReferenceId: string | null;
-  clientSecret:          string | null;
+  clientToken:          string | null;
   cashNote:              string | null;
   paidAt:                string | null;
   clientName:            string;
@@ -31,7 +31,7 @@ export interface PaymentResponse {
 
 export interface PaymentIntentResponse {
   paymentId:    string;
-  clientSecret: string;
+  clientToken: string;
   status:       string;
 }
 
@@ -64,10 +64,26 @@ export interface GetPaymentsParams {
   pageSize?:   number;
 }
 
-export interface ClientSecretResponse {
-  clientSecret: string;
+export interface ClientTokenResponse {
+  clientToken: string;
 }
 
 export interface PaymentCapabilitiesResponse {
   cardPaymentsAvailable: boolean;
+  /** Which POK environment ("staging" | "production") the backend is actually configured
+   * against — the single source of truth for the checkout widget's `env` option. Never derive
+   * this independently on the client (e.g. from the frontend's own build mode): that can drift
+   * out of sync with the backend's real configured host and POK 401s on a mismatch. */
+  pokEnvironment: string | null;
+}
+
+export interface ConnectPokAccountRequest {
+  keyId:      string;
+  keySecret:  string;
+  merchantId: string;
+}
+
+export interface PokConnectionStatusResponse {
+  connected:   boolean;
+  merchantId: string | null;
 }

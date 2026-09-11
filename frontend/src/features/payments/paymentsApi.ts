@@ -4,11 +4,13 @@ import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import type {
   PaymentResponse,
   PaymentIntentResponse,
-  ClientSecretResponse,
+  ClientTokenResponse,
   CreatePaymentIntentRequest,
   UpdateSessionSplitsRequest,
   GetPaymentsParams,
   PaymentCapabilitiesResponse,
+  ConnectPokAccountRequest,
+  PokConnectionStatusResponse,
 } from "./payment.types";
 
 export const paymentsApi = createApi({
@@ -73,11 +75,25 @@ export const paymentsApi = createApi({
       query: ({ id, body }) => ({ url: `payments/${id}/splits`, method: "PUT", body }),
       invalidatesTags: ["Payment"],
     }),
-    getPaymentClientSecret: builder.query<ClientSecretResponse, string>({
-      query: (id) => `payments/${id}/client-secret`,
+    getPaymentClientToken: builder.query<ClientTokenResponse, string>({
+      query: (id) => `payments/${id}/client-token`,
+    }),
+    // Called right after the POK widget's own onSuccess fires — that callback is UX only, never
+    // a source of truth (ADR-0001). Re-fetches the real status from POK before reporting success.
+    confirmCardPayment: builder.mutation<PaymentResponse, string>({
+      query: (id) => ({ url: `payments/${id}/confirm`, method: "POST" }),
+      invalidatesTags: ["Payment"],
     }),
     getPaymentCapabilities: builder.query<PaymentCapabilitiesResponse, void>({
       query: () => "payments/capabilities",
+    }),
+    connectPokAccount: builder.mutation<void, ConnectPokAccountRequest>({
+      query: (body) => ({ url: "payments/pok/connect", method: "POST", body }),
+      invalidatesTags: ["Payment"],
+    }),
+    getPokConnectionStatus: builder.query<PokConnectionStatusResponse, void>({
+      query: () => "payments/pok/connection",
+      providesTags: ["Payment"],
     }),
     downloadInvoice: builder.mutation<Blob, string>({
       query: (id) => ({
@@ -99,7 +115,10 @@ export const {
   useCaptureDepositMutation,
   useRefundPaymentMutation,
   useUpdateSessionSplitsMutation,
-  useGetPaymentClientSecretQuery,
+  useGetPaymentClientTokenQuery,
+  useConfirmCardPaymentMutation,
   useDownloadInvoiceMutation,
   useGetPaymentCapabilitiesQuery,
+  useConnectPokAccountMutation,
+  useGetPokConnectionStatusQuery,
 } = paymentsApi;

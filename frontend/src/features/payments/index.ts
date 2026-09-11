@@ -9,12 +9,12 @@ export {
   useCaptureDepositMutation,
   useRefundPaymentMutation,
   useUpdateSessionSplitsMutation,
-  useGetPaymentClientSecretQuery,
+  useGetPaymentClientTokenQuery,
 } from "./paymentsApi";
 export type {
   PaymentResponse,
   PaymentIntentResponse,
-  ClientSecretResponse,
+  ClientTokenResponse,
   SessionSplitResponse,
   CreatePaymentIntentRequest,
   UpdateSessionSplitsRequest,

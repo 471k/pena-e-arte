@@ -45,7 +45,7 @@ public class CompleteAppointmentHandler(
 
         if (payment is not null && !string.IsNullOrEmpty(payment.ProviderReferenceId))
         {
-            await paymentProvider.CaptureAsync(payment.ProviderReferenceId, ct);
+            await paymentProvider.CaptureAsync(payment.StudioId, payment.ProviderReferenceId, ct);
             payment.Status = PaymentStatus.Paid;
             payment.UpdatedAt = DateTime.UtcNow;
         }

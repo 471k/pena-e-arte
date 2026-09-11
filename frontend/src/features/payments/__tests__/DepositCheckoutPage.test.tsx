@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -10,42 +10,39 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { DepositCheckoutPage } from "@/features/payments/components/DepositCheckoutPage";
-import type { ClientSecretResponse, PaymentCapabilitiesResponse } from "@/features/payments/payment.types";
+import type { ClientTokenResponse, PaymentCapabilitiesResponse } from "@/features/payments/payment.types";
 
-// ── Stripe mock ────────────────────────────────────────────────────────────────
-// Stripe Elements require a real browser environment; mock the whole module.
+// ── POK widget mock ──────────────────────────────────────────────────────────
+// GuestCheckoutForm mounts a real card form against POK's servers — mock the whole module.
 
-vi.mock("@stripe/react-stripe-js", () => ({
-  loadStripe:     vi.fn().mockResolvedValue({}),
-  Elements:       ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  PaymentElement: () => <div data-testid="stripe-payment-element" />,
-  useStripe:      () => ({
-    confirmPayment: vi.fn().mockResolvedValue({ error: null }),
-  }),
-  useElements: () => ({}),
-}));
-
-vi.mock("@stripe/stripe-js", () => ({
-  loadStripe: vi.fn().mockResolvedValue({}),
+vi.mock("@nebula-ltd/pok-payments-js/react", () => ({
+  GuestCheckoutForm: (props: { orderId: string; onSuccess?: () => void }) => (
+    <div data-testid="pok-checkout-form" data-order-id={props.orderId}>
+      <button type="button" onClick={() => props.onSuccess?.()}>Authorise deposit</button>
+    </div>
+  ),
 }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
-const SECRET_RESP: ClientSecretResponse = {
-  clientSecret: "pi_test_secret_xyz",
+const SECRET_RESP: ClientTokenResponse = {
+  clientToken: "order-abc-xyz",
 };
 
-const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true };
+const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true, pokEnvironment: "staging" };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
-  http.get("http://localhost/api/v1/payments/:id/client-secret", ({ params }) => {
+  http.get("http://localhost/api/v1/payments/:id/client-token", ({ params }) => {
     if (params.id === "pay-001") return HttpResponse.json(SECRET_RESP);
     return HttpResponse.json({ message: "Not found" }, { status: 404 });
   }),
   http.get("http://localhost/api/v1/payments/capabilities", () =>
     HttpResponse.json(CAPABILITIES_AVAILABLE),
+  ),
+  http.post("http://localhost/api/v1/payments/:id/confirm", () =>
+    HttpResponse.json({ status: "Captured" }),
   ),
 );
 
@@ -97,7 +94,7 @@ describe("DepositCheckoutPage", () => {
 
   it("shows loading state while fetching the client secret", () => {
     server.use(
-      http.get("http://localhost/api/v1/payments/:id/client-secret", async () => {
+      http.get("http://localhost/api/v1/payments/:id/client-token", async () => {
         await new Promise((r) => setTimeout(r, 60_000));
         return HttpResponse.json(SECRET_RESP);
       }),
@@ -113,34 +110,63 @@ describe("DepositCheckoutPage", () => {
 
   // ── Card form ────────────────────────────────────────────────────────────────
 
-  it("shows Stripe PaymentElement when client secret is available", async () => {
+  it("shows the POK checkout widget with the order id from the client-token response", async () => {
     renderPage("pay-001");
-    expect(await screen.findByTestId("stripe-payment-element")).toBeInTheDocument();
-  });
-
-  it("shows 'Authorise deposit' submit button", async () => {
-    renderPage("pay-001");
-    await screen.findByTestId("stripe-payment-element");
-    expect(screen.getByRole("button", { name: /authorise deposit/i })).toBeInTheDocument();
+    const form = await screen.findByTestId("pok-checkout-form");
+    expect(form).toBeInTheDocument();
+    expect(form.dataset.orderId).toBe("order-abc-xyz");
   });
 
   it("shows the amount in the form description when ?amount param is provided", async () => {
     renderPage("pay-001", "?amount=100.00+EUR");
-    await screen.findByTestId("stripe-payment-element");
+    await screen.findByTestId("pok-checkout-form");
     expect(screen.getByText(/100\.00 EUR/)).toBeInTheDocument();
   });
 
   it("does NOT show the amount text when no ?amount param", async () => {
     renderPage("pay-001");
-    await screen.findByTestId("stripe-payment-element");
+    await screen.findByTestId("pok-checkout-form");
     // The <p> with "authorising a deposit of" should not appear
     expect(screen.queryByText(/authorising a deposit of/i)).not.toBeInTheDocument();
   });
 
-  it("shows the Stripe security footer", async () => {
+  it("shows the POK security footer", async () => {
     renderPage("pay-001");
-    await screen.findByTestId("stripe-payment-element");
-    expect(screen.getByText(/secured by stripe/i)).toBeInTheDocument();
+    await screen.findByTestId("pok-checkout-form");
+    expect(screen.getByText(/secured by pok/i)).toBeInTheDocument();
+  });
+
+  it("re-confirms with the backend before showing the success state — never trusts the widget alone", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    let confirmCalled = false;
+    server.use(
+      http.post("http://localhost/api/v1/payments/:id/confirm", ({ params }) => {
+        confirmCalled = true;
+        expect(params.id).toBe("pay-001");
+        return HttpResponse.json({ status: "Captured" });
+      }),
+    );
+    renderPage("pay-001");
+    const form = await screen.findByTestId("pok-checkout-form");
+    await userEvent.click(within(form).getByRole("button", { name: /authorise deposit/i }));
+
+    expect(await screen.findByText(/deposit authorised/i)).toBeInTheDocument();
+    expect(confirmCalled).toBe(true);
+  });
+
+  it("shows an error instead of a false success when the backend confirm call fails", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    server.use(
+      http.post("http://localhost/api/v1/payments/:id/confirm", () =>
+        new HttpResponse(null, { status: 500 }),
+      ),
+    );
+    renderPage("pay-001");
+    const form = await screen.findByTestId("pok-checkout-form");
+    await userEvent.click(within(form).getByRole("button", { name: /authorise deposit/i }));
+
+    expect(await screen.findByText(/couldn't confirm it yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/deposit authorised/i)).not.toBeInTheDocument();
   });
 
   // ── Redirect complete state ──────────────────────────────────────────────────
@@ -148,7 +174,7 @@ describe("DepositCheckoutPage", () => {
   it("shows success state when ?status=complete without fetching the client secret", async () => {
     let secretFetched = false;
     server.use(
-      http.get("http://localhost/api/v1/payments/:id/client-secret", () => {
+      http.get("http://localhost/api/v1/payments/:id/client-token", () => {
         secretFetched = true;
         return HttpResponse.json(SECRET_RESP);
       }),
@@ -161,10 +187,10 @@ describe("DepositCheckoutPage", () => {
     expect(secretFetched).toBe(false);
   });
 
-  it("success state does NOT show Stripe form elements", async () => {
+  it("success state does NOT show the POK form", async () => {
     renderPage("pay-001", "?status=complete");
     await screen.findByText(/deposit authorised/i);
-    expect(screen.queryByTestId("stripe-payment-element")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /authorise/i })).not.toBeInTheDocument();
   });
 
@@ -177,7 +203,7 @@ describe("DepositCheckoutPage", () => {
 
   // ── Capabilities guard ───────────────────────────────────────────────────────
 
-  it("shows an unavailable message instead of the Stripe form when card payments are unavailable", async () => {
+  it("shows an unavailable message instead of the POK form when card payments are unavailable", async () => {
     server.use(
       http.get("http://localhost/api/v1/payments/capabilities", () =>
         HttpResponse.json({ cardPaymentsAvailable: false }),
@@ -185,6 +211,6 @@ describe("DepositCheckoutPage", () => {
     );
     renderPage("pay-001");
     expect(await screen.findByText(/temporarily unavailable for this link/i)).toBeInTheDocument();
-    expect(screen.queryByTestId("stripe-payment-element")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
   });
 });

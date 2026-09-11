@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
+import { GuestCheckoutForm } from "@nebula-ltd/pok-payments-js/react";
+import type { PaymentErrorResponse } from "@nebula-ltd/pok-payments-js";
 import { Banknote, CheckCircle2, CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
@@ -15,18 +10,6 @@ import {
   useGetPaymentCapabilitiesQuery,
 } from "@/features/payments/paymentsApi";
 import { RedeemGiftCardField } from "@/features/gift-cards/components/RedeemGiftCardField";
-
-const stripeKey: string | undefined = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-// Missing key (e.g. .env.local not set up or dev server started before it existed)
-// must not crash the selector — the card tab explains instead.
-// Lazily initialised so Stripe.js (and its iframe) only loads once the card
-// tab actually mounts, not whenever this module is bundled into the app.
-let stripePromise: ReturnType<typeof loadStripe> | null = null;
-function getStripePromise() {
-  if (!stripeKey) return null;
-  stripePromise ??= loadStripe(stripeKey);
-  return stripePromise;
-}
 
 type Tab = "card" | "cash";
 
@@ -40,47 +23,57 @@ interface PaymentMethodSelectorProps {
 // ── Card tab ──────────────────────────────────────────────────────────────
 
 function CardCheckoutForm({
+  appointmentId,
+  orderId,
+  pokEnvironment,
   onSuccess,
   onError,
-}: Pick<PaymentMethodSelectorProps, "onSuccess" | "onError">) {
-  const stripe      = useStripe();
-  const elements    = useElements();
-  const [busy, setBusy] = useState(false);
+}: Pick<PaymentMethodSelectorProps, "appointmentId" | "onSuccess" | "onError">
+  & { orderId: string; pokEnvironment: "staging" | "production" }) {
+  const [createDeposit] = useCreateDepositPaymentMutation();
+  const [confirming, setConfirming] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-    setBusy(true);
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/booking/success`,
-      },
-      redirect: "if_required",
-    });
-    setBusy(false);
-    if (error) onError(error.message ?? "Card payment failed.");
-    else        onSuccess("card");
+  async function handleSuccess() {
+    // The widget's own onSuccess is UX only — never the source of truth (ADR-0001: a webhook,
+    // and by extension a client-side callback, is a trigger, not a fact). Re-run the same
+    // create/resume call, which reconciles against POK's real order status server-side before
+    // this deposit is trusted as authorised.
+    setConfirming(true);
+    try {
+      await createDeposit({ appointmentId }).unwrap();
+      onSuccess("card");
+    } catch {
+      onError("Payment completed, but we couldn't confirm it yet. Refresh in a moment.");
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  function handleError(err: PaymentErrorResponse) {
+    onError(err.message ?? "Card payment failed. Please try again.");
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement
-        onLoadError={() =>
-          onError(
-            "The card form failed to load. Check your connection or disable ad/tracking blockers for this site, then try again.",
-          )
-        }
-      />
-      <Button type="submit" className="w-full" disabled={busy || !stripe}>
-        {busy
-          ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing…</>
-          : "Authorise deposit"}
-      </Button>
+    <div className="space-y-3">
+      {confirming
+        ? (
+          <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Confirming payment…</span>
+          </div>
+        )
+        : (
+          <GuestCheckoutForm
+            orderId={orderId}
+            onSuccess={() => void handleSuccess()}
+            onError={handleError}
+            options={{ env: pokEnvironment, locale: "en", countrySelect: "modal" }}
+          />
+        )}
       <p className="text-xs text-center text-muted-foreground">
         Your card is authorised now and charged when the studio confirms your session.
       </p>
-    </form>
+    </div>
   );
 }
 
@@ -92,8 +85,10 @@ function CardTab({
   const [createDeposit, { data, isLoading, isError, error }] = useCreateDepositPaymentMutation();
   const { data: capabilities, isLoading: isLoadingCapabilities } = useGetPaymentCapabilitiesQuery();
   const requested = useRef(false);
-  const stripePromise = getStripePromise();
-  const cardPaymentsAvailable = !!stripePromise && capabilities?.cardPaymentsAvailable !== false;
+  // pokEnvironment must be present whenever the backend reports card payments available — if it's
+  // ever not (e.g. a stale cached response), treat cards as unavailable rather than guess an env.
+  const pokEnvironment = capabilities?.pokEnvironment;
+  const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable === true && !!pokEnvironment;
 
   // Create (or resume) the deposit intent once when the card tab opens — but only once we
   // know card payments are actually available; otherwise this would race capabilities and
@@ -140,7 +135,7 @@ function CardTab({
     );
   }
 
-  // The backend reconciles with Stripe — the deposit may already be settled
+  // The backend reconciles with POK — the deposit may already be settled
   // (e.g. authorized earlier in another tab, or a webhook arrived late).
   if (data.status === "Captured" || data.status === "Paid") {
     return (
@@ -159,15 +154,13 @@ function CardTab({
   }
 
   return (
-    <Elements
-      stripe={stripePromise}
-      options={{
-        clientSecret: data.clientSecret,
-        appearance:   { theme: "stripe" },
-      }}
-    >
-      <CardCheckoutForm onSuccess={onSuccess} onError={onError} />
-    </Elements>
+    <CardCheckoutForm
+      appointmentId={appointmentId}
+      orderId={data.clientToken}
+      pokEnvironment={pokEnvironment as "staging" | "production"}
+      onSuccess={onSuccess}
+      onError={onError}
+    />
   );
 }
 

@@ -12,4 +12,4 @@ public record PackagePurchaseResponse(
     int SessionsRemaining,
     DateTime CreatedAt);
 
-public record PurchasePackageResponse(Guid PackagePurchaseId, string? ClientSecret);
+public record PurchasePackageResponse(Guid PackagePurchaseId, string? ClientToken);

@@ -38,5 +38,5 @@ export interface PurchasePackageRequest {
 
 export interface PurchasePackageResponse {
   packagePurchaseId: string;
-  clientSecret:      string | null;
+  clientToken:      string | null;
 }

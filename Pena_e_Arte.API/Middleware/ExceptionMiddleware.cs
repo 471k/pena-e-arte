@@ -48,6 +48,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             PasswordResetTokenInvalidException => (StatusCodes.Status422UnprocessableEntity, ex.Message, "RESET_TOKEN_INVALID"),
             ChangeEmailTokenInvalidException => (StatusCodes.Status422UnprocessableEntity, ex.Message, "CHANGE_EMAIL_TOKEN_INVALID"),
             BusinessRuleViolationException => (StatusCodes.Status422UnprocessableEntity, ex.Message, null),
+            PaymentProviderNotConnectedException => (StatusCodes.Status422UnprocessableEntity, ex.Message, "PAYMENT_PROVIDER_NOT_CONNECTED"),
             ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, ex.Message, null),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, ex.Message, null),
             StripeException stripeEx => (StatusCodes.Status502BadGateway,
