@@ -20,13 +20,19 @@ public class GetWebhookDeliveriesHandlerTests
         _db.WebhookDeliveries.AddRange(
             new WebhookDelivery
             {
-                StudioId = _studioId, WebhookEndpointId = _endpointId, EventType = "appointment.created",
-                Succeeded = true, AttemptedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                StudioId = _studioId,
+                WebhookEndpointId = _endpointId,
+                EventType = "appointment.created",
+                Succeeded = true,
+                AttemptedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             },
             new WebhookDelivery
             {
-                StudioId = _studioId, WebhookEndpointId = _endpointId, EventType = "appointment.cancelled",
-                Succeeded = false, AttemptedAt = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+                StudioId = _studioId,
+                WebhookEndpointId = _endpointId,
+                EventType = "appointment.cancelled",
+                Succeeded = false,
+                AttemptedAt = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc),
             });
         await _db.SaveChangesAsync();
 
@@ -45,8 +51,11 @@ public class GetWebhookDeliveriesHandlerTests
         {
             _db.WebhookDeliveries.Add(new WebhookDelivery
             {
-                StudioId = _studioId, WebhookEndpointId = _endpointId, EventType = "ping",
-                Succeeded = true, AttemptedAt = DateTime.UtcNow.AddMinutes(-i),
+                StudioId = _studioId,
+                WebhookEndpointId = _endpointId,
+                EventType = "ping",
+                Succeeded = true,
+                AttemptedAt = DateTime.UtcNow.AddMinutes(-i),
             });
         }
         await _db.SaveChangesAsync();
