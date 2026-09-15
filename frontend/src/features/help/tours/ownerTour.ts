@@ -34,6 +34,11 @@ export const ownerTourSteps: TourStep[] = [
     body: "If another studio invites you to join them as an artist, it shows up here. Only appears when you have a pending invite.",
   },
   {
+    targetSelector: '[data-tour="owner-services-nav"]',
+    title: "Build your service catalog",
+    body: "Add bookable services like \"New Tattoo Session\" or \"Touch-Up\" — clients pick one when booking, and each drives its own duration and, optionally, its own deposit.",
+  },
+  {
     targetSelector: '[data-tour="owner-deposit-rules-nav"]',
     title: "Set up deposit rules",
     body: "Deposit rules decide how much clients pay upfront to secure a booking.",

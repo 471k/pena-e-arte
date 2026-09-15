@@ -34,6 +34,7 @@ import { useGetArtistsQuery }                     from "@/features/artists/artis
 import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import { useGetClientsQuery, useGetMyClientQuery } from "@/features/clients/clientsApi";
 import { useGetDepositRulesQuery }                from "@/features/deposit-rules/depositRulesApi";
+import { useGetServicesQuery }                    from "@/features/services/servicesApi";
 import { useGetPublicStudioQuery }                from "@/features/public/publicApi";
 import { useEnsureActiveStudio }                  from "@/features/auth/useEnsureActiveStudio";
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
@@ -50,6 +51,7 @@ import { AppointmentAttachmentCategory } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
 import type { ArtistResponse }      from "@/features/artists/artistsApi";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
+import type { ServiceResponse }     from "@/features/services/service.types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -81,17 +83,27 @@ const schema = z.object({
     (v) => new Date(v) > new Date(),
     "Appointment must be in the future"
   ),
-  durationMinutes: z.number().refine(
-    (v) => (VALID_DURATIONS as readonly number[]).includes(v),
-    "Select a valid appointment duration"
-  ),
+  // A picked service overrides this with its own DurationMinutes (which need not be one
+  // of VALID_DURATIONS) — the "must be a preset duration" rule below only applies when no
+  // service is selected, matching server-side (CreateAppointmentCommand ignores this field
+  // entirely once a service is picked).
+  durationMinutes: z.number().int().positive("Select a valid appointment duration"),
+  serviceId:       z.string().nullable().optional(),
   depositRuleId:   z.string().nullable().optional(),
   promoCode:       z.string().optional(),
   notes:           z.string().optional(),
 }).refine(
   (data) => data.bookAnyArtist || (!!data.artistId && data.artistId.length > 0),
   { message: "Select an artist", path: ["artistId"] },
-);
+).superRefine((data, ctx) => {
+  if (!data.serviceId && !(VALID_DURATIONS as readonly number[]).includes(data.durationMinutes)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Select a valid appointment duration",
+      path: ["durationMinutes"],
+    });
+  }
+});
 
 type FormValues = z.infer<typeof schema>;
 
@@ -191,6 +203,23 @@ function DepositPreview({
   );
 }
 
+// Service.DepositAmount, when set, overrides the studio's DepositRule calculation entirely
+// for a booking that picks this service (see CreateAppointmentCommand.cs) — this preview
+// mirrors that, not DepositPreview's rule-based estimate.
+function ServiceDepositPreview({ service }: { service: ServiceResponse }) {
+  if (service.depositAmount === null) return null;
+
+  return (
+    <div className="flex items-center justify-between rounded-md
+                    bg-muted/40 border border-border/30 px-3 py-2">
+      <span className="text-xs text-muted-foreground">Deposit for this service</span>
+      <span className="text-sm font-semibold tabular-nums">
+        €{service.depositAmount.toFixed(2)}
+      </span>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BookAppointmentForm() {
@@ -248,6 +277,7 @@ export function BookAppointmentForm() {
   });
   const { data: myClient }     = useGetMyClientQuery(undefined, { skip: !isClientRole || !studioReady });
   const { data: depositRules } = useGetDepositRulesQuery(undefined, { skip: !studioReady });
+  const { data: services }     = useGetServicesQuery(undefined, { skip: !studioReady });
   const { data: myPackagePurchases } = useGetMyPackagePurchasesQuery(undefined, { skip: !isClientRole || !studioReady });
   const usablePackages = (myPackagePurchases ?? []).filter((p) => p.sessionsRemaining > 0);
 
@@ -319,6 +349,7 @@ export function BookAppointmentForm() {
       bookAnyArtist:   false,
       durationMinutes: 60,
       clientId:        isClientRole ? (user?.id ?? "") : "",
+      serviceId:       null,
       depositRuleId:   null,
     },
   });
@@ -327,6 +358,7 @@ export function BookAppointmentForm() {
   const watchedBookAnyArtist = useWatch({ control, name: "bookAnyArtist" });
   const watchedDate          = useWatch({ control, name: "scheduledAt" });
   const watchedDuration      = useWatch({ control, name: "durationMinutes" });
+  const watchedServiceId     = useWatch({ control, name: "serviceId" });
   const watchedDepositRuleId = useWatch({ control, name: "depositRuleId" });
 
   // Keep clientId current for client role
@@ -372,6 +404,20 @@ export function BookAppointmentForm() {
   });
 
   const activeRules = depositRules?.filter((r) => r.isActive) ?? [];
+  const activeServices = useMemo(() => (services ?? []).filter((s) => s.isActive), [services]);
+  const selectedService = useMemo(
+    () => activeServices.find((s) => s.id === watchedServiceId) ?? null,
+    [activeServices, watchedServiceId],
+  );
+
+  // A picked service's own duration is authoritative — locking it here matches what
+  // CreateAppointmentCommand does server-side (it overwrites DurationMinutes from the
+  // service, never trusting the request's value once a service is selected).
+  useEffect(() => {
+    if (selectedService) {
+      setValue("durationMinutes", selectedService.durationMinutes);
+    }
+  }, [selectedService, setValue]);
 
   async function onSubmit(values: FormValues) {
     const { tattooDescriptionError, referralSourceOtherError } = validateTattooIntake(intake);
@@ -389,6 +435,7 @@ export function BookAppointmentForm() {
       clientId,
       date:            new Date(values.scheduledAt).toISOString(),
       durationMinutes: values.durationMinutes,
+      serviceId:       values.serviceId ?? null,
       // NOTE: depositRuleId is sent but ignored by the backend, which always auto-selects the
       // single active DepositRule if any — a pre-existing mismatch, not fixed in this pass
       // (see docs/claude/overnight-prompt-guest-checkout-booking-2026-08-31.md Part 6d).
@@ -418,6 +465,7 @@ export function BookAppointmentForm() {
         bookAnyArtist:   false,
         durationMinutes: 60,
         clientId:        isClientRole ? (myClient?.id ?? user?.id ?? "") : "",
+        serviceId:       null,
         depositRuleId:   null,
         promoCode:       "",
       });
@@ -714,6 +762,40 @@ export function BookAppointmentForm() {
         </div>
       )}
 
+      {/* Service — picking one locks Duration (and, when the service has its own
+          DepositAmount, replaces the Deposit rule step below) to what the studio configured
+          for it; matches CreateAppointmentCommand's server-side override. */}
+      {activeServices.length > 0 && (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="serviceId">Service</FieldLabel>
+          <Controller
+            control={control}
+            name="serviceId"
+            render={({ field }) => (
+              <Select
+                value={field.value ?? "custom"}
+                onValueChange={(v) => field.onChange(v === "custom" ? null : v)}
+              >
+                <SelectTrigger id="serviceId">
+                  <SelectValue placeholder="Custom (choose your own duration)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Custom (choose your own duration)</SelectItem>
+                  {activeServices.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} — {s.durationMinutes} min
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {selectedService?.description && (
+            <p className="text-xs text-muted-foreground">{selectedService.description}</p>
+          )}
+        </div>
+      )}
+
       {/* Date & Time + Appointment Duration */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
@@ -734,30 +816,40 @@ export function BookAppointmentForm() {
 
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
           <FieldLabel htmlFor="durationMinutes" required>Appointment Duration</FieldLabel>
-          <Controller
-            control={control}
-            name="durationMinutes"
-            render={({ field }) => (
-              <Select
-                value={String(field.value)}
-                onValueChange={(v) => field.onChange(Number(v))}
-              >
-                <SelectTrigger
-                  id="durationMinutes"
-                  className={cn(errors.durationMinutes && "border-destructive")}
+          {selectedService ? (
+            <div
+              id="durationMinutes"
+              className="flex h-9 items-center rounded-md border border-input bg-muted/40
+                         px-3 text-sm text-muted-foreground"
+            >
+              {selectedService.durationMinutes} min — set by "{selectedService.name}"
+            </div>
+          ) : (
+            <Controller
+              control={control}
+              name="durationMinutes"
+              render={({ field }) => (
+                <Select
+                  value={String(field.value)}
+                  onValueChange={(v) => field.onChange(Number(v))}
                 >
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map(({ value, label }) => (
-                    <SelectItem key={value} value={String(value)}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
+                  <SelectTrigger
+                    id="durationMinutes"
+                    className={cn(errors.durationMinutes && "border-destructive")}
+                  >
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DURATION_OPTIONS.map(({ value, label }) => (
+                      <SelectItem key={value} value={String(value)}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          )}
           {errors.durationMinutes && (
             <p className="text-xs text-destructive-text" role="alert">
               {errors.durationMinutes.message}
@@ -811,8 +903,22 @@ export function BookAppointmentForm() {
         </div>
       )}
 
-      {/* Deposit rule — shown when the studio has at least one active rule */}
-      {activeRules.length > 0 && !packagePurchaseId && (
+      {/* A service with its own DepositAmount overrides the studio's DepositRule entirely
+          (no stacking) — see CreateAppointmentCommand.cs. Show that instead of the rule
+          picker below, which would otherwise imply a choice that doesn't actually apply. */}
+      {selectedService && selectedService.depositAmount !== null && !packagePurchaseId && (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="serviceDeposit">Deposit</FieldLabel>
+          <div id="serviceDeposit">
+            <ServiceDepositPreview service={selectedService} />
+          </div>
+        </div>
+      )}
+
+      {/* Deposit rule — shown when the studio has at least one active rule, and no selected
+          service already fixes its own deposit amount. */}
+      {activeRules.length > 0 && !packagePurchaseId
+        && !(selectedService && selectedService.depositAmount !== null) && (
         <div className="space-y-1.5">
           <FieldLabel htmlFor="depositRuleId">Deposit rule</FieldLabel>
           <Controller

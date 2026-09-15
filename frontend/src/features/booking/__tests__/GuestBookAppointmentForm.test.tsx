@@ -21,6 +21,7 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     useGetPublicBookingArtistsQuery: () => ({ data: [ARTIST], isLoading: false }),
     useCheckPublicSlotAvailabilityQuery: () => ({ data: { available: true, reason: null }, isFetching: false }),
     useGetPublicDepositRuleQuery: () => ({ data: null }),
+    useGetPublicServicesQuery: () => ({ data: [] }),
     useCreateGuestAppointmentMutation: () => [mockCreateGuestAppointment, { isLoading: false }],
     usePresignGuestUploadMutation: () => [mockPresignGuestUpload, { isLoading: false }],
   };

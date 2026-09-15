@@ -14,6 +14,7 @@ import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { clientsApi } from "@/features/clients/clientsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
+import { servicesApi } from "@/features/services/servicesApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi } from "@/features/public/publicApi";
@@ -139,6 +140,7 @@ const server = setupServer(
   http.get("http://localhost/api/v1/clients/me",              () => HttpResponse.json(MY_CLIENT)),
   http.get("http://localhost/api/v1/clients",                 () => HttpResponse.json([MY_CLIENT, STAFF_CLIENT])),
   http.get("http://localhost/api/v1/deposit-rules",           () => HttpResponse.json([ACTIVE_RULE, INACTIVE_RULE])),
+  http.get("http://localhost/api/v1/services",                () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
   // BookAppointmentForm's package toggle — empty means the toggle simply doesn't render,
@@ -174,6 +176,7 @@ function makeStore(role: Role = Role.Client) {
       [artistsApi.reducerPath]:          artistsApi.reducer,
       [clientsApi.reducerPath]:          clientsApi.reducer,
       [depositRulesApi.reducerPath]:     depositRulesApi.reducer,
+      [servicesApi.reducerPath]:         servicesApi.reducer,
       [studiosApi.reducerPath]:          studiosApi.reducer,
       [paymentsApi.reducerPath]:         paymentsApi.reducer,
       [publicApi.reducerPath]:           publicApi.reducer,
@@ -191,6 +194,7 @@ function makeStore(role: Role = Role.Client) {
         .concat(artistsApi.middleware)
         .concat(clientsApi.middleware)
         .concat(depositRulesApi.middleware)
+        .concat(servicesApi.middleware)
         .concat(studiosApi.middleware)
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
@@ -240,6 +244,7 @@ function renderFormWithNoTenant() {
       [artistsApi.reducerPath]:      artistsApi.reducer,
       [clientsApi.reducerPath]:      clientsApi.reducer,
       [depositRulesApi.reducerPath]: depositRulesApi.reducer,
+      [servicesApi.reducerPath]:     servicesApi.reducer,
       [studiosApi.reducerPath]:      studiosApi.reducer,
       [paymentsApi.reducerPath]:     paymentsApi.reducer,
       [publicApi.reducerPath]:       publicApi.reducer,
@@ -256,6 +261,7 @@ function renderFormWithNoTenant() {
         .concat(artistsApi.middleware)
         .concat(clientsApi.middleware)
         .concat(depositRulesApi.middleware)
+        .concat(servicesApi.middleware)
         .concat(studiosApi.middleware)
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)

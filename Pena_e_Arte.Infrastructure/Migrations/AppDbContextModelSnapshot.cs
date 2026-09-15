@@ -272,6 +272,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
+                    b.Property<Guid?>("ServiceId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -287,6 +290,8 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasName("pk_appointments");
 
                     b.HasIndex("ClientId");
+
+                    b.HasIndex("ServiceId");
 
                     b.HasIndex("StudioId")
                         .HasDatabaseName("ix_appointments_studio_id");
@@ -2785,6 +2790,57 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.ToTable("SavedPortfolioImages", (string)null);
                 });
 
+            modelBuilder.Entity("Pena_e_Arte.Domain.Entities.Service", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal?>("DepositAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<decimal?>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("StudioId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_services");
+
+                    b.HasIndex("StudioId")
+                        .HasDatabaseName("ix_services_studio_id");
+
+                    b.HasIndex("StudioId", "IsActive")
+                        .HasDatabaseName("ix_services_studio_id_is_active");
+
+                    b.ToTable("services", (string)null);
+                });
+
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.SessionSplit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3830,9 +3886,17 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_appointments_clients");
 
+                    b.HasOne("Pena_e_Arte.Domain.Entities.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_appointments_services");
+
                     b.Navigation("Artist");
 
                     b.Navigation("Client");
+
+                    b.Navigation("Service");
                 });
 
             modelBuilder.Entity("Pena_e_Arte.Domain.Entities.AppointmentAttachment", b =>

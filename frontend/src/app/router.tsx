@@ -19,6 +19,7 @@ import {
   ConsentFormDetailPage,
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
+import { ServiceListPage, ServiceDetailPage, CreateServicePage } from "@/features/services";
 import { PromoCodeListPage, PromoCodeDetailPage, CreatePromoCodePage } from "@/features/promo-codes";
 import { ReportsPage, MyEarningsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
@@ -296,6 +297,21 @@ export const routes = [
                     ],
                   },
                   { path: ":id", element: <ErrorBoundary><DesignDetailPage /></ErrorBoundary> },
+                ],
+              },
+
+              // ── Shared: services ─────────────────────────────────────────────
+              {
+                path: "services",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
+                children: [
+                  { index: true, element: <ErrorBoundary><ServiceListPage /></ErrorBoundary> },
+                  {
+                    path: "new",
+                    element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
+                    children: [{ index: true, element: <ErrorBoundary><CreateServicePage /></ErrorBoundary> }],
+                  },
+                  { path: ":id", element: <ErrorBoundary><ServiceDetailPage /></ErrorBoundary> },
                 ],
               },
 

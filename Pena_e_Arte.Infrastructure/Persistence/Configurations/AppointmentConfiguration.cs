@@ -47,5 +47,13 @@ public class AppointmentConfiguration : TenantEntityConfiguration<Appointment>
                .HasForeignKey(a => a.ClientId)
                .HasConstraintName("fk_appointments_clients")
                .OnDelete(DeleteBehavior.Restrict);
+
+        // SetNull, not Restrict: deleting a service must not delete/block deletion of
+        // historical appointments that reference it.
+        builder.HasOne(a => a.Service)
+               .WithMany()
+               .HasForeignKey(a => a.ServiceId)
+               .HasConstraintName("fk_appointments_services")
+               .OnDelete(DeleteBehavior.SetNull);
     }
 }
