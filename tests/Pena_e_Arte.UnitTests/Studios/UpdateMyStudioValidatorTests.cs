@@ -87,7 +87,41 @@ public class UpdateMyStudioValidatorTests
         _sut.ShouldFailOn(Command(timezone: timezone), "Request.Timezone");
     }
 
+    [Fact]
+    public void Validate_NullAddressLine1_IsValid()
+    {
+        _sut.ShouldBeValid(Command(addressLine1: null));
+    }
+
+    [Fact]
+    public void Validate_EmptyAddressLine1_IsValid()
+    {
+        // Blank on update means "clear the field" — never a validation failure, unlike register.
+        _sut.ShouldBeValid(Command(addressLine1: ""));
+    }
+
+    [Fact]
+    public void Validate_AddressLine1ExceedsMaxLength_FailsOnAddressLine1()
+    {
+        _sut.ShouldFailOn(Command(addressLine1: new('x', 301)), "Request.AddressLine1");
+    }
+
+    [Fact]
+    public void Validate_AddressLine2ExceedsMaxLength_FailsOnAddressLine2()
+    {
+        _sut.ShouldFailOn(Command(addressLine2: new('x', 151)), "Request.AddressLine2");
+    }
+
+    [Fact]
+    public void Validate_PostalCodeExceedsMaxLength_FailsOnPostalCode()
+    {
+        _sut.ShouldFailOn(Command(postalCode: new('x', 21)), "Request.PostalCode");
+    }
+
     private static UpdateMyStudioCommand Command(
-        string? nipt = "L01234567A", string? phoneNumber = null, string? timezone = null) =>
-        new(new UpdateStudioRequest("Studio", "Lisbon", 38.7, -9.1, PhoneNumber: phoneNumber, Nipt: nipt, Timezone: timezone));
+        string? nipt = "L01234567A", string? phoneNumber = null, string? timezone = null,
+        string? addressLine1 = "Rua Central 5", string? addressLine2 = null, string? postalCode = null) =>
+        new(new UpdateStudioRequest(
+            "Studio", "Lisbon", 38.7, -9.1, PhoneNumber: phoneNumber, Nipt: nipt, Timezone: timezone,
+            AddressLine1: addressLine1, AddressLine2: addressLine2, PostalCode: postalCode));
 }

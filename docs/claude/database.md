@@ -78,6 +78,9 @@ public class Studio  // NOT a TenantEntity — admin-owned
     public string   Slug             { get; set; }  // url-safe unique identifier
     public string   City             { get; set; }
     public string?  Nipt             { get; set; }  // business tax ID (NUIS) — nullable for backfill, not an auth factor
+    public string?  AddressLine1     { get; set; }  // street address — nullable for backfill, required for new registrations (app-layer)
+    public string?  AddressLine2     { get; set; }  // suite/unit/floor — always optional
+    public string?  PostalCode       { get; set; }  // always optional
     public double   Latitude         { get; set; }
     public double   Longitude        { get; set; }
     public bool     IsActive         { get; set; }  // gates tenant access entirely

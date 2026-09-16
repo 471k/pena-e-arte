@@ -42,6 +42,9 @@ const ACTIVE_STUDIO: StudioResponse = {
   isSolo:               false,
   isPublished:          true,
   timezone:             "Europe/Tirane",
+  addressLine1:         null,
+  addressLine2:         null,
+  postalCode:           null,
 };
 
 const SUSPENDED_STUDIO: StudioResponse = { ...ACTIVE_STUDIO, isActive: false };

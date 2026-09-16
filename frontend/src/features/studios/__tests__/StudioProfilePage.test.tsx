@@ -35,6 +35,12 @@ vi.mock("@/shared/components/ui/location-picker", () => ({
   ),
 }));
 
+// Real Nominatim calls aren't viable in a unit test — same reasoning as mocking
+// LocationPicker above. Tests exercise the plain form-field wiring, not geocoding.
+vi.mock("@/shared/hooks/useAddressGeocode", () => ({
+  useAddressGeocode: () => ({ status: "idle" as const }),
+}));
+
 // Prevent SubscriptionGatedButton from calling subscription/studio APIs
 vi.mock("@/features/billing/useSubscriptionGuard", () => ({
   useSubscriptionGuard: () => ({ isReadOnly: false, isSuspended: false, cause: null, status: "Active" }),
@@ -79,6 +85,9 @@ const STUDIO = {
   isActive:             true,
   slugLockedAt:         null,
   nipt:                 null as string | null,
+  addressLine1:         null as string | null,
+  addressLine2:         null as string | null,
+  postalCode:           null as string | null,
 };
 
 // ── MSW server ────────────────────────────────────────────────────────────────
@@ -377,6 +386,65 @@ describe("StudioProfilePage — NIPT", () => {
       await screen.findByText(/already registered under a different account/i),
     ).toBeInTheDocument();
   });
+});
+
+describe("StudioProfilePage — address", () => {
+  afterEach(() => sessionStorage.clear());
+
+  it("shows the backfill banner when addressLine1 is null", async () => {
+    renderPage();
+    await waitForForm();
+    expect(screen.getByText(/add your studio's street address/i)).toBeInTheDocument();
+  });
+
+  it("does not show the backfill banner when addressLine1 is set", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ ...STUDIO, addressLine1: "Rua Central 5" }),
+      ),
+    );
+    renderPage();
+    await waitForForm();
+    expect(screen.queryByText(/add your studio's street address/i)).not.toBeInTheDocument();
+  });
+
+  it("dismissing the backfill banner hides it and persists across the session", async () => {
+    // NIPT already set so only the address banner (and its one Dismiss button) renders —
+    // avoids ambiguity with the separate NIPT backfill banner's own Dismiss button.
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ ...STUDIO, nipt: "L01234567A" }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.click(screen.getByRole("button", { name: /dismiss/i }));
+
+    expect(screen.queryByText(/add your studio's street address/i)).not.toBeInTheDocument();
+    expect(sessionStorage.getItem("address-banner-dismissed")).toBe("true");
+  });
+
+  it("typing a new address saves it via updateMyStudio", async () => {
+    let capturedAddress: unknown;
+    server.use(
+      http.put("http://localhost/api/v1/studios/me", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        capturedAddress = body.addressLine1;
+        return HttpResponse.json({ ...STUDIO, addressLine1: body.addressLine1 as string });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await screen.findByText(/changes saved/i);
+    expect(capturedAddress).toBe("Rua Central 5");
+  }, 20000);
 });
 
 describe("StudioProfilePage — slug editing", () => {

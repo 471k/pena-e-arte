@@ -58,6 +58,9 @@ const STUDIO: StudioResponse = {
   isSolo:               false,
   isPublished:          true,
   timezone:             "Europe/Tirane",
+  addressLine1:         null,
+  addressLine2:         null,
+  postalCode:           null,
 };
 
 const SUB: PlatformSubscriptionResponse = {

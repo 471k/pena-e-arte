@@ -63,6 +63,9 @@ const STUDIO: PublicStudioResponse = {
   socialLinks: [],
   hours: [],
   timezone: "Europe/Lisbon",
+  addressLine1: null,
+  addressLine2: null,
+  postalCode: null,
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

@@ -38,6 +38,14 @@ vi.mock("@/shared/components/ui/location-picker", () => ({
   ),
 }));
 
+// ── Mock useAddressGeocode ──────────────────────────────────────────────────────
+// Real Nominatim calls aren't viable in a unit test — same reasoning as mocking
+// LocationPicker above. Tests exercise the plain form-field wiring, not geocoding.
+
+vi.mock("@/shared/hooks/useAddressGeocode", () => ({
+  useAddressGeocode: () => ({ status: "idle" as const }),
+}));
+
 // ── Fake JWT ───────────────────────────────────────────────────────────────────
 
 const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
@@ -128,6 +136,7 @@ function renderPage(initialPath = "/register") {
 async function fillStep1(user: ReturnType<typeof userEvent.setup>, studioName = "Ink & Soul Studio") {
   await user.type(screen.getByLabelText(/studio name/i), studioName);
   await user.type(screen.getByLabelText(/business tax id/i), "L01234567A");
+  await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
   await user.click(screen.getByTestId("mock-location-picker"));
 }
 
@@ -216,6 +225,19 @@ describe("RegisterStudioPage — step 1", () => {
       expect(screen.queryByText(/step 2 of 2/i)).not.toBeInTheDocument();
     },
   );
+
+  it("shows validation error when Street address is left empty", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+    await user.type(screen.getByLabelText(/business tax id/i), "L01234567A");
+    await user.click(screen.getByTestId("mock-location-picker"));
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    expect(await screen.findByText(/street address is required/i)).toBeInTheDocument();
+    expect(screen.queryByText(/step 2 of 2/i)).not.toBeInTheDocument();
+  });
 
   it("advances to step 2 when all step-1 fields are valid", async () => {
     const user = userEvent.setup();
@@ -359,6 +381,29 @@ describe("RegisterStudioPage — step 2", () => {
     await screen.findByTestId("dashboard");
 
     expect(capturedBody).toMatchObject({ nipt: "L01234567A" });
+  });
+
+  it("includes the street address in the registerStudio mutation payload", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/studios", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(STUDIO_RESPONSE, { status: 201 });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await screen.findByTestId("dashboard");
+
+    expect(capturedBody).toMatchObject({ addressLine1: "Rua Central 5" });
   });
 
   it("shows server error when studio registration fails", async () => {

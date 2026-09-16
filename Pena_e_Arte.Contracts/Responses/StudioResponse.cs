@@ -21,4 +21,7 @@ public record StudioResponse(
     bool IsPublished = true,
     string Timezone = "Europe/Tirane",
     string? SubscriptionStatus = null,
-    DateTime? PastDueSince = null);
+    DateTime? PastDueSince = null,
+    string? AddressLine1 = null,
+    string? AddressLine2 = null,
+    string? PostalCode = null);

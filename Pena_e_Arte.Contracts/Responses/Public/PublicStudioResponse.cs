@@ -19,4 +19,7 @@ public record PublicStudioResponse(
     bool ShowBookingCta,
     IReadOnlyList<PublicSocialLinkResponse> SocialLinks,
     IReadOnlyList<PublicStudioHoursResponse> Hours,
-    string Timezone);
+    string Timezone,
+    string? AddressLine1 = null,
+    string? AddressLine2 = null,
+    string? PostalCode = null);

@@ -33,6 +33,13 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
         if (!string.IsNullOrWhiteSpace(command.Request.Timezone))
             studio.Timezone = command.Request.Timezone.Trim();
 
+        studio.AddressLine1 = string.IsNullOrWhiteSpace(command.Request.AddressLine1)
+                                   ? null : command.Request.AddressLine1.Trim();
+        studio.AddressLine2 = string.IsNullOrWhiteSpace(command.Request.AddressLine2)
+                                   ? null : command.Request.AddressLine2.Trim();
+        studio.PostalCode = string.IsNullOrWhiteSpace(command.Request.PostalCode)
+                                   ? null : command.Request.PostalCode.Trim();
+
         // InstagramHandle is deliberately NOT written here anymore. The frontend form no
         // longer collects it (Instagram is now managed via SocialLinksCard →
         // UpdateSocialHandleCommand, writing to SocialAccountLink), so
@@ -80,7 +87,8 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
             AllowApiAccess: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
-            studio.IsSolo, studio.IsPublished, studio.Timezone);
+            studio.IsSolo, studio.IsPublished, studio.Timezone,
+            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode);
     }
 }
 
@@ -106,5 +114,8 @@ public class UpdateMyStudioValidator : AbstractValidator<UpdateMyStudioCommand>
         RuleFor(x => x.Request.Timezone)
             .Must(tz => tz is null || TimeZoneInfo.TryFindSystemTimeZoneById(tz, out _))
             .WithMessage("Timezone must be a valid IANA timezone identifier (e.g. 'Europe/Tirane').");
+        RuleFor(x => x.Request.AddressLine1).MaximumLength(300);
+        RuleFor(x => x.Request.AddressLine2).MaximumLength(150);
+        RuleFor(x => x.Request.PostalCode).MaximumLength(20);
     }
 }

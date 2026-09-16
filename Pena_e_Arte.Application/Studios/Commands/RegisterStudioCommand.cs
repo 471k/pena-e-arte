@@ -67,6 +67,9 @@ public class RegisterStudioHandler(
             City = req.City,
             OwnerEmail = req.OwnerEmail,
             Nipt = normalizedNipt,
+            AddressLine1 = req.AddressLine1.Trim(),
+            AddressLine2 = string.IsNullOrWhiteSpace(req.AddressLine2) ? null : req.AddressLine2.Trim(),
+            PostalCode = string.IsNullOrWhiteSpace(req.PostalCode) ? null : req.PostalCode.Trim(),
             Latitude = req.Latitude,
             Longitude = req.Longitude,
             IsActive = true,
@@ -126,6 +129,7 @@ public class RegisterStudioHandler(
             AllowApiAccess: false,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, PhoneNumber: null, InstagramHandle: null, Nipt: studio.Nipt,
-            IsSolo: studio.IsSolo, IsPublished: studio.IsPublished, Timezone: studio.Timezone);
+            IsSolo: studio.IsSolo, IsPublished: studio.IsPublished, Timezone: studio.Timezone,
+            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode);
     }
 }

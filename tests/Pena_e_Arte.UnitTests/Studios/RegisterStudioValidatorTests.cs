@@ -147,11 +147,56 @@ public class RegisterStudioValidatorTests
         result.Errors.Should().NotContain(e => e.PropertyName == "Request.Nipt");
     }
 
+    [Fact]
+    public void Validate_EmptyAddressLine1_FailsOnAddressLine1()
+    {
+        _sut.ShouldFailOn(
+            Command("Studio", "my-studio", "Lisbon", 38.7, -9.1, "owner@example.com", "L01234567A", ""),
+            "Request.AddressLine1");
+    }
+
+    [Fact]
+    public void Validate_AddressLine1ExceedsMaxLength_FailsOnAddressLine1()
+    {
+        _sut.ShouldFailOn(
+            Command("Studio", "my-studio", "Lisbon", 38.7, -9.1, "owner@example.com", "L01234567A", new('x', 301)),
+            "Request.AddressLine1");
+    }
+
+    [Fact]
+    public void Validate_AddressLine2ExceedsMaxLength_FailsOnAddressLine2()
+    {
+        RegisterStudioCommand cmd = ValidCommand() with
+        {
+            Request = ValidCommand().Request with { AddressLine2 = new('x', 151) },
+        };
+        _sut.ShouldFailOn(cmd, "Request.AddressLine2");
+    }
+
+    [Fact]
+    public void Validate_PostalCodeExceedsMaxLength_FailsOnPostalCode()
+    {
+        RegisterStudioCommand cmd = ValidCommand() with
+        {
+            Request = ValidCommand().Request with { PostalCode = new('x', 21) },
+        };
+        _sut.ShouldFailOn(cmd, "Request.PostalCode");
+    }
+
+    [Fact]
+    public void Validate_OmittedAddressLine2AndPostalCode_AreValid()
+    {
+        ValidationResult result = _sut.Validate(ValidCommand());
+        result.Errors.Should().NotContain(e =>
+            e.PropertyName == "Request.AddressLine2" || e.PropertyName == "Request.PostalCode");
+    }
+
     private static RegisterStudioCommand ValidCommand() =>
         Command("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com");
 
     private static RegisterStudioCommand Command(
         string name, string slug, string city, double lat, double lon,
-        string ownerEmail = "owner@example.com", string nipt = "L01234567A") =>
-        new(new RegisterStudioRequest(name, slug, city, lat, lon, ownerEmail, nipt));
+        string ownerEmail = "owner@example.com", string nipt = "L01234567A",
+        string addressLine1 = "Rua Central 5") =>
+        new(new RegisterStudioRequest(name, slug, city, lat, lon, ownerEmail, nipt, addressLine1));
 }

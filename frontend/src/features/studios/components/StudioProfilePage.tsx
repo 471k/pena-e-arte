@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { useAddressGeocode } from "@/shared/hooks/useAddressGeocode";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMutation } from "../studiosApi";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
@@ -53,6 +54,9 @@ const schema = z.object({
   longitude:       z.number({ message: "Must be a number" }).min(-180).max(180),
   phoneNumber:     z.string().refine(isValidE164Phone, PHONE_ERROR_MESSAGE).optional(),
   timezone:        z.string().min(1).optional(),
+  addressLine1:    z.string().max(300).optional().or(z.literal("")),
+  addressLine2:    z.string().max(150).optional().or(z.literal("")),
+  postalCode:      z.string().max(20).optional().or(z.literal("")),
   nipt: z
     .string()
     .trim()
@@ -121,6 +125,21 @@ export function StudioProfilePage() {
     () => sessionStorage.getItem("nipt-banner-dismissed") === "true",
   );
 
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
+  const [addressBannerDismissed, setAddressBannerDismissed] = useState(
+    () => sessionStorage.getItem("address-banner-dismissed") === "true",
+  );
+
+  function handleAddAddressNow() {
+    addressInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    addressInputRef.current?.focus();
+  }
+
+  function dismissAddressBanner() {
+    sessionStorage.setItem("address-banner-dismissed", "true");
+    setAddressBannerDismissed(true);
+  }
+
   const [slugEditing, setSlugEditing] = useState(false);
   const [slugInput,   setSlugInput]   = useState("");
   const [slugError,   setSlugError]   = useState<string | null>(null);
@@ -149,6 +168,7 @@ export function StudioProfilePage() {
     useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const { ref: niptFieldRef, ...niptRegister } = register("nipt");
+  const { ref: addressLine1FieldRef, ...addressLine1Register } = register("addressLine1");
 
   function handleAddNiptNow() {
     niptInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -163,6 +183,13 @@ export function StudioProfilePage() {
   const latValue  = watch("latitude");
   const lngValue  = watch("longitude");
   const cityValue = watch("city");
+  const addressLine1Value = watch("addressLine1");
+
+  const { status: geocodeStatus } = useAddressGeocode(addressLine1Value ?? "", ({ lat, lng, city }) => {
+    setValue("latitude",  lat,  { shouldDirty: true, shouldValidate: true });
+    setValue("longitude", lng,  { shouldDirty: true, shouldValidate: true });
+    setValue("city",      city, { shouldDirty: true, shouldValidate: true });
+  });
 
   useEffect(() => {
     if (studio) {
@@ -174,6 +201,9 @@ export function StudioProfilePage() {
         phoneNumber:     studio.phoneNumber ?? "",
         nipt:            studio.nipt ?? "",
         timezone:        studio.timezone,
+        addressLine1:    studio.addressLine1 ?? "",
+        addressLine2:    studio.addressLine2 ?? "",
+        postalCode:      studio.postalCode ?? "",
       });
     }
   }, [studio, reset]);
@@ -220,6 +250,29 @@ export function StudioProfilePage() {
             <button
               type="button"
               onClick={dismissNiptBanner}
+              aria-label="Dismiss"
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Dismiss
+            </button>
+          </Alert>
+        )}
+
+        {studio && !studio.addressLine1 && !addressBannerDismissed && (
+          <Alert className="flex items-start justify-between gap-3">
+            <AlertDescription className="flex-1">
+              Add your studio's street address so clients can find you.{" "}
+              <button
+                type="button"
+                onClick={handleAddAddressNow}
+                className="font-medium underline underline-offset-4"
+              >
+                Add now
+              </button>
+            </AlertDescription>
+            <button
+              type="button"
+              onClick={dismissAddressBanner}
               aria-label="Dismiss"
               className="text-xs text-muted-foreground hover:text-foreground"
             >
@@ -369,6 +422,47 @@ export function StudioProfilePage() {
                     )}
                   </>
                 )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="addressLine1">Street address</Label>
+                <Input
+                  id="addressLine1"
+                  placeholder="Rruga e Kavajës 10"
+                  {...addressLine1Register}
+                  ref={(el) => {
+                    addressLine1FieldRef(el);
+                    addressInputRef.current = el;
+                  }}
+                  aria-invalid={!!errors.addressLine1}
+                  aria-describedby="addressLine1-help"
+                />
+                <p id="addressLine1-help" className="text-xs text-muted-foreground flex items-center gap-1">
+                  {geocodeStatus === "loading" && (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Locating on the map…
+                    </>
+                  )}
+                  {geocodeStatus === "error" &&
+                    "Couldn't find that address automatically — you can also click the map below to set your studio's location."}
+                  {(geocodeStatus === "idle" || geocodeStatus === "success") &&
+                    "The map below updates automatically as you type — drag the pin afterward if it's not quite right."}
+                </p>
+                {errors.addressLine1 && (
+                  <p className="text-xs text-destructive-text">{errors.addressLine1.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="addressLine2">Address line 2 (optional)</Label>
+                  <Input id="addressLine2" placeholder="Suite, floor, unit" {...register("addressLine2")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="postalCode">Postal code (optional)</Label>
+                  <Input id="postalCode" {...register("postalCode")} />
+                </div>
               </div>
 
               <div className="space-y-1.5">
