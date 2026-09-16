@@ -58,8 +58,8 @@ public class SendStudioRegisteredNotificationHandler(
             catch (Exception ex)
             {
                 logger.LogWarning(ex,
-                    "Failed to send studio-registered notification to admin {@AdminEmail} for studio {@StudioId}",
-                    email, studio.Id);
+                    "Failed to send studio-registered admin notification email for studio {@StudioId}",
+                    studio.Id);
             }
         }
 
