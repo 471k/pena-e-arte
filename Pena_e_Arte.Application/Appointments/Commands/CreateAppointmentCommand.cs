@@ -74,7 +74,23 @@ public class CreateAppointmentHandler(
         IPlanLimitService planLimits,
         CancellationToken ct)
     {
-        DateTime requestEnd = req.Date.AddMinutes(req.DurationMinutes);
+        // Service is resolved up front, before anything derived from duration, because a
+        // selected service's own DurationMinutes overrides whatever the request carries —
+        // never trusted from the client, same convention as Appointment.DepositAmount never
+        // being trusted from the client (see CreateDepositPaymentCommand). Null ServiceId
+        // preserves the original free-text/no-service flow exactly as before this field existed.
+        Service? service = null;
+        if (req.ServiceId is Guid serviceId)
+        {
+            // IgnoreQueryFilters(): this core is shared with the anonymous guest-booking path,
+            // which has no ambient tenant scope.
+            service = await db.Services.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.StudioId == studioId && s.DeletedAt == null && s.Id == serviceId && s.IsActive, ct)
+                ?? throw new NotFoundException(nameof(Service), serviceId);
+        }
+
+        int durationMinutes = service?.DurationMinutes ?? req.DurationMinutes;
+        DateTime requestEnd = req.Date.AddMinutes(durationMinutes);
 
         Artist? artist = null;
         if (req.ArtistId is Guid artistId)
@@ -88,7 +104,7 @@ public class CreateAppointmentHandler(
                 ?? throw new NotFoundException(nameof(Artist), artistId);
 
             (bool available, string? reason) = await db.CheckArtistScheduleAsync(
-                studioId, artistId, req.Date, req.DurationMinutes, ct);
+                studioId, artistId, req.Date, durationMinutes, ct);
 
             if (!available)
                 throw new BusinessRuleViolationException(reason ?? "The artist is not available at that time.");
@@ -98,7 +114,7 @@ public class CreateAppointmentHandler(
             // ── Studio-choice path. Soft "someone can do this" check; no specific artist
             // resource is claimed here — the real per-artist claim happens in
             // AssignAppointmentArtistCommand. ──
-            bool anyoneAvailable = await db.IsAnyArtistAvailableAsync(studioId, req.Date, req.DurationMinutes, ct);
+            bool anyoneAvailable = await db.IsAnyArtistAvailableAsync(studioId, req.Date, durationMinutes, ct);
 
             if (!anyoneAvailable)
                 throw new BusinessRuleViolationException(
@@ -146,6 +162,14 @@ public class CreateAppointmentHandler(
                 depositAmount = 0;
                 depositStatus = DepositStatus.PrePaid;
             }
+            else if (service?.DepositAmount is decimal serviceDeposit)
+            {
+                // A service-specific deposit REPLACES the studio's DepositRule calculation
+                // entirely for this booking — it does not stack with it (Vagaro/Fresha
+                // convention: a service's own deposit is the policy for that service).
+                depositAmount = serviceDeposit;
+                depositStatus = DepositStatus.Pending;
+            }
             else
             {
                 // Single-active is enforced by the deposit rule handlers; ordering by
@@ -156,7 +180,7 @@ public class CreateAppointmentHandler(
                     .OrderByDescending(r => r.UpdatedAt)
                     .FirstOrDefaultAsync(ct);
 
-                depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, req.DurationMinutes);
+                depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, durationMinutes);
                 depositStatus = DepositStatus.Pending;
             }
 
@@ -245,9 +269,11 @@ public class CreateAppointmentHandler(
                 StudioId = studioId,
                 ArtistId = artist?.Id,
                 ClientId = clientId,
+                ServiceId = service?.Id,
+                Service = service,
                 Date = req.Date,
                 EndDate = requestEnd,
-                DurationMinutes = req.DurationMinutes,
+                DurationMinutes = durationMinutes,
                 Status = AppointmentStatus.Pending,
                 DepositStatus = depositStatus,
                 DepositAmount = depositAmount,
@@ -379,6 +405,8 @@ public class CreateAppointmentHandler(
             a.Intake?.ReferralSource?.ToString(),
             a.Intake?.ReferralSourceOther,
             attachments,
-            promoCodeApplied);
+            promoCodeApplied,
+            a.ServiceId,
+            a.Service?.Name);
     }
 }

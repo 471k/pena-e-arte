@@ -418,6 +418,8 @@ ol.steps li { margin: 6px 0; }
       <div class="nav-section">
         <button class="nav-section-toggle" aria-expanded="false">Deposit rules</button>
         <ul class="nav-section-list collapsed">
+          <li><a href="#owner-services" data-nav-link>Service catalog</a></li>
+          <li><a href="#owner-service-create" data-nav-link>Create service</a></li>
           <li><a href="#owner-deposit-rules" data-nav-link>Deposit rule list</a></li>
           <li><a href="#owner-create-deposit-rule" data-nav-link>Create deposit rule</a></li>
           <li><a href="#owner-deposit-rule-detail" data-nav-link>Deposit rule detail</a></li>
@@ -963,13 +965,14 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="450" font-size="11" font-weight="700">My Bookings</text>
 </svg>
 </figure>
-<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), date/time, duration, deposit rule, promo code, tattoo description, style, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
+<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), service (when the studio offers one), date/time, duration, deposit rule, promo code, tattoo description, style, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li><strong>Guest checkout only</strong> — if you're not signed in, fill in your <span class="step-title">First name</span>, <span class="step-title">Last name</span>, <span class="step-title">Email</span>, and <span class="step-title">Phone</span>, and optionally toggle <span class="step-title">Sign up for news and updates</span>. An account is created for you as part of submitting the booking — see the callout below.</li>
 <li>Pick an <span class="step-title">Artist</span> (searchable dropdown), or toggle <span class="step-title">Let the studio choose my artist</span> to skip picking one — the artist selector hides and the studio assigns someone before confirming.</li>
-<li>Choose a <span class="step-title">Date &amp; time</span> and a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
-<li>If the studio has an active deposit rule, an estimated deposit amount is shown (signed-in clients can also pick the rule).</li>
+<li>If the studio offers a <span class="step-title">Service</span> (e.g. "New Tattoo Session", "Touch-Up"), pick one — its duration fills in automatically and can't be changed; pick "Custom" to choose your own duration instead.</li>
+<li>Choose a <span class="step-title">Date &amp; time</span> and, unless a service already set it, a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
+<li>If the studio has an active deposit rule, an estimated deposit amount is shown (signed-in clients can also pick the rule) — unless the selected service has its own deposit, which replaces the deposit rule entirely.</li>
 <li>Have a <span class="step-title">Promo code</span> from the studio? Enter it — it's applied to your deposit automatically on submission. A code that's expired, exhausted, or not recognized doesn't block the booking; you'll just see a note that it wasn't applied.</li>
 <li>Describe <span class="step-title">What are you looking to get done?</span> (required), optionally pick a <span class="step-title">Style</span> (leave unset for "artist's choice" / unsure), optionally pick <span class="step-title">How did you hear about us?</span> (with a free-text field if you pick "Somewhere else"), and add any <span class="step-title">Safety notes</span> (medical conditions, allergies, medications, skin concerns).</li>
 <li>Use the <span class="step-title">Desired placement</span> body map to mark where you want the tattoo.</li>
@@ -2407,6 +2410,65 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#client-intake-submit">Client: submit intake form</a></div>
 </section>
 
+<section id="owner-services" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Service catalog</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✓ (read-only, active only)</td></tr><tr><td>Client</td><td>✓ (read-only)</td></tr><tr><td>Artist</td><td>✓ (read-only)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/services</code>: bookable services (e.g. "New Tattoo Session", "Touch-Up") clients can pick when booking. Each service carries its own duration and, optionally, its own price and deposit amount.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Service catalog wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="12" font-weight="700">Services</text><text x="640" y="25" font-size="9">+ New Service</text>
+<rect x="20" y="60" width="480" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<text x="32" y="80" font-size="9" font-weight="700">New Tattoo Session</text><text x="32" y="94" font-size="8" fill-opacity="0.6">90 min · from €150.00 · €50.00 deposit</text>
+<rect x="440" y="70" width="45" height="14" rx="7" fill="#22c55e" fill-opacity="0.5"/><text x="448" y="80" font-size="7">Active</text>
+</svg>
+</figure>
+<figcaption>Service catalog — duration, starting price, and deposit shown per service</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click a service to view, edit, or delete it.</li>
+<li>Click <span class="step-title">New Service</span> to add one.</li>
+<li>Uncheck <span class="step-title">Active</span> instead of deleting to hide a service from the booking picker without losing its history.</li>
+</ol>
+<div class="callout callout-tip"><strong>No services yet?</strong> Booking works exactly as before — clients pick a free-text duration and your deposit rules apply as usual.</div>
+<div class="crosslinks">See also: <a href="#owner-service-create">Create service</a>, <a href="#owner-deposit-rules">Deposit rule list</a>, <a href="#client-book">Client: book an appointment</a></div>
+</section>
+
+<section id="owner-service-create" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Create service</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/services/new</code>: name a service, set its duration, and optionally its price and deposit.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 520" role="img" aria-label="Create service wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="10" font-weight="700">‹ Services</text>
+<rect x="260" y="60" width="240" height="360" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="280" y="88" font-size="12" font-weight="700">New Service</text>
+<text x="280" y="108" font-size="9" fill-opacity="0.6">Service name</text><rect x="280" y="114" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="146" font-size="9" fill-opacity="0.6">Description (optional)</text><rect x="280" y="152" width="200" height="28" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="192" font-size="9" fill-opacity="0.6">Duration (minutes)</text><rect x="280" y="198" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="230" font-size="9" fill-opacity="0.6">Starting price (€, optional)</text><rect x="280" y="236" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="268" font-size="9" fill-opacity="0.6">Deposit (€, optional)</text><rect x="280" y="274" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="306" font-size="8">☑ Active</text>
+<rect x="280" y="320" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="337" font-size="10" fill="#fff">Create Service</text>
+</svg>
+</figure>
+<figcaption>Create service — fields in order: name, description, duration, price, deposit, active toggle</figcaption>
+<h3>Steps (in field order)</h3>
+<ol class="steps">
+<li>Enter a <span class="step-title">Service name</span> (e.g. "New Tattoo Session").</li>
+<li>Optionally enter a <span class="step-title">Description</span>.</li>
+<li>Set the <span class="step-title">Duration</span> in minutes (5–600) — a client who picks this service gets this duration automatically and can't change it.</li>
+<li>Optionally set a <span class="step-title">Starting price</span> — shown to clients, not charged automatically.</li>
+<li>Optionally set a <span class="step-title">Deposit</span> — when set, it replaces your studio's deposit rules entirely for bookings that pick this service. Leave blank to use your deposit rules instead.</li>
+<li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
+<li>Click <span class="step-title">Create Service</span>.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-services">Service catalog</a></div>
+</section>
+
 <section id="owner-deposit-rules" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Deposit rule list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -2427,7 +2489,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click a rule to view or edit it.</li>
 <li>Click <span class="step-title">New Rule</span> to create one.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#owner-create-deposit-rule">Create deposit rule</a>, <a href="#client-book">Client: book an appointment</a></div>
+<div class="crosslinks">See also: <a href="#owner-create-deposit-rule">Create deposit rule</a>, <a href="#owner-services">Service catalog</a>, <a href="#client-book">Client: book an appointment</a></div>
 </section>
 
 <section id="owner-create-deposit-rule" data-role="owner">

@@ -257,6 +257,7 @@ try
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();
     app.MapDepositRuleEndpoints();
+    app.MapServiceEndpoints();
     app.MapPromoCodeEndpoints();
     app.MapArtistEndpoints();
     app.MapInstagramEndpoints();

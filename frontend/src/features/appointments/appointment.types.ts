@@ -70,6 +70,8 @@ export interface AppointmentResponse {
   referralSourceOther?:       string | null;
   attachments?:               AppointmentAttachmentResponse[] | null;
   promoCodeApplied?:          boolean;
+  serviceId?:                 string | null;
+  serviceName?:               string | null;
 }
 
 export interface CreateAppointmentRequest {
@@ -96,6 +98,9 @@ export interface CreateAppointmentRequest {
   // booking's deposit entirely — mutually exclusive with promoCode/referralCode/
   // referralRewardId in practice, see CreateAppointmentCommand.
   packagePurchaseId?:         string | null;
+  // When present, DurationMinutes/DepositAmount are re-derived server-side from the
+  // service (never trusted from this request once set) — see CreateAppointmentCommand.
+  serviceId?:                 string | null;
 }
 
 export interface AssignAppointmentArtistRequest {
