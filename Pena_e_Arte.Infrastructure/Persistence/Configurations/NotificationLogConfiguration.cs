@@ -29,5 +29,11 @@ public class NotificationLogConfiguration : TenantEntityConfiguration<Notificati
 
         builder.HasIndex(n => new { n.StudioId, n.CreatedAt })
                .HasDatabaseName("ix_notification_logs_studio_created_at");
+
+        // The admin read (GetNotificationsQuery) does a full-table IgnoreQueryFilters() scan
+        // filtered only by RecipientType — none of the indexes above help since none include
+        // it and none omit StudioId.
+        builder.HasIndex(n => n.RecipientType)
+               .HasDatabaseName("ix_notification_logs_recipient_type");
     }
 }

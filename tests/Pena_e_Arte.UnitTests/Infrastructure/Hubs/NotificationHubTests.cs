@@ -78,6 +78,38 @@ public class NotificationHubTests
     }
 
     [Fact]
+    public async Task OnConnectedAsync_AdminRole_JoinsPlatformAdminNotificationsGroup()
+    {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        NotificationHub hub = new()
+        {
+            Context = FakeHubCallerContext.Build("conn-1", tenantId: null, role: "admin"),
+            Groups = groups,
+        };
+
+        await hub.OnConnectedAsync();
+
+        await groups.Received(1)
+            .AddToGroupAsync("conn-1", "platform:admin-notifications", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task OnConnectedAsync_NonAdminRole_DoesNotJoinPlatformAdminNotificationsGroup()
+    {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        NotificationHub hub = new()
+        {
+            Context = FakeHubCallerContext.Build("conn-1", Guid.NewGuid(), "client"),
+            Groups = groups,
+        };
+
+        await hub.OnConnectedAsync();
+
+        await groups.DidNotReceive()
+            .AddToGroupAsync(Arg.Any<string>(), "platform:admin-notifications", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task LeaveStudio_AnyStudioId_RemovesFromGroup()
     {
         Guid studioId = Guid.NewGuid();

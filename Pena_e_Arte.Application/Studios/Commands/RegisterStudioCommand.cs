@@ -16,6 +16,7 @@ public record RegisterStudioCommand(RegisterStudioRequest Request) : IRequest<St
 public class RegisterStudioHandler(
     IAppDbContext db,
     IJobScheduler jobs,
+    ISender sender,
     ILogger<RegisterStudioHandler> logger)
     : IRequestHandler<RegisterStudioCommand, StudioResponse>
 {
@@ -114,6 +115,8 @@ public class RegisterStudioHandler(
         jobs.ScheduleTrialExpiryWarning(studio.Id, trialEnd.AddHours(-48));
         jobs.ScheduleTrialExpiry(studio.Id, trialEnd);
         jobs.ScheduleGracePeriodEnd(studio.Id, graceEnd);
+
+        await sender.Send(new SendStudioRegisteredNotificationCommand(studio.Id), ct);
 
         logger.LogInformation("Studio registered {@StudioId} nipt_provided={@NiptProvided}",
             studio.Id, !string.IsNullOrEmpty(studio.Nipt));

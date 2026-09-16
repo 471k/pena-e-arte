@@ -383,6 +383,16 @@ public class IdentityService(
         return (true, accessToken, null);
     }
 
+    public async Task<IReadOnlyList<string>> GetEmailsInRoleAsync(string role, CancellationToken ct)
+    {
+        IList<IdentityUser> users = await userManager.GetUsersInRoleAsync(role);
+        return users
+            .Select(u => u.Email)
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Select(e => e!)
+            .ToList();
+    }
+
     private string GenerateJwt(
         IdentityUser user, IList<string> roles, IList<Claim> userClaims, Guid? activeStudioId = null,
         IReadOnlyList<Claim>? extraClaims = null, DateTime? expiresAtOverride = null)
