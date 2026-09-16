@@ -370,14 +370,29 @@ jobs:
             --from-literal=CloudflareR2__SecretAccessKey="${{ secrets.STAGING_R2_SECRET_ACCESS_KEY }}" \
             --from-literal=CloudflareR2__BucketName="${{ secrets.STAGING_R2_BUCKET_NAME }}" \
             --from-literal=CloudflareR2__PublicUrl="${{ secrets.STAGING_R2_PUBLIC_URL }}" \
+            --from-literal=Resend__ApiKey="${{ secrets.STAGING_RESEND_API_KEY }}" \
+            --from-literal=Resend__FromAddress="${{ secrets.STAGING_RESEND_FROM_ADDRESS }}" \
             --from-literal=Google__ClientId="${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
             --from-literal=Apple__ClientId="${{ secrets.VITE_APPLE_CLIENT_ID }}" \
             --from-literal=Hangfire__DashboardUsername="${{ secrets.HANGFIRE_DASHBOARD_USERNAME }}" \
             --from-literal=Hangfire__DashboardPassword="${{ secrets.HANGFIRE_DASHBOARD_PASSWORD }}" \
             --from-literal=ForwardedHeaders__TrustedProxyCidr="${{ secrets.FORWARDED_HEADERS_TRUSTED_PROXY_CIDR }}" \
             --dry-run=client -o yaml | kubectl apply -f -
-          # Deliberately NOT set on staging (§2.7/§6 of the staging spec — left unset, app's
-          # existing config-gating pattern handles it): Resend, Twilio, Instagram, the
+          # Resend now HAS a real staging key (own restricted API key + own from-address on
+          # the same verified tattooos.co domain — see the artist-invite-not-delivered
+          # investigation this was fixed from). Its own comment used to claim "the app's
+          # existing config-gating pattern handles it" for an unset key, but that pattern
+          # (Pena_e_Arte.Infrastructure/Extensions/InfrastructureServiceExtensions.cs's
+          # `options.ApiToken = configuration["Resend:ApiKey"] ?? ""`) only prevents a
+          # startup crash — NotificationService.SendEmailAsync still attempts a real send
+          # with an empty token, which Resend always 401s, which Hangfire then retries 10
+          # times before permanently failing. That premise was wrong; every real email send
+          # on staging (artist invites, appointment reminders, registration verification)
+          # was silently undeliverable since staging launched. Fixed by provisioning a real
+          # key instead of relying on gating that didn't exist.
+          #
+          # Still deliberately NOT set on staging (§2.7/§6 of the staging spec — left unset,
+          # app's existing config-gating pattern handles it): Twilio, Instagram, the
           # TikTok/Facebook/X/YouTube social-verification block, Stripe Connect webhook
           # secret (no /connect endpoint registered for staging), Vault__Address/Vault__Token
           # (no staging Vault instance — see k8s/overlays/staging/vault-exclude-patch.yaml;
