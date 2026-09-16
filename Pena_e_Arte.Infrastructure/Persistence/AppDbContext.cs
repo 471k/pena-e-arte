@@ -35,6 +35,7 @@ public class AppDbContext(
     public DbSet<DesignApproval> DesignApprovals => Set<DesignApproval>();
     public DbSet<DesignShareToken> DesignShareTokens => Set<DesignShareToken>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<SavedPaymentMethod> SavedPaymentMethods => Set<SavedPaymentMethod>();
     public DbSet<SessionSplit> SessionSplits => Set<SessionSplit>();
     public DbSet<IntakeForm> IntakeForms => Set<IntakeForm>();
     public DbSet<IntakeFormTemplate> IntakeFormTemplates => Set<IntakeFormTemplate>();
@@ -148,6 +149,7 @@ public class AppDbContext(
         builder.Entity<DesignApproval>().HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<DesignShareToken>().HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);
         builder.Entity<Payment>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);
+        builder.Entity<SavedPaymentMethod>().HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<SessionSplit>().HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<IntakeForm>().HasQueryFilter(i => i.StudioId == tenant.StudioId && i.DeletedAt == null);
         builder.Entity<IntakeFormTemplate>().HasQueryFilter(t => t.StudioId == tenant.StudioId && t.DeletedAt == null);

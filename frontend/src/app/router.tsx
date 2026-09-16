@@ -20,6 +20,7 @@ import {
 } from "@/features/forms";
 import { DepositRuleListPage, DepositRuleDetailPage, CreateDepositRulePage } from "@/features/deposit-rules";
 import { ServiceListPage, ServiceDetailPage, CreateServicePage } from "@/features/services";
+import { SavedPaymentMethodsPage } from "@/features/saved-payment-methods";
 import { PromoCodeListPage, PromoCodeDetailPage, CreatePromoCodePage } from "@/features/promo-codes";
 import { ReportsPage, MyEarningsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
@@ -269,6 +270,13 @@ export const routes = [
                 path: "clients/me",
                 element: <RoleGuard allowedRoles={[Role.Client, Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [{ index: true, element: <ErrorBoundary><MyProfilePage /></ErrorBoundary> }],
+              },
+
+              // ── Client: saved payment methods ───────────────────────────────
+              {
+                path: "clients/me/payment-methods",
+                element: <RoleGuard allowedRoles={[Role.Client]} />,
+                children: [{ index: true, element: <ErrorBoundary><SavedPaymentMethodsPage /></ErrorBoundary> }],
               },
 
               // ── Shared: clients ─────────────────────────────────────────────

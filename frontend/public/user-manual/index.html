@@ -324,6 +324,7 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list">
           <li><a href="#client-profile" data-nav-link>My Profile &amp; body map</a></li>
           <li><a href="#client-deposit" data-nav-link>Pay a deposit</a></li>
+          <li><a href="#client-saved-payment-methods" data-nav-link>Payment methods</a></li>
           <li><a href="#client-verify-email" data-nav-link>Verify email</a></li>
           <li><a href="#client-change-password" data-nav-link>Change password</a></li>
           <li><a href="#client-change-email" data-nav-link>Change email</a></li>
@@ -1355,7 +1356,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment. If card payments are temporarily unavailable, the page shows a message instead of the card form — Cash always remains available at booking, or you can contact the studio directly.</p>
+<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment. If you have a saved card, a "Saved card" tab is selected automatically so you can pay in one tap (still with a bank confirmation step the first time); otherwise use the "New card" tab. If card payments are temporarily unavailable, the page shows a message instead — Cash always remains available at booking, or you can contact the studio directly.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1378,7 +1379,34 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Authorise deposit</span>.</li>
 <li>A confirmation screen appears once authorised — you can return to booking from there.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#client-book">Book an appointment</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
+<div class="crosslinks">See also: <a href="#client-book">Book an appointment</a>, <a href="#client-saved-payment-methods">Manage saved payment methods</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
+</section>
+
+<section id="client-saved-payment-methods" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Manage saved payment methods</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>At <code>/clients/me/payment-methods</code>: save a card to pay a deposit in one tap next time. Card details are handled entirely by the payment processor's own form — this app never sees or stores your card number.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 420" role="img" aria-label="Payment methods wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="12" font-weight="700">Payment Methods</text>
+<rect x="20" y="60" width="480" height="50" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<text x="32" y="82" font-size="9" font-weight="700">Visa **** 4242</text><text x="32" y="98" font-size="8" fill-opacity="0.6">Expires 12/2030</text>
+<rect x="380" y="72" width="55" height="16" rx="8" fill="#f59e0b" fill-opacity="0.5"/><text x="392" y="83" font-size="7">Default</text>
+<text x="20" y="140" font-size="10" font-weight="700">Add a card</text>
+<rect x="20" y="150" width="240" height="60" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="35" y="182" font-size="8" fill-opacity="0.5">card number / expiry / CVC (processor's own form)</text>
+</svg>
+</figure>
+<figcaption>Payment methods — saved cards list, with an embedded add-card form below</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Fill in the card form and click <span class="step-title">Save card</span> to add one.</li>
+<li>Click <span class="step-title">Remove</span> on any saved card to delete it.</li>
+</ol>
+<div class="callout callout-tip"><strong>Per-studio:</strong> a card saved at one studio can't be used at another — save a card again if you book with a different studio.</div>
+<div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a></div>
 </section>
 
 <section id="client-verify-email" data-role="client">

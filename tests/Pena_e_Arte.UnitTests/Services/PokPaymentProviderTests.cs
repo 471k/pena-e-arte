@@ -9,6 +9,7 @@ using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Services;
+using Pena_e_Arte.Infrastructure.Services.Pok;
 using Pena_e_Arte.UnitTests.Helpers;
 using StackExchange.Redis;
 
@@ -51,10 +52,12 @@ public class PokPaymentProviderTests
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Pok").Returns(_ => new HttpClient(handler));
 
-        return new PokPaymentProvider(
+        PokAuthClient authClient = new(
             _db, _secrets,
             Options.Create(options ?? new PokOptions { BaseUrl = "https://api-staging.pokpay.io" }),
-            factory, redis, NullLogger<PokPaymentProvider>.Instance);
+            factory, redis, NullLogger<PokAuthClient>.Instance);
+
+        return new PokPaymentProvider(authClient);
     }
 
     private async Task SeedConnectedStudioAsync()

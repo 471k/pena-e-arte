@@ -23,6 +23,9 @@ public static class PaymentEndpoints
         group.MapPost("/deposit",
             CreateDepositPayment).RequireAuthorization("ClientAndAbove").RequireRateLimiting("billing");
 
+        group.MapPost("/deposit/pay-with-saved-card",
+            PayDepositWithSavedCard).RequireAuthorization("ClientAndAbove").RequireRateLimiting("billing");
+
         group.MapGet("/",
             GetPayments).RequireAuthorization("OwnerOnly");
 
@@ -121,6 +124,15 @@ public static class PaymentEndpoints
         PaymentIntentResponse result = await mediator.Send(
             new CreateDepositPaymentCommand(request.AppointmentId), ct);
         return Results.Created($"/api/v1/payments/{result.PaymentId}", result);
+    }
+
+    private static async Task<IResult> PayDepositWithSavedCard(
+        PayWithSavedCardRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        PayWithSavedCardSetupResponse result = await mediator.Send(new PayDepositWithSavedCardCommand(request), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetPayments(
