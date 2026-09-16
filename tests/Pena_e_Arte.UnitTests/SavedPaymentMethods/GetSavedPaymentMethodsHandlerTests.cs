@@ -43,18 +43,27 @@ public class GetSavedPaymentMethodsHandlerTests
         Client client = SeedClient();
         _db.SavedPaymentMethods.Add(new SavedPaymentMethod
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "card-old",
-            IsDefault = false, CreatedAt = DateTime.UtcNow.AddDays(-2),
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "card-old",
+            IsDefault = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-2),
         });
         _db.SavedPaymentMethods.Add(new SavedPaymentMethod
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "card-default",
-            IsDefault = true, CreatedAt = DateTime.UtcNow.AddDays(-5),
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "card-default",
+            IsDefault = true,
+            CreatedAt = DateTime.UtcNow.AddDays(-5),
         });
         _db.SavedPaymentMethods.Add(new SavedPaymentMethod
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "card-newest",
-            IsDefault = false, CreatedAt = DateTime.UtcNow,
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "card-newest",
+            IsDefault = false,
+            CreatedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync();
 
@@ -71,11 +80,15 @@ public class GetSavedPaymentMethodsHandlerTests
         Client client = SeedClient();
         _db.SavedPaymentMethods.Add(new SavedPaymentMethod
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "mine",
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "mine",
         });
         _db.SavedPaymentMethods.Add(new SavedPaymentMethod
         {
-            StudioId = _studioId, ClientId = Guid.NewGuid(), ProviderCardTokenId = "not-mine",
+            StudioId = _studioId,
+            ClientId = Guid.NewGuid(),
+            ProviderCardTokenId = "not-mine",
         });
         await _db.SaveChangesAsync();
 

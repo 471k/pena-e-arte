@@ -99,7 +99,10 @@ public class SavedPaymentMethodIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         Client client = new()
         {
-            StudioId = studioId, UserId = userId, FirstName = "A", LastName = "B",
+            StudioId = studioId,
+            UserId = userId,
+            FirstName = "A",
+            LastName = "B",
             Email = $"{Guid.NewGuid()}@test.com",
         };
         ctx.Clients.Add(client);

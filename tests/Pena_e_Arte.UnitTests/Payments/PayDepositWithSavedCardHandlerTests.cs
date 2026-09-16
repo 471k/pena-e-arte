@@ -147,7 +147,10 @@ public class PayDepositWithSavedCardHandlerTests
     {
         Client client = new()
         {
-            StudioId = _studioId, UserId = userId, FirstName = "Test", LastName = "Client",
+            StudioId = _studioId,
+            UserId = userId,
+            FirstName = "Test",
+            LastName = "Client",
             Email = $"{Guid.NewGuid()}@test.com",
         };
         _db.Clients.Add(client);
@@ -160,10 +163,15 @@ public class PayDepositWithSavedCardHandlerTests
     {
         Appointment appointment = new()
         {
-            StudioId = _studioId, ArtistId = Guid.NewGuid(), ClientId = clientId,
-            Date = DateTime.UtcNow.AddDays(5), EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(90),
-            DurationMinutes = 90, Status = AppointmentStatus.Pending,
-            DepositStatus = DepositStatus.Pending, DepositAmount = depositAmount,
+            StudioId = _studioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = clientId,
+            Date = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(90),
+            DurationMinutes = 90,
+            Status = AppointmentStatus.Pending,
+            DepositStatus = DepositStatus.Pending,
+            DepositAmount = depositAmount,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
@@ -185,9 +193,14 @@ public class PayDepositWithSavedCardHandlerTests
     {
         Payment payment = new()
         {
-            StudioId = _studioId, AppointmentId = appointmentId, ClientId = _clientUserId,
-            Amount = 50m, Method = method, Status = status,
-            ProviderReferenceId = intentId, ClientToken = clientToken,
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            ClientId = _clientUserId,
+            Amount = 50m,
+            Method = method,
+            Status = status,
+            ProviderReferenceId = intentId,
+            ClientToken = clientToken,
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();

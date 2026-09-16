@@ -69,7 +69,10 @@ public class AddSavedPaymentMethodHandlerTests
         Client client = SeedClient();
         _db.SavedPaymentMethods.Add(new SavedPaymentMethod
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "card-existing", IsDefault = true,
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "card-existing",
+            IsDefault = true,
         });
         await _db.SaveChangesAsync();
 
@@ -100,8 +103,11 @@ public class AddSavedPaymentMethodHandlerTests
         Client client = SeedClient();
         _db.SavedPaymentMethods.Add(new SavedPaymentMethod
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "card-dup",
-            CardBrand = "Mastercard", IsDefault = true,
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "card-dup",
+            CardBrand = "Mastercard",
+            IsDefault = true,
         });
         await _db.SaveChangesAsync();
 

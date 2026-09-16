@@ -45,17 +45,26 @@ public class DeleteSavedPaymentMethodHandlerTests
         Client client = SeedClient();
         SavedPaymentMethod older = new()
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "card-old",
-            IsDefault = false, CreatedAt = DateTime.UtcNow.AddDays(-2),
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "card-old",
+            IsDefault = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-2),
         };
         SavedPaymentMethod newest = new()
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "card-new",
-            IsDefault = false, CreatedAt = DateTime.UtcNow.AddDays(-1),
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "card-new",
+            IsDefault = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
         };
         SavedPaymentMethod defaultMethod = new()
         {
-            StudioId = _studioId, ClientId = client.Id, ProviderCardTokenId = "card-default", IsDefault = true,
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = "card-default",
+            IsDefault = true,
         };
         _db.SavedPaymentMethods.AddRange(older, newest, defaultMethod);
         await _db.SaveChangesAsync();
@@ -85,7 +94,9 @@ public class DeleteSavedPaymentMethodHandlerTests
         SeedClient();
         SavedPaymentMethod othersMethod = new()
         {
-            StudioId = _studioId, ClientId = Guid.NewGuid(), ProviderCardTokenId = "not-yours",
+            StudioId = _studioId,
+            ClientId = Guid.NewGuid(),
+            ProviderCardTokenId = "not-yours",
         };
         _db.SavedPaymentMethods.Add(othersMethod);
         await _db.SaveChangesAsync();
