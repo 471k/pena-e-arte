@@ -85,6 +85,49 @@ public class PaymentArchitectureTests
             because: "the only allowed effect is triggering a re-fetch from POK, never trusting the ping itself");
     }
 
+    /// <summary>
+    /// ADR-0001 Amendment B: Flow A carries no platform commission, permanently — the field and
+    /// capability that existed to support one (<c>Payment.PlatformFeeAmount</c>,
+    /// <c>PaymentProviderCapabilities.SupportsSplit</c>) were deliberately removed rather than
+    /// left at a permanent zero. This guards against either reappearing, under the same name,
+    /// anywhere in Domain or Application — the two layers where a commission field would be
+    /// modelled. A comment saying "don't add this back" erodes; a failing build doesn't.
+    /// </summary>
+    [Fact]
+    public void NoMember_IsNamedPlatformFeeAmountOrSupportsSplit()
+    {
+        Assembly[] assemblies =
+        [
+            typeof(Payment).Assembly,                                                  // Domain
+            typeof(global::Pena_e_Arte.Application.Persistence.IAppDbContext).Assembly, // Application
+        ];
+
+        string[] forbiddenNames = ["PlatformFeeAmount", "SupportsSplit"];
+        const BindingFlags AllDeclared = BindingFlags.Public | BindingFlags.NonPublic
+            | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+
+        List<string> offenders = [];
+
+        foreach (Assembly assembly in assemblies)
+        {
+            foreach (Type type in assembly.GetTypes())
+            {
+                foreach (PropertyInfo prop in type.GetProperties(AllDeclared))
+                    if (forbiddenNames.Contains(prop.Name))
+                        offenders.Add($"{type.FullName}.{prop.Name}");
+
+                foreach (FieldInfo field in type.GetFields(AllDeclared))
+                    if (forbiddenNames.Contains(field.Name))
+                        offenders.Add($"{type.FullName}.{field.Name}");
+            }
+        }
+
+        offenders.Should().BeEmpty(
+            because: "ADR-0001 Amendment B closed the decision that Flow A never takes a "
+                   + "platform commission — PlatformFeeAmount and SupportsSplit were removed, "
+                   + "not zeroed, and must not be reintroduced under either name.");
+    }
+
     private static string FindRepoFile(params string[] pathParts)
     {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);

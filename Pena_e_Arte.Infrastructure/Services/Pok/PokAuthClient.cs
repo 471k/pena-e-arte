@@ -35,10 +35,6 @@ public sealed class PokAuthClient(
     public string Environment =>
         _options.BaseUrl.Contains("staging", StringComparison.OrdinalIgnoreCase) ? "staging" : "production";
 
-    /// <summary>Pena e Artë's own POK merchant id — the splitWith.merchantId counterparty for the
-    /// platform fee leg. See PokOptions.PlatformMerchantId.</summary>
-    public string? PlatformMerchantId => _options.PlatformMerchantId;
-
     /// <summary>This API's own publicly reachable base URL, used to build the webhookUrl POK
     /// POSTs to on order events. See PokOptions.WebhookCallbackBaseUrl.</summary>
     public string? WebhookCallbackBaseUrl => _options.WebhookCallbackBaseUrl;

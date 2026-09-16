@@ -309,6 +309,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Your card isn't charged immediately — it's authorised, and the studio captures the payment closer to your appointment. Payment is by card, or by cash arranged with the studio.",
       "If card payments are temporarily unavailable, the page shows a message saying so — Cash always remains available, or you can contact the studio directly.",
+      "Your full deposit goes to the studio or artist — TattooOS never takes a cut of it.",
     ],
     relatedArticleIds: ["client-saved-payment-methods"],
   },
@@ -1084,6 +1085,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Your Key Secret is written straight to our secrets vault and is never shown again after you connect — only your Merchant ID stays visible so you can confirm which account is connected.",
       "Until you connect an account, the Card option is unavailable at checkout and clients see Cash only.",
       "To switch to a different POK account, click \"Reconnect / change account\" and enter the new credentials — this replaces the old ones.",
+      "Card deposits settle directly to your own merchant account — TattooOS never takes a commission or fee from any client deposit, card or cash, now or in the future.",
     ],
     warnings: [
       "Use your POK production credentials, not the staging/sandbox pair — sandbox keys will not process real payments.",

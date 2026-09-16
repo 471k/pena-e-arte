@@ -186,37 +186,66 @@ Never push directly from an endpoint handler.
 
 ---
 
-## Payment Architecture — Card & Cash Only
+## Payment Architecture — Two Flows, Zero Platform Commission on Flow A
 
-> **Stripe Connect is not available in the platform's country.**
-> The platform uses the aggregator model for card payments, and records cash
-> payments manually. There is no PayPal, no Connect, no third-party payout service.
+> **This section describes the current, decided design (ADR-0001 + Amendments A and B), not
+> live production behavior.** No real Flow A card processor is wired up yet —
+> `NullPaymentProvider` is the DI default and fails closed on every call, by design. Cash is the
+> only working Flow A deposit path today. Flow B still calls Stripe.net directly; per the
+> 2026-09-03 finding, that cannot go live for this entity. See
+> `docs/payments/payment-processing-report-*.md` for the full current-state audit — this section
+> is the architectural reference, not a status report.
+
+**Flow A never takes a platform commission — client or guest pays the studio/artist 100%, always.**
+This was reversed from ADR-0001's original "deferred, not foreclosed" stance by Amendment B
+(2026-09-16) — see `docs/payments/ADR-0001-amendment-B-flow-a-zero-commission.md` for the full
+reasoning. There is no `PlatformFeeAmount` field, no `SupportsSplit` capability, and no
+`splitWith` leg naming Pena e Artë anywhere in Flow A. **Pena e Artë's only revenue is Flow B.**
 
 ```
-CLIENT DEPOSITS (client pays studio, at booking)
-  Card  → Stripe Payment Element (platform aggregator Stripe account, manual capture)
-           Client pays → Captured (held) → Paid (captured at session end)
+FLOW A — CLIENT DEPOSITS (client pays the STUDIO/ARTIST, at booking, 100% — no platform cut)
+  Card  → IPaymentProvider (provider-neutral; NullPaymentProvider fails closed until a real
+           provider lands). Designed provider: POK, per-studio merchant credentials — each
+           studio holds its own account; Pena e Artë is never a payment party.
+           Client pays → Held (auth) → Paid (captured at session end)
   Cash  → Client declares intent (CashPending) → Owner/artist confirms receipt (Paid)
 
-PLATFORM SUBSCRIPTIONS (owner pays platform, SaaS access)
-  Card  → Stripe Billing (unchanged, platform Stripe account)
+FLOW B — PLATFORM SUBSCRIPTIONS (studio owner pays Pena e Artë, SaaS access — the platform's
+                                   only revenue)
+  Card  → IStripeBillingService today (Stripe.net direct — commercially blocked for this
+           entity, confirmed 2026-09-03). Designed: Polar as merchant of record (ADR-0001),
+           not yet implemented.
   Cash  → Owner contacts admin out-of-band;
            Admin calls ActivateSubscriptionManuallyCommand
 ```
 
-**Key rule:** `IStripePaymentService` must NEVER pass `RequestOptions { StripeAccount = ... }`.
-Every PaymentIntent goes to the platform account. This is enforced by the interface — the
-`connectedAccountId` parameter does not exist.
+**Why Flow A is provider-neutral and per-studio, not an aggregator:** the platform's own Stripe
+account used to collect every client's card payment directly (the aggregator model) — that
+design was deleted, not migrated, because it put client funds in the platform's possession,
+which is exactly what Law 55/2020 Art. 4(g)'s technical-service-provider exclusion requires the
+platform to avoid. `IStripePaymentService`/`StripeConnectService` (the old aggregator-model
+services) are **deleted**, not merely obsolete — do not resurrect either name for Flow A. Every
+`Payment` in Flow A is designed to settle to the studio's own merchant identity; the platform
+never has a balance, a ledger, or a payout queue for client funds (architecture-test-enforced).
 
-**`StripeConnectService`** is marked `[Obsolete]`. Do not call it. Do not re-introduce it.
+**Key rule:** because there is no platform commission, ever, `IPaymentProvider` must never be
+called in a way that names Pena e Artë as a recipient of any part of a Flow A payment. If a
+future provider integration's SDK has a "platform fee"/"split" parameter, it is not used for
+Flow A — full stop, not "used at 0%."
 
-**Cash flow:**
+**Cash flow (fully built, the only live Flow A path today):**
 - `DeclareCashDepositCommand` — called by client at booking; creates `Payment` with
   `Method = Cash`, `Status = CashPending`.
 - `ConfirmCashDepositCommand` — called by artist or owner when cash is physically received;
-  sets `Status = Paid`, mirrors `DepositStatus.Paid` on the `Appointment`.
+  sets `Status = Paid`, mirrors `DepositStatus.Paid` on the `Appointment`. Implements
+  `IAuditableCommand` (2026-09-05).
 - `ActivateSubscriptionManuallyCommand` — AdminOnly; activates a studio subscription
-  after a cash subscription payment is confirmed out-of-band.
+  after a cash subscription payment is confirmed out-of-band (Flow B only).
+
+**`GET /api/v1/payments/capabilities`** exposes `IPaymentProvider.Capabilities.SupportsAuthCapture`
+as `CardPaymentsAvailable`, so the frontend gates the card option on real backend state rather
+than an env-var proxy. There is no `SupportsSplit` capability — it was removed by Amendment B;
+nothing in this codebase should gate on it or reintroduce it.
 
 ---
 
@@ -230,7 +259,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 02 | Consultation & Consent Forms | `IntakeForm` (consent-stamped: `ConsentTemplateId`/`ConsentTextSnapshot`/`ConsentedAt`, kind `ConsentTemplateKind.IntakeFormConsent`), `ConsentForm`, `ConsentTemplate` | Cloudflare R2 (PDF storage) | Per-tenant |
 | 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` | Cloudflare R2 (images), SignalR | Per-tenant |
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
-| 05 | Payments & Session Splits | `Payment`, `SessionSplit` | `IPaymentProvider` (card; `NullPaymentProvider` until POK lands, see ADR-0001 — `GET /api/v1/payments/capabilities` exposes `Capabilities.SupportsAuthCapture` so the UI gates on real backend state, not just an env-var proxy) + Cash (manual) | Per-tenant |
+| 05 | Payments & Session Splits | `Payment` (no `PlatformFeeAmount` — removed by ADR-0001 Amendment B, zero platform commission on Flow A, permanent), `SessionSplit` (studio-internal artist/owner split only, unrelated to platform revenue) | `IPaymentProvider` (card; `NullPaymentProvider` until POK lands, see ADR-0001 — `GET /api/v1/payments/capabilities` exposes `Capabilities.SupportsAuthCapture` so the UI gates on real backend state, not just an env-var proxy; no `SupportsSplit` capability) + Cash (manual) | Per-tenant |
 | 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + Resend | Per-tenant |
 | 07 | Studio Map | No entity (reads `Studio.Latitude/Longitude`) | None — public endpoint, no auth. Filters `IsActive && IsPublished`. | Platform-wide |
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Admin-level |
@@ -1705,8 +1734,9 @@ does not re-litigate them.
 | `AllowBrandingRemoval` on UpdatePlan | Exposed via `UpdatePlanRequest.AllowBrandingRemoval` (bool) | Issuer needs to control which plans unlock branding removal; was missing from update contract |
 | Duplicate plan routes | Deleted `IssuerEndpoints.cs`; canonical plan CRUD is under `/api/v1/billing/plans` | Eliminated duplicate route registration; frontend always used billing path |
 | `platformApi` RTK Query slice | New `features/platform/platformApi.ts` for all issuer platform endpoints | Keeps issuer platform concerns isolated from billing/studio slices |
-| Payment model: aggregator vs marketplace | Aggregator (platform's own Stripe account collects all card payments) | Stripe Connect not available in platform country; aggregator avoids connected accounts entirely |
-| Client payment methods | Card (Stripe Payment Element) + Cash (manual) — no PayPal | Simplest model matching actual studio workflow; studios often accept cash deposits in person |
+| Payment model: aggregator vs per-studio | Neither is an "aggregator" — `IPaymentProvider` is provider-neutral and Flow A payments are designed to settle to each studio's own merchant identity, never the platform's | The old aggregator model (platform's own Stripe account collecting every client payment) was deleted, not migrated — it put client funds in the platform's possession, which Law 55/2020 Art. 4(g)'s exclusion requires the platform to avoid. See ADR-0001 + Amendments A/B. |
+| Client payment methods | Card (provider TBD; POK designed for Albania per ADR-0001) + Cash (manual) — no PayPal, no Stripe for Flow A | Matches actual studio workflow; many studios take cash in person; Stripe does not onboard merchants registered in Albania for this entity |
+| Flow A platform commission | **None. Ever.** No `PlatformFeeAmount` field, no `SupportsSplit` capability. Client/guest pays the studio or artist 100% | ADR-0001 Amendment B (2026-09-16) — reverses ADR-0001's original "deferred, not foreclosed" stance. Pena e Artë's only revenue is Flow B subscriptions. |
 | `Studio.IsPublished` | New bool, default `true`; `false` only on `IsSolo` creation | Lets a solo-artist studio be active (tenant access, bookable artist page) but excluded from directory surfaces until it has a real location — the exact case this section previously said would justify the field |
 | Solo-artist signup | `RegisterSoloArtistCommand` auto-provisions a `Studio{IsSolo=true, IsPublished=false}` + `Subscription` on the `Free` plan, `owner` role, no NIPT/city/coords required | Matches category standard (Fresha/Vagaro/Boulevard/GlossGenius all let a single-provider business start taking bookings without a formal multi-staff registration step) |
 | Cash payment flow | `DeclareCashDepositCommand` (client) → `ConfirmCashDepositCommand` (owner/artist) | Two-step prevents fraud; owner must physically confirm before status changes to Paid |

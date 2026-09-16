@@ -13,7 +13,6 @@ public class NullPaymentProviderTests
     {
         PaymentProviderCapabilities caps = _sut.Capabilities;
 
-        caps.SupportsSplit.Should().BeFalse();
         caps.SupportsAuthCapture.Should().BeFalse();
         caps.SupportsHoldExpiry.Should().BeFalse();
         caps.SupportedCurrencies.Should().BeEmpty();
