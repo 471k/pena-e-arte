@@ -16,6 +16,7 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
 {
     private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
+    private readonly ISender _sender = Substitute.For<ISender>();
 
     // ── UpdateStudioSlug ─────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ public class UpdateStudioSlugIntegrationTests(DatabaseFixture fixture)
     private async Task<StudioResponse> RunRegisterHandler(RegisterStudioRequest req)
     {
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        RegisterStudioHandler handler = new(db, _jobs, Microsoft.Extensions.Logging.Abstractions.NullLogger<RegisterStudioHandler>.Instance);
+        RegisterStudioHandler handler = new(db, _jobs, _sender, Microsoft.Extensions.Logging.Abstractions.NullLogger<RegisterStudioHandler>.Instance);
         return await handler.Handle(new RegisterStudioCommand(req), default);
     }
 

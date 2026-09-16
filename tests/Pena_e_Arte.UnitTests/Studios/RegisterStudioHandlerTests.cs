@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -15,9 +16,10 @@ public class RegisterStudioHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
+    private readonly ISender _sender = Substitute.For<ISender>();
 
     private RegisterStudioHandler CreateSut() =>
-        new(_db, _jobs, Microsoft.Extensions.Logging.Abstractions.NullLogger<RegisterStudioHandler>.Instance);
+        new(_db, _jobs, _sender, Microsoft.Extensions.Logging.Abstractions.NullLogger<RegisterStudioHandler>.Instance);
 
     [Fact]
     public async Task Handle_NewSlug_ReturnsStudioResponse()
@@ -106,6 +108,16 @@ public class RegisterStudioHandlerTests
         _jobs.Received(1).ScheduleTrialExpiryWarning(Arg.Any<Guid>(), Arg.Any<DateTimeOffset>());
         _jobs.Received(1).ScheduleTrialExpiry(Arg.Any<Guid>(), Arg.Any<DateTimeOffset>());
         _jobs.Received(1).ScheduleGracePeriodEnd(Arg.Any<Guid>(), Arg.Any<DateTimeOffset>());
+    }
+
+    [Fact]
+    public async Task Handle_NewStudio_SendsStudioRegisteredNotificationForNewStudio()
+    {
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(ValidRequest()), default);
+
+        await _sender.Received(1).Send(
+            Arg.Is<SendStudioRegisteredNotificationCommand>(c => c.StudioId == result.Id),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

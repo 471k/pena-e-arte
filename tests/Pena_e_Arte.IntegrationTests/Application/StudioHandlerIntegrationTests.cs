@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Pena_e_Arte.Application.Studios.Commands;
@@ -18,6 +19,7 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
 {
     private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
+    private readonly ISender _sender = Substitute.For<ISender>();
 
     // ── RegisterStudio ───────────────────────────────────────────────────────────
 
@@ -169,7 +171,7 @@ public class StudioHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<StudioResponse> RunRegisterHandler(RegisterStudioRequest req)
     {
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        RegisterStudioHandler handler = new(db, _jobs, Microsoft.Extensions.Logging.Abstractions.NullLogger<RegisterStudioHandler>.Instance);
+        RegisterStudioHandler handler = new(db, _jobs, _sender, Microsoft.Extensions.Logging.Abstractions.NullLogger<RegisterStudioHandler>.Instance);
         return await handler.Handle(new RegisterStudioCommand(req), default);
     }
 

@@ -36,6 +36,9 @@ public class EmailRenderer : IEmailRenderer
     private static readonly string _paymentRefundedTemplate =
         LoadEmbeddedTemplate("PaymentRefunded.html");
 
+    private static readonly string _studioRegisteredAdminTemplate =
+        LoadEmbeddedTemplate("StudioRegisteredAdmin.html");
+
     private static string LoadEmbeddedTemplate(string fileName)
     {
         Assembly assembly = typeof(EmailRenderer).Assembly;
@@ -419,4 +422,27 @@ public class EmailRenderer : IEmailRenderer
         </body>
         </html>
         """;
+
+    public string RenderStudioRegisteredAdmin(
+        string studioName,
+        string city,
+        string ownerEmail,
+        string? nipt,
+        DateTime trialExpiresAtUtc,
+        bool hasReferral,
+        string studioDetailUrl)
+    {
+        Dictionary<string, string> vars = new()
+        {
+            ["studio_name"] = studioName,
+            ["city"] = city,
+            ["owner_email"] = ownerEmail,
+            ["nipt"] = string.IsNullOrWhiteSpace(nipt) ? "Not provided" : nipt,
+            ["trial_expires_at"] = trialExpiresAtUtc.ToString("dddd, dd MMMM yyyy", CultureInfo.InvariantCulture),
+            ["referral_applied"] = hasReferral ? "Yes" : "No",
+            ["studio_detail_url"] = studioDetailUrl,
+        };
+
+        return TemplateRenderer.Render(_studioRegisteredAdminTemplate, vars);
+    }
 }

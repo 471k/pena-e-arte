@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -90,6 +91,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         RegisterStudioHandler registerHandler = new(
             fixture.CreateDbContext(Guid.Empty),
             Substitute.For<IJobScheduler>(),
+            Substitute.For<ISender>(),
             NullLogger<RegisterStudioHandler>.Instance);
 
         string newSlug = ("ref-" + Guid.NewGuid().ToString("N"))[..20];
@@ -167,6 +169,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         RegisterStudioHandler handler = new(
             fixture.CreateDbContext(Guid.Empty),
             Substitute.For<IJobScheduler>(),
+            Substitute.For<ISender>(),
             NullLogger<RegisterStudioHandler>.Instance);
 
         string newSlug = ("bad-" + Guid.NewGuid().ToString("N"))[..20];
@@ -364,6 +367,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         RegisterStudioHandler handler = new(
             fixture.CreateDbContext(Guid.Empty),
             Substitute.For<IJobScheduler>(),
+            Substitute.For<ISender>(),
             NullLogger<RegisterStudioHandler>.Instance);
 
         string slug = ("rwd-" + Guid.NewGuid().ToString("N"))[..20];
