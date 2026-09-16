@@ -28,6 +28,7 @@ public interface IAppDbContext
     DbSet<DesignApproval> DesignApprovals { get; }
     DbSet<DesignShareToken> DesignShareTokens { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<SavedPaymentMethod> SavedPaymentMethods { get; }
     DbSet<SessionSplit> SessionSplits { get; }
     DbSet<IntakeForm> IntakeForms { get; }
     DbSet<IntakeFormTemplate> IntakeFormTemplates { get; }

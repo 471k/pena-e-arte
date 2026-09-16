@@ -9,6 +9,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { savedPaymentMethodsApi } from "@/features/saved-payment-methods/savedPaymentMethodsApi";
 import { DepositCheckoutPage } from "@/features/payments/components/DepositCheckoutPage";
 import type { ClientTokenResponse, PaymentCapabilitiesResponse } from "@/features/payments/payment.types";
 
@@ -44,6 +45,7 @@ const server = setupServer(
   http.post("http://localhost/api/v1/payments/:id/confirm", () =>
     HttpResponse.json({ status: "Captured" }),
   ),
+  http.get("http://localhost/api/v1/saved-payment-methods", () => HttpResponse.json([])),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -58,8 +60,9 @@ function makeStore() {
       auth:                      authReducer,
       ui:                        uiReducer,
       [paymentsApi.reducerPath]: paymentsApi.reducer,
+      [savedPaymentMethodsApi.reducerPath]: savedPaymentMethodsApi.reducer,
     },
-    middleware: (gd) => gd().concat(paymentsApi.middleware),
+    middleware: (gd) => gd().concat(paymentsApi.middleware, savedPaymentMethodsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-002", email: "client@test.com" }, token: "fake-token", tenantId: "s-001", role: "client", pendingReferralCode: null, impersonation: null } as any,

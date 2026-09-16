@@ -25,6 +25,7 @@ import { waitlistApi } from "@/features/waitlist/waitlistApi";
 import { giftCardsApi } from "@/features/gift-cards/giftCardsApi";
 import { clientReferralsApi } from "@/features/client-referrals/clientReferralsApi";
 import { designsApi } from "@/features/designs/designsApi";
+import { savedPaymentMethodsApi } from "@/features/saved-payment-methods/savedPaymentMethodsApi";
 
 import { BookPage } from "@/features/appointments/components/BookPage";
 import { BookAppointmentForm } from "@/features/appointments/components/BookAppointmentForm";
@@ -141,6 +142,7 @@ const server = setupServer(
   http.get("http://localhost/api/v1/clients",                 () => HttpResponse.json([MY_CLIENT, STAFF_CLIENT])),
   http.get("http://localhost/api/v1/deposit-rules",           () => HttpResponse.json([ACTIVE_RULE, INACTIVE_RULE])),
   http.get("http://localhost/api/v1/services",                () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/saved-payment-methods",   () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
   // BookAppointmentForm's package toggle — empty means the toggle simply doesn't render,
@@ -187,6 +189,7 @@ function makeStore(role: Role = Role.Client) {
       [giftCardsApi.reducerPath]:       giftCardsApi.reducer,
       [clientReferralsApi.reducerPath]:  clientReferralsApi.reducer,
       [designsApi.reducerPath]:          designsApi.reducer,
+      [savedPaymentMethodsApi.reducerPath]: savedPaymentMethodsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -204,7 +207,8 @@ function makeStore(role: Role = Role.Client) {
         .concat(waitlistApi.middleware)
         .concat(giftCardsApi.middleware)
         .concat(clientReferralsApi.middleware)
-        .concat(designsApi.middleware),
+        .concat(designsApi.middleware)
+        .concat(savedPaymentMethodsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -254,6 +258,7 @@ function renderFormWithNoTenant() {
       [waitlistApi.reducerPath]:     waitlistApi.reducer,
       [giftCardsApi.reducerPath]:    giftCardsApi.reducer,
       [clientReferralsApi.reducerPath]: clientReferralsApi.reducer,
+      [savedPaymentMethodsApi.reducerPath]: savedPaymentMethodsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -270,7 +275,8 @@ function renderFormWithNoTenant() {
         .concat(packagesApi.middleware)
         .concat(waitlistApi.middleware)
         .concat(giftCardsApi.middleware)
-        .concat(clientReferralsApi.middleware),
+        .concat(clientReferralsApi.middleware)
+        .concat(savedPaymentMethodsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null, impersonation: null } as any,

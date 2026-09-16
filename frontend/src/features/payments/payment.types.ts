@@ -87,3 +87,25 @@ export interface PokConnectionStatusResponse {
   connected:   boolean;
   merchantId: string | null;
 }
+
+export interface PayWithSavedCardRequest {
+  appointmentId:      string;
+  savedPaymentMethodId: string;
+}
+
+export interface PayWithSavedCardDeviceDataCollection {
+  url:         string;
+  accessToken: string;
+}
+
+/** Field names mirror the POK SDK's own `PayerAuthentication` type so the response can be
+ * passed straight into `usePOK().payByCardToken(...)` with no remapping. When status is
+ * already "Captured"/"Paid" the setup fields are null — nothing more to do. */
+export interface PayWithSavedCardSetupResponse {
+  paymentId:                string;
+  status:                   string;
+  orderId:                  string | null;
+  cardTokenId:               string | null;
+  payerAuthSetupReferenceId: string | null;
+  deviceDataCollection:      PayWithSavedCardDeviceDataCollection | null;
+}

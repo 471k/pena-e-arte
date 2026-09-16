@@ -11,6 +11,8 @@ import type {
   PaymentCapabilitiesResponse,
   ConnectPokAccountRequest,
   PokConnectionStatusResponse,
+  PayWithSavedCardRequest,
+  PayWithSavedCardSetupResponse,
 } from "./payment.types";
 
 export const paymentsApi = createApi({
@@ -43,6 +45,12 @@ export const paymentsApi = createApi({
     createDepositPayment: builder.mutation<PaymentIntentResponse, { appointmentId: string }>({
       query: (body) => ({ url: "payments/deposit", method: "POST", body }),
       invalidatesTags: ["Payment"],
+    }),
+    // Sets up a 3DS challenge for a saved card against a fresh (or resumed) deposit hold —
+    // the caller still re-calls createDepositPayment after payByCardToken succeeds, same
+    // "never trust the client-side callback" discipline as a new-card checkout.
+    payWithSavedCard: builder.mutation<PayWithSavedCardSetupResponse, PayWithSavedCardRequest>({
+      query: (body) => ({ url: "payments/deposit/pay-with-saved-card", method: "POST", body }),
     }),
     confirmCashDeposit: builder.mutation<PaymentResponse, string>({
       query: (id) => ({ url: `payments/${id}/cash/confirm`, method: "POST" }),
@@ -115,6 +123,7 @@ export const {
   useCreatePaymentIntentMutation,
   useDeclareCashDepositMutation,
   useCreateDepositPaymentMutation,
+  usePayWithSavedCardMutation,
   useConfirmCashDepositMutation,
   useCaptureDepositMutation,
   useRefundPaymentMutation,

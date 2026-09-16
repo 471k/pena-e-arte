@@ -270,6 +270,7 @@ try
     app.MapBillingEndpoints();
     app.MapFormEndpoints();
     app.MapPaymentEndpoints();
+    app.MapSavedPaymentMethodEndpoints();
     app.MapNotificationEndpoints();
     app.MapManualReminderEndpoints();
     app.MapFileEndpoints();
