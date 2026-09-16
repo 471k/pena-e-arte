@@ -129,6 +129,23 @@ public class GetRevenueSummaryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_PaidUnrefundedPayment_ReportsFullAmount_NoPlatformCutDeducted()
+    {
+        // ADR-0001 Amendment B regression guard: Flow A never takes a platform commission, so a
+        // fully-paid deposit's full Amount — not some lesser figure — is what reaches revenue
+        // reporting. Payment.PlatformFeeAmount was removed, not zeroed; this guards against
+        // anything ever recomputing a smaller "available to studio" figure again.
+        Guid artistId = await SeedArtist("Luna", "Artista");
+        Guid apptId = await SeedAppointment(artistId);
+        await SeedPayment(apptId, 123.45m, PaymentStatus.Paid, DateTime.UtcNow);
+
+        RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
+
+        result.MonthlyTrend.Last().Revenue.Should().Be(123.45m);
+        result.PerArtist.Should().ContainSingle(a => a.ArtistId == artistId && a.Revenue == 123.45m);
+    }
+
+    [Fact]
     public async Task Handle_RefundedPaymentWithNoRefundedAmountRecorded_CountsFullAmount()
     {
         // Defensive: a Refunded payment with RefundedAmount left null (shouldn't happen for

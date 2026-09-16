@@ -28,7 +28,6 @@ namespace Pena_e_Arte.Infrastructure.Services;
 public sealed class PokPaymentProvider(PokAuthClient authClient) : IPaymentProvider
 {
     public PaymentProviderCapabilities Capabilities { get; } = new(
-        SupportsSplit: true,
         SupportsAuthCapture: true,
         SupportsHoldExpiry: true,
         // Every documented example uses ALL or EUR. POK's card brands (Visa/Visa Electron/
@@ -55,14 +54,7 @@ public sealed class PokPaymentProvider(PokAuthClient authClient) : IPaymentProvi
             MerchantCustomReference = request.PaymentId.ToString(),
             WebhookUrl = string.IsNullOrEmpty(authClient.WebhookCallbackBaseUrl)
                 ? null
-                : $"{authClient.WebhookCallbackBaseUrl.TrimEnd('/')}/api/v1/webhooks/pok",
-            SplitWith = request.PlatformFeeAmountInCents > 0 && !string.IsNullOrEmpty(authClient.PlatformMerchantId)
-                ? new SplitWithBody
-                {
-                    MerchantId = authClient.PlatformMerchantId,
-                    Amount = AmountInCentsToPok(request.PlatformFeeAmountInCents)
-                }
-                : null
+                : $"{authClient.WebhookCallbackBaseUrl.TrimEnd('/')}/api/v1/webhooks/pok"
         };
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"{authClient.BaseUrl}/merchants/{merchantId}/sdk-orders");
@@ -185,13 +177,6 @@ public sealed class PokPaymentProvider(PokAuthClient authClient) : IPaymentProvi
         [JsonPropertyName("expiresAfterMinutes")] public int? ExpiresAfterMinutes { get; init; }
         [JsonPropertyName("merchantCustomReference")] public string? MerchantCustomReference { get; init; }
         [JsonPropertyName("webhookUrl")] public string? WebhookUrl { get; init; }
-        [JsonPropertyName("splitWith")] public SplitWithBody? SplitWith { get; init; }
-    }
-
-    private sealed class SplitWithBody
-    {
-        [JsonPropertyName("merchantId")] public string? MerchantId { get; init; }
-        [JsonPropertyName("amount")] public decimal Amount { get; init; }
     }
 
     private sealed class CreateOrderResponse

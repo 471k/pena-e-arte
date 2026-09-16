@@ -30,14 +30,6 @@ public class Payment : TenantEntity
     /// expiresAfterMinutes). Enforced server-side by PaymentReconciliationJob's release pass.</summary>
     public DateTime? HoldExpiresAt { get; set; }
 
-    /// <summary>
-    /// Platform fee deducted from what is disbursed to the studio, wired through at a 0% rate from
-    /// day one (ADR-0001 monetization). Deliberately a distinct field, NOT a
-    /// <see cref="SessionSplit"/> row: it sits OUTSIDE SessionSplit's exact-sum-to-Amount invariant
-    /// (see UpdateSessionSplitsCommand). Do not try to unify the two.
-    /// </summary>
-    public decimal PlatformFeeAmount { get; set; }
-
     // Cash fields
     public string? CashNote { get; set; }
     public Guid? CashConfirmedByUserId { get; set; }

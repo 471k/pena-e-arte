@@ -138,7 +138,6 @@ public class CreateDepositPaymentHandler(
                 PaymentId: paymentId,
                 AmountInCents: amountInCents,
                 Currency: DepositCurrency,
-                PlatformFeeAmountInCents: 0, // ADR-0001 monetization: wired in, deferred at 0%
                 HoldDurationMinutes: HoldDurationMinutes),
             ct);
         DateTime holdExpiresAt = DateTime.UtcNow.AddMinutes(HoldDurationMinutes);
