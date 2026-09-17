@@ -208,11 +208,26 @@ export function RegisterStudioPage() {
   const cityValue = watch("city");
   const addressLine1Value = watch("addressLine1");
 
-  const { status: geocodeStatus } = useAddressGeocode(addressLine1Value, ({ lat, lng, city }) => {
-    setValue("latitude", lat, { shouldValidate: true });
-    setValue("longitude", lng, { shouldValidate: true });
-    setValue("city", city, { shouldValidate: true });
-  });
+  // Set right before a pin-driven setValue("addressLine1", ...) below, so the very next
+  // render's useAddressGeocode call sees it and skips the forward-geocode fetch that
+  // address change would otherwise trigger — pin drag already has authoritative lat/lng,
+  // re-geocoding its own reverse-geocoded text back to coordinates is redundant and would
+  // flash "Locating on the map…" right after the user just finished correcting the pin.
+  const pinDrivenAddressUpdate = useRef(false);
+
+  const { status: geocodeStatus } = useAddressGeocode(
+    addressLine1Value,
+    ({ lat, lng, city }) => {
+      setValue("latitude", lat, { shouldValidate: true });
+      setValue("longitude", lng, { shouldValidate: true });
+      setValue("city", city, { shouldValidate: true });
+    },
+    { enabled: !pinDrivenAddressUpdate.current }
+  );
+
+  useEffect(() => {
+    pinDrivenAddressUpdate.current = false;
+  }, [addressLine1Value]);
 
   useEffect(() => {
     if (existingRole) {
@@ -567,7 +582,7 @@ export function RegisterStudioPage() {
                         {geocodeStatus === "error" &&
                           "Couldn't find that address automatically — you can also click the map below to set your studio's location."}
                         {(geocodeStatus === "idle" || geocodeStatus === "success") &&
-                          "The map below updates automatically as you type — drag the pin afterward if it's not quite right."}
+                          "Stays in sync with the map below — type an address to move the pin, or drag the pin to update the address."}
                       </p>
                       {errors.addressLine1 && (
                         <p className="text-xs text-destructive-text">{errors.addressLine1.message}</p>
@@ -593,10 +608,14 @@ export function RegisterStudioPage() {
                             ? { lat: latValue, lng: lngValue, city: cityValue }
                             : undefined
                         }
-                        onChange={({ lat, lng, city }) => {
+                        onChange={({ lat, lng, city, streetAddress }) => {
                           setValue("latitude",  lat,  { shouldValidate: true });
                           setValue("longitude", lng,  { shouldValidate: true });
                           setValue("city",      city, { shouldValidate: true });
+                          if (streetAddress) {
+                            pinDrivenAddressUpdate.current = true;
+                            setValue("addressLine1", streetAddress, { shouldValidate: true });
+                          }
                         }}
                         error={
                           errors.latitude?.message ??
