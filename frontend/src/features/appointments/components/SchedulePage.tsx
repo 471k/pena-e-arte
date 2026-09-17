@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
@@ -64,6 +65,12 @@ export function SchedulePage() {
   const canQuickRemind = role === Role.Artist;
   const canExport = role === Role.Owner || role === Role.Admin;
   const [exporting, setExporting] = useState(false);
+  // Present when an owner reaches this page via their own artist-mode nav (OwnerLayout's
+  // ArtistModeSwitcher/artistNavItems) — filters to just their own appointments, the same
+  // scoping a real artist caller already gets automatically. Ignored for an actual artist
+  // caller (GetAppointmentsHandler already forces their own id regardless of this param).
+  const [searchParams] = useSearchParams();
+  const artistId = searchParams.get("artistId") ?? undefined;
 
   async function handleExportCsv() {
     setExporting(true);
@@ -81,6 +88,7 @@ export function SchedulePage() {
   const { data: appointments, isLoading, isError } = useGetAppointmentsQuery({
     from: weekStart.toISOString(),
     to:   weekEnd.toISOString(),
+    artistId,
   });
 
   const errorMessage = useSuspensionAwareError(isError, "Failed to load appointments. Please try again.");

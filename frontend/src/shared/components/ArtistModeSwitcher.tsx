@@ -1,6 +1,7 @@
 import { LayoutDashboard, Palette } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/shared/utils/cn";
+import { isInArtistContext } from "@/shared/utils/artistContext";
 
 interface ArtistModeSwitcherProps {
   artistId: string;
@@ -17,8 +18,7 @@ export function ArtistModeSwitcher({ artistId }: ArtistModeSwitcherProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isArtistView =
-    location.pathname.startsWith(`/artists/${artistId}`) || location.pathname === "/earnings";
+  const isArtistView = isInArtistContext(location.pathname, location.search, artistId);
 
   return (
     <div
