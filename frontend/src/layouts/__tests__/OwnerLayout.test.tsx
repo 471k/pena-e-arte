@@ -49,6 +49,23 @@ const ACTIVE_STUDIO: StudioResponse = {
 
 const SUSPENDED_STUDIO: StudioResponse = { ...ACTIVE_STUDIO, isActive: false };
 
+const MY_ARTIST_PROFILE = {
+  id:              "art-owner-1",
+  studioId:        "stud-0001",
+  userId:          "u3",
+  firstName:       "Owner",
+  lastName:        "Artist",
+  email:           "owner@ink.test",
+  specializations: [],
+  hourlyRate:      null,
+  isActive:        true,
+  avatarUrl:       null,
+  portfolioImages: [],
+  slug:            "owner-artist",
+  createdAt:       "2026-01-01T00:00:00Z",
+  updatedAt:       "2026-01-01T00:00:00Z",
+};
+
 const SUBSCRIPTION_ACTIVE = {
   id:                   "sub-0001",
   studioId:             "stud-0001",
@@ -139,6 +156,8 @@ function renderLayout(overrides: StoreOverrides = {}, initialPath = "/dashboard"
             <Route path="/dashboard"   element={<div data-testid="outlet" />} />
             <Route path="/schedule"    element={<div data-testid="outlet" />} />
             <Route path="/artists"     element={<div data-testid="outlet" />} />
+            <Route path="/artists/:id" element={<div data-testid="artist-outlet" />} />
+            <Route path="/earnings"    element={<div data-testid="earnings-outlet" />} />
             <Route path="/clients"     element={<div data-testid="outlet" />} />
             <Route path="/designs"     element={<div data-testid="outlet" />} />
             <Route path="/payments"    element={<div data-testid="outlet" />} />
@@ -315,5 +334,49 @@ describe("OwnerLayout", () => {
 
     await screen.findByTestId("outlet");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  // ── Owner/Artist mode switcher (2026-09-17) ──────────────────────────────────
+
+  it("does not render the Owner/Artist switcher when the owner has no linked artist profile", async () => {
+    renderLayout();
+    await screen.findByTestId("outlet");
+    expect(screen.queryByRole("tablist", { name: /switch between owner and artist/i })).not.toBeInTheDocument();
+  });
+
+  it("renders the Owner/Artist switcher once the owner has a linked artist profile", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json(MY_ARTIST_PROFILE)),
+    );
+
+    renderLayout();
+
+    expect(await screen.findByRole("tab", { name: /artist/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /owner/i })).toBeInTheDocument();
+  });
+
+  it("clicking Artist in the switcher navigates to the owner's own artist profile", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json(MY_ARTIST_PROFILE)),
+    );
+    const user = userEvent.setup();
+    renderLayout();
+
+    await user.click(await screen.findByRole("tab", { name: /artist/i }));
+
+    expect(await screen.findByTestId("artist-outlet")).toBeInTheDocument();
+  });
+
+  it("clicking Owner in the switcher navigates back to the dashboard", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json(MY_ARTIST_PROFILE)),
+    );
+    const user = userEvent.setup();
+    renderLayout({}, "/artists/art-owner-1");
+    await screen.findByTestId("artist-outlet");
+
+    await user.click(await screen.findByRole("tab", { name: /owner/i }));
+
+    expect(await screen.findByTestId("outlet")).toBeInTheDocument();
   });
 });

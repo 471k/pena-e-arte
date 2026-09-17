@@ -724,6 +724,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "This uses your existing owner login — no new email, password, or invite email.",
       "Once enabled, you'll get \"My Portfolio\" and \"My Earnings\" shortcuts in your menu, and you'll be selectable when booking or scheduling appointments, just like any other artist.",
+      "An \"Owner / Artist\" switcher also appears in the header on desktop — click \"Artist\" any time to jump straight to your own artist profile, or \"Owner\" to jump back to your dashboard.",
       "This counts as one artist seat against your plan's usage, the same as inviting any other artist.",
     ],
     relatedArticleIds: ["owner-artists-list", "owner-solo-studio"],

@@ -23,6 +23,11 @@ export const ownerTourSteps: TourStep[] = [
     route: "/artists",
   },
   {
+    targetSelector: '[data-tour="owner-artist-mode-switch"]',
+    title: "Switch between Owner and Artist",
+    body: "Once your own artist profile is enabled, jump between your Owner dashboard and your Artist profile from here anytime.",
+  },
+  {
     targetSelector: '[data-tour="owner-solo-publish-banner"]',
     title: "Get discoverable",
     body: "Add a real city and location in Studio Settings to appear on the Studio Map and in Discover. Only shown for a solo studio that hasn't published yet.",
