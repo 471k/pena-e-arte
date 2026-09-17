@@ -157,7 +157,7 @@ export function OwnerLayout() {
           ))}
         </nav>
         {hasArtistProfile && myArtist && (
-          <div className="hidden lg:flex ml-2">
+          <div className="hidden sm:flex ml-2 shrink-0">
             <ArtistModeSwitcher artistId={myArtist.id} />
           </div>
         )}
