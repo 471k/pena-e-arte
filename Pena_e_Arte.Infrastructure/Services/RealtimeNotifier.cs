@@ -33,4 +33,7 @@ public class RealtimeNotifier(
 
     public async Task NotifyUserAsync(Guid userId, string eventName, object payload, CancellationToken ct) =>
         await chatHub.Clients.Group($"user:{userId}").SendAsync(eventName, payload, ct);
+
+    public async Task NotifyAdminsAsync(string eventName, object payload, CancellationToken ct) =>
+        await notificationHub.Clients.Group("platform:admin-notifications").SendAsync(eventName, payload, ct);
 }

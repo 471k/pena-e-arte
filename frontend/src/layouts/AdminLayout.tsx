@@ -12,6 +12,7 @@ import { NotificationBell } from "@/features/notifications";
 import { useGetFeedbackReportsQuery } from "@/features/feedback";
 import { useGetPlatformConductReportsQuery } from "@/features/conduct-reports";
 import { HelpMenu } from "@/features/help";
+import { useAdminNotificationHub } from "@/shared/hooks/useAdminNotificationHub";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",        href: "/platform",                  icon: <LayoutDashboard className="h-4 w-4" />, tourId: "admin-dashboard-nav", end: true },
@@ -28,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function AdminLayout() {
+  useAdminNotificationHub();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
