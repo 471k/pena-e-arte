@@ -54,7 +54,19 @@ public class DeleteArtistHandler(IAppDbContext db, IIdentityService identity)
         // stuck, unable to join any studio, which no booking SaaS in this category does
         // (artists routinely change studios). RemoveTenantClaimAsync also clears the
         // ActiveTenantId token if it pointed at this studio.
+        //
+        // Only for an independently-invited artist (role "artist"). A studio owner's own
+        // dual-role linked profile (CreateOwnArtistProfileCommand — "Stop working as an
+        // artist") shares this exact same tenant_id claim mechanism with their owner access
+        // to this exact studio: removing it here would strip the owner's own access to their
+        // studio, not just their artist seat. Confirmed live on staging (2026-09-17) — an
+        // owner who stopped working as their own artist lost every tenant-scoped page until
+        // the claim was restored by hand.
         if (artist.UserId is not null)
-            await identity.RemoveTenantClaimAsync(artist.UserId.Value, artist.StudioId, ct);
+        {
+            IReadOnlyList<string> roles = await identity.GetUserRolesAsync(artist.UserId.Value, ct);
+            if (roles.Contains("artist"))
+                await identity.RemoveTenantClaimAsync(artist.UserId.Value, artist.StudioId, ct);
+        }
     }
 }
