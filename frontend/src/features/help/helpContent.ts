@@ -1548,6 +1548,22 @@ export const HELP_ARTICLES: HelpArticle[] = [
     relatedArticleIds: ["admin-audit-log", "admin-studio-detail"],
   },
   {
+    id: "admin-notifications",
+    roles: [Admin],
+    title: "New studio registration alerts",
+    route: "/notifications",
+    keywords: ["new studio", "registration alert", "notification bell", "email log"],
+    summary: "Every time a new studio registers on the platform, you get an email and a bell notification — live if you're connected, waiting for you next time you open the bell otherwise.",
+    steps: [
+      "Watch the bell in the header — its unread count updates instantly when a new studio registers while you're logged in, no refresh needed.",
+      "Click a \"New studio registered\" entry in the bell to jump to that studio's detail page.",
+      "Every admin account also gets the same notice by email, so you won't miss one even while signed out.",
+      "Go to Notifications to see the full history, including past studio-registration notices, across every studio — not just one.",
+    ],
+    tips: ["Unlike an owner's notification log (scoped to their own studio), yours shows this platform-wide event for every studio that has ever registered."],
+    relatedArticleIds: ["admin-studios", "admin-studio-detail"],
+  },
+  {
     id: "admin-plans",
     roles: [Admin],
     title: "Manage subscription plans",

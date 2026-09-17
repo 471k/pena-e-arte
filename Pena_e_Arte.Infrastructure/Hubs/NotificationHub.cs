@@ -13,6 +13,22 @@ namespace Pena_e_Arte.Infrastructure.Hubs;
 [Authorize]
 public class NotificationHub : Hub
 {
+    // Every role joins a studio group explicitly via JoinStudio, but an admin has no single
+    // tenant studio to key a platform-wide notice off — so an admin connection auto-joins a
+    // fixed group here, the same way TrafficHub's every connection auto-joins
+    // "platform:traffic". No OnDisconnectedAsync override needed — SignalR removes a
+    // disconnected connection from all of its groups automatically.
+    public override async Task OnConnectedAsync()
+    {
+        string role = Context.User?.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        if (string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, "platform:admin-notifications");
+        }
+
+        await base.OnConnectedAsync();
+    }
+
     public async Task JoinStudio(string studioId)
     {
         if (!Guid.TryParse(studioId, out Guid requestedStudioId)) return;

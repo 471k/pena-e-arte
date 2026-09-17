@@ -141,4 +141,11 @@ public interface IIdentityService
     /// </summary>
     Task<(bool Success, string? AccessToken, string? Error)> IssueImpersonationTokenAsync(
         Guid adminUserId, Guid targetStudioId, Guid sessionId, DateTime expiresAt);
+
+    /// <summary>
+    /// Returns the email address of every Identity user currently in the given role.
+    /// Used for platform-level notices that must reach every admin account, not one
+    /// hardcoded address. Empty list if the role has no members or doesn't exist.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetEmailsInRoleAsync(string role, CancellationToken ct);
 }

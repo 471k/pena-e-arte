@@ -96,4 +96,17 @@ public interface IEmailRenderer
     string RenderChangeEmailConfirmation(string confirmUrl);
 
     string RenderEmailChangedNotice(string newEmail);
+
+    /// <summary>
+    /// Sent to every admin account when a new studio registers — never gated by
+    /// INotificationPreferenceService (platform-ops notice, not studio-facing).
+    /// </summary>
+    string RenderStudioRegisteredAdmin(
+        string studioName,
+        string city,
+        string ownerEmail,
+        string? nipt,
+        DateTime trialExpiresAtUtc,
+        bool hasReferral,
+        string studioDetailUrl);
 }
