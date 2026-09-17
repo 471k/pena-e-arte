@@ -2,7 +2,7 @@
 // script this app has no precedent of loading a third-party runtime script). Bump CACHE_NAME
 // on any future change to this file so returning visitors pick up the new shell rather than
 // serving a stale cached one indefinitely.
-const CACHE_NAME = "tattooos-shell-v3";
+const CACHE_NAME = "tattooos-shell-v4";
 const SHELL_ASSETS = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -46,8 +46,33 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for everything else (the built app shell + static assets), falling back to
-  // network and caching the result for next time.
+  // Network-first for the HTML shell itself (page navigations + manifest.json) — the shell's
+  // own content changes on every deploy (its <script> tags point at the CURRENT build's
+  // content-hashed JS/CSS filenames), so caching it cache-first pins a returning visitor to
+  // whichever build they first loaded, indefinitely, with no way to pick up a new deploy short
+  // of manually clearing the service worker's cache — a real bug that hid multiple real fixes
+  // from a real user's browser across several deploys before being caught (2026-09-17). Falls
+  // back to the cached shell only when the network is genuinely unavailable (offline), which is
+  // this cache's actual purpose per SHELL_ASSETS being pre-populated on install.
+  const isShellRequest = event.request.mode === "navigate" || url.pathname === "/manifest.json";
+  if (isShellRequest) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first for everything else — Vite's built JS/CSS/asset filenames are content-hashed,
+  // so a cached entry can never go stale: the same URL always means the same bytes, and a new
+  // deploy always means a new URL (referenced by the freshly network-fetched shell above).
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
