@@ -686,6 +686,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "The hourly rate only matters if you use percentage-based deposit rules for this artist.",
       "You don't set a password for the artist. They get an automatic email with a link to set their own password — it expires after 1 hour.",
       "If the artist says they never received that email, open their profile and click \"Resend invite\" next to their email address.",
+      "If this person was previously removed as an artist at another studio, adding them here works normally — they'll get an email letting them know they've been added, and can sign in with their existing password right away.",
     ],
   },
   {

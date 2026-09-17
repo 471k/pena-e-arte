@@ -4,12 +4,13 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Artists.Commands;
 
 public record DeleteArtistCommand(Guid Id) : IRequest;
 
-public class DeleteArtistHandler(IAppDbContext db)
+public class DeleteArtistHandler(IAppDbContext db, IIdentityService identity)
     : IRequestHandler<DeleteArtistCommand>
 {
     public async Task Handle(DeleteArtistCommand command, CancellationToken ct)
@@ -46,5 +47,14 @@ public class DeleteArtistHandler(IAppDbContext db)
 
         artist.DeletedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+
+        // Free the Identity account's claim on this studio so the person can be invited as an
+        // artist elsewhere afterward. Without this, CreateArtistHandler's reuse guard never
+        // recognizes the account as available again — a removed artist would be permanently
+        // stuck, unable to join any studio, which no booking SaaS in this category does
+        // (artists routinely change studios). RemoveTenantClaimAsync also clears the
+        // ActiveTenantId token if it pointed at this studio.
+        if (artist.UserId is not null)
+            await identity.RemoveTenantClaimAsync(artist.UserId.Value, artist.StudioId, ct);
     }
 }

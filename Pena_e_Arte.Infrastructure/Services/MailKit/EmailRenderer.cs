@@ -279,8 +279,30 @@ public class EmailRenderer : IEmailRenderer
         </html>
         """;
 
-    public string RenderArtistInvite(string artistFirstName, string studioName, string setPasswordUrl) =>
-        $"""
+    public string RenderArtistInvite(string artistFirstName, string studioName, string setPasswordUrl, bool isRejoiningArtist = false) =>
+        isRejoiningArtist
+        ? $"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>You've been added to {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
+        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h1 style="color:#7c3aed">Welcome to TattooOS</h1>
+          <p>Hi {System.Net.WebUtility.HtmlEncode(artistFirstName)},</p>
+          <p>You've been added as an artist at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>.
+          You already have a TattooOS account, so you can sign in with your existing email and password right away —
+          just switch to this studio from your account menu.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}" target="_top"
+             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+            Reset your password (optional)
+          </a>
+          <p style="color:#6b7280;font-size:12px;margin-top:24px">
+            This link expires in 1 hour and is only needed if you've forgotten your password.
+            If you were not expecting this, you can ignore this email.
+          </p>
+        </body>
+        </html>
+        """
+        : $"""
         <!DOCTYPE html>
         <html>
         <head><meta charset="utf-8"><title>You've been invited to {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
