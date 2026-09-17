@@ -1151,7 +1151,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Edit your studio's public details — name, street address, phone, description, timezone — and your business tax ID (NIPT), which clients don't see but is used for invoicing and verification.",
     steps: [
       "Go to Studio Settings.",
-      "Click \"Edit\" and update your studio name, street address, phone number (pick the country from the dropdown, then type the number), description, or timezone. The map updates automatically as you type your address — drag the pin afterward if it needs adjusting.",
+      "Click \"Edit\" and update your studio name, street address, phone number (pick the country from the dropdown, then type the number), description, or timezone. The street address field and the map stay in sync — type an address to move the pin, or drag the pin to update the address.",
       "If you haven't added your NIPT yet, enter it in the Business tax ID field — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, this field becomes read-only; contact support to change it.",
       "Click \"Save\" to publish the changes.",
       "Below the main form, use the \"Studio hours\" card to set your weekly opening hours — a default Mon–Fri, 9am–6pm schedule is applied automatically at registration, correctable anytime. Clients can only book within these hours, regardless of any individual artist's own working hours.",

@@ -185,11 +185,24 @@ export function StudioProfilePage() {
   const cityValue = watch("city");
   const addressLine1Value = watch("addressLine1");
 
-  const { status: geocodeStatus } = useAddressGeocode(addressLine1Value ?? "", ({ lat, lng, city }) => {
-    setValue("latitude",  lat,  { shouldDirty: true, shouldValidate: true });
-    setValue("longitude", lng,  { shouldDirty: true, shouldValidate: true });
-    setValue("city",      city, { shouldDirty: true, shouldValidate: true });
-  });
+  // See RegisterStudioPage.tsx's identical guard: suppresses the forward-geocode fetch
+  // useAddressGeocode would otherwise redundantly fire right after a pin-driven
+  // addressLine1 write-back below.
+  const pinDrivenAddressUpdate = useRef(false);
+
+  const { status: geocodeStatus } = useAddressGeocode(
+    addressLine1Value ?? "",
+    ({ lat, lng, city }) => {
+      setValue("latitude",  lat,  { shouldDirty: true, shouldValidate: true });
+      setValue("longitude", lng,  { shouldDirty: true, shouldValidate: true });
+      setValue("city",      city, { shouldDirty: true, shouldValidate: true });
+    },
+    { enabled: !pinDrivenAddressUpdate.current }
+  );
+
+  useEffect(() => {
+    pinDrivenAddressUpdate.current = false;
+  }, [addressLine1Value]);
 
   useEffect(() => {
     if (studio) {
@@ -447,7 +460,7 @@ export function StudioProfilePage() {
                   {geocodeStatus === "error" &&
                     "Couldn't find that address automatically — you can also click the map below to set your studio's location."}
                   {(geocodeStatus === "idle" || geocodeStatus === "success") &&
-                    "The map below updates automatically as you type — drag the pin afterward if it's not quite right."}
+                    "Stays in sync with the map below — type an address to move the pin, or drag the pin to update the address."}
                 </p>
                 {errors.addressLine1 && (
                   <p className="text-xs text-destructive-text">{errors.addressLine1.message}</p>
@@ -478,10 +491,14 @@ export function StudioProfilePage() {
                       ? { lat: latValue, lng: lngValue, city: cityValue ?? "" }
                       : undefined
                   }
-                  onChange={({ lat, lng, city }) => {
+                  onChange={({ lat, lng, city, streetAddress }) => {
                     setValue("latitude",  lat,  { shouldDirty: true, shouldValidate: true });
                     setValue("longitude", lng,  { shouldDirty: true, shouldValidate: true });
                     setValue("city",      city, { shouldDirty: true, shouldValidate: true });
+                    if (streetAddress) {
+                      pinDrivenAddressUpdate.current = true;
+                      setValue("addressLine1", streetAddress, { shouldDirty: true, shouldValidate: true });
+                    }
                   }}
                   error={
                     errors.latitude?.message ??

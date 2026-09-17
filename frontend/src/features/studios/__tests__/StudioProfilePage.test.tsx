@@ -19,16 +19,25 @@ vi.mock("@/shared/components/ui/location-picker", () => ({
     onChange,
     error,
   }: {
-    onChange: (val: LocationPickerValue) => void;
+    onChange: (val: LocationPickerValue & { streetAddress: string }) => void;
     error?: string;
   }) => (
     <div>
       <button
         type="button"
         data-testid="mock-location-picker"
-        onClick={() => onChange({ lat: 40.0, lng: -8.0, city: "Coimbra" })}
+        onClick={() => onChange({ lat: 40.0, lng: -8.0, city: "Coimbra", streetAddress: "" })}
       >
         Pick location
+      </button>
+      <button
+        type="button"
+        data-testid="mock-location-picker-drag"
+        onClick={() =>
+          onChange({ lat: 41.0, lng: -8.5, city: "Porto", streetAddress: "Rua Nova 42" })
+        }
+      >
+        Drag pin
       </button>
       {error && <p data-testid="location-error">{error}</p>}
     </div>
@@ -183,6 +192,33 @@ describe("StudioProfilePage — after data loads", () => {
     expect(
       screen.getByText(/click the map or drag the pin/i),
     ).toBeInTheDocument();
+  });
+
+  it("dragging the pin fills the Street address field from the reverse-geocoded address", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.click(screen.getByTestId("mock-location-picker-drag"));
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street address/i).value).toBe(
+      "Rua Nova 42",
+    );
+  });
+
+  it("dragging the pin to a spot with no resolvable road leaves a typed address untouched", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.clear(screen.getByLabelText(/street address/i));
+    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    // "Pick location" mock fires streetAddress: "" — simulates a rural pin drop.
+    await user.click(screen.getByTestId("mock-location-picker"));
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street address/i).value).toBe(
+      "Rua Central 5",
+    );
   });
 });
 

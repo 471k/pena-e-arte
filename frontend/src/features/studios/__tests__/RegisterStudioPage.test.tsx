@@ -22,16 +22,25 @@ vi.mock("@/shared/components/ui/location-picker", () => ({
     onChange,
     error,
   }: {
-    onChange: (val: LocationPickerValue) => void;
+    onChange: (val: LocationPickerValue & { streetAddress: string }) => void;
     error?: string;
   }) => (
     <div>
       <button
         type="button"
         data-testid="mock-location-picker"
-        onClick={() => onChange({ lat: 38.7169, lng: -9.1395, city: "Lisbon" })}
+        onClick={() => onChange({ lat: 38.7169, lng: -9.1395, city: "Lisbon", streetAddress: "" })}
       >
         Pick location
+      </button>
+      <button
+        type="button"
+        data-testid="mock-location-picker-drag"
+        onClick={() =>
+          onChange({ lat: 40.1, lng: -8.6, city: "Porto", streetAddress: "Rua Central 99" })
+        }
+      >
+        Drag pin
       </button>
       {error && <p data-testid="location-error">{error}</p>}
     </div>
@@ -237,6 +246,30 @@ describe("RegisterStudioPage — step 1", () => {
 
     expect(await screen.findByText(/street address is required/i)).toBeInTheDocument();
     expect(screen.queryByText(/step 2 of 2/i)).not.toBeInTheDocument();
+  });
+
+  it("dragging the pin fills the Street address field from the reverse-geocoded address", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByTestId("mock-location-picker-drag"));
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street address/i).value).toBe(
+      "Rua Central 99",
+    );
+  });
+
+  it("dragging the pin to a spot with no resolvable road leaves a typed address untouched", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    // "Pick location" mock fires streetAddress: "" — simulates a rural pin drop.
+    await user.click(screen.getByTestId("mock-location-picker"));
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street address/i).value).toBe(
+      "Rua Central 5",
+    );
   });
 
   it("advances to step 2 when all step-1 fields are valid", async () => {
