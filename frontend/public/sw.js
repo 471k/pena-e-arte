@@ -2,7 +2,7 @@
 // script this app has no precedent of loading a third-party runtime script). Bump CACHE_NAME
 // on any future change to this file so returning visitors pick up the new shell rather than
 // serving a stale cached one indefinitely.
-const CACHE_NAME = "tattooos-shell-v2";
+const CACHE_NAME = "tattooos-shell-v3";
 const SHELL_ASSETS = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -37,6 +37,12 @@ self.addEventListener("fetch", (event) => {
   // real-time/multi-tenant-sensitive; a stale cached appointment list or client roster is worse
   // than a network-error state.
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/hubs/")) {
+    return;
+  }
+
+  // Cache API only supports GET; caching a POST/PUT/etc. throws "Request method is unsupported".
+  // Let every non-GET request (form posts, analytics beacons, ...) go straight to the network.
+  if (event.request.method !== "GET") {
     return;
   }
 
