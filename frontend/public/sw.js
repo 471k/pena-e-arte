@@ -2,7 +2,7 @@
 // script this app has no precedent of loading a third-party runtime script). Bump CACHE_NAME
 // on any future change to this file so returning visitors pick up the new shell rather than
 // serving a stale cached one indefinitely.
-const CACHE_NAME = "tattooos-shell-v4";
+const CACHE_NAME = "tattooos-shell-v5";
 const SHELL_ASSETS = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -54,7 +54,8 @@ self.addEventListener("fetch", (event) => {
   // from a real user's browser across several deploys before being caught (2026-09-17). Falls
   // back to the cached shell only when the network is genuinely unavailable (offline), which is
   // this cache's actual purpose per SHELL_ASSETS being pre-populated on install.
-  const isShellRequest = event.request.mode === "navigate" || url.pathname === "/manifest.json";
+  const isNavigation = event.request.mode === "navigate";
+  const isShellRequest = isNavigation || url.pathname === "/manifest.json";
   if (isShellRequest) {
     event.respondWith(
       fetch(event.request)
@@ -65,7 +66,16 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() =>
+          // A navigation request's own exact URL (e.g. "/platform/studios/abc") is never
+          // individually cached — only "/" and "/manifest.json" are precached. Falling back to
+          // caches.match(event.request) for a route like that misses, resolves to undefined,
+          // and respondWith(undefined) throws ("ServiceWorker intercepted the request and
+          // encountered an unexpected error") instead of failing gracefully. Client-side routing
+          // (React Router) re-derives the right page from the URL once the cached root shell
+          // itself loads, so falling back to "/" is correct for every navigation, not just "/".
+          isNavigation ? caches.match("/") : caches.match(event.request)
+        )
     );
     return;
   }
