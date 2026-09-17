@@ -166,6 +166,7 @@ public class DeleteArtistHandlerTests
         Artist artist = new() { StudioId = _studioId, UserId = userId, FirstName = "A", LastName = "B", Email = "rui@studio.com" };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
+        _identity.GetUserRolesAsync(userId, Arg.Any<CancellationToken>()).Returns(new List<string> { "artist" });
 
         await CreateSut().Handle(new DeleteArtistCommand(artist.Id), default);
 
@@ -181,5 +182,41 @@ public class DeleteArtistHandlerTests
 
         await _identity.DidNotReceiveWithAnyArgs()
             .RemoveTenantClaimAsync(default, default, default);
+    }
+
+    // ── Owner's own dual-role profile must be exempt (regression found live 2026-09-17) ──
+    // A studio owner's "Stop working as an artist" self-delete goes through this exact same
+    // handler. Their linked Artist.UserId IS their own owner account, and their tenant_id
+    // claim on this studio is how they access it as OWNER too — removing it here would lock
+    // them out of their own studio, not just end their artist seat. Only an account whose role
+    // is "artist" (a genuinely invited/independent artist) should have the claim freed.
+
+    [Fact]
+    public async Task Handle_ArtistLinkedToOwnerAccount_DoesNotRemoveTenantClaim()
+    {
+        Guid ownerUserId = Guid.NewGuid();
+        Artist artist = new() { StudioId = _studioId, UserId = ownerUserId, FirstName = "A", LastName = "B", Email = "owner@studio.com" };
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+        _identity.GetUserRolesAsync(ownerUserId, Arg.Any<CancellationToken>()).Returns(new List<string> { "owner" });
+
+        await CreateSut().Handle(new DeleteArtistCommand(artist.Id), default);
+
+        await _identity.DidNotReceiveWithAnyArgs()
+            .RemoveTenantClaimAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistLinkedToOwnerAccount_StillSoftDeletesTheArtistRow()
+    {
+        Guid ownerUserId = Guid.NewGuid();
+        Artist artist = new() { StudioId = _studioId, UserId = ownerUserId, FirstName = "A", LastName = "B", Email = "owner@studio.com" };
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+        _identity.GetUserRolesAsync(ownerUserId, Arg.Any<CancellationToken>()).Returns(new List<string> { "owner" });
+
+        await CreateSut().Handle(new DeleteArtistCommand(artist.Id), default);
+
+        _db.Artists.IgnoreQueryFilters().Single(a => a.Id == artist.Id).DeletedAt.Should().NotBeNull();
     }
 }
