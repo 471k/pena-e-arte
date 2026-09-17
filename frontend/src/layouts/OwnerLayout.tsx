@@ -11,6 +11,7 @@ import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { SoloStudioPublishBanner } from "@/shared/components/SoloStudioPublishBanner";
+import { ArtistModeSwitcher } from "@/shared/components/ArtistModeSwitcher";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { Button } from "@/shared/components/ui/button";
 import { NavDrawer } from "@/shared/components/NavDrawer";
@@ -155,6 +156,11 @@ export function OwnerLayout() {
             </NavLink>
           ))}
         </nav>
+        {hasArtistProfile && myArtist && (
+          <div className="hidden lg:flex ml-2">
+            <ArtistModeSwitcher artistId={myArtist.id} />
+          </div>
+        )}
         <NavDrawer navItems={navItems} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
 
         <div className="ml-auto flex items-center gap-3">
