@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useAppSelector } from "@/app/hooks";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
@@ -164,7 +165,12 @@ function ArtistConductReportsView() {
 
 export function ConductReportsPage() {
   const role = useAppSelector((s) => s.auth.role);
-  const isArtist = role === Role.Artist;
+  // An owner viewing this via their own artist-mode nav (OwnerLayout's artistNavItems) links
+  // here with ?artistId=<their own artist id> — GetMyConductReportsAsArtistHandler already
+  // resolves purely by the caller's UserId (no role check), so this needs no backend change,
+  // only recognizing the same signal ArtistModeSwitcher/isInArtistContext already use.
+  const [searchParams] = useSearchParams();
+  const isArtist = role === Role.Artist || (role === Role.Owner && searchParams.has("artistId"));
 
   useDocumentMeta({
     title: isArtist ? "Reports About Me — TattooOS" : "Conduct Reports — TattooOS",

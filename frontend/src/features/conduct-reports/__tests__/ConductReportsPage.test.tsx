@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -57,10 +58,12 @@ function makeStore(role: "owner" | "artist") {
   });
 }
 
-function renderPage(role: "owner" | "artist") {
+function renderPage(role: "owner" | "artist", initialPath = "/conduct-reports") {
   render(
     <Provider store={makeStore(role)}>
-      <ConductReportsPage />
+      <MemoryRouter initialEntries={[initialPath]}>
+        <ConductReportsPage />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -125,5 +128,26 @@ describe("ConductReportsPage — artist view", () => {
 
     expect(card.queryByRole("button", { name: /^resolved$/i })).not.toBeInTheDocument();
     expect(card.queryByRole("button", { name: /^dismissed$/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("ConductReportsPage — owner viewing via their own artist-mode nav", () => {
+  it("renders the artist (redacted, no controls) view when ?artistId= is present", async () => {
+    renderPage("owner", "/conduct-reports?artistId=my-own-artist-id");
+
+    await screen.findByText(/poor service quality/i);
+
+    expect(screen.getByText("Reports About Me")).toBeInTheDocument();
+    expect(screen.queryByText(/leaked name/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/reported by anonymous/i)).toBeInTheDocument();
+  });
+
+  it("still renders the full owner (studio-wide) view when ?artistId= is absent", async () => {
+    renderPage("owner", "/conduct-reports");
+
+    await screen.findByText(/poor service quality/i);
+
+    expect(screen.getByText("Conduct Reports")).toBeInTheDocument();
+    expect(screen.getByText(/reported by jane doe$/i)).toBeInTheDocument();
   });
 });

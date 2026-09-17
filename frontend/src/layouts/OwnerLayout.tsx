@@ -4,9 +4,10 @@ import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
   Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
   ListOrdered, ListChecks, Banknote, Gift, Package as PackageIcon,
-  Megaphone, Tag, DollarSign, FileText,
+  Megaphone, Tag, DollarSign, FileText, ScrollText,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
+import { isInArtistContext } from "@/shared/utils/artistContext";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
@@ -27,7 +28,7 @@ import { NotificationBell } from "@/features/notifications";
 import { StudioJoinInviteBell } from "@/features/auth/components/StudioJoinInviteBell";
 import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
-import { useGetMyStudioConductReportsQuery } from "@/features/conduct-reports";
+import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 
 const ONBOARDING_REDIRECT_KEY = "solo-owner-onboarding-redirect-done";
@@ -108,13 +109,52 @@ export function OwnerLayout() {
   const withBadges = NAV_ITEMS.map((item) =>
     item.label === "Conduct Reports" ? { ...item, badge: openConductReportCount } : item,
   );
-  const navItems: NavItem[] = hasArtistProfile
+  const ownerNavItems: NavItem[] = hasArtistProfile
     ? [
         ...withBadges,
         { label: "My Portfolio", href: `/artists/${myArtist!.id}`, icon: <ImagePlus className="h-4 w-4" /> },
         { label: "My Earnings",  href: "/earnings",                icon: <Wallet    className="h-4 w-4" /> },
       ]
     : withBadges;
+
+  // Only queried once the owner actually has a linked artist profile — every other owner
+  // never needs this, and firing it unconditionally would be a wasted request on every load.
+  const { data: myConductReportsAsArtist } = useGetMyConductReportsAsArtistQuery(undefined, {
+    skip: !hasArtistProfile,
+  });
+  const myOpenConductReportCount =
+    (myConductReportsAsArtist ?? []).filter((r) => r.status === "Open").length;
+
+  // The owner's own dual-role artist identity — Schedule/Designs/Reports About Me link with
+  // an explicit ?artistId= so those shared pages filter to "mine only" exactly the way they
+  // already do for a real artist caller (GetAppointmentsQuery/GetDesignsQuery/
+  // GetMyConductReportsAsArtistQuery all already support this for any caller, no backend
+  // change needed — see docs/claude/architecture.md's Decisions Log). Deliberately excludes
+  // every owner-only management item (Dashboard, Artists, Payments, Billing, Studio Settings,
+  // Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, studio-wide Reports/Conduct
+  // Reports) so the menu genuinely matches what a real invited artist would see, per the
+  // request that owner and artist contexts each show only their own specific menu. "Owner
+  // Dashboard" stays first as an escape hatch back to owner mode — the header switcher covers
+  // this too, but only shows at sm+ widths.
+  const artistNavItems: NavItem[] = myArtist
+    ? [
+        { label: "Owner Dashboard",  href: "/dashboard",                             icon: <LayoutDashboard className="h-4 w-4" /> },
+        { label: "My Portfolio",     href: `/artists/${myArtist.id}`,                icon: <ImagePlus       className="h-4 w-4" /> },
+        { label: "Schedule",         href: `/schedule?artistId=${myArtist.id}`,      icon: <CalendarDays    className="h-4 w-4" /> },
+        { label: "Clients",          href: "/clients",                               icon: <UserSquare      className="h-4 w-4" /> },
+        { label: "Messages",         href: "/messages",                              icon: <MessageCircle   className="h-4 w-4" /> },
+        { label: "Designs",          href: `/designs?artistId=${myArtist.id}`,       icon: <Palette         className="h-4 w-4" /> },
+        { label: "Intake Forms",     href: "/forms/intake",                          icon: <FileText        className="h-4 w-4" /> },
+        { label: "Consent Forms",    href: "/forms/consent",                         icon: <ScrollText      className="h-4 w-4" /> },
+        { label: "Deposit Rules",    href: "/deposit-rules",                         icon: <DollarSign      className="h-4 w-4" /> },
+        { label: "Waitlist",         href: "/waitlist",                              icon: <ListOrdered     className="h-4 w-4" /> },
+        { label: "My Earnings",      href: "/earnings",                              icon: <Wallet          className="h-4 w-4" /> },
+        { label: "Reports About Me", href: `/conduct-reports?artistId=${myArtist.id}`, icon: <ShieldAlert   className="h-4 w-4" />, badge: myOpenConductReportCount },
+      ]
+    : [];
+
+  const isArtistMode = isInArtistContext(location.pathname, location.search, myArtist?.id);
+  const navItems: NavItem[] = isArtistMode && hasArtistProfile ? artistNavItems : ownerNavItems;
 
   function handleLogout() {
     dispatch(logout());
