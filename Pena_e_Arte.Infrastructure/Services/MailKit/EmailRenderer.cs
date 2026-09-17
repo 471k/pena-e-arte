@@ -268,7 +268,7 @@ public class EmailRenderer : IEmailRenderer
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
           <h1 style="color:#7c3aed">Confirm your TattooOS account</h1>
           <p>Click the button below to verify your email address:</p>
-          <a href="{System.Net.WebUtility.HtmlEncode(confirmationUrl)}"
+          <a href="{System.Net.WebUtility.HtmlEncode(confirmationUrl)}" target="_top"
              style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none">
             Confirm Email
           </a>
@@ -289,7 +289,7 @@ public class EmailRenderer : IEmailRenderer
           <p>Hi {System.Net.WebUtility.HtmlEncode(artistFirstName)},</p>
           <p>You've been added as an artist at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>.
           Click the button below to set your password and activate your account.</p>
-          <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}"
+          <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}" target="_top"
              style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Set your password
           </a>
@@ -310,7 +310,7 @@ public class EmailRenderer : IEmailRenderer
           <p><strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>
           {(string.IsNullOrWhiteSpace(city) ? "" : $"in {System.Net.WebUtility.HtmlEncode(city)} ")}
           has invited you to join as an artist.</p>
-          <a href="{System.Net.WebUtility.HtmlEncode(manageInvitesUrl)}"
+          <a href="{System.Net.WebUtility.HtmlEncode(manageInvitesUrl)}" target="_top"
              style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Log in to review this invite
           </a>
@@ -332,7 +332,7 @@ public class EmailRenderer : IEmailRenderer
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
           <h1 style="color:#7c3aed">Reset your password</h1>
           <p>We received a request to reset your TattooOS password. Click the button below to choose a new one.</p>
-          <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}"
+          <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}" target="_top"
              style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Reset password
           </a>
@@ -352,12 +352,12 @@ public class EmailRenderer : IEmailRenderer
           <h1 style="color:#7c3aed">Your booking request was sent!</h1>
           <p><strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong> has received your booking request and
           will confirm it soon. We've also created an account for you so you can manage this booking.</p>
-          <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}"
+          <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}" target="_top"
              style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Set your password
           </a>
           <p>You can also confirm your email address separately:</p>
-          <a href="{System.Net.WebUtility.HtmlEncode(confirmEmailUrl)}"
+          <a href="{System.Net.WebUtility.HtmlEncode(confirmEmailUrl)}" target="_top"
              style="display:inline-block;background:#f3f4f6;color:#111827;padding:10px 20px;border-radius:6px;text-decoration:none;margin:8px 0">
             Confirm email
           </a>
@@ -396,7 +396,7 @@ public class EmailRenderer : IEmailRenderer
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
           <h1 style="color:#7c3aed">Confirm your new email address</h1>
           <p>Someone requested to change the email on a TattooOS account to this address. Click the button below to confirm the switch.</p>
-          <a href="{System.Net.WebUtility.HtmlEncode(confirmUrl)}"
+          <a href="{System.Net.WebUtility.HtmlEncode(confirmUrl)}" target="_top"
              style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Confirm new email
           </a>
