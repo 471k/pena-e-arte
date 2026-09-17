@@ -38,8 +38,8 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs) : IJobScheduler
     public void TriggerPaymentReconciliationNow() =>
         backgroundJobs.Enqueue<PaymentReconciliationJob>(j => j.RunAsync(CancellationToken.None));
 
-    public void EnqueueArtistInvite(string email, string firstName, Guid studioId) =>
-        backgroundJobs.Enqueue<SendArtistInviteJob>(j => j.SendAsync(email, firstName, studioId, CancellationToken.None));
+    public void EnqueueArtistInvite(string email, string firstName, Guid studioId, bool isRejoiningArtist = false) =>
+        backgroundJobs.Enqueue<SendArtistInviteJob>(j => j.SendAsync(email, firstName, studioId, isRejoiningArtist, CancellationToken.None));
 
     public string ScheduleManualReminder(Guid manualReminderId, DateTimeOffset sendAt) =>
         sendAt <= DateTimeOffset.UtcNow

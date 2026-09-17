@@ -10,7 +10,14 @@ public interface IJobScheduler
     void ScheduleGracePeriodEnd(Guid studioId, DateTimeOffset enqueueAt);
     void ScheduleDesignRevisionTimeout(Guid revisionId, DateTimeOffset enqueueAt);
     void TriggerIndustryReportNow();
-    void EnqueueArtistInvite(string email, string firstName, Guid studioId);
+
+    /// <summary>
+    /// isRejoiningArtist: true when this reuses an existing Identity account that already has
+    /// working login credentials (a previously-removed artist being added to a new studio) —
+    /// the email copy differs from a brand-new account's "set your password" invite since the
+    /// recipient does not need to set anything to already be able to sign in.
+    /// </summary>
+    void EnqueueArtistInvite(string email, string firstName, Guid studioId, bool isRejoiningArtist = false);
 
     string ScheduleManualReminder(Guid manualReminderId, DateTimeOffset sendAt);
     void CancelJob(string jobId);
