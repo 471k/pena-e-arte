@@ -22,7 +22,9 @@ public class GetStudiosHandler(IAppDbContext db)
                 AllowApiAccess: false,
                 s.TrialExpiresAt, s.CreatedAt, s.IsActive,
                 s.SlugLockedAt, s.PhoneNumber, s.InstagramHandle, s.Nipt,
-                s.IsSolo, s.IsPublished, s.Timezone))
+                s.IsSolo, s.IsPublished, s.Timezone,
+                SubscriptionStatus: null, PastDueSince: null,
+                AddressLine1: s.AddressLine1, AddressLine2: s.AddressLine2, PostalCode: s.PostalCode))
             .ToListAsync(ct);
     }
 }

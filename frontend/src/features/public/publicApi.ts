@@ -47,6 +47,9 @@ export interface PublicStudioResponse {
   socialLinks:    PublicSocialLinkResponse[];
   hours:          PublicStudioHoursResponse[];
   timezone:       string;
+  addressLine1:   string | null;
+  addressLine2:   string | null;
+  postalCode:     string | null;
 }
 
 export interface ArtistPortfolioImage {

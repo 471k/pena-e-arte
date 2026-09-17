@@ -25,6 +25,9 @@ const BASE_STUDIO: StudioResponse = {
   isSolo:               true,
   isPublished:          false,
   timezone:             "Europe/Tirane",
+  addressLine1:         null,
+  addressLine2:         null,
+  postalCode:           null,
 };
 
 function renderBanner(studio?: StudioResponse) {

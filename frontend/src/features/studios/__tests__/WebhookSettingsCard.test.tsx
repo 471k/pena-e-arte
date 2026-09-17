@@ -34,6 +34,9 @@ const STUDIO_NO_API_ACCESS: StudioResponse = {
   isSolo:               false,
   isPublished:          true,
   timezone:             "Europe/Tirane",
+  addressLine1:         null,
+  addressLine2:         null,
+  postalCode:           null,
 };
 
 const STUDIO_WITH_API_ACCESS: StudioResponse = { ...STUDIO_NO_API_ACCESS, allowApiAccess: true };

@@ -215,6 +215,29 @@ public class RegisterStudioHandlerTests
         result.Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task Handle_NewStudio_PersistsTrimmedAddressAndReturnsItInResponse()
+    {
+        RegisterStudioRequest req = ValidRequest() with { AddressLine1 = "  Rua das Flores 10  " };
+
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(req), default);
+
+        _db.Studios.Single().AddressLine1.Should().Be("Rua das Flores 10");
+        result.AddressLine1.Should().Be("Rua das Flores 10");
+    }
+
+    [Fact]
+    public async Task Handle_NewStudio_BlankAddressLine2AndPostalCode_PersistedAsNull()
+    {
+        RegisterStudioRequest req = ValidRequest() with { AddressLine2 = "   ", PostalCode = "" };
+
+        await CreateSut().Handle(new RegisterStudioCommand(req), default);
+
+        Studio studio = _db.Studios.Single();
+        studio.AddressLine2.Should().BeNull();
+        studio.PostalCode.Should().BeNull();
+    }
+
     private static RegisterStudioRequest ValidRequest() =>
-        new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com", "L01234567A");
+        new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com", "L01234567A", "Rua Central 5");
 }

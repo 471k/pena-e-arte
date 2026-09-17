@@ -201,6 +201,40 @@ public class UpdateMyStudioHandlerTests
     }
 
     [Fact]
+    public async Task Handle_NewAddressLine1_PersistsIt()
+    {
+        await SeedStudio();
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, AddressLine1: "  Rua das Flores 10  ");
+
+        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        result.AddressLine1.Should().Be("Rua das Flores 10");
+        _db.Studios.Single(s => s.Id == _studioId).AddressLine1.Should().Be("Rua das Flores 10");
+    }
+
+    [Fact]
+    public async Task Handle_BlankAddressLine1_ClearsExistingAddress()
+    {
+        Studio studio = new()
+        {
+            Id = _studioId,
+            Name = "Old Name",
+            Slug = "old-slug",
+            City = "Lisbon",
+            AddressLine1 = "Old Address 1",
+        };
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        UpdateStudioRequest req = new("New Name", "Porto", 41.1, -8.6, AddressLine1: "");
+
+        StudioResponse result = await CreateSut().Handle(new UpdateMyStudioCommand(req), default);
+
+        result.AddressLine1.Should().BeNull();
+        _db.Studios.Single(s => s.Id == _studioId).AddressLine1.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_SoloStudioUpdatingOnlyPhoneNumber_StaysUnpublished()
     {
         Studio studio = new()

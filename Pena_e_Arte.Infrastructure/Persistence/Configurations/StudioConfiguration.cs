@@ -20,6 +20,9 @@ public class StudioConfiguration : IEntityTypeConfiguration<Studio>
         builder.Property(s => s.StripeCustomerId).HasMaxLength(255);
         builder.Property(s => s.StorageUsageBytes).HasDefaultValue(0L);
         builder.Property(s => s.Nipt).HasMaxLength(10);
+        builder.Property(s => s.AddressLine1).HasMaxLength(300);
+        builder.Property(s => s.AddressLine2).HasMaxLength(150);
+        builder.Property(s => s.PostalCode).HasMaxLength(20);
         builder.Property(s => s.IsSolo).HasDefaultValue(false);
         builder.Property(s => s.IsPublished).HasDefaultValue(true);
         builder.Property(s => s.Timezone).HasMaxLength(100).HasDefaultValue("Europe/Tirane");
