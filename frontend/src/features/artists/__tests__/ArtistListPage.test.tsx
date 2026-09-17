@@ -295,6 +295,34 @@ describe("ArtistListPage", () => {
     expect(toast.success).toHaveBeenCalledWith("Artist deleted.");
   });
 
+  it("deleting your own linked profile brings back the 'Enable my artist profile' CTA without a reload", async () => {
+    // Regression: RTK Query only tags a query's cache entry on success — a 404 is never
+    // tagged "Artist", so after ARTIST_A (standing in for the owner's own linked profile)
+    // is deleted, the invalidation-triggered refetch of getMyArtist DOES fire, but its own
+    // 404 must be read via isError, not just `data`, or the CTA stays hidden until reload.
+    let deleted = false;
+    server.use(
+      http.get("http://localhost/api/v1/artists/me", () =>
+        deleted
+          ? HttpResponse.json({ message: "Not found." }, { status: 404 })
+          : HttpResponse.json(ARTIST_A)),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("Ana Costa");
+
+    // Profile already linked — CTA not shown yet.
+    await waitFor(() => {
+      expect(screen.queryByText("Also work as an artist?")).not.toBeInTheDocument();
+    });
+
+    deleted = true;
+    await user.click(screen.getAllByRole("button", { name: /^delete$/i })[0]);
+    await user.click(screen.getAllByRole("button", { name: /^confirm$/i })[0]);
+
+    expect(await screen.findByText("Also work as an artist?")).toBeInTheDocument();
+  });
+
   it("a failed delete shows the backend's specific error message, not a silent no-op", async () => {
     server.use(
       http.delete("http://localhost/api/v1/artists/:id", () =>

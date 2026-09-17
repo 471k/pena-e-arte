@@ -70,14 +70,20 @@ export function OwnerLayout() {
   // load, exactly like ArtistLayout already does for every artist). RTK Query dedupes this
   // against the same call ArtistListPage's "Become an artist" CTA makes via the shared
   // "Artist" cache tag.
-  const { data: myArtist, isLoading: myArtistLoading } = useGetMyArtistQuery();
+  const { data: myArtist, isLoading: myArtistLoading, isError: myArtistError } = useGetMyArtistQuery();
+  // RTK Query only re-tags a query's cache entry on a SUCCESSFUL response — a 404 (no
+  // profile) never gets tagged "Artist", so a later invalidation (e.g. deleting the profile)
+  // does trigger a refetch, but that refetch's own failure leaves `data` holding the stale
+  // pre-delete artist rather than clearing it. Must check isError explicitly, not just `data`,
+  // or "My Portfolio" keeps showing a just-deleted profile until a hard reload.
+  const hasArtistProfile = !myArtistError && !!myArtist;
 
   // Guided first step for a solo artist's owner account with no artist profile of their own
   // yet: route them straight into the existing "Enable my artist profile" form instead of
   // requiring them to find the Artists page. Fires once per browser session (sessionStorage
   // guard) so it never fights a deliberate later visit to another page.
   useEffect(() => {
-    if (!studio?.isSolo || myArtistLoading || myArtist) return;
+    if (!studio?.isSolo || myArtistLoading || hasArtistProfile) return;
     if (location.pathname === "/artists") return;
 
     let alreadyRedirected = false;
@@ -95,16 +101,16 @@ export function OwnerLayout() {
     }
     navigate("/artists?onboarding=1", { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studio?.isSolo, myArtistLoading, myArtist]);
+  }, [studio?.isSolo, myArtistLoading, hasArtistProfile]);
   const { data: openConductReports } = useGetMyStudioConductReportsQuery({ status: "Open" });
   const openConductReportCount = openConductReports?.length ?? 0;
   const withBadges = NAV_ITEMS.map((item) =>
     item.label === "Conduct Reports" ? { ...item, badge: openConductReportCount } : item,
   );
-  const navItems: NavItem[] = myArtist
+  const navItems: NavItem[] = hasArtistProfile
     ? [
         ...withBadges,
-        { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> },
+        { label: "My Portfolio", href: `/artists/${myArtist!.id}`, icon: <ImagePlus className="h-4 w-4" /> },
         { label: "My Earnings",  href: "/earnings",                icon: <Wallet    className="h-4 w-4" /> },
       ]
     : withBadges;
