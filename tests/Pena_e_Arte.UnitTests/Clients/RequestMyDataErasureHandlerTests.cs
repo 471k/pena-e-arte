@@ -41,6 +41,25 @@ public class RequestMyDataErasureHandlerTests
     }
 
     [Fact]
+    public async Task Handle_CallerBelongsToTwoStudios_ErasesBothAndDisablesLoginOnce()
+    {
+        Guid myUserId = Guid.NewGuid();
+        (Guid clientAId, Guid formAId) = await SeedClientWithData(myUserId, Guid.NewGuid());
+        (Guid clientBId, Guid formBId) = await SeedClientWithData(myUserId, Guid.NewGuid());
+        _currentUser.UserId.Returns(myUserId);
+
+        await CreateSut().Handle(new RequestMyDataErasureCommand(), default);
+
+        _db.Clients.Single(c => c.Id == clientAId).ErasureRequestedAt.Should().NotBeNull();
+        _db.Clients.Single(c => c.Id == clientBId).ErasureRequestedAt.Should().NotBeNull();
+        _db.ConsentForms.Single(f => f.Id == formAId).DeletedAt.Should().NotBeNull();
+        _db.ConsentForms.Single(f => f.Id == formBId).DeletedAt.Should().NotBeNull();
+        _db.ClientProfiles.Single(p => p.ClientId == clientAId).DeletedAt.Should().NotBeNull();
+        _db.ClientProfiles.Single(p => p.ClientId == clientBId).DeletedAt.Should().NotBeNull();
+        await _identity.Received(1).DisableLoginAsync(myUserId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_SetsResolvedClientId_FromCurrentUser_ForAudit()
     {
         Guid myUserId = Guid.NewGuid();
@@ -64,11 +83,14 @@ public class RequestMyDataErasureHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
-    private async Task<(Guid ClientId, Guid FormId)> SeedClientWithData(Guid userId)
+    private Task<(Guid ClientId, Guid FormId)> SeedClientWithData(Guid userId) =>
+        SeedClientWithData(userId, _studioId);
+
+    private async Task<(Guid ClientId, Guid FormId)> SeedClientWithData(Guid userId, Guid studioId)
     {
         Client client = new()
         {
-            StudioId = _studioId,
+            StudioId = studioId,
             UserId = userId,
             FirstName = "Test",
             LastName = "Client",
@@ -79,13 +101,13 @@ public class RequestMyDataErasureHandlerTests
 
         ConsentForm form = new()
         {
-            StudioId = _studioId,
+            StudioId = studioId,
             ClientId = client.Id,
             AppointmentId = Guid.NewGuid(),
             SignedAt = DateTime.UtcNow,
         };
         _db.ConsentForms.Add(form);
-        _db.ClientProfiles.Add(new ClientProfile { StudioId = _studioId, ClientId = client.Id });
+        _db.ClientProfiles.Add(new ClientProfile { StudioId = studioId, ClientId = client.Id });
         await _db.SaveChangesAsync();
 
         return (client.Id, form.Id);

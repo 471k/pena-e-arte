@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -51,7 +51,7 @@ const CLIENT_A: ClientResponse = {
   userId:     null,
   artistId:   ARTIST_A.id,
   artistName: "Luna Artista",
-  erasureRequestedAt: null,
+  erasureRequestedAt: null, archivedAt: null,
 };
 
 const CLIENT_B: ClientResponse = {
@@ -65,7 +65,7 @@ const CLIENT_B: ClientResponse = {
   userId:     null,
   artistId:   null,
   artistName: null,
-  erasureRequestedAt: null,
+  erasureRequestedAt: null, archivedAt: null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -75,6 +75,10 @@ const server = setupServer(
     HttpResponse.json([CLIENT_A, CLIENT_B]),
   ),
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json([ARTIST_A])),
+  http.post("http://localhost/api/v1/clients/:id/archive", () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post("http://localhost/api/v1/clients/:id/restore", () =>
+    new HttpResponse(null, { status: 204 })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -353,5 +357,62 @@ describe("ClientListPage", () => {
     await user.click(screen.getByRole("button", { name: /export csv/i }));
 
     expect(await screen.findByText(/couldn't export clients/i)).toBeInTheDocument();
+  });
+
+  // ── Archive / restore ────────────────────────────────────────────────────────
+
+  it("'Show archived' toggle is present and off by default", async () => {
+    renderPage();
+    await screen.findAllByText("João Silva");
+    expect(screen.getByLabelText(/show archived clients/i)).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("toggling 'Show archived' re-fetches with includeArchived=true", async () => {
+    let lastIncludeArchived: string | null = null;
+    server.use(
+      http.get("http://localhost/api/v1/clients", ({ request }) => {
+        lastIncludeArchived = new URL(request.url).searchParams.get("includeArchived");
+        return HttpResponse.json([CLIENT_A, { ...CLIENT_B, archivedAt: "2026-09-10T00:00:00Z" }]);
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("João Silva");
+
+    await user.click(screen.getByLabelText(/show archived clients/i));
+
+    await waitFor(() => expect(lastIncludeArchived).toBe("true"));
+  });
+
+  it("archiving a client from the row menu calls the archive endpoint and shows a success toast", async () => {
+    const user = userEvent.setup();
+    renderPage("owner");
+    await screen.findAllByText("João Silva");
+
+    await user.click(screen.getByRole("button", { name: /more options for joão silva/i }));
+    await user.click(await screen.findByRole("menuitem", { name: /archive/i }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /^archive$/i }));
+
+    expect(await screen.findByText("João Silva archived.")).toBeInTheDocument();
+  });
+
+  it("restoring an archived client from the row menu calls the restore endpoint", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients", () =>
+        HttpResponse.json([{ ...CLIENT_A, archivedAt: "2026-09-10T00:00:00Z" }, CLIENT_B]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage("owner");
+    await user.click(screen.getByLabelText(/show archived clients/i));
+    await screen.findAllByText("João Silva");
+
+    await user.click(screen.getByRole("button", { name: /more options for joão silva/i }));
+    await user.click(await screen.findByRole("menuitem", { name: /restore/i }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /^restore$/i }));
+
+    expect(await screen.findByText("João Silva restored.")).toBeInTheDocument();
   });
 });

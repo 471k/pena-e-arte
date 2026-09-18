@@ -65,6 +65,17 @@ public class IdentityService(
         await userManager.RemoveAuthenticationTokenAsync(user, "App", "RefreshToken");
     }
 
+    public async Task EnableLoginAsync(Guid userId, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return;
+
+        // Clears the lockout end date DisableLoginAsync set. Lockout *capability* stays enabled
+        // for future use — only the current lockout is lifted, not the account's ability to be
+        // locked out again later.
+        await userManager.SetLockoutEndDateAsync(user, null);
+    }
+
     public async Task DeleteUserAsync(Guid userId, CancellationToken ct)
     {
         IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());

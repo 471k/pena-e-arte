@@ -31,6 +31,17 @@ public class Client : TenantEntity
     /// </summary>
     public DateTime? ErasureRequestedAt { get; set; }
 
+    /// <summary>
+    /// Set when an owner/artist removes this client from the active client list without any data
+    /// destruction — the ordinary "delete client" action most vertical-booking SaaS offers
+    /// (Fresha/Vagaro-style). Deliberately NOT part of any EF Core query filter (unlike DeletedAt)
+    /// — an archived client's appointments, payments, consent forms, and reviews must keep
+    /// resolving their Client navigation normally everywhere except the default client-list view.
+    /// Fully reversible via RestoreClientCommand at any time; carries no retention/grace-period
+    /// semantics at all (contrast with ErasureRequestedAt).
+    /// </summary>
+    public DateTime? ArchivedAt { get; set; }
+
     public ClientProfile? Profile { get; set; }
     public ICollection<Appointment> Appointments { get; set; } = [];
     public ICollection<TattooRecord> TattooRecords { get; set; } = [];
