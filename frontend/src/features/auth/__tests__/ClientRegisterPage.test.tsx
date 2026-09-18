@@ -39,7 +39,7 @@ function makeFakeJwt(role = "client") {
 const server = setupServer(
   http.post("http://localhost/api/v1/auth/register", () => new HttpResponse(null, { status: 204 })),
   http.post("http://localhost/api/v1/auth/login", () =>
-    HttpResponse.json({ accessToken: makeFakeJwt(), tokenType: "Bearer" }),
+    HttpResponse.json({ accessToken: makeFakeJwt(), refreshToken: "fake-refresh-token", tokenType: "Bearer" }),
   ),
 );
 
@@ -150,6 +150,20 @@ describe("ClientRegisterPage", () => {
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
     expect(await screen.findByTestId("book-page")).toBeInTheDocument();
+  });
+
+  // A missing refresh token here silently breaks VerifyEmailPage's post-confirmation
+  // token refresh — the client's very first session after signup would otherwise
+  // never be able to pick up the "email verified" claim without a full re-login.
+  it("stores the refresh token from the auto-login response, not null", async () => {
+    const user  = userEvent.setup();
+    const store = renderPage("/client-register?studioId=studio-1&redirect=%2Fbook");
+    await fillValidForm(user);
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    await screen.findByTestId("book-page");
+    expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
+    expect(localStorage.getItem("auth_refresh_token")).toBe("fake-refresh-token");
   });
 
   it("shows 'already exists' error on 409 and does not attempt login", async () => {

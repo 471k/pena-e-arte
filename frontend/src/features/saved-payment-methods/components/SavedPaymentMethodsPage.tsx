@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { AddCardForm } from "@nebula-ltd/pok-payments-js/react";
 import type { AddCardData, PaymentErrorResponse } from "@nebula-ltd/pok-payments-js";
 import { CreditCard, Loader2, Star, Trash2 } from "lucide-react";
+import { useAppSelector } from "@/app/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -67,13 +69,46 @@ function CardRow({ method }: { method: SavedPaymentMethodResponse }) {
 export function SavedPaymentMethodsPage() {
   useDocumentMeta({ title: "Payment Methods — TattooOS", canonical: "/clients/me/payment-methods" });
 
-  const { data: methods, isLoading, isError } = useGetSavedPaymentMethodsQuery();
-  const { data: capabilities, isLoading: isLoadingCapabilities } = useGetPaymentCapabilitiesQuery();
+  // A card is saved against a specific studio's POK merchant (ADR-0001) — a client who
+  // hasn't joined any studio yet has nowhere to route a saved card to. Skip both queries
+  // in that case and show the same "browse studios" prompt used on the Book/Profile pages,
+  // rather than the payment-capabilities check silently reporting cards "unavailable".
+  const hasStudio = useAppSelector((s) => s.auth.tenantId) != null;
+
+  const { data: methods, isLoading, isError, refetch } = useGetSavedPaymentMethodsQuery(undefined, { skip: !hasStudio });
+  const { data: capabilities, isLoading: isLoadingCapabilities } = useGetPaymentCapabilitiesQuery(undefined, { skip: !hasStudio });
   const [addMethod, { isLoading: isAdding }] = useAddSavedPaymentMethodMutation();
   const [formKey, setFormKey] = useState(0);
 
   const pokEnvironment = capabilities?.pokEnvironment;
   const cardsAvailable = capabilities?.cardPaymentsAvailable === true && !!pokEnvironment;
+
+  if (!hasStudio) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            <span className="font-semibold tracking-tight">Payment Methods</span>
+          </div>
+        </header>
+        <main className="max-w-2xl mx-auto px-4 py-6">
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <CreditCard className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">You haven&apos;t joined a studio yet</p>
+              <p className="text-xs text-muted-foreground max-w-xs">
+                A saved card belongs to a specific studio. Browse studios to get started.
+              </p>
+            </div>
+            <Button asChild size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
+              <Link to="/discover">Browse studios</Link>
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   async function handleAddCardSuccess(data: AddCardData) {
     const result = await addMethod({
@@ -123,9 +158,16 @@ export function SavedPaymentMethodsPage() {
           )}
 
           {isError && (
-            <p className="text-center text-sm text-destructive-text py-8">
-              Failed to load saved payment methods. Please try again.
-            </p>
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+              <p className="text-sm text-destructive-text">Failed to load saved payment methods.</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="text-xs underline text-muted-foreground hover:text-foreground"
+              >
+                Try again
+              </button>
+            </div>
           )}
 
           {!isLoading && !isError && methods?.length === 0 && (

@@ -49,10 +49,10 @@ vi.mock("@/shared/hooks/useAppleSignIn", () => ({
 
 const server = setupServer(
   http.post("http://localhost/api/v1/auth/login", () =>
-    HttpResponse.json({ accessToken: makeFakeJwt("owner"), tokenType: "Bearer" }),
+    HttpResponse.json({ accessToken: makeFakeJwt("owner"), refreshToken: "fake-refresh-token", tokenType: "Bearer" }),
   ),
   http.post("http://localhost/api/v1/auth/oauth/login", () =>
-    HttpResponse.json({ accessToken: makeFakeJwt("owner"), tokenType: "Bearer" }),
+    HttpResponse.json({ accessToken: makeFakeJwt("owner"), refreshToken: "fake-refresh-token", tokenType: "Bearer" }),
   ),
 );
 
@@ -182,6 +182,23 @@ describe("LoginPage", () => {
 
     expect(store.getState().auth.role).toBe("owner");
     expect(store.getState().auth.token).toBeTruthy();
+  });
+
+  // A missing refresh token here silently breaks every downstream flow that expects one —
+  // e.g. VerifyEmailPage's post-confirmation token refresh, and normal silent-refresh on
+  // access-token expiry — so this is asserted explicitly rather than left implicit.
+  it("successful login stores the refresh token from the response, not null", async () => {
+    const user  = userEvent.setup();
+    const store = renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "owner@test.com");
+    await user.type(screen.getByLabelText("Password"), "secret123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await screen.findByTestId("owner-home");
+
+    expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
+    expect(localStorage.getItem("auth_refresh_token")).toBe("fake-refresh-token");
   });
 
   it("successful client login navigates to /book", async () => {
@@ -531,6 +548,16 @@ describe("LoginPage — OAuth", () => {
     await screen.findByTestId("owner-home");
     expect(store.getState().auth.role).toBe("owner");
     expect(store.getState().auth.token).toBeTruthy();
+  });
+
+  it("Google OAuth success stores the refresh token from the response, not null", async () => {
+    const user  = userEvent.setup();
+    const store = renderPage();
+
+    await user.click(screen.getByRole("button", { name: /continue with google/i }));
+
+    await screen.findByTestId("owner-home");
+    expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
   });
 
   it("shows an error when the OAuth login request fails", async () => {

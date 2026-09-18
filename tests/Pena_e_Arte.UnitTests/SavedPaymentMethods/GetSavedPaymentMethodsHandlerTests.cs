@@ -3,7 +3,6 @@ using NSubstitute;
 using Pena_e_Arte.Application.SavedPaymentMethods.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
-using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
@@ -98,12 +97,13 @@ public class GetSavedPaymentMethodsHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NoClientRecordForUser_ThrowsNotFoundException()
+    public async Task Handle_NoClientRecordForUser_ReturnsEmptyList()
     {
+        // A studio-less client (no Client row yet) has no saved cards — not a failure.
         _user.UserId.Returns(Guid.NewGuid());
 
-        Func<Task> act = () => CreateSut().Handle(new GetSavedPaymentMethodsQuery(), default);
+        List<SavedPaymentMethodResponse> result = await CreateSut().Handle(new GetSavedPaymentMethodsQuery(), default);
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        result.Should().BeEmpty();
     }
 }

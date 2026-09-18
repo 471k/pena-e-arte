@@ -104,14 +104,30 @@ describe("MyProfilePage", () => {
     expect(screen.getAllByText("ana.ferreira@ink-soul.test").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("shows an error message when the client fetch fails", async () => {
+  it("shows a generic error with a retry option when the client fetch fails (non-404)", async () => {
     server.use(
       http.get("http://localhost/api/v1/clients/me", () =>
         new HttpResponse(null, { status: 500 }),
       ),
     );
     renderPage();
-    expect(await screen.findByText("Failed to load profile. Please try again.")).toBeInTheDocument();
+    expect(await screen.findByText("Failed to load profile.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+  });
+
+  // A studio-less client (see RegisterUserHandler) has no per-studio Client row until
+  // they book at a studio for the first time — GetMyClientQuery 404s by design, not a
+  // transient failure. Must show an actionable empty state, not a scary "failed" error.
+  it("shows a 'join a studio' empty state, not a generic error, when the client has no Client row yet (404)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients/me", () =>
+        HttpResponse.json({ message: "Client not found" }, { status: 404 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/haven't joined a studio yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /browse studios/i })).toHaveAttribute("href", "/discover");
+    expect(screen.queryByText("Failed to load profile.")).not.toBeInTheDocument();
   });
 
   it("Profile tab shows contact info and a read-only body map", async () => {

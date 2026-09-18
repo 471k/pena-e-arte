@@ -158,12 +158,12 @@ export function RegisterStudioPage() {
         password:  values.password,
       }).unwrap();
 
-      const { accessToken } = await login({
+      const { accessToken, refreshToken } = await login({
         email: values.email,
         password: values.password,
       }).unwrap();
 
-      dispatch(setCredentials(decodeToken(accessToken)));
+      dispatch(setCredentials({ ...decodeToken(accessToken), refreshToken }));
       navigate("/dashboard", { replace: true });
     } catch (err) {
       const message =
@@ -312,12 +312,12 @@ export function RegisterStudioPage() {
           studioId: studio.id,
         }).unwrap();
 
-        const { accessToken } = await oauthLogin({
+        const { accessToken, refreshToken } = await oauthLogin({
           provider: oauthProvider,
           idToken:  oauthIdToken,
         }).unwrap();
 
-        dispatch(setCredentials(decodeToken(accessToken)));
+        dispatch(setCredentials({ ...decodeToken(accessToken), refreshToken }));
       } else {
         await registerUser({
           email: values.email,
@@ -326,12 +326,12 @@ export function RegisterStudioPage() {
           studioId: studio.id,
         }).unwrap();
 
-        const { accessToken } = await login({
+        const { accessToken, refreshToken } = await login({
           email: values.email,
           password: values.password,
         }).unwrap();
 
-        dispatch(setCredentials(decodeToken(accessToken)));
+        dispatch(setCredentials({ ...decodeToken(accessToken), refreshToken }));
       }
 
       dispatch(setPendingReferralCode(null));

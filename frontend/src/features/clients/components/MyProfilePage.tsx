@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Loader2, MapPin, Pencil, User } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
@@ -39,10 +40,17 @@ function ProfileField({ label, value }: { label: string; value: string | null | 
 export function MyProfilePage() {
   useDocumentMeta({ title: "My Profile — TattooOS", canonical: "/clients/me" });
 
-  const { data: client, isLoading, isError } = useGetMyClientQuery();
+  const { data: client, isLoading, isError, error, refetch } = useGetMyClientQuery();
   const { data: profile, isLoading: profileLoading, isError: profileError } = useGetMyClientProfileQuery();
   const { data: tattoos = [], isLoading: tattoosLoading } = useGetMyTattooRecordsQuery();
   const [updateMyBodyMap, { isLoading: isSavingMap }] = useUpdateMyBodyMapMutation();
+
+  // A 404 here means this client hasn't joined a studio yet — there is no per-studio
+  // Client row to have a profile against (see RegisterUserHandler: a studio-less signup
+  // gets no Client row until SwitchStudioHandler creates one on first booking). Not a
+  // transient failure, so retrying can never succeed. Same pattern as MyEarningsPage /
+  // ConsentFormDetailPage.
+  const isNoStudioYet = isError && !!error && "status" in error && error.status === 404;
 
   const [bodyMapMode,  setBodyMapMode]  = useState<"view" | "edit">("view");
   const [bodyMapDraft, setBodyMapDraft] = useState<string[]>([]);
@@ -83,10 +91,32 @@ export function MyProfilePage() {
           </div>
         )}
 
-        {isError && (
-          <p className="text-center text-sm text-destructive-text py-16">
-            Failed to load profile. Please try again.
-          </p>
+        {isNoStudioYet && (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <User className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">You haven&apos;t joined a studio yet</p>
+              <p className="text-xs text-muted-foreground max-w-xs">
+                Your profile is created the first time you book at a studio. Browse studios to get started.
+              </p>
+            </div>
+            <Button asChild size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
+              <Link to="/discover">Browse studios</Link>
+            </Button>
+          </div>
+        )}
+
+        {isError && !isNoStudioYet && (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <p className="text-sm text-destructive-text">Failed to load profile.</p>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="text-xs underline text-muted-foreground hover:text-foreground"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {!isLoading && !isError && client && (

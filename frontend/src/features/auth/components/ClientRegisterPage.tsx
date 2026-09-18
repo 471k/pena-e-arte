@@ -99,12 +99,12 @@ export function ClientRegisterPage() {
     }
 
     try {
-      const { accessToken } = await login({
+      const { accessToken, refreshToken } = await login({
         email:    values.email,
         password: values.password,
       }).unwrap();
 
-      dispatch(setCredentials(decodeToken(accessToken)));
+      dispatch(setCredentials({ ...decodeToken(accessToken), refreshToken }));
       navigate(redirectTo, { replace: true });
     } catch {
       // Account was created successfully, but auto-login failed — send the user

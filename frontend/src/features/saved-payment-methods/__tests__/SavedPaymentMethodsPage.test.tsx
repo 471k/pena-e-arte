@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { Toaster } from "sonner";
 import { http, HttpResponse } from "msw";
@@ -75,7 +76,7 @@ afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function makeStore() {
+function makeStore(tenantId: string | null = "t1") {
   return configureStore({
     reducer: {
       auth: authReducer,
@@ -85,16 +86,18 @@ function makeStore() {
     middleware: (gd) => gd().concat(savedPaymentMethodsApi.middleware, paymentsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: "Client" } as any,
+      auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId, role: "Client" } as any,
     },
   });
 }
 
-function renderPage() {
+function renderPage(tenantId: string | null = "t1") {
   render(
-    <Provider store={makeStore()}>
-      <Toaster />
-      <SavedPaymentMethodsPage />
+    <Provider store={makeStore(tenantId)}>
+      <MemoryRouter>
+        <Toaster />
+        <SavedPaymentMethodsPage />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -193,6 +196,37 @@ describe("SavedPaymentMethodsPage", () => {
     await user.click(removeButtons[0]);
 
     expect(await screen.findByText("Card removed.")).toBeInTheDocument();
+  });
+
+  // A card is saved against a specific studio's POK merchant — a client who hasn't joined
+  // any studio yet has nowhere to route one to. Must show an actionable empty state, not
+  // the misleading "temporarily unavailable" capabilities message (which implies an outage).
+  it("shows a 'join a studio' empty state instead of querying capabilities when the client has no studio", async () => {
+    let capabilitiesCalled = false;
+    server.use(
+      http.get("http://localhost/api/v1/payments/capabilities", () => {
+        capabilitiesCalled = true;
+        return HttpResponse.json(CAPABILITIES_AVAILABLE);
+      }),
+    );
+
+    renderPage(null);
+
+    expect(await screen.findByText(/haven't joined a studio yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /browse studios/i })).toHaveAttribute("href", "/discover");
+    expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
+    expect(capabilitiesCalled).toBe(false);
+  });
+
+  it("shows a generic error with a retry option when the saved-methods fetch fails", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/saved-payment-methods", () =>
+        new HttpResponse(null, { status: 500 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText("Failed to load saved payment methods.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("shows an error toast when removing a card fails", async () => {
