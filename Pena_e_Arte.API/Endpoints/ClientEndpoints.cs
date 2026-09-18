@@ -19,6 +19,8 @@ public static class ClientEndpoints
         group.MapGet("/export.csv", ExportClientsCsv).RequireAuthorization("OwnerOnly");
         group.MapGet("{clientId:guid}", GetClientById).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{clientId:guid}/artist", UpdateClientArtist).RequireAuthorization("OwnerOnly");
+        group.MapPost("{clientId:guid}/archive", ArchiveClient).RequireAuthorization("ArtistAndAbove");
+        group.MapPost("{clientId:guid}/restore", RestoreClient).RequireAuthorization("ArtistAndAbove");
 
         group.MapGet("{clientId:guid}/profile", GetClientProfile).RequireAuthorization("ArtistAndAbove");
         group.MapPut("{clientId:guid}/profile", UpsertClientProfile).RequireAuthorization("ArtistAndAbove");
@@ -45,6 +47,14 @@ public static class ClientEndpoints
         // Client self-service "delete my account". No id in the route — the caller's own client
         // is resolved from the JWT, so it is impossible to erase another client's data.
         group.MapPost("me/erase-data", RequestMyDataErasure).RequireAuthorization("ClientAndAbove");
+
+        // Client self-service "export my data" — fans out across every studio, same as erasure.
+        group.MapGet("me/export", ExportMyData).RequireAuthorization("ClientAndAbove");
+
+        // Support-mediated cancel of a pending erasure request during the grace window (§Phase D
+        // — a client's own login is disabled immediately on request, so they cannot self-service
+        // this; only an owner acting on the client's behalf can).
+        group.MapPost("{clientId:guid}/cancel-erasure", CancelDataErasure).RequireAuthorization("OwnerOnly");
     }
 
     private static async Task<IResult> RequestDataErasure(
@@ -107,11 +117,48 @@ public static class ClientEndpoints
 
     private static async Task<IResult> GetClients(
         string? search,
+        bool? includeArchived,
         ISender mediator,
         CancellationToken ct)
     {
-        List<ClientResponse> result = await mediator.Send(new GetClientsQuery(search), ct);
+        List<ClientResponse> result = await mediator.Send(
+            new GetClientsQuery(search, includeArchived ?? false), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ArchiveClient(
+        Guid clientId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new ArchiveClientCommand(clientId), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> RestoreClient(
+        Guid clientId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new RestoreClientCommand(clientId), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ExportMyData(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ClientDataExportResponse result = await mediator.Send(new ExportMyDataQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CancelDataErasure(
+        Guid clientId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new CancelDataErasureCommand(clientId), ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> CreateClient(

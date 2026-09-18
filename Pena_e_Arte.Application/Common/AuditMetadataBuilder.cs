@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Billing.Commands;
+using Pena_e_Arte.Application.Clients.Commands;
 using Pena_e_Arte.Application.GiftCards.Commands;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Application.Platform.Commands;
@@ -62,6 +63,15 @@ public static class AuditMetadataBuilder
         EndImpersonationSessionCommand c => new Dictionary<string, object?>
         {
             ["sessionId"] = c.SessionId,
+        },
+        RequestDataErasureCommand c => new Dictionary<string, object?>
+        {
+            // How many studios' Client rows were fanned out to — never the ids, never PII.
+            ["affectedClientCount"] = c.AffectedClientCount,
+        },
+        RequestMyDataErasureCommand c => new Dictionary<string, object?>
+        {
+            ["affectedClientCount"] = c.AffectedClientCount,
         },
         _ => new Dictionary<string, object?>(),
     });

@@ -291,8 +291,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
     warnings: [
       "You're signed out immediately and can't log back in. Your data is then permanently deleted after a 30-day grace period, after which it's unrecoverable. It cannot be undone.",
       "You only ever delete your own account — it can never affect anyone else's data.",
+      "If you're a client at more than one studio, this deletes your account and data everywhere you're a client — not just here.",
     ],
-    relatedArticleIds: ["client-profile"],
+    relatedArticleIds: ["client-profile", "client-export-data"],
+  },
+  {
+    id: "client-export-data",
+    roles: [Client],
+    title: "Export my data",
+    route: "/clients/me",
+    keywords: ["export data", "download my data", "data portability", "gdpr", "my records"],
+    summary: "Download a copy of your data — profile, appointments, and consent records, across every studio you're a client at — before or instead of deleting your account.",
+    steps: [
+      "Open your profile at Profile, then the \"Sharing\" tab.",
+      "In the \"Delete my account\" section, click \"Export my data\".",
+      "A file downloads with your data grouped by studio — profile details, appointment history, and consent-form records.",
+    ],
+    tips: [
+      "This includes every studio you're a client at, not just the one you're currently viewing.",
+      "You can export as many times as you like — it never affects your account or data.",
+    ],
+    relatedArticleIds: ["client-delete-account"],
   },
   {
     id: "client-deposit-pay",
@@ -877,6 +896,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"New Client\" to add a new one.",
       "Click \"Export CSV\" to download a spreadsheet-ready copy of your client roster.",
     ],
+    relatedArticleIds: ["owner-clients-archive"],
   },
   {
     id: "owner-clients-reassign-artist",
@@ -894,11 +914,28 @@ export const HELP_ARTICLES: HelpArticle[] = [
     relatedArticleIds: ["owner-clients-erase-data"],
   },
   {
+    id: "owner-clients-archive",
+    roles: [Owner],
+    title: "Archive or restore a client",
+    route: "/clients",
+    keywords: ["archive client", "delete client", "remove client from list", "restore client", "hide client"],
+    summary: "Archiving removes a client from your active list without deleting anything — their appointments, payments, and consent records stay exactly as they are, and you can restore them any time. Use Erase client data instead if you need to permanently delete their information.",
+    steps: [
+      "On the Clients list, click the ⋮ menu on a client's row and choose \"Archive\", or open their profile and click \"Archive\" near the bottom.",
+      "Confirm in the dialog — this is reversible, so there's no typed confirmation.",
+      "Turn on \"Show archived\" on the Clients list to see archived clients (shown de-emphasized) and restore them with the same ⋮ menu or the \"Restore\" button on their profile.",
+    ],
+    tips: [
+      "Archived clients don't appear in the default list or count, but their appointments, payments, and consent forms are untouched and stay searchable from anywhere else in the app.",
+    ],
+    relatedArticleIds: ["owner-clients-list", "owner-clients-erase-data"],
+  },
+  {
     id: "owner-clients-erase-data",
     roles: [Owner],
     title: "Erase a client's data on their behalf",
     route: "/clients",
-    keywords: ["delete client data", "erase data", "right to erasure", "gdpr", "remove client data"],
+    keywords: ["delete client data", "erase data", "right to erasure", "gdpr", "remove client data", "cancel erasure", "undo erasure"],
     summary: "Honor a client's right-to-erasure request (GDPR Art. 17) yourself — e.g. one that came in by phone or email, or for a walk-in client without their own account.",
     steps: [
       "Open the client's profile from the Clients list.",
@@ -909,11 +946,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Their profile, body map, and consent records are permanently deleted after a 30-day grace period, and this cannot be undone.",
       "If the client has their own login, it's disabled immediately.",
       "This only erases the targeted client's data — it never affects any other client.",
+      "If the client belongs to more than one studio, this erases their data and login everywhere they're a client — not just at your studio.",
     ],
     tips: [
       "A client can also request this themselves from their own profile — see the client-facing \"Delete my account\" article. Use this owner-initiated version only when the client can't or didn't do it themselves.",
+      "Changed your mind, or the request was a mistake? While the 30-day grace period is still running, the pending banner in the \"Erase client data\" section shows a \"Cancel erasure request\" button — this restores their profile, consent records, and login. The client can't do this themselves (their login is disabled the moment erasure is requested), so it has to go through an owner.",
     ],
-    relatedArticleIds: ["owner-clients-list", "owner-clients-reassign-artist"],
+    relatedArticleIds: ["owner-clients-list", "owner-clients-reassign-artist", "owner-clients-archive"],
   },
   {
     id: "owner-designs",

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2 } from "lucide-react";
-import { useAppDispatch } from "@/app/hooks";
+import { AlertTriangle, Download, Loader2 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -25,9 +26,22 @@ const CONFIRM_WORD = "DELETE";
 export function DeleteAccountSection() {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [eraseAccount, { isLoading }] = useRequestMyDataErasureMutation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { token, tenantId } = useAppSelector((s) => s.auth);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await downloadAuthenticatedFile("clients/me/export", "my-data-export.json", token, tenantId);
+    } catch {
+      toast.error("Couldn't export your data. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function handleConfirm() {
     const result = await eraseAccount();
@@ -53,9 +67,21 @@ export function DeleteAccountSection() {
           records). You&apos;re signed out immediately and can&apos;t log back in; your data is then
           permanently deleted after a 30-day grace period. This cannot be undone.
         </p>
-        <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
-          Delete my account
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            <Download className="h-3.5 w-3.5" />
+            {exporting ? "Exporting…" : "Export my data"}
+          </Button>
+          <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
+            Delete my account
+          </Button>
+        </div>
       </CardContent>
 
       <Dialog
@@ -71,7 +97,16 @@ export function DeleteAccountSection() {
             <DialogDescription>
               You&apos;ll be signed out immediately and won&apos;t be able to log back in. Your
               profile, body map, and consent records are permanently deleted after a 30-day grace
-              period. This cannot be undone.
+              period. This cannot be undone. Consider{" "}
+              <button
+                type="button"
+                className="underline underline-offset-2 hover:text-foreground"
+                onClick={handleExport}
+                disabled={exporting}
+              >
+                exporting a copy of your data
+              </button>{" "}
+              first.
             </DialogDescription>
           </DialogHeader>
 

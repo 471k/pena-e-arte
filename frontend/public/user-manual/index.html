@@ -1348,7 +1348,8 @@ ol.steps li { margin: 6px 0; }
 <li>The <span class="step-title">Profile</span> tab shows your contact info and body map — click <span class="step-title">Edit</span> to toggle zones on/off, then <span class="step-title">Save</span>.</li>
 <li>The <span class="step-title">Tattoo History</span> tab lists completed tattoos recorded by your artists.</li>
 <li>The <span class="step-title">Sharing</span> tab lets you opt your tattoo history (body-map locations, tattoo photos, and descriptions) in or out of cross-studio visibility. Your medical notes, allergies, contact details, and payment history are never shared, and you can turn sharing off again at any time.</li>
-<li>The <span class="step-title">Sharing</span> tab also has a <span class="step-title">Delete my account</span> section — permanently delete your own account and personal data (profile, body map, consent records). You type <code>DELETE</code> to confirm; you're signed out immediately and can't log back in, and your data is then permanently deleted after a 30-day grace period (unrecoverable thereafter). You can only ever delete your own account, never anyone else's.</li>
+<li>The <span class="step-title">Sharing</span> tab also has a <span class="step-title">Delete my account</span> section, with an <span class="step-title">Export my data</span> button above it — download a copy of your data (profile, appointments, and consent records, across every studio you're a client at) before or instead of deleting your account.</li>
+<li>Click <span class="step-title">Delete my account</span> to permanently delete your own account and personal data (profile, body map, consent records). You type <code>DELETE</code> to confirm; you're signed out immediately and can't log back in, and your data is then permanently deleted after a 30-day grace period (unrecoverable thereafter). You can only ever delete your own account, never anyone else's — but if you're a client at more than one studio, this deletes your account and data everywhere you're a client, not just at the studio you happened to be viewing.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-client-detail">Artist: client detail</a>, <a href="#artist-tattoo-record">Tattoo record detail</a></div>
 </section>
@@ -2311,6 +2312,7 @@ ol.steps li { margin: 6px 0; }
 <li>Search by name/email, click a row to view detail, or click <span class="step-title">New Client</span> to add one manually.</li>
 <li>Use the <span class="step-title">Artist</span> filter dropdown to narrow the list to one artist's clients, or "Unassigned" for clients with no artist yet.</li>
 <li>Click <span class="step-title">Export CSV</span> to download a spreadsheet-ready copy of your client roster.</li>
+<li>Click the ⋮ menu on any row to <span class="step-title">Archive</span> that client — a non-destructive way to declutter your active list without deleting anything (see <a href="#owner-client-detail">Client detail</a> for what archiving does and doesn't affect). Toggle <span class="step-title">Show archived</span> to see archived clients (shown de-emphasized) and restore them from the same menu.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-create-client">Add client</a>, <a href="#owner-client-detail">Client detail</a></div>
 </section>
@@ -2350,7 +2352,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. Two differences: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text; and owners see an <span class="step-title">Erase client data</span> section at the bottom of the page.</p>
+<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. Two differences: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text; and owners (and artists) see an <span class="step-title">Archive</span> action and owners see an <span class="step-title">Erase client data</span> section at the bottom of the page.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner client detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2365,7 +2367,9 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Same as <a href="#artist-client-detail">the artist client detail</a> walkthrough.</li>
-<li>To honor a right-to-erasure request the client made by phone or email (or for a walk-in client without their own account), scroll to the <span class="step-title">Erase client data</span> section, click <span class="step-title">Erase client data</span>, type the client's full name to confirm, then confirm again in the dialog. Their profile, body map, and consent records are permanently deleted after a 30-day grace period, their login (if any) is disabled immediately, and this cannot be undone — it only ever affects the targeted client, never anyone else's data. Once requested, this section shows a banner with the request date instead of the button.</li>
+<li>Click <span class="step-title">Archive</span> near the bottom of the page to remove this client from your active list without deleting anything — their appointments, payments, and consent records stay exactly as they are. A lightweight confirm dialog is enough since this is fully reversible; click <span class="step-title">Restore</span> (same spot) at any time to bring them back.</li>
+<li>To honor a right-to-erasure request the client made by phone or email (or for a walk-in client without their own account), scroll to the <span class="step-title">Erase client data</span> section, click <span class="step-title">Erase client data</span>, type the client's full name to confirm, then confirm again in the dialog. Their profile, body map, and consent records are permanently deleted after a 30-day grace period, their login (if any) is disabled immediately, and this cannot be undone — it only ever affects the targeted client's data at every studio they belong to, never another client's data. Once requested, this section shows a banner with the request date instead of the button.</li>
+<li>While that 30-day grace period is still running, the same banner shows a <span class="step-title">Cancel erasure request</span> button — use this if the request was a mistake or the client changed their mind. It restores their profile, consent records, and login. The client can't do this themselves (their login is disabled the moment erasure is requested), so an owner has to action it.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-client-detail">Artist: client detail</a>, <a href="#artist-tattoo-record">Tattoo record detail</a></div>
 </section>

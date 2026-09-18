@@ -16,6 +16,13 @@ public interface IIdentityService
     /// </summary>
     Task DisableLoginAsync(Guid userId, CancellationToken ct);
 
+    /// <summary>
+    /// Reverses DisableLoginAsync: clears the account lockout so the user can sign in again.
+    /// Does not restore a refresh token — the user must sign in fresh with their password. No-op
+    /// if no such user exists or the account was never locked out.
+    /// </summary>
+    Task EnableLoginAsync(Guid userId, CancellationToken ct);
+
     /// <summary>Permanently deletes the Identity user (used by the retention hard-purge). No-op if absent.</summary>
     Task DeleteUserAsync(Guid userId, CancellationToken ct);
     Task<(bool Success, string? Token, string? Error)> LoginAsync(string email, string password);

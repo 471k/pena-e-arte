@@ -10,8 +10,12 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { clientsApi } from "@/features/clients/clientsApi";
 import { DeleteAccountSection } from "@/features/clients/components/DeleteAccountSection";
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
+  downloadAuthenticatedFile: vi.fn().mockResolvedValue(undefined),
+}));
 
 let eraseCalled = false;
 const server = setupServer(
@@ -76,5 +80,30 @@ describe("DeleteAccountSection", () => {
 
     expect(within(dialog).getByRole("button", { name: /delete my account/i })).toBeDisabled();
     expect(eraseCalled).toBe(false);
+  });
+
+  it("shows an 'Export my data' button that downloads the export endpoint", async () => {
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(screen.getByRole("button", { name: /export my data/i }));
+
+    expect(downloadAuthenticatedFile).toHaveBeenCalledWith(
+      "clients/me/export", "my-data-export.json", "t", "s1",
+    );
+  });
+
+  it("the delete-confirmation dialog offers a link to export data first", async () => {
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(screen.getByRole("button", { name: /^delete my account$/i }));
+    const dialog = await screen.findByRole("dialog");
+
+    await user.click(within(dialog).getByRole("button", { name: /exporting a copy of your data/i }));
+
+    expect(downloadAuthenticatedFile).toHaveBeenCalledWith(
+      "clients/me/export", "my-data-export.json", "t", "s1",
+    );
   });
 });

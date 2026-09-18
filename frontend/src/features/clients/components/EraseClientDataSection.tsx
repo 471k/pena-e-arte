@@ -13,7 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
-import { useRequestDataErasureMutation } from "../clientsApi";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
+import { useRequestDataErasureMutation, useCancelDataErasureMutation } from "../clientsApi";
 
 interface EraseClientDataSectionProps {
   clientId: string;
@@ -38,19 +43,69 @@ export function EraseClientDataSection({
 }: EraseClientDataSectionProps) {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [eraseData, { isLoading }] = useRequestDataErasureMutation();
+  const [cancelErasure, { isLoading: isCancelling }] = useCancelDataErasureMutation();
+
+  async function handleCancelErasure() {
+    const result = await cancelErasure(clientId);
+    if ("error" in result) {
+      toast.error("Couldn't cancel the erasure request. Please try again or contact support.");
+    } else {
+      toast.success("Erasure request cancelled — the client's data and login have been restored.");
+    }
+    setCancelConfirmOpen(false);
+  }
 
   if (erasureRequestedAt) {
     return (
-      <Card className="border-destructive/40">
-        <CardContent className="flex items-start gap-2 p-4">
-          <ShieldAlert className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-          <p className="text-xs text-muted-foreground">
-            Data erasure requested on {formatDate(erasureRequestedAt)}. This client&apos;s profile
-            and consent records are being permanently deleted.
-          </p>
-        </CardContent>
-      </Card>
+      <>
+        <Card className="border-destructive/40">
+          <CardContent className="flex items-start gap-2 p-4">
+            <ShieldAlert className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+            <div className="space-y-2 flex-1">
+              <p className="text-xs text-muted-foreground">
+                Data erasure requested on {formatDate(erasureRequestedAt)}. This client&apos;s
+                profile and consent records are being permanently deleted.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setCancelConfirmOpen(true)}
+              >
+                Cancel erasure request
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel the erasure request for {clientName}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Their profile and consent records are restored, and their login (if any) is
+                re-enabled. Use this if the erasure was requested by mistake, or the client
+                changed their mind during the grace period.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isCancelling}>Keep erasure scheduled</AlertDialogCancel>
+              <AlertDialogAction onClick={handleCancelErasure} disabled={isCancelling}>
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cancelling…
+                  </>
+                ) : (
+                  "Cancel erasure request"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
 

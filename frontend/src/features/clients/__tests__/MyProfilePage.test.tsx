@@ -25,7 +25,7 @@ const ME: ClientResponse = {
   userId:     "u1",
   artistId:   null,
   artistName: null,
-  erasureRequestedAt: null,
+  erasureRequestedAt: null, archivedAt: null,
 };
 
 const PROFILE: ClientProfileResponse = {
