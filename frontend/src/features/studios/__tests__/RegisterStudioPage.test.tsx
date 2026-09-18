@@ -103,7 +103,7 @@ const server = setupServer(
     new HttpResponse(null, { status: 204 }),
   ),
   http.post("http://localhost/api/v1/auth/login", () =>
-    HttpResponse.json({ accessToken: makeFakeJwt("owner"), tokenType: "Bearer" }),
+    HttpResponse.json({ accessToken: makeFakeJwt("owner"), refreshToken: "fake-refresh-token", tokenType: "Bearer" }),
   ),
 );
 
@@ -376,6 +376,8 @@ describe("RegisterStudioPage — step 2", () => {
 
     expect(store.getState().auth.role).toBe("owner");
     expect(store.getState().auth.token).toBeTruthy();
+    // A missing refresh token here silently breaks silent-refresh on access-token expiry.
+    expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
   });
 
   it("clears the pending referral code after successful registration", async () => {
@@ -545,6 +547,7 @@ describe("RegisterStudioPage — solo artist mode", () => {
 
     expect(store.getState().auth.role).toBe("owner");
     expect(store.getState().auth.token).toBeTruthy();
+    expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
   });
 
   it("shows server error when solo registration fails", async () => {
