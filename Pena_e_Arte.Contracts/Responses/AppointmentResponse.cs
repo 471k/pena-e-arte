@@ -26,6 +26,8 @@ public record AppointmentResponse(
     string? ReferralSource = null,
     string? ReferralSourceOther = null,
     IReadOnlyList<AppointmentAttachmentResponse>? Attachments = null,
-    bool PromoCodeApplied = false);
+    bool PromoCodeApplied = false,
+    Guid? ServiceId = null,
+    string? ServiceName = null);
 
 public record AppointmentAttachmentResponse(string Url, string Category);

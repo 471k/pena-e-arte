@@ -22,20 +22,37 @@ vi.mock("@/shared/components/ui/location-picker", () => ({
     onChange,
     error,
   }: {
-    onChange: (val: LocationPickerValue) => void;
+    onChange: (val: LocationPickerValue & { streetAddress: string }) => void;
     error?: string;
   }) => (
     <div>
       <button
         type="button"
         data-testid="mock-location-picker"
-        onClick={() => onChange({ lat: 38.7169, lng: -9.1395, city: "Lisbon" })}
+        onClick={() => onChange({ lat: 38.7169, lng: -9.1395, city: "Lisbon", streetAddress: "" })}
       >
         Pick location
+      </button>
+      <button
+        type="button"
+        data-testid="mock-location-picker-drag"
+        onClick={() =>
+          onChange({ lat: 40.1, lng: -8.6, city: "Porto", streetAddress: "Rua Central 99" })
+        }
+      >
+        Drag pin
       </button>
       {error && <p data-testid="location-error">{error}</p>}
     </div>
   ),
+}));
+
+// ── Mock useAddressGeocode ──────────────────────────────────────────────────────
+// Real Nominatim calls aren't viable in a unit test — same reasoning as mocking
+// LocationPicker above. Tests exercise the plain form-field wiring, not geocoding.
+
+vi.mock("@/shared/hooks/useAddressGeocode", () => ({
+  useAddressGeocode: () => ({ status: "idle" as const }),
 }));
 
 // ── Fake JWT ───────────────────────────────────────────────────────────────────
@@ -86,7 +103,7 @@ const server = setupServer(
     new HttpResponse(null, { status: 204 }),
   ),
   http.post("http://localhost/api/v1/auth/login", () =>
-    HttpResponse.json({ accessToken: makeFakeJwt("owner"), tokenType: "Bearer" }),
+    HttpResponse.json({ accessToken: makeFakeJwt("owner"), refreshToken: "fake-refresh-token", tokenType: "Bearer" }),
   ),
 );
 
@@ -128,6 +145,7 @@ function renderPage(initialPath = "/register") {
 async function fillStep1(user: ReturnType<typeof userEvent.setup>, studioName = "Ink & Soul Studio") {
   await user.type(screen.getByLabelText(/studio name/i), studioName);
   await user.type(screen.getByLabelText(/business tax id/i), "L01234567A");
+  await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
   await user.click(screen.getByTestId("mock-location-picker"));
 }
 
@@ -216,6 +234,43 @@ describe("RegisterStudioPage — step 1", () => {
       expect(screen.queryByText(/step 2 of 2/i)).not.toBeInTheDocument();
     },
   );
+
+  it("shows validation error when Street address is left empty", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+    await user.type(screen.getByLabelText(/business tax id/i), "L01234567A");
+    await user.click(screen.getByTestId("mock-location-picker"));
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    expect(await screen.findByText(/street address is required/i)).toBeInTheDocument();
+    expect(screen.queryByText(/step 2 of 2/i)).not.toBeInTheDocument();
+  });
+
+  it("dragging the pin fills the Street address field from the reverse-geocoded address", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByTestId("mock-location-picker-drag"));
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street address/i).value).toBe(
+      "Rua Central 99",
+    );
+  });
+
+  it("dragging the pin to a spot with no resolvable road leaves a typed address untouched", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    // "Pick location" mock fires streetAddress: "" — simulates a rural pin drop.
+    await user.click(screen.getByTestId("mock-location-picker"));
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street address/i).value).toBe(
+      "Rua Central 5",
+    );
+  });
 
   it("advances to step 2 when all step-1 fields are valid", async () => {
     const user = userEvent.setup();
@@ -321,6 +376,8 @@ describe("RegisterStudioPage — step 2", () => {
 
     expect(store.getState().auth.role).toBe("owner");
     expect(store.getState().auth.token).toBeTruthy();
+    // A missing refresh token here silently breaks silent-refresh on access-token expiry.
+    expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
   });
 
   it("clears the pending referral code after successful registration", async () => {
@@ -359,6 +416,29 @@ describe("RegisterStudioPage — step 2", () => {
     await screen.findByTestId("dashboard");
 
     expect(capturedBody).toMatchObject({ nipt: "L01234567A" });
+  });
+
+  it("includes the street address in the registerStudio mutation payload", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/studios", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(STUDIO_RESPONSE, { status: 201 });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await screen.findByTestId("dashboard");
+
+    expect(capturedBody).toMatchObject({ addressLine1: "Rua Central 5" });
   });
 
   it("shows server error when studio registration fails", async () => {
@@ -467,6 +547,7 @@ describe("RegisterStudioPage — solo artist mode", () => {
 
     expect(store.getState().auth.role).toBe("owner");
     expect(store.getState().auth.token).toBeTruthy();
+    expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
   });
 
   it("shows server error when solo registration fails", async () => {

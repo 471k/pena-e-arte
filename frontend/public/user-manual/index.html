@@ -324,6 +324,7 @@ ol.steps li { margin: 6px 0; }
         <ul class="nav-section-list">
           <li><a href="#client-profile" data-nav-link>My Profile &amp; body map</a></li>
           <li><a href="#client-deposit" data-nav-link>Pay a deposit</a></li>
+          <li><a href="#client-saved-payment-methods" data-nav-link>Payment methods</a></li>
           <li><a href="#client-verify-email" data-nav-link>Verify email</a></li>
           <li><a href="#client-change-password" data-nav-link>Change password</a></li>
           <li><a href="#client-change-email" data-nav-link>Change email</a></li>
@@ -418,6 +419,8 @@ ol.steps li { margin: 6px 0; }
       <div class="nav-section">
         <button class="nav-section-toggle" aria-expanded="false">Deposit rules</button>
         <ul class="nav-section-list collapsed">
+          <li><a href="#owner-services" data-nav-link>Service catalog</a></li>
+          <li><a href="#owner-service-create" data-nav-link>Create service</a></li>
           <li><a href="#owner-deposit-rules" data-nav-link>Deposit rule list</a></li>
           <li><a href="#owner-create-deposit-rule" data-nav-link>Create deposit rule</a></li>
           <li><a href="#owner-deposit-rule-detail" data-nav-link>Deposit rule detail</a></li>
@@ -501,6 +504,7 @@ ol.steps li { margin: 6px 0; }
           <li><a href="#admin-studios" data-nav-link>Studio list</a></li>
           <li><a href="#admin-studio-detail" data-nav-link>Studio detail</a></li>
           <li><a href="#admin-impersonation" data-nav-link>Impersonate a studio</a></li>
+          <li><a href="#admin-notifications" data-nav-link>New studio registration alerts</a></li>
           <li><a href="#admin-plans" data-nav-link>Plan management</a></li>
           <li><a href="#admin-subscriptions" data-nav-link>Subscription oversight</a></li>
           <li><a href="#admin-referrals" data-nav-link>Platform referral codes</a></li>
@@ -963,13 +967,14 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="450" font-size="11" font-weight="700">My Bookings</text>
 </svg>
 </figure>
-<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), date/time, duration, deposit rule, promo code, tattoo description, style, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
+<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), service (when the studio offers one), date/time, duration, deposit rule, promo code, tattoo description, style, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li><strong>Guest checkout only</strong> — if you're not signed in, fill in your <span class="step-title">First name</span>, <span class="step-title">Last name</span>, <span class="step-title">Email</span>, and <span class="step-title">Phone</span>, and optionally toggle <span class="step-title">Sign up for news and updates</span>. An account is created for you as part of submitting the booking — see the callout below.</li>
 <li>Pick an <span class="step-title">Artist</span> (searchable dropdown), or toggle <span class="step-title">Let the studio choose my artist</span> to skip picking one — the artist selector hides and the studio assigns someone before confirming.</li>
-<li>Choose a <span class="step-title">Date &amp; time</span> and a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
-<li>If the studio has an active deposit rule, an estimated deposit amount is shown (signed-in clients can also pick the rule).</li>
+<li>If the studio offers a <span class="step-title">Service</span> (e.g. "New Tattoo Session", "Touch-Up"), pick one — its duration fills in automatically and can't be changed; pick "Custom" to choose your own duration instead.</li>
+<li>Choose a <span class="step-title">Date &amp; time</span> and, unless a service already set it, a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
+<li>If the studio has an active deposit rule, an estimated deposit amount is shown (signed-in clients can also pick the rule) — unless the selected service has its own deposit, which replaces the deposit rule entirely.</li>
 <li>Have a <span class="step-title">Promo code</span> from the studio? Enter it — it's applied to your deposit automatically on submission. A code that's expired, exhausted, or not recognized doesn't block the booking; you'll just see a note that it wasn't applied.</li>
 <li>Describe <span class="step-title">What are you looking to get done?</span> (required), optionally pick a <span class="step-title">Style</span> (leave unset for "artist's choice" / unsure), optionally pick <span class="step-title">How did you hear about us?</span> (with a free-text field if you pick "Somewhere else"), and add any <span class="step-title">Safety notes</span> (medical conditions, allergies, medications, skin concerns).</li>
 <li>Use the <span class="step-title">Desired placement</span> body map to mark where you want the tattoo.</li>
@@ -1343,7 +1348,8 @@ ol.steps li { margin: 6px 0; }
 <li>The <span class="step-title">Profile</span> tab shows your contact info and body map — click <span class="step-title">Edit</span> to toggle zones on/off, then <span class="step-title">Save</span>.</li>
 <li>The <span class="step-title">Tattoo History</span> tab lists completed tattoos recorded by your artists.</li>
 <li>The <span class="step-title">Sharing</span> tab lets you opt your tattoo history (body-map locations, tattoo photos, and descriptions) in or out of cross-studio visibility. Your medical notes, allergies, contact details, and payment history are never shared, and you can turn sharing off again at any time.</li>
-<li>The <span class="step-title">Sharing</span> tab also has a <span class="step-title">Delete my account</span> section — permanently delete your own account and personal data (profile, body map, consent records). You type <code>DELETE</code> to confirm; you're signed out immediately and can't log back in, and your data is then permanently deleted after a 30-day grace period (unrecoverable thereafter). You can only ever delete your own account, never anyone else's.</li>
+<li>The <span class="step-title">Sharing</span> tab also has a <span class="step-title">Delete my account</span> section, with an <span class="step-title">Export my data</span> button above it — download a copy of your data (profile, appointments, and consent records, across every studio you're a client at) before or instead of deleting your account.</li>
+<li>Click <span class="step-title">Delete my account</span> to permanently delete your own account and personal data (profile, body map, consent records). You type <code>DELETE</code> to confirm; you're signed out immediately and can't log back in, and your data is then permanently deleted after a 30-day grace period (unrecoverable thereafter). You can only ever delete your own account, never anyone else's — but if you're a client at more than one studio, this deletes your account and data everywhere you're a client, not just at the studio you happened to be viewing.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-client-detail">Artist: client detail</a>, <a href="#artist-tattoo-record">Tattoo record detail</a></div>
 </section>
@@ -1352,7 +1358,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment. If card payments are temporarily unavailable, the page shows a message instead of the card form — Cash always remains available at booking, or you can contact the studio directly.</p>
+<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card isn't charged until the studio confirms the appointment. If you have a saved card, a "Saved card" tab is selected automatically so you can pay in one tap (still with a bank confirmation step the first time); otherwise use the "New card" tab. If card payments are temporarily unavailable, the page shows a message instead — Cash always remains available at booking, or you can contact the studio directly.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1375,7 +1381,35 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Authorise deposit</span>.</li>
 <li>A confirmation screen appears once authorised — you can return to booking from there.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#client-book">Book an appointment</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
+<div class="callout callout-tip"><strong>No platform fee:</strong> your full deposit goes to the studio or artist. TattooOS never takes a cut, on card or cash payments, now or in the future.</div>
+<div class="crosslinks">See also: <a href="#client-book">Book an appointment</a>, <a href="#client-saved-payment-methods">Manage saved payment methods</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
+</section>
+
+<section id="client-saved-payment-methods" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Manage saved payment methods</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>At <code>/clients/me/payment-methods</code>: save a card to pay a deposit in one tap next time. Card details are handled entirely by the payment processor's own form — this app never sees or stores your card number.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 420" role="img" aria-label="Payment methods wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="12" font-weight="700">Payment Methods</text>
+<rect x="20" y="60" width="480" height="50" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<text x="32" y="82" font-size="9" font-weight="700">Visa **** 4242</text><text x="32" y="98" font-size="8" fill-opacity="0.6">Expires 12/2030</text>
+<rect x="380" y="72" width="55" height="16" rx="8" fill="#f59e0b" fill-opacity="0.5"/><text x="392" y="83" font-size="7">Default</text>
+<text x="20" y="140" font-size="10" font-weight="700">Add a card</text>
+<rect x="20" y="150" width="240" height="60" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="35" y="182" font-size="8" fill-opacity="0.5">card number / expiry / CVC (processor's own form)</text>
+</svg>
+</figure>
+<figcaption>Payment methods — saved cards list, with an embedded add-card form below</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Fill in the card form and click <span class="step-title">Save card</span> to add one.</li>
+<li>Click <span class="step-title">Remove</span> on any saved card to delete it.</li>
+</ol>
+<div class="callout callout-tip"><strong>Per-studio:</strong> a card saved at one studio can't be used at another — save a card again if you book with a different studio.</div>
+<div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a></div>
 </section>
 
 <section id="client-verify-email" data-role="client">
@@ -2119,7 +2153,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Add artist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/artists/new</code>: create an artist record for your studio. You don't set a password — after creation, the artist gets an automatic email with a link to set their own password (link expires after 1 hour). If it doesn't arrive, use <span class="step-title">Resend invite</span> on their profile page.</p>
+<p>At <code>/artists/new</code>: create an artist record for your studio. You don't set a password — after creation, the artist gets an automatic email with a link to set their own password (link expires after 1 hour). If it doesn't arrive, use <span class="step-title">Resend invite</span> on their profile page. If this email already belongs to someone who was previously removed as an artist at another studio, they instead get an email confirming they've been added here — they already have a working account and can sign in immediately.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Add artist wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2172,6 +2206,8 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Enable my artist profile</span> — you land on your new artist detail page.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get "My Portfolio" and "My Earnings" shortcuts in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> on desktop, an "Owner / Artist" switcher also appears in the header once your artist profile exists — click "Artist" any time to jump straight to your own artist profile (Profile, Portfolio, Schedule, Bookings, Designs, Social), or "Owner" to jump back to your dashboard. On mobile, use the "My Portfolio"/"My Earnings" links in the navigation menu instead.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> your navigation menu switches with you. In Artist mode it shows only artist-relevant pages — Schedule (your own bookings), Clients, Messages, Designs, Intake Forms, Consent Forms, Deposit Rules, Waitlist, My Earnings, and Reports About Me — plus an "Owner Dashboard" link back. Studio-management pages (Billing, Studio Settings, Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, and the studio-wide Conduct Reports view) are hidden while you're in Artist mode and reappear once you switch back to Owner.</div>
 <div class="crosslinks">See also: <a href="#owner-artists">Artist list</a>, <a href="#owner-artist-detail">Artist detail</a></div>
 </section>
 
@@ -2276,6 +2312,7 @@ ol.steps li { margin: 6px 0; }
 <li>Search by name/email, click a row to view detail, or click <span class="step-title">New Client</span> to add one manually.</li>
 <li>Use the <span class="step-title">Artist</span> filter dropdown to narrow the list to one artist's clients, or "Unassigned" for clients with no artist yet.</li>
 <li>Click <span class="step-title">Export CSV</span> to download a spreadsheet-ready copy of your client roster.</li>
+<li>Click the ⋮ menu on any row to <span class="step-title">Archive</span> that client — a non-destructive way to declutter your active list without deleting anything (see <a href="#owner-client-detail">Client detail</a> for what archiving does and doesn't affect). Toggle <span class="step-title">Show archived</span> to see archived clients (shown de-emphasized) and restore them from the same menu.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-create-client">Add client</a>, <a href="#owner-client-detail">Client detail</a></div>
 </section>
@@ -2315,7 +2352,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Client detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. Two differences: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text; and owners see an <span class="step-title">Erase client data</span> section at the bottom of the page.</p>
+<p>Identical page to <a href="#artist-client-detail">the artist's client detail</a>, at <code>/clients/&lt;id&gt;</code> — profile, tattoo history, cross-studio history, forms, and appointments tabs. Two differences: the assigned-artist control near the top is editable for owners (click it to reassign or unassign), where artists see it as plain read-only text; and owners (and artists) see an <span class="step-title">Archive</span> action and owners see an <span class="step-title">Erase client data</span> section at the bottom of the page.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner client detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2330,7 +2367,9 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Same as <a href="#artist-client-detail">the artist client detail</a> walkthrough.</li>
-<li>To honor a right-to-erasure request the client made by phone or email (or for a walk-in client without their own account), scroll to the <span class="step-title">Erase client data</span> section, click <span class="step-title">Erase client data</span>, type the client's full name to confirm, then confirm again in the dialog. Their profile, body map, and consent records are permanently deleted after a 30-day grace period, their login (if any) is disabled immediately, and this cannot be undone — it only ever affects the targeted client, never anyone else's data. Once requested, this section shows a banner with the request date instead of the button.</li>
+<li>Click <span class="step-title">Archive</span> near the bottom of the page to remove this client from your active list without deleting anything — their appointments, payments, and consent records stay exactly as they are. A lightweight confirm dialog is enough since this is fully reversible; click <span class="step-title">Restore</span> (same spot) at any time to bring them back.</li>
+<li>To honor a right-to-erasure request the client made by phone or email (or for a walk-in client without their own account), scroll to the <span class="step-title">Erase client data</span> section, click <span class="step-title">Erase client data</span>, type the client's full name to confirm, then confirm again in the dialog. Their profile, body map, and consent records are permanently deleted after a 30-day grace period, their login (if any) is disabled immediately, and this cannot be undone — it only ever affects the targeted client's data at every studio they belong to, never another client's data. Once requested, this section shows a banner with the request date instead of the button.</li>
+<li>While that 30-day grace period is still running, the same banner shows a <span class="step-title">Cancel erasure request</span> button — use this if the request was a mistake or the client changed their mind. It restores their profile, consent records, and login. The client can't do this themselves (their login is disabled the moment erasure is requested), so an owner has to action it.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-client-detail">Artist: client detail</a>, <a href="#artist-tattoo-record">Tattoo record detail</a></div>
 </section>
@@ -2407,6 +2446,65 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#client-intake-submit">Client: submit intake form</a></div>
 </section>
 
+<section id="owner-services" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Service catalog</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✓ (read-only, active only)</td></tr><tr><td>Client</td><td>✓ (read-only)</td></tr><tr><td>Artist</td><td>✓ (read-only)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/services</code>: bookable services (e.g. "New Tattoo Session", "Touch-Up") clients can pick when booking. Each service carries its own duration and, optionally, its own price and deposit amount.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 480" role="img" aria-label="Service catalog wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="12" font-weight="700">Services</text><text x="640" y="25" font-size="9">+ New Service</text>
+<rect x="20" y="60" width="480" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/>
+<text x="32" y="80" font-size="9" font-weight="700">New Tattoo Session</text><text x="32" y="94" font-size="8" fill-opacity="0.6">90 min · from €150.00 · €50.00 deposit</text>
+<rect x="440" y="70" width="45" height="14" rx="7" fill="#22c55e" fill-opacity="0.5"/><text x="448" y="80" font-size="7">Active</text>
+</svg>
+</figure>
+<figcaption>Service catalog — duration, starting price, and deposit shown per service</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Click a service to view, edit, or delete it.</li>
+<li>Click <span class="step-title">New Service</span> to add one.</li>
+<li>Uncheck <span class="step-title">Active</span> instead of deleting to hide a service from the booking picker without losing its history.</li>
+</ol>
+<div class="callout callout-tip"><strong>No services yet?</strong> Booking works exactly as before — clients pick a free-text duration and your deposit rules apply as usual.</div>
+<div class="crosslinks">See also: <a href="#owner-service-create">Create service</a>, <a href="#owner-deposit-rules">Deposit rule list</a>, <a href="#client-book">Client: book an appointment</a></div>
+</section>
+
+<section id="owner-service-create" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Create service</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At <code>/services/new</code>: name a service, set its duration, and optionally its price and deposit.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 520" role="img" aria-label="Create service wireframe">
+<rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
+<text x="16" y="25" font-size="10" font-weight="700">‹ Services</text>
+<rect x="260" y="60" width="240" height="360" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="280" y="88" font-size="12" font-weight="700">New Service</text>
+<text x="280" y="108" font-size="9" fill-opacity="0.6">Service name</text><rect x="280" y="114" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="146" font-size="9" fill-opacity="0.6">Description (optional)</text><rect x="280" y="152" width="200" height="28" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="192" font-size="9" fill-opacity="0.6">Duration (minutes)</text><rect x="280" y="198" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="230" font-size="9" fill-opacity="0.6">Starting price (€, optional)</text><rect x="280" y="236" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="268" font-size="9" fill-opacity="0.6">Deposit (€, optional)</text><rect x="280" y="274" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="306" font-size="8">☑ Active</text>
+<rect x="280" y="320" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="337" font-size="10" fill="#fff">Create Service</text>
+</svg>
+</figure>
+<figcaption>Create service — fields in order: name, description, duration, price, deposit, active toggle</figcaption>
+<h3>Steps (in field order)</h3>
+<ol class="steps">
+<li>Enter a <span class="step-title">Service name</span> (e.g. "New Tattoo Session").</li>
+<li>Optionally enter a <span class="step-title">Description</span>.</li>
+<li>Set the <span class="step-title">Duration</span> in minutes (5–600) — a client who picks this service gets this duration automatically and can't change it.</li>
+<li>Optionally set a <span class="step-title">Starting price</span> — shown to clients, not charged automatically.</li>
+<li>Optionally set a <span class="step-title">Deposit</span> — when set, it replaces your studio's deposit rules entirely for bookings that pick this service. Leave blank to use your deposit rules instead.</li>
+<li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
+<li>Click <span class="step-title">Create Service</span>.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#owner-services">Service catalog</a></div>
+</section>
+
 <section id="owner-deposit-rules" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Deposit rule list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
@@ -2427,7 +2525,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click a rule to view or edit it.</li>
 <li>Click <span class="step-title">New Rule</span> to create one.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#owner-create-deposit-rule">Create deposit rule</a>, <a href="#client-book">Client: book an appointment</a></div>
+<div class="crosslinks">See also: <a href="#owner-create-deposit-rule">Create deposit rule</a>, <a href="#owner-services">Service catalog</a>, <a href="#client-book">Client: book an appointment</a></div>
 </section>
 
 <section id="owner-create-deposit-rule" data-role="owner">
@@ -2901,7 +2999,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>The studio settings hub at <code>/studios/me</code>: name, phone, business tax ID (NIPT), location, and timezone at the top (URL slug in its own card above), followed by a Social Media card, a Card deposits — POK card, then branding, studio hours, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
+<p>The studio settings hub at <code>/studios/me</code>: name, street address, phone, business tax ID (NIPT), location, and timezone at the top (URL slug in its own card above), followed by a Social Media card, a Card deposits — POK card, then branding, studio hours, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2922,9 +3020,9 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps (in page order)</h3>
 <ol class="steps">
 <li>Edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
-<li>Update <span class="step-title">Studio name</span>, <span class="step-title">Phone</span> (choose the country, then type the number), <span class="step-title">Location</span> (drag the map pin), and <span class="step-title">Timezone</span> (controls how appointment times are shown in emails, texts, and reports), then <span class="step-title">Save changes</span>.</li>
+<li>Update <span class="step-title">Studio name</span>, <span class="step-title">Street address</span> (stays in sync with the map below — type an address to move the pin, or drag the pin to update the address), <span class="step-title">Phone</span> (choose the country, then type the number), and <span class="step-title">Timezone</span> (controls how appointment times are shown in emails, texts, and reports), then <span class="step-title">Save changes</span>.</li>
 <li>If you haven't added your <span class="step-title">Business tax ID (NIPT)</span> yet, a banner prompts you to add it — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, the field becomes read-only; contact support to change it. It's never shown to clients.</li>
-<li>Below: <a href="#owner-social-verification">Social Media</a> (connect/verify Instagram, TikTok, Facebook, X, YouTube), <span class="step-title">Card deposits — POK</span> (paste your studio's own POK <span class="step-title">Key ID</span>, <span class="step-title">Key Secret</span>, and <span class="step-title">Merchant ID</span> from your POK dashboard's API Keys section, then <span class="step-title">Connect</span> — every studio brings its own POK account, there is no shared platform account, and card deposits stay unavailable to clients until this is connected), <a href="#owner-branding">Branding</a>, <span class="step-title">Studio hours</span> (weekly opening hours — clients can only book within these, regardless of any individual artist's own working hours; a default Mon–Fri, 9am–6pm schedule is applied automatically at registration), QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
+<li>Below: <a href="#owner-social-verification">Social Media</a> (connect/verify Instagram, TikTok, Facebook, X, YouTube), <span class="step-title">Card deposits — POK</span> (paste your studio's own POK <span class="step-title">Key ID</span>, <span class="step-title">Key Secret</span>, and <span class="step-title">Merchant ID</span> from your POK dashboard's API Keys section, then <span class="step-title">Connect</span> — every studio brings its own POK account, there is no shared platform account, and card deposits stay unavailable to clients until this is connected; card or cash, TattooOS never takes a commission or fee from a client's deposit), <a href="#owner-branding">Branding</a>, <span class="step-title">Studio hours</span> (weekly opening hours — clients can only book within these, regardless of any individual artist's own working hours; a default Mon–Fri, 9am–6pm schedule is applied automatically at registration), QR code, <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully. Use your POK <em>production</em> credentials, not the staging/sandbox pair — sandbox keys will not process real payments, and your Key Secret is never shown again after you connect. POK only opens merchant accounts for businesses registered in Albania — if your studio isn't registered there, you won't be able to get POK credentials to connect, and should use Cash for deposits instead.</div>
 <div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#admin-audit-log">Admin: audit log</a>, <a href="#owner-social-verification">Verify social media accounts</a>, <a href="#owner-payments">Payment list</a></div>
@@ -3472,6 +3570,33 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-warn"><strong>Hidden data:</strong> client medical/PII (profile, tattoo records, intake and consent forms) and every financial surface (payments, billing, revenue reports) stay completely inaccessible for the whole session, even to view.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> every session — who started it, which studio, the reason given, and when it started/ended — is recorded in the <a href="#admin-audit-log">audit log</a> under your own admin account, distinguishable from your normal admin actions.</div>
 <div class="crosslinks">See also: <a href="#admin-studio-detail">Studio detail</a>, <a href="#admin-audit-log">Audit log</a></div>
+</section>
+
+<section id="admin-notifications" data-role="admin">
+<h2><span class="role-badge role-admin">Admin</span> New studio registration alerts</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>Every time a new studio registers on the platform, every admin account is notified two ways: an email, and a <code>/notifications</code> log entry that pushes live to the bell if you're connected at the moment it happens.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 260" role="img" aria-label="Admin notification bell wireframe">
+<rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
+<text x="600" y="21" font-size="10" font-weight="700">🔔</text>
+<rect x="618" y="8" width="14" height="14" rx="7" fill="#ef4444"/><text x="622" y="18" font-size="8" fill="#fff">1</text>
+<rect x="500" y="40" width="244" height="90" rx="8" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="514" y="60" font-size="9" font-weight="700">New studio registered</text>
+<text x="514" y="76" font-size="8" fill-opacity="0.6">Ink &amp; Soul Studio · Tirana</text>
+<text x="514" y="92" font-size="7" fill-opacity="0.4">Just now</text>
+</svg>
+</figure>
+<figcaption>The bell's unread count increments live; the entry links to that studio's detail page</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Watch the bell in the header — its unread count updates instantly when a new studio registers while you're connected, no page refresh needed.</li>
+<li>Click a <span class="step-title">New studio registered</span> entry in the bell to jump straight to that studio's detail page.</li>
+<li>If you weren't connected at the time, the same entry is waiting the next time you open the bell or visit <span class="step-title">Notifications</span> — and every admin account also gets the notice by email regardless.</li>
+<li>Go to <span class="step-title">Notifications</span> for the full history, spanning every studio that has ever registered — not scoped to one studio the way an owner's own log is.</li>
+</ol>
+<div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-studio-detail">Studio detail</a>, <a href="#owner-notifications">Owner: review sent notifications</a></div>
 </section>
 
 <section id="admin-plans" data-role="admin">

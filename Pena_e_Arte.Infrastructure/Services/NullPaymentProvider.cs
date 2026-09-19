@@ -15,7 +15,7 @@ namespace Pena_e_Arte.Infrastructure.Services;
 public sealed class NullPaymentProvider : IPaymentProvider
 {
     public PaymentProviderCapabilities Capabilities { get; } =
-        new(SupportsSplit: false, SupportsAuthCapture: false, SupportsHoldExpiry: false,
+        new(SupportsAuthCapture: false, SupportsHoldExpiry: false,
             SupportedCurrencies: []);
 
     private static InvalidOperationException NotConfigured() =>

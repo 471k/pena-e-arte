@@ -23,6 +23,11 @@ export const ownerTourSteps: TourStep[] = [
     route: "/artists",
   },
   {
+    targetSelector: '[data-tour="owner-artist-mode-switch"]',
+    title: "Switch between Owner and Artist",
+    body: "Once your own artist profile is enabled, jump between your Owner dashboard and your Artist profile from here anytime.",
+  },
+  {
     targetSelector: '[data-tour="owner-solo-publish-banner"]',
     title: "Get discoverable",
     body: "Add a real city and location in Studio Settings to appear on the Studio Map and in Discover. Only shown for a solo studio that hasn't published yet.",
@@ -32,6 +37,11 @@ export const ownerTourSteps: TourStep[] = [
     targetSelector: '[data-tour="owner-join-invite-bell"]',
     title: "Studio join invites",
     body: "If another studio invites you to join them as an artist, it shows up here. Only appears when you have a pending invite.",
+  },
+  {
+    targetSelector: '[data-tour="owner-services-nav"]',
+    title: "Build your service catalog",
+    body: "Add bookable services like \"New Tattoo Session\" or \"Touch-Up\" — clients pick one when booking, and each drives its own duration and, optionally, its own deposit.",
   },
   {
     targetSelector: '[data-tour="owner-deposit-rules-nav"]',

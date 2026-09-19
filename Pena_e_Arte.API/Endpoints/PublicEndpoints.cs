@@ -70,6 +70,8 @@ public static class PublicEndpoints
              .AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/{slug}/booking/deposit-rule", GetPublicDepositRule)
              .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/studios/{slug}/booking/services", GetPublicServices)
+             .AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/studios/{slug}/booking/presign", GetPresignedGuestUploadUrl)
              .AllowAnonymous().RequireRateLimiting("public-booking");
     }
@@ -541,6 +543,15 @@ public static class PublicEndpoints
         CancellationToken ct)
     {
         PublicDepositRuleResponse? result = await mediator.Send(new GetPublicDepositRuleQuery(slug), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetPublicServices(
+        string slug,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        List<PublicServiceResponse> result = await mediator.Send(new GetPublicServicesQuery(slug), ct);
         return Results.Ok(result);
     }
 

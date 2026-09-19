@@ -29,7 +29,7 @@ public class GetPaymentCapabilitiesHandlerTests
     public async Task Handle_ProviderDoesNotSupportAuthCapture_ReturnsUnavailableRegardlessOfConnection()
     {
         _provider.Capabilities.Returns(new PaymentProviderCapabilities(
-            SupportsSplit: false, SupportsAuthCapture: false, SupportsHoldExpiry: false,
+            SupportsAuthCapture: false, SupportsHoldExpiry: false,
             SupportedCurrencies: [], Environment: "staging"));
         await SeedConnectedStudioAsync();
 
@@ -43,7 +43,7 @@ public class GetPaymentCapabilitiesHandlerTests
     public async Task Handle_ProviderSupportsAuthCapture_StudioNotConnected_ReturnsUnavailable()
     {
         _provider.Capabilities.Returns(new PaymentProviderCapabilities(
-            SupportsSplit: true, SupportsAuthCapture: true, SupportsHoldExpiry: true,
+            SupportsAuthCapture: true, SupportsHoldExpiry: true,
             SupportedCurrencies: ["ALL"], Environment: "staging"));
         _db.Studios.Add(new Studio { Id = _studioId, Name = "T", Slug = "t", PokMerchantId = null });
         await _db.SaveChangesAsync();
@@ -60,7 +60,7 @@ public class GetPaymentCapabilitiesHandlerTests
         // A Studio.PokMerchantId with no matching StudioCredentialRef is not a real connection —
         // both must be present (ConnectPokAccountCommand always writes both together).
         _provider.Capabilities.Returns(new PaymentProviderCapabilities(
-            SupportsSplit: true, SupportsAuthCapture: true, SupportsHoldExpiry: true,
+            SupportsAuthCapture: true, SupportsHoldExpiry: true,
             SupportedCurrencies: ["ALL"], Environment: "staging"));
         _db.Studios.Add(new Studio { Id = _studioId, Name = "T", Slug = "t", PokMerchantId = "merchant-1" });
         await _db.SaveChangesAsync();
@@ -74,7 +74,7 @@ public class GetPaymentCapabilitiesHandlerTests
     public async Task Handle_ProviderSupportsAuthCapture_StudioConnected_ReturnsAvailableWithEnvironment()
     {
         _provider.Capabilities.Returns(new PaymentProviderCapabilities(
-            SupportsSplit: true, SupportsAuthCapture: true, SupportsHoldExpiry: true,
+            SupportsAuthCapture: true, SupportsHoldExpiry: true,
             SupportedCurrencies: ["ALL"], Environment: "staging"));
         await SeedConnectedStudioAsync();
 

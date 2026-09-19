@@ -801,4 +801,140 @@ public class CreateAppointmentHandlerTests
         result.DepositAmount.Should().Be(16m);
         result.DepositAmount.Should().BeGreaterThanOrEqualTo(0m);
     }
+
+    // ── Service Catalog ─────────────────────────────────────────────────────────
+
+    private Service SeedService(int durationMinutes = 45, decimal? depositAmount = null, bool isActive = true, Guid? studioId = null)
+    {
+        Service service = new()
+        {
+            StudioId = studioId ?? _studioId,
+            Name = "Touch-Up",
+            DurationMinutes = durationMinutes,
+            DepositAmount = depositAmount,
+            IsActive = isActive,
+        };
+        _db.Services.Add(service);
+        _db.SaveChanges();
+        return service;
+    }
+
+    [Fact]
+    public async Task Handle_WithService_OverridesRequestDurationFromService()
+    {
+        Service service = SeedService(durationMinutes: 20);
+        // Request says 90 minutes — the service's own 20 minutes must win, never the request's.
+        CreateAppointmentRequest req = ValidRequest() with { DurationMinutes = 90, ServiceId = service.Id };
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DurationMinutes.Should().Be(20);
+        _db.Appointments.Single(a => a.Id == result.Id).EndDate
+            .Should().Be(req.Date.AddMinutes(20));
+    }
+
+    [Fact]
+    public async Task Handle_WithServiceHavingDepositAmount_UsesServiceDepositIgnoringActiveDepositRule()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
+        Service service = SeedService(depositAmount: 25m);
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { ServiceId = service.Id };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(25m);
+    }
+
+    [Fact]
+    public async Task Handle_WithServiceWithoutDepositAmount_FallsBackToActiveDepositRule()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
+        Service service = SeedService(depositAmount: null);
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { ServiceId = service.Id };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(75m);
+    }
+
+    [Fact]
+    public async Task Handle_PackagePurchaseWithServiceDeposit_DepositStaysZero()
+    {
+        Service service = SeedService(depositAmount: 40m);
+        Package package = new() { StudioId = _studioId, Name = "5-Pack", SessionCount = 5, Price = 500m, IsActive = true };
+        _db.Packages.Add(package);
+        PackagePurchase purchase = new()
+        {
+            StudioId = _studioId,
+            PackageId = package.Id,
+            ClientId = Guid.NewGuid(),
+            SessionsRemaining = 1,
+            ProviderReferenceId = "pi_test",
+            Provider = "pok",
+            ConfirmedAt = DateTime.UtcNow,
+        };
+        _db.PackagePurchases.Add(purchase);
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with
+        {
+            ClientId = purchase.ClientId,
+            ServiceId = service.Id,
+            PackagePurchaseId = purchase.Id,
+        };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DepositAmount.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Handle_InactiveService_ThrowsNotFoundException()
+    {
+        Service service = SeedService(isActive: false);
+
+        CreateAppointmentRequest req = ValidRequest() with { ServiceId = service.Id };
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_ServiceFromDifferentStudio_ThrowsNotFoundException()
+    {
+        Service otherStudioService = SeedService(studioId: Guid.NewGuid());
+
+        CreateAppointmentRequest req = ValidRequest() with { ServiceId = otherStudioService.Id };
+        Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_NoServiceId_LeavesDurationAndDepositUntouchedByServiceLogic()
+    {
+        _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "Standard", AmountFixed = 75m, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        CreateAppointmentRequest req = ValidRequest() with { DurationMinutes = 90, ServiceId = null };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.DurationMinutes.Should().Be(90);
+        result.DepositAmount.Should().Be(75m);
+        result.ServiceId.Should().BeNull();
+        result.ServiceName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WithService_ResponseIncludesServiceIdAndName()
+    {
+        Service service = SeedService();
+
+        CreateAppointmentRequest req = ValidRequest() with { ServiceId = service.Id };
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        result.ServiceId.Should().Be(service.Id);
+        result.ServiceName.Should().Be("Touch-Up");
+    }
 }

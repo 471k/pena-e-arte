@@ -19,20 +19,35 @@ vi.mock("@/shared/components/ui/location-picker", () => ({
     onChange,
     error,
   }: {
-    onChange: (val: LocationPickerValue) => void;
+    onChange: (val: LocationPickerValue & { streetAddress: string }) => void;
     error?: string;
   }) => (
     <div>
       <button
         type="button"
         data-testid="mock-location-picker"
-        onClick={() => onChange({ lat: 40.0, lng: -8.0, city: "Coimbra" })}
+        onClick={() => onChange({ lat: 40.0, lng: -8.0, city: "Coimbra", streetAddress: "" })}
       >
         Pick location
+      </button>
+      <button
+        type="button"
+        data-testid="mock-location-picker-drag"
+        onClick={() =>
+          onChange({ lat: 41.0, lng: -8.5, city: "Porto", streetAddress: "Rua Nova 42" })
+        }
+      >
+        Drag pin
       </button>
       {error && <p data-testid="location-error">{error}</p>}
     </div>
   ),
+}));
+
+// Real Nominatim calls aren't viable in a unit test — same reasoning as mocking
+// LocationPicker above. Tests exercise the plain form-field wiring, not geocoding.
+vi.mock("@/shared/hooks/useAddressGeocode", () => ({
+  useAddressGeocode: () => ({ status: "idle" as const }),
 }));
 
 // Prevent SubscriptionGatedButton from calling subscription/studio APIs
@@ -79,6 +94,9 @@ const STUDIO = {
   isActive:             true,
   slugLockedAt:         null,
   nipt:                 null as string | null,
+  addressLine1:         null as string | null,
+  addressLine2:         null as string | null,
+  postalCode:           null as string | null,
 };
 
 // ── MSW server ────────────────────────────────────────────────────────────────
@@ -174,6 +192,33 @@ describe("StudioProfilePage — after data loads", () => {
     expect(
       screen.getByText(/click the map or drag the pin/i),
     ).toBeInTheDocument();
+  });
+
+  it("dragging the pin fills the Street address field from the reverse-geocoded address", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.click(screen.getByTestId("mock-location-picker-drag"));
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street address/i).value).toBe(
+      "Rua Nova 42",
+    );
+  });
+
+  it("dragging the pin to a spot with no resolvable road leaves a typed address untouched", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.clear(screen.getByLabelText(/street address/i));
+    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    // "Pick location" mock fires streetAddress: "" — simulates a rural pin drop.
+    await user.click(screen.getByTestId("mock-location-picker"));
+
+    expect(screen.getByLabelText<HTMLInputElement>(/street address/i).value).toBe(
+      "Rua Central 5",
+    );
   });
 });
 
@@ -377,6 +422,65 @@ describe("StudioProfilePage — NIPT", () => {
       await screen.findByText(/already registered under a different account/i),
     ).toBeInTheDocument();
   });
+});
+
+describe("StudioProfilePage — address", () => {
+  afterEach(() => sessionStorage.clear());
+
+  it("shows the backfill banner when addressLine1 is null", async () => {
+    renderPage();
+    await waitForForm();
+    expect(screen.getByText(/add your studio's street address/i)).toBeInTheDocument();
+  });
+
+  it("does not show the backfill banner when addressLine1 is set", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ ...STUDIO, addressLine1: "Rua Central 5" }),
+      ),
+    );
+    renderPage();
+    await waitForForm();
+    expect(screen.queryByText(/add your studio's street address/i)).not.toBeInTheDocument();
+  });
+
+  it("dismissing the backfill banner hides it and persists across the session", async () => {
+    // NIPT already set so only the address banner (and its one Dismiss button) renders —
+    // avoids ambiguity with the separate NIPT backfill banner's own Dismiss button.
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ ...STUDIO, nipt: "L01234567A" }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.click(screen.getByRole("button", { name: /dismiss/i }));
+
+    expect(screen.queryByText(/add your studio's street address/i)).not.toBeInTheDocument();
+    expect(sessionStorage.getItem("address-banner-dismissed")).toBe("true");
+  });
+
+  it("typing a new address saves it via updateMyStudio", async () => {
+    let capturedAddress: unknown;
+    server.use(
+      http.put("http://localhost/api/v1/studios/me", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        capturedAddress = body.addressLine1;
+        return HttpResponse.json({ ...STUDIO, addressLine1: body.addressLine1 as string });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await waitForForm();
+
+    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await screen.findByText(/changes saved/i);
+    expect(capturedAddress).toBe("Rua Central 5");
+  }, 20000);
 });
 
 describe("StudioProfilePage — slug editing", () => {

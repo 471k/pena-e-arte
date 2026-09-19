@@ -48,7 +48,8 @@ public class UpdateStudioBrandingHandler(IAppDbContext db, ICurrentTenant tenant
             allowApiAccess,
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
-            studio.IsSolo, studio.IsPublished, studio.Timezone);
+            studio.IsSolo, studio.IsPublished, studio.Timezone,
+            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode);
     }
 }
 

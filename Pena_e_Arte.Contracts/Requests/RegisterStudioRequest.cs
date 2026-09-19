@@ -8,4 +8,7 @@ public record RegisterStudioRequest(
     double Longitude,
     string OwnerEmail,
     string Nipt,
+    string AddressLine1,
+    string? AddressLine2 = null,
+    string? PostalCode = null,
     string? ReferralCode = null);

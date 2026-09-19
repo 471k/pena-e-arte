@@ -35,19 +35,47 @@ public class CreateDepositPaymentHandler(
 
     public async Task<PaymentIntentResponse> Handle(CreateDepositPaymentCommand command, CancellationToken ct)
     {
-        Appointment appointment = await db.Appointments
-            .FirstOrDefaultAsync(a => a.Id == command.AppointmentId, ct)
-            ?? throw new NotFoundException(nameof(Appointment), command.AppointmentId);
+        Appointment appointment = await ResolveOwnAppointmentAsync(db, currentUser, command.AppointmentId, ct);
+        (Guid paymentId, string clientToken, PaymentStatus status) =
+            await ResolveOrCreateHoldAsync(db, tenant, paymentProvider, appointment, ct);
+        return new PaymentIntentResponse(paymentId, clientToken, status.ToString());
+    }
 
-        // Clients may only pay the deposit on their own appointment —
-        // ownership resolved (and healed) through Client.UserId / email.
+    /// <summary>
+    /// Resolves the caller's own appointment by id — clients may only act on their own
+    /// (ownership resolved, and healed, through Client.UserId/email); staff roles may act on
+    /// any appointment in their studio. Shared by both CreateDepositPaymentCommand and
+    /// PayDepositWithSavedCardCommand (identical ownership rule for either payment method).
+    /// </summary>
+    internal static async Task<Appointment> ResolveOwnAppointmentAsync(
+        IAppDbContext db, ICurrentUser currentUser, Guid appointmentId, CancellationToken ct)
+    {
+        Appointment appointment = await db.Appointments
+            .FirstOrDefaultAsync(a => a.Id == appointmentId, ct)
+            ?? throw new NotFoundException(nameof(Appointment), appointmentId);
+
         if (currentUser.Role == "client")
         {
             Client? me = await db.FindClientForUserAsync(currentUser, ct);
             if (me is null || me.Id != appointment.ClientId)
-                throw new NotFoundException(nameof(Appointment), command.AppointmentId);
+                throw new NotFoundException(nameof(Appointment), appointmentId);
         }
 
+        return appointment;
+    }
+
+    /// <summary>
+    /// Resolves (or mints) the provider hold for an appointment's deposit — shared by the
+    /// new-card flow (this handler) and the saved-card flow (PayDepositWithSavedCardCommand,
+    /// which additionally sets up a 3DS challenge against whatever order this returns before
+    /// the client can actually charge it). Returns the payment id, the provider's client-facing
+    /// token (POK order id), and the resulting status: Pending means a fresh/resumed hold that
+    /// still needs the client to complete payment; Captured/Paid means the deposit is already
+    /// settled and the caller should report that directly, with no further POK interaction.
+    /// </summary>
+    internal static async Task<(Guid PaymentId, string ClientToken, PaymentStatus Status)> ResolveOrCreateHoldAsync(
+        IAppDbContext db, ICurrentTenant tenant, IPaymentProvider paymentProvider, Appointment appointment, CancellationToken ct)
+    {
         if (appointment.DepositAmount <= 0)
             throw new BusinessRuleViolationException("This appointment does not require a deposit.");
 
@@ -72,14 +100,14 @@ public class CreateDepositPaymentHandler(
             {
                 case PaymentProviderStatus.Pending:
                     // Still awaiting the client — resume with the same hold
-                    return new PaymentIntentResponse(existing.Id, existing.ClientToken, PaymentStatus.Pending.ToString());
+                    return (existing.Id, existing.ClientToken, PaymentStatus.Pending);
 
                 case PaymentProviderStatus.Authorized:
                     // Authorized but the webhook never arrived — heal and report
                     existing.Status = PaymentStatus.Captured;
                     existing.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
-                    return new PaymentIntentResponse(existing.Id, existing.ClientToken, PaymentStatus.Captured.ToString());
+                    return (existing.Id, existing.ClientToken, PaymentStatus.Captured);
 
                 case PaymentProviderStatus.Captured:
                     // Captured but the webhook never arrived — heal and report
@@ -89,7 +117,7 @@ public class CreateDepositPaymentHandler(
                     appointment.DepositStatus = DepositStatus.Paid;
                     appointment.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
-                    return new PaymentIntentResponse(existing.Id, existing.ClientToken, PaymentStatus.Paid.ToString());
+                    return (existing.Id, existing.ClientToken, PaymentStatus.Paid);
 
                     // Canceled / Failed / null (gone) at the provider — fall through and mint a fresh hold
             }
@@ -110,7 +138,6 @@ public class CreateDepositPaymentHandler(
                 PaymentId: paymentId,
                 AmountInCents: amountInCents,
                 Currency: DepositCurrency,
-                PlatformFeeAmountInCents: 0, // ADR-0001 monetization: wired in, deferred at 0%
                 HoldDurationMinutes: HoldDurationMinutes),
             ct);
         DateTime holdExpiresAt = DateTime.UtcNow.AddMinutes(HoldDurationMinutes);
@@ -148,6 +175,6 @@ public class CreateDepositPaymentHandler(
         }
 
         await db.SaveChangesAsync(ct);
-        return new PaymentIntentResponse(paymentId, clientToken, PaymentStatus.Pending.ToString());
+        return (paymentId, clientToken, PaymentStatus.Pending);
     }
 }

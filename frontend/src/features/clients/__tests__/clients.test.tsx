@@ -28,7 +28,7 @@ const ANA: ClientResponse = {
   userId:     null,
   artistId:   null,
   artistName: null,
-  erasureRequestedAt: null,
+  erasureRequestedAt: null, archivedAt: null,
 };
 
 const CLIENTS: ClientResponse[] = [
@@ -44,7 +44,7 @@ const CLIENTS: ClientResponse[] = [
     userId:     null,
     artistId:   null,
     artistName: null,
-    erasureRequestedAt: null,
+    erasureRequestedAt: null, archivedAt: null,
   },
   {
     id:         "cccc0003-0000-0000-0000-000000000003",
@@ -57,7 +57,7 @@ const CLIENTS: ClientResponse[] = [
     userId:     null,
     artistId:   null,
     artistName: null,
-    erasureRequestedAt: null,
+    erasureRequestedAt: null, archivedAt: null,
   },
 ];
 

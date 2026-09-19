@@ -73,9 +73,9 @@ export function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     try {
-      const { accessToken } = await login(values).unwrap();
+      const { accessToken, refreshToken } = await login(values).unwrap();
       const payload = decodeToken(accessToken);
-      dispatch(setCredentials({ ...payload, remember }));
+      dispatch(setCredentials({ ...payload, refreshToken, remember }));
       // Navigation handled by the useEffect above once Redux re-renders with the new role
     } catch {
       // error surfaced via RTK Query's `error` state below
@@ -89,9 +89,9 @@ export function LoginPage() {
     provider: "google" | "apple";
     idToken: string;
   }) {
-    const { accessToken } = await oauthLogin({ provider, idToken }).unwrap();
+    const { accessToken, refreshToken } = await oauthLogin({ provider, idToken }).unwrap();
     const payload = decodeToken(accessToken);
-    dispatch(setCredentials({ ...payload, remember }));
+    dispatch(setCredentials({ ...payload, refreshToken, remember }));
     // Navigation handled by the useEffect above once Redux re-renders with the new role
   }
 

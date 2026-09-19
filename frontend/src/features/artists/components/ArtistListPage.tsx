@@ -70,7 +70,13 @@ export function ArtistListPage() {
   const [selectedSpec, setSelectedSpec]       = useState<string | null>(null);
 
   const currentUserName = useAppSelector((s) => s.auth.user?.name);
-  const { data: myArtist, isLoading: myArtistLoading } = useGetMyArtistQuery(undefined, { skip: !canManage });
+  const { data: myArtist, isLoading: myArtistLoading, isError: myArtistError } =
+    useGetMyArtistQuery(undefined, { skip: !canManage });
+  // RTK Query only tags a query's cache entry on success — a 404 (no profile) is never
+  // tagged "Artist", so deleting an existing profile does invalidate/refetch this query, but
+  // that refetch's own failure leaves `data` holding the stale pre-delete artist rather than
+  // clearing it. Must check isError explicitly, or this CTA stays hidden after a delete.
+  const hasNoArtistProfile = myArtistError || !myArtist;
   const [createOwnArtistProfile, { isLoading: isEnabling }] = useCreateOwnArtistProfileMutation();
   const [becomeArtistOpen, setBecomeArtistOpen] = useState(false);
   const [baFirstName, setBaFirstName]           = useState(currentUserName ?? "");
@@ -82,7 +88,7 @@ export function ArtistListPage() {
   // own here with ?onboarding=1 — auto-open the same "Enable my artist profile" dialog
   // instead of requiring them to find and click the CTA themselves.
   useEffect(() => {
-    if (searchParams.get("onboarding") === "1" && !myArtistLoading && !myArtist) {
+    if (searchParams.get("onboarding") === "1" && !myArtistLoading && hasNoArtistProfile) {
       // Syncing from the URL (an external source) — same accepted pattern as elsewhere
       // in this codebase (e.g. AdminStudioListPage, PortfolioFeed).
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -92,7 +98,7 @@ export function ArtistListPage() {
       setSearchParams(next, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, myArtistLoading, myArtist]);
+  }, [searchParams, myArtistLoading, hasNoArtistProfile]);
 
   async function onEnableOwnArtistProfile() {
     try {
@@ -287,7 +293,7 @@ export function ArtistListPage() {
           />
         </div>
 
-        {canManage && !myArtistLoading && !myArtist && (
+        {canManage && !myArtistLoading && hasNoArtistProfile && (
           <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Also work as an artist?</p>

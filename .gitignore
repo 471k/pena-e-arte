@@ -55,6 +55,12 @@ secrets.json
 **/secrets.json
 Seeded Test Accounts.txt
 
+## Local AI-tool configs that carry live credentials (MCP server auth headers, etc.) —
+## never meant to be shared via the repo. A Postman MCP API key was accidentally
+## committed via .codex/config.toml on 2026-09-18 (rotated same day); this rule exists
+## so that class of mistake can't happen again for any tool config, not just Codex's.
+.codex/
+
 ## GeoIP — geoipupdate config carries a live AccountID/LicenseKey; .mmdb files
 ## are large binary downloads, never source
 GeoIP.conf

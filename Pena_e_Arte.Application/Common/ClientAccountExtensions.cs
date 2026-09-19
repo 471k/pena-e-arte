@@ -59,4 +59,17 @@ public static class ClientAccountExtensions
             .Where(c => c.UserId == userId && c.DeletedAt == null)
             .OrderBy(c => c.CreatedAt)
             .FirstOrDefaultAsync(ct);
+
+    /// <summary>
+    /// Approved exception #5 (see docs/claude/database.md "Tenant Isolation Rules") — same class
+    /// of usage as FindClientForUserAtStudioAsync/FindAnyClientRecordForUserAsync above. Finds
+    /// EVERY live Client record for a user across every studio they belong to. Used by right-to-
+    /// erasure (fan out the erasure/cancel/export action to every studio relationship, not just
+    /// the caller's active tenant) — never used to read or copy medical data between studios.
+    /// </summary>
+    public static Task<List<Client>> FindAllClientRecordsForUserAsync(
+        this IAppDbContext db, Guid userId, CancellationToken ct) =>
+        db.Clients.IgnoreQueryFilters()
+            .Where(c => c.UserId == userId && c.DeletedAt == null)
+            .ToListAsync(ct);
 }

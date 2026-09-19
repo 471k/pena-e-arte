@@ -2,7 +2,7 @@
 // script this app has no precedent of loading a third-party runtime script). Bump CACHE_NAME
 // on any future change to this file so returning visitors pick up the new shell rather than
 // serving a stale cached one indefinitely.
-const CACHE_NAME = "tattooos-shell-v2";
+const CACHE_NAME = "tattooos-shell-v5";
 const SHELL_ASSETS = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -40,8 +40,49 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for everything else (the built app shell + static assets), falling back to
-  // network and caching the result for next time.
+  // Cache API only supports GET; caching a POST/PUT/etc. throws "Request method is unsupported".
+  // Let every non-GET request (form posts, analytics beacons, ...) go straight to the network.
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+  // Network-first for the HTML shell itself (page navigations + manifest.json) — the shell's
+  // own content changes on every deploy (its <script> tags point at the CURRENT build's
+  // content-hashed JS/CSS filenames), so caching it cache-first pins a returning visitor to
+  // whichever build they first loaded, indefinitely, with no way to pick up a new deploy short
+  // of manually clearing the service worker's cache — a real bug that hid multiple real fixes
+  // from a real user's browser across several deploys before being caught (2026-09-17). Falls
+  // back to the cached shell only when the network is genuinely unavailable (offline), which is
+  // this cache's actual purpose per SHELL_ASSETS being pre-populated on install.
+  const isNavigation = event.request.mode === "navigate";
+  const isShellRequest = isNavigation || url.pathname === "/manifest.json";
+  if (isShellRequest) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() =>
+          // A navigation request's own exact URL (e.g. "/platform/studios/abc") is never
+          // individually cached — only "/" and "/manifest.json" are precached. Falling back to
+          // caches.match(event.request) for a route like that misses, resolves to undefined,
+          // and respondWith(undefined) throws ("ServiceWorker intercepted the request and
+          // encountered an unexpected error") instead of failing gracefully. Client-side routing
+          // (React Router) re-derives the right page from the URL once the cached root shell
+          // itself loads, so falling back to "/" is correct for every navigation, not just "/".
+          isNavigation ? caches.match("/") : caches.match(event.request)
+        )
+    );
+    return;
+  }
+
+  // Cache-first for everything else — Vite's built JS/CSS/asset filenames are content-hashed,
+  // so a cached entry can never go stale: the same URL always means the same bytes, and a new
+  // deploy always means a new URL (referenced by the freshly network-fetched shell above).
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

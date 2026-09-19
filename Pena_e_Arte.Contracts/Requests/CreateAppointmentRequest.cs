@@ -27,7 +27,13 @@ public record CreateAppointmentRequest(
     // entirely; see CreateAppointmentCommand. Mutually exclusive with PromoCode/ReferralCode/
     // ReferralRewardId in practice — CreateAppointmentCommand skips all three when a package
     // is used, since the deposit is already 0.
-    Guid? PackagePurchaseId = null);
+    Guid? PackagePurchaseId = null,
+    // When present, CreateAppointmentCommand re-derives DurationMinutes from the service's
+    // own DurationMinutes server-side (this field's own DurationMinutes value is ignored in
+    // that case, never trusted) and — when the service has its own DepositAmount — that value
+    // overrides the DepositRule calculation entirely for this booking. Null preserves the
+    // original free-text/no-service booking flow exactly as before this field existed.
+    Guid? ServiceId = null);
 
 /// <summary>Category: "AreaPhoto" | "Reference" (matches AppointmentAttachmentCategory).</summary>
 public record AppointmentImageRequest(string Url, string Category);

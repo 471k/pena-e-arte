@@ -257,6 +257,7 @@ try
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();
     app.MapDepositRuleEndpoints();
+    app.MapServiceEndpoints();
     app.MapPromoCodeEndpoints();
     app.MapArtistEndpoints();
     app.MapInstagramEndpoints();
@@ -269,6 +270,7 @@ try
     app.MapBillingEndpoints();
     app.MapFormEndpoints();
     app.MapPaymentEndpoints();
+    app.MapSavedPaymentMethodEndpoints();
     app.MapNotificationEndpoints();
     app.MapManualReminderEndpoints();
     app.MapFileEndpoints();

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, ChevronRight, Mail, Pencil, Phone, Loader2, MapPin, Send, UserRound } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Calendar, ChevronRight, Mail, Pencil, Phone, Loader2, MapPin, Send, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -13,6 +13,11 @@ import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -30,6 +35,8 @@ import {
   useUpsertClientProfileMutation,
   useUpdateBodyMapMutation,
   useUpdateClientArtistMutation,
+  useArchiveClientMutation,
+  useRestoreClientMutation,
 } from "../clientsApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { useGetIntakeFormsQuery } from "@/features/forms/intakeFormsApi";
@@ -119,6 +126,32 @@ export function ClientDetailPage() {
   const [bodyMapMode,  setBodyMapMode]  = useState<"view" | "edit">("view");
   const [bodyMapDraft, setBodyMapDraft] = useState<string[]>([]);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
+  const [archiveClient, { isLoading: isArchiving }] = useArchiveClientMutation();
+  const [restoreClient, { isLoading: isRestoring }] = useRestoreClientMutation();
+
+  async function handleArchive() {
+    if (!id) return;
+    const result = await archiveClient(id);
+    if ("error" in result) {
+      toast.error("Couldn't archive this client. Please try again.");
+    } else {
+      toast.success("Client archived.");
+    }
+    setArchiveConfirmOpen(false);
+  }
+
+  async function handleRestore() {
+    if (!id) return;
+    const result = await restoreClient(id);
+    if ("error" in result) {
+      toast.error("Couldn't restore this client. Please try again.");
+    } else {
+      toast.success("Client restored.");
+    }
+    setRestoreConfirmOpen(false);
+  }
 
   const { register, handleSubmit, formState: { errors }, reset } =
     useForm<ProfileFormValues>({ resolver: zodResolver(profileSchema) });
@@ -597,6 +630,44 @@ export function ClientDetailPage() {
           </Tabs>
         )}
 
+        {canEdit && !isEditing && (
+          <Card>
+            <CardContent className="flex items-center justify-between gap-3 p-4">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-medium">
+                  {client.archivedAt ? "Client archived" : "Archive this client"}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {client.archivedAt
+                    ? "Removed from your active client list. Their records are untouched — restore any time."
+                    : "Removes them from your active client list without deleting anything. Reversible any time."}
+                </p>
+              </div>
+              {client.archivedAt ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  onClick={() => setRestoreConfirmOpen(true)}
+                >
+                  <ArchiveRestore className="h-3.5 w-3.5" />
+                  Restore
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  onClick={() => setArchiveConfirmOpen(true)}
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  Archive
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {isOwner && !isEditing && (
           <EraseClientDataSection
             clientId={id!}
@@ -612,6 +683,41 @@ export function ClientDetailPage() {
         open={reminderDialogOpen}
         onOpenChange={setReminderDialogOpen}
       />
+
+      <AlertDialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive {client.firstName} {client.lastName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They&apos;ll be removed from your active client list. Their appointments, payments,
+              and consent records stay exactly as they are, and you can restore them any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive} disabled={isArchiving}>
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={restoreConfirmOpen} onOpenChange={setRestoreConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore {client.firstName} {client.lastName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They&apos;ll reappear in your active client list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRestoring}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestore} disabled={isRestoring}>
+              Restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

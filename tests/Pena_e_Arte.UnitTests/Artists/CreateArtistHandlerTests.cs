@@ -251,4 +251,78 @@ public class CreateArtistHandlerTests
         result.UserId.Should().Be(orphanedUserId);
         _db.Artists.Should().ContainSingle(a => a.Email == email && a.UserId == orphanedUserId);
     }
+
+    // ── Freed-artist reuse guard (industry-standard fix, 2026-09-17) ───────────────
+    // A "freed" artist held the "artist" role at some OTHER studio in the past, but was removed
+    // (DeleteArtistHandler frees the tenant claim), leaving zero tenant claims. Must be
+    // re-inviteable — permanently locking the account out is not how this SaaS category works.
+
+    [Fact]
+    public async Task Handle_EmailBelongsToFreedArtist_ReusesExistingUserIdAndSucceeds()
+    {
+        const string email = "freed-artist@studio.com";
+        Guid freedUserId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(freedUserId);
+        _identity.GetUserRolesAsync(freedUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "artist" });
+        _identity.GetTenantIdsAsync(freedUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid>()); // artist role, zero tenant claims — freed, not orphaned
+
+        ArtistResponse result = await CreateSut()
+            .Handle(new CreateArtistCommand(new("Rejoined", "Artist", email, null)), default);
+
+        result.UserId.Should().Be(freedUserId);
+        _db.Artists.Should().ContainSingle(a => a.Email == email && a.UserId == freedUserId);
+    }
+
+    [Fact]
+    public async Task Handle_EmailBelongsToFreedArtist_GrantsTenantClaimForThisStudio()
+    {
+        const string email = "freed-artist@studio.com";
+        Guid freedUserId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(freedUserId);
+        _identity.GetUserRolesAsync(freedUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "artist" });
+        _identity.GetTenantIdsAsync(freedUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid>());
+
+        await CreateSut().Handle(new CreateArtistCommand(new("Rejoined", "Artist", email, null)), default);
+
+        await _identity.Received(1).EnsureTenantClaimAsync(freedUserId, _studioId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_EmailBelongsToFreedArtist_EnqueuesRejoiningInviteEmail()
+    {
+        const string email = "freed-artist@studio.com";
+        Guid freedUserId = Guid.NewGuid();
+
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "artist", _studioId, Arg.Any<string>())
+            .Returns((false, Guid.Empty, new[] { $"Username '{email}' is already taken." }));
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(freedUserId);
+        _identity.GetUserRolesAsync(freedUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "artist" });
+        _identity.GetTenantIdsAsync(freedUserId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid>());
+
+        await CreateSut().Handle(new CreateArtistCommand(new("Rejoined", "Artist", email, null)), default);
+
+        _scheduler.Received(1).EnqueueArtistInvite(email, "Rejoined", _studioId, true);
+    }
+
+    [Fact]
+    public async Task Handle_NewEmail_EnqueuesNonRejoiningInviteEmail()
+    {
+        CreateArtistRequest req = new("Rui", "Tavares", "rui@studio.com", null);
+
+        await CreateSut().Handle(new CreateArtistCommand(req), default);
+
+        _scheduler.Received(1).EnqueueArtistInvite("rui@studio.com", "Rui", _studioId, false);
+    }
 }

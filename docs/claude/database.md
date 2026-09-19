@@ -78,6 +78,9 @@ public class Studio  // NOT a TenantEntity — admin-owned
     public string   Slug             { get; set; }  // url-safe unique identifier
     public string   City             { get; set; }
     public string?  Nipt             { get; set; }  // business tax ID (NUIS) — nullable for backfill, not an auth factor
+    public string?  AddressLine1     { get; set; }  // street address — nullable for backfill, required for new registrations (app-layer)
+    public string?  AddressLine2     { get; set; }  // suite/unit/floor — always optional
+    public string?  PostalCode       { get; set; }  // always optional
     public double   Latitude         { get; set; }
     public double   Longitude        { get; set; }
     public bool     IsActive         { get; set; }  // gates tenant access entirely
@@ -161,7 +164,7 @@ except the following documented, narrowly-scoped exceptions:
 |---|---|---|---|
 | 3 | `PortableProfileService` | Cross-tenant client profile read | Requires `ClientProfile.AllowCrossTenantRead == true` opt-in |
 | 4 | `IndustryReportJob` | Admin-level industry aggregate | No PII, admin-only consumer |
-| 5 | `ClientAccountExtensions.FindClientForUserAtStudioAsync` / `FindAnyClientRecordForUserAsync` | Multi-studio client "switch active studio" flow (`SwitchStudioCommand`) | Only ever queries by the *caller's own* `UserId`; never used to read another user's data, and never copies medical/`ClientProfile` data across studios |
+| 5 | `ClientAccountExtensions.FindClientForUserAtStudioAsync` / `FindAnyClientRecordForUserAsync` / `FindAllClientRecordsForUserAsync` | Multi-studio client "switch active studio" flow (`SwitchStudioCommand`), and fanning out right-to-erasure/export/cancel-erasure to every studio a client belongs to (2026-09-18) | Only ever queries by the *caller's own* `UserId`; never used to read another user's data, and never copies medical/`ClientProfile` data across studios |
 | 6 | `StudioJoinInvites` reads in `InviteSoloArtistToJoinHandler` / `GetMyStudioJoinInvitesHandler` / `AcceptStudioJoinInviteHandler` / `DeclineStudioJoinInviteHandler` | Solo artist accepting/declining a cross-studio join invite (`docs/claude/overnight-prompt-solo-independent-artist-2026-08-26.md` Phase 6) | `StudioJoinInvite` itself carries no query filter (it isn't a `TenantEntity` — the invitee is not a member of the inviting studio's tenant until they accept); every read is additionally scoped by the *caller's own* email or the studio the caller currently owns, never an arbitrary studio id |
 
 ---
@@ -222,6 +225,15 @@ public DateTime? DeletedAt { get; set; }
 builder.Entity<Client>().HasQueryFilter(c =>
     c.StudioId == tenant.StudioId && c.DeletedAt == null);
 ```
+
+**`Client.ArchivedAt` is NOT `DeletedAt` and carries no query filter.** Added 2026-09-18 for the
+non-destructive "remove client from list" action (`ArchiveClientCommand`/`RestoreClientCommand`).
+EF Core applies a related entity's own global query filter even when reached via a navigation
+`Include()` from an unfiltered parent — reusing `DeletedAt` for archiving would silently null out
+an archived client's `Client` navigation on every past `Appointment`/`Payment`/`ConsentForm`.
+`ArchivedAt` is applied only as an explicit, opt-out `Where` in `GetClientsQuery`, never as a
+query filter, so every other lookup (client detail, appointment/payment/consent-form client
+links) keeps resolving normally.
 
 ---
 

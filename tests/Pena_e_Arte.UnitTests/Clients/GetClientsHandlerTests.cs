@@ -176,6 +176,48 @@ public class GetClientsHandlerTests
         result[0].ArtistName.Should().BeNull();
     }
 
+    [Fact]
+    public async Task Handle_DefaultIncludeArchived_ExcludesArchivedClients()
+    {
+        await SeedClients(("Ana", "Costa", "ana@example.com"));
+        Client archived = new()
+        {
+            StudioId = _studioId,
+            FirstName = "Rui",
+            LastName = "Neves",
+            Email = "rui@example.com",
+            ArchivedAt = DateTime.UtcNow,
+        };
+        _db.Clients.Add(archived);
+        await _db.SaveChangesAsync();
+
+        List<ClientResponse> result = await CreateSut().Handle(new GetClientsQuery(null), default);
+
+        result.Should().ContainSingle(c => c.FirstName == "Ana");
+    }
+
+    [Fact]
+    public async Task Handle_IncludeArchivedTrue_ReturnsArchivedClientsToo()
+    {
+        await SeedClients(("Ana", "Costa", "ana@example.com"));
+        Client archived = new()
+        {
+            StudioId = _studioId,
+            FirstName = "Rui",
+            LastName = "Neves",
+            Email = "rui@example.com",
+            ArchivedAt = DateTime.UtcNow,
+        };
+        _db.Clients.Add(archived);
+        await _db.SaveChangesAsync();
+
+        List<ClientResponse> result = await CreateSut()
+            .Handle(new GetClientsQuery(null, IncludeArchived: true), default);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(c => c.FirstName == "Rui" && c.ArchivedAt != null);
+    }
+
     private async Task SeedClients(params (string First, string Last, string Email)[] clients)
     {
         foreach ((string first, string last, string email) in clients)

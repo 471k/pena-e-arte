@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, Palette, FileText, ScrollText, User, PenLine, Building2, MessageCircle,
-  ListOrdered, Package as PackageIcon,
+  ListOrdered, Package as PackageIcon, CreditCard,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Intake Forms",     href: "/forms/intake",  icon: <FileText     className="h-4 w-4" /> },
   { label: "Consent Forms",    href: "/forms/consent", icon: <ScrollText   className="h-4 w-4" /> },
   { label: "My Profile",       href: "/clients/me",    icon: <User         className="h-4 w-4" /> },
+  { label: "Payment Methods",  href: "/clients/me/payment-methods", icon: <CreditCard className="h-4 w-4" />, tourId: "client-payment-methods-nav" },
 ];
 
 export function ClientLayout() {

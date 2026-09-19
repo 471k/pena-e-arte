@@ -22,6 +22,9 @@ public class RegisterStudioValidator : AbstractValidator<RegisterStudioCommand>
             .Length(10)
             .Must(n => NiptFormat.IsMatch(n.Trim().ToUpperInvariant()))
             .WithMessage("NIPT must be 10 characters: a letter, 8 digits, then a letter (e.g. L01234567A).");
+        RuleFor(x => x.Request.AddressLine1).NotEmpty().MaximumLength(300);
+        RuleFor(x => x.Request.AddressLine2).MaximumLength(150);
+        RuleFor(x => x.Request.PostalCode).MaximumLength(20);
         RuleFor(x => x.Request.Latitude).InclusiveBetween(-90, 90);
         RuleFor(x => x.Request.Longitude).InclusiveBetween(-180, 180);
     }

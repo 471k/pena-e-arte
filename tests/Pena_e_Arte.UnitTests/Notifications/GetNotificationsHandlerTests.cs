@@ -312,6 +312,72 @@ public class GetNotificationsHandlerTests
         result.Should().ContainSingle(n => n.RecipientId == client.Id);
     }
 
+    [Fact]
+    public async Task Handle_AdminCaller_ReturnsAdminRowsAcrossStudiosRegardlessOfOwnTenant()
+    {
+        FakeCurrentUser adminUser = FakeCurrentUser.Admin();
+        Guid studioA = Guid.NewGuid();
+        Guid studioB = Guid.NewGuid();
+
+        _db.Studios.Add(new Studio { Id = studioA, Name = "Studio A", OwnerEmail = "a@test.com" });
+        _db.Studios.Add(new Studio { Id = studioB, Name = "Studio B", OwnerEmail = "b@test.com" });
+        _db.NotificationLogs.Add(BuildLog(studioA, studioA, NotificationChannel.Email, recipientType: NotificationRecipientType.Admin));
+        _db.NotificationLogs.Add(BuildLog(studioB, studioB, NotificationChannel.Email, recipientType: NotificationRecipientType.Admin));
+        await _db.SaveChangesAsync();
+
+        GetNotificationsHandler sut = new(_db, adminUser);
+        List<NotificationLogResponse> result = await sut.Handle(new GetNotificationsQuery(null, null, null, null), default);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(n => n.RecipientId == studioA);
+        result.Should().Contain(n => n.RecipientId == studioB);
+    }
+
+    [Fact]
+    public async Task Handle_AdminCaller_ResolvesRecipientNameFromStudio()
+    {
+        FakeCurrentUser adminUser = FakeCurrentUser.Admin();
+        Guid studioId = Guid.NewGuid();
+
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink Soul", OwnerEmail = "owner@ink.test" });
+        _db.NotificationLogs.Add(BuildLog(studioId, studioId, NotificationChannel.Email, recipientType: NotificationRecipientType.Admin));
+        await _db.SaveChangesAsync();
+
+        GetNotificationsHandler sut = new(_db, adminUser);
+        List<NotificationLogResponse> result = await sut.Handle(new GetNotificationsQuery(null, null, null, null), default);
+
+        result.Single().RecipientName.Should().Be("Ink Soul");
+    }
+
+    [Fact]
+    public async Task Handle_ArtistCaller_DoesNotSeeAdminRowsEvenWhenRecipientIdMatchesQuery()
+    {
+        // The artist branch always filters by RecipientType.Artist explicitly — unlike the
+        // generic `else if (query.RecipientId.HasValue)` fallthrough used by owner/admin-less
+        // roles, it can never accidentally match an Admin-type row just because RecipientId
+        // happens to equal the requested value.
+        FakeCurrentUser artistUser = FakeCurrentUser.Artist();
+        Guid studioId = Guid.NewGuid();
+        var artist = new Artist
+        {
+            StudioId = studioId,
+            UserId = artistUser.UserId,
+            FirstName = "Art",
+            LastName = "Ist",
+            Email = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Artists.Add(artist);
+
+        _db.NotificationLogs.Add(BuildLog(studioId, studioId, NotificationChannel.Email, recipientType: NotificationRecipientType.Admin));
+        await _db.SaveChangesAsync();
+
+        GetNotificationsHandler sut = new(_db, artistUser);
+        List<NotificationLogResponse> result = await sut.Handle(
+            new GetNotificationsQuery(studioId, null, null, null), default);
+
+        result.Should().BeEmpty();
+    }
+
     private void SeedLogs(Guid studioId, int count)
     {
         for (int i = 0; i < count; i++)

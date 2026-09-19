@@ -7,6 +7,7 @@ using Pena_e_Arte.Application.ConsentForms.Commands;
 using Pena_e_Arte.Application.Designs.Commands;
 using Pena_e_Arte.Application.IntakeForms.Commands;
 using Pena_e_Arte.Application.Payments.Commands;
+using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
@@ -24,12 +25,15 @@ public class NotificationDispatchTests
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
     private readonly INotificationPreferenceService _prefs = Substitute.For<INotificationPreferenceService>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
 
     public NotificationDispatchTests(DatabaseFixture fixture)
     {
         this.fixture = fixture;
         _prefs.IsEnabledAsync(default, default, default, default)
               .ReturnsForAnyArgs(Task.FromResult(true));
+        _appSettings.BaseUrl.Returns("https://app.tattooos.co");
     }
 
     // ── Seed helpers ─────────────────────────────────────────────────────────────
@@ -331,6 +335,28 @@ public class NotificationDispatchTests
                         && n.RecipientType == NotificationRecipientType.Client
                         && n.Channel == NotificationChannel.Email);
         exists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SendStudioRegisteredNotification_ExistingStudio_WritesAdminLog()
+    {
+        (Guid studioId, _) = await SeedStudio();
+        _identity.GetEmailsInRoleAsync("admin", Arg.Any<CancellationToken>())
+            .Returns(new[] { "admin@pena-arte.test" });
+
+        await using AppDbContext db = fixture.CreateDbContext(studioId);
+        await new SendStudioRegisteredNotificationHandler(
+            db, _renderer, _notifications, _identity, _realtime, _appSettings,
+            NullLogger<SendStudioRegisteredNotificationHandler>.Instance)
+            .Handle(new SendStudioRegisteredNotificationCommand(studioId), default);
+
+        await using AppDbContext verify = fixture.CreateDbContext(studioId);
+        NotificationLog log = await verify.NotificationLogs
+            .SingleAsync(n => n.StudioId == studioId && n.RecipientType == NotificationRecipientType.Admin);
+
+        log.RecipientId.Should().Be(studioId);
+        log.Channel.Should().Be(NotificationChannel.Email);
+        log.IsSuccess.Should().BeTrue();
     }
 
     [Fact]

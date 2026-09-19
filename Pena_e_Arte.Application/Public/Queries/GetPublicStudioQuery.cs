@@ -129,6 +129,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
             ShowBookingCta: true,
             socialLinks,
             hours,
-            studio.Timezone);
+            studio.Timezone,
+            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode);
     }
 }

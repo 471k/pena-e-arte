@@ -18,6 +18,7 @@ public class GetAppointmentHandler(IAppDbContext db)
             .Include(a => a.Client)
             .Include(a => a.Artist)
             .Include(a => a.Attachments)
+            .Include(a => a.Service)
             .FirstOrDefaultAsync(a => a.Id == query.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), query.AppointmentId);
 

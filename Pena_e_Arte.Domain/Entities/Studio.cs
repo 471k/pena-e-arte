@@ -12,6 +12,18 @@ public class Studio
     public string? PhoneNumber { get; set; }
     public string? InstagramHandle { get; set; }
     public string? Nipt { get; set; }
+
+    /// <summary>Street address — nullable for backfill (pre-existing studios), required at
+    /// the app layer (RegisterStudioValidator) for new registrations. Drives live forward-
+    /// geocoding on the frontend; never rewritten from a manually-dropped map pin.</summary>
+    public string? AddressLine1 { get; set; }
+
+    /// <summary>Suite/unit/floor — always optional, forever.</summary>
+    public string? AddressLine2 { get; set; }
+
+    /// <summary>Always optional, forever.</summary>
+    public string? PostalCode { get; set; }
+
     public double Latitude { get; set; }
     public double Longitude { get; set; }
 
