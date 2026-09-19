@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Download, Plus, Search, Users } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronRight, Download, MoreVertical, Plus, Search, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -15,11 +15,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
+import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useAppSelector } from "@/app/hooks";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
-import { useGetClientsQuery } from "../clientsApi";
+import { useGetClientsQuery, useArchiveClientMutation, useRestoreClientMutation } from "../clientsApi";
 import type { ClientResponse } from "../clientsApi";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 
@@ -51,6 +60,33 @@ export function ClientListPage() {
   const [search, setSearch]         = useState<string | undefined>(undefined);
   const [artistFilter, setArtistFilter] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<ClientResponse | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<ClientResponse | null>(null);
+  const [archiveClient, { isLoading: isArchiving }] = useArchiveClientMutation();
+  const [restoreClient, { isLoading: isRestoring }] = useRestoreClientMutation();
+
+  async function handleArchive() {
+    if (!archiveTarget) return;
+    const result = await archiveClient(archiveTarget.id);
+    if ("error" in result) {
+      toast.error("Couldn't archive this client. Please try again.");
+    } else {
+      toast.success(`${archiveTarget.firstName} ${archiveTarget.lastName} archived.`);
+    }
+    setArchiveTarget(null);
+  }
+
+  async function handleRestore() {
+    if (!restoreTarget) return;
+    const result = await restoreClient(restoreTarget.id);
+    if ("error" in result) {
+      toast.error("Couldn't restore this client. Please try again.");
+    } else {
+      toast.success(`${restoreTarget.firstName} ${restoreTarget.lastName} restored.`);
+    }
+    setRestoreTarget(null);
+  }
 
   async function handleExportCsv() {
     setExporting(true);
@@ -68,7 +104,7 @@ export function ClientListPage() {
     return () => clearTimeout(id);
   }, [inputValue]);
 
-  const { data: clients, isLoading, isError } = useGetClientsQuery(search);
+  const { data: clients, isLoading, isError } = useGetClientsQuery({ search, includeArchived: showArchived });
   const { data: artists } = useGetArtistsQuery(undefined);
   const errorMessage = useSuspensionAwareError(isError, "Failed to load clients. Please try again.");
 
@@ -150,6 +186,14 @@ export function ClientListPage() {
               ))}
             </SelectContent>
           </Select>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 pl-1">
+            <ToggleSwitch
+              checked={showArchived}
+              onChange={() => setShowArchived((v) => !v)}
+              aria-label="Show archived clients"
+            />
+            Show archived
+          </label>
         </div>
 
         {isLoading && (
@@ -194,11 +238,16 @@ export function ClientListPage() {
               {
                 header: "Name",
                 cell: (c) => (
-                  <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-2 ${c.archivedAt ? "opacity-60" : ""}`}>
                     <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
                       {c.firstName[0]?.toUpperCase()}{c.lastName[0]?.toUpperCase()}
                     </div>
                     <span className="font-medium">{c.firstName} {c.lastName}</span>
+                    {c.archivedAt && (
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
+                        Archived
+                      </span>
+                    )}
                   </div>
                 ),
               },
@@ -225,7 +274,7 @@ export function ClientListPage() {
                 header: "",
                 cell: (c) => (
                   <div
-                    className="flex items-center justify-end"
+                    className="flex items-center justify-end gap-1"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Button
@@ -237,6 +286,39 @@ export function ClientListPage() {
                       View
                       <ChevronRight className="h-3 w-3" />
                     </Button>
+                    {canCreate && (
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            aria-label={`More options for ${c.firstName} ${c.lastName}`}
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" aria-hidden />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {c.archivedAt ? (
+                            <DropdownMenuItem
+                              onClick={() => setRestoreTarget(c)}
+                              className="flex items-center gap-2"
+                            >
+                              <ArchiveRestore className="h-4 w-4" aria-hidden />
+                              Restore
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={() => setArchiveTarget(c)}
+                              className="flex items-center gap-2"
+                            >
+                              <Archive className="h-4 w-4" aria-hidden />
+                              Archive
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 ),
               },
@@ -246,12 +328,17 @@ export function ClientListPage() {
             onRowClick={(c) => navigate(`/clients/${c.id}`)}
             emptyMessage={emptyMessage}
             mobileCard={(c) => (
-              <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-2 ${c.archivedAt ? "opacity-60" : ""}`}>
                 <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
                   {c.firstName[0]?.toUpperCase()}{c.lastName[0]?.toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{c.firstName} {c.lastName}</p>
+                  <p className="font-medium truncate">
+                    {c.firstName} {c.lastName}
+                    {c.archivedAt && (
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">(Archived)</span>
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {c.email}{c.phone ? ` · ${c.phone}` : ""} · {c.artistName ?? "Unassigned"}
                   </p>
@@ -262,6 +349,51 @@ export function ClientListPage() {
           />
         )}
       </main>
+
+      <AlertDialog
+        open={archiveTarget !== null}
+        onOpenChange={(open) => !open && setArchiveTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Archive {archiveTarget?.firstName} {archiveTarget?.lastName}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              They&apos;ll be removed from your active client list. Their appointments, payments,
+              and consent records stay exactly as they are, and you can restore them any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive} disabled={isArchiving}>
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={restoreTarget !== null}
+        onOpenChange={(open) => !open && setRestoreTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Restore {restoreTarget?.firstName} {restoreTarget?.lastName}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              They&apos;ll reappear in your active client list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRestoring}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestore} disabled={isRestoring}>
+              Restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

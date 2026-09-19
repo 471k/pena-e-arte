@@ -187,13 +187,13 @@ describe("HelpMenu", () => {
   }, 10000);
 
   it("'Take the tour again' closes the sheet and relaunches the tour even though it was already completed", async () => {
-    // The owner tour's earlier steps (10 of them, as of the owner-studio-hours-card step
-    // added alongside the studio-hours feature, 2026-09-09 — previously 9, before that step
+    // The owner tour's earlier steps (11 of them, as of the owner-services-nav step added
+    // alongside the Service Catalog feature, 2026-09-16 — previously 10, before that step
     // existed) target nav elements that this isolated render doesn't include, so the tour
     // auto-skips through them before reaching the last step, "owner-help-button" — the
     // trigger button HelpMenu itself renders, which does resolve. Each skip polls up to
     // MAX_POLL_ATTEMPTS (20) x POLL_INTERVAL_MS (50) = ~1s (OnboardingTour.tsx) before
-    // giving up, so 10 steps is a ~10s floor before real overhead (RAF double-buffering,
+    // giving up, so 11 steps is a ~11s floor before real overhead (RAF double-buffering,
     // React commit time) on top — timeouts below carry a large margin above that (not just
     // the bare theoretical floor) since the previous 9-step budget (16000/22000) was already
     // observed to fail outright, not just flake, once a 10th step landed — the true per-step

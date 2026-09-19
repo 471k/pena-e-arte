@@ -72,7 +72,13 @@ public interface IEmailRenderer
 
     string RenderEmailVerification(string confirmationUrl);
 
-    string RenderArtistInvite(string artistFirstName, string studioName, string setPasswordUrl);
+    /// <summary>
+    /// isRejoiningArtist: true when the recipient already has working login credentials (a
+    /// previously-removed artist reused for a new studio) — the copy tells them they can sign
+    /// in immediately, offering the link only as an optional password reset, rather than
+    /// implying (as for a brand-new account) that setting a password is required first.
+    /// </summary>
+    string RenderArtistInvite(string artistFirstName, string studioName, string setPasswordUrl, bool isRejoiningArtist = false);
 
     string RenderStudioJoinInvite(string studioName, string city, string manageInvitesUrl);
 
@@ -96,4 +102,17 @@ public interface IEmailRenderer
     string RenderChangeEmailConfirmation(string confirmUrl);
 
     string RenderEmailChangedNotice(string newEmail);
+
+    /// <summary>
+    /// Sent to every admin account when a new studio registers — never gated by
+    /// INotificationPreferenceService (platform-ops notice, not studio-facing).
+    /// </summary>
+    string RenderStudioRegisteredAdmin(
+        string studioName,
+        string city,
+        string ownerEmail,
+        string? nipt,
+        DateTime trialExpiresAtUtc,
+        bool hasReferral,
+        string studioDetailUrl);
 }

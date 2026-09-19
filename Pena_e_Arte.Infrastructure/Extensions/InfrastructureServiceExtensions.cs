@@ -13,6 +13,7 @@ using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.Infrastructure.Services.MailKit;
+using Pena_e_Arte.Infrastructure.Services.Pok;
 using Pena_e_Arte.Infrastructure.Services.Marketing;
 using Pena_e_Arte.Infrastructure.Services.Social;
 using Resend;
@@ -170,7 +171,9 @@ public static class InfrastructureServiceExtensions
         // NullPaymentProvider (kept only as a standalone class for tests/seeder compilation).
         services.Configure<PokOptions>(configuration.GetSection(PokOptions.Section));
         services.AddHttpClient("Pok", client => client.Timeout = TimeSpan.FromSeconds(20));
+        services.AddScoped<PokAuthClient>();
         services.AddScoped<IPaymentProvider, PokPaymentProvider>();
+        services.AddScoped<IPokCardTokenService, PokCardTokenService>();
         services.AddScoped<IStripeBillingService, StripeBillingService>();
         services.AddScoped<IStripeDiscountService, StripeDiscountService>();
         services.AddScoped<IReferralRewardService, ReferralRewardService>();

@@ -252,6 +252,20 @@ describe("NotificationLogListPage", () => {
     expect(document.querySelector('[data-testid="email-body-iframe"]')).toBeInTheDocument();
   });
 
+  it("email body iframe allows top navigation on user click, so a link doesn't hit a clickjacking block", async () => {
+    // Regression: without allow-top-navigation-by-user-activation, clicking a real link
+    // inside the sandboxed preview (e.g. StudioRegisteredAdmin's "View studio in platform
+    // admin" CTA) tries to navigate *inside* the iframe, which this app's own
+    // anti-clickjacking headers then refuse to render — a confusing browser security error
+    // instead of the link just working.
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /open notification.*Appointment Confirmed/i }));
+    await screen.findByRole("dialog");
+    const iframe = document.querySelector('[data-testid="email-body-iframe"]');
+    expect(iframe?.getAttribute("sandbox")).toContain("allow-top-navigation-by-user-activation");
+  });
+
   it("SMS notification modal shows plain text body, not an iframe", async () => {
     const user = userEvent.setup();
     renderPage();

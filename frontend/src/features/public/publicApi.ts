@@ -47,6 +47,9 @@ export interface PublicStudioResponse {
   socialLinks:    PublicSocialLinkResponse[];
   hours:          PublicStudioHoursResponse[];
   timezone:       string;
+  addressLine1:   string | null;
+  addressLine2:   string | null;
+  postalCode:     string | null;
 }
 
 export interface ArtistPortfolioImage {
@@ -178,6 +181,15 @@ export interface PublicBookingArtistResponse {
   hourlyRate:      number | null;
 }
 
+export interface PublicServiceResponse {
+  id:              string;
+  name:            string;
+  description:     string | null;
+  durationMinutes: number;
+  price:           number | null;
+  depositAmount:   number | null;
+}
+
 export interface PublicDepositRuleResponse {
   name:          string;
   amountFixed:   number | null;
@@ -202,6 +214,7 @@ export interface CreateGuestAppointmentRequest {
     clientId:        string;
     date:            string;
     durationMinutes: number;
+    serviceId?:      string | null;
     notes:           string | null;
     tattooDescription:          string;
     style?:                     string | null;
@@ -386,6 +399,9 @@ export const publicApi = createApi({
     getPublicDepositRule: builder.query<PublicDepositRuleResponse | null, string>({
       query: (slug) => `studios/${slug}/booking/deposit-rule`,
     }),
+    getPublicServices: builder.query<PublicServiceResponse[], string>({
+      query: (slug) => `studios/${slug}/booking/services`,
+    }),
     createGuestAppointment: builder.mutation<
       GuestBookingAckResponse,
       { slug: string; body: CreateGuestAppointmentRequest }
@@ -426,6 +442,7 @@ export const {
   useGetPublicBookingArtistsQuery,
   useCheckPublicSlotAvailabilityQuery,
   useGetPublicDepositRuleQuery,
+  useGetPublicServicesQuery,
   useCreateGuestAppointmentMutation,
   usePresignGuestUploadMutation,
 } = publicApi;

@@ -9,6 +9,7 @@ public interface IAppDbContext
     DbSet<Appointment> Appointments { get; }
     DbSet<AppointmentAttachment> AppointmentAttachments { get; }
     DbSet<DepositRule> DepositRules { get; }
+    DbSet<Service> Services { get; }
     DbSet<PromoCode> PromoCodes { get; }
     DbSet<Client> Clients { get; }
     DbSet<ClientProfile> ClientProfiles { get; }
@@ -27,6 +28,7 @@ public interface IAppDbContext
     DbSet<DesignApproval> DesignApprovals { get; }
     DbSet<DesignShareToken> DesignShareTokens { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<SavedPaymentMethod> SavedPaymentMethods { get; }
     DbSet<SessionSplit> SessionSplits { get; }
     DbSet<IntakeForm> IntakeForms { get; }
     DbSet<IntakeFormTemplate> IntakeFormTemplates { get; }

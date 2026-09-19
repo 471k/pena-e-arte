@@ -10,6 +10,9 @@ export interface RegisterStudioRequest {
   longitude:     number;
   ownerEmail:    string;
   nipt:          string;
+  addressLine1:  string;
+  addressLine2?: string;
+  postalCode?:   string;
   referralCode?: string;
 }
 
@@ -35,6 +38,9 @@ export interface StudioResponse {
   timezone:             string;
   subscriptionStatus?:  string | null;
   pastDueSince?:        string | null;
+  addressLine1:         string | null;
+  addressLine2:         string | null;
+  postalCode:           string | null;
 }
 
 export interface StudioApiKeyStatusResponse {
@@ -124,6 +130,9 @@ export interface UpdateStudioRequest {
   instagramHandle?: string | null;
   nipt?:            string | null;
   timezone?:        string | null;
+  addressLine1?:    string | null;
+  addressLine2?:    string | null;
+  postalCode?:      string | null;
 }
 
 export interface StudioClosureResponse {

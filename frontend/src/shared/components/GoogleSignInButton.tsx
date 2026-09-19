@@ -24,6 +24,15 @@ export function GoogleSignInButton({ onCredential, disabled = false }: GoogleSig
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
 
+  // Keep the latest callback in a ref rather than the effect's dependency array — callers
+  // rarely memoize inline handlers, and re-running the effect on every new function identity
+  // calls google.accounts.id.initialize() again, which logs "called multiple times ... only
+  // the last initialized instance will be used" and can drop in-flight sign-in attempts.
+  const onCredentialRef = useRef(onCredential);
+  useEffect(() => {
+    onCredentialRef.current = onCredential;
+  }, [onCredential]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!window.google?.accounts?.id || !container) {
@@ -33,7 +42,7 @@ export function GoogleSignInButton({ onCredential, disabled = false }: GoogleSig
 
     window.google.accounts.id.initialize({
       client_id:             import.meta.env.VITE_GOOGLE_CLIENT_ID as string,
-      callback:              ({ credential }) => onCredential(credential),
+      callback:              ({ credential }) => onCredentialRef.current(credential),
       auto_select:           false,
       cancel_on_tap_outside: true,
     });
@@ -55,7 +64,7 @@ export function GoogleSignInButton({ onCredential, disabled = false }: GoogleSig
     }, RENDER_CHECK_DELAY_MS);
 
     return () => window.clearTimeout(checkTimer);
-  }, [onCredential]);
+  }, []);
 
   return (
     <div>

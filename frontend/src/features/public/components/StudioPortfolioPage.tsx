@@ -386,7 +386,11 @@ export function StudioPortfolioPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>{studio.city}</span>
+                <span>
+                  {studio.addressLine1
+                    ? `${studio.addressLine1}${studio.addressLine2 ? `, ${studio.addressLine2}` : ""}, ${studio.city}`
+                    : studio.city}
+                </span>
               </div>
 
               {studio.reviewCount > 0 && (
@@ -541,15 +545,15 @@ export function StudioPortfolioPage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm text-muted-foreground
                              hover:text-foreground transition-colors min-h-[44px]"
-                  aria-label={`Get directions to ${studio.name} in ${studio.city} — opens Google Maps`}
+                  aria-label={`Get Directions — ${studio.addressLine1 ?? studio.city} — opens Google Maps`}
                 >
                   <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  Get Directions — {studio.city}
+                  Get Directions — {studio.addressLine1 ?? studio.city}
                 </a>
               ) : (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  {studio.city}
+                  {studio.addressLine1 ?? studio.city}
                 </div>
               )}
 

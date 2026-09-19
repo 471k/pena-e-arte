@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,9 +19,11 @@ import {
   useGetPublicBookingArtistsQuery,
   useCheckPublicSlotAvailabilityQuery,
   useGetPublicDepositRuleQuery,
+  useGetPublicServicesQuery,
   useCreateGuestAppointmentMutation,
   usePresignGuestUploadMutation,
 } from "../../public/publicApi";
+import type { PublicServiceResponse } from "../../public/publicApi";
 import { FieldLabel } from "@/features/appointments/components/FieldLabel";
 import { TattooIntakeFields } from "@/features/appointments/components/TattooIntakeFields";
 import { validateTattooIntake, type TattooIntakeValues } from "@/features/appointments/components/tattooIntakeValidation";
@@ -59,16 +61,25 @@ const schema = z.object({
     (v) => new Date(v) > new Date(),
     "Appointment must be in the future",
   ),
-  durationMinutes: z.number().refine(
-    (v) => (VALID_DURATIONS as readonly number[]).includes(v),
-    "Select a valid appointment duration",
-  ),
+  // A picked service overrides this with its own DurationMinutes (which need not be one of
+  // VALID_DURATIONS) — the preset-duration rule below only applies when no service is picked,
+  // matching server-side (CreateAppointmentCommand ignores this field once a service is set).
+  durationMinutes: z.number().int().positive("Select a valid appointment duration"),
+  serviceId: z.string().nullable().optional(),
   promoCode: z.string().optional(),
   notes: z.string().optional(),
 }).refine(
   (data) => data.bookAnyArtist || (!!data.artistId && data.artistId.length > 0),
   { message: "Select an artist", path: ["artistId"] },
-);
+).superRefine((data, ctx) => {
+  if (!data.serviceId && !(VALID_DURATIONS as readonly number[]).includes(data.durationMinutes)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Select a valid appointment duration",
+      path: ["durationMinutes"],
+    });
+  }
+});
 
 type FormValues = z.infer<typeof schema>;
 
@@ -124,6 +135,19 @@ function DepositPreview({
   );
 }
 
+// Service.DepositAmount, when set, overrides the studio's DepositRule calculation entirely
+// (see CreateAppointmentCommand.cs) — mirrors DepositPreview above but for that override.
+function ServiceDepositPreview({ service }: { service: PublicServiceResponse }) {
+  if (service.depositAmount === null) return null;
+  return (
+    <div className="flex items-center justify-between rounded-md
+                    bg-muted/40 border border-border/30 px-3 py-2">
+      <span className="text-xs text-muted-foreground">Deposit for this service</span>
+      <span className="text-sm font-semibold tabular-nums">€{service.depositAmount.toFixed(2)}</span>
+    </div>
+  );
+}
+
 interface GuestBookAppointmentFormProps {
   slug: string;
 }
@@ -134,6 +158,7 @@ interface GuestBookAppointmentFormProps {
 export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps) {
   const { data: artists, isLoading: loadingArtists } = useGetPublicBookingArtistsQuery(slug);
   const { data: depositRule } = useGetPublicDepositRuleQuery(slug);
+  const { data: services } = useGetPublicServicesQuery(slug);
   const [createGuestAppointment, { isLoading: submitting }] = useCreateGuestAppointmentMutation();
 
   const [booked, setBooked] = useState(false);
@@ -161,13 +186,13 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
   const [referenceImageError, setReferenceImageError] = useState<string | null>(null);
 
   const {
-    register, control, handleSubmit,
+    register, control, handleSubmit, setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       firstName: "", lastName: "", email: "", phone: "", marketingOptIn: false,
-      artistId: "", bookAnyArtist: false, durationMinutes: 60,
+      artistId: "", bookAnyArtist: false, durationMinutes: 60, serviceId: null,
     },
   });
 
@@ -175,11 +200,24 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
   const watchedBookAnyArtist = useWatch({ control, name: "bookAnyArtist" });
   const watchedDate          = useWatch({ control, name: "scheduledAt" });
   const watchedDuration      = useWatch({ control, name: "durationMinutes" });
+  const watchedServiceId     = useWatch({ control, name: "serviceId" });
 
   const selectedArtist = useMemo(
     () => (artists ?? []).find((a) => a.artistId === watchedArtistId) ?? null,
     [artists, watchedArtistId],
   );
+  const selectedService = useMemo(
+    () => (services ?? []).find((s) => s.id === watchedServiceId) ?? null,
+    [services, watchedServiceId],
+  );
+
+  // A picked service's own duration is authoritative — locking it here matches what
+  // CreateAppointmentCommand does server-side.
+  useEffect(() => {
+    if (selectedService) {
+      setValue("durationMinutes", selectedService.durationMinutes);
+    }
+  }, [selectedService, setValue]);
 
   const debouncedCheck = useDebouncedSlotCheckArgs(
     watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration,
@@ -232,6 +270,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
           clientId:        "00000000-0000-0000-0000-000000000000",
           date:            new Date(values.scheduledAt).toISOString(),
           durationMinutes: values.durationMinutes,
+          serviceId:       values.serviceId ?? null,
           notes:           values.notes || null,
           tattooDescription:         intake.tattooDescription,
           style:                     intake.style || null,
@@ -392,6 +431,40 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
         />
       </div>
 
+      {/* Service — picking one locks Duration (and, when the service has its own
+          DepositAmount, replaces the deposit estimate below) to what the studio configured;
+          matches CreateAppointmentCommand's server-side override. */}
+      {services && services.length > 0 && (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="serviceId">Service</FieldLabel>
+          <Controller
+            control={control}
+            name="serviceId"
+            render={({ field }) => (
+              <Select
+                value={field.value ?? "custom"}
+                onValueChange={(v) => field.onChange(v === "custom" ? null : v)}
+              >
+                <SelectTrigger id="serviceId">
+                  <SelectValue placeholder="Custom (choose your own duration)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Custom (choose your own duration)</SelectItem>
+                  {services.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} — {s.durationMinutes} min
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {selectedService?.description && (
+            <p className="text-xs text-muted-foreground">{selectedService.description}</p>
+          )}
+        </div>
+      )}
+
       {/* Date & duration */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
@@ -409,22 +482,32 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
         </div>
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
           <FieldLabel htmlFor="durationMinutes" required>Appointment Duration</FieldLabel>
-          <Controller
-            control={control}
-            name="durationMinutes"
-            render={({ field }) => (
-              <Select value={String(field.value)} onValueChange={(v) => field.onChange(Number(v))}>
-                <SelectTrigger id="durationMinutes" className={cn(errors.durationMinutes && "border-destructive")}>
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map(({ value, label }) => (
-                    <SelectItem key={value} value={String(value)}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
+          {selectedService ? (
+            <div
+              id="durationMinutes"
+              className="flex h-9 items-center rounded-md border border-input bg-muted/40
+                         px-3 text-sm text-muted-foreground"
+            >
+              {selectedService.durationMinutes} min — set by "{selectedService.name}"
+            </div>
+          ) : (
+            <Controller
+              control={control}
+              name="durationMinutes"
+              render={({ field }) => (
+                <Select value={String(field.value)} onValueChange={(v) => field.onChange(Number(v))}>
+                  <SelectTrigger id="durationMinutes" className={cn(errors.durationMinutes && "border-destructive")}>
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DURATION_OPTIONS.map(({ value, label }) => (
+                      <SelectItem key={value} value={String(value)}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          )}
           {errors.durationMinutes && (
             <p className="text-xs text-destructive-text" role="alert">{errors.durationMinutes.message}</p>
           )}
@@ -435,12 +518,16 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
         <SlotAvailabilityIndicator checking={checkingSlot} status={slotStatus} />
       )}
 
-      {depositRule && watchedDuration > 0 && (
-        <DepositPreview
-          durationMinutes={watchedDuration}
-          hourlyRate={selectedArtist?.hourlyRate ?? null}
-          rule={depositRule}
-        />
+      {selectedService && selectedService.depositAmount !== null ? (
+        <ServiceDepositPreview service={selectedService} />
+      ) : (
+        depositRule && watchedDuration > 0 && (
+          <DepositPreview
+            durationMinutes={watchedDuration}
+            hourlyRate={selectedArtist?.hourlyRate ?? null}
+            rule={depositRule}
+          />
+        )
       )}
 
       {/* Promo code */}

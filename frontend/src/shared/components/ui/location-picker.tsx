@@ -24,7 +24,10 @@ const DEFAULT_ZOOM = 5;
 
 // ── geocoding helpers ────────────────────────────────────────────────────────
 
-async function reverseGeocode(lat: number, lng: number): Promise<{ city: string; country: string }> {
+async function reverseGeocode(
+  lat: number,
+  lng: number
+): Promise<{ city: string; country: string; streetAddress: string }> {
   try {
     const r = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
@@ -32,12 +35,14 @@ async function reverseGeocode(lat: number, lng: number): Promise<{ city: string;
     );
     const d: { address?: Record<string, string> } = await r.json();
     const a = d.address ?? {};
+    const road = a.road ?? a.pedestrian ?? a.footway ?? "";
     return {
-      city:    a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "",
-      country: a.country ?? "",
+      city:          a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "",
+      country:       a.country ?? "",
+      streetAddress: [road, a.house_number].filter(Boolean).join(" "),
     };
   } catch {
-    return { city: "", country: "" };
+    return { city: "", country: "", streetAddress: "" };
   }
 }
 
@@ -80,7 +85,11 @@ export interface LocationPickerValue {
 
 interface LocationPickerProps {
   value?:    LocationPickerValue;
-  onChange:  (val: LocationPickerValue) => void;
+  // streetAddress is the reverse-geocoded road (+ house number, if Nominatim has one) at
+  // the pin's current position — "" when a pin has been placed but no road name resolved
+  // (e.g. a rural point), so callers should only use it to overwrite their own address
+  // field when it's non-empty, never to blank one out.
+  onChange:  (val: LocationPickerValue & { streetAddress: string }) => void;
   error?:    string;
   className?: string;
 }
@@ -141,7 +150,7 @@ export function LocationPicker({ value, onChange, error, className }: LocationPi
     const geo = await reverseGeocode(lat, lng);
     setResolving(false);
     setLabel(geo);
-    onChange({ lat, lng, city: geo.city });
+    onChange({ lat, lng, city: geo.city, streetAddress: geo.streetAddress });
   }
 
   function handleUseMyLocation() {

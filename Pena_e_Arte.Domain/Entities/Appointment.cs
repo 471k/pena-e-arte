@@ -6,6 +6,7 @@ public class Appointment : TenantEntity
 {
     public Guid? ArtistId { get; set; }
     public Guid ClientId { get; set; }
+    public Guid? ServiceId { get; set; }
     public DateTime Date { get; set; }
     public DateTime EndDate { get; set; }
     public int DurationMinutes { get; set; }
@@ -22,6 +23,7 @@ public class Appointment : TenantEntity
 
     public Artist? Artist { get; set; }
     public Client Client { get; set; } = null!;
+    public Service? Service { get; set; }
 
     // Reference images the client attached when requesting the appointment.
     // Empty (not null) when not eagerly loaded via .Include(a => a.Attachments).

@@ -172,7 +172,6 @@ services:
       Stripe__WebhookSecretBilling: ${STRIPE_WEBHOOK_SECRET_BILLING:-}
       Stripe__WebhookSecretConnect: ${STRIPE_WEBHOOK_SECRET_CONNECT:-}
       Pok__BaseUrl: ${POK_BASE_URL:-https://api-staging.pokpay.io}
-      Pok__PlatformMerchantId: ${POK_PLATFORM_MERCHANT_ID:-}
       Pok__WebhookCallbackBaseUrl: ${POK_WEBHOOK_CALLBACK_BASE_URL:-}
       CloudflareR2__AccountId: ${R2_ACCOUNT_ID:-}
       CloudflareR2__AccessKeyId: ${R2_ACCESS_KEY_ID:-}

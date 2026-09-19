@@ -7,7 +7,6 @@ namespace Pena_e_Arte.Domain.Interfaces;
 /// silently degrading to a lowest-common-denominator behaviour across providers.
 /// </summary>
 public sealed record PaymentProviderCapabilities(
-    bool SupportsSplit,
     bool SupportsAuthCapture,
     bool SupportsHoldExpiry,
     IReadOnlyCollection<string> SupportedCurrencies,
@@ -29,9 +28,6 @@ public sealed record PaymentHoldRequest(
     Guid PaymentId,
     long AmountInCents,
     string Currency,
-    /// <summary>Platform fee taken atomically at payment time (ADR-0001 monetization, wired
-    /// at 0% from day one). Providers without SupportsSplit must ignore this.</summary>
-    long PlatformFeeAmountInCents = 0,
     /// <summary>How long the hold stays payable before it self-expires. Only meaningful when
     /// Capabilities.SupportsHoldExpiry is true; a provider without it ignores this and the
     /// caller must not rely on server-side expiry.</summary>

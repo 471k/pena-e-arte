@@ -87,6 +87,9 @@ const STUDIO: PublicStudioResponse = {
     { dayOfWeek: 0, startTime: "00:00:00", endTime: "00:00:00", isOpen: false },
   ],
   timezone: "Europe/Lisbon",
+  addressLine1: null,
+  addressLine2: null,
+  postalCode:   null,
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -262,6 +265,32 @@ describe("StudioPortfolioPage", () => {
     expect(screen.queryByRole("link", { name: /get directions/i })).not.toBeInTheDocument();
     // City appears in both the main content and the sidebar fallback text.
     expect(screen.getAllByText(STUDIO.city).length).toBeGreaterThan(0);
+  });
+
+  it("renders the full street address when addressLine1 is present, falling back to city otherwise", () => {
+    mockUseGetPublicStudioQuery.mockReturnValue({
+      data: { ...STUDIO, addressLine1: "Rua das Flores 10", addressLine2: "2nd Floor" },
+      isLoading: false,
+      isError: false,
+    });
+    renderPage();
+    expect(screen.getByText("Rua das Flores 10, 2nd Floor, Porto")).toBeInTheDocument();
+  });
+
+  it("shows the plain city text (no address) when addressLine1 is null", () => {
+    renderPage();
+    expect(screen.getAllByText(STUDIO.city).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Rua das Flores/i)).not.toBeInTheDocument();
+  });
+
+  it("'Get Directions' link label uses the street address when present", () => {
+    mockUseGetPublicStudioQuery.mockReturnValue({
+      data: { ...STUDIO, addressLine1: "Rua das Flores 10" },
+      isLoading: false,
+      isError: false,
+    });
+    renderPage();
+    expect(screen.getByRole("link", { name: /get directions — rua das flores 10/i })).toBeInTheDocument();
   });
 
   it("renders gallery images when galleryImages is not empty", () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -9,6 +9,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { giftCardsApi } from "@/features/gift-cards/giftCardsApi";
+import { savedPaymentMethodsApi } from "@/features/saved-payment-methods/savedPaymentMethodsApi";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
 import type {
   PaymentResponse,
@@ -18,6 +19,15 @@ import type {
 
 // ── POK widget mock ──────────────────────────────────────────────────────────
 // GuestCheckoutForm mounts a real card form against POK's servers — mock the whole module.
+// usePOK is a hook SavedCardTab always calls (rules of hooks) even when there's nothing to pay
+// with yet. This mock captures the latest onSuccess/onError/payByCardToken so tests can drive
+// the saved-card 3DS-challenge flow by hand (simulating what POK's real step-up modal would do).
+
+const pokHookState: {
+  onSuccess?: () => void;
+  onError?: (e: { message?: string }) => void;
+  payByCardToken: ReturnType<typeof vi.fn>;
+} = { payByCardToken: vi.fn() };
 
 vi.mock("@nebula-ltd/pok-payments-js/react", () => ({
   GuestCheckoutForm: (props: { orderId: string; onSuccess?: () => void }) => (
@@ -25,6 +35,15 @@ vi.mock("@nebula-ltd/pok-payments-js/react", () => ({
       <button type="button" onClick={() => props.onSuccess?.()}>Authorise deposit</button>
     </div>
   ),
+  usePOK: (
+    _orderId: string,
+    onSuccess?: () => void,
+    onError?: (e: { message?: string }) => void,
+  ) => {
+    pokHookState.onSuccess = onSuccess;
+    pokHookState.onError = onError;
+    return { payByCardToken: pokHookState.payByCardToken, fetching: false, loading: false };
+  },
 }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -55,6 +74,16 @@ const CASH_PAYMENT: PaymentResponse = {
 
 const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true, pokEnvironment: "staging" };
 
+const SAVED_METHOD = {
+  id: "spm-001", cardBrand: "Visa", maskedPan: "**** 4242",
+  expiryMonth: "12", expiryYear: "2030", isDefault: true, createdAt: "2024-01-01T00:00:00Z",
+};
+
+const SETUP_PENDING = {
+  paymentId: PAYMENT_ID, status: "Pending", orderId: "order-saved-abc",
+  cardTokenId: "card-abc", payerAuthSetupReferenceId: "ref-1", deviceDataCollection: null,
+};
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -70,10 +99,20 @@ const server = setupServer(
     "http://localhost/api/v1/payments/capabilities",
     () => HttpResponse.json(CAPABILITIES_AVAILABLE),
   ),
+  http.get(
+    "http://localhost/api/v1/saved-payment-methods",
+    () => HttpResponse.json([]),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => {
+  server.resetHandlers();
+  cleanup();
+  pokHookState.payByCardToken.mockClear();
+  pokHookState.onSuccess = undefined;
+  pokHookState.onError = undefined;
+});
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -84,8 +123,9 @@ function makeStore() {
       auth:                      authReducer,
       [paymentsApi.reducerPath]: paymentsApi.reducer,
       [giftCardsApi.reducerPath]: giftCardsApi.reducer,
+      [savedPaymentMethodsApi.reducerPath]: savedPaymentMethodsApi.reducer,
     },
-    middleware: (gd) => gd().concat(paymentsApi.middleware, giftCardsApi.middleware),
+    middleware: (gd) => gd().concat(paymentsApi.middleware, giftCardsApi.middleware, savedPaymentMethodsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: "Client" } as any,
@@ -254,5 +294,107 @@ describe("PaymentMethodSelector", () => {
     expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
     expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
     expect(depositRequested).toBe(false);
+  });
+
+  describe("saved card tab", () => {
+    beforeEach(() => {
+      server.use(
+        http.get("http://localhost/api/v1/saved-payment-methods", () => HttpResponse.json([SAVED_METHOD])),
+      );
+    });
+
+    it("defaults to the saved-card tab when the client has a saved card", async () => {
+      renderSelector();
+
+      expect(await screen.findByText(/visa.*4242/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /saved card/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /new card/i })).toBeInTheDocument();
+    });
+
+    it("selecting Pay sets up the 3DS challenge, and completing it re-confirms before calling onSuccess", async () => {
+      const user = userEvent.setup();
+      const onSuccess = vi.fn();
+      let depositCalls = 0;
+      server.use(
+        http.post("http://localhost/api/v1/payments/deposit/pay-with-saved-card", () =>
+          HttpResponse.json(SETUP_PENDING),
+        ),
+        http.post("http://localhost/api/v1/payments/deposit", () => {
+          depositCalls += 1;
+          return HttpResponse.json({ ...INTENT_RESP, status: "Captured" });
+        }),
+      );
+
+      renderSelector(onSuccess);
+      await screen.findByText(/visa.*4242/i);
+      await user.click(screen.getByRole("button", { name: /pay with this card/i }));
+
+      await vi.waitFor(() => {
+        expect(pokHookState.payByCardToken).toHaveBeenCalledWith(
+          expect.objectContaining({
+            creditDebitCard: { id: "card-abc" },
+            payerAuthSetupReferenceId: "ref-1",
+          }),
+        );
+      });
+
+      // Simulate POK's step-up modal completing successfully.
+      pokHookState.onSuccess?.();
+
+      await vi.waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledExactlyOnceWith("card");
+      });
+      expect(depositCalls).toBe(1);
+    });
+
+    it("already-settled response skips the 3DS setup and reports success directly", async () => {
+      const user = userEvent.setup();
+      const onSuccess = vi.fn();
+      server.use(
+        http.post("http://localhost/api/v1/payments/deposit/pay-with-saved-card", () =>
+          HttpResponse.json({ ...SETUP_PENDING, status: "Paid", orderId: null, cardTokenId: null, payerAuthSetupReferenceId: null }),
+        ),
+      );
+
+      renderSelector(onSuccess);
+      await screen.findByText(/visa.*4242/i);
+      await user.click(screen.getByRole("button", { name: /pay with this card/i }));
+
+      await vi.waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledExactlyOnceWith("card");
+      });
+      expect(pokHookState.payByCardToken).not.toHaveBeenCalled();
+    });
+
+    it("POK challenge failure calls onError", async () => {
+      const user = userEvent.setup();
+      const onError = vi.fn();
+      server.use(
+        http.post("http://localhost/api/v1/payments/deposit/pay-with-saved-card", () =>
+          HttpResponse.json(SETUP_PENDING),
+        ),
+      );
+
+      renderSelector(vi.fn(), onError);
+      await screen.findByText(/visa.*4242/i);
+      await user.click(screen.getByRole("button", { name: /pay with this card/i }));
+
+      await vi.waitFor(() => expect(pokHookState.onError).toBeDefined());
+      pokHookState.onError?.({ message: "Card declined." });
+
+      await vi.waitFor(() => {
+        expect(onError).toHaveBeenCalledWith("Card declined.");
+      });
+    });
+
+    it("switching to New card tab shows the GuestCheckoutForm widget instead", async () => {
+      const user = userEvent.setup();
+      renderSelector();
+
+      await screen.findByText(/visa.*4242/i);
+      await user.click(screen.getByRole("button", { name: /new card/i }));
+
+      expect(await screen.findByTestId("pok-checkout-form")).toBeInTheDocument();
+    });
   });
 });

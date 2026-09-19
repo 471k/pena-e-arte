@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -90,6 +91,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         RegisterStudioHandler registerHandler = new(
             fixture.CreateDbContext(Guid.Empty),
             Substitute.For<IJobScheduler>(),
+            Substitute.For<ISender>(),
             NullLogger<RegisterStudioHandler>.Instance);
 
         string newSlug = ("ref-" + Guid.NewGuid().ToString("N"))[..20];
@@ -102,6 +104,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                 Longitude: -9.1,
                 OwnerEmail: $"{newSlug}@test.com",
                 Nipt: UniqueTestNipt(),
+                AddressLine1: "123 Test Street",
                 ReferralCode: code)),
             default);
 
@@ -167,6 +170,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         RegisterStudioHandler handler = new(
             fixture.CreateDbContext(Guid.Empty),
             Substitute.For<IJobScheduler>(),
+            Substitute.For<ISender>(),
             NullLogger<RegisterStudioHandler>.Instance);
 
         string newSlug = ("bad-" + Guid.NewGuid().ToString("N"))[..20];
@@ -179,6 +183,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                 Longitude: -8.6,
                 OwnerEmail: $"{newSlug}@test.com",
                 Nipt: UniqueTestNipt(),
+                AddressLine1: "123 Test Street",
                 ReferralCode: "BADCODE1")),
             default);
 
@@ -364,6 +369,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
         RegisterStudioHandler handler = new(
             fixture.CreateDbContext(Guid.Empty),
             Substitute.For<IJobScheduler>(),
+            Substitute.For<ISender>(),
             NullLogger<RegisterStudioHandler>.Instance);
 
         string slug = ("rwd-" + Guid.NewGuid().ToString("N"))[..20];
@@ -371,7 +377,8 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
             new RegisterStudioCommand(new RegisterStudioRequest(
                 Name: "Reward Test Studio", Slug: slug, City: "Lisbon",
                 Latitude: 38.7, Longitude: -9.1,
-                OwnerEmail: $"{slug}@test.com", Nipt: UniqueTestNipt(), ReferralCode: referralCode)),
+                OwnerEmail: $"{slug}@test.com", Nipt: UniqueTestNipt(),
+                AddressLine1: "123 Test Street", ReferralCode: referralCode)),
             default);
 
         return studio.Id;

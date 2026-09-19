@@ -5,7 +5,7 @@ using Pena_e_Arte.Contracts.Responses;
 
 namespace Pena_e_Arte.Application.Clients.Queries;
 
-public record GetClientsQuery(string? Search) : IRequest<List<ClientResponse>>;
+public record GetClientsQuery(string? Search, bool IncludeArchived = false) : IRequest<List<ClientResponse>>;
 
 public class GetClientsHandler(IAppDbContext db)
     : IRequestHandler<GetClientsQuery, List<ClientResponse>>
@@ -13,6 +13,13 @@ public class GetClientsHandler(IAppDbContext db)
     public async Task<List<ClientResponse>> Handle(GetClientsQuery query, CancellationToken ct)
     {
         IQueryable<Domain.Entities.Client> q = db.Clients;
+
+        // ArchivedAt is deliberately NOT part of any EF Core query filter (see Client.ArchivedAt's
+        // doc comment) — it's applied here as an explicit, opt-out Where so a client's other
+        // navigations (appointments, payments, consent forms) keep resolving normally everywhere
+        // except this default list view.
+        if (!query.IncludeArchived)
+            q = q.Where(c => c.ArchivedAt == null);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -39,7 +46,7 @@ public class GetClientsHandler(IAppDbContext db)
                 c.Artist != null && c.Artist.DeletedAt == null
                     ? c.Artist.FirstName + " " + c.Artist.LastName
                     : null,
-                c.ErasureRequestedAt))
+                c.ErasureRequestedAt, c.ArchivedAt))
             .ToListAsync(ct);
     }
 }

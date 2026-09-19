@@ -3,14 +3,16 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
   Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
-  ListOrdered, Banknote, Gift, Package as PackageIcon,
-  Megaphone, Tag, DollarSign, FileText,
+  ListOrdered, ListChecks, Banknote, Gift, Package as PackageIcon,
+  Megaphone, Tag, DollarSign, FileText, ScrollText,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
+import { isInArtistContext } from "@/shared/utils/artistContext";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { SoloStudioPublishBanner } from "@/shared/components/SoloStudioPublishBanner";
+import { ArtistModeSwitcher } from "@/shared/components/ArtistModeSwitcher";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { Button } from "@/shared/components/ui/button";
 import { NavDrawer } from "@/shared/components/NavDrawer";
@@ -26,7 +28,7 @@ import { NotificationBell } from "@/features/notifications";
 import { StudioJoinInviteBell } from "@/features/auth/components/StudioJoinInviteBell";
 import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
-import { useGetMyStudioConductReportsQuery } from "@/features/conduct-reports";
+import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 
 const ONBOARDING_REDIRECT_KEY = "solo-owner-onboarding-redirect-done";
@@ -44,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Booth Rent",       href: "/booth-rent",        icon: <Banknote        className="h-4 w-4" /> },
   { label: "Gift Cards",       href: "/gift-cards",        icon: <Gift            className="h-4 w-4" /> },
   { label: "Packages",         href: "/packages",          icon: <PackageIcon     className="h-4 w-4" /> },
+  { label: "Services",         href: "/services",          icon: <ListChecks      className="h-4 w-4" />, tourId: "owner-services-nav" },
   { label: "Deposit Rules",    href: "/deposit-rules",     icon: <DollarSign      className="h-4 w-4" />, tourId: "owner-deposit-rules-nav" },
   { label: "Promo Codes",      href: "/promo-codes",       icon: <Tag             className="h-4 w-4" /> },
   { label: "Billing",          href: "/billing",           icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
@@ -69,14 +72,20 @@ export function OwnerLayout() {
   // load, exactly like ArtistLayout already does for every artist). RTK Query dedupes this
   // against the same call ArtistListPage's "Become an artist" CTA makes via the shared
   // "Artist" cache tag.
-  const { data: myArtist, isLoading: myArtistLoading } = useGetMyArtistQuery();
+  const { data: myArtist, isLoading: myArtistLoading, isError: myArtistError } = useGetMyArtistQuery();
+  // RTK Query only re-tags a query's cache entry on a SUCCESSFUL response — a 404 (no
+  // profile) never gets tagged "Artist", so a later invalidation (e.g. deleting the profile)
+  // does trigger a refetch, but that refetch's own failure leaves `data` holding the stale
+  // pre-delete artist rather than clearing it. Must check isError explicitly, not just `data`,
+  // or "My Portfolio" keeps showing a just-deleted profile until a hard reload.
+  const hasArtistProfile = !myArtistError && !!myArtist;
 
   // Guided first step for a solo artist's owner account with no artist profile of their own
   // yet: route them straight into the existing "Enable my artist profile" form instead of
   // requiring them to find the Artists page. Fires once per browser session (sessionStorage
   // guard) so it never fights a deliberate later visit to another page.
   useEffect(() => {
-    if (!studio?.isSolo || myArtistLoading || myArtist) return;
+    if (!studio?.isSolo || myArtistLoading || hasArtistProfile) return;
     if (location.pathname === "/artists") return;
 
     let alreadyRedirected = false;
@@ -94,19 +103,58 @@ export function OwnerLayout() {
     }
     navigate("/artists?onboarding=1", { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studio?.isSolo, myArtistLoading, myArtist]);
+  }, [studio?.isSolo, myArtistLoading, hasArtistProfile]);
   const { data: openConductReports } = useGetMyStudioConductReportsQuery({ status: "Open" });
   const openConductReportCount = openConductReports?.length ?? 0;
   const withBadges = NAV_ITEMS.map((item) =>
     item.label === "Conduct Reports" ? { ...item, badge: openConductReportCount } : item,
   );
-  const navItems: NavItem[] = myArtist
+  const ownerNavItems: NavItem[] = hasArtistProfile
     ? [
         ...withBadges,
-        { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> },
+        { label: "My Portfolio", href: `/artists/${myArtist!.id}`, icon: <ImagePlus className="h-4 w-4" /> },
         { label: "My Earnings",  href: "/earnings",                icon: <Wallet    className="h-4 w-4" /> },
       ]
     : withBadges;
+
+  // Only queried once the owner actually has a linked artist profile — every other owner
+  // never needs this, and firing it unconditionally would be a wasted request on every load.
+  const { data: myConductReportsAsArtist } = useGetMyConductReportsAsArtistQuery(undefined, {
+    skip: !hasArtistProfile,
+  });
+  const myOpenConductReportCount =
+    (myConductReportsAsArtist ?? []).filter((r) => r.status === "Open").length;
+
+  // The owner's own dual-role artist identity — Schedule/Designs/Reports About Me link with
+  // an explicit ?artistId= so those shared pages filter to "mine only" exactly the way they
+  // already do for a real artist caller (GetAppointmentsQuery/GetDesignsQuery/
+  // GetMyConductReportsAsArtistQuery all already support this for any caller, no backend
+  // change needed — see docs/claude/architecture.md's Decisions Log). Deliberately excludes
+  // every owner-only management item (Dashboard, Artists, Payments, Billing, Studio Settings,
+  // Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, studio-wide Reports/Conduct
+  // Reports) so the menu genuinely matches what a real invited artist would see, per the
+  // request that owner and artist contexts each show only their own specific menu. "Owner
+  // Dashboard" stays first as an escape hatch back to owner mode — the header switcher covers
+  // this too, but only shows at sm+ widths.
+  const artistNavItems: NavItem[] = myArtist
+    ? [
+        { label: "Owner Dashboard",  href: "/dashboard",                             icon: <LayoutDashboard className="h-4 w-4" /> },
+        { label: "My Portfolio",     href: `/artists/${myArtist.id}`,                icon: <ImagePlus       className="h-4 w-4" /> },
+        { label: "Schedule",         href: `/schedule?artistId=${myArtist.id}`,      icon: <CalendarDays    className="h-4 w-4" /> },
+        { label: "Clients",          href: "/clients",                               icon: <UserSquare      className="h-4 w-4" /> },
+        { label: "Messages",         href: "/messages",                              icon: <MessageCircle   className="h-4 w-4" /> },
+        { label: "Designs",          href: `/designs?artistId=${myArtist.id}`,       icon: <Palette         className="h-4 w-4" /> },
+        { label: "Intake Forms",     href: "/forms/intake",                          icon: <FileText        className="h-4 w-4" /> },
+        { label: "Consent Forms",    href: "/forms/consent",                         icon: <ScrollText      className="h-4 w-4" /> },
+        { label: "Deposit Rules",    href: "/deposit-rules",                         icon: <DollarSign      className="h-4 w-4" /> },
+        { label: "Waitlist",         href: "/waitlist",                              icon: <ListOrdered     className="h-4 w-4" /> },
+        { label: "My Earnings",      href: "/earnings",                              icon: <Wallet          className="h-4 w-4" /> },
+        { label: "Reports About Me", href: `/conduct-reports?artistId=${myArtist.id}`, icon: <ShieldAlert   className="h-4 w-4" />, badge: myOpenConductReportCount },
+      ]
+    : [];
+
+  const isArtistMode = isInArtistContext(location.pathname, location.search, myArtist?.id);
+  const navItems: NavItem[] = isArtistMode && hasArtistProfile ? artistNavItems : ownerNavItems;
 
   function handleLogout() {
     dispatch(logout());
@@ -148,6 +196,11 @@ export function OwnerLayout() {
             </NavLink>
           ))}
         </nav>
+        {hasArtistProfile && myArtist && (
+          <div className="hidden sm:flex ml-2 shrink-0">
+            <ArtistModeSwitcher artistId={myArtist.id} />
+          </div>
+        )}
         <NavDrawer navItems={navItems} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
 
         <div className="ml-auto flex items-center gap-3">

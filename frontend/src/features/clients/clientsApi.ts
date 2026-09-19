@@ -14,6 +14,60 @@ export interface ClientResponse {
   artistId:           string | null;
   artistName:         string | null;
   erasureRequestedAt: string | null;
+  archivedAt:         string | null;
+}
+
+export interface GetClientsParams {
+  search?:          string;
+  includeArchived?: boolean;
+}
+
+export interface ClientDataExportProfile {
+  firstName:    string;
+  lastName:     string;
+  email:        string;
+  phone:        string | null;
+  createdAt:    string;
+  dateOfBirth:  string | null;
+  allergies:    string | null;
+  medicalNotes: string | null;
+}
+
+export interface ClientDataExportAppointment {
+  id:             string;
+  date:           string;
+  endDate:        string;
+  status:         string;
+  paymentAmount:  number | null;
+  paymentStatus:  string | null;
+}
+
+export interface ClientDataExportConsentForm {
+  id:                string;
+  appointmentId:     string;
+  signedAt:          string | null;
+  signedDocumentUrl: string | null;
+}
+
+export interface ClientDataExportTattooRecord {
+  id:           string;
+  description:  string;
+  bodyLocation: string;
+  completedAt:  string;
+  photoUrls:    string[];
+}
+
+export interface ClientDataExportStudioSection {
+  studioId:      string;
+  studioName:    string;
+  profile:       ClientDataExportProfile;
+  appointments:  ClientDataExportAppointment[];
+  consentForms:  ClientDataExportConsentForm[];
+  tattooRecords: ClientDataExportTattooRecord[];
+}
+
+export interface ClientDataExportResponse {
+  studios: ClientDataExportStudioSection[];
 }
 
 export interface ClientProfileResponse {
@@ -105,11 +159,18 @@ export const clientsApi = createApi({
       query: () => "clients/me/tattoos",
       providesTags: [{ type: "TattooRecord", id: "me" }],
     }),
-    getClients: builder.query<ClientResponse[], string | undefined>({
-      query: (search) => ({
-        url: "clients",
-        params: search ? { search } : undefined,
-      }),
+    getClients: builder.query<ClientResponse[], GetClientsParams | string | undefined>({
+      query: (params) => {
+        const { search, includeArchived } =
+          typeof params === "string" ? { search: params, includeArchived: undefined } : (params ?? {});
+        return {
+          url: "clients",
+          params: {
+            ...(search ? { search } : {}),
+            ...(includeArchived ? { includeArchived: true } : {}),
+          },
+        };
+      },
       providesTags: ["Client"],
     }),
     getClientById: builder.query<ClientResponse, string>({
@@ -254,6 +315,27 @@ export const clientsApi = createApi({
         }
       },
     }),
+    // Non-destructive "remove from list" — reversible, keeps all related data intact.
+    archiveClient: builder.mutation<void, string>({
+      query: (clientId) => ({ url: `clients/${clientId}/archive`, method: "POST" }),
+      invalidatesTags: (_result, _error, clientId) => [{ type: "Client", id: clientId }, "Client"],
+    }),
+    restoreClient: builder.mutation<void, string>({
+      query: (clientId) => ({ url: `clients/${clientId}/restore`, method: "POST" }),
+      invalidatesTags: (_result, _error, clientId) => [{ type: "Client", id: clientId }, "Client"],
+    }),
+    // Client self-service "export my data" — fans out across every studio the caller belongs to.
+    exportMyData: builder.query<ClientDataExportResponse, void>({
+      query: () => "clients/me/export",
+    }),
+    // Owner-facing cancel of a pending erasure request during the retention grace window.
+    cancelDataErasure: builder.mutation<void, string>({
+      query: (clientId) => ({ url: `clients/${clientId}/cancel-erasure`, method: "POST" }),
+      invalidatesTags: (_result, _error, clientId) => [
+        { type: "Client", id: clientId },
+        "Client",
+      ],
+    }),
   }),
 });
 
@@ -278,4 +360,9 @@ export const {
   useGetPortableProfileQuery,
   useRequestMyDataErasureMutation,
   useRequestDataErasureMutation,
+  useArchiveClientMutation,
+  useRestoreClientMutation,
+  useExportMyDataQuery,
+  useLazyExportMyDataQuery,
+  useCancelDataErasureMutation,
 } = clientsApi;

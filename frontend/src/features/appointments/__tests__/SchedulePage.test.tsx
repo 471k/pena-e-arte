@@ -124,11 +124,11 @@ function makeStore(role: Role = Role.Artist) {
   });
 }
 
-function renderPage(role: Role = Role.Artist) {
+function renderPage(role: Role = Role.Artist, initialPath = "/") {
   render(
     <Provider store={makeStore(role)}>
       <Toaster />
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/"                 element={<SchedulePage />} />
           <Route path="/appointments/:id" element={<div data-testid="detail-page" />} />
@@ -448,5 +448,37 @@ describe("SchedulePage", () => {
     await user.click(screen.getByRole("button", { name: /export csv/i }));
 
     expect(await screen.findByText(/couldn't export appointments/i)).toBeInTheDocument();
+  });
+
+  // ── Owner viewing via their own artist-mode nav (2026-09-17) ────────────────
+
+  it("forwards ?artistId= from the URL to the appointments request", async () => {
+    let capturedArtistId: string | null = null;
+    server.use(
+      http.get("http://localhost/api/v1/appointments", ({ request }) => {
+        capturedArtistId = new URL(request.url).searchParams.get("artistId");
+        return HttpResponse.json([]);
+      }),
+    );
+
+    renderPage(Role.Owner, "/?artistId=my-own-artist-id");
+    await screen.findByText("No appointments this week");
+
+    expect(capturedArtistId).toBe("my-own-artist-id");
+  });
+
+  it("does not send an artistId when the URL has none", async () => {
+    let capturedArtistId: string | null = null;
+    server.use(
+      http.get("http://localhost/api/v1/appointments", ({ request }) => {
+        capturedArtistId = new URL(request.url).searchParams.get("artistId");
+        return HttpResponse.json([]);
+      }),
+    );
+
+    renderPage(Role.Owner, "/");
+    await screen.findByText("No appointments this week");
+
+    expect(capturedArtistId).toBeNull();
   });
 });

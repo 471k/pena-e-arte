@@ -62,7 +62,15 @@ export function NotificationDetailModal({ log, onClose }: Props) {
               tabIndex={-1}
               className="w-full rounded border bg-white"
               style={{ height: "480px" }}
-              sandbox="allow-same-origin"
+              // allow-top-navigation-by-user-activation: several email templates (e.g.
+              // AppointmentConfirmation, StudioRegisteredAdmin) include a real link. Without
+              // this, clicking one tries to navigate *inside* this sandboxed iframe, which
+              // this app's own anti-clickjacking headers then correctly refuse to render —
+              // surfacing as a confusing "can't open this page" browser security error
+              // instead of just opening the link. A real click is a user gesture, so this
+              // token only permits navigation the user actually asked for, same as clicking
+              // a link in a real email client's preview pane would.
+              sandbox="allow-same-origin allow-top-navigation-by-user-activation"
             />
           ) : (
             <pre className="whitespace-pre-wrap text-sm text-foreground bg-muted/30 rounded p-4 min-h-[200px]">

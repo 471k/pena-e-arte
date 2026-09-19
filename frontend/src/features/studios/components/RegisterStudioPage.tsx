@@ -29,6 +29,7 @@ import { Label } from "@/shared/components/ui/label";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { PasswordInput } from "@/shared/components/ui/password-input";
 import { PasswordStrengthMeter } from "@/shared/components/ui/PasswordStrengthMeter";
+import { useAddressGeocode } from "@/shared/hooks/useAddressGeocode";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
 
@@ -53,6 +54,9 @@ const schema = z
         "NIPT format looks wrong — expected a letter, 8 digits, then a letter (e.g. L01234567A)"
       )
       .transform((v) => v.toUpperCase()),
+    addressLine1: z.string().min(1, "Street address is required").max(300),
+    addressLine2: z.string().max(150).optional(),
+    postalCode: z.string().max(20).optional(),
     latitude: z
       .number({ error: "Latitude is required" })
       .min(-90, "Must be between -90 and 90")
@@ -92,7 +96,7 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-const STEP_1_FIELDS = ["name", "slug", "city", "nipt", "latitude", "longitude"] as const;
+const STEP_1_FIELDS = ["name", "slug", "city", "nipt", "addressLine1", "latitude", "longitude"] as const;
 
 const soloSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(100),
@@ -154,12 +158,12 @@ export function RegisterStudioPage() {
         password:  values.password,
       }).unwrap();
 
-      const { accessToken } = await login({
+      const { accessToken, refreshToken } = await login({
         email: values.email,
         password: values.password,
       }).unwrap();
 
-      dispatch(setCredentials(decodeToken(accessToken)));
+      dispatch(setCredentials({ ...decodeToken(accessToken), refreshToken }));
       navigate("/dashboard", { replace: true });
     } catch (err) {
       const message =
@@ -186,6 +190,9 @@ export function RegisterStudioPage() {
       slug: "",
       city: "",
       nipt: "",
+      addressLine1: "",
+      addressLine2: "",
+      postalCode: "",
       latitude: NaN,
       longitude: NaN,
       email: "",
@@ -199,6 +206,28 @@ export function RegisterStudioPage() {
   const latValue  = watch("latitude");
   const lngValue  = watch("longitude");
   const cityValue = watch("city");
+  const addressLine1Value = watch("addressLine1");
+
+  // Set right before a pin-driven setValue("addressLine1", ...) below, so the very next
+  // render's useAddressGeocode call sees it and skips the forward-geocode fetch that
+  // address change would otherwise trigger — pin drag already has authoritative lat/lng,
+  // re-geocoding its own reverse-geocoded text back to coordinates is redundant and would
+  // flash "Locating on the map…" right after the user just finished correcting the pin.
+  const pinDrivenAddressUpdate = useRef(false);
+
+  const { status: geocodeStatus } = useAddressGeocode(
+    addressLine1Value,
+    ({ lat, lng, city }) => {
+      setValue("latitude", lat, { shouldValidate: true });
+      setValue("longitude", lng, { shouldValidate: true });
+      setValue("city", city, { shouldValidate: true });
+    },
+    { enabled: !pinDrivenAddressUpdate.current }
+  );
+
+  useEffect(() => {
+    pinDrivenAddressUpdate.current = false;
+  }, [addressLine1Value]);
 
   useEffect(() => {
     if (existingRole) {
@@ -266,6 +295,9 @@ export function RegisterStudioPage() {
         slug:         values.slug,
         city:         values.city,
         nipt:         values.nipt,
+        addressLine1: values.addressLine1,
+        addressLine2: values.addressLine2 || undefined,
+        postalCode:   values.postalCode || undefined,
         latitude:     values.latitude,
         longitude:    values.longitude,
         ownerEmail:   values.email,
@@ -280,12 +312,12 @@ export function RegisterStudioPage() {
           studioId: studio.id,
         }).unwrap();
 
-        const { accessToken } = await oauthLogin({
+        const { accessToken, refreshToken } = await oauthLogin({
           provider: oauthProvider,
           idToken:  oauthIdToken,
         }).unwrap();
 
-        dispatch(setCredentials(decodeToken(accessToken)));
+        dispatch(setCredentials({ ...decodeToken(accessToken), refreshToken }));
       } else {
         await registerUser({
           email: values.email,
@@ -294,12 +326,12 @@ export function RegisterStudioPage() {
           studioId: studio.id,
         }).unwrap();
 
-        const { accessToken } = await login({
+        const { accessToken, refreshToken } = await login({
           email: values.email,
           password: values.password,
         }).unwrap();
 
-        dispatch(setCredentials(decodeToken(accessToken)));
+        dispatch(setCredentials({ ...decodeToken(accessToken), refreshToken }));
       }
 
       dispatch(setPendingReferralCode(null));
@@ -532,6 +564,43 @@ export function RegisterStudioPage() {
                     </div>
 
                     <div className="space-y-1.5">
+                      <Label htmlFor="addressLine1">Street address</Label>
+                      <Input
+                        id="addressLine1"
+                        placeholder="Rruga e Kavajës 10"
+                        {...register("addressLine1")}
+                        aria-invalid={!!errors.addressLine1}
+                        aria-describedby="addressLine1-help"
+                      />
+                      <p id="addressLine1-help" className="text-xs text-muted-foreground flex items-center gap-1">
+                        {geocodeStatus === "loading" && (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Locating on the map…
+                          </>
+                        )}
+                        {geocodeStatus === "error" &&
+                          "Couldn't find that address automatically — you can also click the map below to set your studio's location."}
+                        {(geocodeStatus === "idle" || geocodeStatus === "success") &&
+                          "Stays in sync with the map below — type an address to move the pin, or drag the pin to update the address."}
+                      </p>
+                      {errors.addressLine1 && (
+                        <p className="text-xs text-destructive-text">{errors.addressLine1.message}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="addressLine2">Address line 2 (optional)</Label>
+                        <Input id="addressLine2" placeholder="Suite, floor, unit" {...register("addressLine2")} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="postalCode">Postal code (optional)</Label>
+                        <Input id="postalCode" {...register("postalCode")} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
                       <Label>Studio location</Label>
                       <LocationPicker
                         value={
@@ -539,10 +608,14 @@ export function RegisterStudioPage() {
                             ? { lat: latValue, lng: lngValue, city: cityValue }
                             : undefined
                         }
-                        onChange={({ lat, lng, city }) => {
+                        onChange={({ lat, lng, city, streetAddress }) => {
                           setValue("latitude",  lat,  { shouldValidate: true });
                           setValue("longitude", lng,  { shouldValidate: true });
                           setValue("city",      city, { shouldValidate: true });
+                          if (streetAddress) {
+                            pinDrivenAddressUpdate.current = true;
+                            setValue("addressLine1", streetAddress, { shouldValidate: true });
+                          }
                         }}
                         error={
                           errors.latitude?.message ??

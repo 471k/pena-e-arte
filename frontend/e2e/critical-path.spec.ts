@@ -149,6 +149,13 @@ test.describe("Critical path — register, login, create appointment", () => {
     // format is a letter, 8 digits, then a letter (see UpdateStudioNiptValidator).
     await page.getByLabel("Business tax ID (NIPT)").fill("L01234567A");
 
+    // Street address is required as of the 2026-09-16 studio-address feature —
+    // STEP_1_FIELDS includes addressLine1, so "Next" can't advance without it. Kept
+    // under useAddressGeocode's 5-char minLength so it never fires the debounced
+    // forward-geocode fetch (whose mocked response below isn't shaped for that call,
+    // only for the map's reverse-geocode) — avoids a race with the manual pin placed below.
+    await page.getByLabel("Street address").fill("N/A");
+
     // LocationPicker renders a Leaflet map. Click the map centre to place a pin.
     // The reverse-geocode call is mocked to return "Porto, Portugal".
     const mapContainer = page.locator(".leaflet-container");

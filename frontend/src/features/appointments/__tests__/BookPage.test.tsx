@@ -14,6 +14,7 @@ import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { clientsApi } from "@/features/clients/clientsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
+import { servicesApi } from "@/features/services/servicesApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { publicApi } from "@/features/public/publicApi";
@@ -24,6 +25,7 @@ import { waitlistApi } from "@/features/waitlist/waitlistApi";
 import { giftCardsApi } from "@/features/gift-cards/giftCardsApi";
 import { clientReferralsApi } from "@/features/client-referrals/clientReferralsApi";
 import { designsApi } from "@/features/designs/designsApi";
+import { savedPaymentMethodsApi } from "@/features/saved-payment-methods/savedPaymentMethodsApi";
 
 import { BookPage } from "@/features/appointments/components/BookPage";
 import { BookAppointmentForm } from "@/features/appointments/components/BookAppointmentForm";
@@ -51,6 +53,9 @@ const STUDIO: StudioResponse = {
   isSolo: false,
   isPublished: true,
   timezone: "Europe/Tirane",
+  addressLine1: null,
+  addressLine2: null,
+  postalCode: null,
 };
 
 const ARTIST: ArtistResponse = {
@@ -71,7 +76,7 @@ const MY_CLIENT: ClientResponse = {
   firstName: "Marco", lastName: "Cliente",
   email: "marco@test.com", phone: null,
   createdAt: "2024-01-01T00:00:00Z", userId: "u-001",
-  artistId: null, artistName: null, erasureRequestedAt: null,
+  artistId: null, artistName: null, erasureRequestedAt: null, archivedAt: null,
 };
 
 const STAFF_CLIENT: ClientResponse = {
@@ -139,6 +144,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/clients/me",              () => HttpResponse.json(MY_CLIENT)),
   http.get("http://localhost/api/v1/clients",                 () => HttpResponse.json([MY_CLIENT, STAFF_CLIENT])),
   http.get("http://localhost/api/v1/deposit-rules",           () => HttpResponse.json([ACTIVE_RULE, INACTIVE_RULE])),
+  http.get("http://localhost/api/v1/services",                () => HttpResponse.json([])),
+  http.get("http://localhost/api/v1/saved-payment-methods",   () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
   // BookAppointmentForm's package toggle — empty means the toggle simply doesn't render,
@@ -174,6 +181,7 @@ function makeStore(role: Role = Role.Client) {
       [artistsApi.reducerPath]:          artistsApi.reducer,
       [clientsApi.reducerPath]:          clientsApi.reducer,
       [depositRulesApi.reducerPath]:     depositRulesApi.reducer,
+      [servicesApi.reducerPath]:         servicesApi.reducer,
       [studiosApi.reducerPath]:          studiosApi.reducer,
       [paymentsApi.reducerPath]:         paymentsApi.reducer,
       [publicApi.reducerPath]:           publicApi.reducer,
@@ -184,6 +192,7 @@ function makeStore(role: Role = Role.Client) {
       [giftCardsApi.reducerPath]:       giftCardsApi.reducer,
       [clientReferralsApi.reducerPath]:  clientReferralsApi.reducer,
       [designsApi.reducerPath]:          designsApi.reducer,
+      [savedPaymentMethodsApi.reducerPath]: savedPaymentMethodsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -191,6 +200,7 @@ function makeStore(role: Role = Role.Client) {
         .concat(artistsApi.middleware)
         .concat(clientsApi.middleware)
         .concat(depositRulesApi.middleware)
+        .concat(servicesApi.middleware)
         .concat(studiosApi.middleware)
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
@@ -200,7 +210,8 @@ function makeStore(role: Role = Role.Client) {
         .concat(waitlistApi.middleware)
         .concat(giftCardsApi.middleware)
         .concat(clientReferralsApi.middleware)
-        .concat(designsApi.middleware),
+        .concat(designsApi.middleware)
+        .concat(savedPaymentMethodsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -240,6 +251,7 @@ function renderFormWithNoTenant() {
       [artistsApi.reducerPath]:      artistsApi.reducer,
       [clientsApi.reducerPath]:      clientsApi.reducer,
       [depositRulesApi.reducerPath]: depositRulesApi.reducer,
+      [servicesApi.reducerPath]:     servicesApi.reducer,
       [studiosApi.reducerPath]:      studiosApi.reducer,
       [paymentsApi.reducerPath]:     paymentsApi.reducer,
       [publicApi.reducerPath]:       publicApi.reducer,
@@ -249,6 +261,7 @@ function renderFormWithNoTenant() {
       [waitlistApi.reducerPath]:     waitlistApi.reducer,
       [giftCardsApi.reducerPath]:    giftCardsApi.reducer,
       [clientReferralsApi.reducerPath]: clientReferralsApi.reducer,
+      [savedPaymentMethodsApi.reducerPath]: savedPaymentMethodsApi.reducer,
     },
     middleware: (gd) =>
       gd()
@@ -256,6 +269,7 @@ function renderFormWithNoTenant() {
         .concat(artistsApi.middleware)
         .concat(clientsApi.middleware)
         .concat(depositRulesApi.middleware)
+        .concat(servicesApi.middleware)
         .concat(studiosApi.middleware)
         .concat(paymentsApi.middleware)
         .concat(publicApi.middleware)
@@ -264,7 +278,8 @@ function renderFormWithNoTenant() {
         .concat(packagesApi.middleware)
         .concat(waitlistApi.middleware)
         .concat(giftCardsApi.middleware)
-        .concat(clientReferralsApi.middleware),
+        .concat(clientReferralsApi.middleware)
+        .concat(savedPaymentMethodsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "test@test.com" }, token: "fake-token", tenantId: null, role: Role.Client, pendingReferralCode: null, impersonation: null } as any,

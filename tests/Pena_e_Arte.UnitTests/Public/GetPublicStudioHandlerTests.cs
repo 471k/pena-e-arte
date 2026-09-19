@@ -437,5 +437,38 @@ public class GetPublicStudioHandlerTests
 
         result!.Timezone.Should().Be("America/New_York");
     }
+
+    [Fact]
+    public async Task Handle_StudioWithAddress_ReturnsAddressFields()
+    {
+        Studio studio = MakeStudio();
+        studio.AddressLine1 = "Rua das Flores 10";
+        studio.AddressLine2 = "2nd Floor";
+        studio.PostalCode = "4000-123";
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.AddressLine1.Should().Be("Rua das Flores 10");
+        result.AddressLine2.Should().Be("2nd Floor");
+        result.PostalCode.Should().Be("4000-123");
+    }
+
+    [Fact]
+    public async Task Handle_StudioPredatingAddressFeature_ReturnsNullAddressWithoutThrowing()
+    {
+        Studio studio = MakeStudio();
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result =
+            await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.AddressLine1.Should().BeNull();
+        result.AddressLine2.Should().BeNull();
+        result.PostalCode.Should().BeNull();
+    }
 }
 

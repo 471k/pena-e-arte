@@ -34,6 +34,11 @@ export function getClientTourSteps(hasMultipleStudios: boolean): TourStep[] {
       body: "Once your artist uploads a design draft, you'll review and approve it here.",
     },
     {
+      targetSelector: '[data-tour="client-payment-methods-nav"]',
+      title: "Save a payment method",
+      body: "Save a card here to pay a deposit in one tap next time, without re-entering your card details.",
+    },
+    {
       targetSelector: '[data-tour="client-help-button"]',
       title: "Need help?",
       body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",

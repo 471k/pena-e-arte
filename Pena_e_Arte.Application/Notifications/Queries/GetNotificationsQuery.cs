@@ -22,33 +22,48 @@ public class GetNotificationsHandler(IAppDbContext db, ICurrentUser currentUser)
     public async Task<List<NotificationLogResponse>> Handle(
         GetNotificationsQuery query, CancellationToken ct)
     {
-        IQueryable<NotificationLog> q = db.NotificationLogs.AsNoTracking();
+        IQueryable<NotificationLog> q;
 
-        if (currentUser.Role == "artist")
+        if (currentUser.Role == "admin")
         {
-            // An artist only ever sees notifications addressed to them — never the
-            // full studio log (which may include other artists' or clients' details).
-            Guid? myArtistId = await db.Artists
-                .Where(a => a.UserId == currentUser.UserId)
-                .Select(a => (Guid?)a.Id)
-                .FirstOrDefaultAsync(ct);
-
-            q = q.Where(n => n.RecipientType == NotificationRecipientType.Artist
-                           && n.RecipientId == myArtistId);
+            // Admin is not scoped to one studio for this read — the default tenant filter
+            // (StudioId == tenant.StudioId) would otherwise silently narrow this to
+            // whichever studio happens to be on the admin's own JWT. IgnoreQueryFilters()
+            // drops both halves of the combined filter (StudioId AND DeletedAt == null), so
+            // DeletedAt == null is reapplied explicitly below.
+            q = db.NotificationLogs.IgnoreQueryFilters().AsNoTracking()
+                .Where(n => n.DeletedAt == null && n.RecipientType == NotificationRecipientType.Admin);
         }
-        else if (currentUser.Role == "client")
+        else
         {
-            // A client only ever sees notifications addressed to them — any
-            // requested RecipientId is ignored rather than trusted, since another
-            // client's or the studio's own id could otherwise be guessed.
-            Client? me = await db.FindClientForUserAsync(currentUser, ct);
+            q = db.NotificationLogs.AsNoTracking();
 
-            q = q.Where(n => n.RecipientType == NotificationRecipientType.Client
-                           && n.RecipientId == (me == null ? Guid.Empty : me.Id));
-        }
-        else if (query.RecipientId.HasValue)
-        {
-            q = q.Where(n => n.RecipientId == query.RecipientId.Value);
+            if (currentUser.Role == "artist")
+            {
+                // An artist only ever sees notifications addressed to them — never the
+                // full studio log (which may include other artists' or clients' details).
+                Guid? myArtistId = await db.Artists
+                    .Where(a => a.UserId == currentUser.UserId)
+                    .Select(a => (Guid?)a.Id)
+                    .FirstOrDefaultAsync(ct);
+
+                q = q.Where(n => n.RecipientType == NotificationRecipientType.Artist
+                               && n.RecipientId == myArtistId);
+            }
+            else if (currentUser.Role == "client")
+            {
+                // A client only ever sees notifications addressed to them — any
+                // requested RecipientId is ignored rather than trusted, since another
+                // client's or the studio's own id could otherwise be guessed.
+                Client? me = await db.FindClientForUserAsync(currentUser, ct);
+
+                q = q.Where(n => n.RecipientType == NotificationRecipientType.Client
+                               && n.RecipientId == (me == null ? Guid.Empty : me.Id));
+            }
+            else if (query.RecipientId.HasValue)
+            {
+                q = q.Where(n => n.RecipientId == query.RecipientId.Value);
+            }
         }
 
         if (query.Channel is not null)
@@ -83,8 +98,11 @@ public class GetNotificationsHandler(IAppDbContext db, ICurrentUser currentUser)
             .Distinct()
             .ToList();
 
+        // Admin rows carry a studio's Id too (see NotificationRecipientType.Admin) — same
+        // shape as the Studio case, resolved via the same single db.Studios query below.
         List<Guid> studioIds = logs
-            .Where(n => n.RecipientType == NotificationRecipientType.Studio && n.RecipientId.HasValue)
+            .Where(n => (n.RecipientType == NotificationRecipientType.Studio
+                      || n.RecipientType == NotificationRecipientType.Admin) && n.RecipientId.HasValue)
             .Select(n => n.RecipientId!.Value)
             .Distinct()
             .ToList();

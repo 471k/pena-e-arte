@@ -28,6 +28,9 @@ public static class AuditActions
     public const string ClientDataErasureRequested = "Client.DataErasureRequested";
 
     public const string ClientArtistReassigned = "Client.ArtistReassigned";
+    public const string ClientArchived = "Client.Archived";
+    public const string ClientRestored = "Client.Restored";
+    public const string ClientDataErasureCancelled = "Client.DataErasureCancelled";
 
     public const string ManualReminderSent = "ManualReminder.Sent";
     public const string ManualReminderCancelled = "ManualReminder.Cancelled";

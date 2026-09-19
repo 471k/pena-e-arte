@@ -43,7 +43,7 @@ const CLIENT: ClientResponse = {
   userId:     "u-ana",
   artistId:   "artist-001",
   artistName: "Marta Reis",
-  erasureRequestedAt: null,
+  erasureRequestedAt: null, archivedAt: null,
 };
 
 const PROFILE: ClientProfileResponse = {
@@ -168,6 +168,12 @@ const server = setupServer(
   http.get("http://localhost/api/v1/consent-forms", () => HttpResponse.json([CONSENT_FORM])),
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
   http.post("http://localhost/api/v1/clients/:id/erase-data", () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post("http://localhost/api/v1/clients/:id/archive", () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post("http://localhost/api/v1/clients/:id/restore", () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post("http://localhost/api/v1/clients/:id/cancel-erasure", () =>
     new HttpResponse(null, { status: 204 })),
 );
 
@@ -600,5 +606,65 @@ describe("ClientDetailPage", () => {
 
     expect(await screen.findByText(/data erasure requested on 1 sep(t|tember)? 2026/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /erase client data/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a 'Cancel erasure request' button in the pending-erasure banner, and confirming it calls the endpoint", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients/:id", () =>
+        HttpResponse.json({ ...CLIENT, erasureRequestedAt: "2026-09-01T00:00:00.000Z" })),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await screen.findByText("Ana Ferreira");
+
+    await user.click(await screen.findByRole("button", { name: /cancel erasure request/i }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /cancel erasure request/i }));
+
+    expect(
+      await screen.findByText(/erasure request cancelled/i),
+    ).toBeInTheDocument();
+  });
+
+  // ── Archive / restore ────────────────────────────────────────────────────────
+
+  it("Artist (canEdit) sees an 'Archive' action; a non-editing role does not", async () => {
+    renderPage(Role.Artist);
+    await screen.findByText("Ana Ferreira");
+    expect(screen.getByRole("button", { name: /^archive$/i })).toBeInTheDocument();
+
+    cleanup();
+    renderPage(Role.Client);
+    await screen.findByText("Ana Ferreira");
+    expect(screen.queryByRole("button", { name: /^archive$/i })).not.toBeInTheDocument();
+  });
+
+  it("confirming Archive calls the archive endpoint and shows a success toast", async () => {
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await screen.findByText("Ana Ferreira");
+
+    await user.click(screen.getByRole("button", { name: /^archive$/i }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /^archive$/i }));
+
+    expect(await screen.findByText("Client archived.")).toBeInTheDocument();
+  });
+
+  it("shows a 'Restore' action once the client is archived", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/clients/:id", () =>
+        HttpResponse.json({ ...CLIENT, archivedAt: "2026-09-10T00:00:00.000Z" })),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Owner);
+    await screen.findByText("Ana Ferreira");
+
+    expect(screen.queryByRole("button", { name: /^archive$/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^restore$/i }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /^restore$/i }));
+
+    expect(await screen.findByText("Client restored.")).toBeInTheDocument();
   });
 });

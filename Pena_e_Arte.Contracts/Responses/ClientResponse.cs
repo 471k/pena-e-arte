@@ -11,4 +11,5 @@ public record ClientResponse(
     Guid? UserId,
     Guid? ArtistId = null,
     string? ArtistName = null,
-    DateTime? ErasureRequestedAt = null);
+    DateTime? ErasureRequestedAt = null,
+    DateTime? ArchivedAt = null);
