@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -137,17 +137,63 @@ describe("ArtistSocialTab", () => {
     });
   });
 
-  describe("artist on their own profile (today: owner-managed, read-only)", () => {
-    it("explains who manages connections instead of showing buttons that would 403", async () => {
+  describe("artist on their own profile (self-service)", () => {
+    it("can act on every row, with second-person copy and no 'ask your owner' dead end", async () => {
       renderTab({ canManage: false, isOwnProfile: true });
       await untilLoaded();
 
       expect(
-        screen.getByText("Your studio owner manages connections for your profile. Ask them to connect these accounts."),
+        screen.getByText("Link your accounts so clients can find you and see a Verified badge on your public profile."),
       ).toBeInTheDocument();
-      expect(screen.queryByRole("button")).not.toBeInTheDocument();
-      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-      expect(screen.getAllByText("Not linked")).toHaveLength(5);
+      expect(screen.queryByText(/studio owner manages/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Connect Instagram" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Connect TikTok" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Get Facebook verification code" })).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: "Facebook handle" })).toBeInTheDocument();
+      expect(screen.getByText(
+        "Connect Instagram to automatically show your latest posts on your public portfolio.",
+      )).toBeInTheDocument();
+    });
+
+    it("starts the connect flow for their OWN artist id, not any other", async () => {
+      let requestedUrl: string | null = null;
+      server.use(
+        http.get(`${BASE}/instagram/connect-url`, ({ request }) => {
+          requestedUrl = request.url;
+          return HttpResponse.json({ authUrl: "https://api.instagram.com/oauth/authorize?x=1" });
+        }),
+      );
+      const popup = { location: { href: "" }, close: vi.fn() };
+      const openSpy = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+      const user = userEvent.setup();
+      renderTab({ canManage: false, isOwnProfile: true });
+      await untilLoaded();
+
+      await user.click(screen.getByRole("button", { name: "Connect Instagram" }));
+
+      await waitFor(() => expect(popup.location.href).toBe("https://api.instagram.com/oauth/authorize?x=1"));
+      expect(requestedUrl).toBe(`${BASE}/instagram/connect-url`);
+      openSpy.mockRestore();
+    });
+
+    it("saves a typed handle against their own artist id and platform", async () => {
+      let saved: { url: string; body: unknown } | null = null;
+      server.use(
+        http.put(`${BASE}/social/:platform/handle`, async ({ request }) => {
+          saved = { url: request.url, body: await request.json() };
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      const user = userEvent.setup();
+      renderTab({ canManage: false, isOwnProfile: true });
+      await untilLoaded();
+
+      await user.type(screen.getByRole("textbox", { name: "Facebook handle" }), "rui.ink");
+      await user.tab();
+
+      await waitFor(() => expect(saved).not.toBeNull());
+      expect(saved!.url).toBe(`${BASE}/social/Facebook/handle`);
+      expect(saved!.body).toEqual({ handle: "rui.ink" });
     });
 
     it("links to the public profile when the artist has a slug", async () => {

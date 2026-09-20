@@ -14,11 +14,11 @@ interface SocialLinksCardProps {
   /** Which platforms this card manages. Defaults to all five — pass a subset to
    * exclude one already managed elsewhere. */
   platforms?: readonly SocialPlatform[];
-  /** Whether the viewer may connect/verify/edit/disconnect. The studio subject's endpoints are
+  /** Whether the viewer may connect/verify/edit/disconnect. The studio subject's endpoints stay
    * OwnerOnly, so Studio Settings (already owner-gated at the route) leaves this at its default
-   * of true. The artist subject's endpoints are ArtistAndAbove with a handler-side ownership
-   * guard — the artist page decides per viewer (see ArtistSocialTab). false renders every row
-   * read-only. */
+   * of true. The artist subject's endpoints are ArtistAndAbove plus a handler-side ownership
+   * guard (an artist may act only on their own profile; owner/admin on any) — the artist page
+   * decides per viewer (see ArtistSocialTab). false renders every row read-only. */
   canManage?: boolean;
 }
 

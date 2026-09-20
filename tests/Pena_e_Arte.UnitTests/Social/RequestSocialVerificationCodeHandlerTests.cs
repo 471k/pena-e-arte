@@ -24,7 +24,7 @@ public class RequestSocialVerificationCodeHandlerTests
         _checkerFactory.GetChecker(Arg.Any<SocialPlatform>()).Returns(_checker);
     }
 
-    private RequestSocialVerificationCodeHandler CreateSut() => new(_db, _tenant, _checkerFactory);
+    private RequestSocialVerificationCodeHandler CreateSut() => new(_db, _tenant, _checkerFactory, FakeCurrentUser.Owner());
 
     [Fact]
     public async Task Handle_UnsupportedPlatform_ThrowsBusinessRuleViolationException()

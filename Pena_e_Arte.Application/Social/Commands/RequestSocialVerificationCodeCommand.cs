@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses.Social;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -12,10 +14,16 @@ namespace Pena_e_Arte.Application.Social.Commands;
 
 public record RequestSocialVerificationCodeCommand(
     SocialLinkSubjectType SubjectType, Guid SubjectId, SocialPlatform Platform)
-    : IRequest<SocialVerificationCodeResponse>;
+    : IRequest<SocialVerificationCodeResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.SocialVerificationRequested;
+    public string AuditTargetType => SubjectType == SocialLinkSubjectType.Artist
+        ? AuditTargetTypes.Artist : AuditTargetTypes.Studio;
+    public Guid AuditTargetId => SubjectId;
+}
 
 public class RequestSocialVerificationCodeHandler(
-    IAppDbContext db, ICurrentTenant tenant, ISocialBioCheckerFactory checkerFactory)
+    IAppDbContext db, ICurrentTenant tenant, ISocialBioCheckerFactory checkerFactory, ICurrentUser currentUser)
     : IRequestHandler<RequestSocialVerificationCodeCommand, SocialVerificationCodeResponse>
 {
     private const string CodeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // excludes 0/O/1/I
@@ -23,8 +31,15 @@ public class RequestSocialVerificationCodeHandler(
     public async Task<SocialVerificationCodeResponse> Handle(
         RequestSocialVerificationCodeCommand request, CancellationToken ct)
     {
+        if (request.SubjectType == SocialLinkSubjectType.Artist && request.Platform == SocialPlatform.Instagram)
+            throw new BusinessRuleViolationException(
+                "Use the artist's own Instagram connect flow (/artists/{id}/instagram/connect-url) instead.");
+
         Guid studioId = await SocialSubjectResolver.ResolveStudioIdAsync(
             db, tenant, request.SubjectType, request.SubjectId, ct);
+
+        await ArtistOwnershipGuard.EnsureCanActOnSocialSubjectAsync(
+            db, currentUser, request.SubjectType, request.SubjectId, ct);
 
         if (!checkerFactory.GetChecker(request.Platform).IsSupported)
             throw new BusinessRuleViolationException(

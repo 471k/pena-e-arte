@@ -14,12 +14,15 @@ public static class InstagramEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/artists/{id:guid}/instagram")
             .RequireAuthorization();
 
-        group.MapGet("/connect-url", GetConnectUrl).RequireAuthorization("OwnerOnly");
+        // ArtistAndAbove + a handler-side ownership guard (ArtistOwnershipGuard): an artist may
+        // connect/disconnect their OWN Instagram — the account holder is the one who can complete
+        // the consent screen — while owner/admin keep access to every artist in the studio.
+        group.MapGet("/connect-url", GetConnectUrl).RequireAuthorization("ArtistAndAbove");
         group.MapGet("/status", GetStatus).RequireAuthorization("ArtistAndAbove");
         group.MapGet("/posts", GetPosts).RequireAuthorization("ArtistAndAbove");
         group.MapPut("/posts/{postId:guid}/visibility", ToggleVisibility)
              .RequireAuthorization("ArtistAndAbove");
-        group.MapDelete("/disconnect", Disconnect).RequireAuthorization("OwnerOnly");
+        group.MapDelete("/disconnect", Disconnect).RequireAuthorization("ArtistAndAbove");
     }
 
     /// <summary>

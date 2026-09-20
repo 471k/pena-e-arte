@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -9,9 +11,15 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Social.Commands;
 
 public record DisconnectSocialAccountCommand(SocialLinkSubjectType SubjectType, Guid SubjectId, SocialPlatform Platform)
-    : IRequest<Unit>;
+    : IRequest<Unit>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.SocialDisconnected;
+    public string AuditTargetType => SubjectType == SocialLinkSubjectType.Artist
+        ? AuditTargetTypes.Artist : AuditTargetTypes.Studio;
+    public Guid AuditTargetId => SubjectId;
+}
 
-public class DisconnectSocialAccountHandler(IAppDbContext db, ICurrentTenant tenant)
+public class DisconnectSocialAccountHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser)
     : IRequestHandler<DisconnectSocialAccountCommand, Unit>
 {
     public async Task<Unit> Handle(DisconnectSocialAccountCommand request, CancellationToken ct)
@@ -22,6 +30,9 @@ public class DisconnectSocialAccountHandler(IAppDbContext db, ICurrentTenant ten
                 "it also deactivates the underlying InstagramConnection, which this generic path never touches.");
 
         await SocialSubjectResolver.ResolveStudioIdAsync(db, tenant, request.SubjectType, request.SubjectId, ct);
+
+        await ArtistOwnershipGuard.EnsureCanActOnSocialSubjectAsync(
+            db, currentUser, request.SubjectType, request.SubjectId, ct);
 
         SocialAccountLink? link = await db.SocialAccountLinks.FirstOrDefaultAsync(
             s => s.SubjectType == request.SubjectType

@@ -53,13 +53,16 @@ interface Scenario {
   instagram?: { isConnected: boolean; username: string | null; lastSyncedAt: string | null; postCount: number };
   social?: ReturnType<typeof links>;
   statusFails?: boolean;
+  /** Which user the artist record belongs to; defaults to the logged-in artist ("their own profile"). */
+  artistUserId?: string;
 }
 
 async function mockSocialTab(page: Page, scenario: Scenario = {}) {
   await mockApiFallback(page);
   const json = (body: unknown, status = 200) => ({ status, contentType: "application/json", body: JSON.stringify(body) });
 
-  await page.route(`**/api/v1/artists/${ARTIST_ID}`, (route) => route.fulfill(json(ARTIST)));
+  const artist = { ...ARTIST, userId: scenario.artistUserId ?? ARTIST.userId };
+  await page.route(`**/api/v1/artists/${ARTIST_ID}`, (route) => route.fulfill(json(artist)));
   await page.route("**/api/v1/artists/me", (route) => route.fulfill(json(ARTIST)));
   await page.route(`**/api/v1/artists/${ARTIST_ID}/instagram/status`, (route) =>
     scenario.statusFails
@@ -127,16 +130,45 @@ test.describe("Artist Social tab", () => {
     await expectAxeClean(page);
   });
 
-  test("artist on their own profile: read-only rows, an explanation, no dead-end buttons, axe-clean", async ({ page }) => {
+  test("artist on their own profile: connects and verifies for themselves, axe-clean", async ({ page }) => {
     await mockSocialTab(page);
     await openSocialTab(page, "artist");
 
-    await expect(page.getByText("Your studio owner manages connections for your profile.")).toBeVisible();
+    await expect(
+      page.getByText("Link your accounts so clients can find you and see a Verified badge on your public profile."),
+    ).toBeVisible();
+    await expect(page.getByText(/studio owner manages/i)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Connect Instagram" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Connect TikTok" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Facebook handle" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /view public profile/i }).first()).toBeVisible();
+    await expectAxeClean(page);
+  });
+
+  test("artist typing a handle saves it against their own profile", async ({ page }) => {
+    await mockSocialTab(page);
+    const saved = page.waitForRequest(
+      (req) => req.method() === "PUT" && req.url().endsWith(`/api/v1/artists/${ARTIST_ID}/social/Facebook/handle`),
+    );
+    await page.route(`**/api/v1/artists/${ARTIST_ID}/social/Facebook/handle`, (route) => route.fulfill({ status: 204 }));
+    await openSocialTab(page, "artist");
+
+    await page.getByRole("textbox", { name: "Facebook handle" }).fill("rafa.ink");
+    await page.getByRole("textbox", { name: "Facebook handle" }).blur();
+
+    expect((await saved).postDataJSON()).toEqual({ handle: "rafa.ink" });
+  });
+
+  test("artist viewing a colleague's profile: read-only rows and an explanation, axe-clean", async ({ page }) => {
+    await mockSocialTab(page, { artistUserId: "someone-else" });
+    await openSocialTab(page, "artist");
+
+    await expect(page.getByText("Only the studio owner manages connections for this profile.")).toBeVisible();
     const list = page.getByRole("list", { name: "Connected accounts" });
     await expect(list.getByRole("button")).toHaveCount(0);
     await expect(list.getByRole("textbox")).toHaveCount(0);
     await expect(list).not.toContainText("—");
-    await expect(page.getByRole("link", { name: /view public profile/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /view public profile/i })).toHaveCount(0);
     await expectAxeClean(page);
   });
 

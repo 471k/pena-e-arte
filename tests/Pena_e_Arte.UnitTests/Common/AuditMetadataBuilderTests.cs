@@ -2,6 +2,9 @@ using System.Text.Json;
 using FluentAssertions;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Common;
+using Pena_e_Arte.Application.Instagram.Commands;
+using Pena_e_Arte.Application.Social.Commands;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Application.Platform.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -15,6 +18,34 @@ public class AuditMetadataBuilderTests
         using JsonDocument doc = JsonDocument.Parse(metadata);
         foreach (JsonProperty prop in doc.RootElement.EnumerateObject())
             prop.Name.Should().NotMatchRegex("(?i)email|phone|address|note|firstname|lastname");
+    }
+
+    [Fact]
+    public void Build_SocialLinkCommands_IncludePlatformOnlyNeverTheHandle()
+    {
+        Guid subject = Guid.NewGuid();
+        object[] commands =
+        [
+            new UpdateSocialHandleCommand(SocialLinkSubjectType.Artist, subject, SocialPlatform.TikTok, "secret_handle"),
+            new RequestSocialVerificationCodeCommand(SocialLinkSubjectType.Artist, subject, SocialPlatform.TikTok),
+            new VerifySocialBioCodeCommand(SocialLinkSubjectType.Artist, subject, SocialPlatform.TikTok),
+            new DisconnectSocialAccountCommand(SocialLinkSubjectType.Artist, subject, SocialPlatform.TikTok),
+        ];
+
+        foreach (object command in commands)
+        {
+            string metadata = AuditMetadataBuilder.Build(command);
+
+            metadata.Should().Be("{\"platform\":\"TikTok\"}");
+            metadata.Should().NotContain("secret_handle");
+            AssertNoPiiShapedFields(metadata);
+        }
+    }
+
+    [Fact]
+    public void Build_DisconnectInstagramCommand_IncludesPlatformOnly()
+    {
+        AuditMetadataBuilder.Build(new DisconnectInstagramCommand(Guid.NewGuid())).Should().Be("{\"platform\":\"Instagram\"}");
     }
 
     [Fact]

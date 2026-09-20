@@ -1172,8 +1172,8 @@ The following are the only documented exceptions:
 | `POST /api/v1/public/artists/{slug}/view` | Anonymous view counter for feed ranking | None — write-only to Redis, non-domain data |
 | `GET /api/v1/public/portfolio/{imageId}/reviews` | Public per-image review list | None — read-only, non-sensitive review content only |
 | `GET /api/v1/public/artists/{slug}/instagram-posts` | Public synced Instagram feed for artist portfolio | None — read-only, only `IsVisible` posts, no PII |
-| `GET /api/v1/instagram/callback` | Instagram OAuth redirect target, no JWT possible | Signed `state` param (HMAC-SHA256, `IInstagramStateSigner`) validated before trusting artistId |
-| `GET /api/v1/social/{platform}/callback` | Generic social OAuth redirect target (studio Instagram, TikTok, Facebook, X, YouTube) — no JWT possible | Signed `state` param (HMAC-SHA256, `ISocialOAuthStateSigner`, separate key from `IInstagramStateSigner`) validated before trusting subjectId; rate-limited (`public-write`) |
+| `GET /api/v1/instagram/callback` | Instagram OAuth redirect target, no JWT possible | Signed `state` param (HMAC-SHA256, `IInstagramStateSigner`, 15-minute issue-time window) validated before trusting artistId |
+| `GET /api/v1/social/{platform}/callback` | Generic social OAuth redirect target (studio Instagram, TikTok, Facebook, X, YouTube) — no JWT possible | Signed `state` param (HMAC-SHA256, `ISocialOAuthStateSigner`, separate key from `IInstagramStateSigner`) and a 15-minute issue-time window, validated before trusting subjectId; rate-limited (`public-write`) |
 | `GET /api/v1/public/studios/nearby` | Public geo search (DiscoverPage Studios tab) | None — read-only, non-sensitive studio info only |
 | `GET /api/v1/public/studios/{slug}/reviews` | Public studio review list | None — read-only, non-sensitive review content only |
 | `GET /api/v1/public/artists/{slug}/reviews` | Public artist review list | None — read-only, non-sensitive review content only |

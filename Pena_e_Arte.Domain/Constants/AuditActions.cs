@@ -56,6 +56,15 @@ public static class AuditActions
     public const string CampaignSent = "Campaign.Sent";
     public const string ImpersonationSessionStarted = "ImpersonationSession.Started";
     public const string ImpersonationSessionEnded = "ImpersonationSession.Ended";
+
+    /// <summary>Social/Instagram link changes on an artist or studio. Metadata carries only the
+    /// platform — never the handle (PII). Verification is "Attempted" because the audit pipeline
+    /// logs any non-throwing run, including a bio-code check that didn't find the code.</summary>
+    public const string SocialHandleUpdated = "SocialLink.HandleUpdated";
+    public const string SocialVerificationRequested = "SocialLink.VerificationRequested";
+    public const string SocialVerificationAttempted = "SocialLink.VerificationAttempted";
+    public const string SocialDisconnected = "SocialLink.Disconnected";
+    public const string SocialConnectedViaOAuth = "SocialLink.ConnectedViaOAuth";
 }
 
 /// <summary>Entity kind the audited action targets — paired with AuditLogEntry.TargetId.</summary>
@@ -76,4 +85,5 @@ public static class AuditTargetTypes
     public const string GiftCard = "GiftCard";
     public const string Campaign = "Campaign";
     public const string ImpersonationSession = "ImpersonationSession";
+    public const string Artist = "Artist";
 }

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Pena_e_Arte.Application.Instagram.Commands;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
@@ -55,6 +56,24 @@ public class ExchangeInstagramCodeCommandTests
             c.Username == "artist_ig" &&
             c.EncryptedToken == "encrypted-access-token" &&
             c.IsActive);
+    }
+
+    [Fact]
+    public async Task Handle_Connect_WritesAStudioScopedAuditEntryWithThePlatformOnly()
+    {
+        Guid artistId = await SeedArtist();
+        MockExchange(username: "very_private_handle");
+
+        await CreateSut().Handle(new ExchangeInstagramCodeCommand(artistId, "auth-code"), default);
+
+        AuditLogEntry entry = _db.AuditLogEntries.Should().ContainSingle().Subject;
+        entry.Action.Should().Be(AuditActions.SocialConnectedViaOAuth);
+        entry.TargetType.Should().Be(AuditTargetTypes.Artist);
+        entry.TargetId.Should().Be(artistId);
+        entry.StudioId.Should().Be(_studioId);
+        entry.ActorRole.Should().Be("oauth-callback");
+        entry.Metadata.Should().Be("{\"platform\":\"Instagram\"}");
+        entry.Metadata.Should().NotContain("very_private_handle");
     }
 
     [Fact]

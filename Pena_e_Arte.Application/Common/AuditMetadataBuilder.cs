@@ -3,8 +3,10 @@ using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Clients.Commands;
 using Pena_e_Arte.Application.GiftCards.Commands;
+using Pena_e_Arte.Application.Instagram.Commands;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Application.Platform.Commands;
+using Pena_e_Arte.Application.Social.Commands;
 using Pena_e_Arte.Application.Support.Commands;
 using Pena_e_Arte.Application.Waitlists.Commands;
 
@@ -78,6 +80,13 @@ public static class AuditMetadataBuilder
             // Row count only — the new name/phone are PII and never go in the audit log.
             ["affectedClientCount"] = c.AffectedClientCount,
         },
+        // Social link changes: the platform only. The handle is a person's public identity and never
+        // goes in the audit log, nor does any verification code.
+        UpdateSocialHandleCommand c => new Dictionary<string, object?> { ["platform"] = c.Platform.ToString() },
+        RequestSocialVerificationCodeCommand c => new Dictionary<string, object?> { ["platform"] = c.Platform.ToString() },
+        VerifySocialBioCodeCommand c => new Dictionary<string, object?> { ["platform"] = c.Platform.ToString() },
+        DisconnectSocialAccountCommand c => new Dictionary<string, object?> { ["platform"] = c.Platform.ToString() },
+        DisconnectInstagramCommand => new Dictionary<string, object?> { ["platform"] = "Instagram" },
         _ => new Dictionary<string, object?>(),
     });
 

@@ -12,21 +12,24 @@ public static class SocialEndpoints
 {
     public static void MapSocialEndpoints(this IEndpointRouteBuilder app)
     {
+        // Artist subject: ArtistAndAbove, with every mutating handler pinning an artist caller to
+        // their own profile via ArtistOwnershipGuard (the tenant filter alone would let an artist
+        // act on a colleague). The studio subject below stays OwnerOnly — it has no "owning artist".
         RouteGroupBuilder artistGroup = app.MapGroup("/api/v1/artists/{id:guid}/social")
             .RequireAuthorization();
 
         artistGroup.MapGet("/", (Guid id, ISender m, CancellationToken ct) =>
             GetLinks(SocialLinkSubjectType.Artist, id, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapGet("/{platform}/connect-url", (Guid id, string platform, ISender m, CancellationToken ct) =>
-            GetConnectUrl(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("OwnerOnly");
+            GetConnectUrl(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapPut("/{platform}/handle", (Guid id, string platform, UpdateSocialHandleRequest req, ISender m, CancellationToken ct) =>
-            UpdateHandle(SocialLinkSubjectType.Artist, id, platform, req, m, ct)).RequireAuthorization("OwnerOnly");
+            UpdateHandle(SocialLinkSubjectType.Artist, id, platform, req, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapPost("/{platform}/request-code", (Guid id, string platform, ISender m, CancellationToken ct) =>
-            RequestCode(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("OwnerOnly");
+            RequestCode(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapPost("/{platform}/verify-code", (Guid id, string platform, ISender m, CancellationToken ct) =>
-            VerifyCode(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("OwnerOnly");
+            VerifyCode(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapDelete("/{platform}/disconnect", (Guid id, string platform, ISender m, CancellationToken ct) =>
-            Disconnect(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("OwnerOnly");
+            Disconnect(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("ArtistAndAbove");
 
         RouteGroupBuilder studioGroup = app.MapGroup("/api/v1/studios/{id:guid}/social")
             .RequireAuthorization();
