@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -121,11 +121,19 @@ function makeStore() {
   });
 }
 
-function renderTab(canConnect = true, canManagePosts = true) {
+function renderTab(canConnect = true, canManagePosts = true, isSelf = false, firstName?: string) {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <InstagramTab artistId={ARTIST_ID} canConnect={canConnect} canManagePosts={canManagePosts} />
+      <ul>
+        <InstagramTab
+          artistId={ARTIST_ID}
+          canConnect={canConnect}
+          canManagePosts={canManagePosts}
+          isSelf={isSelf}
+          firstName={firstName}
+        />
+      </ul>
     </Provider>,
   );
   return store;
@@ -135,7 +143,30 @@ describe("InstagramTab", () => {
   it("shows the Connect Instagram button and descriptive text when disconnected", async () => {
     renderTab();
     expect(await screen.findByRole("button", { name: /connect instagram/i })).toBeInTheDocument();
-    expect(screen.getByText(/automatically sync their posts/i)).toBeInTheDocument();
+    expect(screen.getByText("Not linked")).toBeInTheDocument();
+    expect(screen.getByText(
+      "Connect the artist's Instagram to automatically show their latest posts on their public portfolio.",
+    )).toBeInTheDocument();
+  });
+
+  it("uses second person on the artist's own profile and the first name when an owner views another artist", async () => {
+    renderTab(true, true, true);
+    expect(await screen.findByText(
+      "Connect Instagram to automatically show your latest posts on your public portfolio.",
+    )).toBeInTheDocument();
+    cleanup();
+
+    renderTab(true, true, false, "Rui");
+    expect(await screen.findByText(
+      "Connect Rui's Instagram to automatically show their latest posts on their public portfolio.",
+    )).toBeInTheDocument();
+  });
+
+  it("read-only viewer: status badge but no Connect button and no promise-with-no-button pitch", async () => {
+    renderTab(false, false);
+    expect(await screen.findByText("Not linked")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByText(/automatically show/i)).not.toBeInTheDocument();
   });
 
   it("clicking Connect Instagram opens a blank tab synchronously, then navigates it to the authUrl", async () => {
@@ -164,7 +195,7 @@ describe("InstagramTab", () => {
     await user.click(await screen.findByRole("button", { name: /connect instagram/i }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("Pop-up blocked. Please allow pop-ups for this site and try again.");
+      expect(toast.error).toHaveBeenCalledWith("Pop-up blocked. Allow pop-ups for this site and try again.");
     });
 
     openSpy.mockRestore();
@@ -179,8 +210,9 @@ describe("InstagramTab", () => {
     renderTab();
 
     expect(await screen.findByText("@ink_artist")).toBeInTheDocument();
-    expect(screen.getByText("3 posts")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
+    expect(screen.getByText(/3 posts/)).toBeInTheDocument();
+    expect(screen.getByText(/last synced/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Disconnect Instagram" })).toBeInTheDocument();
   });
 
   it("shows the Verified badge when the Instagram social link is verified", async () => {
@@ -245,19 +277,28 @@ describe("InstagramTab", () => {
     });
   });
 
-  it("clicking Disconnect (after confirming) calls DELETE .../instagram/disconnect", async () => {
+  it("clicking Disconnect asks in a themed dialog (never window.confirm), then calls DELETE .../instagram/disconnect", async () => {
     server.use(
       http.get(`http://localhost/api/v1/artists/${ARTIST_ID}/instagram/status`, () =>
         HttpResponse.json(CONNECTED_STATUS),
       ),
     );
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const confirmSpy = vi.spyOn(window, "confirm");
     const user = userEvent.setup();
     renderTab();
 
     await screen.findByText("@ink_artist");
-    await user.click(screen.getByRole("button", { name: /disconnect/i }));
+    await user.click(screen.getByRole("button", { name: "Disconnect Instagram" }));
+
+    const dialog = await screen.findByRole("dialog", { name: /disconnect instagram\?/i });
+    expect(within(dialog).getByText(/synced posts stay on the artist's portfolio/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(disconnectCalled).toBe(false);
+
+    await user.click(within(dialog).getByRole("button", { name: "Disconnect" }));
 
     await waitFor(() => expect(disconnectCalled).toBe(true));
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 });

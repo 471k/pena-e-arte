@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -102,6 +103,19 @@ public class ExchangeSocialOAuthCodeHandler(
             link.EncryptedToken = encryptor.Encrypt(token.AccessToken);
             link.TokenExpiresAt = token.ExpiresAt;
         }
+
+        // Recorded here rather than through IAuditableCommand — see ExchangeInstagramCodeHandler:
+        // the anonymous callback has no user/tenant for the pipeline behaviour to read. Platform
+        // only — never the username (PII).
+        db.AuditLogEntries.Add(AuditLogEntry.Create(
+            actorUserId: Guid.Empty,
+            actorRole: "oauth-callback",
+            action: AuditActions.SocialConnectedViaOAuth,
+            targetType: request.SubjectType == SocialLinkSubjectType.Artist
+                ? AuditTargetTypes.Artist : AuditTargetTypes.Studio,
+            targetId: request.SubjectId,
+            studioId: studioId,
+            metadata: $"{{\"platform\":\"{request.Platform}\"}}"));
 
         await db.SaveChangesAsync(ct);
 

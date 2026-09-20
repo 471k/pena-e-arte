@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
@@ -18,12 +19,7 @@ public class ToggleInstagramPostVisibilityHandler(IAppDbContext db, ICurrentUser
         bool artistExists = await db.Artists.AnyAsync(a => a.Id == request.ArtistId, ct);
         if (!artistExists) throw new NotFoundException("Artist", request.ArtistId);
 
-        if (currentUser.Role == "artist")
-        {
-            bool ownsProfile = await db.Artists
-                .AnyAsync(a => a.Id == request.ArtistId && a.UserId == currentUser.UserId, ct);
-            if (!ownsProfile) throw new ForbiddenException();
-        }
+        await ArtistOwnershipGuard.EnsureCanActAsync(db, currentUser, request.ArtistId, ct);
 
         InstagramPost? post = await db.InstagramPosts
             .FirstOrDefaultAsync(p => p.Id == request.PostId && p.ArtistId == request.ArtistId, ct);

@@ -1,8 +1,10 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses.Social;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -12,20 +14,34 @@ namespace Pena_e_Arte.Application.Social.Commands;
 
 public record VerifySocialBioCodeCommand(
     SocialLinkSubjectType SubjectType, Guid SubjectId, SocialPlatform Platform)
-    : IRequest<SocialVerifyResultResponse>;
+    : IRequest<SocialVerifyResultResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.SocialVerificationAttempted;
+    public string AuditTargetType => SubjectType == SocialLinkSubjectType.Artist
+        ? AuditTargetTypes.Artist : AuditTargetTypes.Studio;
+    public Guid AuditTargetId => SubjectId;
+}
 
 public class VerifySocialBioCodeHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ISocialBioCheckerFactory checkerFactory,
+    ICurrentUser currentUser,
     ILogger<VerifySocialBioCodeHandler> logger)
     : IRequestHandler<VerifySocialBioCodeCommand, SocialVerifyResultResponse>
 {
     public async Task<SocialVerifyResultResponse> Handle(
         VerifySocialBioCodeCommand request, CancellationToken ct)
     {
+        if (request.SubjectType == SocialLinkSubjectType.Artist && request.Platform == SocialPlatform.Instagram)
+            throw new BusinessRuleViolationException(
+                "Use the artist's own Instagram connect flow (/artists/{id}/instagram/connect-url) instead.");
+
         Guid studioId = await SocialSubjectResolver.ResolveStudioIdAsync(
             db, tenant, request.SubjectType, request.SubjectId, ct);
+
+        await ArtistOwnershipGuard.EnsureCanActOnSocialSubjectAsync(
+            db, currentUser, request.SubjectType, request.SubjectId, ct);
 
         ISocialBioChecker checker = checkerFactory.GetChecker(request.Platform);
         if (!checker.IsSupported)

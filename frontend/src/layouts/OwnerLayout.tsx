@@ -196,7 +196,7 @@ export function OwnerLayout() {
   const myOpenConductReportCount =
     (myConductReportsAsArtist ?? []).filter((r) => r.status === "Open").length;
 
-  // The owner's own dual-role artist identity — Schedule/Designs/Reports About Me link with
+  // The owner's own dual-role artist identity — Schedule/Designs/Conduct Reports link with
   // an explicit ?artistId= so those shared pages filter to "mine only" exactly the way they
   // already do for a real artist caller (GetAppointmentsQuery/GetDesignsQuery/
   // GetMyConductReportsAsArtistQuery all already support this for any caller, no backend
@@ -217,7 +217,7 @@ export function OwnerLayout() {
           portfolioHref:  `/artists/${myArtist.id}`,
           ownerDashboard: true,
         }),
-        { "Reports About Me": myOpenConductReportCount },
+        { "Conduct Reports": myOpenConductReportCount },
       )
     : [];
 

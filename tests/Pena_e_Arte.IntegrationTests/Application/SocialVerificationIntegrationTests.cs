@@ -1,6 +1,8 @@
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Pena_e_Arte.Application.Social.Commands;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -42,6 +44,30 @@ public class SocialVerificationIntegrationTests(DatabaseFixture fixture)
         link.VerificationMethod.Should().Be(SocialVerificationMethod.OAuthConnect);
         // Decision 3: no ongoing sync need for a studio — token discarded, not persisted.
         link.EncryptedToken.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ExchangeSocialOAuthCode_ActiveStudio_WritesAStudioScopedAuditEntryWithThePlatformOnly()
+    {
+        Studio studio = await SeedStudio(isActive: true);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).Handle(
+            new ExchangeSocialOAuthCodeCommand(SocialLinkSubjectType.Studio, studio.Id, SocialPlatform.TikTok, "auth-code"),
+            default);
+
+        await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
+        AuditLogEntry entry = verify.AuditLogEntries.Single(a => a.TargetId == studio.Id);
+        entry.Action.Should().Be(AuditActions.SocialConnectedViaOAuth);
+        entry.TargetType.Should().Be(AuditTargetTypes.Studio);
+        entry.StudioId.Should().Be(studio.Id);
+        entry.ActorRole.Should().Be("oauth-callback");
+        // MySQL's JSON column re-serialises with spaces, so compare structure, not text. The
+        // provider stub's username ("stub-username") must never reach the audit log.
+        using JsonDocument metadata = JsonDocument.Parse(entry.Metadata);
+        metadata.RootElement.EnumerateObject().Select(p => (p.Name, p.Value.GetString()))
+            .Should().Equal(("platform", "TikTok"));
+        entry.Metadata.Should().NotContain("stub-username");
     }
 
     [Fact]

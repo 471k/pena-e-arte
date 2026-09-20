@@ -19,7 +19,7 @@ public class UpdateSocialHandleHandlerTests
         _tenant.StudioId.Returns(_studioId);
     }
 
-    private UpdateSocialHandleHandler CreateSut() => new(_db, _tenant);
+    private UpdateSocialHandleHandler CreateSut() => new(_db, _tenant, FakeCurrentUser.Owner());
 
     [Fact]
     public async Task Handle_NoExistingLink_CreatesUnverifiedLink()

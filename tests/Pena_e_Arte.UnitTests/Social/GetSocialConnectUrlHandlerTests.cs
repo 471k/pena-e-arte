@@ -23,7 +23,7 @@ public class GetSocialConnectUrlHandlerTests
         _providerFactory.GetProvider(Arg.Any<SocialPlatform>()).Returns(_provider);
     }
 
-    private GetSocialConnectUrlHandler CreateSut() => new(_db, _tenant, _providerFactory, _stateSigner);
+    private GetSocialConnectUrlHandler CreateSut() => new(_db, _tenant, _providerFactory, _stateSigner, FakeCurrentUser.Owner());
 
     [Fact]
     public async Task Handle_ArtistInstagram_ThrowsBusinessRuleViolationException()

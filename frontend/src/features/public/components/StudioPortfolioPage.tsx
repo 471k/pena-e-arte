@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  AtSign,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -25,7 +24,7 @@ import { useGetPublicStudioQuery } from "../publicApi";
 import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import type { PublicArtistSummary, PublicStudioHoursResponse } from "../publicApi";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
-import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
+import { SOCIAL_PLATFORM_FALLBACK_ICON, SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { useDocumentMeta }          from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }        from "@/shared/utils/useStructuredData";
 import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
@@ -519,7 +518,7 @@ export function StudioPortfolioPage() {
               )}
 
               {studio.socialLinks.map((link) => {
-                const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? AtSign;
+                const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? SOCIAL_PLATFORM_FALLBACK_ICON;
                 const label = SOCIAL_PLATFORM_LABEL[link.platform] ?? link.platform;
                 return (
                   <a

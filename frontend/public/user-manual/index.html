@@ -1935,15 +1935,14 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> My portfolio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗ (public version at <a href="#guest-artist-portfolio">/artist/slug</a>)</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own; edits bio, rate, portfolio)</td></tr><tr><td>Owner</td><td>✓ (any artist at the studio)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with five tabs — Profile, Portfolio, Schedule, Designs, and Social — reached from "My Portfolio" in the artist's own sidebar menu.</p>
+<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with six tabs — Profile, Portfolio, Availability, Bookings, Designs, and Social — reached from "My Portfolio" in the artist's own sidebar menu. The selected tab is kept in the page address (<code>?tab=social</code>, for example), so a refresh or a shared link returns to the same tab.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist portfolio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
-<text x="16" y="25" font-size="10" font-weight="700">‹ Artists</text><text x="620" y="25" font-size="9">✎ Edit</text>
 <circle cx="60" cy="80" r="24" fill="currentColor" fill-opacity="0.08"/>
-<text x="96" y="76" font-size="12" font-weight="700">Elena Martins</text>
+<text x="96" y="76" font-size="12" font-weight="700">Elena Martins</text><text x="96" y="92" font-size="9" fill-opacity="0.6">Artist</text><text x="640" y="80" font-size="9">✎ Edit</text>
 <rect x="20" y="112" width="700" height="20" fill="currentColor" fill-opacity="0.04"/>
-<text x="30" y="126" font-size="8">Profile</text><text x="90" y="126" font-size="8">Portfolio</text><text x="150" y="126" font-size="8">Schedule</text><text x="220" y="126" font-size="8">Designs</text>
+<text x="30" y="126" font-size="8">Profile</text><text x="90" y="126" font-size="8">Portfolio</text><text x="150" y="126" font-size="8">Availability</text><text x="220" y="126" font-size="8">Bookings</text><text x="290" y="126" font-size="8">Designs</text><text x="350" y="126" font-size="8">Social</text>
 <rect x="20" y="140" width="700" height="220" rx="6" fill="currentColor" fill-opacity="0.04"/>
 <text x="32" y="160" font-size="9">Email · Specializations · Hourly rate</text>
 <text x="32" y="182" font-size="9" fill-opacity="0.6">Joined 3 Mar 2026 · View public profile ↗</text>
@@ -1954,9 +1953,10 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Click <span class="step-title">Edit</span> to update name, email, specializations, hourly rate, and public profile slug.</li>
 <li><span class="step-title">Portfolio</span> tab — add or remove photos shown on your public artist page. Click "Add image" and choose Fresh Tattoo, Healed Tattoo, or Design to upload and tag a photo's category in one step, or use the category dropdown on any existing image to relabel it. Each image also has its own style dropdown (Traditional, Realism, Blackwork, etc.) — tag it so the photo appears when a client filters the public Discover page by that style.</li>
-<li><span class="step-title">Schedule</span> tab — your upcoming appointments.</li>
+<li><span class="step-title">Availability</span> tab — set your weekly working hours and add time off.</li>
+<li><span class="step-title">Bookings</span> tab — your upcoming and past appointments.</li>
 <li><span class="step-title">Designs</span> tab — designs you've created.</li>
-<li><span class="step-title">Social</span> tab — connect/verify Instagram (also used for photo sync), plus verify TikTok, Facebook, X, and YouTube. See <a href="#owner-social-verification">Verify social media accounts</a>.</li>
+<li><span class="step-title">Social</span> tab — one row each for Instagram (also used for photo sync), TikTok, Facebook, X, and YouTube, showing whether each is Verified, has a handle added, or isn't linked. You connect, verify and disconnect them yourself; <span class="step-title">View public profile</span> shows how they look to clients. See <a href="#owner-social-verification">Verify social media accounts</a>.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> your hourly rate is used to calculate percentage-based deposit rules at booking time.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> Discover's category tabs and style filters both match an image's own tags, not the "Specializations" text on your profile — an uncategorized or untagged image stays in your portfolio but won't show up under either filter.</div>
@@ -1995,10 +1995,10 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Reports about me</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own reports, redacted)</td></tr><tr><td>Owner</td><td>✗ (uses the studio-wide Conduct Reports page instead)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>At <code>/conduct-reports</code>: every conduct report a client has filed about you specifically — category, description, and which appointment it relates to. An open-count badge appears next to "Reports About Me" in the nav.</p>
+<p>At <code>/conduct-reports</code>: every conduct report a client has filed about you specifically — category, description, and which appointment it relates to. An open-count badge appears next to "Conduct Reports" in the nav.</p>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Open <span class="step-title">Reports About Me</span> from the nav.</li>
+<li>Open <span class="step-title">Conduct Reports</span> from the nav. The page itself is headed "Reports About Me" — it lists only the reports filed about you.</li>
 <li>Click a card to expand it and read the full description.</li>
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> the reporting client's name, email, and account are never shown here — only the studio owner and Pena e Artë platform staff can see who filed a report.</div>
@@ -2218,8 +2218,8 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Enable my artist profile</span> — you land on your new artist detail page.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get "My Portfolio" and "My Earnings" shortcuts in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> on desktop, an "Owner / Artist" switcher also appears in the header once your artist profile exists — click "Artist" any time to jump straight to your own artist profile (Profile, Portfolio, Schedule, Bookings, Designs, Social), or "Owner" to jump back to your dashboard. On mobile, use the "My Portfolio"/"My Earnings" links in the navigation menu instead (in the sidebar, under "My artist profile").</div>
-<div class="callout callout-tip"><strong>Tip:</strong> your navigation menu switches with you. In Artist mode it shows only artist-relevant pages — Schedule (your own bookings), Clients, Messages, Waitlist, Designs, My Portfolio, My Earnings, and Reports About Me, plus Intake Forms, Consent Forms and Deposit Rules inside a "Forms &amp; rules" category — with an "Owner Dashboard" link back. Studio-management pages (Billing, Studio Settings, Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, and the studio-wide Conduct Reports view) are hidden while you're in Artist mode and reappear once you switch back to Owner.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> on desktop, an "Owner / Artist" switcher also appears in the header once your artist profile exists — click "Artist" any time to jump straight to your own artist profile (Profile, Portfolio, Availability, Bookings, Designs, Social), or "Owner" to jump back to your dashboard. On mobile, use the "My Portfolio"/"My Earnings" links in the navigation menu instead (in the sidebar, under "My artist profile").</div>
+<div class="callout callout-tip"><strong>Tip:</strong> your navigation menu switches with you. In Artist mode it shows only artist-relevant pages — Schedule (your own bookings), Clients, Messages and Waitlist (grouped under "People"), Designs, My Portfolio, My Earnings, and Conduct Reports, plus Intake Forms, Consent Forms and Deposit Rules inside a "Forms &amp; rules" category — with an "Owner Dashboard" link back. Studio-management pages (Billing, Studio Settings, Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, and the studio-wide Conduct Reports view) are hidden while you're in Artist mode and reappear once you switch back to Owner.</div>
 <div class="crosslinks">See also: <a href="#owner-artists">Artist list</a>, <a href="#owner-artist-detail">Artist detail</a></div>
 </section>
 
@@ -2281,24 +2281,24 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Artist detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own only, cannot delete)</td></tr><tr><td>Owner</td><td>✓ (any artist, can delete)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Same page as <a href="#artist-profile">the artist's own portfolio profile</a>, at <code>/artists/&lt;id&gt;</code> — owners can open any artist's page, edit their details, and delete the artist record entirely.</p>
+<p>Same page as <a href="#artist-profile">the artist's own portfolio profile</a>, at <code>/artists/&lt;id&gt;</code> — owners can open any artist's page, edit their details, and delete the artist record entirely. A breadcrumb (Artists / name) above the artist's name leads back to the list, and Delete lives in the <span class="step-title">⋯</span> menu next to Edit.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner artist detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
-<text x="16" y="25" font-size="10" font-weight="700">‹ Artists</text><text x="600" y="25" font-size="9">✎ Edit</text><text x="660" y="25" font-size="9">🗑 Delete</text>
+<text x="16" y="25" font-size="10" font-weight="700">Artists / Elena Martins</text>
 <circle cx="60" cy="80" r="24" fill="currentColor" fill-opacity="0.08"/>
-<text x="96" y="76" font-size="12" font-weight="700">Elena Martins</text>
+<text x="96" y="76" font-size="12" font-weight="700">Elena Martins</text><text x="96" y="92" font-size="9" fill-opacity="0.6">Artist</text><text x="640" y="80" font-size="9">✎ Edit</text><text x="700" y="80" font-size="11">⋯</text>
 <rect x="20" y="112" width="700" height="20" fill="currentColor" fill-opacity="0.04"/>
-<text x="30" y="126" font-size="8">Profile</text><text x="90" y="126" font-size="8">Portfolio</text><text x="150" y="126" font-size="8">Schedule</text><text x="220" y="126" font-size="8">Designs</text>
+<text x="30" y="126" font-size="8">Profile</text><text x="90" y="126" font-size="8">Portfolio</text><text x="150" y="126" font-size="8">Availability</text><text x="220" y="126" font-size="8">Bookings</text><text x="290" y="126" font-size="8">Designs</text><text x="350" y="126" font-size="8">Social</text>
 </svg>
 </figure>
-<figcaption>Owner artist detail — same 4 tabs, plus a Delete action</figcaption>
+<figcaption>Owner artist detail — same six tabs, plus a ⋯ menu with the Delete action</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Click <span class="step-title">Edit</span> to change name, email, specializations, rate, or public slug.</li>
 <li>On the Profile tab, click <span class="step-title">Resend invite</span> next to the email address to re-send the "set your password" email if the artist never received it or their link expired.</li>
-<li>Click <span class="step-title">Delete</span> to remove the artist entirely (with confirmation).</li>
-<li>Use the same tabs as the artist's own profile (Profile, Portfolio, Schedule, Designs).</li>
+<li>Click the <span class="step-title">⋯</span> button next to Edit and choose <span class="step-title">Delete</span> to remove the artist entirely (with confirmation). On your own artist profile, the same menu item reads <span class="step-title">Stop working as an artist</span> — it removes your artist profile only, not your owner login or studio access.</li>
+<li>Use the same tabs as the artist's own profile (Profile, Portfolio, Availability, Bookings, Designs, Social).</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> deleting an artist cannot be undone.</div>
 <div class="crosslinks">See also: <a href="#artist-profile">Artist: my portfolio profile</a></div>
@@ -3069,33 +3069,36 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-social-verification" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Verify social media accounts</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own profile's four non-Instagram platforms; Instagram stays on the Social tab's own Connect flow)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own profile only — connects, verifies and disconnects their own accounts; view-only on a colleague's profile)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The "Social Media" card (Studio Settings) and the artist profile's "Social" tab both use the same mechanism: connect or verify Instagram, TikTok, Facebook, X, and YouTube accounts, so clients see a green "Verified" checkmark next to the handle wherever it's shown — proof it's really the account it claims to be, not something anyone could type into a form.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 220" role="img" aria-label="Social Media card wireframe">
 <rect width="760" height="30" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="20" font-size="10" font-weight="700">Social Media</text>
 <rect x="16" y="40" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
-<text x="28" y="61" font-size="9">Instagram   @inkbyana ✓ Verified</text>
+<text x="28" y="61" font-size="9">Instagram  ✓ Verified   @inkbyana                        Disconnect</text>
 <rect x="16" y="80" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
-<text x="28" y="101" font-size="9">TikTok      [ handle input ]           Connect</text>
+<text x="28" y="101" font-size="9">TikTok  Not linked   [ @ handle ]                     Connect</text>
 <rect x="16" y="120" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
-<text x="28" y="141" font-size="9">YouTube     [ handle input ]  Get verification code</text>
+<text x="28" y="141" font-size="9">YouTube  Not linked   [ @ handle ]        Get verification code</text>
 <rect x="16" y="160" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
-<text x="28" y="181" font-size="9">Facebook    Not available yet</text>
+<text x="28" y="181" font-size="9">Facebook  Unavailable   Not available on this server yet.</text>
 </svg>
 </figure>
-<figcaption>Social Media — one row per platform; verified rows show a badge and Disconnect, unverified rows show Connect or a code flow</figcaption>
+<figcaption>Social Media — one row per platform, each with a status badge and at most one action: verified rows show Disconnect, unverified rows show Connect or a code flow</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
+<li>Each platform is one row with a status — <span class="step-title">Verified</span>, <span class="step-title">Handle added</span>, <span class="step-title">Not linked</span>, or <span class="step-title">Unavailable</span> — and at most one button. On an artist's Social tab, the Instagram row comes first and, once connected, shows the synced photos (with a per-photo show/hide toggle) directly under it.</li>
 <li>For Instagram or TikTok: click <span class="step-title">Connect</span> and sign in on the platform's own page. This proves ownership directly — no code to copy.</li>
 <li>For Facebook, X, or YouTube (or any account that can't or won't use Connect): type the handle, then click <span class="step-title">Get verification code</span>. Add the code shown to that platform's bio, then click <span class="step-title">I've added it — Verify</span>. It can take a minute to propagate before Verify finds it.</li>
 <li>Once verified, a green <span class="step-title">Verified</span> badge appears next to the handle everywhere it's shown, including the public studio/artist page.</li>
-<li><span class="step-title">Disconnect</span> keeps the handle displayed but removes the Verified badge.</li>
+<li><span class="step-title">Disconnect</span> asks you to confirm first, then keeps the handle displayed but removes the Verified badge. Photos already synced from an artist's Instagram stay on their portfolio; only new syncing stops.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> a green check means TattooOS has directly confirmed this is the same account — not something anyone else could type in.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> changing a handle after it's verified removes the badge until it's re-verified — the old proof only covered the previous handle.</div>
-<div class="callout callout-warn"><strong>Note:</strong> "Not available yet" means that platform isn't connected on this server — this isn't something you can fix from Settings.</div>
+<div class="callout callout-warn"><strong>Note:</strong> "Not available on this server yet." (status <em>Unavailable</em>) means that platform isn't connected on this server — this isn't something you can fix from Settings.</div>
+<div class="callout callout-tip"><strong>Tip (artists):</strong> you connect and verify your own accounts from My Portfolio → Social — no need to ask your studio owner. You can only act on your own profile; on a colleague's profile the tab is view-only ("Only the studio owner manages connections for this profile."). <span class="step-title">View public profile</span> shows how your accounts look to clients.</div>
+<div class="callout callout-tip"><strong>Tip (owners):</strong> the person who signs in on the platform's page is the account that gets linked. An owner who clicks <span class="step-title">Connect</span> on an artist's profile would be linking the owner's own account, so let the artist connect their own Instagram or TikTok, or use the verification-code method (handle plus a code in the bio) on the artist's behalf.</div>
 <div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile</a>, <a href="#artist-profile">Artist: my portfolio profile</a>, <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
 </section>
 
@@ -3418,7 +3421,7 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-conduct-reports" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Conduct reports</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (can file one; never sees a list)</td></tr><tr><td>Artist</td><td>✗ (uses the redacted "Reports About Me" page instead)</td></tr><tr><td>Owner</td><td>✓ (own studio)</td></tr><tr><td>Admin</td><td>✓ (every studio, via the platform inbox)</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (can file one; never sees a list)</td></tr><tr><td>Artist</td><td>✗ (uses the redacted "Conduct Reports" page, headed "Reports About Me", instead)</td></tr><tr><td>Owner</td><td>✓ (own studio)</td></tr><tr><td>Admin</td><td>✓ (every studio, via the platform inbox)</td></tr></table>
 <p>At <code>/conduct-reports</code>: every trust &amp; safety report a client has filed about your studio or one of your artists, with an open-count badge in the nav. Standard-severity reports (Poor service quality, Other) can be resolved here directly. High-severity reports (Scam, Sexual misconduct, Unsafe hygiene practices, Harassment, Discrimination) are shown in full — including who filed them — but locked to platform-only resolution.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 200" role="img" aria-label="Conduct reports wireframe">

@@ -1,4 +1,5 @@
 using MediatR;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses.Social;
 using Pena_e_Arte.Domain.Enums;
@@ -14,7 +15,8 @@ public class GetSocialConnectUrlHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ISocialOAuthProviderFactory providerFactory,
-    ISocialOAuthStateSigner stateSigner)
+    ISocialOAuthStateSigner stateSigner,
+    ICurrentUser currentUser)
     : IRequestHandler<GetSocialConnectUrlQuery, SocialConnectUrlResponse>
 {
     public async Task<SocialConnectUrlResponse> Handle(GetSocialConnectUrlQuery request, CancellationToken ct)
@@ -24,6 +26,9 @@ public class GetSocialConnectUrlHandler(
                 "Use the artist's own Instagram connect flow (/artists/{id}/instagram/connect-url) instead.");
 
         await SocialSubjectResolver.ResolveStudioIdAsync(db, tenant, request.SubjectType, request.SubjectId, ct);
+
+        await ArtistOwnershipGuard.EnsureCanActOnSocialSubjectAsync(
+            db, currentUser, request.SubjectType, request.SubjectId, ct);
 
         ISocialOAuthProvider provider = providerFactory.GetProvider(request.Platform);
         if (!provider.IsConfigured)

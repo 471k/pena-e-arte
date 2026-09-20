@@ -43,7 +43,7 @@ export function ArtistLayout() {
       notifications: true,
       tourIds:       true,
     }),
-    { "Reports About Me": openConductReportCount },
+    { "Conduct Reports": openConductReportCount },
   );
 
   function handleLogout() {

@@ -17,7 +17,7 @@ public class DisconnectSocialAccountHandlerTests
 
     public DisconnectSocialAccountHandlerTests() => _tenant.StudioId.Returns(_studioId);
 
-    private DisconnectSocialAccountHandler CreateSut() => new(_db, _tenant);
+    private DisconnectSocialAccountHandler CreateSut() => new(_db, _tenant, FakeCurrentUser.Owner());
 
     [Fact]
     public async Task Handle_ArtistInstagram_ThrowsBusinessRuleViolationException()

@@ -1,9 +1,6 @@
-import { AtSign, Eye, EyeOff, Unlink, ExternalLink } from "lucide-react";
-import { Button }  from "@/shared/components/ui/button";
-import { Card, CardContent } from "@/shared/components/ui/card";
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { Badge } from "@/shared/components/ui/badge";
-import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import { cn } from "@/shared/utils/cn";
 import { toast } from "sonner";
 import {
@@ -14,6 +11,9 @@ import {
   useDisconnectInstagramMutation,
 } from "../artistsApi";
 import { useGetSocialLinksQuery } from "@/features/social/socialApi";
+import { ConnectionRow, type ConnectionRowAction } from "@/features/social/components/ConnectionRow";
+import { ConfirmDisconnectDialog } from "@/features/social/components/ConfirmDisconnectDialog";
+import { InstagramIcon } from "@/shared/components/icons/brand";
 
 function formatSyncedAt(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -23,13 +23,25 @@ function formatSyncedAt(iso: string): string {
 
 interface InstagramTabProps {
   artistId: string;
-  /** Owner-only: connect/disconnect the Instagram account (matches OwnerOnly policy). */
+  /** Owner, or the artist managing their own profile: connect/disconnect the Instagram account
+   * (matches the ArtistAndAbove policy plus a handler-side ownership guard). false = read-only row. */
   canConnect: boolean;
   /** Owner or the artist's own profile: toggle per-post visibility (matches ArtistAndAbove policy). */
   canManagePosts: boolean;
+  /** Viewer is looking at their own profile: second-person copy. */
+  isSelf?: boolean;
+  /** Used in third-person copy when an owner views someone else's profile. */
+  firstName?: string;
 }
 
-export function InstagramTab({ artistId, canConnect, canManagePosts }: InstagramTabProps) {
+/**
+ * The Instagram <li> for the artist's Social tab: a ConnectionRow plus, when connected, the synced
+ * photos panel (visibility toggles) directly under it. Renders inside ArtistSocialTab's <ul>, which
+ * owns the section loading/error states — this component reads the same cached queries.
+ */
+export function InstagramTab({
+  artistId, canConnect, canManagePosts, isSelf = false, firstName = "the artist",
+}: InstagramTabProps) {
   const { data: status, isLoading: statusLoading } = useGetInstagramStatusQuery(artistId);
 
   const { data: socialLinks = [] } = useGetSocialLinksQuery(
@@ -46,28 +58,32 @@ export function InstagramTab({ artistId, canConnect, canManagePosts }: Instagram
   const [toggleVisibility] = useToggleInstagramPostVisibilityMutation();
   const [disconnect] = useDisconnectInstagramMutation();
 
+  const [connecting, setConnecting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   async function handleConnect() {
     // Open the tab synchronously, in direct response to the click, so browsers
     // (Firefox especially) still treat it as a trusted user gesture — opening it
     // only after the awaited fetch below resolves gets silently popup-blocked.
     const popup = window.open("about:blank", "_blank");
+    setConnecting(true);
 
     const result = await fetchConnectUrl(artistId);
+    setConnecting(false);
     if ("data" in result && result.data) {
       if (popup) {
         popup.location.href = result.data.authUrl;
       } else {
-        toast.error("Pop-up blocked. Please allow pop-ups for this site and try again.");
+        toast.error("Pop-up blocked. Allow pop-ups for this site and try again.");
       }
     } else {
       popup?.close();
-      toast.error("Failed to start Instagram connection.");
+      toast.error("Couldn't start the Instagram connection. Try again.");
     }
   }
 
   async function handleDisconnect() {
-    if (!window.confirm("Disconnect Instagram? Synced posts remain but no new posts will be fetched."))
-      return;
+    setConfirmOpen(false);
     const result = await disconnect(artistId);
     if ("error" in result) {
       toast.error("Failed to disconnect Instagram.");
@@ -84,114 +100,103 @@ export function InstagramTab({ artistId, canConnect, canManagePosts }: Instagram
   }
 
   if (statusLoading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
-      </div>
-    );
+    return <li><Skeleton className="h-[74px] w-full" /></li>;
   }
 
-  if (!status?.isConnected) {
-    return (
-      <div className="flex flex-col items-center gap-4 py-12 text-center">
-        <AtSign className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Connect this artist's Instagram account to automatically sync their posts
-          to their public portfolio.
-        </p>
-        {canConnect && (
-          <Button onClick={handleConnect} className="gap-2">
-            <AtSign className="h-4 w-4" aria-hidden="true" />
-            Connect Instagram
-            <ExternalLink className="h-3 w-3" aria-hidden="true" />
-          </Button>
-        )}
-      </div>
-    );
+  const isConnected = status?.isConnected === true;
+
+  let action: ConnectionRowAction | null = null;
+  if (canConnect) {
+    action = isConnected
+      ? { kind: "disconnect", onClick: () => setConfirmOpen(true) }
+      : { kind: "connect", onClick: () => void handleConnect(), busy: connecting };
   }
+
+  const helper = isSelf
+    ? "Connect Instagram to automatically show your latest posts on your public portfolio."
+    : `Connect ${firstName}'s Instagram to automatically show their latest posts on their public portfolio.`;
+
+  const detail = isConnected && status
+    ? [
+        status.lastSyncedAt ? `Last synced ${formatSyncedAt(status.lastSyncedAt)}` : null,
+        `${status.postCount} ${status.postCount === 1 ? "post" : "posts"}`,
+      ].filter((part): part is string => part !== null).join(" · ")
+    : undefined;
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <AtSign className="h-5 w-5 text-pink-500" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-medium flex items-center gap-1.5">
-                @{status.username}
-                {isInstagramVerified && <VerifiedSocialBadge platform="Instagram" />}
-              </p>
-              {status.lastSyncedAt && (
-                <p className="text-xs text-muted-foreground">
-                  Last synced {formatSyncedAt(status.lastSyncedAt)}
-                </p>
-              )}
+    <ConnectionRow
+      icon={InstagramIcon}
+      label="Instagram"
+      handle={isConnected ? (status?.username ?? null) : null}
+      isVerified={isConnected && isInstagramVerified}
+      action={action}
+      helper={canConnect ? helper : undefined}
+      detail={detail}
+    >
+      {isConnected && (
+        <section aria-label="Synced Instagram posts" className="space-y-2">
+          {postsLoading && (
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-square w-full rounded-md" />
+              ))}
             </div>
-            <Badge variant="secondary">{status.postCount} posts</Badge>
-          </div>
-
-          {canConnect && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDisconnect}
-              className="gap-1.5 text-destructive-text hover:text-destructive-text"
-            >
-              <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
-              Disconnect
-            </Button>
           )}
-        </CardContent>
-      </Card>
 
-      {postsLoading && (
-        <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-square w-full rounded-md" />
-          ))}
-        </div>
+          {!postsLoading && posts.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No posts synced yet. The nightly job will run automatically.
+            </p>
+          )}
+
+          {!postsLoading && posts.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {posts.map((post) => {
+                const imgSrc = post.mediaUrl ?? post.thumbnailUrl ?? "";
+                return (
+                  <div key={post.id} className="relative group">
+                    <img
+                      src={imgSrc}
+                      alt={post.caption?.slice(0, 80) ?? "Instagram post"}
+                      className={cn(
+                        "aspect-square w-full object-cover rounded-md transition-opacity",
+                        !post.isVisible && "opacity-40",
+                      )}
+                      loading="lazy"
+                    />
+                    {canManagePosts && (
+                      <button
+                        type="button"
+                        aria-label={post.isVisible ? "Hide from portfolio" : "Show in portfolio"}
+                        onClick={() => void handleToggleVisibility(post.id, !post.isVisible)}
+                        className="absolute top-1.5 right-1.5 rounded-md bg-background/80 p-1
+                                   opacity-0 group-hover:opacity-100 transition-opacity
+                                   focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {post.isVisible
+                          ? <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                          : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
 
-      {!postsLoading && posts.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-8">
-          No posts synced yet. The nightly job will run automatically.
-        </p>
-      )}
-
-      {!postsLoading && posts.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {posts.map((post) => {
-            const imgSrc = post.mediaUrl ?? post.thumbnailUrl ?? "";
-            return (
-              <div key={post.id} className="relative group">
-                <img
-                  src={imgSrc}
-                  alt={post.caption?.slice(0, 80) ?? "Instagram post"}
-                  className={cn(
-                    "aspect-square w-full object-cover rounded-md transition-opacity",
-                    !post.isVisible && "opacity-40",
-                  )}
-                  loading="lazy"
-                />
-                {canManagePosts && (
-                  <button
-                    type="button"
-                    aria-label={post.isVisible ? "Hide from portfolio" : "Show in portfolio"}
-                    onClick={() => void handleToggleVisibility(post.id, !post.isVisible)}
-                    className="absolute top-1.5 right-1.5 rounded-md bg-background/80 p-1
-                               opacity-0 group-hover:opacity-100 transition-opacity
-                               focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {post.isVisible
-                      ? <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                      : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+      <ConfirmDisconnectDialog
+        platform="Instagram"
+        body={
+          isSelf
+            ? "Your synced posts stay on your portfolio, but no new posts will be fetched."
+            : `Synced posts stay on ${firstName}'s portfolio, but no new posts will be fetched.`
+        }
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => void handleDisconnect()}
+      />
+    </ConnectionRow>
   );
 }

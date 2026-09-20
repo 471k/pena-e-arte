@@ -14,12 +14,15 @@ public static class InstagramEndpoints
         RouteGroupBuilder group = app.MapGroup("/api/v1/artists/{id:guid}/instagram")
             .RequireAuthorization();
 
-        group.MapGet("/connect-url", GetConnectUrl).RequireAuthorization("OwnerOnly");
+        // ArtistAndAbove + a handler-side ownership guard (ArtistOwnershipGuard): an artist may
+        // connect/disconnect their OWN Instagram — the account holder is the one who can complete
+        // the consent screen — while owner/admin keep access to every artist in the studio.
+        group.MapGet("/connect-url", GetConnectUrl).RequireAuthorization("ArtistAndAbove");
         group.MapGet("/status", GetStatus).RequireAuthorization("ArtistAndAbove");
         group.MapGet("/posts", GetPosts).RequireAuthorization("ArtistAndAbove");
         group.MapPut("/posts/{postId:guid}/visibility", ToggleVisibility)
              .RequireAuthorization("ArtistAndAbove");
-        group.MapDelete("/disconnect", Disconnect).RequireAuthorization("OwnerOnly");
+        group.MapDelete("/disconnect", Disconnect).RequireAuthorization("ArtistAndAbove");
     }
 
     /// <summary>
@@ -74,7 +77,8 @@ public static class InstagramEndpoints
         return Results.NoContent();
     }
 
-    private static async Task<IResult> HandleCallback(
+    // internal (not private) so the denial-redirect branches are unit-testable.
+    internal static async Task<IResult> HandleCallback(
         string? code,
         string? state,
         string? error,
@@ -83,10 +87,17 @@ public static class InstagramEndpoints
         IAppSettings appSettings,
         CancellationToken ct)
     {
-        if (error is not null || code is null || state is null)
-            return Results.Redirect($"{appSettings.BaseUrl}/artists?instagram=denied");
+        if (error is not null || code is null)
+        {
+            // Instagram echoes `state` back even when the user denies consent, so land the user
+            // on their own artist page when it decodes; fall back to the list otherwise.
+            if (state is not null && stateSigner.TryValidate(state, out Guid deniedArtistId))
+                return Results.Redirect($"{appSettings.BaseUrl}/artists/{deniedArtistId}?instagram=denied");
 
-        if (!stateSigner.TryValidate(state, out Guid artistId))
+            return Results.Redirect($"{appSettings.BaseUrl}/artists?instagram=denied");
+        }
+
+        if (state is null || !stateSigner.TryValidate(state, out Guid artistId))
             return Results.BadRequest("Invalid state parameter.");
 
         try

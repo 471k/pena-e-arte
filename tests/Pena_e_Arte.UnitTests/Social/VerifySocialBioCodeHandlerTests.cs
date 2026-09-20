@@ -27,7 +27,7 @@ public class VerifySocialBioCodeHandlerTests
     }
 
     private VerifySocialBioCodeHandler CreateSut() =>
-        new(_db, _tenant, _checkerFactory, NullLogger<VerifySocialBioCodeHandler>.Instance);
+        new(_db, _tenant, _checkerFactory, FakeCurrentUser.Owner(), NullLogger<VerifySocialBioCodeHandler>.Instance);
 
     private async Task<SocialAccountLink> SeedPendingLink(DateTime? expiresAt = null)
     {

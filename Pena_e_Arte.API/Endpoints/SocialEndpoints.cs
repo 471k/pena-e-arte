@@ -12,21 +12,24 @@ public static class SocialEndpoints
 {
     public static void MapSocialEndpoints(this IEndpointRouteBuilder app)
     {
+        // Artist subject: ArtistAndAbove, with every mutating handler pinning an artist caller to
+        // their own profile via ArtistOwnershipGuard (the tenant filter alone would let an artist
+        // act on a colleague). The studio subject below stays OwnerOnly — it has no "owning artist".
         RouteGroupBuilder artistGroup = app.MapGroup("/api/v1/artists/{id:guid}/social")
             .RequireAuthorization();
 
         artistGroup.MapGet("/", (Guid id, ISender m, CancellationToken ct) =>
             GetLinks(SocialLinkSubjectType.Artist, id, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapGet("/{platform}/connect-url", (Guid id, string platform, ISender m, CancellationToken ct) =>
-            GetConnectUrl(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("OwnerOnly");
+            GetConnectUrl(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapPut("/{platform}/handle", (Guid id, string platform, UpdateSocialHandleRequest req, ISender m, CancellationToken ct) =>
-            UpdateHandle(SocialLinkSubjectType.Artist, id, platform, req, m, ct)).RequireAuthorization("OwnerOnly");
+            UpdateHandle(SocialLinkSubjectType.Artist, id, platform, req, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapPost("/{platform}/request-code", (Guid id, string platform, ISender m, CancellationToken ct) =>
-            RequestCode(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("OwnerOnly");
+            RequestCode(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapPost("/{platform}/verify-code", (Guid id, string platform, ISender m, CancellationToken ct) =>
-            VerifyCode(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("OwnerOnly");
+            VerifyCode(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("ArtistAndAbove");
         artistGroup.MapDelete("/{platform}/disconnect", (Guid id, string platform, ISender m, CancellationToken ct) =>
-            Disconnect(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("OwnerOnly");
+            Disconnect(SocialLinkSubjectType.Artist, id, platform, m, ct)).RequireAuthorization("ArtistAndAbove");
 
         RouteGroupBuilder studioGroup = app.MapGroup("/api/v1/studios/{id:guid}/social")
             .RequireAuthorization();
@@ -57,6 +60,9 @@ public static class SocialEndpoints
             .AllowAnonymous()
             .RequireRateLimiting("public-write");
     }
+
+    private static string BuildBasePath(SocialLinkSubjectType subjectType, Guid subjectId) =>
+        subjectType == SocialLinkSubjectType.Studio ? "studios/me" : $"artists/{subjectId}";
 
     private static bool TryParsePlatform(string raw, out SocialPlatform platform) =>
         Enum.TryParse(raw, ignoreCase: true, out platform) && Enum.IsDefined(platform);
@@ -123,7 +129,8 @@ public static class SocialEndpoints
         return Results.NoContent();
     }
 
-    private static async Task<IResult> HandleCallback(
+    // internal (not private) so the denial-redirect branches are unit-testable.
+    internal static async Task<IResult> HandleCallback(
         string platform,
         string? code,
         string? state,
@@ -133,13 +140,24 @@ public static class SocialEndpoints
         IAppSettings appSettings,
         CancellationToken ct)
     {
-        if (error is not null || code is null || state is null)
-            return Results.Redirect($"{appSettings.BaseUrl}/artists?social=denied&platform={platform}");
+        if (error is not null || code is null)
+        {
+            // The provider echoes `state` back on denial, so land on the subject's own page when
+            // it decodes; fall back to the artists list otherwise.
+            if (state is not null && stateSigner.TryValidate(
+                    state, out SocialLinkSubjectType deniedSubjectType, out Guid deniedSubjectId, out SocialPlatform deniedPlatform))
+            {
+                string deniedBasePath = BuildBasePath(deniedSubjectType, deniedSubjectId);
+                return Results.Redirect($"{appSettings.BaseUrl}/{deniedBasePath}?social=denied&platform={deniedPlatform}");
+            }
 
-        if (!stateSigner.TryValidate(state, out SocialLinkSubjectType subjectType, out Guid subjectId, out SocialPlatform signedPlatform))
+            return Results.Redirect($"{appSettings.BaseUrl}/artists?social=denied&platform={Uri.EscapeDataString(platform)}");
+        }
+
+        if (state is null || !stateSigner.TryValidate(state, out SocialLinkSubjectType subjectType, out Guid subjectId, out SocialPlatform signedPlatform))
             return Results.BadRequest("Invalid state parameter.");
 
-        string basePath = subjectType == SocialLinkSubjectType.Studio ? "studios/me" : $"artists/{subjectId}";
+        string basePath = BuildBasePath(subjectType, subjectId);
 
         try
         {
