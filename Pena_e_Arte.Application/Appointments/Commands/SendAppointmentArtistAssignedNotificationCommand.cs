@@ -17,6 +17,7 @@ public class SendAppointmentArtistAssignedNotificationHandler(
     IEmailRenderer emailRenderer,
     INotificationService notifications,
     INotificationPreferenceService prefs,
+    IRealtimeNotifier realtime,
     ILogger<SendAppointmentArtistAssignedNotificationHandler> logger)
     : IRequestHandler<SendAppointmentArtistAssignedNotificationCommand, Unit>
 {
@@ -78,6 +79,24 @@ public class SendAppointmentArtistAssignedNotificationHandler(
             IsSuccess = success,
         });
         await db.SaveChangesAsync(ct);
+
+        // The artist the owner just picked is the one doing the work — tell them too (email + the
+        // bell entry only they can see). Without this, a "let the studio choose my artist" booking
+        // leaves the chosen artist unaware until they happen to open their schedule.
+        DateTime localDate = TimezoneUtils.ToStudioLocal(appointment.Date, studio.Timezone);
+        string clientFullName = $"{appointment.Client.FirstName} {appointment.Client.LastName}";
+        string artistBody = emailRenderer.RenderAppointmentAssignedToArtist(
+            appointment.Artist.FirstName, clientFullName, localDate,
+            appointment.DurationMinutes, appointment.Notes);
+
+        NotificationLog artistLog = await ArtistBookingNotifier.NotifyAsync(
+            db, notifications, logger, studio, appointment.Artist, appointment.Id,
+            $"You've been assigned a booking — {clientFullName}", artistBody,
+            ownerAlreadyEmailedSuccessfully: true, ct);
+
+        await realtime.NotifyStudioAsync(
+            studio.Id, "NotificationReceived",
+            GetNotificationsHandler.Map(artistLog, $"{appointment.Artist.FirstName} {appointment.Artist.LastName}"), ct);
 
         return Unit.Value;
     }

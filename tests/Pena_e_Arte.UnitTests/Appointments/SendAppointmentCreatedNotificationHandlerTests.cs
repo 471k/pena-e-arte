@@ -210,6 +210,102 @@ public class SendAppointmentCreatedNotificationHandlerTests
         smsLog!.IsSuccess.Should().BeFalse();
     }
 
+    // ── Artist notification (client booked a specific artist) ─────────────────────
+
+    private async Task<(Guid appointmentId, Artist artist)> SeedBookingWithArtist(
+        string artistEmail, bool assignArtist = true)
+    {
+        (Guid appointmentId, Studio studio, _) = await SeedData();
+        Artist artist = new()
+        {
+            StudioId = studio.Id,
+            FirstName = "Ali",
+            LastName = "Kreku",
+            Email = artistEmail,
+        };
+        _db.Artists.Add(artist);
+
+        Appointment appointment = await _db.Appointments.FirstAsync(a => a.Id == appointmentId);
+        appointment.ArtistId = assignArtist ? artist.Id : null;
+        await _db.SaveChangesAsync();
+        return (appointmentId, artist);
+    }
+
+    [Fact]
+    public async Task Handle_ClientBookedAnArtist_EmailsThatArtist()
+    {
+        (Guid appointmentId, Artist artist) = await SeedBookingWithArtist("ali@test.com");
+
+        await CreateSut().Handle(new SendAppointmentCreatedNotificationCommand(appointmentId), default);
+
+        await _notifications.Received(1)
+            .SendEmailAsync("ali@test.com", Arg.Is<string>(s => s.StartsWith("New booking request")),
+                Arg.Any<string>(), Arg.Any<CancellationToken>());
+        artist.Email.Should().Be("ali@test.com");
+    }
+
+    [Fact]
+    public async Task Handle_ClientBookedAnArtist_WritesArtistAddressedLogForTheirBell()
+    {
+        (Guid appointmentId, Artist artist) = await SeedBookingWithArtist("ali@test.com");
+
+        await CreateSut().Handle(new SendAppointmentCreatedNotificationCommand(appointmentId), default);
+
+        NotificationLog? log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.RecipientType == NotificationRecipientType.Artist);
+        log.Should().NotBeNull();
+        log!.RecipientId.Should().Be(artist.Id);
+        log.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_StudioChoosesTheArtist_NotifiesNoArtistYet()
+    {
+        (Guid appointmentId, _) = await SeedBookingWithArtist("ali@test.com", assignArtist: false);
+
+        await CreateSut().Handle(new SendAppointmentCreatedNotificationCommand(appointmentId), default);
+
+        await _notifications.DidNotReceive()
+            .SendEmailAsync("ali@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        (await _db.NotificationLogs.AnyAsync(n => n.RecipientType == NotificationRecipientType.Artist))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistIsTheOwner_DoesNotEmailTwiceButStillWritesArtistLog()
+    {
+        // SeedData's studio owner email is owner@test.com
+        (Guid appointmentId, Artist artist) = await SeedBookingWithArtist("OWNER@test.com");
+
+        await CreateSut().Handle(new SendAppointmentCreatedNotificationCommand(appointmentId), default);
+
+        await _notifications.Received(1)
+            .SendEmailAsync(Arg.Is<string>(e => e.Equals("owner@test.com", StringComparison.OrdinalIgnoreCase)),
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        NotificationLog? log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.RecipientType == NotificationRecipientType.Artist);
+        log.Should().NotBeNull();
+        log!.RecipientId.Should().Be(artist.Id);
+    }
+
+    [Fact]
+    public async Task Handle_ArtistEmailFails_DoesNotThrowAndLogsFailure()
+    {
+        (Guid appointmentId, _) = await SeedBookingWithArtist("ali@test.com");
+        _notifications
+            .SendEmailAsync("ali@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+        Func<Task> act = () => CreateSut().Handle(
+            new SendAppointmentCreatedNotificationCommand(appointmentId), default);
+
+        await act.Should().NotThrowAsync();
+        NotificationLog? log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.RecipientType == NotificationRecipientType.Artist);
+        log.Should().NotBeNull();
+        log!.IsSuccess.Should().BeFalse();
+    }
+
     [Fact]
     public async Task Handle_ValidInput_PushesNotificationReceivedEvent()
     {

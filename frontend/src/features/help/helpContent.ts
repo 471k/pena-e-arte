@@ -669,7 +669,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click a notification to see its full details.",
       "Click \"View all\" to see your complete notification history.",
     ],
-    tips: ["Opening the bell automatically clears the unread count badge."],
+    tips: [
+      "Opening the bell automatically clears the unread count badge.",
+      "When a client books you directly, or the studio assigns you a booking, you get an email as well as a bell alert — so you hear about it even when you're not in the app.",
+    ],
   },
   {
     id: "artist-messaging",

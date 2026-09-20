@@ -15,6 +15,9 @@ public class EmailRenderer : IEmailRenderer
     private static readonly string _appointmentArtistAssignedTemplate =
         LoadEmbeddedTemplate("AppointmentArtistAssigned.html");
 
+    private static readonly string _appointmentAssignedToArtistTemplate =
+        LoadEmbeddedTemplate("AppointmentAssignedToArtist.html");
+
     private static readonly string _appointmentCreatedStudioTemplate =
         LoadEmbeddedTemplate("AppointmentCreatedStudio.html");
 
@@ -87,6 +90,26 @@ public class EmailRenderer : IEmailRenderer
         };
 
         return TemplateRenderer.Render(_appointmentArtistAssignedTemplate, vars);
+    }
+
+    public string RenderAppointmentAssignedToArtist(
+        string artistFirstName,
+        string clientFullName,
+        DateTime date,
+        int durationMinutes,
+        string? notes)
+    {
+        Dictionary<string, string> vars = new()
+        {
+            ["artist_first_name"] = artistFirstName,
+            ["client_full_name"] = clientFullName,
+            ["appointment_date"] = date.ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture),
+            ["duration_minutes"] = durationMinutes.ToString(),
+            ["notes"] = notes ?? string.Empty,
+            ["show_notes"] = (notes is not null).ToString().ToLowerInvariant(),
+        };
+
+        return TemplateRenderer.Render(_appointmentAssignedToArtistTemplate, vars);
     }
 
     public string RenderAppointmentCreatedClient(
