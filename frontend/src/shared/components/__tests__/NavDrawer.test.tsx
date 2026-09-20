@@ -6,7 +6,7 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { Home, Settings } from "lucide-react";
 
 import { NavDrawer } from "@/shared/components/NavDrawer";
-import type { NavItem } from "@/shared/types/navItem";
+import type { NavItem, NavSection } from "@/shared/types/navItem";
 
 afterEach(() => cleanup());
 
@@ -14,6 +14,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Home",     href: "/home",     icon: <Home className="h-4 w-4" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="h-4 w-4" /> },
 ];
+
+const asSections = (items: NavItem[]): NavSection[] => [{ id: "main", entries: items }];
+const NAV_SECTIONS = asSections(NAV_ITEMS);
 
 function renderDrawer(props: Partial<React.ComponentProps<typeof NavDrawer>> = {}, initialPath = "/home") {
   const onOpenChange = props.onOpenChange ?? vi.fn();
@@ -24,7 +27,7 @@ function renderDrawer(props: Partial<React.ComponentProps<typeof NavDrawer>> = {
           path="*"
           element={
             <NavDrawer
-              navItems={props.navItems ?? NAV_ITEMS}
+              sections={props.sections ?? NAV_SECTIONS}
               title={props.title ?? "TattooOS"}
               open={props.open ?? false}
               onOpenChange={onOpenChange}
@@ -78,7 +81,7 @@ describe("NavDrawer", () => {
           <Route path="/home" element={<div data-testid="home-page" />} />
           <Route path="/settings" element={<div data-testid="settings-page" />} />
         </Routes>
-        <NavDrawer navItems={NAV_ITEMS} title="TattooOS" open onOpenChange={onOpenChange} />
+        <NavDrawer sections={NAV_SECTIONS} title="TattooOS" open onOpenChange={onOpenChange} />
       </MemoryRouter>,
     );
 
@@ -91,10 +94,10 @@ describe("NavDrawer", () => {
   it("does not render a badge when badge is 0 or undefined", () => {
     renderDrawer({
       open: true,
-      navItems: [
+      sections: asSections([
         { label: "No Badge", href: "/a", icon: <Home className="h-4 w-4" />, badge: 0 },
         { label: "Undefined Badge", href: "/b", icon: <Home className="h-4 w-4" /> },
-      ],
+      ]),
     });
     expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
@@ -102,9 +105,9 @@ describe("NavDrawer", () => {
   it("renders a badge when badge > 0", () => {
     renderDrawer({
       open: true,
-      navItems: [
+      sections: asSections([
         { label: "Feedback", href: "/feedback", icon: <Home className="h-4 w-4" />, badge: 3 },
-      ],
+      ]),
     });
     expect(screen.getByText("3")).toBeInTheDocument();
   });
@@ -112,10 +115,35 @@ describe("NavDrawer", () => {
   it("caps the badge display at 99+", () => {
     renderDrawer({
       open: true,
-      navItems: [
+      sections: asSections([
         { label: "Feedback", href: "/feedback", icon: <Home className="h-4 w-4" />, badge: 150 },
-      ],
+      ]),
     });
     expect(screen.getByText("99+")).toBeInTheDocument();
+  });
+
+  it("renders section headings and expandable groups, opening the group holding the active route", () => {
+    renderDrawer(
+      {
+        open: true,
+        sections: [
+          { id: "top", entries: [{ label: "Home", href: "/home", icon: <Home className="h-4 w-4" /> }] },
+          {
+            id: "manage",
+            label: "Manage",
+            entries: [
+              {
+                id: "settings", label: "Settings group", icon: <Settings className="h-4 w-4" />,
+                children: [{ label: "Profile", href: "/profile", icon: <Home className="h-4 w-4" /> }],
+              },
+            ],
+          },
+        ],
+      },
+      "/profile",
+    );
+    expect(screen.getByText("Manage")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /settings group/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: /profile/i }).className).toMatch(/min-h-\[44px\]/);
   });
 });

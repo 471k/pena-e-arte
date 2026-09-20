@@ -1,20 +1,21 @@
-import { NavLink } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose,
+  Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/shared/components/ui/sheet";
-import { cn } from "@/shared/utils/cn";
-import type { NavItem } from "@/shared/types/navItem";
+import { SidebarNav } from "@/shared/components/SidebarNav";
+import type { NavSection } from "@/shared/types/navItem";
 
 interface NavDrawerProps {
-  navItems: NavItem[];
+  sections: NavSection[];
   title: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  revealTourId?: string | null;
 }
 
-export function NavDrawer({ navItems, title, open, onOpenChange }: NavDrawerProps) {
+/** Below `lg` the sidebar is replaced by this slide-in drawer, rendering the same sections and groups. */
+export function NavDrawer({ sections, title, open, onOpenChange, revealTourId }: NavDrawerProps) {
   return (
     <>
       <Button
@@ -32,33 +33,15 @@ export function NavDrawer({ navItems, title, open, onOpenChange }: NavDrawerProp
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
           </SheetHeader>
-          <nav className="flex flex-col gap-1 mt-2" aria-label="Main navigation">
-            {navItems.map(({ label, href, icon, tourId, end, badge }) => (
-              <SheetClose asChild key={href}>
-                <NavLink
-                  to={href}
-                  end={end}
-                  data-tour={tourId}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 px-3 min-h-[44px] rounded-md text-sm transition-colors",
-                      isActive
-                        ? "bg-violet-600 text-white"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                    )
-                  }
-                >
-                  {icon}
-                  <span>{label}</span>
-                  {!!badge && badge > 0 && (
-                    <span className="ml-auto min-w-[1.25rem] rounded-full bg-destructive px-1 py-0.5 text-[10px] font-medium text-destructive-foreground text-center">
-                      {badge > 99 ? "99+" : badge}
-                    </span>
-                  )}
-                </NavLink>
-              </SheetClose>
-            ))}
-          </nav>
+          <div className="mt-2">
+            <SidebarNav
+              sections={sections}
+              touch
+              revealTourId={revealTourId}
+              onNavigate={() => onOpenChange(false)}
+              ariaLabel="Mobile navigation"
+            />
+          </div>
         </SheetContent>
       </Sheet>
     </>

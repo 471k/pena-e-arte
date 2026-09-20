@@ -1,19 +1,17 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import {
-  CalendarDays, Users, Palette, FileText, ScrollText,
-  DollarSign, Bell, PenLine, ImagePlus, MessageSquareMore, ShieldAlert, MessageCircle, Wallet,
-  ListOrdered,
-} from "lucide-react";
-import { cn } from "@/shared/utils/cn";
+import { Outlet, useNavigate } from "react-router-dom";
+import { PenLine, MessageSquareMore } from "lucide-react";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { Button } from "@/shared/components/ui/button";
 import { NavDrawer } from "@/shared/components/NavDrawer";
-import { shouldOpenNavDrawerForTourStep } from "@/shared/utils/shouldOpenNavDrawerForTourStep";
-import type { NavItem } from "@/shared/types/navItem";
+import { AppSidebar } from "@/shared/components/AppSidebar";
+import { useNavShell } from "@/shared/hooks/useNavShell";
+import { withNavBadges } from "@/shared/utils/navSections";
+import type { NavSection } from "@/shared/types/navItem";
+import { buildArtistSections } from "@/layouts/artistNavSections";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { NotificationBell } from "@/features/notifications";
@@ -24,20 +22,6 @@ import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 
-const STATIC_NAV: NavItem[] = [
-  { label: "Schedule",         href: "/schedule",         icon: <CalendarDays className="h-4 w-4" />, tourId: "artist-schedule-nav" },
-  { label: "Clients",          href: "/clients",          icon: <Users        className="h-4 w-4" />, tourId: "artist-clients-nav" },
-  { label: "Messages",         href: "/messages",         icon: <MessageCircle className="h-4 w-4" />, tourId: "artist-messages-nav" },
-  { label: "Designs",          href: "/designs",          icon: <Palette      className="h-4 w-4" /> },
-  { label: "Intake Forms",     href: "/forms/intake",     icon: <FileText     className="h-4 w-4" /> },
-  { label: "Consent Forms",    href: "/forms/consent",    icon: <ScrollText   className="h-4 w-4" /> },
-  { label: "Deposit Rules",    href: "/deposit-rules",    icon: <DollarSign   className="h-4 w-4" /> },
-  { label: "Waitlist",         href: "/waitlist",         icon: <ListOrdered  className="h-4 w-4" />, tourId: "artist-waitlist-nav" },
-  { label: "My Earnings",      href: "/earnings",         icon: <Wallet       className="h-4 w-4" />, tourId: "artist-earnings-nav" },
-  { label: "Notifications",    href: "/notifications",    icon: <Bell         className="h-4 w-4" /> },
-  { label: "Reports About Me", href: "/conduct-reports",  icon: <ShieldAlert  className="h-4 w-4" />, tourId: "artist-conduct-reports-nav" },
-];
-
 export function ArtistLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -45,17 +29,22 @@ export function ArtistLayout() {
   useSignalR(tenantId);
   useChatHub();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
+  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep } = useNavShell();
 
   const { data: myArtist } = useGetMyArtistQuery();
   const { data: openConductReports } = useGetMyConductReportsAsArtistQuery();
   const openConductReportCount = (openConductReports ?? []).filter((r) => r.status === "Open").length;
-  const withBadges = STATIC_NAV.map((item) =>
-    item.label === "Reports About Me" ? { ...item, badge: openConductReportCount } : item,
+  const navSections: NavSection[] = withNavBadges(
+    buildArtistSections({
+      scheduleHref:  "/schedule",
+      designsHref:   "/designs",
+      reportsHref:   "/conduct-reports",
+      portfolioHref: myArtist ? `/artists/${myArtist.id}` : null,
+      notifications: true,
+      tourIds:       true,
+    }),
+    { "Reports About Me": openConductReportCount },
   );
-  const navItems: NavItem[] = myArtist
-    ? [...withBadges, { label: "My Portfolio", href: `/artists/${myArtist.id}`, icon: <ImagePlus className="h-4 w-4" /> }]
-    : withBadges;
 
   function handleLogout() {
     dispatch(logout());
@@ -67,36 +56,11 @@ export function ArtistLayout() {
       <SuspensionBanner role="artist" />
       <ReadOnlyBanner />
       <PlanLimitBanner />
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
+      <header className="flex items-center gap-2 px-6 h-14 border-b bg-background sticky top-0 z-20">
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">TattooOS</span>
 
-        <nav className="hidden lg:flex ml-6 items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {navItems.map(({ label, href, icon, tourId, badge }) => (
-            <NavLink
-              key={href}
-              to={href}
-              data-tour={tourId}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors shrink-0",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )
-              }
-            >
-              {icon}
-              {label}
-              {!!badge && badge > 0 && (
-                <span className="ml-1 min-w-[1.25rem] rounded-full bg-destructive px-1 py-0.5 text-[10px] font-medium text-destructive-foreground text-center">
-                  {badge > 99 ? "99+" : badge}
-                </span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-        <NavDrawer navItems={navItems} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
+        <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} />
 
         <div className="ml-auto flex items-center gap-3">
           <Button
@@ -109,15 +73,18 @@ export function ArtistLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
-          <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
+          <HelpMenu onBeforeTourStep={onBeforeTourStep} />
           <MessagesNavBadge />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>
       </header>
 
-      <div className="flex-1">
-        <Outlet />
+      <div className="flex flex-1 min-h-0">
+        <AppSidebar sections={navSections} revealTourId={revealTourId} />
+        <div className="flex-1 min-w-0">
+          <Outlet />
+        </div>
       </div>
       <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>

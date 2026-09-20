@@ -81,6 +81,7 @@ function renderLayout(overrides: StoreOverrides = {}, initialPath = "/book") {
             <Route path="/forms/intake"  element={<div data-testid="outlet" />} />
             <Route path="/forms/consent" element={<div data-testid="outlet" />} />
             <Route path="/clients/me"    element={<div data-testid="outlet" />} />
+            <Route path="/clients/me/payment-methods" element={<div data-testid="outlet" />} />
           </Route>
           <Route path="/login" element={<div data-testid="login-page" />} />
         </Routes>
@@ -100,14 +101,23 @@ describe("ClientLayout", () => {
     expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
-  it("renders the client nav links", () => {
+  it("renders the client nav links, categorised", async () => {
+    const user = userEvent.setup();
     renderLayout();
     expect(screen.getByRole("link", { name: /book appointment/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^messages$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /my designs/i })).toBeInTheDocument();
+
+    // Forms and Account are collapsed groups until expanded.
+    expect(screen.queryByRole("link", { name: /intake forms/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^forms$/i }));
     expect(screen.getByRole("link", { name: /intake forms/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /consent forms/i })).toBeInTheDocument();
+
+    expect(screen.queryByRole("link", { name: /my profile/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /my account/i }));
     expect(screen.getByRole("link", { name: /my profile/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /payment methods/i })).toBeInTheDocument();
   });
 
   it("renders the UserChip with the logged-in user's identifier", () => {
@@ -178,12 +188,19 @@ describe("ClientLayout", () => {
     expect(screen.getByText(/ask the studio owner to upgrade the plan/i)).toBeInTheDocument();
   });
 
-  it("active nav link gets the violet background class", () => {
+  it("active nav link gets the primary highlight class", () => {
     renderLayout({}, "/book");
     const bookLink = screen.getByRole("link", { name: /book appointment/i });
-    expect(bookLink.className).toMatch(/bg-violet-600/);
+    expect(bookLink.className).toMatch(/bg-primary/);
     const designsLink = screen.getByRole("link", { name: /my designs/i });
-    expect(designsLink.className).not.toMatch(/bg-violet-600/);
+    expect(designsLink.className).not.toMatch(/bg-primary/);
+  });
+
+  it("opens the Account group around the active route, and only highlights My Profile on its own page", () => {
+    renderLayout({}, "/clients/me/payment-methods");
+    expect(screen.getByRole("button", { name: /my account/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: /payment methods/i }).className).toMatch(/bg-primary/);
+    expect(screen.getByRole("link", { name: /my profile/i }).className).not.toMatch(/bg-primary/);
   });
 
   it("SuspensionBanner is hidden when studio is not suspended", () => {

@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
   Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
   ListOrdered, ListChecks, Banknote, Gift, Package as PackageIcon,
-  Megaphone, Tag, DollarSign, FileText, ScrollText,
+  Megaphone, Tag, DollarSign, FileText,
 } from "lucide-react";
-import { cn } from "@/shared/utils/cn";
 import { isInArtistContext } from "@/shared/utils/artistContext";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
@@ -16,8 +15,11 @@ import { ArtistModeSwitcher } from "@/shared/components/ArtistModeSwitcher";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { Button } from "@/shared/components/ui/button";
 import { NavDrawer } from "@/shared/components/NavDrawer";
-import { shouldOpenNavDrawerForTourStep } from "@/shared/utils/shouldOpenNavDrawerForTourStep";
-import type { NavItem } from "@/shared/types/navItem";
+import { AppSidebar } from "@/shared/components/AppSidebar";
+import { useNavShell } from "@/shared/hooks/useNavShell";
+import { withNavBadges } from "@/shared/utils/navSections";
+import type { NavSection } from "@/shared/types/navItem";
+import { buildArtistSections } from "@/layouts/artistNavSections";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
 import { useSignalR } from "@/shared/hooks/useSignalR";
@@ -33,27 +35,88 @@ import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 
 const ONBOARDING_REDIRECT_KEY = "solo-owner-onboarding-redirect-done";
 
-const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",        href: "/dashboard",         icon: <LayoutDashboard className="h-4 w-4" />, tourId: "owner-dashboard-nav" },
-  { label: "Schedule",         href: "/schedule",          icon: <CalendarDays    className="h-4 w-4" /> },
-  { label: "Artists",          href: "/artists",           icon: <Users           className="h-4 w-4" />, tourId: "owner-add-artist-nav" },
-  { label: "Clients",          href: "/clients",           icon: <UserSquare      className="h-4 w-4" /> },
-  { label: "Messages",         href: "/messages",          icon: <MessageCircle   className="h-4 w-4" />, tourId: "owner-messages-nav" },
-  { label: "Designs",          href: "/designs",           icon: <Palette         className="h-4 w-4" /> },
-  { label: "Intake Form",      href: "/intake-form-builder", icon: <FileText      className="h-4 w-4" /> },
-  { label: "Payments",         href: "/payments",          icon: <CreditCard      className="h-4 w-4" /> },
-  { label: "Waitlist",         href: "/waitlist",          icon: <ListOrdered     className="h-4 w-4" />, tourId: "owner-waitlist-nav" },
-  { label: "Booth Rent",       href: "/booth-rent",        icon: <Banknote        className="h-4 w-4" /> },
-  { label: "Gift Cards",       href: "/gift-cards",        icon: <Gift            className="h-4 w-4" /> },
-  { label: "Packages",         href: "/packages",          icon: <PackageIcon     className="h-4 w-4" /> },
-  { label: "Services",         href: "/services",          icon: <ListChecks      className="h-4 w-4" />, tourId: "owner-services-nav" },
-  { label: "Deposit Rules",    href: "/deposit-rules",     icon: <DollarSign      className="h-4 w-4" />, tourId: "owner-deposit-rules-nav" },
-  { label: "Promo Codes",      href: "/promo-codes",       icon: <Tag             className="h-4 w-4" /> },
-  { label: "Billing",          href: "/billing",           icon: <Receipt         className="h-4 w-4" />, tourId: "owner-billing-nav" },
-  { label: "Reports",          href: "/reports",           icon: <BarChart3       className="h-4 w-4" />, tourId: "owner-reports-nav" },
-  { label: "Campaigns",        href: "/campaigns",         icon: <Megaphone       className="h-4 w-4" /> },
-  { label: "Conduct Reports",  href: "/conduct-reports",   icon: <ShieldAlert     className="h-4 w-4" />, tourId: "owner-conduct-reports-nav" },
-  { label: "Studio Settings",  href: "/studios/me",        icon: <Settings        className="h-4 w-4" />, tourId: "owner-studio-profile-nav" },
+const ICON = "h-4 w-4";
+
+const OWNER_SECTIONS: NavSection[] = [
+  {
+    id: "overview",
+    entries: [
+      { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className={ICON} />, tourId: "owner-dashboard-nav" },
+      { label: "Schedule",  href: "/schedule",  icon: <CalendarDays className={ICON} /> },
+      { label: "Messages",  href: "/messages",  icon: <MessageCircle className={ICON} />, tourId: "owner-messages-nav" },
+    ],
+  },
+  {
+    id: "operations",
+    label: "Operations",
+    entries: [
+      {
+        id: "people", label: "People", icon: <Users className={ICON} />,
+        children: [
+          { label: "Artists", href: "/artists", icon: <Users className={ICON} />,      tourId: "owner-add-artist-nav" },
+          { label: "Clients", href: "/clients", icon: <UserSquare className={ICON} /> },
+        ],
+      },
+      {
+        id: "client-work", label: "Client work", icon: <Palette className={ICON} />,
+        children: [
+          { label: "Designs",     href: "/designs",             icon: <Palette className={ICON} /> },
+          { label: "Intake Form", href: "/intake-form-builder", icon: <FileText className={ICON} /> },
+          { label: "Waitlist",    href: "/waitlist",            icon: <ListOrdered className={ICON} />, tourId: "owner-waitlist-nav" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "sales",
+    label: "Sales",
+    entries: [
+      {
+        id: "payments", label: "Payments", icon: <CreditCard className={ICON} />,
+        children: [
+          { label: "Payments",      href: "/payments",      icon: <CreditCard className={ICON} /> },
+          { label: "Deposit Rules", href: "/deposit-rules", icon: <DollarSign className={ICON} />, tourId: "owner-deposit-rules-nav" },
+          { label: "Booth Rent",    href: "/booth-rent",    icon: <Banknote className={ICON} /> },
+        ],
+      },
+      {
+        id: "catalog", label: "Catalog", icon: <PackageIcon className={ICON} />,
+        children: [
+          { label: "Services",   href: "/services",   icon: <ListChecks className={ICON} />, tourId: "owner-services-nav" },
+          { label: "Packages",   href: "/packages",   icon: <PackageIcon className={ICON} /> },
+          { label: "Gift Cards", href: "/gift-cards", icon: <Gift className={ICON} /> },
+        ],
+      },
+    ],
+  },
+  {
+    id: "growth",
+    label: "Growth",
+    entries: [
+      {
+        id: "marketing", label: "Marketing", icon: <Megaphone className={ICON} />,
+        children: [
+          { label: "Campaigns",   href: "/campaigns",   icon: <Megaphone className={ICON} /> },
+          { label: "Promo Codes", href: "/promo-codes", icon: <Tag className={ICON} /> },
+        ],
+      },
+      { label: "Reports", href: "/reports", icon: <BarChart3 className={ICON} />, tourId: "owner-reports-nav" },
+    ],
+  },
+  {
+    id: "studio",
+    label: "Studio",
+    entries: [
+      { label: "Conduct Reports", href: "/conduct-reports", icon: <ShieldAlert className={ICON} />, tourId: "owner-conduct-reports-nav" },
+      {
+        id: "manage-studio", label: "Manage studio", icon: <Settings className={ICON} />,
+        children: [
+          { label: "Studio Settings", href: "/studios/me", icon: <Settings className={ICON} />, tourId: "owner-studio-profile-nav" },
+          { label: "Billing",         href: "/billing",    icon: <Receipt className={ICON} />,  tourId: "owner-billing-nav" },
+        ],
+      },
+    ],
+  },
 ];
 
 export function OwnerLayout() {
@@ -64,7 +127,7 @@ export function OwnerLayout() {
   useSignalR(tenantId);
   useChatHub();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
+  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep } = useNavShell();
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
   useGetSubscriptionQuery();
   const { data: studio } = useGetMyStudioQuery();
@@ -106,16 +169,24 @@ export function OwnerLayout() {
   }, [studio?.isSolo, myArtistLoading, hasArtistProfile]);
   const { data: openConductReports } = useGetMyStudioConductReportsQuery({ status: "Open" });
   const openConductReportCount = openConductReports?.length ?? 0;
-  const withBadges = NAV_ITEMS.map((item) =>
-    item.label === "Conduct Reports" ? { ...item, badge: openConductReportCount } : item,
+  // The owner's own dual-role artist identity gets its own section so "My Portfolio" / "My Earnings"
+  // stay one click away from owner mode without cluttering the studio-management groups.
+  const ownerSections: NavSection[] = withNavBadges(
+    hasArtistProfile
+      ? [
+          ...OWNER_SECTIONS,
+          {
+            id: "my-artist-profile",
+            label: "My artist profile",
+            entries: [
+              { label: "My Portfolio", href: `/artists/${myArtist!.id}`, icon: <ImagePlus className={ICON} /> },
+              { label: "My Earnings",  href: "/earnings",                icon: <Wallet    className={ICON} /> },
+            ],
+          },
+        ]
+      : OWNER_SECTIONS,
+    { "Conduct Reports": openConductReportCount },
   );
-  const ownerNavItems: NavItem[] = hasArtistProfile
-    ? [
-        ...withBadges,
-        { label: "My Portfolio", href: `/artists/${myArtist!.id}`, icon: <ImagePlus className="h-4 w-4" /> },
-        { label: "My Earnings",  href: "/earnings",                icon: <Wallet    className="h-4 w-4" /> },
-      ]
-    : withBadges;
 
   // Only queried once the owner actually has a linked artist profile — every other owner
   // never needs this, and firing it unconditionally would be a wasted request on every load.
@@ -129,32 +200,29 @@ export function OwnerLayout() {
   // an explicit ?artistId= so those shared pages filter to "mine only" exactly the way they
   // already do for a real artist caller (GetAppointmentsQuery/GetDesignsQuery/
   // GetMyConductReportsAsArtistQuery all already support this for any caller, no backend
-  // change needed — see docs/claude/architecture.md's Decisions Log). Deliberately excludes
-  // every owner-only management item (Dashboard, Artists, Payments, Billing, Studio Settings,
-  // Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, studio-wide Reports/Conduct
-  // Reports) so the menu genuinely matches what a real invited artist would see, per the
-  // request that owner and artist contexts each show only their own specific menu. "Owner
-  // Dashboard" stays first as an escape hatch back to owner mode — the header switcher covers
-  // this too, but only shows at sm+ widths.
-  const artistNavItems: NavItem[] = myArtist
-    ? [
-        { label: "Owner Dashboard",  href: "/dashboard",                             icon: <LayoutDashboard className="h-4 w-4" /> },
-        { label: "My Portfolio",     href: `/artists/${myArtist.id}`,                icon: <ImagePlus       className="h-4 w-4" /> },
-        { label: "Schedule",         href: `/schedule?artistId=${myArtist.id}`,      icon: <CalendarDays    className="h-4 w-4" /> },
-        { label: "Clients",          href: "/clients",                               icon: <UserSquare      className="h-4 w-4" /> },
-        { label: "Messages",         href: "/messages",                              icon: <MessageCircle   className="h-4 w-4" /> },
-        { label: "Designs",          href: `/designs?artistId=${myArtist.id}`,       icon: <Palette         className="h-4 w-4" /> },
-        { label: "Intake Forms",     href: "/forms/intake",                          icon: <FileText        className="h-4 w-4" /> },
-        { label: "Consent Forms",    href: "/forms/consent",                         icon: <ScrollText      className="h-4 w-4" /> },
-        { label: "Deposit Rules",    href: "/deposit-rules",                         icon: <DollarSign      className="h-4 w-4" /> },
-        { label: "Waitlist",         href: "/waitlist",                              icon: <ListOrdered     className="h-4 w-4" /> },
-        { label: "My Earnings",      href: "/earnings",                              icon: <Wallet          className="h-4 w-4" /> },
-        { label: "Reports About Me", href: `/conduct-reports?artistId=${myArtist.id}`, icon: <ShieldAlert   className="h-4 w-4" />, badge: myOpenConductReportCount },
-      ]
+  // change needed — see docs/claude/architecture.md's Decisions Log). Built by the same
+  // buildArtistSections ArtistLayout uses, so it deliberately excludes every owner-only
+  // management item (Dashboard, Artists, Payments, Billing, Studio Settings, Promo Codes, Booth
+  // Rent, Gift Cards, Packages, Campaigns, studio-wide Reports/Conduct Reports) and the menu
+  // genuinely matches what a real invited artist would see, per the request that owner and
+  // artist contexts each show only their own specific menu. "Owner Dashboard" stays first as an
+  // escape hatch back to owner mode — the header switcher covers this too, but only shows at sm+
+  // widths.
+  const artistSections: NavSection[] = myArtist
+    ? withNavBadges(
+        buildArtistSections({
+          scheduleHref:   `/schedule?artistId=${myArtist.id}`,
+          designsHref:    `/designs?artistId=${myArtist.id}`,
+          reportsHref:    `/conduct-reports?artistId=${myArtist.id}`,
+          portfolioHref:  `/artists/${myArtist.id}`,
+          ownerDashboard: true,
+        }),
+        { "Reports About Me": myOpenConductReportCount },
+      )
     : [];
 
   const isArtistMode = isInArtistContext(location.pathname, location.search, myArtist?.id);
-  const navItems: NavItem[] = isArtistMode && hasArtistProfile ? artistNavItems : ownerNavItems;
+  const navSections: NavSection[] = isArtistMode && hasArtistProfile ? artistSections : ownerSections;
 
   function handleLogout() {
     dispatch(logout());
@@ -167,41 +235,16 @@ export function OwnerLayout() {
       <ReadOnlyBanner />
       <PlanLimitBanner />
       <SoloStudioPublishBanner studio={studio} />
-      <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-0 z-20">
+      <header className="flex items-center gap-2 px-6 h-14 border-b bg-background sticky top-0 z-20">
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">TattooOS</span>
 
-        <nav className="hidden lg:flex ml-6 items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
-          {navItems.map(({ label, href, icon, tourId, badge }) => (
-            <NavLink
-              key={href}
-              to={href}
-              data-tour={tourId}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors shrink-0",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )
-              }
-            >
-              {icon}
-              {label}
-              {!!badge && badge > 0 && (
-                <span className="ml-1 min-w-[1.25rem] rounded-full bg-destructive px-1 py-0.5 text-[10px] font-medium text-destructive-foreground text-center">
-                  {badge > 99 ? "99+" : badge}
-                </span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
         {hasArtistProfile && myArtist && (
           <div className="hidden sm:flex ml-2 shrink-0">
             <ArtistModeSwitcher artistId={myArtist.id} />
           </div>
         )}
-        <NavDrawer navItems={navItems} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} />
+        <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} />
 
         <div className="ml-auto flex items-center gap-3">
           <Button
@@ -214,7 +257,7 @@ export function OwnerLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
-          <HelpMenu onBeforeTourStep={(step) => setNavOpen(shouldOpenNavDrawerForTourStep(step))} />
+          <HelpMenu onBeforeTourStep={onBeforeTourStep} />
           <MessagesNavBadge />
           <StudioJoinInviteBell enabled={!!studio?.isSolo} />
           <NotificationBell />
@@ -222,8 +265,11 @@ export function OwnerLayout() {
         </div>
       </header>
 
-      <div className="flex-1">
-        <Outlet />
+      <div className="flex flex-1 min-h-0">
+        <AppSidebar sections={navSections} revealTourId={revealTourId} />
+        <div className="flex-1 min-w-0">
+          <Outlet />
+        </div>
       </div>
       <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
