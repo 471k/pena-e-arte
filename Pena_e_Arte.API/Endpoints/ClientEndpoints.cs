@@ -33,6 +33,7 @@ public static class ClientEndpoints
         group.MapDelete("{clientId:guid}/tattoos/{id:guid}", DeleteTattooRecord).RequireAuthorization("ArtistAndAbove");
 
         group.MapGet("me", GetMyClient).RequireAuthorization("ClientAndAbove");
+        group.MapPatch("me", UpdateMyClient).RequireAuthorization("ClientAndAbove");
         group.MapGet("me/profile", GetMyClientProfile).RequireAuthorization("ClientAndAbove");
         group.MapPatch("me/profile/body-map", UpdateMyBodyMap).RequireAuthorization("ClientAndAbove");
         group.MapGet("me/tattoos", GetMyTattooRecords).RequireAuthorization("ClientAndAbove");
@@ -79,6 +80,15 @@ public static class ClientEndpoints
         CancellationToken ct)
     {
         ClientResponse result = await mediator.Send(new GetMyClientQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateMyClient(
+        UpdateMyClientRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ClientResponse result = await mediator.Send(new UpdateMyClientCommand(request), ct);
         return Results.Ok(result);
     }
 

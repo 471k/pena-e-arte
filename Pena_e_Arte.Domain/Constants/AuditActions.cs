@@ -28,6 +28,9 @@ public static class AuditActions
     public const string ClientDataErasureRequested = "Client.DataErasureRequested";
 
     public const string ClientArtistReassigned = "Client.ArtistReassigned";
+    /// <summary>A client edited their own name/phone. Metadata carries only the affected row count —
+    /// never the values (PII).</summary>
+    public const string ClientSelfProfileUpdated = "Client.SelfProfileUpdated";
     public const string ClientArchived = "Client.Archived";
     public const string ClientRestored = "Client.Restored";
     public const string ClientDataErasureCancelled = "Client.DataErasureCancelled";

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -93,6 +93,21 @@ function renderPage() {
       </MemoryRouter>
     </Provider>,
   );
+}
+
+interface CapturedPatch { body: unknown | null }
+
+/** Registers a PATCH /clients/me handler that records the JSON body and echoes a merged client. */
+function capturePatch(status = 200): CapturedPatch {
+  const captured: CapturedPatch = { body: null };
+  server.use(
+    http.patch("http://localhost/api/v1/clients/me", async ({ request }) => {
+      captured.body = await request.json();
+      if (status !== 200) return HttpResponse.json({ message: "nope" }, { status });
+      return HttpResponse.json({ ...ME, ...(captured.body as object) });
+    }),
+  );
+  return captured;
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -201,5 +216,103 @@ describe("MyProfilePage", () => {
     await screen.findByText("Ana Ferreira");
     await user.click(screen.getByRole("tab", { name: /sharing/i }));
     expect(await screen.findByText(/profile sharing settings are unavailable/i)).toBeInTheDocument();
+  });
+
+  describe("editing contact details", () => {
+    it("shows an Edit button on the Contact card that opens a form prefilled with the current values", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText("Ana Ferreira");
+
+      await user.click(screen.getByRole("button", { name: "Edit contact details" }));
+
+      expect(screen.getByLabelText("First name")).toHaveValue("Ana");
+      expect(screen.getByLabelText("Last name")).toHaveValue("Ferreira");
+      // Email is the sign-in identity: shown, never an input, and points at the change-email flow.
+      expect(screen.queryByRole("textbox", { name: /email/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Change email" })).toHaveAttribute("href", "/account/change-email");
+    });
+
+    it("saves name changes and normalises the existing spaced phone to strict E.164", async () => {
+      const captured = capturePatch();
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText("Ana Ferreira");
+
+      await user.click(screen.getByRole("button", { name: "Edit contact details" }));
+      const first = screen.getByLabelText("First name");
+      await user.clear(first);
+      await user.type(first, "Anabela");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(captured.body).not.toBeNull());
+      // ME.phone is "+351 912 111 222" (legacy spaced form) — the API only accepts "+351912111222".
+      expect(captured.body).toEqual({ firstName: "Anabela", lastName: "Ferreira", phone: "+351912111222" });
+      // Form closes on success.
+      await waitFor(() => expect(screen.queryByLabelText("First name")).not.toBeInTheDocument());
+    });
+
+    it("sends phone: null when the number is cleared, so a client can remove their number", async () => {
+      const captured = capturePatch();
+      server.use(
+        http.get("http://localhost/api/v1/clients/me", () => HttpResponse.json({ ...ME, phone: null })),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText("Ana Ferreira");
+
+      await user.click(screen.getByRole("button", { name: "Edit contact details" }));
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(captured.body).not.toBeNull());
+      expect(captured.body).toEqual({ firstName: "Ana", lastName: "Ferreira", phone: null });
+    });
+
+    it("blocks the save and shows field errors when a required name is cleared", async () => {
+      const captured = capturePatch();
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText("Ana Ferreira");
+
+      await user.click(screen.getByRole("button", { name: "Edit contact details" }));
+      await user.clear(screen.getByLabelText("First name"));
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(await screen.findByText("First name is required")).toBeInTheDocument();
+      expect(captured.body).toBeNull();
+    });
+
+    it("keeps the form open with the user's edits when the server rejects the save", async () => {
+      capturePatch(400);
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText("Ana Ferreira");
+
+      await user.click(screen.getByRole("button", { name: "Edit contact details" }));
+      const first = screen.getByLabelText("First name");
+      await user.clear(first);
+      await user.type(first, "Anabela");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled());
+      expect(screen.getByLabelText("First name")).toHaveValue("Anabela");
+    });
+
+    it("Cancel discards edits and leaves the saved details untouched", async () => {
+      const captured = capturePatch();
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText("Ana Ferreira");
+
+      await user.click(screen.getByRole("button", { name: "Edit contact details" }));
+      await user.type(screen.getByLabelText("First name"), "zzz");
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.queryByLabelText("First name")).not.toBeInTheDocument();
+      expect(captured.body).toBeNull();
+      // Re-opening re-seeds from the server value, not the abandoned draft.
+      await user.click(screen.getByRole("button", { name: "Edit contact details" }));
+      expect(screen.getByLabelText("First name")).toHaveValue("Ana");
+    });
   });
 });
