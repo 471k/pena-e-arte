@@ -64,10 +64,10 @@ describe("BookingWidget", () => {
     expect(screen.queryByText(/powered by tattooos/i)).not.toBeInTheDocument();
   });
 
-  it("branding footer links to https://tattooos.co", () => {
+  it("branding footer links to https://app.tattooos.co", () => {
     renderWidget(true);
     const link = screen.getByRole("link", { name: /powered by tattooos/i });
-    expect(link).toHaveAttribute("href", "https://tattooos.co");
+    expect(link).toHaveAttribute("href", "https://app.tattooos.co");
   });
 
   it("shows loading state while studio data is fetching", () => {
