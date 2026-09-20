@@ -771,7 +771,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "This uses your existing owner login — no new email, password, or invite email.",
       "Once enabled, you'll get \"My Portfolio\" and \"My Earnings\" shortcuts in your menu, and you'll be selectable when booking or scheduling appointments, just like any other artist.",
       "An \"Owner / Artist\" switcher also appears in the header on desktop — click \"Artist\" any time to jump straight to your own artist profile, or \"Owner\" to jump back to your dashboard.",
-      "The menu itself switches with you: in Artist mode you see your own Schedule, Clients, Designs, Intake/Consent Forms, Deposit Rules, Waitlist, My Earnings, and Reports About Me — studio-management items like Billing, Studio Settings, and Promo Codes are hidden while you're in Artist mode, and reappear once you switch back to Owner.",
+      "The menu itself switches with you: in Artist mode you see your own Schedule, Clients, Messages and Waitlist (grouped under People), Designs, Intake/Consent Forms, Deposit Rules, My Earnings, and Conduct Reports — studio-management items like Billing, Studio Settings, and Promo Codes are hidden while you're in Artist mode, and reappear once you switch back to Owner.",
       "This counts as one artist seat against your plan's usage, the same as inviting any other artist.",
       "To stop working as an artist later, open your artist profile (\"My Portfolio\"), click the \"⋯\" button next to \"Edit\", and choose \"Stop working as an artist\". Your owner login and studio access are unaffected.",
     ],
@@ -1866,7 +1866,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["conduct reports", "reported", "complaint about me"],
     summary: "Reports clients have filed about you specifically — the category, the description, and which appointment it relates to.",
     steps: [
-      "Open Reports About Me from the nav.",
+      "Open Conduct Reports from the nav. The page itself is headed \"Reports About Me\" — it lists only the reports filed about you.",
       "Click a report card to expand it and read the full description.",
     ],
     tips: ["The reporting client's name, email, and account are never shown to you — only the studio owner and Pena e Artë platform staff can see who filed a report."],

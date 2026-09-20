@@ -430,7 +430,9 @@ export function ArtistDetailPage() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <Avatar className="h-14 w-14 text-base shrink-0">
-              <AvatarFallback>{getInitials(artist.firstName, artist.lastName)}</AvatarFallback>
+              <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                {getInitials(artist.firstName, artist.lastName)}
+              </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold leading-tight truncate">

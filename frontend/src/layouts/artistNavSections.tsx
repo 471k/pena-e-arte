@@ -41,7 +41,7 @@ export function buildArtistSections(opts: ArtistNavOptions): NavSection[] {
 
   const me: NavItem[] = [
     { label: "My Earnings", href: "/earnings", icon: <Wallet className={icon} />, tourId: tour("artist-earnings-nav") },
-    { label: "Reports About Me", href: opts.reportsHref, icon: <ShieldAlert className={icon} />, tourId: tour("artist-conduct-reports-nav") },
+    { label: "Conduct Reports", href: opts.reportsHref, icon: <ShieldAlert className={icon} />, tourId: tour("artist-conduct-reports-nav") },
     ...(opts.notifications
       ? [{ label: "Notifications", href: "/notifications", icon: <Bell className={icon} /> }]
       : []),
@@ -51,7 +51,7 @@ export function buildArtistSections(opts: ArtistNavOptions): NavSection[] {
     { id: "overview", entries: top },
     {
       id: "clients",
-      label: "Clients",
+      label: "People",
       entries: [
         { label: "Clients",  href: "/clients",  icon: <Users className={icon} />,         tourId: tour("artist-clients-nav") },
         { label: "Messages", href: "/messages", icon: <MessageCircle className={icon} />, tourId: tour("artist-messages-nav") },

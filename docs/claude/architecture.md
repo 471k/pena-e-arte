@@ -1878,6 +1878,11 @@ to the repo, not a live production deploy. No Help Menu/user-manual/onboarding-t
 ## Issuer QA Pass — 2026-07-01 (reconstructed 2026-07-20)
 
 `overnight-prompt-issuer-qa-polish-2026-07-01.md` exists and was clearly executed —
+| Artist social self-service (2026-09-20) | The artist role can connect, verify, edit the handle of and disconnect **their own** social accounts (Instagram + TikTok/Facebook/X/YouTube): the seven artist-scoped endpoints moved `OwnerOnly` → `ArtistAndAbove`, and every handler now calls `ArtistOwnershipGuard.EnsureCanActAsync` (an artist caller must own the `Artist` row; owner/admin pass through, including a dual-role owner whose role claim is `owner`). Studio-subject endpoints stay `OwnerOnly`. The guard replaces `ToggleInstagramPostVisibilityHandler`'s inline copy. Owner-may-only-edit-the-typed-handle (D-1 Option B) is **not** built — documented follow-up. | OAuth consent must be completed by the account holder: an owner clicking Connect on an artist's profile authorizes the *owner's* Instagram, not the artist's, because the signed `state` binds only the artistId. The tenant query filter scopes a caller to their studio, not to themselves, so loosening the policy without a per-person guard would have let any artist mint a connect URL for a colleague — hence the guard is mandatory and the 403/404 matrix is a real-MySQL integration test (`ArtistSocialEndpointAuthorizationTests`), not just unit tests. |
+| Brand social icons (2026-09-20) | Inline SVG components under `frontend/src/shared/components/icons/brand/` (Instagram, TikTok, Facebook, X, YouTube), `currentColor`, `aria-hidden`, one `size` prop; **no new npm dependency**. Glyph geometry is the Simple Icons set v16.32.0 (CC0), fetched raw from the package CDN at build time. | `lucide-react` ships no brand glyphs and the `Hash`-for-X stand-in was unacceptable. **Flagged, not resolved:** the geometry did *not* come from each platform's own brand-guidelines page (those publish downloadable asset packs, not inline SVG), and nobody has confirmed each platform's current logo-usage terms — a human must, before this reaches production traffic at scale. |
+| Social OAuth state signing bound to an issue time (2026-09-20) | Both `IInstagramStateSigner` and `ISocialOAuthStateSigner` now sign an issued-at unix timestamp inside the payload (`{artistId}\|{ts}` / `{type}\|{id}\|{platform}\|{ts}`) and `TryValidate` rejects a validly-signed state older than 15 minutes (or stamped more than 1 minute in the future). No interface change; the timestamp check runs only after the HMAC matches. A `TimeProvider` is injected through an `internal` constructor for tests. States issued before deploy stop validating (an in-flight connect must be retried). | The state previously had unbounded lifetime — a captured URL was replayable forever. Matters more now that artists, not just owners, routinely initiate these flows. The spec only flagged the Instagram signer; reading the code showed the generic social signer had the identical gap. |
+| Artist Social tab rendered from one connection-row pattern (2026-09-20) | `ConnectionRow` (icon, text status badge, handle-or-reason, at most one action) is used for all five platforms; `ArtistSocialTab` owns one loading skeleton, one error/retry, and the read-only explanation; `ConfirmDisconnectDialog` replaces both `window.confirm` calls; the artist profile page lost its nested sticky header/`min-h-screen` root (it lives inside the layout that already provides both) and its tab is now `?tab=`-backed. | A row that looks editable but is a dead end, and a page header pinned *behind* the app header, were the two defects the originating screenshot audit verified against source. |
+| Contrast is measured, not patched (2026-09-20) | `frontend/scripts/measure-rendered-contrast.ts` reads computed styles off real pages in both themes and reports; it is report-only (always exits 0) and not a CI gate. Real findings: light-theme `bg-destructive` button 3.61:1 (all destructive buttons), active-sidebar-fill boundary 1.24:1 (not the sole indicator). See `docs/claude/contrast-audit-2026-09-20.md`. | D-4: a fix belongs at the shared-token level, once, with a four-width before/after screenshot pass — bigger than the feature that surfaced it. The screenshot audit's eyeballed candidates (group labels, chip, subtitle, inactive tabs) all measured 5.1–7.8:1 and were *not* failures. |
 `IssuerStudioDetailPage`, `platformApi.getStudioById`, the `IgnoreQueryFilters` approved
 usages table entries #4/#5/#7–#9, and the toast/spinner/confirm patterns across every
 issuer component all show the fingerprints of that pass having run — but unlike the
@@ -4519,3 +4524,70 @@ no-op, and missing-resource skip; `WebhookSettingsCard` component tests (11) cov
 upgrade hint, save/one-time-secret-reveal, a server validation error surfacing inline, active/
 disabled endpoint states, send-test-event, remove, and the delivery log; `pnpm lint` clean
 (0 errors); `pnpm build` clean.
+
+
+### Artist Social Tab, Profile Chrome & Adjacent UI Hygiene — 2026-09-20
+
+Built from `docs/claude/overnight-prompt-artist-social-tab-and-profile-chrome-2026-09-20.md`, itself a
+verified-against-source rewrite of `feature-spec-artist-social-tab-and-profile-chrome-2026-09-20.md`
+(a screenshot audit of an artist's `My Portfolio` → `Social` tab). Four commits, in the order the spec
+gave (PR-1 → PR-4).
+
+**What was built:**
+- **Page chrome (PR-1).** `ArtistDetailPage` no longer renders its own sticky `<header>` and
+  `min-h-screen` root inside `ArtistLayout`/`OwnerLayout`; it has a breadcrumb (hidden on the artist's
+  own profile), a title row with Edit and a `⋯` menu holding Delete / "Stop working as an artist",
+  `h1 → h2` heading levels, a document title that drops "Artists" on the artist's own page, `?tab=`
+  URL-backed tabs (horizontal scroll below `sm`, the working-hours tab now labelled **Availability**),
+  and an OAuth return that lands on Social, toasts once and strips its one-shot params. A denied
+  Instagram/social consent now redirects to the subject's own page when the signed state decodes.
+- **Social tab (PR-2).** `ConnectionRow`, `SocialLinkRows`, `ArtistSocialTab`, `ConfirmDisconnectDialog`,
+  brand icons, `@`-prefixed handle input with inline error + polite "Saved" region, "Not available on
+  this server yet." as visible text.
+- **Artist self-service (PR-3).** See the Decisions Log row. Also: three ungated generic-social handlers
+  (`UpdateSocialHandle`, `RequestSocialVerificationCode`, `VerifySocialBioCode`) now reject
+  `Artist + Instagram` like `GetSocialConnectUrl`/`DisconnectSocialAccount` always did — reachable by a
+  direct API call once the policies loosened; the six mutating commands are `IAuditableCommand`
+  (`SocialLink.*` actions, metadata = platform only, never the handle) and the two anonymous OAuth-callback
+  handlers write their audit entry directly (the pipeline behaviour would see no user/tenant there).
+- **Hygiene (PR-4).** Artist sidebar group `Clients` → `People` (item stays `Clients`), item `Reports About
+  Me` → `Conduct Reports`, page avatar takes the header avatar's fill, and the rendered-contrast
+  measurement script + report.
+
+**Deviations from the prompt (deliberate, flagged):**
+- The nav badge map in `ArtistLayout`/`OwnerLayout` is keyed by nav **label**; renaming the item without
+  renaming its key would have silently dropped the open-report count. Both keys were renamed and a test
+  pins it.
+- The prompt's "Edit is visible and clickable at every scroll position" cannot hold once the header is
+  removed (the in-page title row scrolls with the page); what the fix guarantees — and the e2e asserts —
+  is that Edit is never *hidden behind* the app header. Not pinned.
+- At 375 px the **shared layout header's** icon cluster is ~50 px too wide in every role's layout
+  (`document` scrolls sideways). Pre-existing and outside this page, so the 375 px e2e assertions are
+  scoped to `<main>`. Needs its own fix (hide `UserChip`'s name below `sm`, or shrink header gaps).
+- The prompt's `ConnectionRowAction` union carried `handle-input`/`verify` kinds; the handle field is a
+  separate `handleInput` prop instead (a row can have both an input and an action) and `verify` is unused
+  (the manual flow's Verify lives in the code dialog), so neither kind exists.
+- Brand icon geometry: see the Decisions Log row — Simple Icons, not the platforms' own pages.
+- The artist's page heading stays "Reports About Me" while the nav item is "Conduct Reports"; Help says so.
+  Renaming the heading too is a one-line follow-up if the product owner wants nav and page to match.
+
+**Not built — needs a decision:** D-1 Option B (owner may only edit a typed handle for another artist);
+"Needs reconnection" (no token-expiry data exposed); public-page treatment of unverified handles (they
+render publicly with only the missing badge as a signal — `ArtistPortfolioPage`/`GetPublicArtistQuery`
+untouched); the contrast **token** fix itself (measurement only, see the contrast audit's "Next steps").
+
+**Help sync:** `helpContent.ts` (`owner-artists-list`, `owner-become-artist`, `owner-social-verification`,
+`artist-conduct-reports`, the dual-role menu tip) and `frontend/public/user-manual/index.html` (artist
+profile + owner artist-detail wireframes/steps, social verification, conduct reports, dual-role tip).
+**No onboarding-tour change**: every step in `artistTour.ts`/`ownerTour.ts` targets a `data-tour` on a
+sidebar item, never on the artist page header, its tabs or the Social tab, and the renamed items keep
+their `data-tour` ids.
+
+**Verification:** 2549 backend unit + 557 integration tests green (incl. the 64-case real-MySQL
+`ArtistSocialEndpointAuthorizationTests` matrix, the 15-minute signer window, the audit-metadata
+whitelist and the guard's own tests); scoped frontend suites green (`artists`, `social`, `layouts`,
+`help`, `public`, `studios`, shared icons — a full-repo `vitest run` is not attempted, it is killed by
+sandbox memory here); `pnpm tsc -b`, `pnpm build` and `eslint` clean; Playwright 64/64 across both
+theme projects (page chrome under both layouts, `?tab=` deep link/refresh, 375 px, and axe-clean Social
+tab in every state — the disconnect dialog opts out of `color-contrast` only, for the shared
+destructive-button token recorded in the contrast audit).
