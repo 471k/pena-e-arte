@@ -161,4 +161,68 @@ describe("OnboardingTour", () => {
 
     expect(onComplete).toHaveBeenCalled();
   });
+
+  describe("popover placement", () => {
+    const rect = (over: Partial<DOMRect>): DOMRect =>
+      ({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}), ...over }) as DOMRect;
+
+    function renderNavTour(selectorAttr: string, matches: boolean) {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = ((query: string) => ({
+        matches, media: query, onchange: null,
+        addEventListener: () => {}, removeEventListener: () => {},
+        addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
+      })) as typeof window.matchMedia;
+      render(
+        <MemoryRouter initialEntries={["/start"]}>
+          <a data-tour={selectorAttr} href="/x">Nav link</a>
+          <OnboardingTour
+            steps={[{ targetSelector: `[data-tour="${selectorAttr}"]`, title: "Nav step", body: "Body" }]}
+            onComplete={vi.fn()}
+            onSkip={vi.fn()}
+          />
+        </MemoryRouter>,
+      );
+      return () => { window.matchMedia = originalMatchMedia; };
+    }
+
+    it("opens a sidebar nav step to the right of its target on desktop", async () => {
+      const spy = vi.spyOn(Element.prototype, "getBoundingClientRect")
+        .mockReturnValue(rect({ top: 300, left: 8, right: 248, bottom: 336, width: 240, height: 36 }));
+      const restore = renderNavTour("owner-billing-nav", true);
+
+      const popover = await screen.findByRole("dialog", { name: "Nav step" }, { timeout: 3000 });
+      expect(popover.style.left).toBe("260px"); // target.right (248) + 12 gap
+      expect(popover.style.top).toBe("300px");
+
+      restore();
+      spy.mockRestore();
+    });
+
+    it("keeps a low sidebar step on-screen by anchoring the popover's bottom edge instead of its top", async () => {
+      const spy = vi.spyOn(Element.prototype, "getBoundingClientRect")
+        .mockReturnValue(rect({ top: window.innerHeight - 60, left: 8, right: 248, bottom: window.innerHeight - 24, width: 240, height: 36 }));
+      const restore = renderNavTour("owner-billing-nav", true);
+
+      const popover = await screen.findByRole("dialog", { name: "Nav step" }, { timeout: 3000 });
+      expect(popover.style.top).toBe("");
+      expect(popover.style.bottom).toBe("24px");
+
+      restore();
+      spy.mockRestore();
+    });
+
+    it("flips a bottom-placed popover above its target when there is no room below", async () => {
+      const spy = vi.spyOn(Element.prototype, "getBoundingClientRect")
+        .mockReturnValue(rect({ top: window.innerHeight - 60, left: 40, right: 100, bottom: window.innerHeight - 24, width: 60, height: 36 }));
+      const restore = renderNavTour("owner-billing-nav", false);
+
+      const popover = await screen.findByRole("dialog", { name: "Nav step" }, { timeout: 3000 });
+      expect(popover.style.top).toBe("");
+      expect(popover.style.bottom).toBe(`${60 + 12}px`); // target.top sits 60px above the viewport bottom, plus the 12px gap
+
+      restore();
+      spy.mockRestore();
+    });
+  });
 });

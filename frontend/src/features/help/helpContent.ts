@@ -3,6 +3,27 @@ import { HelpRole, type HelpArticle, type FaqItem } from "./help.types";
 const { Client, Artist, Owner, Admin } = HelpRole;
 
 export const HELP_ARTICLES: HelpArticle[] = [
+  // ── Everyone ────────────────────────────────────────────────────────────
+  {
+    id: "navigation-sidebar",
+    roles: [Client, Artist, Owner, Admin],
+    title: "Find your way around: the sidebar",
+    keywords: ["navigation", "menu", "sidebar", "side menu", "left menu", "nav", "collapse", "expand", "categories", "groups", "sections", "icon rail", "hamburger", "mobile menu", "ctrl b", "where is", "can't find"],
+    summary: "Every screen is reached from the vertical menu on the left. Related pages are grouped into categories that expand and collapse, and the whole menu scrolls if it's long.",
+    steps: [
+      "On a computer, the menu sits on the left side of every page. On a phone or small tablet, tap the menu button (three lines) at the top left to slide it open.",
+      "Menu items are grouped under small headings (for example \"Operations\", \"Sales\" or \"Growth\" for an owner). Some entries, like \"People\" or \"Payments\", are categories with an arrow — click one to expand it and see the pages inside, click it again to fold it away.",
+      "The category that holds the page you're on opens by itself, so you always see where you are. The page you're on is highlighted.",
+      "A red number next to an item (or on a folded category, adding up everything inside it) means something needs attention, like open conduct reports or unread feedback.",
+      "If the menu is longer than the screen, scroll inside it — the page behind it stays put.",
+      "Want more room? Click \"Collapse\" at the bottom of the menu (or press Ctrl+B, or Cmd+B on a Mac) to shrink it to a strip of icons. Hover over an icon to see its name; click a category icon to open the full menu at that category. Click the expand button, or press Ctrl+B again, to bring the labels back. The menu remembers your choice on this device.",
+    ],
+    tips: [
+      "Can't find a page? Open the category it most likely belongs to — related pages are always kept together.",
+      "Ctrl+B does nothing while you're typing in a text box, so it never gets in the way of writing.",
+      "Owners who also have their own artist profile see a separate artist menu when they switch to \"Artist\" at the top of the page.",
+    ],
+  },
   // ── Client ──────────────────────────────────────────────────────────────
   {
     id: "client-book-appointment",
@@ -1996,5 +2017,12 @@ export const FAQ_ITEMS: FaqItem[] = [
     question: "How do I activate a studio's subscription if they paid by cash?",
     answer: "Open the studio (from the Dashboard, Studios list, Subscriptions list, or its detail page), click \"Activate\", pick the plan they paid for, and confirm. This is only for cash collected outside the app — card payments activate automatically.",
     relatedArticleIds: ["admin-activate-cash-sub"],
+  },
+  {
+    id: "faq-sidebar-menu",
+    roles: [Client, Artist, Owner, Admin],
+    question: "Where did the menu go, or how do I make it smaller?",
+    answer: "The menu is the vertical bar on the left (on a phone, the three-line button at the top left). Click \"Collapse\" at its bottom, or press Ctrl+B (Cmd+B on a Mac), to shrink it to icons; do the same to bring it back. Related pages are grouped into categories you can expand and fold.",
+    relatedArticleIds: ["navigation-sidebar"],
   },
 ];

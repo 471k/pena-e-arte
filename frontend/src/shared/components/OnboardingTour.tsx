@@ -83,6 +83,9 @@ export function OnboardingTour({ steps, onComplete, onSkip, onBeforeStep }: Onbo
         pollTimer = setTimeout(() => measure(attempt + 1), POLL_INTERVAL_MS);
         return;
       }
+      // A target inside a scrollable container (the sidebar/drawer nav) may sit below its fold —
+      // scroll it into view first, then measure, so the spotlight lands on what the user can see.
+      if (typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "nearest", inline: "nearest" });
       setTargetRect(el.getBoundingClientRect());
     }
 
@@ -194,11 +197,30 @@ interface TourPopoverProps {
 }
 
 function TourPopover({ step, targetRect, stepIndex, totalSteps, onBack, onNext, onSkip }: TourPopoverProps) {
-  const placement = step.placement ?? "bottom";
   const GAP = 12;
   const POPOVER_WIDTH = 300;
+  // Conservative popover height (title + a few lines of body + buttons). Used only to decide when a
+  // popover anchored by its top edge would run off the bottom of the screen and must anchor by its
+  // bottom edge instead — no measuring pass needed, so there's no first-paint flicker.
+  const POPOVER_HEIGHT_ESTIMATE = 240;
+
+  let placement = step.placement ?? defaultPlacement(step);
+  if (placement === "bottom" && targetRect.bottom + GAP + POPOVER_HEIGHT_ESTIMATE > window.innerHeight
+      && targetRect.top - GAP - POPOVER_HEIGHT_ESTIMATE > 0) {
+    placement = "top";
+  }
 
   const style: React.CSSProperties = { position: "fixed", width: POPOVER_WIDTH };
+
+  // Side placements: align the popover's top with the target's top, unless that would push the
+  // bottom off-screen — then align its bottom with the target's bottom (kept on-screen).
+  function anchorSideVertically() {
+    if (targetRect.top + POPOVER_HEIGHT_ESTIMATE > window.innerHeight - 8) {
+      style.bottom = clamp(window.innerHeight - targetRect.bottom, 8, window.innerHeight - 8);
+    } else {
+      style.top = clamp(targetRect.top, 8, window.innerHeight - 8);
+    }
+  }
 
   switch (placement) {
     case "top":
@@ -206,11 +228,11 @@ function TourPopover({ step, targetRect, stepIndex, totalSteps, onBack, onNext, 
       style.bottom = window.innerHeight - targetRect.top + GAP;
       break;
     case "left":
-      style.top   = clamp(targetRect.top, 8, window.innerHeight - 8);
+      anchorSideVertically();
       style.right = window.innerWidth - targetRect.left + GAP;
       break;
     case "right":
-      style.top  = clamp(targetRect.top, 8, window.innerHeight - 8);
+      anchorSideVertically();
       style.left = targetRect.right + GAP;
       break;
     case "bottom":
@@ -252,6 +274,17 @@ function TourPopover({ step, targetRect, stepIndex, totalSteps, onBack, onNext, 
       </div>
     </div>
   );
+}
+
+const NAV_TARGET_SUFFIX = '-nav"]';
+
+// At lg+ the nav links live in a vertical sidebar down the left edge, so a popover below them would
+// run off the bottom of the screen for low-down items — open it to the right, over the page content.
+// Below lg the drawer is nearly full-width, so the default below-the-target placement still fits.
+function defaultPlacement(step: TourStep): NonNullable<TourStep["placement"]> {
+  const isNavTarget = step.targetSelector.endsWith(NAV_TARGET_SUFFIX);
+  const isDesktop = typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1024px)").matches;
+  return isNavTarget && isDesktop ? "right" : "bottom";
 }
 
 function clamp(value: number, min: number, max: number): number {

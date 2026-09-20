@@ -99,15 +99,26 @@ describe("AdminLayout", () => {
     expect(screen.queryByText("TattooOS")).not.toBeInTheDocument();
   });
 
-  it("renders all eight admin nav links (Notifications moved to bell icon)", () => {
+  it("renders all admin nav links, categorised (Notifications moved to bell icon)", async () => {
+    const user = userEvent.setup();
     renderLayout();
+    for (const heading of ["Observe", "Customers", "Support"]) {
+      expect(screen.getByText(heading)).toBeInTheDocument();
+    }
     expect(screen.getByRole("link", { name: /^dashboard$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^live traffic$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^studios$/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^plans$/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^subscriptions$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^referrals$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^reports$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^audit log$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^feedback$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^help insights$/i })).toBeInTheDocument();
+
+    // Plans + Subscriptions live in the collapsed "Billing" group until it is expanded.
+    expect(screen.queryByRole("link", { name: /^plans$/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^billing$/i }));
+    expect(screen.getByRole("link", { name: /^plans$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^subscriptions$/i })).toBeInTheDocument();
   });
 
   it("does not render a 'Notifications' text link in the nav", () => {

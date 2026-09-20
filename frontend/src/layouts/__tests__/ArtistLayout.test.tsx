@@ -131,12 +131,20 @@ describe("ArtistLayout", () => {
     expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
-  it("renders the nine static artist nav links", () => {
+  it("renders the static artist nav links, categorised", async () => {
+    const user = userEvent.setup();
     renderLayout();
+    for (const heading of ["Clients", "Creative", "Setup", "Me"]) {
+      // "Clients" is both a section heading and a link — heading is the non-link match
+      expect(screen.getAllByText(heading).length).toBeGreaterThan(0);
+    }
     expect(screen.getByRole("link", { name: /^schedule$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^clients$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^messages$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^designs$/i })).toBeInTheDocument();
+    // Forms & rules is a collapsed group until expanded.
+    expect(screen.queryByRole("link", { name: /intake forms/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /forms & rules/i }));
     expect(screen.getByRole("link", { name: /intake forms/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /consent forms/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /deposit rules/i })).toBeInTheDocument();

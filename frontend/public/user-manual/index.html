@@ -546,6 +546,15 @@ ol.steps li { margin: 6px 0; }
 <li><span class="role-badge role-admin">Admin</span> — TattooOS's own platform team. Oversees every studio, subscription plans, and platform-wide health — not tied to any one studio.</li>
 </ul>
 <p>A client can belong to more than one studio at a time and switch between them from <a href="#client-my-studios">My Studios</a>. Everyone else belongs to exactly one studio.</p>
+<h3 id="sidebar-navigation">Finding your way around: the sidebar</h3>
+<p>Once you're signed in, every screen is reached from the vertical menu on the left side of the page (on a phone or small tablet, tap the three-line button at the top left to slide it open). It works the same way for every role — Client, Artist, Owner and Admin — only the pages inside it differ.</p>
+<ul>
+<li><strong>Sections.</strong> Pages are grouped under small headings — for example an Owner sees <em>Operations</em>, <em>Sales</em>, <em>Growth</em> and <em>Studio</em>; an Admin sees <em>Observe</em>, <em>Customers</em> and <em>Support</em>.</li>
+<li><strong>Expandable categories.</strong> Entries with an arrow, like <em>People</em> or <em>Payments</em>, are categories. Click one to expand the pages inside it; click it again to fold it away. The category holding the page you're on opens by itself, and the current page is highlighted.</li>
+<li><strong>Alerts.</strong> A red number beside an item means something needs attention (open conduct reports, unread feedback). A folded category shows the total of everything inside it.</li>
+<li><strong>Scrolling.</strong> If the menu is taller than your screen, scroll inside it — the page behind stays put.</li>
+<li><strong>Collapse to icons.</strong> Click <span class="step-title">Collapse</span> at the bottom of the menu, or press <kbd>Ctrl</kbd>+<kbd>B</kbd> (<kbd>Cmd</kbd>+<kbd>B</kbd> on a Mac), to shrink it to a slim strip of icons. Hover an icon for its name; click a category icon to reopen the full menu at that category. Press the shortcut again (or the expand button) to bring the labels back. The shortcut is ignored while you're typing in a text box, and your choice is remembered on that device.</li>
+</ul>
 <h3>How to use this manual</h3>
 <p>Pick a role tab in the left sidebar to see that role's screens, grouped by feature area. Click any link to jump straight to that screen's walkthrough, or press <kbd>Ctrl</kbd>+<kbd>K</kbd> to search the whole manual by keyword. Each screen entry shows who can access it, a simple wireframe of the layout, and numbered steps in the exact order the fields and buttons appear on screen. A <a href="#ref-roles">Reference</a> tab at the end has status glossaries and a role comparison table.</p>
 <h3>Platform URLs at a glance</h3>
@@ -1924,7 +1933,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> My portfolio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗ (public version at <a href="#guest-artist-portfolio">/artist/slug</a>)</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own; edits bio, rate, portfolio)</td></tr><tr><td>Owner</td><td>✓ (any artist at the studio)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with five tabs — Profile, Portfolio, Schedule, Designs, and Social — reached from "My Portfolio" in the artist's own top navigation.</p>
+<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with five tabs — Profile, Portfolio, Schedule, Designs, and Social — reached from "My Portfolio" in the artist's own sidebar menu.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist portfolio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2206,8 +2215,8 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Enable my artist profile</span> — you land on your new artist detail page.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get "My Portfolio" and "My Earnings" shortcuts in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> on desktop, an "Owner / Artist" switcher also appears in the header once your artist profile exists — click "Artist" any time to jump straight to your own artist profile (Profile, Portfolio, Schedule, Bookings, Designs, Social), or "Owner" to jump back to your dashboard. On mobile, use the "My Portfolio"/"My Earnings" links in the navigation menu instead.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> your navigation menu switches with you. In Artist mode it shows only artist-relevant pages — Schedule (your own bookings), Clients, Messages, Designs, Intake Forms, Consent Forms, Deposit Rules, Waitlist, My Earnings, and Reports About Me — plus an "Owner Dashboard" link back. Studio-management pages (Billing, Studio Settings, Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, and the studio-wide Conduct Reports view) are hidden while you're in Artist mode and reappear once you switch back to Owner.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> on desktop, an "Owner / Artist" switcher also appears in the header once your artist profile exists — click "Artist" any time to jump straight to your own artist profile (Profile, Portfolio, Schedule, Bookings, Designs, Social), or "Owner" to jump back to your dashboard. On mobile, use the "My Portfolio"/"My Earnings" links in the navigation menu instead (in the sidebar, under "My artist profile").</div>
+<div class="callout callout-tip"><strong>Tip:</strong> your navigation menu switches with you. In Artist mode it shows only artist-relevant pages — Schedule (your own bookings), Clients, Messages, Waitlist, Designs, My Portfolio, My Earnings, and Reports About Me, plus Intake Forms, Consent Forms and Deposit Rules inside a "Forms &amp; rules" category — with an "Owner Dashboard" link back. Studio-management pages (Billing, Studio Settings, Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, and the studio-wide Conduct Reports view) are hidden while you're in Artist mode and reappear once you switch back to Owner.</div>
 <div class="crosslinks">See also: <a href="#owner-artists">Artist list</a>, <a href="#owner-artist-detail">Artist detail</a></div>
 </section>
 

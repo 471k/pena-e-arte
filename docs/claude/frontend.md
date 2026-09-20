@@ -40,6 +40,37 @@ src/frontend/src/
 
 ---
 
+## Navigation (sidebar)
+
+Every role layout (`Client`/`Artist`/`Owner`/`Admin`) renders the same vertical, Cloudflare-style
+sidebar. Do not hand-roll a top nav in a layout, and do not add a flat `NavItem[]` — add entries to
+the layout's `NavSection[]`.
+
+```
+shared/types/navItem.ts            NavItem (link) · NavGroup (expandable, has children) · NavSection (labelled block)
+shared/components/SidebarNav.tsx   renders sections + groups; `collapsed` = icon rail, `touch` = 44px rows
+shared/components/AppSidebar.tsx   desktop (lg+) sticky, scrollable aside; Collapse button + Ctrl/Cmd+B; persists "sidebar-collapsed"
+shared/components/NavDrawer.tsx    below lg: hamburger + Sheet rendering the same SidebarNav
+shared/hooks/useNavShell.ts        drawer open state + onboarding-tour reveal (pass to HelpMenu.onBeforeTourStep)
+shared/utils/navSections.ts        withNavBadges / pruneNavSections / flattenNavItems / active-route helpers
+layouts/artistNavSections.tsx      artist menu, shared by ArtistLayout and OwnerLayout's artist mode
+```
+
+Rules when adding a menu item:
+
+- Put it in the category it belongs to (a `NavGroup` for 2+ related pages, a plain `NavItem` for a
+  standalone destination) under a labelled `NavSection`. Keep the most-used destinations top-level.
+- Layout header is a fixed `h-14`; `AppSidebar` sticks at `top-14` and is `100vh - 3.5rem` tall. Keep both in sync.
+- A link that needs an onboarding-tour target keeps its `tourId` (`<role>-<thing>-nav`). The sidebar
+  opens the group / expands the rail for that step automatically — the `-nav"]` selector suffix is
+  what triggers it, so don't rename that convention.
+- Live counts go through `withNavBadges(sections, { "<Item label>": count })`; a folded group shows
+  the sum of its children.
+- `end: true` on any item whose href is a prefix of a sibling's (e.g. `/clients/me` vs
+  `/clients/me/payment-methods`), otherwise both highlight.
+
+---
+
 ## Redux Store Structure
 
 ```typescript

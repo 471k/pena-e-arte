@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -175,6 +175,10 @@ function renderLayout(overrides: StoreOverrides = {}, initialPath = "/dashboard"
   return store;
 }
 
+async function expandGroup(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
+  await user.click(screen.getByRole("button", { name }));
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("OwnerLayout", () => {
@@ -183,15 +187,28 @@ describe("OwnerLayout", () => {
     expect(screen.getByText("TattooOS")).toBeInTheDocument();
   });
 
-  it("renders all ten owner nav links", () => {
+  it("renders the owner nav grouped into labelled sections with expandable categories", async () => {
+    const user = userEvent.setup();
     renderLayout();
+    for (const heading of ["Operations", "Sales", "Growth", "Studio"]) {
+      expect(screen.getByText(heading)).toBeInTheDocument();
+    }
+    // Always-visible top-level links.
     expect(screen.getByRole("link", { name: /^dashboard$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^schedule$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^messages$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^reports$/i })).toBeInTheDocument();
+
+    // Everything else sits in a collapsed category until it is expanded.
+    expect(screen.queryByRole("link", { name: /^artists$/i })).not.toBeInTheDocument();
+    await expandGroup(user, /^people$/i);
     expect(screen.getByRole("link", { name: /^artists$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^clients$/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^messages$/i })).toBeInTheDocument();
+    await expandGroup(user, /^client work$/i);
     expect(screen.getByRole("link", { name: /^designs$/i })).toBeInTheDocument();
+    await expandGroup(user, /^payments$/i);
     expect(screen.getByRole("link", { name: /^payments$/i })).toBeInTheDocument();
+    await expandGroup(user, /^manage studio$/i);
     expect(screen.getByRole("link", { name: /^billing$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /studio settings/i })).toBeInTheDocument();
   });
@@ -314,12 +331,27 @@ describe("OwnerLayout", () => {
     expect(screen.queryByText(/studio has been suspended/i)).not.toBeInTheDocument();
   });
 
-  it("active nav link gets the primary background class", () => {
+  it("active nav link gets the primary highlight class", () => {
     renderLayout({}, "/dashboard");
     const dashboardLink = screen.getByRole("link", { name: /^dashboard$/i });
     expect(dashboardLink.className).toMatch(/bg-primary/);
-    const artistsLink = screen.getByRole("link", { name: /^artists$/i });
-    expect(artistsLink.className).not.toMatch(/bg-primary/);
+    const scheduleLink = screen.getByRole("link", { name: /^schedule$/i });
+    expect(scheduleLink.className).not.toMatch(/bg-primary/);
+  });
+
+  it("opens the category holding the active route on load, leaving the others collapsed", () => {
+    renderLayout({}, "/artists");
+    expect(screen.getByRole("button", { name: /^people$/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: /^artists$/i }).className).toMatch(/bg-primary/);
+    expect(screen.getByRole("button", { name: /^manage studio$/i })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("the sidebar collapses to an icon rail", async () => {
+    const user = userEvent.setup();
+    renderLayout();
+    await user.click(screen.getByRole("button", { name: /collapse sidebar/i }));
+    expect(screen.queryByText("Operations")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /expand sidebar/i })).toBeInTheDocument();
   });
 
   it("renders a mobile nav drawer trigger", () => {
@@ -332,8 +364,10 @@ describe("OwnerLayout", () => {
     renderLayout({}, "/dashboard");
     await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
 
-    const artistsLinks = await screen.findAllByRole("link", { name: /^artists$/i });
-    await user.click(artistsLinks[artistsLinks.length - 1]);
+    // The drawer renders the same groups: expand People inside it, then follow Artists.
+    const drawer = await screen.findByRole("dialog");
+    await user.click(within(drawer).getByRole("button", { name: /^people$/i }));
+    await user.click(within(drawer).getByRole("link", { name: /^artists$/i }));
 
     await screen.findByTestId("outlet");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -395,8 +429,11 @@ describe("OwnerLayout", () => {
     renderLayout({}, "/dashboard");
     await screen.findByTestId("outlet");
 
+    const user = userEvent.setup();
+    await expandGroup(user, /^manage studio$/i);
     expect(screen.getByRole("link", { name: /^billing$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /studio settings/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /forms & rules/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /consent forms/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^owner dashboard$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /reports about me/i })).not.toBeInTheDocument();
@@ -409,7 +446,9 @@ describe("OwnerLayout", () => {
     renderLayout({}, "/artists/art-owner-1");
     await screen.findByTestId("artist-outlet");
 
-    expect(await screen.findByRole("link", { name: /consent forms/i })).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /forms & rules/i }));
+    expect(screen.getByRole("link", { name: /consent forms/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /intake forms/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /reports about me/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^owner dashboard$/i })).toBeInTheDocument();
@@ -427,7 +466,7 @@ describe("OwnerLayout", () => {
     await screen.findByTestId("artist-outlet");
     // "Schedule" exists in both nav modes (different href) — wait for an artist-mode-only
     // marker first so this doesn't resolve against the owner nav's stale pre-fetch render.
-    await screen.findByRole("link", { name: /consent forms/i });
+    await screen.findByRole("link", { name: /^owner dashboard$/i });
 
     const scheduleLink = screen.getByRole("link", { name: /^schedule$/i });
     expect(scheduleLink).toHaveAttribute("href", "/schedule?artistId=art-owner-1");
@@ -446,6 +485,7 @@ describe("OwnerLayout", () => {
     await user.click(await screen.findByRole("link", { name: /^owner dashboard$/i }));
 
     await screen.findByTestId("outlet");
+    await expandGroup(user, /^manage studio$/i);
     expect(screen.getByRole("link", { name: /^billing$/i })).toBeInTheDocument();
   });
 });
