@@ -14,7 +14,7 @@ export function BookingWidget({ children }: BookingWidgetProps) {
       {studio?.showPlatformBranding && (
         <footer className="py-3 text-center text-xs text-muted-foreground border-t">
           <a
-            href="https://tattooos.co"
+            href="https://app.tattooos.co"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:underline"

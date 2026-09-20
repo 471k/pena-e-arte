@@ -798,7 +798,7 @@ export function ArtistPortfolioPage() {
 
       <footer className="py-4 text-center text-xs text-foreground/65 border-t mt-auto">
         <a
-          href="https://tattooos.co"
+          href="https://app.tattooos.co"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-foreground/80 hover:underline transition-colors"

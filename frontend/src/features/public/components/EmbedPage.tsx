@@ -127,7 +127,7 @@ export function EmbedPage() {
 
       <footer className="px-4 py-3 border-t text-center">
         <a
-          href="https://tattooos.co"
+          href="https://app.tattooos.co"
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-muted-foreground hover:underline"
