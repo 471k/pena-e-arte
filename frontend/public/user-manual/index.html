@@ -1956,7 +1956,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Availability</span> tab — set your weekly working hours and add time off.</li>
 <li><span class="step-title">Bookings</span> tab — your upcoming and past appointments.</li>
 <li><span class="step-title">Designs</span> tab — designs you've created.</li>
-<li><span class="step-title">Social</span> tab — connect/verify Instagram (also used for photo sync), plus verify TikTok, Facebook, X, and YouTube. See <a href="#owner-social-verification">Verify social media accounts</a>.</li>
+<li><span class="step-title">Social</span> tab — one row each for Instagram (also used for photo sync), TikTok, Facebook, X, and YouTube, showing whether each is Verified, has a handle added, or isn't linked. Your studio owner connects and verifies them; you can check how they look with <span class="step-title">View public profile</span>. See <a href="#owner-social-verification">Verify social media accounts</a>.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> your hourly rate is used to calculate percentage-based deposit rules at booking time.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> Discover's category tabs and style filters both match an image's own tags, not the "Specializations" text on your profile — an uncategorized or untagged image stays in your portfolio but won't show up under either filter.</div>
@@ -3069,33 +3069,35 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-social-verification" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Verify social media accounts</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own profile's four non-Instagram platforms; Instagram stays on the Social tab's own Connect flow)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>View only (sees the status of each account on their own profile; the studio owner connects and verifies them)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
 <p>The "Social Media" card (Studio Settings) and the artist profile's "Social" tab both use the same mechanism: connect or verify Instagram, TikTok, Facebook, X, and YouTube accounts, so clients see a green "Verified" checkmark next to the handle wherever it's shown — proof it's really the account it claims to be, not something anyone could type into a form.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 220" role="img" aria-label="Social Media card wireframe">
 <rect width="760" height="30" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="20" font-size="10" font-weight="700">Social Media</text>
 <rect x="16" y="40" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
-<text x="28" y="61" font-size="9">Instagram   @inkbyana ✓ Verified</text>
+<text x="28" y="61" font-size="9">Instagram  ✓ Verified   @inkbyana                        Disconnect</text>
 <rect x="16" y="80" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
-<text x="28" y="101" font-size="9">TikTok      [ handle input ]           Connect</text>
+<text x="28" y="101" font-size="9">TikTok  Not linked   [ @ handle ]                     Connect</text>
 <rect x="16" y="120" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
-<text x="28" y="141" font-size="9">YouTube     [ handle input ]  Get verification code</text>
+<text x="28" y="141" font-size="9">YouTube  Not linked   [ @ handle ]        Get verification code</text>
 <rect x="16" y="160" width="728" height="34" rx="6" fill="currentColor" fill-opacity="0.04"/>
-<text x="28" y="181" font-size="9">Facebook    Not available yet</text>
+<text x="28" y="181" font-size="9">Facebook  Unavailable   Not available on this server yet.</text>
 </svg>
 </figure>
-<figcaption>Social Media — one row per platform; verified rows show a badge and Disconnect, unverified rows show Connect or a code flow</figcaption>
+<figcaption>Social Media — one row per platform, each with a status badge and at most one action: verified rows show Disconnect, unverified rows show Connect or a code flow</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
+<li>Each platform is one row with a status — <span class="step-title">Verified</span>, <span class="step-title">Handle added</span>, <span class="step-title">Not linked</span>, or <span class="step-title">Unavailable</span> — and at most one button. On an artist's Social tab, the Instagram row comes first and, once connected, shows the synced photos (with a per-photo show/hide toggle) directly under it.</li>
 <li>For Instagram or TikTok: click <span class="step-title">Connect</span> and sign in on the platform's own page. This proves ownership directly — no code to copy.</li>
 <li>For Facebook, X, or YouTube (or any account that can't or won't use Connect): type the handle, then click <span class="step-title">Get verification code</span>. Add the code shown to that platform's bio, then click <span class="step-title">I've added it — Verify</span>. It can take a minute to propagate before Verify finds it.</li>
 <li>Once verified, a green <span class="step-title">Verified</span> badge appears next to the handle everywhere it's shown, including the public studio/artist page.</li>
-<li><span class="step-title">Disconnect</span> keeps the handle displayed but removes the Verified badge.</li>
+<li><span class="step-title">Disconnect</span> asks you to confirm first, then keeps the handle displayed but removes the Verified badge. Photos already synced from an artist's Instagram stay on their portfolio; only new syncing stops.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> a green check means TattooOS has directly confirmed this is the same account — not something anyone else could type in.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> changing a handle after it's verified removes the badge until it's re-verified — the old proof only covered the previous handle.</div>
-<div class="callout callout-warn"><strong>Note:</strong> "Not available yet" means that platform isn't connected on this server — this isn't something you can fix from Settings.</div>
+<div class="callout callout-warn"><strong>Note:</strong> "Not available on this server yet." (status <em>Unavailable</em>) means that platform isn't connected on this server — this isn't something you can fix from Settings.</div>
+<div class="callout callout-tip"><strong>Tip (artists):</strong> if the Social tab says "Your studio owner manages connections for your profile", ask your studio owner to connect or verify your accounts. You can still see each account's status and use <span class="step-title">View public profile</span> to check how it looks to clients.</div>
 <div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile</a>, <a href="#artist-profile">Artist: my portfolio profile</a>, <a href="#guest-studio-portfolio">Guest: studio profile page</a></div>
 </section>
 

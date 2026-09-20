@@ -1250,8 +1250,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "A green check means we've directly confirmed this is the same account, not something anyone else could type in.",
       "Changing a handle after it's verified removes the badge until it's re-verified — the old proof only covered the previous handle.",
-      "\"Not available yet\" means that platform isn't connected on this server yet — this is expected for some platforms and isn't something you can fix from Settings.",
-      "Disconnecting keeps the handle displayed but removes the Verified badge.",
+      "Every platform is one row with a status — Verified, Handle added, Not linked, or Unavailable — and at most one button. \"Unavailable\" (\"Not available on this server yet.\") means that platform isn't connected on this server yet — this is expected for some platforms and isn't something you can fix from Settings.",
+      "Disconnecting asks you to confirm first, and keeps the handle displayed but removes the Verified badge. On an artist's Instagram row, the photos already synced stay on the portfolio; only new syncing stops.",
+      "If you're an artist and see \"Your studio owner manages connections for your profile\", ask your studio owner to connect or verify your accounts — you can still see each account's status and use \"View public profile\" to check how it looks to clients.",
     ],
     relatedArticleIds: ["owner-studio-profile"],
   },

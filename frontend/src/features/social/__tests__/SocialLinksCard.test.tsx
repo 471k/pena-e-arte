@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -85,10 +85,10 @@ function makeStore() {
   });
 }
 
-function renderCard() {
+function renderCard(canManage = true) {
   render(
     <Provider store={makeStore()}>
-      <SocialLinksCard subjectType="Studio" subjectId={SUBJECT_ID} />
+      <SocialLinksCard subjectType="Studio" subjectId={SUBJECT_ID} canManage={canManage} />
     </Provider>,
   );
 }
@@ -106,11 +106,11 @@ describe("SocialLinksCard", () => {
   it("shows a Connect button for an OAuth-configured, unverified platform", async () => {
     renderCard();
     await screen.findByText("Instagram");
-    const connectButtons = screen.getAllByRole("button", { name: /^connect$/i });
+    const connectButtons = screen.getAllByRole("button", { name: /^connect /i });
     expect(connectButtons.length).toBeGreaterThan(0);
   });
 
-  it("shows 'Not available yet' for a platform with neither OAuth nor manual check configured", async () => {
+  it("shows 'Not available on this server yet.' as visible text for a platform with neither OAuth nor manual check configured", async () => {
     server.use(
       http.get(BASE, () =>
         HttpResponse.json(makeLinks({ TikTok: { isOAuthConfigured: false, isManualCheckSupported: false } })),
@@ -118,7 +118,8 @@ describe("SocialLinksCard", () => {
     );
     renderCard();
     await screen.findByText("TikTok");
-    expect(screen.getByText(/not available yet/i)).toBeInTheDocument();
+    expect(screen.getByText("Not available on this server yet.")).toBeInTheDocument();
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
   });
 
   it("shows the Verified badge and Disconnect button for a verified platform", async () => {
@@ -130,8 +131,8 @@ describe("SocialLinksCard", () => {
     renderCard();
 
     expect(await screen.findByText("@studiohandle")).toBeInTheDocument();
-    expect(screen.getByText(/verified/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Disconnect Instagram" })).toBeInTheDocument();
   });
 
   it("clicking Connect opens a blank tab synchronously, then navigates it to the authUrl", async () => {
@@ -149,7 +150,7 @@ describe("SocialLinksCard", () => {
     renderCard();
 
     await screen.findByText("TikTok");
-    const [connectButton] = screen.getAllByRole("button", { name: /^connect$/i });
+    const [connectButton] = screen.getAllByRole("button", { name: /^connect /i });
     await user.click(connectButton);
 
     expect(openSpy).toHaveBeenCalledWith("about:blank", "_blank");
@@ -170,7 +171,7 @@ describe("SocialLinksCard", () => {
     renderCard();
 
     await screen.findByText("YouTube");
-    const getCodeButtons = screen.getAllByRole("button", { name: /get verification code/i });
+    const getCodeButtons = screen.getAllByRole("button", { name: /verification code/i });
     await user.click(getCodeButtons[getCodeButtons.length - 1]);
 
     await waitFor(() => expect(requestedCodePlatform).toBe("YouTube"));
@@ -182,19 +183,75 @@ describe("SocialLinksCard", () => {
     expect(toast.success).toHaveBeenCalled();
   });
 
-  it("clicking Disconnect (after confirming) calls DELETE .../disconnect for that platform", async () => {
+  it("clicking Disconnect asks in a themed dialog (never window.confirm), then calls DELETE .../disconnect", async () => {
     server.use(
       http.get(BASE, () =>
         HttpResponse.json(makeLinks({ Instagram: { isVerified: true, handle: "studiohandle" } })),
       ),
     );
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const confirmSpy = vi.spyOn(window, "confirm");
     const user = userEvent.setup();
     renderCard();
 
     await screen.findByText("@studiohandle");
-    await user.click(screen.getByRole("button", { name: /disconnect/i }));
+    await user.click(screen.getByRole("button", { name: "Disconnect Instagram" }));
+
+    const dialog = await screen.findByRole("dialog", { name: /disconnect instagram\?/i });
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(disconnectedPlatform).toBeNull();
+
+    await user.click(within(dialog).getByRole("button", { name: "Disconnect" }));
 
     await waitFor(() => expect(disconnectedPlatform).toBe("Instagram"));
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("cancelling the disconnect dialog leaves the account connected", async () => {
+    server.use(
+      http.get(BASE, () =>
+        HttpResponse.json(makeLinks({ Instagram: { isVerified: true, handle: "studiohandle" } })),
+      ),
+    );
+    const user = userEvent.setup();
+    renderCard();
+
+    await screen.findByText("@studiohandle");
+    await user.click(screen.getByRole("button", { name: "Disconnect Instagram" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(disconnectedPlatform).toBeNull();
+  });
+
+  it("renders the rows as a labelled list with a status badge on each and never a bare dash", async () => {
+    renderCard();
+    const list = await screen.findByRole("list", { name: "Connected accounts" });
+
+    expect(within(list).getAllByRole("listitem")).toHaveLength(5);
+    expect(list).not.toHaveTextContent("—");
+    expect(within(list).getAllByText(/^(Not linked|Handle added|Verified|Unavailable)$/)).toHaveLength(5);
+  });
+
+  it("read-only (canManage=false): no buttons or inputs at all", async () => {
+    server.use(
+      http.get(BASE, () =>
+        HttpResponse.json(makeLinks({ Instagram: { isVerified: true, handle: "studiohandle" } })),
+      ),
+    );
+    renderCard(false);
+
+    await screen.findByText("@studiohandle");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("shows an inline error and a retry when the links fail to load, not an empty list", async () => {
+    server.use(http.get(BASE, () => new HttpResponse(null, { status: 500 })));
+    renderCard();
+
+    expect(await screen.findByText(/couldn't load the connected accounts/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByText("Not linked")).not.toBeInTheDocument();
   });
 });

@@ -592,7 +592,7 @@ describe("Artist profile page chrome, tabs and title", () => {
   it("has exactly one h1 and never an h3 before an h2 on the Social tab", async () => {
     renderDetail(ELENA.id, Role.Owner, "?tab=social");
     await screen.findByText("EM");
-    await screen.findByRole("heading", { name: "Other platforms" });
+    await screen.findByRole("heading", { name: "Connected accounts" });
 
     const levels = screen.getAllByRole("heading").map((h) => Number(h.tagName.slice(1)));
     expect(levels.filter((l) => l === 1)).toHaveLength(1);

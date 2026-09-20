@@ -31,7 +31,7 @@ import { ReviewSection }           from "./ReviewSection";
 import { PublicPageHeader }        from "./PublicPageHeader";
 import { useEffect } from "react";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
-import { SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
+import { SOCIAL_PLATFORM_FALLBACK_ICON, SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
 import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
 import { CategoryTabs } from "./CategoryTabs";
@@ -616,7 +616,7 @@ export function ArtistPortfolioPage() {
             {artist.socialLinks.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 {artist.socialLinks.map((link) => {
-                  const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? AtSign;
+                  const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? SOCIAL_PLATFORM_FALLBACK_ICON;
                   const label = SOCIAL_PLATFORM_LABEL[link.platform] ?? link.platform;
                   return (
                     <a

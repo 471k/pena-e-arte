@@ -72,8 +72,7 @@ import type { DesignResponse } from "@/features/designs/design.types";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
-import { InstagramTab } from "./InstagramTab";
-import { SocialLinksCard } from "@/features/social/components/SocialLinksCard";
+import { ArtistSocialTab } from "./ArtistSocialTab";
 
 // Keep in sync with TattooStyle.cs constants on the backend.
 const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -886,22 +885,15 @@ export function ArtistDetailPage() {
               )}
             </TabsContent>
 
-            {/* Social tab — Instagram keeps its own dedicated photo-sync UI; the other
-                four platforms are verification-only, managed via SocialLinksCard. */}
-            <TabsContent value="social" className="mt-4 space-y-6">
-              <div>
-                <h2 className="text-sm font-semibold mb-2">Instagram</h2>
-                <InstagramTab artistId={artist.id} canConnect={canManage} canManagePosts={isArtistRole} />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold mb-2">Other platforms</h2>
-                <SocialLinksCard
-                  subjectType="Artist"
-                  subjectId={artist.id}
-                  platforms={["TikTok", "Facebook", "X", "YouTube"]}
-                  canManage={canManage}
-                />
-              </div>
+            {/* Social tab — one list of connection rows; Instagram's photo sync sits under its row. */}
+            <TabsContent value="social" className="mt-6">
+              <ArtistSocialTab
+                artistId={artist.id}
+                firstName={artist.firstName}
+                slug={artist.slug ?? null}
+                canManage={canManage}
+                isOwnProfile={isOwnProfile}
+              />
             </TabsContent>
           </Tabs>
         )}
