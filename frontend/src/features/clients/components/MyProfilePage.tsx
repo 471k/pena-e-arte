@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Loader2, MapPin, Pencil, User } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { ImageWithFallback } from "@/shared/components/ImageWithFallback";
@@ -15,6 +15,7 @@ import {
   useUpdateMyBodyMapMutation,
 } from "../clientsApi";
 import { BodyMap } from "./BodyMap";
+import { ContactDetailsCard } from "./ContactDetailsCard";
 import { PortableProfileToggle } from "./PortableProfileToggle";
 import { DeleteAccountSection } from "./DeleteAccountSection";
 
@@ -26,15 +27,6 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
   });
-}
-
-function ProfileField({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div className="space-y-0.5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium">{value ?? <span className="text-muted-foreground">—</span>}</p>
-    </div>
-  );
 }
 
 export function MyProfilePage() {
@@ -141,15 +133,7 @@ export function MyProfilePage() {
               </TabsList>
 
               <TabsContent value="profile" className="mt-4 space-y-4">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">Contact</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <ProfileField label="Email" value={client.email} />
-                    <ProfileField label="Phone" value={client.phone} />
-                  </CardContent>
-                </Card>
+                <ContactDetailsCard client={client} />
 
                 {profileLoading && <Skeleton className="h-32 w-full rounded-lg" />}
 

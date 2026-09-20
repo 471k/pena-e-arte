@@ -73,6 +73,11 @@ public static class AuditMetadataBuilder
         {
             ["affectedClientCount"] = c.AffectedClientCount,
         },
+        UpdateMyClientCommand c => new Dictionary<string, object?>
+        {
+            // Row count only — the new name/phone are PII and never go in the audit log.
+            ["affectedClientCount"] = c.AffectedClientCount,
+        },
         _ => new Dictionary<string, object?>(),
     });
 

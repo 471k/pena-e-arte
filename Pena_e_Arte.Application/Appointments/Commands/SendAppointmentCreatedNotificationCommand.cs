@@ -137,6 +137,28 @@ public class SendAppointmentCreatedNotificationHandler(
             });
 
             await db.SaveChangesAsync(ct);
+
+            // Email + bell entry for the artist the client picked. Skipped when the client chose
+            // "let the studio choose" (ArtistId is null) — the artist is notified later, when the
+            // owner assigns one (SendAppointmentArtistAssignedNotificationHandler). The single
+            // "NotificationReceived" push below reaches the whole studio group, so this artist's
+            // bell refreshes live without a second event.
+            if (appointment.ArtistId is Guid artistId)
+            {
+                Artist? artist = await db.Artists.FirstOrDefaultAsync(a => a.Id == artistId, ct);
+                if (artist is null)
+                {
+                    logger.LogWarning(
+                        "Artist {@ArtistId} not found for created notification of appointment {@AppointmentId}",
+                        artistId, appointment.Id);
+                }
+                else
+                {
+                    await ArtistBookingNotifier.NotifyAsync(
+                        db, notifications, logger, studio, artist, appointment.Id,
+                        studioSubject, studioEmailBody, studioEmailSuccess, ct);
+                }
+            }
         }
 
         // SMS to client

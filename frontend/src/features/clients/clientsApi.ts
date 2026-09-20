@@ -17,6 +17,13 @@ export interface ClientResponse {
   archivedAt:         string | null;
 }
 
+export interface UpdateMyClientRequest {
+  firstName: string;
+  lastName:  string;
+  /** E.164, or null to remove the number. Email is intentionally absent — it changes only via the change-email flow. */
+  phone:     string | null;
+}
+
 export interface GetClientsParams {
   search?:          string;
   includeArchived?: boolean;
@@ -271,6 +278,14 @@ export const clientsApi = createApi({
         { type: "ClientProfile", id: clientId },
       ],
     }),
+    updateMyClient: builder.mutation<ClientResponse, UpdateMyClientRequest>({
+      query: (body) => ({
+        url: "clients/me",
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: [{ type: "Client", id: "me" }],
+    }),
     updateMyBodyMap: builder.mutation<ClientProfileResponse, string[]>({
       query: (locations) => ({
         url: "clients/me/profile/body-map",
@@ -350,6 +365,7 @@ export const {
   useGetClientProfileQuery,
   useUpsertClientProfileMutation,
   useUpdateBodyMapMutation,
+  useUpdateMyClientMutation,
   useUpdateMyBodyMapMutation,
   useGetTattooRecordsQuery,
   useGetTattooRecordQuery,

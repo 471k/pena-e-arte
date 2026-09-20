@@ -16,6 +16,13 @@ public interface IEmailRenderer
         string studioName,
         bool showBranding);
 
+    string RenderAppointmentAssignedToArtist(
+        string artistFirstName,
+        string clientFullName,
+        DateTime date,
+        int durationMinutes,
+        string? notes);
+
     string RenderAppointmentCreatedClient(
         string clientFirstName,
         DateTime date,

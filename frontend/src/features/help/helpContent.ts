@@ -288,10 +288,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Client],
     title: "Update your profile and body map",
     route: "/clients/me",
-    keywords: ["body map", "tattoo history", "sharing", "contact info"],
-    summary: "Your personal profile — contact details, where on your body you have or want tattoos, your past tattoo history, and whether other studios can see your profile.",
+    keywords: ["body map", "tattoo history", "sharing", "contact info", "phone number", "edit name", "change phone"],
+    summary: "Your personal profile — your name and phone number, where on your body you have or want tattoos, your past tattoo history, and whether other studios can see your profile.",
     steps: [
-      "On the \"Profile\" tab, view your email and phone, click \"Edit\" on the Body Map to mark locations, then \"Save\".",
+      "On the \"Profile\" tab, click \"Edit\" on the Contact card to change your first name, last name, or phone number (clear the phone field to remove it), then \"Save\". This updates your details at every studio you're a client at. Your email is your sign-in address — use \"Change email\" from your user menu to change it.",
+      "Still on the \"Profile\" tab, click \"Edit\" on the Body Map to mark locations, then \"Save\".",
       "Switch to the \"Tattoo History\" tab to see your completed tattoos with photos and descriptions.",
       "Switch to the \"Sharing\" tab to turn on or off letting other studios reuse your profile information.",
     ],
@@ -669,7 +670,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click a notification to see its full details.",
       "Click \"View all\" to see your complete notification history.",
     ],
-    tips: ["Opening the bell automatically clears the unread count badge."],
+    tips: [
+      "Opening the bell automatically clears the unread count badge.",
+      "When a client books you directly, or the studio assigns you a booking, you get an email as well as a bell alert — so you hear about it even when you're not in the app.",
+    ],
   },
   {
     id: "artist-messaging",
