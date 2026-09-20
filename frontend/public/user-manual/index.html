@@ -1935,15 +1935,14 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> My portfolio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗ (public version at <a href="#guest-artist-portfolio">/artist/slug</a>)</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own; edits bio, rate, portfolio)</td></tr><tr><td>Owner</td><td>✓ (any artist at the studio)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with five tabs — Profile, Portfolio, Schedule, Designs, and Social — reached from "My Portfolio" in the artist's own sidebar menu.</p>
+<p>At <code>/artists/&lt;id&gt;</code>: the artist's editable profile with six tabs — Profile, Portfolio, Availability, Bookings, Designs, and Social — reached from "My Portfolio" in the artist's own sidebar menu. The selected tab is kept in the page address (<code>?tab=social</code>, for example), so a refresh or a shared link returns to the same tab.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Artist portfolio profile wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
-<text x="16" y="25" font-size="10" font-weight="700">‹ Artists</text><text x="620" y="25" font-size="9">✎ Edit</text>
 <circle cx="60" cy="80" r="24" fill="currentColor" fill-opacity="0.08"/>
-<text x="96" y="76" font-size="12" font-weight="700">Elena Martins</text>
+<text x="96" y="76" font-size="12" font-weight="700">Elena Martins</text><text x="96" y="92" font-size="9" fill-opacity="0.6">Artist</text><text x="640" y="80" font-size="9">✎ Edit</text>
 <rect x="20" y="112" width="700" height="20" fill="currentColor" fill-opacity="0.04"/>
-<text x="30" y="126" font-size="8">Profile</text><text x="90" y="126" font-size="8">Portfolio</text><text x="150" y="126" font-size="8">Schedule</text><text x="220" y="126" font-size="8">Designs</text>
+<text x="30" y="126" font-size="8">Profile</text><text x="90" y="126" font-size="8">Portfolio</text><text x="150" y="126" font-size="8">Availability</text><text x="220" y="126" font-size="8">Bookings</text><text x="290" y="126" font-size="8">Designs</text><text x="350" y="126" font-size="8">Social</text>
 <rect x="20" y="140" width="700" height="220" rx="6" fill="currentColor" fill-opacity="0.04"/>
 <text x="32" y="160" font-size="9">Email · Specializations · Hourly rate</text>
 <text x="32" y="182" font-size="9" fill-opacity="0.6">Joined 3 Mar 2026 · View public profile ↗</text>
@@ -1954,7 +1953,8 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Click <span class="step-title">Edit</span> to update name, email, specializations, hourly rate, and public profile slug.</li>
 <li><span class="step-title">Portfolio</span> tab — add or remove photos shown on your public artist page. Click "Add image" and choose Fresh Tattoo, Healed Tattoo, or Design to upload and tag a photo's category in one step, or use the category dropdown on any existing image to relabel it. Each image also has its own style dropdown (Traditional, Realism, Blackwork, etc.) — tag it so the photo appears when a client filters the public Discover page by that style.</li>
-<li><span class="step-title">Schedule</span> tab — your upcoming appointments.</li>
+<li><span class="step-title">Availability</span> tab — set your weekly working hours and add time off.</li>
+<li><span class="step-title">Bookings</span> tab — your upcoming and past appointments.</li>
 <li><span class="step-title">Designs</span> tab — designs you've created.</li>
 <li><span class="step-title">Social</span> tab — connect/verify Instagram (also used for photo sync), plus verify TikTok, Facebook, X, and YouTube. See <a href="#owner-social-verification">Verify social media accounts</a>.</li>
 </ol>
@@ -2218,7 +2218,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Enable my artist profile</span> — you land on your new artist detail page.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> once enabled, you get "My Portfolio" and "My Earnings" shortcuts in your menu, and you're selectable when booking or scheduling appointments, just like any other artist. This counts as one artist seat against your plan's usage.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> on desktop, an "Owner / Artist" switcher also appears in the header once your artist profile exists — click "Artist" any time to jump straight to your own artist profile (Profile, Portfolio, Schedule, Bookings, Designs, Social), or "Owner" to jump back to your dashboard. On mobile, use the "My Portfolio"/"My Earnings" links in the navigation menu instead (in the sidebar, under "My artist profile").</div>
+<div class="callout callout-tip"><strong>Tip:</strong> on desktop, an "Owner / Artist" switcher also appears in the header once your artist profile exists — click "Artist" any time to jump straight to your own artist profile (Profile, Portfolio, Availability, Bookings, Designs, Social), or "Owner" to jump back to your dashboard. On mobile, use the "My Portfolio"/"My Earnings" links in the navigation menu instead (in the sidebar, under "My artist profile").</div>
 <div class="callout callout-tip"><strong>Tip:</strong> your navigation menu switches with you. In Artist mode it shows only artist-relevant pages — Schedule (your own bookings), Clients, Messages, Waitlist, Designs, My Portfolio, My Earnings, and Reports About Me, plus Intake Forms, Consent Forms and Deposit Rules inside a "Forms &amp; rules" category — with an "Owner Dashboard" link back. Studio-management pages (Billing, Studio Settings, Promo Codes, Booth Rent, Gift Cards, Packages, Campaigns, and the studio-wide Conduct Reports view) are hidden while you're in Artist mode and reappear once you switch back to Owner.</div>
 <div class="crosslinks">See also: <a href="#owner-artists">Artist list</a>, <a href="#owner-artist-detail">Artist detail</a></div>
 </section>
@@ -2281,24 +2281,24 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Artist detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own only, cannot delete)</td></tr><tr><td>Owner</td><td>✓ (any artist, can delete)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Same page as <a href="#artist-profile">the artist's own portfolio profile</a>, at <code>/artists/&lt;id&gt;</code> — owners can open any artist's page, edit their details, and delete the artist record entirely.</p>
+<p>Same page as <a href="#artist-profile">the artist's own portfolio profile</a>, at <code>/artists/&lt;id&gt;</code> — owners can open any artist's page, edit their details, and delete the artist record entirely. A breadcrumb (Artists / name) above the artist's name leads back to the list, and Delete lives in the <span class="step-title">⋯</span> menu next to Edit.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner artist detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
-<text x="16" y="25" font-size="10" font-weight="700">‹ Artists</text><text x="600" y="25" font-size="9">✎ Edit</text><text x="660" y="25" font-size="9">🗑 Delete</text>
+<text x="16" y="25" font-size="10" font-weight="700">Artists / Elena Martins</text>
 <circle cx="60" cy="80" r="24" fill="currentColor" fill-opacity="0.08"/>
-<text x="96" y="76" font-size="12" font-weight="700">Elena Martins</text>
+<text x="96" y="76" font-size="12" font-weight="700">Elena Martins</text><text x="96" y="92" font-size="9" fill-opacity="0.6">Artist</text><text x="640" y="80" font-size="9">✎ Edit</text><text x="700" y="80" font-size="11">⋯</text>
 <rect x="20" y="112" width="700" height="20" fill="currentColor" fill-opacity="0.04"/>
-<text x="30" y="126" font-size="8">Profile</text><text x="90" y="126" font-size="8">Portfolio</text><text x="150" y="126" font-size="8">Schedule</text><text x="220" y="126" font-size="8">Designs</text>
+<text x="30" y="126" font-size="8">Profile</text><text x="90" y="126" font-size="8">Portfolio</text><text x="150" y="126" font-size="8">Availability</text><text x="220" y="126" font-size="8">Bookings</text><text x="290" y="126" font-size="8">Designs</text><text x="350" y="126" font-size="8">Social</text>
 </svg>
 </figure>
-<figcaption>Owner artist detail — same 4 tabs, plus a Delete action</figcaption>
+<figcaption>Owner artist detail — same six tabs, plus a ⋯ menu with the Delete action</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
 <li>Click <span class="step-title">Edit</span> to change name, email, specializations, rate, or public slug.</li>
 <li>On the Profile tab, click <span class="step-title">Resend invite</span> next to the email address to re-send the "set your password" email if the artist never received it or their link expired.</li>
-<li>Click <span class="step-title">Delete</span> to remove the artist entirely (with confirmation).</li>
-<li>Use the same tabs as the artist's own profile (Profile, Portfolio, Schedule, Designs).</li>
+<li>Click the <span class="step-title">⋯</span> button next to Edit and choose <span class="step-title">Delete</span> to remove the artist entirely (with confirmation). On your own artist profile, the same menu item reads <span class="step-title">Stop working as an artist</span> — it removes your artist profile only, not your owner login or studio access.</li>
+<li>Use the same tabs as the artist's own profile (Profile, Portfolio, Availability, Bookings, Designs, Social).</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> deleting an artist cannot be undone.</div>
 <div class="crosslinks">See also: <a href="#artist-profile">Artist: my portfolio profile</a></div>

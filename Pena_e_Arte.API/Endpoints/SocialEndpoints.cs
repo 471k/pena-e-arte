@@ -58,6 +58,9 @@ public static class SocialEndpoints
             .RequireRateLimiting("public-write");
     }
 
+    private static string BuildBasePath(SocialLinkSubjectType subjectType, Guid subjectId) =>
+        subjectType == SocialLinkSubjectType.Studio ? "studios/me" : $"artists/{subjectId}";
+
     private static bool TryParsePlatform(string raw, out SocialPlatform platform) =>
         Enum.TryParse(raw, ignoreCase: true, out platform) && Enum.IsDefined(platform);
 
@@ -123,7 +126,8 @@ public static class SocialEndpoints
         return Results.NoContent();
     }
 
-    private static async Task<IResult> HandleCallback(
+    // internal (not private) so the denial-redirect branches are unit-testable.
+    internal static async Task<IResult> HandleCallback(
         string platform,
         string? code,
         string? state,
@@ -133,13 +137,24 @@ public static class SocialEndpoints
         IAppSettings appSettings,
         CancellationToken ct)
     {
-        if (error is not null || code is null || state is null)
-            return Results.Redirect($"{appSettings.BaseUrl}/artists?social=denied&platform={platform}");
+        if (error is not null || code is null)
+        {
+            // The provider echoes `state` back on denial, so land on the subject's own page when
+            // it decodes; fall back to the artists list otherwise.
+            if (state is not null && stateSigner.TryValidate(
+                    state, out SocialLinkSubjectType deniedSubjectType, out Guid deniedSubjectId, out SocialPlatform deniedPlatform))
+            {
+                string deniedBasePath = BuildBasePath(deniedSubjectType, deniedSubjectId);
+                return Results.Redirect($"{appSettings.BaseUrl}/{deniedBasePath}?social=denied&platform={deniedPlatform}");
+            }
 
-        if (!stateSigner.TryValidate(state, out SocialLinkSubjectType subjectType, out Guid subjectId, out SocialPlatform signedPlatform))
+            return Results.Redirect($"{appSettings.BaseUrl}/artists?social=denied&platform={Uri.EscapeDataString(platform)}");
+        }
+
+        if (state is null || !stateSigner.TryValidate(state, out SocialLinkSubjectType subjectType, out Guid subjectId, out SocialPlatform signedPlatform))
             return Results.BadRequest("Invalid state parameter.");
 
-        string basePath = subjectType == SocialLinkSubjectType.Studio ? "studios/me" : $"artists/{subjectId}";
+        string basePath = BuildBasePath(subjectType, subjectId);
 
         try
         {

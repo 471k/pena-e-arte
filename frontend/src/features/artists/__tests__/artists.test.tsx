@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest
 import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -14,6 +14,8 @@ import { designsApi } from "@/features/designs/designsApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { billingApi } from "@/features/billing/billingApi";
 import { studiosApi } from "@/features/studios/studiosApi";
+import { socialApi } from "@/features/social/socialApi";
+import { toast } from "sonner";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { ArtistListPage } from "@/features/artists/components/ArtistListPage";
 import { ArtistDetailPage } from "@/features/artists/components/ArtistDetailPage";
@@ -145,6 +147,10 @@ const server = setupServer(
     });
   }),
 
+  http.get("http://localhost/api/v1/artists/:id/instagram/status", () =>
+    HttpResponse.json({ isConnected: false, username: null, lastSyncedAt: null, postCount: 0 }),
+  ),
+  http.get("http://localhost/api/v1/artists/:id/social", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/designs", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/billing/subscription", () =>
@@ -173,6 +179,7 @@ function makeStore(role: Role = Role.Owner) {
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
       [billingApi.reducerPath]:      billingApi.reducer,
       [studiosApi.reducerPath]:      studiosApi.reducer,
+      [socialApi.reducerPath]:       socialApi.reducer,
     },
     middleware: (gd) =>
       gd().concat(
@@ -181,6 +188,7 @@ function makeStore(role: Role = Role.Owner) {
         appointmentsApi.middleware,
         billingApi.middleware,
         studiosApi.middleware,
+        socialApi.middleware,
       ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -203,17 +211,34 @@ function renderList(role: Role = Role.Owner) {
   );
 }
 
-function renderDetail(id: string, role: Role = Role.Owner) {
+function LocationProbe() {
+  const { pathname, search } = useLocation();
+  return <output data-testid="location">{`${pathname}${search}`}</output>;
+}
+
+function renderDetail(id: string, role: Role = Role.Owner, search = "") {
   const store = makeStore(role);
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={[`/artists/${id}`]}>
+      <MemoryRouter initialEntries={[`/artists/${id}${search}`]}>
+        <LocationProbe />
         <Routes>
           <Route path="/artists" element={<ArtistListPage />} />
           <Route path="/artists/:id" element={<ArtistDetailPage />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
+  );
+}
+
+/** Serves the seeded artist with `userId: "u1"` so the Artist-role viewer owns the profile. */
+function serveOwnProfile() {
+  server.use(
+    http.get("http://localhost/api/v1/artists/:id", ({ params }) => {
+      const artist = ARTISTS.find((a) => a.id === params.id);
+      if (!artist) return new HttpResponse(null, { status: 404 });
+      return HttpResponse.json({ ...artist, userId: "u1" });
+    }),
   );
 }
 
@@ -289,9 +314,9 @@ describe("Artists feature", () => {
     expect(screen.getByText("Realism")).toBeInTheDocument();
     expect(screen.getByText(/joined/i)).toBeInTheDocument();
 
-    // Edit + Delete visible (Owner role)
+    // Edit + the ⋯ overflow menu that carries Delete (Owner role)
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
   });
 
   // 3. Edit mode
@@ -355,9 +380,10 @@ describe("Artists feature", () => {
 
     await screen.findByText("EM");
 
-    await user.click(screen.getByRole("button", { name: /delete/i }));
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(await screen.findByRole("menuitem", { name: /delete/i }));
 
-    expect(screen.getByText("Delete Elena Martins?")).toBeInTheDocument();
+    expect(await screen.findByText("Delete Elena Martins?")).toBeInTheDocument();
     expect(screen.getByText("This action cannot be undone.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /cancel/i }));
@@ -367,14 +393,14 @@ describe("Artists feature", () => {
     expect(screen.queryByText("Delete Elena Martins?")).not.toBeInTheDocument();
   });
 
-  // 5. Back button navigation
-  it("back button navigates from detail to /artists list", async () => {
+  // 5. Breadcrumb navigation
+  it("breadcrumb link navigates from detail to /artists list", async () => {
     const user = userEvent.setup();
     renderDetail(ELENA.id);
 
     await screen.findByText("EM");
 
-    await user.click(screen.getByRole("button", { name: /^artists$/i }));
+    await user.click(screen.getByRole("link", { name: /^artists$/i }));
 
     // List page renders its search input immediately
     await screen.findByPlaceholderText(/search by name or email/i);
@@ -387,7 +413,7 @@ describe("Artists feature", () => {
     await screen.findByText("EM");
 
     expect(screen.queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
   });
 
   // 7. Artist role — own profile
@@ -405,7 +431,7 @@ describe("Artists feature", () => {
     await screen.findByText("EM");
 
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /more actions/i })).not.toBeInTheDocument();
   });
 
   // 8. Portfolio tab — style tagging
@@ -547,6 +573,159 @@ describe("Artists feature", () => {
 
       expect(screen.queryAllByRole("combobox", { name: /portfolio category/i })).toHaveLength(0);
       expect(screen.getByText("Fresh Tattoo")).toBeInTheDocument();
+    });
+  });
+});
+
+
+describe("Artist profile page chrome, tabs and title", () => {
+  it("renders no nested banner/sticky header and no min-h-screen root of its own", async () => {
+    renderDetail(ELENA.id);
+    await screen.findByText("EM");
+    const container = document.body;
+
+    expect(container.querySelector("header")).toBeNull();
+    expect(container.querySelector(".sticky")).toBeNull();
+    expect(container.querySelector(".min-h-screen")).toBeNull();
+  });
+
+  it("has exactly one h1 and never an h3 before an h2 on the Social tab", async () => {
+    renderDetail(ELENA.id, Role.Owner, "?tab=social");
+    await screen.findByText("EM");
+    await screen.findByRole("heading", { name: "Other platforms" });
+
+    const levels = screen.getAllByRole("heading").map((h) => Number(h.tagName.slice(1)));
+    expect(levels.filter((l) => l === 1)).toHaveLength(1);
+    expect(levels).not.toContain(3);
+    expect(levels.indexOf(2)).toBeGreaterThan(levels.indexOf(1));
+  });
+
+  it("sets the document title with 'Artists' for an owner and without it on the artist's own page", async () => {
+    renderDetail(ELENA.id, Role.Owner);
+    await screen.findByText("EM");
+    await waitFor(() => expect(document.title).toBe("Elena Martins — Artists — TattooOS"));
+    cleanup();
+
+    serveOwnProfile();
+    renderDetail(ELENA.id, Role.Artist);
+    await screen.findByText("EM");
+    await waitFor(() => expect(document.title).toBe("Elena Martins — TattooOS"));
+  });
+
+  it("shows a breadcrumb for an owner viewing an artist but not on the artist's own profile", async () => {
+    renderDetail(ELENA.id, Role.Owner);
+    await screen.findByText("EM");
+    expect(screen.getByRole("navigation", { name: /breadcrumb/i })).toBeInTheDocument();
+    cleanup();
+
+    serveOwnProfile();
+    renderDetail(ELENA.id, Role.Artist);
+    await screen.findByText("EM");
+    expect(screen.queryByRole("navigation", { name: /breadcrumb/i })).not.toBeInTheDocument();
+  });
+
+  it("labels the working-hours tab 'Availability' and no longer 'Schedule'", async () => {
+    renderDetail(ELENA.id);
+    await screen.findByText("EM");
+    expect(screen.getByRole("tab", { name: "Availability" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Schedule" })).not.toBeInTheDocument();
+  });
+
+  it("opens the requested tab from ?tab= and falls back to Profile for an unknown value", async () => {
+    renderDetail(ELENA.id, Role.Owner, "?tab=designs");
+    expect(await screen.findByText("No designs found.")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Designs" })).toHaveAttribute("aria-selected", "true");
+    cleanup();
+
+    renderDetail(ELENA.id, Role.Owner, "?tab=nonsense");
+    await screen.findByText("EM");
+    expect(screen.getByRole("tab", { name: "Profile" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("writes the selected tab to the URL, replacing history and keeping other params", async () => {
+    const user = userEvent.setup();
+    renderDetail(ELENA.id, Role.Owner, "?keep=1");
+    await screen.findByText("EM");
+
+    await user.click(screen.getByRole("tab", { name: "Bookings" }));
+
+    const location = screen.getByTestId("location").textContent ?? "";
+    expect(location).toContain("tab=bookings");
+    expect(location).toContain("keep=1");
+  });
+
+  it("OAuth return: toasts once, lands on Social and strips the one-shot params", async () => {
+    const success = vi.spyOn(toast, "success").mockImplementation(() => "id");
+    renderDetail(ELENA.id, Role.Owner, "?instagram=connected");
+
+    await screen.findByText("EM");
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Social" })).toHaveAttribute("aria-selected", "true"),
+    );
+
+    const location = screen.getByTestId("location").textContent ?? "";
+    expect(location).toContain("tab=social");
+    expect(location).not.toContain("instagram");
+    expect(success).toHaveBeenCalledTimes(1);
+    expect(success).toHaveBeenCalledWith("Instagram connected successfully!");
+    success.mockRestore();
+  });
+
+  it("generic social OAuth return also strips social and platform params", async () => {
+    const success = vi.spyOn(toast, "success").mockImplementation(() => "id");
+    renderDetail(ELENA.id, Role.Owner, "?social=connected&platform=TikTok");
+
+    await screen.findByText("EM");
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toContain("tab=social"));
+
+    const location = screen.getByTestId("location").textContent ?? "";
+    expect(location).not.toContain("social=");
+    expect(location).not.toContain("platform=");
+    expect(success).toHaveBeenCalledWith("TikTok connected successfully!");
+    success.mockRestore();
+  });
+
+  describe("⋯ more-actions menu", () => {
+    it("opens with Enter, closes with Escape and returns focus to its trigger", async () => {
+      const user = userEvent.setup();
+      renderDetail(ELENA.id, Role.Owner);
+      await screen.findByText("EM");
+
+      const trigger = screen.getByRole("button", { name: /more actions/i });
+      trigger.focus();
+      await user.keyboard("{Enter}");
+      expect(await screen.findByRole("menuitem", { name: /delete/i })).toBeInTheDocument();
+
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("menuitem", { name: /delete/i })).not.toBeInTheDocument());
+      expect(trigger).toHaveFocus();
+    });
+
+    it("opens with Space", async () => {
+      const user = userEvent.setup();
+      renderDetail(ELENA.id, Role.Owner);
+      await screen.findByText("EM");
+
+      screen.getByRole("button", { name: /more actions/i }).focus();
+      await user.keyboard(" ");
+      expect(await screen.findByRole("menuitem", { name: /delete/i })).toBeInTheDocument();
+    });
+
+    it("labels the item 'Stop working as an artist' for an owner who owns the profile", async () => {
+      const user = userEvent.setup();
+      // Dual-role owner: an Artist-role viewer never gets the menu (canManage is owner-only),
+      // so exercise the label through the Owner role on a profile whose userId matches.
+      server.use(
+        http.get("http://localhost/api/v1/artists/:id", ({ params }) => {
+          const artist = ARTISTS.find((a) => a.id === params.id);
+          return artist ? HttpResponse.json({ ...artist, userId: "u1" }) : new HttpResponse(null, { status: 404 });
+        }),
+      );
+      renderDetail(ELENA.id, Role.Owner);
+      await screen.findByText("EM");
+
+      await user.click(screen.getByRole("button", { name: /more actions/i }));
+      expect(await screen.findByRole("menuitem", { name: /stop working as an artist/i })).toBeInTheDocument();
     });
   });
 });

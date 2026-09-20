@@ -74,7 +74,8 @@ public static class InstagramEndpoints
         return Results.NoContent();
     }
 
-    private static async Task<IResult> HandleCallback(
+    // internal (not private) so the denial-redirect branches are unit-testable.
+    internal static async Task<IResult> HandleCallback(
         string? code,
         string? state,
         string? error,
@@ -83,10 +84,17 @@ public static class InstagramEndpoints
         IAppSettings appSettings,
         CancellationToken ct)
     {
-        if (error is not null || code is null || state is null)
-            return Results.Redirect($"{appSettings.BaseUrl}/artists?instagram=denied");
+        if (error is not null || code is null)
+        {
+            // Instagram echoes `state` back even when the user denies consent, so land the user
+            // on their own artist page when it decodes; fall back to the list otherwise.
+            if (state is not null && stateSigner.TryValidate(state, out Guid deniedArtistId))
+                return Results.Redirect($"{appSettings.BaseUrl}/artists/{deniedArtistId}?instagram=denied");
 
-        if (!stateSigner.TryValidate(state, out Guid artistId))
+            return Results.Redirect($"{appSettings.BaseUrl}/artists?instagram=denied");
+        }
+
+        if (state is null || !stateSigner.TryValidate(state, out Guid artistId))
             return Results.BadRequest("Invalid state parameter.");
 
         try

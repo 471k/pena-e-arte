@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +13,7 @@ import {
   ImagePlus,
   Loader2,
   Mail,
+  MoreHorizontal,
   Pencil,
   Send,
   Tag,
@@ -119,6 +120,13 @@ function formatDate(iso: string): string {
   });
 }
 
+const VALID_TABS = ["profile", "portfolio", "hours", "bookings", "designs", "social"] as const;
+type ArtistDetailTab = (typeof VALID_TABS)[number];
+
+function isValidTab(value: string | null): value is ArtistDetailTab {
+  return value !== null && (VALID_TABS as readonly string[]).includes(value);
+}
+
 function DesignCatalogControls({ design }: { design: DesignResponse }) {
   const [markAsCatalogItem, { isLoading }] = useMarkDesignAsCatalogItemMutation();
   const [priceInput, setPriceInput] = useState(design.price != null ? String(design.price) : "");
@@ -177,16 +185,20 @@ function DesignCatalogControls({ design }: { design: DesignResponse }) {
 export function ArtistDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const canManage = usePermission(Role.Owner);
   const isArtistRole = usePermission(Role.Artist);
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
 
   const { data: artist, isLoading, isError } = useGetArtistByIdQuery(id!);
 
+  const isOwnProfile = isArtistRole && artist?.userId != null && artist.userId === currentUserId;
+
   useDocumentMeta({
     title: artist
-      ? `${artist.firstName} ${artist.lastName} — Artists — TattooOS`
+      ? isOwnProfile
+        ? `${artist.firstName} ${artist.lastName} — TattooOS`
+        : `${artist.firstName} ${artist.lastName} — Artists — TattooOS`
       : "Artists — TattooOS",
     canonical: `/artists/${id ?? ""}`,
   });
@@ -208,20 +220,48 @@ export function ArtistDetailPage() {
   const { data: appointments = [], isLoading: appsLoading } =
     useGetAppointmentsQuery(canManage && id ? { artistId: id } : {}, { skip: !id });
 
+  const rawTab = searchParams.get("tab");
+  const activeTab: ArtistDetailTab = isValidTab(rawTab) ? rawTab : "profile";
+  const tabListRef = useRef<HTMLDivElement>(null);
+
+  function handleTabChange(next: string): void {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
+
+  // OAuth-redirect landing: toast the outcome once, switch to the Social tab, and strip the
+  // one-shot params so a refresh doesn't re-toast. Deliberately runs only for the params
+  // present on first mount, not when the user later navigates tabs normally.
   useEffect(() => {
     const ig = searchParams.get("instagram");
+    const social = searchParams.get("social");
+    const platform = searchParams.get("platform");
+
+    if (ig === null && social === null) return;
+
     if (ig === "connected") toast.success("Instagram connected successfully!");
     if (ig === "error")     toast.error("Instagram connection failed. Please try again.");
     if (ig === "denied")    toast.info("Instagram connection cancelled.");
-
-    const social = searchParams.get("social");
-    const platform = searchParams.get("platform");
     if (social === "connected") toast.success(`${platform ?? "Account"} connected successfully!`);
     if (social === "error")     toast.error(`${platform ?? "Account"} connection failed. Please try again.`);
     if (social === "denied")    toast.info(`${platform ?? "Account"} connection cancelled.`);
-  }, [searchParams]);
 
-  const isOwnProfile = isArtistRole && artist?.userId != null && artist.userId === currentUserId;
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "social");
+    params.delete("instagram");
+    params.delete("social");
+    params.delete("platform");
+    setSearchParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the active tab in view when the strip scrolls horizontally on narrow screens.
+  useEffect(() => {
+    const active = tabListRef.current?.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
+    active?.scrollIntoView?.({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [activeTab]);
+
   const canManagePortfolio = canManage || isOwnProfile;
 
   const {
@@ -357,86 +397,85 @@ export function ArtistDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="flex items-center px-6 py-3 border-b bg-background sticky top-0 z-10">
-          <Skeleton className="h-8 w-24" />
-        </header>
-        <main className="max-w-lg mx-auto px-4 py-8 space-y-4">
-          <Skeleton className="h-14 w-14 rounded-full" />
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-24 w-full" />
-        </main>
-      </div>
+      <main className="max-w-lg mx-auto px-4 py-8 space-y-4">
+        <Skeleton className="h-14 w-14 rounded-full" />
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-24 w-full" />
+      </main>
     );
   }
 
   if (isError || !artist) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+      <main className="flex flex-col items-center justify-center gap-4 px-4 py-16">
         <p className="text-sm text-destructive-text">Artist not found.</p>
         <Button variant="ghost" size="sm" onClick={() => navigate("/artists")}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Artists
         </Button>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/artists")}
-          className="gap-1.5"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Artists
-        </Button>
-
-        {(canManage || isOwnProfile) && !isEditing && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Button>
-            {canManage && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDeleteOpen(true)}
-                className="gap-1.5 text-destructive-text hover:text-destructive-text"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {isOwnProfile ? "Stop working as an artist" : "Delete"}
-              </Button>
-            )}
-          </div>
-        )}
-
-        {isEditing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsEditing(false)}
-            disabled={isSaving}
-          >
-            Cancel
-          </Button>
-        )}
-      </header>
-
+    <>
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-14 w-14 text-base">
-            <AvatarFallback>{getInitials(artist.firstName, artist.lastName)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-lg font-semibold leading-tight">
-              {artist.firstName} {artist.lastName}
-            </h1>
+        {!isOwnProfile && (
+          <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+            <Link to="/artists" className="hover:text-foreground transition-colors">Artists</Link>
+            <span className="mx-1.5" aria-hidden="true">/</span>
+            <span className="text-foreground">{artist.firstName} {artist.lastName}</span>
+          </nav>
+        )}
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <Avatar className="h-14 w-14 text-base shrink-0">
+              <AvatarFallback>{getInitials(artist.firstName, artist.lastName)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold leading-tight truncate">
+                {artist.firstName} {artist.lastName}
+              </h1>
+              <p className="text-sm text-muted-foreground">Artist</p>
+            </div>
           </div>
+
+          {isEditing ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsEditing(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+          ) : (canManage || isOwnProfile) && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+              {canManage && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8" aria-label="More actions">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() => setDeleteOpen(true)}
+                      className="text-destructive-text focus:text-destructive-text"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                      {isOwnProfile ? "Stop working as an artist" : "Delete"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          )}
         </div>
 
         {isEditing ? (
@@ -532,14 +571,17 @@ export function ArtistDetailPage() {
             </SubscriptionGatedButton>
           </form>
         ) : (
-          <Tabs defaultValue="profile">
-            <TabsList className="w-full">
-              <TabsTrigger value="profile"    className="flex-1">Profile</TabsTrigger>
-              <TabsTrigger value="portfolio"  className="flex-1">Portfolio</TabsTrigger>
-              <TabsTrigger value="hours"      className="flex-1">Schedule</TabsTrigger>
-              <TabsTrigger value="bookings"   className="flex-1">Bookings</TabsTrigger>
-              <TabsTrigger value="designs"    className="flex-1">Designs</TabsTrigger>
-              <TabsTrigger value="social"     className="flex-1">Social</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList
+              ref={tabListRef}
+              className="h-auto w-full justify-start sm:justify-center overflow-x-auto sm:overflow-x-visible flex sm:grid sm:grid-cols-6 gap-1 sm:gap-0 scroll-smooth"
+            >
+              <TabsTrigger value="profile"   className="flex-none sm:flex-1 whitespace-nowrap min-h-10">Profile</TabsTrigger>
+              <TabsTrigger value="portfolio" className="flex-none sm:flex-1 whitespace-nowrap min-h-10">Portfolio</TabsTrigger>
+              <TabsTrigger value="hours"     className="flex-none sm:flex-1 whitespace-nowrap min-h-10">Availability</TabsTrigger>
+              <TabsTrigger value="bookings"  className="flex-none sm:flex-1 whitespace-nowrap min-h-10">Bookings</TabsTrigger>
+              <TabsTrigger value="designs"   className="flex-none sm:flex-1 whitespace-nowrap min-h-10">Designs</TabsTrigger>
+              <TabsTrigger value="social"    className="flex-none sm:flex-1 whitespace-nowrap min-h-10">Social</TabsTrigger>
             </TabsList>
 
             {/* Profile tab */}
@@ -848,11 +890,11 @@ export function ArtistDetailPage() {
                 four platforms are verification-only, managed via SocialLinksCard. */}
             <TabsContent value="social" className="mt-4 space-y-6">
               <div>
-                <h3 className="text-sm font-semibold mb-2">Instagram</h3>
+                <h2 className="text-sm font-semibold mb-2">Instagram</h2>
                 <InstagramTab artistId={artist.id} canConnect={canManage} canManagePosts={isArtistRole} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold mb-2">Other platforms</h3>
+                <h2 className="text-sm font-semibold mb-2">Other platforms</h2>
                 <SocialLinksCard
                   subjectType="Artist"
                   subjectId={artist.id}
@@ -903,6 +945,6 @@ export function ArtistDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
