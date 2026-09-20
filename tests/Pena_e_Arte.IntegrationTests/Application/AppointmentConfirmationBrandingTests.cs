@@ -44,7 +44,7 @@ public class AppointmentConfirmationBrandingTests
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         await CreateSut(db).Handle(new SendAppointmentConfirmationCommand(appointmentId), default);
 
-        capturedBody.Should().Contain("tattooos.co");
+        capturedBody.Should().Contain("\"https://app.tattooos.co\"");
     }
 
     [Fact]
