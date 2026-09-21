@@ -1,3 +1,7 @@
+---
+name: verifier-gui
+description: Playwright-based verifier for the React frontend. Use whenever /verify is run against a frontend change in this project.
+---
 # verifier-gui
 
 Playwright-based verifier for the React frontend. Use this skill whenever
