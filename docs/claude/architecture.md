@@ -104,6 +104,12 @@ methodology (Present/Partial/Missing verdicts, P0–P3 priority) — reuse that
 method for any smaller, single-feature benchmark check rather than inventing a
 new rubric each time.
 
+For a single-screen, pixel/screenshot-level visual and UX audit (as opposed to a
+whole-app feature-parity sweep), use `docs/claude/ui-ux-screenshot-audit-standard.md`—
+it binds the generic 8-dimension audit checklist to this repo's actual design tokens,
+component inventory, and conventions, and requires computed (not eyeballed) contrast
+ratios.
+
 **Trust & Safety Reference Set** (added 2026-08-22, for client-initiated
 report/moderation features specifically): none of the vertical booking-SaaS
 comparators above publicly document a formal client-initiated "report this
