@@ -56,13 +56,13 @@ export function ArtistLayout() {
       <SuspensionBanner role="artist" />
       <ReadOnlyBanner />
       <PlanLimitBanner />
-      <header className="flex items-center gap-2 px-6 h-14 border-b bg-background sticky top-0 z-20">
+      <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <PenLine className="h-5 w-5" />
-        <span className="font-semibold tracking-tight">TattooOS</span>
+        <span className="font-semibold tracking-tight max-[359px]:hidden">TattooOS</span>
 
         <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} />
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"

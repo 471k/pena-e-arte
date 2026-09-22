@@ -200,16 +200,15 @@ test.describe("Artist Social tab", () => {
     await expect(dialog).toBeHidden();
   });
 
-  test("at 375px the rows stack and the page content does not scroll sideways", async ({ page }) => {
+  test("at 375px the rows stack and the page does not scroll sideways", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     await mockSocialTab(page);
     await openSocialTab(page, "owner");
 
     await expect(page.getByRole("button", { name: "Connect Instagram" })).toBeVisible();
-    const mainSideways = await page.evaluate(() => {
-      const main = document.querySelector("main");
-      return main ? main.scrollWidth - main.clientWidth : 0;
-    });
-    expect(mainSideways).toBeLessThanOrEqual(0);
+    const sideways = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(sideways).toBeLessThanOrEqual(0);
   });
 });

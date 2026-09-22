@@ -22,6 +22,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Can't find a page? Open the category it most likely belongs to — related pages are always kept together.",
       "Ctrl+B does nothing while you're typing in a text box, so it never gets in the way of writing.",
       "Owners who also have their own artist profile see a separate artist menu when they switch to \"Artist\" at the top of the page.",
+      "On a phone the top bar shows just your initial next to the account menu (tap it for change password, change email and log out) and, on very narrow screens, hides the TattooOS name — so everything fits without the page scrolling sideways.",
     ],
   },
   // ── Client ──────────────────────────────────────────────────────────────

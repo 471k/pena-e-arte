@@ -102,7 +102,7 @@ for (const layout of LAYOUTS) {
       await expect(page.getByRole("tab", { name: "Social" })).toHaveAttribute("aria-selected", "true");
     });
 
-    test("at 375px every tab is reachable, the active tab is in view and the page content does not scroll sideways", async ({ page }) => {
+    test("at 375px every tab is reachable, the active tab is in view and the page does not scroll sideways", async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 800 });
       await layout.open(page);
 
@@ -121,14 +121,11 @@ for (const layout of LAYOUTS) {
         })
         .toBe(true);
 
-      // The page's own content never scrolls sideways — only the tab strip does, inside itself.
-      // (Scoped to <main>: at 375px the shared layout header's icon cluster is itself ~50px too
-      // wide in every role's layout, a pre-existing issue outside this page — see PR notes.)
-      const mainSideways = await page.evaluate(() => {
-        const main = document.querySelector("main");
-        return main ? main.scrollWidth - main.clientWidth : 0;
-      });
-      expect(mainSideways).toBeLessThanOrEqual(0);
+      // Nothing scrolls the page sideways — only the tab strip scrolls, inside itself.
+      const sideways = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(sideways).toBeLessThanOrEqual(0);
     });
   });
 }
