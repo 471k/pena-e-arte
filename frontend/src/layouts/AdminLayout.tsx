@@ -79,13 +79,13 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <header className="flex items-center gap-2 px-6 h-14 border-b bg-background sticky top-0 z-20">
+      <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Platform Admin</span>
 
         <NavDrawer sections={navSections} title="Platform Admin" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} />
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <HelpMenu onBeforeTourStep={onBeforeTourStep} />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
