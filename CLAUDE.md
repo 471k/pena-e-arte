@@ -28,60 +28,6 @@ splits, automated notifications.
 
 ---
 
-## Tech Stack (Quick Reference)
-
-```
-Frontend      React 19 · Vite · TypeScript · React Router v7
-              Redux Toolkit · RTK Query · Tailwind · shadcn/ui
-              @microsoft/signalr · React Hook Form
-
-Backend       ASP.NET Core 10 · C# · Minimal API
-              MediatR · FluentValidation · ASP.NET Core Identity
-              JWT · Policy-based RBAC · SignalR
-              Serilog · OpenTelemetry
-
-Data          MySQL 8.4 · EF Core 10 (Pomelo) · Redis
-
-Services      Stripe.net · Resend · Twilio · Hangfire · Cloudflare R2
-
-Infra         Docker · K3s · Traefik · GitHub Actions
-              Cloudflare · Hetzner/AWS
-              Grafana · Prometheus · Loki · Tempo
-```
-
----
-
-## Project Structure
-
-```
-/
-├── CLAUDE.md
-├── docs/
-│   └── claude/                       ← per-layer instruction files
-│       ├── backend.md
-│       ├── frontend.md
-│       ├── database.md
-│       ├── architecture.md
-│       ├── conventions.md
-│       └── self-promotion-prompts.md ← feature prompts (SP-01 through SP-08)
-├── Pena_e_Arte.API/                  ← ASP.NET Core entry point
-├── Pena_e_Arte.Application/          ← MediatR handlers, DTOs, validators
-├── Pena_e_Arte.Domain/               ← Entities, enums, interfaces
-├── Pena_e_Arte.Infrastructure/       ← EF Core, external services, SignalR
-├── Pena_e_Arte.Contracts/            ← Shared request/response models
-├── frontend/                         ← React + Vite app
-│   └── src/
-│       ├── app/                      ← store, router
-│       ├── features/                 ← feature slices (appointments, clients…)
-│       ├── shared/                   ← reusable components, hooks, utils
-│       └── layouts/                  ← role-based layout components
-└── tests/
-    ├── Pena_e_Arte.UnitTests/
-    └── Pena_e_Arte.IntegrationTests/
-```
-
----
-
 ## Non-Negotiable Rules (Apply Everywhere)
 
 1. **Tenant isolation is mandatory.** Every DB query touching tenant data must
@@ -128,23 +74,8 @@ Infra         Docker · K3s · Traefik · GitHub Actions
 ## Common Commands
 
 ```bash
-# Backend
-dotnet build
-dotnet test
 dotnet ef migrations add <Name> --project Pena_e_Arte.Infrastructure
 dotnet ef database update --project Pena_e_Arte.Infrastructure
-dotnet run --project Pena_e_Arte.API
-
-# Frontend
-pnpm install
-pnpm dev
-pnpm build
-pnpm test
-pnpm lint
-
-# Docker
-docker compose up -d
-docker compose down
 ```
 
 ---
