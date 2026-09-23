@@ -1,8 +1,10 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Billing;
@@ -10,8 +12,9 @@ namespace Pena_e_Arte.UnitTests.Billing;
 public class CreatePlanHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IStripeBillingService _stripe = Substitute.For<IStripeBillingService>();
 
-    private CreatePlanHandler CreateSut() => new(_db);
+    private CreatePlanHandler CreateSut() => new(_db, _stripe);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsPlanResponse()
@@ -48,6 +51,11 @@ public class CreatePlanHandlerTests
     [Fact]
     public async Task Handle_WithStripePriceIds_PersistsAndReturnsThem()
     {
+        _stripe.GetPriceAsync("price_monthly_xyz", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 4900, "eur", "month", 1));
+        _stripe.GetPriceAsync("price_yearly_xyz", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 49000, "eur", "year", 1));
+
         PlanResponse result = await CreateSut().Handle(
             new CreatePlanCommand(new CreatePlanRequest(
                 "Pro", 17,
@@ -105,6 +113,63 @@ public class CreatePlanHandlerTests
         result.MaxArtists.Should().BeNull();
         result.MaxAppointmentsPerMonth.Should().BeNull();
         result.MaxStorageGb.Should().BeNull();
+    }
+
+    // ── G3: linked Stripe price must match ───────────────────────────────
+
+    [Fact]
+    public async Task Handle_StripePriceAmountMismatch_ThrowsWithBothAmounts()
+    {
+        _stripe.GetPriceAsync("price_x", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 8900, "eur", "month", 1));
+
+        Func<Task> act = () => CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Monthly", 79m, StripePriceId: "price_x")])), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*89.00*79.00*");
+    }
+
+    [Fact]
+    public async Task Handle_StripePriceIntervalMismatch_ThrowsBusinessRuleViolation()
+    {
+        _stripe.GetPriceAsync("price_yearly", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 7900, "eur", "year", 1));
+
+        Func<Task> act = () => CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Monthly", 79m, StripePriceId: "price_yearly")])), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_StripePriceNotFound_ThrowsBusinessRuleViolation()
+    {
+        _stripe.GetPriceAsync("price_missing", Arg.Any<CancellationToken>())
+            .Returns((StripePriceInfo?)null);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Monthly", 79m, StripePriceId: "price_missing")])), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*not found*");
+    }
+
+    [Fact]
+    public async Task Handle_StripePriceInactive_ThrowsBusinessRuleViolation()
+    {
+        _stripe.GetPriceAsync("price_inactive", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(false, 7900, "eur", "month", 1));
+
+        Func<Task> act = () => CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Monthly", 79m, StripePriceId: "price_inactive")])), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*not active*");
     }
 
     [Fact]

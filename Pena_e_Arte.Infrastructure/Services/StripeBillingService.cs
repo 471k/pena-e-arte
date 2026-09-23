@@ -10,7 +10,8 @@ public class StripeBillingService(
     SubscriptionScheduleService scheduleService,
     SessionService checkoutSessions,
     Stripe.BillingPortal.SessionService portalSessions,
-    CustomerBalanceTransactionService balanceTransactions)
+    CustomerBalanceTransactionService balanceTransactions,
+    PriceService priceService)
     : IStripeBillingService
 {
     public async Task<string> CreateCustomerAsync(string email, CancellationToken ct)
@@ -214,5 +215,44 @@ public class StripeBillingService(
         CustomerBalanceTransaction transaction =
             await balanceTransactions.CreateAsync(sub.CustomerId, options, requestOptions, ct);
         return transaction.Id;
+    }
+
+    public async Task<StripePriceInfo?> GetPriceAsync(string stripePriceId, CancellationToken ct)
+    {
+        Price price;
+        try
+        {
+            price = await priceService.GetAsync(stripePriceId, null, null, ct);
+        }
+        catch (StripeException)
+        {
+            return null;
+        }
+
+        return new StripePriceInfo(
+            price.Active,
+            price.UnitAmount,
+            price.Currency,
+            price.Recurring?.Interval,
+            price.Recurring?.IntervalCount);
+    }
+
+    public async Task PauseCollectionAsync(string stripeSubscriptionId, CancellationToken ct)
+    {
+        SubscriptionUpdateOptions options = new()
+        {
+            PauseCollection = new SubscriptionPauseCollectionOptions { Behavior = "void" },
+        };
+        await subscriptionService.UpdateAsync(stripeSubscriptionId, options, null, ct);
+    }
+
+    public async Task ResumeCollectionAsync(string stripeSubscriptionId, CancellationToken ct)
+    {
+        // Stripe.net has no typed "unset" for an object-shaped param — the API clears
+        // pause_collection when it receives an empty string for the field, so that's sent
+        // via AddExtraParam rather than the (always-omitted-when-null) typed property.
+        SubscriptionUpdateOptions options = new();
+        options.AddExtraParam("pause_collection", "");
+        await subscriptionService.UpdateAsync(stripeSubscriptionId, options, null, ct);
     }
 }

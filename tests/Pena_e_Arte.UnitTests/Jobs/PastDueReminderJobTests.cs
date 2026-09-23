@@ -18,7 +18,7 @@ public class PastDueReminderJobTests
     private PastDueReminderJob CreateSut() => new(_db, _notifications, _logger);
 
     private async Task<Studio> SeedPastDueStudioAsync(
-        int daysPastDue, bool dunningExcluded = false)
+        int daysPastDue, bool dunningExcluded = false, bool isActive = true)
     {
         Studio studio = new()
         {
@@ -26,6 +26,7 @@ public class PastDueReminderJobTests
             Slug = $"ink-iron-{Guid.NewGuid():N}",
             City = "Porto",
             OwnerEmail = $"owner-{Guid.NewGuid():N}@example.com",
+            IsActive = isActive,
         };
         _db.Studios.Add(studio);
 
@@ -79,6 +80,18 @@ public class PastDueReminderJobTests
     public async Task RunAsync_DunningExcludedManually_DoesNotSendEvenOnThresholdDay()
     {
         await SeedPastDueStudioAsync(3, dunningExcluded: true);
+
+        await CreateSut().RunAsync();
+
+        await _notifications.DidNotReceive().SendEmailAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_SuspendedStudio_DoesNotSendEvenOnThresholdDay()
+    {
+        // D6 — a suspended owner can't log in to pay, so a reminder email is pointless.
+        await SeedPastDueStudioAsync(3, isActive: false);
 
         await CreateSut().RunAsync();
 

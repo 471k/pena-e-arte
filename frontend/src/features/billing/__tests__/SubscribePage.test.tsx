@@ -143,6 +143,15 @@ const SUB_ACTIVE_CARD_PREMIUM_MONTHLY: SubscriptionResponse = {
   stripeSubscriptionId: "sub_stripe_premium",
 };
 
+const SUB_ACTIVE_CARD_PREMIUM_YEARLY: SubscriptionResponse = {
+  ...BASE_SUB,
+  status:               "Active",
+  planId:               "plan-premium",
+  billingInterval:      "Yearly",
+  stripeSubscriptionId: "sub_stripe_premium",
+  currentPeriodEnd:     "2027-03-15T00:00:00.000Z",
+};
+
 const SUB_ACTIVE_CASH: SubscriptionResponse = {
   ...BASE_SUB,
   status:               "Active",
@@ -565,6 +574,35 @@ describe("SubscribePage", () => {
     await waitFor(() =>
       expect(changeSpy).toHaveBeenCalledWith({ planId: "plan-premium", billingInterval: "Yearly" }),
     );
+  });
+
+  it("D7: a card-billed Yearly studio sees a deferred-until note on Monthly cards", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_CARD_PREMIUM_YEARLY),
+      ),
+    );
+    renderPage();
+
+    // Default cycle is Monthly — the note should already be showing (on every Monthly card).
+    await screen.findByText("Premium");
+    expect(screen.getAllByText(/starts when your paid year ends on/i).length).toBeGreaterThan(0);
+  });
+
+  it("D7: the deferred-until note is not shown on Yearly cards", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () =>
+        HttpResponse.json(SUB_ACTIVE_CARD_PREMIUM_YEARLY),
+      ),
+    );
+    renderPage();
+    await screen.findByRole("button", { name: /^monthly/i });
+
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    await screen.findByText("Premium");
+
+    expect(screen.queryByText(/starts when your paid year ends on/i)).not.toBeInTheDocument();
   });
 
   it("shows the server error message when changePlan fails", async () => {

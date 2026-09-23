@@ -1,7 +1,9 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Infrastructure.Persistence.Seed;
+using Pena_e_Arte.UnitTests.ConsentForms;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Infrastructure;
@@ -181,6 +183,31 @@ public class DataSeederPlanReconciliationTests
 
         _db.PlanPrices.Count(pp => pp.PlanId == DataSeeder.ProPlanId).Should().Be(1);
         _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.ProPlanId).IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReconcileCoreTiersAsync_LinkedPriceDrift_DoesNotOverwrite_LogsWarning()
+    {
+        // Starter Monthly's code price is 29m — seed a linked row stored at a different
+        // price (G4): the reconciler must not silently move revenue reporting out from
+        // under a price Stripe is actually charging.
+        _db.Plans.Add(new Plan { Id = DataSeeder.StarterPlanId, Name = "Starter" });
+        _db.PlanPrices.Add(new PlanPrice
+        {
+            PlanId = DataSeeder.StarterPlanId,
+            Interval = BillingInterval.Monthly,
+            Price = 35m,
+            StripePriceId = "price_real_stripe_id",
+        });
+        await _db.SaveChangesAsync();
+
+        CapturingLogger<DataSeederPlanReconciliationTests> logger = new();
+        await DataSeeder.ReconcileCoreTiersAsync(_db, logger);
+
+        _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.StarterPlanId && pp.Interval == BillingInterval.Monthly)
+            .Price.Should().Be(35m); // unchanged, not corrected to code's 29m
+        logger.Entries.Should().Contain(e =>
+            e.Level == LogLevel.Warning && e.Message.Contains("linked to a Stripe price"));
     }
 
     [Fact]

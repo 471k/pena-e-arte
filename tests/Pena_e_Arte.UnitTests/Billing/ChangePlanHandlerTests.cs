@@ -96,6 +96,94 @@ public class ChangePlanHandlerTests
             "sub_123", "price_premium_m", "price_premium_y", "year", Arg.Any<CancellationToken>());
     }
 
+    // ── D7: Yearly → Monthly always waits for period end ────────────────────
+
+    [Fact]
+    public async Task Handle_PremiumYearlyToPremiumMonthly_SchedulesInsteadOfUpgrading()
+    {
+        Plan premium = await SeedPlanWithBothIntervals("Premium", 79m, 790m, "price_premium_m", "price_premium_y");
+        await SeedSubscription(premium.Id, BillingInterval.Yearly, SubscriptionStatus.Active, "sub_123");
+
+        SubscriptionResponse result = await CreateSut()
+            .Handle(new ChangePlanCommand(new ChangePlanRequest(premium.Id, "Monthly")), default);
+
+        result.PlanId.Should().Be(premium.Id);
+        result.BillingInterval.Should().Be("Yearly"); // unchanged until period end
+        result.PendingPlanId.Should().Be(premium.Id);
+        result.PendingBillingInterval.Should().Be("Monthly");
+        await _billing.Received(1).ScheduleSubscriptionPriceChangeAsync(
+            "sub_123", "price_premium_y", "price_premium_m", "month", Arg.Any<CancellationToken>());
+        await _billing.DidNotReceive().ChangeSubscriptionPriceAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_StarterYearlyToGrowthMonthly_SchedulesEvenThoughGrowthIsPricier()
+    {
+        // 59 > 24.17 (290/12) would normally read as an upgrade — D7 overrides that for any
+        // Yearly → Monthly switch, whatever the tier.
+        Plan starter = await SeedPlanWithBothIntervals("Starter", 29m, 290m, "price_starter_m", "price_starter_y");
+        Plan growth = await SeedPlanWithBothIntervals("Growth", 59m, 590m, "price_growth_m", "price_growth_y");
+        await SeedSubscription(starter.Id, BillingInterval.Yearly, SubscriptionStatus.Active, "sub_123");
+
+        SubscriptionResponse result = await CreateSut()
+            .Handle(new ChangePlanCommand(new ChangePlanRequest(growth.Id, "Monthly")), default);
+
+        result.PendingPlanId.Should().Be(growth.Id);
+        result.PendingBillingInterval.Should().Be("Monthly");
+        await _billing.Received(1).ScheduleSubscriptionPriceChangeAsync(
+            "sub_123", "price_starter_y", "price_growth_m", "month", Arg.Any<CancellationToken>());
+        await _billing.DidNotReceive().ChangeSubscriptionPriceAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_StarterYearlyToGrowthYearly_StillImmediateAndProrated()
+    {
+        Plan starter = await SeedPlanWithBothIntervals("Starter", 29m, 290m, "price_starter_m", "price_starter_y");
+        Plan growth = await SeedPlanWithBothIntervals("Growth", 59m, 590m, "price_growth_m", "price_growth_y");
+        await SeedSubscription(starter.Id, BillingInterval.Yearly, SubscriptionStatus.Active, "sub_123");
+
+        SubscriptionResponse result = await CreateSut()
+            .Handle(new ChangePlanCommand(new ChangePlanRequest(growth.Id, "Yearly")), default);
+
+        result.PlanId.Should().Be(growth.Id);
+        result.PendingPlanId.Should().BeNull();
+        await _billing.Received(1).ChangeSubscriptionPriceAsync(
+            "sub_123", "price_growth_y", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_GrowthMonthlyToPremiumMonthly_StillImmediate()
+    {
+        Plan growth = await SeedPlan("Growth", 59m, "price_growth_m");
+        Plan premium = await SeedPlan("Premium", 79m, "price_premium_m");
+        await SeedSubscription(growth.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
+
+        SubscriptionResponse result = await CreateSut()
+            .Handle(new ChangePlanCommand(new ChangePlanRequest(premium.Id, "Monthly")), default);
+
+        result.PlanId.Should().Be(premium.Id);
+        result.PendingPlanId.Should().BeNull();
+        await _billing.Received(1).ChangeSubscriptionPriceAsync(
+            "sub_123", "price_premium_m", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PremiumMonthlyToPremiumYearly_StillScheduledAtPeriodEnd()
+    {
+        Plan premium = await SeedPlanWithBothIntervals("Premium", 79m, 790m, "price_premium_m", "price_premium_y");
+        await SeedSubscription(premium.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
+
+        SubscriptionResponse result = await CreateSut()
+            .Handle(new ChangePlanCommand(new ChangePlanRequest(premium.Id, "Yearly")), default);
+
+        result.PendingPlanId.Should().Be(premium.Id);
+        result.PendingBillingInterval.Should().Be("Yearly");
+        await _billing.Received(1).ScheduleSubscriptionPriceChangeAsync(
+            "sub_123", "price_premium_m", "price_premium_y", "year", Arg.Any<CancellationToken>());
+    }
+
     // ── Guards ────────────────────────────────────────────────────────────
 
     [Fact]
@@ -192,6 +280,17 @@ public class ChangePlanHandlerTests
             Price = priceMonthly,
             StripePriceId = stripePriceIdMonthly,
         });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        return plan;
+    }
+
+    private async Task<Plan> SeedPlanWithBothIntervals(
+        string name, decimal priceMonthly, decimal priceYearly, string stripePriceIdMonthly, string stripePriceIdYearly)
+    {
+        Plan plan = new() { Name = name };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = priceMonthly, StripePriceId = stripePriceIdMonthly });
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = priceYearly, StripePriceId = stripePriceIdYearly });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         return plan;

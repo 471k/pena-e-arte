@@ -62,7 +62,15 @@ public class ChangePlanHandler(
             throw new BusinessRuleViolationException(
                 "The selected plan is not available for online billing. Contact the platform.");
 
-        if (MonthlyEquivalent(newPrice) > MonthlyEquivalent(currentPrice))
+        // D7 (2026-09-23): Yearly → Monthly is never an immediate "upgrade", whatever the
+        // tier — Stripe's ProrationBehavior="always_invoice" would credit the unused part of
+        // the discounted yearly price to the customer balance, bypassing the yearly refund
+        // rule (used months charged at the monthly price). It always waits for the paid year
+        // to end, same as any other downgrade.
+        bool isUpgrade = MonthlyEquivalent(newPrice) > MonthlyEquivalent(currentPrice)
+            && !(currentPrice.Interval == BillingInterval.Yearly && newPrice.Interval == BillingInterval.Monthly);
+
+        if (isUpgrade)
         {
             // Upgrade — switch now, charge the prorated difference immediately
             DateTime periodEnd = await billing.ChangeSubscriptionPriceAsync(
