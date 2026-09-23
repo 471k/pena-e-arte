@@ -109,6 +109,29 @@ public class CreateSubscriptionCheckoutHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RetiredPlanWithInactivePrice_ThrowsBusinessRuleViolation()
+    {
+        // Pro is retired: its price row is kept (real Stripe price id and all) but
+        // IsActive = false, so it must never resolve to a purchasable checkout price.
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice
+        {
+            Interval = BillingInterval.Monthly,
+            Price = 99m,
+            StripePriceId = "price_pro_monthly",
+            IsActive = false,
+        });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        await SeedStudioSubscription(SubscriptionStatus.Trialing, stripeCustomerId: "cus_x");
+
+        Func<Task> act = () => CreateSut().Handle(new CreateSubscriptionCheckoutCommand(Req(plan.Id)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*not available for online checkout*");
+    }
+
+    [Fact]
     public async Task Handle_PendingValidReferral_AttachesCouponToCheckout()
     {
         Plan plan = await SeedPlan("price_growth");
@@ -116,7 +139,7 @@ public class CreateSubscriptionCheckoutHandlerTests
         _db.ReferralCodes.Add(new ReferralCode { Id = codeId, StudioId = Guid.NewGuid(), Code = "REF12345", IsActive = true });
         await _db.SaveChangesAsync();
         await SeedStudioSubscription(SubscriptionStatus.Trialing, stripeCustomerId: "cus_x", pendingReferralCodeId: codeId);
-        _discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("coupon_abc");
+        _discounts.CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>()).Returns("coupon_abc");
 
         await CreateSut().Handle(new CreateSubscriptionCheckoutCommand(Req(plan.Id)), default);
 
@@ -126,7 +149,46 @@ public class CreateSubscriptionCheckoutHandlerTests
             Arg.Any<DateTime?>(), Arg.Any<CancellationToken>());
     }
 
-    private async Task<Plan> SeedPlan(string? stripePriceMonthly = "price_monthly")
+    [Fact]
+    public async Task Handle_PendingValidReferral_MonthlyCheckout_RequestsMonthlyInterval()
+    {
+        Plan plan = await SeedPlan("price_growth", stripePriceYearly: "price_growth_yearly");
+        Guid codeId = Guid.NewGuid();
+        _db.ReferralCodes.Add(new ReferralCode { Id = codeId, StudioId = Guid.NewGuid(), Code = "REF12345", IsActive = true });
+        await _db.SaveChangesAsync();
+        await SeedStudioSubscription(SubscriptionStatus.Trialing, stripeCustomerId: "cus_x", pendingReferralCodeId: codeId);
+        _discounts.CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>()).Returns("coupon_abc");
+
+        await CreateSut().Handle(new CreateSubscriptionCheckoutCommand(Req(plan.Id, "Monthly")), default);
+
+        await _discounts.Received(1).CreateReferralCouponAsync(
+            Arg.Is<ReferralCouponRequest>(r => r.Interval == BillingInterval.Monthly),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PendingValidReferral_YearlyCheckout_RequestsYearlyIntervalWithMonthlyEquivalent()
+    {
+        // D6 — Growth Yearly checkout must request a Yearly coupon worth one Monthly
+        // price (59), never the repeating 100%-off coupon (which would zero the year).
+        Plan plan = await SeedPlan("price_growth", stripePriceYearly: "price_growth_yearly");
+        Guid codeId = Guid.NewGuid();
+        _db.ReferralCodes.Add(new ReferralCode { Id = codeId, StudioId = Guid.NewGuid(), Code = "REF12345", IsActive = true });
+        await _db.SaveChangesAsync();
+        await SeedStudioSubscription(SubscriptionStatus.Trialing, stripeCustomerId: "cus_x", pendingReferralCodeId: codeId);
+        _discounts.CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>()).Returns("coupon_abc");
+
+        await CreateSut().Handle(new CreateSubscriptionCheckoutCommand(Req(plan.Id, "Yearly")), default);
+
+        await _discounts.Received(1).CreateReferralCouponAsync(
+            Arg.Is<ReferralCouponRequest>(r =>
+                r.Interval == BillingInterval.Yearly
+                && r.MonthlyPrice == 59m
+                && r.StripePriceId == "price_growth_yearly"),
+            Arg.Any<CancellationToken>());
+    }
+
+    private async Task<Plan> SeedPlan(string? stripePriceMonthly = "price_monthly", string? stripePriceYearly = null)
     {
         Plan plan = new() { Name = "Growth" };
         plan.Prices.Add(new PlanPrice
@@ -135,6 +197,15 @@ public class CreateSubscriptionCheckoutHandlerTests
             Price = 59m,
             StripePriceId = stripePriceMonthly,
         });
+        if (stripePriceYearly is not null)
+        {
+            plan.Prices.Add(new PlanPrice
+            {
+                Interval = BillingInterval.Yearly,
+                Price = 590m,
+                StripePriceId = stripePriceYearly,
+            });
+        }
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         return plan;

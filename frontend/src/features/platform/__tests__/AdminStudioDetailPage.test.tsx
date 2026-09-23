@@ -81,6 +81,8 @@ const PLANS: PlanResponse[] = [
     id:                    "plan-1",
     name:                  "Starter",
     yearlyDiscountPercent: 17,
+    yearlySavingAmount:    null,
+    yearlyMonthsFree:      null,
     allowBrandingRemoval:  false,
     subscriberCount:       0,
     maxArtists:               null,

@@ -28,6 +28,8 @@ const NO_LIMITS = {
   allowApiAccess:           false,
   prioritySupport:          false,
   allowMarketingCampaigns: false,
+  yearlySavingAmount:       null,
+  yearlyMonthsFree:         null,
 };
 
 const PLANS: PlanResponse[] = [

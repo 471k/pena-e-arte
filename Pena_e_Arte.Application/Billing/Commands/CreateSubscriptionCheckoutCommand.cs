@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Billing;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -34,6 +35,7 @@ public class CreateSubscriptionCheckoutHandler(
         CreateCheckoutRequest req = command.Request;
 
         Domain.Entities.Plan plan = await db.Plans
+            .Include(p => p.Prices)
             .FirstOrDefaultAsync(p => p.Id == req.PlanId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Plan), req.PlanId);
 
@@ -67,7 +69,7 @@ public class CreateSubscriptionCheckoutHandler(
             await db.SaveChangesAsync(ct);
         }
 
-        string? couponId = await ResolveReferralCouponAsync(subscription.Studio, ct);
+        string? couponId = await ResolveReferralCouponAsync(subscription.Studio, plan, price!, requestedInterval, ct);
 
         // Cash-billed studios already paid through CurrentPeriodEnd — start the card
         // subscription as a trial until then so the first card charge falls on that date
@@ -91,7 +93,8 @@ public class CreateSubscriptionCheckoutHandler(
         return new CheckoutSessionResponse(url);
     }
 
-    private async Task<string?> ResolveReferralCouponAsync(Studio studio, CancellationToken ct)
+    private async Task<string?> ResolveReferralCouponAsync(
+        Studio studio, Domain.Entities.Plan plan, PlanPrice price, BillingInterval interval, CancellationToken ct)
     {
         if (studio.PendingReferralCodeId is not Guid refCodeId) return null;
 
@@ -102,8 +105,13 @@ public class CreateSubscriptionCheckoutHandler(
 
         try
         {
-            string couponId = await discounts.CreateOneMonthFreeCouponAsync(
-                $"referral-coupon-{studio.Id}", ct);
+            // Idempotency key scoped by price, not just studio — a studio that abandons a
+            // Monthly checkout and then picks Yearly must not collide with Stripe's
+            // 24-hour idempotency cache from the first attempt.
+            ReferralCouponRequest request = new(
+                interval, price.StripePriceId, ReferralRewardAmount.OneMonthOf(plan),
+                $"referral-coupon-{studio.Id}-{price.StripePriceId}");
+            string couponId = await discounts.CreateReferralCouponAsync(request, ct);
             logger.LogInformation(
                 "Attaching referral coupon to checkout for studio {@StudioId}", studio.Id);
             return couponId;

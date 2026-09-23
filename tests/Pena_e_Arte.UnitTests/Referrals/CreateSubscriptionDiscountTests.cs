@@ -27,7 +27,7 @@ public class CreateSubscriptionDiscountTests
         _billing.CreateSubscriptionAsync(
                     Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(("sub_ref_test", DateTime.UtcNow.AddMonths(1)));
-        _discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _discounts.CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>())
                   .Returns("coup_free1m");
     }
 
@@ -45,7 +45,7 @@ public class CreateSubscriptionDiscountTests
         await CreateSut().Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
-        await _discounts.Received(1).CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _discounts.Received(1).CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
         await _billing.Received(1).CreateSubscriptionAsync(
             Arg.Any<string>(), Arg.Any<string>(), "coup_free1m", Arg.Any<CancellationToken>());
 
@@ -65,7 +65,7 @@ public class CreateSubscriptionDiscountTests
         await CreateSut().Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
-        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
     }
 
@@ -79,7 +79,7 @@ public class CreateSubscriptionDiscountTests
         await CreateSut().Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
-        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
     }
 
@@ -133,14 +133,65 @@ public class CreateSubscriptionDiscountTests
         await CreateSut().Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
-        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
         _db.ReferralRedemptions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_FreePlan_NoCouponRequested()
+    {
+        // Free (price == 0) has nothing to discount — the handler skips coupon creation
+        // entirely rather than let it fail harmlessly into the catch block.
+        Guid planId = await SeedFreePlan();
+        ReferralCode code = await SeedReferralCode(isActive: true, expiresAt: null);
+        await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
+
+        await CreateSut().Handle(
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        await _discounts.DidNotReceive().CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
+        _db.ReferralRedemptions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_YearlyOnlyCustomTier_RequestsMonthlyPriceComputedFromYearlyDividedByTwelve()
+    {
+        // Yearly-only tier (600/yr, no Monthly row) — D6's fallback rule: MonthlyPrice =
+        // round(Yearly / 12, 2) = 50.
+        Guid planId = await SeedYearlyOnlyPlan(600m);
+        ReferralCode code = await SeedReferralCode(isActive: true, expiresAt: null);
+        await SeedSubscription(planId: null, pendingReferralCodeId: code.Id);
+
+        await CreateSut().Handle(
+            new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Yearly")), default);
+
+        await _discounts.Received(1).CreateReferralCouponAsync(
+            Arg.Is<ReferralCouponRequest>(r => r.MonthlyPrice == 50m),
+            Arg.Any<CancellationToken>());
     }
 
     private async Task<Guid> SeedPlan(string? stripePriceId = null)
     {
         Plan plan = new() { Name = "Pro" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m, StripePriceId = stripePriceId });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        return plan.Id;
+    }
+
+    private async Task<Guid> SeedFreePlan()
+    {
+        Plan plan = new() { Name = "Free" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 0m, StripePriceId = "price_free" });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        return plan.Id;
+    }
+
+    private async Task<Guid> SeedYearlyOnlyPlan(decimal yearlyPrice)
+    {
+        Plan plan = new() { Name = "Custom Yearly" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = yearlyPrice, StripePriceId = "price_custom_yearly" });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
         return plan.Id;

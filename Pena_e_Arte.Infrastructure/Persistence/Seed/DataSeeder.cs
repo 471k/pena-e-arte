@@ -227,41 +227,39 @@ public static class DataSeeder
     // with the same Name to hide.
     //
     // Practical consequence, spelled out because it's a real behavior change: if an
-    // admin edits Starter, Growth, Premium, Pro, or Free in place via
-    // PlanManagementPage, that edit will be reverted back to these values on the next
-    // app restart/deploy. That's the intended trade-off — see architecture.md Decisions
-    // Log, "Core plan reconciliation replaces one-time plan seed", for the reasoning and
-    // for what an admin should do instead (clone a new Plan row rather than editing one
-    // of these five).
+    // admin edits Starter, Growth, Premium, or Free in place via PlanManagementPage,
+    // that edit will be reverted back to these values on the next app restart/deploy.
+    // That's the intended trade-off — see architecture.md Decisions Log, "Core plan
+    // reconciliation replaces one-time plan seed", for the reasoning and for what an
+    // admin should do instead (clone a new Plan row rather than editing one of these
+    // four).
     //
     // Public and called unconditionally from Program.cs, unlike the rest of this class —
-    // these five tiers are baseline product data every environment needs (RegisterSoloArtistCommand
+    // these four tiers are baseline product data every environment needs (RegisterSoloArtistCommand
     // hard-depends on "Free" existing), not demo data. Bundling it behind Seeding:Enabled
     // (never true in production) left every real production database with zero Plan rows and
     // a permanently-broken solo-artist signup — found 2026-09-04.
+    //
+    // Pro retired 2026-09-23 (four-tier catalogue) — see RetireTiersAsync below and
+    // architecture.md Decisions Log.
     public static async Task ReconcileCoreTiersAsync(IAppDbContext db)
     {
         CoreTier[] tiers =
         [
             new CoreTier(FreePlanId, "Free", 0, false, false, false, false,
-                1, 15, 50, 1, 1,
+                1, 15, 50, 1, null,
                 [new TierPrice(BillingInterval.Monthly, 0m)]),
             new CoreTier(StarterPlanId, "Starter", 17, false, false, false, false,
-                1, 40, 150, 2, 1,
-                [new TierPrice(BillingInterval.Monthly, 29m)]),
+                1, 40, 150, 2, null,
+                [new TierPrice(BillingInterval.Monthly, 29m), new TierPrice(BillingInterval.Yearly, 290m)]),
             // Marketing campaigns (P1 #10) included from Growth up — Starter/Free stay
             // without it, consistent with AllowBrandingRemoval's own tier cutoff.
             new CoreTier(GrowthPlanId, "Growth", 17, true, false, false, true,
-                3, 150, 600, 10, 1,
-                [new TierPrice(BillingInterval.Monthly, 59m)]),
-            new CoreTier(PremiumPlanId, "Premium", 17, true, false, true, true,
-                6, 400, 1200, 25, 2,
+                3, 150, 600, 10, null,
+                [new TierPrice(BillingInterval.Monthly, 59m), new TierPrice(BillingInterval.Yearly, 590m)]),
+            new CoreTier(PremiumPlanId, "Premium", 17, true, true, false, true,
+                10, 1000, 2500, 50, null,
                 [new TierPrice(BillingInterval.Monthly, 79m), new TierPrice(BillingInterval.Yearly, 790m)]),
-            // Soft caps, not true unlimited — protects against a single runaway account
-            // inflating Twilio/Hangfire/DB load (owner decision, 2026-07-18).
-            new CoreTier(ProPlanId, "Pro", 17, true, true, true, true,
-                10, 1000, 2500, 50, 10,
-                [new TierPrice(BillingInterval.Monthly, 99m)]),
         ];
 
         foreach (CoreTier tier in tiers)
@@ -309,7 +307,23 @@ public static class DataSeeder
             }
         }
 
+        await RetireTiersAsync(db);
+
         await db.SaveChangesAsync();
+    }
+
+    // Retired core tiers: the Plan row is kept (subscriptions/history may reference it),
+    // every price is deactivated so it can't be bought, and a fresh DB never gets the row.
+    private static readonly Guid[] RetiredTierIds = [ProPlanId];
+
+    private static async Task RetireTiersAsync(IAppDbContext db)
+    {
+        List<PlanPrice> retiredPrices = await db.PlanPrices
+            .Where(pp => RetiredTierIds.Contains(pp.PlanId) && pp.IsActive)
+            .ToListAsync();
+
+        foreach (PlanPrice price in retiredPrices)
+            price.IsActive = false;
     }
 
     // ─── Studios + Subscriptions ──────────────────────────────────────────────

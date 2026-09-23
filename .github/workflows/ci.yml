@@ -55,16 +55,27 @@ jobs:
             mysql:8.4 \
             --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
           echo "Waiting for MySQL to accept connections..."
-          for i in $(seq 1 30); do
-            if docker exec ci-mysql mysqladmin ping -uroot -proot --silent; then
-              echo "MySQL is ready."
-              break
+          # A single successful `mysqladmin ping` isn't enough: on a fresh volume, MySQL's
+          # own entrypoint boots a throwaway "temporary server" to run init scripts, and
+          # that temp server also answers ping before it's torn down for the real one to
+          # start — a bare "ping once, break" loop can catch that narrow window and then
+          # fail the immediately-following check. Require two pings a couple of seconds
+          # apart so a catch-then-teardown can't pass as "ready" by accident.
+          ready=false
+          for i in $(seq 1 60); do
+            if docker exec ci-mysql mysqladmin ping -uroot -proot --silent 2>/dev/null; then
+              sleep 2
+              if docker exec ci-mysql mysqladmin ping -uroot -proot --silent 2>/dev/null; then
+                echo "MySQL is ready."
+                ready=true
+                break
+              fi
             fi
             sleep 2
           done
-          docker exec ci-mysql mysqladmin ping -uroot -proot --silent || {
-            echo "MySQL did not become ready in time"; docker logs ci-mysql; exit 1;
-          }
+          if [ "$ready" != true ]; then
+            echo "MySQL did not become ready in time"; docker logs ci-mysql; exit 1
+          fi
         # Deliberately a `docker run` step, not a GitHub Actions `services:` block — the
         # declarative `services:` syntax cannot pass the `--character-set-server` /
         # `--collation-server` startup flags docker-compose.yml uses, and DatabaseFixture.cs

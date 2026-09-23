@@ -122,7 +122,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                .Returns(("sub_flow_test", DateTime.UtcNow.AddMonths(1)));
 
         IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
-        discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        discounts.CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>())
                  .Returns("coup_flow_test");
 
         CurrentTenantService tenantSvc = new();
@@ -212,7 +212,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                .Returns(("sub_two_sided", DateTime.UtcNow.AddMonths(1)));
 
         IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
-        discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        discounts.CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>())
                  .Returns("coup_two_sided");
 
         ReferralRewardService rewardSvc = new(
@@ -262,7 +262,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                .Returns(("sub_no_reward", DateTime.UtcNow.AddMonths(1)));
 
         IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
-        discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        discounts.CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>())
                  .Returns("coup_no_reward");
 
         ReferralRewardService rewardSvc = new(

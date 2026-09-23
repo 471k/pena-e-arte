@@ -30,9 +30,9 @@ public class SendCampaignHandler(IAppDbContext db, ICurrentTenant tenant, IJobSc
         if (campaign.Status != CampaignStatus.Draft)
             throw new BusinessRuleViolationException("Only a draft campaign can be sent.");
 
-        // Unlike AllowApiAccess/PrioritySupport (hidden from UI/Help — sold-but-undelivered
-        // flags with zero backing implementation), this flag IS actually enforced — see
-        // Plan.AllowMarketingCampaigns's doc comment and architecture.md Decisions Log.
+        // AllowApiAccess gates the read-only API keys and webhooks feature (also real and
+        // enforced); PrioritySupport has no implementation and stays hidden from UI/Help.
+        // See Plan.AllowMarketingCampaigns's doc comment and architecture.md Decisions Log.
         Subscription? subscription = await db.Subscriptions
             .Include(s => s.Plan)
             .FirstOrDefaultAsync(s => s.StudioId == tenant.StudioId, ct);

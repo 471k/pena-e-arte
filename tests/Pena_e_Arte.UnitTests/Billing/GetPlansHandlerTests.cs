@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Pena_e_Arte.Application.Billing.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -12,7 +13,7 @@ public class GetPlansHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
 
-    private GetPlansHandler CreateSut() => new(_db);
+    private GetPlansHandler CreateSut() => new(_db, NullLogger<GetPlansHandler>.Instance);
 
     [Fact]
     public async Task Handle_NoPlans_ReturnsEmptyList()
@@ -132,5 +133,107 @@ public class GetPlansHandlerTests
 
         result.Single(r => r.Name == "A").SubscriberCount.Should().Be(1);
         result.Single(r => r.Name == "B").SubscriberCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_PlanWithOnlyInactivePrices_ExcludedWhenIncludeRetiredFalse()
+    {
+        Plan plan = new() { Id = Guid.NewGuid(), Name = "Pro", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 99m, IsActive = false });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(IncludeRetired: false), default);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_PlanWithOnlyInactivePrices_IncludedWhenIncludeRetiredTrue()
+    {
+        Plan plan = new() { Id = Guid.NewGuid(), Name = "Pro", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 99m, IsActive = false });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(IncludeRetired: true), default);
+
+        result.Should().ContainSingle(r => r.Name == "Pro");
+    }
+
+    // ── Computed yearly saving (D7, §7.6) ────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_79Monthly790Yearly_SavingIs158MonthsFreeIs2()
+    {
+        Plan plan = await SeedPlanWithPrices(79m, 790m);
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(), default);
+
+        PlanResponse response = result.Single(r => r.Id == plan.Id);
+        response.YearlySavingAmount.Should().Be(158m);
+        response.YearlyMonthsFree.Should().Be(2m);
+    }
+
+    [Fact]
+    public async Task Handle_79Monthly800Yearly_SavingIs148MonthsFreeIs1Point87()
+    {
+        Plan plan = await SeedPlanWithPrices(79m, 800m);
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(), default);
+
+        PlanResponse response = result.Single(r => r.Id == plan.Id);
+        response.YearlySavingAmount.Should().Be(148m);
+        response.YearlyMonthsFree.Should().Be(1.87m);
+    }
+
+    [Fact]
+    public async Task Handle_79MonthlyNoYearly_BothNull()
+    {
+        Plan plan = await SeedPlanWithPrices(79m, yearly: null);
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(), default);
+
+        PlanResponse response = result.Single(r => r.Id == plan.Id);
+        response.YearlySavingAmount.Should().BeNull();
+        response.YearlyMonthsFree.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_79Monthly1000Yearly_BothNullSavingNonPositive()
+    {
+        Plan plan = await SeedPlanWithPrices(79m, 1000m);
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(), default);
+
+        PlanResponse response = result.Single(r => r.Id == plan.Id);
+        response.YearlySavingAmount.Should().BeNull();
+        response.YearlyMonthsFree.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ZeroMonthlyNoYearly_BothNull()
+    {
+        Plan plan = await SeedPlanWithPrices(0m, yearly: null);
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(), default);
+
+        PlanResponse response = result.Single(r => r.Id == plan.Id);
+        response.YearlySavingAmount.Should().BeNull();
+        response.YearlyMonthsFree.Should().BeNull();
+    }
+
+    private async Task<Plan> SeedPlanWithPrices(decimal monthly, decimal? yearly)
+    {
+        Plan plan = new() { Id = Guid.NewGuid(), Name = $"Plan-{Guid.NewGuid():N}", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = monthly });
+        if (yearly is decimal y)
+            plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = y });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        return plan;
     }
 }

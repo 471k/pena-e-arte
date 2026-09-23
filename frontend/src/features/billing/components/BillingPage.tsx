@@ -106,7 +106,6 @@ function PlanUsagePanel({ usage }: { usage: PlanUsageResponse }) {
           <UsageRow label="Appointments this month"     dim={usage.appointmentsPerMonth} />
           <UsageRow label="Notifications this month"    dim={usage.notificationsPerMonth} />
           <UsageRow label="Storage"                     dim={usage.storageGb} unit=" GB" />
-          <UsageRow label="Locations"                   dim={usage.locations} />
         </div>
       </CardContent>
     </Card>

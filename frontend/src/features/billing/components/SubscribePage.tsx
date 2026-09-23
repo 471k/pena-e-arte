@@ -13,7 +13,19 @@ import {
   useChangePlanMutation,
   useCreateSubscriptionMutation,
 } from "../billingApi";
-import { priceFor, type PlanResponse, type PlanPriceResponse } from "../billing.types";
+import { priceFor, purchasablePriceFor, type PlanResponse, type PlanPriceResponse } from "../billing.types";
+import { yearlySavingLabel, yearlySavingPercentFloor } from "../utils/yearlySavingLabel";
+
+// Purchasable price for a plan card at the given cycle. Free is a special case: it has
+// no Yearly PlanPrice row (D5) but must still render as a selectable "Free" card while
+// the toggle is on Yearly, so we fall back to its Monthly ($0) price for that one card.
+function purchasableCardPrice(plan: PlanResponse, cycle: "Monthly" | "Yearly"): PlanPriceResponse | undefined {
+  if (cycle === "Yearly") {
+    const monthly = purchasablePriceFor(plan, "Monthly");
+    if (monthly && monthly.price === 0) return monthly;
+  }
+  return purchasablePriceFor(plan, cycle);
+}
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(price);
@@ -37,6 +49,10 @@ function PlanCard({
   const unavailable = price === undefined;
   const isYearly    = price?.interval === "Yearly";
   const perMonth    = price ? (isYearly ? price.price / 12 : price.price) : 0;
+  const monthlyPrice = priceFor(plan, "Monthly");
+  const label = !unavailable && isYearly && monthlyPrice && price.price > 0
+    ? yearlySavingLabel(monthlyPrice.price, price.price)
+    : null;
 
   return (
     <button
@@ -75,7 +91,7 @@ function PlanCard({
           )}
           {!unavailable && isYearly && price.price > 0 && (
             <p className="text-xs text-green-600 dark:text-green-400">
-              {formatPrice(perMonth)}/mo · save {plan.yearlyDiscountPercent}%
+              {formatPrice(perMonth)}/mo{label ? ` · ${label}` : ""}
             </p>
           )}
         </div>
@@ -113,21 +129,44 @@ export function SubscribePage() {
   const hasPendingChange  = isCardBilled && sub.pendingPlanId !== null;
   const busy              = checkingOut || switching || activating;
 
-  // Derive once — used by the toggle label and the plan list. Every plan carries its
-  // own YearlyDiscountPercent regardless of which intervals it offers — use the
-  // currently-selected tier once one is picked, or the first plan that HAS a Yearly
-  // price otherwise, so the toggle's "Save X%" badge stays meaningful before selection.
-  const yearlyDiscount =
-    (selectedPlanId ? plans.find((p) => p.id === selectedPlanId) : undefined)?.yearlyDiscountPercent
-    ?? plans.find((p) => priceFor(p, "Yearly"))?.yearlyDiscountPercent
-    ?? 0;
+  // Toggle badge (D7) — computed from real prices, never Plan.yearlyDiscountPercent.
+  // Only paid tiers with a *purchasable* Yearly price count. All of them agreeing on one
+  // label shows that label; disagreeing labels fall back to "Save up to N%" using the
+  // highest floored percent; no purchasable Yearly price anywhere hides the badge.
+  const yearlyLabels = plans
+    .map((p) => {
+      const yearly = purchasablePriceFor(p, "Yearly");
+      const monthly = priceFor(p, "Monthly");
+      if (!yearly || yearly.price <= 0 || !monthly) return null;
+      return yearlySavingLabel(monthly.price, yearly.price);
+    })
+    .filter((label): label is string => label !== null);
+  const uniqueYearlyLabels = [...new Set(yearlyLabels)];
 
-  // Every tier stays visible in both toggle states — a tier with no price at the
-  // current cycle renders disabled instead of being silently dropped from the list.
-  const plansWithPrice = plans.map((p) => ({ plan: p, price: priceFor(p, billingCycle) }));
+  let yearlyToggleBadge: string | null = null;
+  if (uniqueYearlyLabels.length === 1) {
+    yearlyToggleBadge = uniqueYearlyLabels[0];
+  } else if (uniqueYearlyLabels.length > 1) {
+    const percents = plans
+      .map((p) => {
+        const yearly = purchasablePriceFor(p, "Yearly");
+        const monthly = priceFor(p, "Monthly");
+        return yearly && yearly.price > 0 && monthly
+          ? yearlySavingPercentFloor(monthly.price, yearly.price)
+          : null;
+      })
+      .filter((n): n is number => n !== null);
+    yearlyToggleBadge = percents.length > 0 ? `Save up to ${Math.max(...percents)}%` : null;
+  }
+
+  // Every tier stays visible in both toggle states — a tier with no purchasable price at
+  // the current cycle (missing entirely, or a paid price with no linked Stripe price)
+  // renders disabled instead of being silently dropped from the list or offered for a
+  // checkout that would fail.
+  const plansWithPrice = plans.map((p) => ({ plan: p, price: purchasableCardPrice(p, billingCycle) }));
 
   const selectedPlan       = plans.find((p) => p.id === selectedPlanId) ?? null;
-  const selectedPrice      = selectedPlan ? priceFor(selectedPlan, billingCycle) : undefined;
+  const selectedPrice      = selectedPlan ? purchasableCardPrice(selectedPlan, billingCycle) : undefined;
   const isFreePlanSelected = selectedPrice?.price === 0;
 
   // A studio already on an active Free plan is "cash-billed" in the existing model
@@ -147,9 +186,10 @@ export function SubscribePage() {
     setSubmitError(null);
 
     // Free plan: activate directly through the existing no-Stripe subscribe endpoint —
-    // no card form, no Checkout redirect.
+    // no card form, no Checkout redirect. Always Monthly — Free has no Yearly price row
+    // (D5) even when the toggle is on Yearly.
     if (isFreePlanSelected) {
-      const result = await activateFree({ planId: selectedPlanId, billingInterval: billingCycle });
+      const result = await activateFree({ planId: selectedPlanId, billingInterval: "Monthly" });
       if ("error" in result) {
         const err = result.error as { data?: { message?: string } } | undefined;
         setSubmitError(err?.data?.message ?? "Failed to activate the Free plan. Please try again.");
@@ -281,9 +321,11 @@ export function SubscribePage() {
                   )}
                 >
                   {cycle}
-                  {cycle === "Yearly" && yearlyDiscount > 0 && (
+                  {cycle === "Yearly" && yearlyToggleBadge && (
                     <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-xs font-normal text-green-600 dark:text-green-400">
-                      Save {yearlyDiscount}%
+                      {yearlyToggleBadge.startsWith("Save")
+                        ? yearlyToggleBadge
+                        : yearlyToggleBadge.charAt(0).toUpperCase() + yearlyToggleBadge.slice(1)}
                     </span>
                   )}
                 </button>
