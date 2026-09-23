@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 
@@ -119,6 +120,12 @@ public static class StripeDemoSeeder
             sub.Status = SubscriptionStatus.Active;
             sub.CurrentPeriodEnd = stripeSub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
                                        ?? DateTime.UtcNow.AddMonths(1);
+
+            Stripe.Price? billedPrice = stripeSub.Items?.Data?.FirstOrDefault()?.Price;
+            sub.BilledUnitAmount = (billedPrice?.UnitAmount ?? 0) / 100m;
+            sub.BilledQuantity = 1;
+            sub.BilledCurrency = billedPrice?.Currency ?? MrrRules.PlatformCurrency;
+
             await db.SaveChangesAsync();
 
             logger.LogInformation("Demo studio is now card-billed (subscription {Id}).", stripeSub.Id);

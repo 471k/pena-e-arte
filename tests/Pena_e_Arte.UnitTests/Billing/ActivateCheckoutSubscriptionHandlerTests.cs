@@ -52,6 +52,39 @@ public class ActivateCheckoutSubscriptionHandlerTests
     }
 
     [Fact]
+    public async Task Handle_CompletedSession_SnapshotsBilledAmountFromStripe()
+    {
+        await SeedPlan("price_growth");
+        await SeedStudioSubscription(SubscriptionStatus.Trialing);
+        StripeReturns(complete: true, price: "price_growth");
+        _billing.GetPriceAsync("price_growth", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 5900, "eur", "month", 1));
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        Subscription stored = _db.Subscriptions.Single(s => s.StudioId == _studioId);
+        stored.BilledUnitAmount.Should().Be(59m);
+        stored.BilledQuantity.Should().Be(1);
+        stored.BilledCurrency.Should().Be("eur");
+    }
+
+    [Fact]
+    public async Task Handle_CompletedSession_NoPriceId_LeavesSnapshotNull()
+    {
+        await SeedStudioSubscription(SubscriptionStatus.Trialing);
+        _billing.GetCheckoutSubscriptionAsync("cs_123", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutSubscriptionResult(
+                true, "sub_new", "cus_new", _studioId.ToString(), null,
+                DateTime.UtcNow.AddMonths(1), HasDiscount: false));
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        Subscription stored = _db.Subscriptions.Single(s => s.StudioId == _studioId);
+        stored.BilledUnitAmount.Should().BeNull();
+        await _billing.DidNotReceive().GetPriceAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_SessionNotComplete_ReturnsNullNoChange()
     {
         await SeedStudioSubscription(SubscriptionStatus.Trialing);
