@@ -1,3 +1,7 @@
+---
+name: run-frontend
+description: Start and stop the Vite dev server for the React frontend. Use when asked to run, start, or stop the frontend dev server.
+---
 # run-frontend
 
 Start and stop the Vite dev server for the React frontend.
