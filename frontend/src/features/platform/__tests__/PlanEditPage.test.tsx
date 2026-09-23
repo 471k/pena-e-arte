@@ -19,6 +19,8 @@ const PLANS: PlanResponse[] = [
     id:                    "plan-1",
     name:                  "Starter",
     yearlyDiscountPercent: 17,
+    yearlySavingAmount:    null,
+    yearlyMonthsFree:      null,
     allowBrandingRemoval:  false,
     subscriberCount:       4,
     maxArtists:               5,
@@ -89,7 +91,8 @@ describe("PlanEditPage", () => {
     renderEditPage("/platform/plans/plan-1/edit");
 
     expect(await screen.findByLabelText(/^name$/i)).toHaveValue("Starter");
-    expect(screen.getByLabelText(/yearly discount/i)).toHaveValue(17);
+    // 17% round-trips to 2 months free: round(17 / 100 * 12) = 2.
+    expect(screen.getByLabelText(/months free on yearly/i)).toHaveValue(2);
     expect(screen.getByLabelText("Monthly price (€)")).toHaveValue(29);
     expect(screen.getByLabelText(/stripe monthly price id/i)).toHaveValue("price_monthly_starter");
     expect(screen.getByLabelText("Artists")).toHaveValue(5);
@@ -183,6 +186,35 @@ describe("PlanEditPage", () => {
 
     expect(screen.getByLabelText("Yearly price (€)")).toBeInTheDocument();
     expect(screen.getByLabelText(/stripe yearly price id/i)).toBeInTheDocument();
+  });
+
+  it("suggests the yearly price from months-free and sends yearlyDiscountPercent on submit", async () => {
+    const createSpy = vi.fn();
+    server.use(
+      http.post("http://localhost/api/v1/billing/plans", async ({ request }) => {
+        const body = await request.json();
+        createSpy(body);
+        return HttpResponse.json({ id: "plan-new", ...(body as object), subscriberCount: 0 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderEditPage("/platform/plans/new");
+
+    await user.type(await screen.findByLabelText(/^name$/i), "Premium");
+    await user.clear(screen.getByLabelText("Monthly price (€)"));
+    await user.type(screen.getByLabelText("Monthly price (€)"), "79");
+    await user.click(screen.getByRole("switch", { name: /^yearly price$/i }));
+
+    // months-free defaults to 2 for a new plan → monthly * (12 - 2) = 79 * 10 = 790.
+    expect(await screen.findByText(/suggested: €790/i)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Yearly price (€)"), "790");
+    await user.click(screen.getAllByRole("button", { name: /^save$/i })[0]);
+
+    await waitFor(() => expect(createSpy).toHaveBeenCalledOnce());
+    const body = createSpy.mock.calls[0][0] as { yearlyDiscountPercent: number };
+    expect(body.yearlyDiscountPercent).toBe(17);
   });
 
   it("the Unlimited checkbox toggles the numeric input's disabled state", async () => {

@@ -21,6 +21,8 @@ const PLAN_STARTER: PlanResponse = {
   id:                    "plan-starter",
   name:                  "Starter",
   yearlyDiscountPercent: 0,
+  yearlySavingAmount:    null,
+  yearlyMonthsFree:      null,
   allowBrandingRemoval:  false,
   subscriberCount:       0,
   maxArtists:               null,
@@ -42,6 +44,8 @@ const PLAN_PREMIUM: PlanResponse = {
   id:                    "plan-premium",
   name:                  "Premium",
   yearlyDiscountPercent: 17,
+  yearlySavingAmount:    null,
+  yearlyMonthsFree:      null,
   allowBrandingRemoval:  true,
   subscriberCount:       0,
   maxArtists:               null,
@@ -65,6 +69,8 @@ const PLAN_GROWTH_UNLINKED_YEARLY: PlanResponse = {
   id:                    "plan-growth",
   name:                  "Growth",
   yearlyDiscountPercent: 17,
+  yearlySavingAmount:    null,
+  yearlyMonthsFree:      null,
   allowBrandingRemoval:  true,
   subscriberCount:       0,
   maxArtists:               null,
@@ -87,6 +93,8 @@ const FREE_PLAN: PlanResponse = {
   id:                    "plan-free",
   name:                  "Free",
   yearlyDiscountPercent: 0,
+  yearlySavingAmount:    null,
+  yearlyMonthsFree:      null,
   allowBrandingRemoval:  false,
   subscriberCount:       0,
   maxArtists:               1,
@@ -247,10 +255,11 @@ describe("SubscribePage", () => {
     expect(screen.getByRole("button", { name: /^yearly/i })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("Yearly toggle button always shows the discount badge", async () => {
+  it("Yearly toggle button shows a badge computed from real prices (D7)", async () => {
     renderPage();
     await screen.findByRole("button", { name: /^monthly/i });
-    expect(screen.getByRole("button", { name: /^yearly/i })).toHaveTextContent(/save 17%/i);
+    // Only Premium (49/490) has a purchasable Yearly price; 588 - 490 = 98, 98/49 = 2.
+    expect(screen.getByRole("button", { name: /^yearly/i })).toHaveTextContent(/2 months free/i);
   });
 
   // --- Plan listing ---
@@ -301,7 +310,7 @@ describe("SubscribePage", () => {
 
     // $490 / 12 ≈ $40.83 shown in the plan card (not the toggle badge)
     expect(screen.getByText(/\$40\.83\/mo/i)).toBeInTheDocument();
-    expect(screen.getByText(/save 17%/i, { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText(/2 months free/i, { selector: "p" })).toBeInTheDocument();
   });
 
   it("monthly plan cards show no per-month breakdown line", async () => {

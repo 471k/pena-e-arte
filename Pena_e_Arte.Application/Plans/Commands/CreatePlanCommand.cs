@@ -49,6 +49,10 @@ public class CreatePlanHandler(IAppDbContext db)
         return Map(plan, subscriberCount: 0);
     }
 
+    // YearlySavingAmount/YearlyMonthsFree are left null here — this Map is used only by
+    // the admin create/update response, which the editor doesn't read (it works off
+    // YearlyDiscountPercent, see PlanEditPage). GetPlansHandler computes the real values
+    // for the owner-facing catalogue (D7).
     internal static PlanResponse Map(Plan plan, int subscriberCount) => new(
         plan.Id, plan.Name, plan.YearlyDiscountPercent, plan.AllowBrandingRemoval,
         subscriberCount,
@@ -56,7 +60,8 @@ public class CreatePlanHandler(IAppDbContext db)
         plan.MaxStorageGb, plan.MaxLocations, plan.AllowApiAccess, plan.PrioritySupport,
         plan.AllowMarketingCampaigns,
         plan.Prices.Select(pp => new PlanPriceResponse(
-            pp.Id, pp.Interval.ToString(), pp.Price, pp.StripePriceId, pp.IsActive)).ToList());
+            pp.Id, pp.Interval.ToString(), pp.Price, pp.StripePriceId, pp.IsActive)).ToList(),
+        null, null);
 }
 
 public class CreatePlanValidator : AbstractValidator<CreatePlanCommand>

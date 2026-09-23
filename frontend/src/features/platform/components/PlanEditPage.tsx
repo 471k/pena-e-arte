@@ -46,7 +46,10 @@ const priceSectionSchema = z.object({
 
 const schema = z.object({
   name:                     z.string().min(1, "Name is required").max(100),
-  yearlyDiscountPercent:    z.number({ message: "Required" }).min(0).max(100),
+  // Admin-facing input only — feeds the suggested-yearly-price helper below. Sent to the
+  // API as yearlyDiscountPercent (Math.round(monthsFreeOnYearly / 12 * 100)) so the
+  // contract and validators stay unchanged; no owner-facing surface reads it (D7).
+  monthsFreeOnYearly:       z.number({ message: "Required" }).min(0).max(11),
   monthly:                  priceSectionSchema,
   yearly:                   priceSectionSchema,
   allowBrandingRemoval:     z.boolean(),
@@ -79,7 +82,7 @@ type LimitFieldName = "maxArtists" | "maxAppointmentsPerMonth" | "maxNotificatio
 
 const EMPTY_DEFAULTS: FormValues = {
   name:                     "",
-  yearlyDiscountPercent:    17,
+  monthsFreeOnYearly:       2,
   monthly:                  { enabled: true, price: undefined, stripePriceId: null },
   yearly:                   { enabled: false, price: undefined, stripePriceId: null },
   allowBrandingRemoval:     false,
@@ -97,7 +100,7 @@ function planToFormValues(plan: PlanResponse): FormValues {
   const yearly  = priceFor(plan, "Yearly");
   return {
     name:                     plan.name,
-    yearlyDiscountPercent:    plan.yearlyDiscountPercent,
+    monthsFreeOnYearly:       Math.round((plan.yearlyDiscountPercent / 100) * 12),
     monthly: {
       enabled:       monthly !== undefined,
       price:         monthly?.price,
@@ -237,20 +240,23 @@ export function PlanEditPage() {
   const watchedMonthlyEnabled = useWatch({ control, name: "monthly.enabled" });
   const watchedYearlyEnabled  = useWatch({ control, name: "yearly.enabled" });
   const watchedMonthlyPrice   = useWatch({ control, name: "monthly.price" });
-  const watchedDiscount       = useWatch({ control, name: "yearlyDiscountPercent" });
+  const watchedMonthsFree     = useWatch({ control, name: "monthsFreeOnYearly" });
   const watchedBranding       = useWatch({ control, name: "allowBrandingRemoval" });
   const watchedApiAccess      = useWatch({ control, name: "allowApiAccess" });
 
+  const paidMonths = watchedMonthsFree !== undefined ? 12 - watchedMonthsFree : null;
   const suggestedYearly =
-    watchedMonthlyPrice !== undefined && watchedMonthlyPrice > 0 && watchedDiscount >= 0 && watchedDiscount < 100
-      ? watchedMonthlyPrice * 12 * (1 - watchedDiscount / 100)
+    watchedMonthlyPrice !== undefined && watchedMonthlyPrice > 0 && paidMonths !== null && paidMonths > 0
+      ? watchedMonthlyPrice * paidMonths
       : null;
 
   async function onSubmit(values: FormValues) {
     setSubmitError(null);
     const payload = {
       name:                     values.name,
-      yearlyDiscountPercent:    values.yearlyDiscountPercent,
+      // Sent as a percentage for the (unchanged) API contract, but the admin only ever
+      // enters months free (D7) — no owner-facing surface reads this field back.
+      yearlyDiscountPercent:    Math.round((values.monthsFreeOnYearly / 12) * 100),
       prices:                   toPrices(values),
       allowBrandingRemoval:     values.allowBrandingRemoval,
       maxArtists:               values.maxArtists,
@@ -350,11 +356,15 @@ export function PlanEditPage() {
                 {errors.name && <p className="text-xs text-destructive-text">{errors.name.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="discount">Yearly discount (%)</Label>
-                <Input id="discount" type="number" min="0" max="100"
-                  {...register("yearlyDiscountPercent", { valueAsNumber: true })} />
-                {errors.yearlyDiscountPercent && (
-                  <p className="text-xs text-destructive-text">{errors.yearlyDiscountPercent.message}</p>
+                <Label htmlFor="monthsFree">Months free on yearly</Label>
+                <Input id="monthsFree" type="number" min="0" max="11"
+                  {...register("monthsFreeOnYearly", { valueAsNumber: true })} />
+                <p className="text-[11px] text-muted-foreground">
+                  Feeds the suggested yearly price below — owners see the saving computed
+                  from the real prices, not this number.
+                </p>
+                {errors.monthsFreeOnYearly && (
+                  <p className="text-xs text-destructive-text">{errors.monthsFreeOnYearly.message}</p>
                 )}
               </div>
             </CardContent>
@@ -406,9 +416,9 @@ export function PlanEditPage() {
                       <Label htmlFor="yearlyPrice" className="text-xs text-muted-foreground">Yearly price (€)</Label>
                       <Input id="yearlyPrice" type="number" step="0.01" min="0"
                         {...register("yearly.price", { valueAsNumber: true })} />
-                      {suggestedYearly !== null && (
+                      {suggestedYearly !== null && paidMonths !== null && (
                         <p className="text-[11px] text-muted-foreground">
-                          Suggested: {formatCurrency(suggestedYearly)} (monthly × 12 × {100 - watchedDiscount}%)
+                          Suggested: {formatCurrency(suggestedYearly)} (monthly × {paidMonths})
                         </p>
                       )}
                       {errors.yearly?.price && <p className="text-xs text-destructive-text">{errors.yearly.price.message}</p>}

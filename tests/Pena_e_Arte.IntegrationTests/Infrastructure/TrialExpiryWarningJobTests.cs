@@ -138,6 +138,98 @@ public class TrialExpiryWarningJobTests(DatabaseFixture fixture)
             Arg.Any<CancellationToken>());
     }
 
+    // ── Yearly saving paragraph (D7, §7.4) ───────────────────────────────────────
+
+    [Fact]
+    public async Task ExecuteAsync_EveryPaidTierHasSameWholeMonthsFreeYearly_ShowsCatalogWideLine()
+    {
+        await ResetPlansAsync();
+        await SeedPurchasableTier("Starter", 29m, 290m);
+        await SeedPurchasableTier("Growth", 59m, 590m);
+        await SeedPurchasableTier("Premium", 79m, 790m);
+        Guid studioId = await SeedStudio("owner@all-yearly.com");
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).ExecuteAsync(studioId);
+
+        await _notifications.Received(1).SendEmailAsync(
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Is<string>(body => body.Contains("Pay yearly and get 2 months free.")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_OnlySomePaidTiersHavePurchasableYearly_NamesThem()
+    {
+        await ResetPlansAsync();
+        // Starter has an unlinked Yearly row (StripePriceId null — not purchasable, D4);
+        // Premium's is linked. Matches the real current-catalogue state (Batch 3 pending).
+        await SeedPlan("Starter", 29m, yearlyPrice: 290m, yearlyStripePriceId: null);
+        await SeedPurchasableTier("Premium", 79m, 790m);
+        Guid studioId = await SeedStudio("owner@some-yearly.com");
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).ExecuteAsync(studioId);
+
+        await _notifications.Received(1).SendEmailAsync(
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Is<string>(body => body.Contains("Yearly billing is available on Premium — 2 months free.")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NoPurchasableYearlyPrice_OmitsParagraph()
+    {
+        await ResetPlansAsync();
+        await SeedPlan("Starter", 29m, yearlyPrice: null, yearlyStripePriceId: null);
+        Guid studioId = await SeedStudio("owner@no-yearly.com");
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).ExecuteAsync(studioId);
+
+        await _notifications.Received(1).SendEmailAsync(
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Is<string>(body => !body.Contains("months free") && !body.Contains("Yearly billing is available")),
+            Arg.Any<CancellationToken>());
+    }
+
+    // Deactivate rather than delete — the "Database" collection shares one physical DB
+    // across every integration test class, so other tests' Plan rows may already be
+    // referenced by their own Subscriptions (delete would violate that FK). Flipping
+    // IsActive false makes them invisible to BuildYearlySavingParagraphAsync's active-
+    // price filters without touching anything another test still depends on.
+    private async Task ResetPlansAsync()
+    {
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        List<PlanPrice> active = await db.PlanPrices.Where(pp => pp.IsActive).ToListAsync();
+        foreach (PlanPrice pp in active)
+            pp.IsActive = false;
+        await db.SaveChangesAsync();
+    }
+
+    private Task SeedPurchasableTier(string name, decimal monthlyPrice, decimal yearlyPrice) =>
+        SeedPlan(name, monthlyPrice, yearlyPrice, yearlyStripePriceId: $"price_{name.ToLowerInvariant()}_yearly");
+
+    private async Task SeedPlan(
+        string name, decimal monthlyPrice, decimal? yearlyPrice, string? yearlyStripePriceId)
+    {
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        Plan plan = new() { Name = name };
+        plan.Prices.Add(new PlanPrice
+        {
+            Interval = BillingInterval.Monthly, Price = monthlyPrice, StripePriceId = $"price_{name.ToLowerInvariant()}_monthly",
+        });
+        if (yearlyPrice is decimal yp)
+        {
+            plan.Prices.Add(new PlanPrice
+            {
+                Interval = BillingInterval.Yearly, Price = yp, StripePriceId = yearlyStripePriceId,
+            });
+        }
+        db.Plans.Add(plan);
+        await db.SaveChangesAsync();
+    }
+
     private async Task<Guid> SeedStudio(string ownerEmail, string name = "Test Studio")
     {
         await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);

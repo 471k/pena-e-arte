@@ -36,6 +36,11 @@ export interface PlanResponse {
   prioritySupport:          boolean;
   allowMarketingCampaigns:  boolean;
   prices:                   PlanPriceResponse[];
+  // Computed server-side from the active Monthly/Yearly prices (D7) — null when either
+  // is missing/inactive, Monthly is 0, or the computed saving isn't positive. Never read
+  // yearlyDiscountPercent for owner-facing copy; it's admin-input-only.
+  yearlySavingAmount:       number | null;
+  yearlyMonthsFree:         number | null;
 }
 
 export interface CreateSubscriptionRequest {
