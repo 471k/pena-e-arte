@@ -217,13 +217,17 @@ public class TrialExpiryWarningJobTests(DatabaseFixture fixture)
         Plan plan = new() { Name = name };
         plan.Prices.Add(new PlanPrice
         {
-            Interval = BillingInterval.Monthly, Price = monthlyPrice, StripePriceId = $"price_{name.ToLowerInvariant()}_monthly",
+            Interval = BillingInterval.Monthly,
+            Price = monthlyPrice,
+            StripePriceId = $"price_{name.ToLowerInvariant()}_monthly",
         });
         if (yearlyPrice is decimal yp)
         {
             plan.Prices.Add(new PlanPrice
             {
-                Interval = BillingInterval.Yearly, Price = yp, StripePriceId = yearlyStripePriceId,
+                Interval = BillingInterval.Yearly,
+                Price = yp,
+                StripePriceId = yearlyStripePriceId,
             });
         }
         db.Plans.Add(plan);
