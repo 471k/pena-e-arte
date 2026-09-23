@@ -1565,6 +1565,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "ARPA is MRR divided by paying studios; Free-plan studios aren't counted.",
       "Each chart point is MRR at the end of that month (now, for the current month). Past months are estimated from current subscriptions until full revenue history is recorded.",
       "Suspended studios' revenue is shown as \"paused\" on the Suspended card, not in MRR.",
+      "\"Discounts this month\" sums referral discounts and credits actually applied to paid invoices — it doesn't reduce MRR (MRR is contracted revenue).",
     ],
   },
   {
@@ -1682,7 +1683,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "A plan must be either fully free (all prices €0) or fully paid — you can't mix a free interval with a paid one.",
       "Locations isn't enforced yet — multi-location isn't built.",
-      "A price that studios are subscribed to can't be changed or deleted — deactivate it and create a new plan instead. A linked Stripe price must match the amount and billing interval exactly.",
+      "A price that studios are subscribed to can't be changed or deleted until every subscriber on it has been billing-amount-snapshotted (this happens automatically as each one's subscription is created, checked out, or updated). Once snapshotted, the price can be changed — existing subscribers keep their own billed price (grandfathered), and only new sign-ups see the new amount. A linked Stripe price must match the amount and billing interval exactly.",
     ],
   },
   {
