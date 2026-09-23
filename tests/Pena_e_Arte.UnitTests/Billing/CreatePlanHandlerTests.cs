@@ -173,6 +173,22 @@ public class CreatePlanHandlerTests
     }
 
     [Fact]
+    public async Task Handle_StripePriceWrongCurrency_ThrowsBusinessRuleViolation()
+    {
+        // Same nominal amount as the plan price, just billed in the wrong currency —
+        // must not pass on amount match alone.
+        _stripe.GetPriceAsync("price_usd", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 7900, "usd", "month", 1));
+
+        Func<Task> act = () => CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Monthly", 79m, StripePriceId: "price_usd")])), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*usd*");
+    }
+
+    [Fact]
     public async Task Handle_MultiplePrices_PersistsBothIntervals()
     {
         PlanResponse result = await CreateSut().Handle(

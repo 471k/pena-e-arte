@@ -20,8 +20,9 @@ public class GetPlatformStatsHandler(IAppDbContext db)
         DateTime lastMonth = monthStart.AddMonths(-1);
 
         // Status counts, not revenue — a broader read than MrrInputLoader's (it also needs
-        // studios that have never had a Subscription row, e.g. legacy/edge-case data), so it
-        // stays its own query rather than being folded into the shared loader.
+        // studios that have never had a Subscription row, e.g. legacy/edge-case data). Loaded
+        // once here and handed to MrrInputLoader below (it needs the identical Include chain)
+        // so the admin dashboard doesn't run two near-duplicate studios queries per load.
         // IgnoreQueryFilters approved: usage #4 — platform KPI aggregate, AdminOnly. See architecture.md.
         List<Studio> studios = await db.Studios
             .IgnoreQueryFilters()
@@ -46,7 +47,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
         int pastDueStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.PastDue);
         int cancelledStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Cancelled);
 
-        List<SubscriptionRevenueInput> inputs = await MrrInputLoader.LoadAsync(db, ct);
+        List<SubscriptionRevenueInput> inputs = await MrrInputLoader.LoadAsync(db, ct, studios);
 
         decimal mrr = MrrRules.MrrAt(inputs, now, now);
         decimal lastMonthMrr = MrrRules.MrrAt(inputs, MrrRules.EndOfMonth(lastMonth), now);

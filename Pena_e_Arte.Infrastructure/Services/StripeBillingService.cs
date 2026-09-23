@@ -224,7 +224,11 @@ public class StripeBillingService(
         {
             price = await priceService.GetAsync(stripePriceId, null, null, ct);
         }
-        catch (StripeException)
+        // Only a genuine "no such price" is null — a rate limit, network blip, or Stripe
+        // outage must propagate instead of masquerading as a permanent validation failure
+        // to the admin editing the plan (matches the HttpStatusCode-narrowed catch pattern
+        // used elsewhere in this file's siblings, e.g. VaultSecretsProvider/R2ExportService).
+        catch (StripeException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
         {
             return null;
         }

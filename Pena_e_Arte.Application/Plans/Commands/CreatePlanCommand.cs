@@ -58,6 +58,11 @@ public class CreatePlanHandler(IAppDbContext db, IStripeBillingService stripe)
         return Map(plan, subscriberCount: 0);
     }
 
+    // Every Stripe price in this codebase is created in EUR (see StripeDemoSeeder) — no
+    // multi-currency support exists anywhere else, so G3 rejects any other currency outright
+    // rather than silently accepting an amount match in the wrong currency.
+    private const string PlatformCurrency = "eur";
+
     // G3 — shared with UpdatePlanHandler, which calls this directly (see architecture.md
     // Decisions Log, "One MRR definition (2026-09-23)").
     internal static async Task ValidateStripePriceAsync(
@@ -71,6 +76,11 @@ public class CreatePlanHandler(IAppDbContext db, IStripeBillingService stripe)
 
         string expectedInterval = interval == BillingInterval.Monthly ? "month" : "year";
         decimal stripeAmount = (info.UnitAmount ?? 0) / 100m;
+
+        if (!string.Equals(info.Currency, PlatformCurrency, StringComparison.OrdinalIgnoreCase))
+            throw new BusinessRuleViolationException(
+                $"Stripe price {stripePriceId} is billed in {info.Currency}; this platform bills in "
+                + $"{PlatformCurrency.ToUpperInvariant()}.");
 
         if (stripeAmount != price || info.RecurringInterval != expectedInterval || info.IntervalCount != 1)
         {

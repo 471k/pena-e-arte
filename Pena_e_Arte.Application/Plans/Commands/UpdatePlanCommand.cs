@@ -72,8 +72,13 @@ public class UpdatePlanHandler(
                             + "price and create a new plan instead.");
                 }
 
-                // G3 — a newly-set or changed StripePriceId must match this row's amount/interval.
-                if (existing.StripePriceId != pr.StripePriceId && pr.StripePriceId is not null)
+                // G3 — a newly-set/changed StripePriceId, or a Price edit on an already-linked
+                // row (still allowed here when subscriberCount == 0), must match Stripe's
+                // amount/interval — otherwise a zero-subscriber row could drift out of sync
+                // with Stripe and only surface as a wrong MRR once someone actually subscribes.
+                bool stripeLinkChanged = existing.StripePriceId != pr.StripePriceId;
+                bool linkedPriceEdited = existing.StripePriceId == pr.StripePriceId && existing.Price != pr.Price;
+                if (pr.StripePriceId is not null && (stripeLinkChanged || linkedPriceEdited))
                     await CreatePlanHandler.ValidateStripePriceAsync(stripe, pr.StripePriceId, pr.Price, interval, ct);
 
                 existing.Price = pr.Price;

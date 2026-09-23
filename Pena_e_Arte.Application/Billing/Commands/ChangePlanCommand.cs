@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -67,7 +68,8 @@ public class ChangePlanHandler(
         // the discounted yearly price to the customer balance, bypassing the yearly refund
         // rule (used months charged at the monthly price). It always waits for the paid year
         // to end, same as any other downgrade.
-        bool isUpgrade = MonthlyEquivalent(newPrice) > MonthlyEquivalent(currentPrice)
+        bool isUpgrade = MrrRules.MonthlyEquivalentOf(newPrice.Price, newPrice.Interval)
+                > MrrRules.MonthlyEquivalentOf(currentPrice.Price, currentPrice.Interval)
             && !(currentPrice.Interval == BillingInterval.Yearly && newPrice.Interval == BillingInterval.Monthly);
 
         if (isUpgrade)
@@ -102,8 +104,4 @@ public class ChangePlanHandler(
         await db.SaveChangesAsync(ct);
         return CreateSubscriptionHandler.Map(subscription);
     }
-
-    // Normalise to a per-month cost so monthly and yearly plans compare fairly
-    private static decimal MonthlyEquivalent(PlanPrice price) =>
-        price.Interval == BillingInterval.Monthly ? price.Price : price.Price / 12m;
 }

@@ -25,8 +25,17 @@ public static class MrrRules
 {
     public static decimal MonthlyEquivalent(Subscription s) =>
         s.Plan?.Prices.FirstOrDefault(pp => pp.Interval == s.BillingInterval) is PlanPrice pp
-            ? (pp.Interval == BillingInterval.Monthly ? pp.Price : pp.Price / 12m)
+            ? MonthlyEquivalentOf(pp.Price, pp.Interval)
             : 0m;
+
+    /// <summary>
+    /// Normalises a price to a per-month cost so Monthly and Yearly compare fairly. Shared
+    /// with ChangePlanHandler's upgrade/downgrade decision (same arithmetic, a different
+    /// input — a plan's list price rather than a subscription's billed amount) so the one
+    /// formula never drifts between the two call sites.
+    /// </summary>
+    public static decimal MonthlyEquivalentOf(decimal price, BillingInterval interval) =>
+        interval == BillingInterval.Monthly ? price : price / 12m;
 
     /// <summary>
     /// The conservative window (D3) during which this subscription was billing, reconstructed
