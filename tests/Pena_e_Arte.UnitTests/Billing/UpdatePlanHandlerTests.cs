@@ -1,10 +1,13 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Billing;
@@ -12,8 +15,9 @@ namespace Pena_e_Arte.UnitTests.Billing;
 public class UpdatePlanHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IStripeBillingService _stripe = Substitute.For<IStripeBillingService>();
 
-    private UpdatePlanHandler CreateSut() => new(_db);
+    private UpdatePlanHandler CreateSut() => new(_db, _stripe, NullLogger<UpdatePlanHandler>.Instance);
 
     [Fact]
     public async Task Handle_ExistingPlan_UpdatesFields()
@@ -44,6 +48,8 @@ public class UpdatePlanHandlerTests
     public async Task Handle_WithStripePriceIds_UpdatesAndReturnsThem()
     {
         Guid planId = await SeedPlan("Pro", 49m);
+        _stripe.GetPriceAsync("price_monthly_new", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 4900, "eur", "month", 1));
 
         PlanResponse result = await CreateSut().Handle(
             new UpdatePlanCommand(planId, new UpdatePlanRequest(
@@ -143,6 +149,170 @@ public class UpdatePlanHandlerTests
 
         _db.PlanPrices.Count(p => p.PlanId == planId).Should().Be(1);
         _db.PlanPrices.Single(p => p.PlanId == planId).Price.Should().Be(129m);
+    }
+
+    // ── G1: never delete a price in use ──────────────────────────────────
+
+    [Fact]
+    public async Task Handle_DropYearlyWithActiveSubscriber_KeepsRowDeactivated()
+    {
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m);
+        await SeedSubscription(plan.Id, BillingInterval.Yearly);
+
+        await CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17, [new PlanPriceRequest("Monthly", 79m)], AllowBrandingRemoval: false)), default);
+
+        PlanPrice yearly = _db.PlanPrices.Single(p => p.PlanId == plan.Id && p.Interval == BillingInterval.Yearly);
+        yearly.IsActive.Should().BeFalse();
+        _db.PlanPrices.Count(p => p.PlanId == plan.Id).Should().Be(2); // row kept, not removed
+    }
+
+    [Fact]
+    public async Task Handle_DropYearlyWithScheduledSubscriber_KeepsRowDeactivated()
+    {
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m);
+        await SeedSubscription(plan.Id, BillingInterval.Monthly, pendingPlanId: plan.Id, pendingInterval: BillingInterval.Yearly);
+
+        await CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17, [new PlanPriceRequest("Monthly", 79m)], AllowBrandingRemoval: false)), default);
+
+        PlanPrice yearly = _db.PlanPrices.Single(p => p.PlanId == plan.Id && p.Interval == BillingInterval.Yearly);
+        yearly.IsActive.Should().BeFalse();
+    }
+
+    // ── G2: no in-place price/Stripe-price change on a price in use ─────
+
+    [Fact]
+    public async Task Handle_ChangePriceWithSubscriber_ThrowsAndSavesNothing()
+    {
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m);
+        await SeedSubscription(plan.Id, BillingInterval.Monthly);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17,
+                [new PlanPriceRequest("Monthly", 89m), new PlanPriceRequest("Yearly", 790m)],
+                AllowBrandingRemoval: false)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*1 subscribed studio(s)*");
+        _db.PlanPrices.Single(p => p.PlanId == plan.Id && p.Interval == BillingInterval.Monthly)
+            .Price.Should().Be(79m); // nothing saved
+    }
+
+    [Fact]
+    public async Task Handle_ChangeStripePriceIdWithSubscriber_Rejected()
+    {
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m);
+        await SeedSubscription(plan.Id, BillingInterval.Monthly);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17,
+                [
+                    new PlanPriceRequest("Monthly", 79m, StripePriceId: "price_new"),
+                    new PlanPriceRequest("Yearly", 790m),
+                ],
+                AllowBrandingRemoval: false)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_ChangePriceWithNoSubscribers_MatchingStripePrice_Saved()
+    {
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m);
+        _stripe.GetPriceAsync("price_new", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 8900, "eur", "month", 1));
+
+        PlanResponse result = await CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17,
+                [
+                    new PlanPriceRequest("Monthly", 89m, StripePriceId: "price_new"),
+                    new PlanPriceRequest("Yearly", 790m),
+                ],
+                AllowBrandingRemoval: false)), default);
+
+        result.Prices.Single(p => p.Interval == "Monthly").Price.Should().Be(89m);
+        _db.PlanPrices.Single(p => p.PlanId == plan.Id && p.Interval == BillingInterval.Monthly)
+            .StripePriceId.Should().Be("price_new");
+    }
+
+    // ── G3 re-validates a Price-only edit on an already-linked row too ──
+
+    [Fact]
+    public async Task Handle_EditPriceOnLinkedRow_NoSubscribers_StripeStillMatches_Saved()
+    {
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m, stripePriceIdMonthly: "price_existing");
+        _stripe.GetPriceAsync("price_existing", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 8900, "eur", "month", 1));
+
+        PlanResponse result = await CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17,
+                [
+                    new PlanPriceRequest("Monthly", 89m, StripePriceId: "price_existing"), // same id, new price
+                    new PlanPriceRequest("Yearly", 790m),
+                ],
+                AllowBrandingRemoval: false)), default);
+
+        result.Prices.Single(p => p.Interval == "Monthly").Price.Should().Be(89m);
+    }
+
+    [Fact]
+    public async Task Handle_EditPriceOnLinkedRow_NoSubscribers_StripeNowMismatched_Rejected()
+    {
+        // StripePriceId is left untouched but Price is edited to something Stripe doesn't
+        // actually charge — must be caught even though the id itself didn't change.
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m, stripePriceIdMonthly: "price_existing");
+        _stripe.GetPriceAsync("price_existing", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 7900, "eur", "month", 1)); // still 79, not 89
+
+        Func<Task> act = () => CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17,
+                [
+                    new PlanPriceRequest("Monthly", 89m, StripePriceId: "price_existing"),
+                    new PlanPriceRequest("Yearly", 790m),
+                ],
+                AllowBrandingRemoval: false)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*79.00*89.00*");
+        _db.PlanPrices.Single(p => p.PlanId == plan.Id && p.Interval == BillingInterval.Monthly)
+            .Price.Should().Be(79m); // nothing saved
+    }
+
+    private async Task<Plan> SeedPlanWithBothIntervals(
+        string name, decimal priceMonthly, decimal priceYearly, string? stripePriceIdMonthly = null)
+    {
+        Plan plan = new() { Name = name };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = priceMonthly, StripePriceId = stripePriceIdMonthly });
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = priceYearly });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        return plan;
+    }
+
+    private async Task SeedSubscription(
+        Guid planId, BillingInterval interval, Guid? pendingPlanId = null, BillingInterval? pendingInterval = null)
+    {
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = Guid.NewGuid(),
+            PlanId = pendingPlanId is null ? planId : null,
+            BillingInterval = interval,
+            PendingPlanId = pendingPlanId,
+            PendingBillingInterval = pendingInterval,
+            Status = SubscriptionStatus.Active,
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
     }
 
     private async Task<Guid> SeedPlan(string name, decimal price)

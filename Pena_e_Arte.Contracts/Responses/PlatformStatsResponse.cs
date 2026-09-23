@@ -16,6 +16,10 @@ public record PlatformStatsResponse(
     int CancelledStudios,
     int SuspendedStudios,
     decimal Mrr,
-    double MrrGrowthPercent,
+    double? MrrGrowthPercent,
     double TrialConversionRate,
-    int NewStudiosThisMonth);
+    int NewStudiosThisMonth,
+    int PayingStudios,
+    decimal AtRiskMrr,
+    decimal ScheduledChurnMrr,
+    decimal PausedMrr);

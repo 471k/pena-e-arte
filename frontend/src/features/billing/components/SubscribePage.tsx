@@ -38,13 +38,15 @@ function PlanCard({
   onSelect,
   disabled,
   isCurrent = false,
+  deferredUntilLabel,
 }: {
-  plan:       PlanResponse;
-  price:      PlanPriceResponse | undefined;
-  selected:   boolean;
-  onSelect:   () => void;
-  disabled:   boolean;
-  isCurrent?: boolean;
+  plan:                PlanResponse;
+  price:               PlanPriceResponse | undefined;
+  selected:            boolean;
+  onSelect:            () => void;
+  disabled:            boolean;
+  isCurrent?:          boolean;
+  deferredUntilLabel?: string | null;
 }) {
   const unavailable = price === undefined;
   const isYearly    = price?.interval === "Yearly";
@@ -94,6 +96,11 @@ function PlanCard({
               {formatPrice(perMonth)}/mo{label ? ` · ${label}` : ""}
             </p>
           )}
+          {!unavailable && !isYearly && deferredUntilLabel && (
+            <p className="text-xs text-muted-foreground">
+              Starts when your paid year ends on {deferredUntilLabel}
+            </p>
+          )}
         </div>
       </div>
       {selected && (
@@ -128,6 +135,13 @@ export function SubscribePage() {
   const isCashBilled      = isActive && sub.stripeSubscriptionId === null;
   const hasPendingChange  = isCardBilled && sub.pendingPlanId !== null;
   const busy              = checkingOut || switching || activating;
+
+  // D7 — a card-billed Yearly studio can't switch to Monthly immediately (it always waits
+  // for the paid year to end), so every Monthly card says so while browsing Monthly prices.
+  const deferredUntilLabel =
+    isCardBilled && sub.billingInterval === "Yearly" && billingCycle === "Monthly"
+      ? new Date(sub.currentPeriodEnd).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+      : null;
 
   // Toggle badge (D7) — computed from real prices, never Plan.yearlyDiscountPercent.
   // Only paid tiers with a *purchasable* Yearly price count. All of them agreeing on one
@@ -341,6 +355,7 @@ export function SubscribePage() {
                 onSelect={() => setSelectedPlanId(plan.id)}
                 disabled={busy}
                 isCurrent={isCardBilled && plan.id === sub?.planId && billingCycle === sub?.billingInterval}
+                deferredUntilLabel={deferredUntilLabel}
               />
             ))}
           </div>

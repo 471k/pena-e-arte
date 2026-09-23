@@ -7,9 +7,13 @@ export interface PlatformStatsResponse {
   cancelledStudios:    number;
   suspendedStudios:    number;
   mrr:                 number;
-  mrrGrowthPercent:    number;
+  mrrGrowthPercent:    number | null;
   trialConversionRate: number;
   newStudiosThisMonth: number;
+  payingStudios:       number;
+  atRiskMrr:           number;
+  scheduledChurnMrr:   number;
+  pausedMrr:           number;
 }
 
 export type SubscriptionStatus =

@@ -101,7 +101,9 @@ try
     using (IServiceScope planScope = app.Services.CreateScope())
     {
         IAppDbContext planDb = planScope.ServiceProvider.GetRequiredService<IAppDbContext>();
-        await DataSeeder.ReconcileCoreTiersAsync(planDb);
+        Microsoft.Extensions.Logging.ILogger planLogger =
+            planScope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DataSeeder");
+        await DataSeeder.ReconcileCoreTiersAsync(planDb, planLogger);
     }
 
     // DataSeeder upserts demo accounts with known passwords (Password123) and, on a

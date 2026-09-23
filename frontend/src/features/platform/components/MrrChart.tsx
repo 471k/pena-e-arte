@@ -196,7 +196,12 @@ export function MrrChart() {
             No MRR data yet.
           </p>
         ) : (
-          <Chart data={data} activeTooltip={tooltip} onHover={setTooltip} />
+          <>
+            <Chart data={data} activeTooltip={tooltip} onHover={setTooltip} />
+            <p className="text-xs text-muted-foreground mt-1">
+              Past months are estimated from current subscriptions; plan changes aren't reflected yet.
+            </p>
+          </>
         )}
       </CardContent>
     </Card>

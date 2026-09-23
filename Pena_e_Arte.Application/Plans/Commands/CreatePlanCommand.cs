@@ -5,12 +5,14 @@ using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Plans.Commands;
 
 public record CreatePlanCommand(CreatePlanRequest Request) : IRequest<PlanResponse>;
 
-public class CreatePlanHandler(IAppDbContext db)
+public class CreatePlanHandler(IAppDbContext db, IStripeBillingService stripe)
     : IRequestHandler<CreatePlanCommand, PlanResponse>
 {
     public async Task<PlanResponse> Handle(CreatePlanCommand command, CancellationToken ct)
@@ -34,9 +36,16 @@ public class CreatePlanHandler(IAppDbContext db)
 
         foreach (PlanPriceRequest pr in req.Prices)
         {
+            BillingInterval interval = Enum.Parse<BillingInterval>(pr.Interval, ignoreCase: true);
+
+            // G3 — a new plan's linked Stripe price must match its amount/interval too, or
+            // MRR would be wrong from the very first subscriber.
+            if (pr.StripePriceId is not null)
+                await ValidateStripePriceAsync(stripe, pr.StripePriceId, pr.Price, interval, ct);
+
             plan.Prices.Add(new PlanPrice
             {
-                Interval = Enum.Parse<BillingInterval>(pr.Interval, ignoreCase: true),
+                Interval = interval,
                 Price = pr.Price,
                 StripePriceId = pr.StripePriceId,
                 IsActive = pr.IsActive,
@@ -47,6 +56,39 @@ public class CreatePlanHandler(IAppDbContext db)
         await db.SaveChangesAsync(ct);
 
         return Map(plan, subscriberCount: 0);
+    }
+
+    // Every Stripe price in this codebase is created in EUR (see StripeDemoSeeder) — no
+    // multi-currency support exists anywhere else, so G3 rejects any other currency outright
+    // rather than silently accepting an amount match in the wrong currency.
+    private const string PlatformCurrency = "eur";
+
+    // G3 — shared with UpdatePlanHandler, which calls this directly (see architecture.md
+    // Decisions Log, "One MRR definition (2026-09-23)").
+    internal static async Task ValidateStripePriceAsync(
+        IStripeBillingService stripe, string stripePriceId, decimal price, BillingInterval interval, CancellationToken ct)
+    {
+        StripePriceInfo? info = await stripe.GetPriceAsync(stripePriceId, ct);
+        if (info is null)
+            throw new BusinessRuleViolationException($"Stripe price {stripePriceId} was not found.");
+        if (!info.Active)
+            throw new BusinessRuleViolationException($"Stripe price {stripePriceId} is not active.");
+
+        string expectedInterval = interval == BillingInterval.Monthly ? "month" : "year";
+        decimal stripeAmount = (info.UnitAmount ?? 0) / 100m;
+
+        if (!string.Equals(info.Currency, PlatformCurrency, StringComparison.OrdinalIgnoreCase))
+            throw new BusinessRuleViolationException(
+                $"Stripe price {stripePriceId} is billed in {info.Currency}; this platform bills in "
+                + $"{PlatformCurrency.ToUpperInvariant()}.");
+
+        if (stripeAmount != price || info.RecurringInterval != expectedInterval || info.IntervalCount != 1)
+        {
+            string stripeIntervalLabel = info.RecurringInterval ?? "unknown interval";
+            throw new BusinessRuleViolationException(
+                $"Stripe price {stripePriceId} is €{stripeAmount:0.00}/{stripeIntervalLabel}; "
+                + $"this plan price is €{price:0.00}.");
+        }
     }
 
     // YearlySavingAmount/YearlyMonthsFree are left null here — this Map is used only by

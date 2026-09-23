@@ -13,6 +13,10 @@ public record CheckoutSubscriptionResult(
     DateTime CurrentPeriodEnd,
     bool HasDiscount);
 
+/// <summary>The Stripe-side facts G3 checks a linked PlanPrice against.</summary>
+public record StripePriceInfo(
+    bool Active, long? UnitAmount, string Currency, string? RecurringInterval, long? IntervalCount);
+
 public interface IStripeBillingService
 {
     Task<string> CreateCustomerAsync(string email, CancellationToken ct);
@@ -86,4 +90,17 @@ public interface IStripeBillingService
     /// </summary>
     Task<string> CreditCustomerBalanceAsync(
         string stripeSubscriptionId, decimal amount, string idempotencyKey, string description, CancellationToken ct);
+
+    /// <summary>Reads a price back from Stripe for G3's amount/interval match check. Null when not found.</summary>
+    Task<StripePriceInfo?> GetPriceAsync(string stripePriceId, CancellationToken ct);
+
+    /// <summary>
+    /// D6: pauses collection on an active Stripe subscription — renewals during the pause
+    /// generate no invoice/charge. The period already paid is not refunded. Idempotent.
+    /// </summary>
+    Task PauseCollectionAsync(string stripeSubscriptionId, CancellationToken ct);
+
+    /// <summary>D6: clears a paused subscription's pause_collection — billing resumes at the
+    /// next normal renewal date. Idempotent.</summary>
+    Task ResumeCollectionAsync(string stripeSubscriptionId, CancellationToken ct);
 }

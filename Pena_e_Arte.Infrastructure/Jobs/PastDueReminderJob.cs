@@ -13,11 +13,12 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// 1, 3, and 7 since it entered PastDue (not "at least" — a studio checked daily gets exactly
 /// three emails, not one every day past the first threshold). Studios with
 /// DunningExcludedManually set (an admin opt-out — see SetDunningExclusionCommand) are skipped
-/// entirely. Idempotent-safe by construction: since it only fires on exact-day matches and runs
-/// once daily, a normal run never double-sends. A missed run (job failure) simply skips that
-/// day's message rather than catching up later — acceptable for a reminder, not a legal notice.
-/// Neither Subscription nor Studio carries a query filter, so no IgnoreQueryFilters() is needed —
-/// same "no filter to bypass" reasoning as TrafficRollupJob.
+/// entirely, as are suspended studios (D6 — the owner can't log in to pay, so a reminder email
+/// would be pointless). Idempotent-safe by construction: since it only fires on exact-day
+/// matches and runs once daily, a normal run never double-sends. A missed run (job failure)
+/// simply skips that day's message rather than catching up later — acceptable for a reminder,
+/// not a legal notice. Neither Subscription nor Studio carries a query filter, so no
+/// IgnoreQueryFilters() is needed — same "no filter to bypass" reasoning as TrafficRollupJob.
 /// </summary>
 public class PastDueReminderJob(
     IAppDbContext db,
@@ -34,7 +35,8 @@ public class PastDueReminderJob(
             .Include(s => s.Studio)
             .Where(s => s.Status == SubscriptionStatus.PastDue
                 && !s.DunningExcludedManually
-                && s.PastDueSince != null)
+                && s.PastDueSince != null
+                && s.Studio.IsActive) // D6 — a suspended owner can't log in to pay, so skip them
             .ToListAsync(ct);
 
         int sent = 0;

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
@@ -141,7 +142,8 @@ public static class DataSeeder
         // source control, not the database. Keyed on tier Name + (PlanId, Interval), so
         // an orphan row under a non-canonical Id cannot occur by construction. See
         // architecture.md Decisions Log — "Plan/PlanPrice split".
-        await ReconcileCoreTiersAsync(db);
+        ILogger logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DataSeeder");
+        await ReconcileCoreTiersAsync(db, logger);
 
         // Guard: demo studios/subscriptions/appointments/designs/etc. still seed only
         // once — unlike the five canonical plans, this fake data has no "correct"
@@ -242,7 +244,7 @@ public static class DataSeeder
     //
     // Pro retired 2026-09-23 (four-tier catalogue) — see RetireTiersAsync below and
     // architecture.md Decisions Log.
-    public static async Task ReconcileCoreTiersAsync(IAppDbContext db)
+    public static async Task ReconcileCoreTiersAsync(IAppDbContext db, ILogger? logger = null)
     {
         CoreTier[] tiers =
         [
@@ -299,6 +301,16 @@ public static class DataSeeder
                         // StripeDemoSeeder or an admin, never reconciled here (matches
                         // the established precedent from the pre-PlanPrice reconciler).
                     });
+                }
+                else if (price.StripePriceId is not null && price.Price != tp.Price)
+                {
+                    // G4 — a linked price is account-specific; overwriting it here would
+                    // silently change reported revenue without changing what Stripe bills.
+                    logger?.LogWarning(
+                        "Core tier {PlanName} {Interval} is linked to a Stripe price; code price "
+                        + "{CodePrice} ≠ stored {StoredPrice}. Not changed — create a new Stripe "
+                        + "price and relink it in Plan management.",
+                        tier.Name, tp.Interval, tp.Price, price.Price);
                 }
                 else
                 {
