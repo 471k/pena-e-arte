@@ -23,8 +23,13 @@ public class GetPlatformStatsHandlerTests
         result.TrialStudios.Should().Be(0);
         result.GracePeriodStudios.Should().Be(0);
         result.Mrr.Should().Be(0);
+        result.MrrGrowthPercent.Should().BeNull();
         result.TrialConversionRate.Should().Be(0);
         result.NewStudiosThisMonth.Should().Be(0);
+        result.PayingStudios.Should().Be(0);
+        result.AtRiskMrr.Should().Be(0);
+        result.ScheduledChurnMrr.Should().Be(0);
+        result.PausedMrr.Should().Be(0);
     }
 
     [Fact]
@@ -103,6 +108,7 @@ public class GetPlatformStatsHandlerTests
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
 
         result.Mrr.Should().Be(49m);
+        result.PayingStudios.Should().Be(1);
     }
 
     [Fact]
@@ -180,22 +186,85 @@ public class GetPlatformStatsHandlerTests
     public async Task Handle_WithPastDueStudio_CountsPastDueSeparately()
     {
         Studio studio = SeedStudio(isActive: true);
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
+        _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
 
         _db.Subscriptions.Add(new Subscription
         {
             StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
             Status = SubscriptionStatus.PastDue,
             TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(-5),
         });
         await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
 
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
 
         result.PastDueStudios.Should().Be(1);
         result.ActiveSubscriptions.Should().Be(0);
         result.GracePeriodStudios.Should().Be(0);
+        result.Mrr.Should().Be(0); // PastDue is not in headline MRR (D1)
+        result.AtRiskMrr.Should().Be(49m);
+    }
+
+    [Fact]
+    public async Task Handle_ActiveCancelAtPeriodEnd_StaysInMrr_AlsoReportsScheduledChurn()
+    {
+        Studio studio = SeedStudio(isActive: true);
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            CancelAtPeriodEnd = true,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.Mrr.Should().Be(49m);
+        result.ScheduledChurnMrr.Should().Be(49m);
+    }
+
+    [Fact]
+    public async Task Handle_SuspendedStudioWithActiveSubscription_ExcludedFromMrr_ReportedAsPaused()
+    {
+        Studio studio = SeedStudio(isActive: false);
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-30),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.Mrr.Should().Be(0m);
+        result.PausedMrr.Should().Be(49m);
     }
 
     [Fact]
@@ -235,14 +304,14 @@ public class GetPlatformStatsHandlerTests
     [Fact]
     public async Task Handle_MrrGrowthPercent_IsZeroWhenSameSubscriptionActiveBothMonths()
     {
-        // Subscription created last month and still active this month → same in both periods → 0 % growth.
-        Studio studio = SeedStudio(isActive: true);
+        // Subscription created last month (trial already long over) and still active this
+        // month → same in both periods → 0 % growth.
+        DateTime lastMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1);
+        Studio studio = SeedStudio(isActive: true, trialExpiresAt: lastMonthStart.AddDays(-30));
         Plan plan = new() { Name = "Pro" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
-
-        DateTime lastMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1);
 
         _db.Subscriptions.Add(new Subscription
         {
@@ -261,6 +330,36 @@ public class GetPlatformStatsHandlerTests
 
         result.Mrr.Should().Be(49m);
         result.MrrGrowthPercent.Should().Be(0.0); // flat — same sub active both months
+    }
+
+    [Fact]
+    public async Task Handle_MrrGrowthPercent_NullWhenLastMonthWasZero()
+    {
+        DateTime monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        Studio studio = SeedStudio(isActive: true, trialExpiresAt: monthStart.AddDays(-1));
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 79m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        // Created this month — no billing history before this month, so last month's MRR is 0.
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            CreatedAt = monthStart.AddDays(1),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.Mrr.Should().Be(79m);
+        result.MrrGrowthPercent.Should().BeNull();
     }
 
     private Studio SeedStudio(bool isActive, DateTime? trialExpiresAt = null)

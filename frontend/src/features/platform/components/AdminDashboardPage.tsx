@@ -196,6 +196,17 @@ function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
 
+function mrrSubtitle(stats: { mrrGrowthPercent: number | null; scheduledChurnMrr: number } | undefined): string | undefined {
+  if (!stats) return undefined;
+  const growth =
+    stats.mrrGrowthPercent === null
+      ? "No MRR last month"
+      : `${stats.mrrGrowthPercent >= 0 ? "+" : ""}${stats.mrrGrowthPercent.toFixed(1)}% vs last month`;
+  return stats.scheduledChurnMrr > 0
+    ? `${growth} · ${formatCurrency(stats.scheduledChurnMrr)} cancelling at period end`
+    : growth;
+}
+
 export function AdminDashboardPage() {
   useDocumentMeta({ title: "Platform Overview — Platform Admin", canonical: "/platform" });
 
@@ -243,22 +254,18 @@ export function AdminDashboardPage() {
                 label="MRR"
                 value={formatCurrency(stats?.mrr ?? 0)}
                 icon={<TrendingUp className="h-6 w-6" />}
-                subtitle={
-                  stats?.mrrGrowthPercent !== undefined
-                    ? `${stats.mrrGrowthPercent >= 0 ? "+" : ""}${stats.mrrGrowthPercent.toFixed(1)}% vs last month`
-                    : undefined
-                }
+                subtitle={mrrSubtitle(stats)}
                 accent={stats?.mrrGrowthPercent != null && stats.mrrGrowthPercent > 0 ? "success" : "default"}
               />
               <KpiCard
-                label="ARPU"
+                label="ARPA"
                 value={
-                  stats && stats.activeSubscriptions > 0
-                    ? formatCurrency(stats.mrr / stats.activeSubscriptions)
+                  stats && stats.payingStudios > 0
+                    ? formatCurrency(stats.mrr / stats.payingStudios)
                     : "—"
                 }
                 icon={<Users className="h-6 w-6" />}
-                subtitle="MRR ÷ active"
+                subtitle="MRR ÷ paying studios"
                 accent="info"
               />
             </div>
@@ -285,7 +292,11 @@ export function AdminDashboardPage() {
                 label="Past Due"
                 value={stats?.pastDueStudios ?? 0}
                 icon={<AlertTriangle className="h-6 w-6" />}
-                subtitle="current"
+                subtitle={
+                  stats && stats.atRiskMrr > 0
+                    ? `${formatCurrency(stats.atRiskMrr)} MRR at risk`
+                    : "current"
+                }
                 href="/platform/subscriptions?status=PastDue"
                 accent="danger"
               />
@@ -318,7 +329,11 @@ export function AdminDashboardPage() {
                 label="Suspended"
                 value={stats?.suspendedStudios ?? 0}
                 icon={<Ban className="h-6 w-6" />}
-                subtitle="deactivated by admin"
+                subtitle={
+                  stats && stats.pausedMrr > 0
+                    ? `${formatCurrency(stats.pausedMrr)} MRR paused`
+                    : "deactivated by admin"
+                }
                 href="/platform/studios"
                 accent={stats?.suspendedStudios ? "danger" : "default"}
               />

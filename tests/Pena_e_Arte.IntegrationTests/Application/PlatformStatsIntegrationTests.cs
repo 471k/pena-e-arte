@@ -21,18 +21,56 @@ public class PlatformStatsIntegrationTests(DatabaseFixture fixture)
         db.Studios.AddRange(activeStudio, suspendedStudio);
         await db.SaveChangesAsync();
 
-        Plan plan = new() { Name = "Pro" };
+        Plan plan = new() { Name = $"Pro-{Guid.NewGuid():N}" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
-        db.Plans.Add(plan);
-        db.Subscriptions.Add(new Subscription
-        {
-            StudioId = activeStudio.Id,
-            PlanId = plan.Id,
-            BillingInterval = BillingInterval.Monthly,
-            Status = SubscriptionStatus.Active,
-            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
-            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
-        });
+        Plan freePlan = new() { Name = $"Free-{Guid.NewGuid():N}" };
+        freePlan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 0m });
+        db.Plans.AddRange(plan, freePlan);
+
+        Studio freeStudio = SeedStudio(isActive: true);
+        Studio pastDueStudio = SeedStudio(isActive: true);
+        Studio churningStudio = SeedStudio(isActive: true);
+        db.Studios.AddRange(freeStudio, pastDueStudio, churningStudio);
+        await db.SaveChangesAsync();
+
+        db.Subscriptions.AddRange(
+            new Subscription
+            {
+                StudioId = activeStudio.Id,
+                PlanId = plan.Id,
+                BillingInterval = BillingInterval.Monthly,
+                Status = SubscriptionStatus.Active,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(30),
+                CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            },
+            new Subscription
+            {
+                StudioId = freeStudio.Id,
+                PlanId = freePlan.Id,
+                BillingInterval = BillingInterval.Monthly,
+                Status = SubscriptionStatus.Active,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(-30),
+                CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            },
+            new Subscription
+            {
+                StudioId = pastDueStudio.Id,
+                PlanId = plan.Id,
+                BillingInterval = BillingInterval.Monthly,
+                Status = SubscriptionStatus.PastDue,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(-30),
+                CurrentPeriodEnd = DateTime.UtcNow.AddDays(-2),
+            },
+            new Subscription
+            {
+                StudioId = churningStudio.Id,
+                PlanId = plan.Id,
+                BillingInterval = BillingInterval.Monthly,
+                Status = SubscriptionStatus.Active,
+                CancelAtPeriodEnd = true,
+                TrialExpiresAt = DateTime.UtcNow.AddDays(-30),
+                CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+            });
         await db.SaveChangesAsync();
 
         await using AppDbContext readDb = fixture.CreateDbContext(Guid.Empty);
@@ -43,8 +81,13 @@ public class PlatformStatsIntegrationTests(DatabaseFixture fixture)
         result.TotalStudios.Should().BeGreaterThanOrEqualTo(1);
         result.ActiveSubscriptions.Should().BeGreaterThanOrEqualTo(1);
         result.NewStudiosThisMonth.Should().BeGreaterThanOrEqualTo(2);
-        result.Mrr.Should().BeGreaterThanOrEqualTo(49m);
+        result.Mrr.Should().BeGreaterThanOrEqualTo(49m + 49m); // activeStudio + churningStudio (still billing until period end)
         result.TrialConversionRate.Should().BeInRange(0, 1);
+
+        // D4/D5/D6: the new revenue-reporting figures.
+        result.PayingStudios.Should().BeGreaterThanOrEqualTo(2); // activeStudio + churningStudio — freeStudio excluded (0 price)
+        result.AtRiskMrr.Should().BeGreaterThanOrEqualTo(49m);   // pastDueStudio
+        result.ScheduledChurnMrr.Should().BeGreaterThanOrEqualTo(49m); // churningStudio
     }
 
     private static Studio SeedStudio(bool isActive) => new()

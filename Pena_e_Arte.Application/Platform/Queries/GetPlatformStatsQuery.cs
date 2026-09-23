@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Contracts.Responses;
@@ -18,6 +19,9 @@ public class GetPlatformStatsHandler(IAppDbContext db)
         DateTime monthStart = new(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         DateTime lastMonth = monthStart.AddMonths(-1);
 
+        // Status counts, not revenue — a broader read than MrrInputLoader's (it also needs
+        // studios that have never had a Subscription row, e.g. legacy/edge-case data), so it
+        // stays its own query rather than being folded into the shared loader.
         // IgnoreQueryFilters approved: usage #4 — platform KPI aggregate, AdminOnly. See architecture.md.
         List<Studio> studios = await db.Studios
             .IgnoreQueryFilters()
@@ -42,28 +46,18 @@ public class GetPlatformStatsHandler(IAppDbContext db)
         int pastDueStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.PastDue);
         int cancelledStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Cancelled);
 
-        // MRR — active subscriptions only, sum of each subscription's monthly-equivalent price
-        // (a Yearly-billed subscription contributes Price / 12, not the Plan's decorative
-        // Monthly reference figure — see architecture.md Decisions Log, "Plan/PlanPrice split").
-        decimal mrr = active
-            .Where(s => s.Subscription?.Status == SubscriptionStatus.Active && s.Subscription.Plan is not null)
-            .Sum(s => MonthlyEquivalentRevenue(s.Subscription!));
+        List<SubscriptionRevenueInput> inputs = await MrrInputLoader.LoadAsync(db, ct);
 
-        // MRR growth: compare with last calendar month.
-        // Approximation: counts active subs that existed before this month and whose period covered last month.
-        // Undercounts if any subs were active last month but since cancelled — acceptable at current scale.
-        decimal lastMonthMrr = active
-            .Where(s =>
-                s.Subscription is not null
-                && s.Subscription.Plan is not null
-                && s.Subscription.CreatedAt < monthStart       // existed last month
-                && s.Subscription.CurrentPeriodEnd >= lastMonth // was active last month
-                && s.Subscription.Status == SubscriptionStatus.Active)
-            .Sum(s => MonthlyEquivalentRevenue(s.Subscription!));
-
-        double mrrGrowthPercent = lastMonthMrr == 0
-            ? (mrr > 0 ? 100.0 : 0.0)
+        decimal mrr = MrrRules.MrrAt(inputs, now, now);
+        decimal lastMonthMrr = MrrRules.MrrAt(inputs, MrrRules.EndOfMonth(lastMonth), now);
+        double? mrrGrowthPercent = lastMonthMrr == 0
+            ? null
             : Math.Round((double)((mrr - lastMonthMrr) / lastMonthMrr) * 100, 1);
+
+        decimal atRiskMrr = MrrRules.AtRiskMrr(inputs);
+        decimal scheduledChurnMrr = MrrRules.ScheduledChurnMrr(inputs);
+        decimal pausedMrr = MrrRules.PausedMrr(inputs);
+        int payingStudios = MrrRules.PayingStudios(inputs);
 
         int conversionDenominator = activeSubscriptions + trialStudios + gracePeriodStudios;
         double trialConversionRate = conversionDenominator > 0
@@ -83,11 +77,10 @@ public class GetPlatformStatsHandler(IAppDbContext db)
             mrr,
             mrrGrowthPercent,
             trialConversionRate,
-            newStudiosThisMonth);
+            newStudiosThisMonth,
+            payingStudios,
+            atRiskMrr,
+            scheduledChurnMrr,
+            pausedMrr);
     }
-
-    private static decimal MonthlyEquivalentRevenue(Subscription s) =>
-        s.Plan?.Prices.FirstOrDefault(pp => pp.Interval == s.BillingInterval) is PlanPrice pp
-            ? (pp.Interval == BillingInterval.Monthly ? pp.Price : pp.Price / 12m)
-            : 0m;
 }

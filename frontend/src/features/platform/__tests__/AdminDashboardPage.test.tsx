@@ -26,6 +26,10 @@ const STATS: PlatformStatsResponse = {
   mrrGrowthPercent:    12.5,
   trialConversionRate: 0.727,
   newStudiosThisMonth: 5, // chosen to avoid collision with atRisk badge count (2)
+  payingStudios:       8,
+  atRiskMrr:           0,
+  scheduledChurnMrr:   0,
+  pausedMrr:           0,
 };
 
 const SUBSCRIPTIONS: PlatformSubscriptionResponse[] = [
@@ -197,6 +201,52 @@ describe("AdminDashboardPage", () => {
     expect(await screen.findByText(/\+12\.5% vs last month/i)).toBeInTheDocument();
   });
 
+  it("shows 'No MRR last month' when mrrGrowthPercent is null", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/stats", () =>
+        HttpResponse.json({ ...STATS, mrrGrowthPercent: null }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/no mrr last month/i)).toBeInTheDocument();
+  });
+
+  it("shows 'cancelling at period end' in the MRR card subtitle when scheduledChurnMrr > 0", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/stats", () =>
+        HttpResponse.json({ ...STATS, scheduledChurnMrr: 49 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/cancelling at period end/i)).toBeInTheDocument();
+  });
+
+  it("renders the ARPA card (not ARPU) as MRR ÷ paying studios", async () => {
+    renderPage();
+    expect(await screen.findByText("ARPA")).toBeInTheDocument();
+    expect(screen.getByText("MRR ÷ paying studios")).toBeInTheDocument();
+  });
+
+  it("shows '€X MRR at risk' on the Past Due card when atRiskMrr > 0", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/stats", () =>
+        HttpResponse.json({ ...STATS, pastDueStudios: 1, atRiskMrr: 79 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/mrr at risk/i)).toBeInTheDocument();
+  });
+
+  it("shows '€X MRR paused' on the Suspended card when pausedMrr > 0", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/stats", () =>
+        HttpResponse.json({ ...STATS, suspendedStudios: 1, pausedMrr: 79 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/mrr paused/i)).toBeInTheDocument();
+  });
+
   it("shows 'Payment overdue' label for PastDue studios in at-risk widget", async () => {
     renderPage();
     expect(await screen.findByText("Payment overdue")).toBeInTheDocument();
@@ -231,6 +281,17 @@ describe("AdminDashboardPage", () => {
   it("MRR chart renders 'No MRR data yet.' without crashing on empty history", async () => {
     renderPage();
     expect(await screen.findByText(/no mrr data yet/i)).toBeInTheDocument();
+  });
+
+  it("MRR chart shows the D3 estimation caption when history data is present", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/mrr-history", () =>
+        HttpResponse.json([{ month: "2026-05", mrr: 300 }, { month: "2026-06", mrr: 392 }]),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/past months are estimated from current subscriptions/i))
+      .toBeInTheDocument();
   });
 
   it("At-Risk row: clicking 'Extend trial' reveals the days input and Confirm button", async () => {
