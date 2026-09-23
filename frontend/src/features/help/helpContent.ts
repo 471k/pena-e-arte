@@ -1409,7 +1409,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click a plan card to select it.",
       "Click the button at the bottom to continue to checkout, switch plan, or activate the Free plan.",
     ],
-    tips: ["If you'd rather pay by cash, contact support using the link at the bottom of the page instead — your trial keeps running until it's set up."],
+    tips: [
+      "If you'd rather pay by cash, contact support using the link at the bottom of the page instead — your trial keeps running until it's set up.",
+      "Switching from yearly to monthly billing takes effect when your paid year ends. To move to a bigger plan straight away, choose its yearly option.",
+    ],
     warnings: ["Downgrading an existing card-billed plan takes effect only at the end of your current billing period, and you can't select a new plan while a change is already scheduled."],
   },
   {
@@ -1550,12 +1553,19 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["platform overview", "mrr", "kpi"],
     summary: "A snapshot of how the whole platform is doing — how many studios, how much revenue, and which studios need attention.",
     steps: [
-      "View the KPI cards for totals (Total Studios, Active Subscriptions, MRR, ARPU).",
+      "View the KPI cards for totals (Total Studios, Active Subscriptions, MRR, ARPA).",
       "View the pipeline cards (Trialing, Grace Period, Past Due, Cancelled).",
       "Scroll to the MRR chart.",
       "Check \"At-Risk Studios\" and use \"Extend trial\" inline, or click through to that studio.",
     ],
-    tips: ["Clicking most KPI cards jumps straight to a pre-filtered Studios or Subscriptions list."],
+    tips: [
+      "Clicking most KPI cards jumps straight to a pre-filtered Studios or Subscriptions list.",
+      "MRR is the monthly subscription revenue from studios on an active paid plan. Yearly plans count as a twelfth of the yearly price. Referral discounts don't reduce it.",
+      "Past-due studios aren't in MRR — their revenue shows as \"at risk\" on the Past Due card until they pay or cancel. Studios cancelling at period end still count until their period ends.",
+      "ARPA is MRR divided by paying studios; Free-plan studios aren't counted.",
+      "Each chart point is MRR at the end of that month (now, for the current month). Past months are estimated from current subscriptions until full revenue history is recorded.",
+      "Suspended studios' revenue is shown as \"paused\" on the Suspended card, not in MRR.",
+    ],
   },
   {
     id: "admin-studios",
@@ -1597,7 +1607,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Suspend Studio\" (or \"Reactivate Studio\" if already suspended).",
       "Read the confirmation message, then click \"Confirm\".",
     ],
-    warnings: ["Suspending a studio immediately hides it from Discover and blocks logins for its owner and all its artists — this takes effect right away, though it can be undone anytime with \"Reactivate Studio\"."],
+    warnings: [
+      "Suspending a studio immediately hides it from Discover and blocks logins for its owner and all its artists — this takes effect right away, though it can be undone anytime with \"Reactivate Studio\".",
+      "Suspending also pauses the studio's card billing: no renewal is charged while it's suspended, and the period already paid isn't refunded. Reactivating resumes billing at the next renewal date. To end the subscription for good, use Cancel Subscription.",
+    ],
+    tips: ["Suspended studios don't get payment-reminder emails, and their revenue shows as \"paused\" on the dashboard."],
   },
   {
     id: "admin-impersonation",
@@ -1668,6 +1682,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "A plan must be either fully free (all prices €0) or fully paid — you can't mix a free interval with a paid one.",
       "Locations isn't enforced yet — multi-location isn't built.",
+      "A price that studios are subscribed to can't be changed or deleted — deactivate it and create a new plan instead. A linked Stripe price must match the amount and billing interval exactly.",
     ],
   },
   {

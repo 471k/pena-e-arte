@@ -3347,6 +3347,7 @@ ol.steps li { margin: 6px 0; }
 <li>Yearly billing gives 2 months free on plans that offer it. Free stays free in either view.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> prefer to pay by cash? Contact support instead — your trial keeps running until the studio confirms payment.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> switching from yearly to monthly billing takes effect when your paid year ends. To move to a bigger plan straight away, choose its yearly option.</div>
 <div class="crosslinks">See also: <a href="#owner-billing">Billing</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
 </section>
 
@@ -3476,7 +3477,7 @@ ol.steps li { margin: 6px 0; }
 <rect x="16" y="72" width="120" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="26" y="88" font-size="8" fill-opacity="0.6">Total Studios</text><text x="26" y="108" font-size="14" font-weight="700">86</text>
 <rect x="144" y="72" width="120" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="154" y="88" font-size="8" fill-opacity="0.6">Active Subs</text><text x="154" y="108" font-size="14" font-weight="700">61</text>
 <rect x="272" y="72" width="120" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="282" y="88" font-size="8" fill-opacity="0.6">MRR</text><text x="282" y="108" font-size="14" font-weight="700">€2.9k</text>
-<rect x="400" y="72" width="120" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="410" y="88" font-size="8" fill-opacity="0.6">ARPU</text><text x="410" y="108" font-size="14" font-weight="700">€47</text>
+<rect x="400" y="72" width="120" height="46" rx="6" fill="currentColor" fill-opacity="0.05"/><text x="410" y="88" font-size="8" fill-opacity="0.6">ARPA</text><text x="410" y="108" font-size="14" font-weight="700">€47</text>
 <text x="16" y="150" font-size="10" font-weight="700">MRR trend</text>
 <polyline points="16,190 100,180 184,170 268,155 352,140 436,120" fill="none" stroke="#7c3aed" stroke-width="2"/>
 <text x="16" y="230" font-size="10" font-weight="700">At-Risk Studios (3)</text>
@@ -3487,11 +3488,18 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Platform overview — KPI cards, MRR chart, and at-risk studio list</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Review the three KPI rows: <span class="step-title">totals</span> (studios, active subs, MRR, ARPU), <span class="step-title">pipeline</span> (trialing, grace period, past due, cancelled), and <span class="step-title">health</span> (trial conversion, new this month, suspended).</li>
+<li>Review the three KPI rows: <span class="step-title">totals</span> (studios, active subs, MRR, ARPA), <span class="step-title">pipeline</span> (trialing, grace period, past due, cancelled), and <span class="step-title">health</span> (trial conversion, new this month, suspended).</li>
 <li>Click any KPI card to jump to the filtered studio/subscription list behind it.</li>
 <li>Use the <span class="step-title">3m / 6m / 12m</span> toggle on the MRR chart, and hover a point for the exact figure.</li>
 <li>In <span class="step-title">At-Risk Studios</span>, click <span class="step-title">Extend trial</span> to grant more days inline, or the arrow to jump to that studio in the full list.</li>
 </ol>
+<p><strong>Definitions:</strong></p>
+<ul>
+<li>MRR is the monthly subscription revenue from studios on an active paid plan. Yearly plans count as a twelfth of the yearly price. Referral discounts don't reduce it.</li>
+<li>Past-due studios aren't in MRR — their revenue shows as "at risk" on the Past Due card until they pay or cancel. Studios cancelling at period end still count until their period ends.</li>
+<li>ARPA is MRR divided by paying studios; Free-plan studios aren't counted.</li>
+<li>Each chart point is MRR at the end of that month (now, for the current month). Past months are estimated from current subscriptions until full revenue history is recorded.</li>
+</ul>
 <div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-subscriptions">Subscription oversight</a></div>
 </section>
 
@@ -3521,10 +3529,10 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">View</span> to open the full studio detail.</li>
 <li>Click <span class="step-title">Extend Trial</span>, enter a day count, and confirm.</li>
 <li>Click <span class="step-title">Activate</span> to manually record a cash subscription — pick a plan and optional note.</li>
-<li>Click <span class="step-title">Suspend</span> / <span class="step-title">Reactivate</span> to control public visibility independently of billing.</li>
+<li>Click <span class="step-title">Suspend</span> / <span class="step-title">Reactivate</span> to lock a studio out (or restore it). Suspending also pauses its card billing; reactivating resumes it at the next renewal.</li>
 <li>Click <span class="step-title">Cancel Subscription</span> to end it permanently (with confirmation).</li>
 </ol>
-<div class="callout callout-warn"><strong>Warning:</strong> suspending a studio makes it inaccessible to its own clients and staff immediately — use only for policy violations or non-payment beyond the grace period.</div>
+<div class="callout callout-warn"><strong>Warning:</strong> suspending a studio makes it inaccessible to its own clients and staff immediately — use only for policy violations or non-payment beyond the grace period. It also pauses the studio's card billing; the period already paid isn't refunded, and reactivating resumes billing at the next renewal date rather than crediting the suspended time back.</div>
 <div class="crosslinks">See also: <a href="#admin-studio-detail">Studio detail</a>, <a href="#admin-subscriptions">Subscription oversight</a></div>
 </section>
 
@@ -3642,6 +3650,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">🗑</span> to delete a plan — deleting a plan with active subscribers is blocked from new signups but doesn't affect existing ones.</li>
 </ol>
 <div class="callout callout-warning"><strong>Note:</strong> Free, Starter, Growth and Premium are reset from code on every deploy. To change one, create a new plan instead of editing it. Retired plans (like Pro) show a Retired badge and can't be bought.</div>
+<div class="callout callout-warning"><strong>Note:</strong> a price that studios are subscribed to can't be changed or deleted — deactivate it and create a new plan instead. A linked Stripe price must match the amount and billing interval exactly.</div>
 <div class="crosslinks">See also: <a href="#owner-subscribe">Owner: choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
 </section>
 
