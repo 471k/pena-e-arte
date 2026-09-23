@@ -10,6 +10,7 @@ using Pena_e_Arte.Domain.Interfaces;
 using Stripe;
 using Stripe.Checkout;
 using System.Collections.Generic;
+using System.Security.Claims;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -43,10 +44,12 @@ public static class BillingEndpoints
     }
 
     private static async Task<IResult> GetPlans(
+        ClaimsPrincipal user,
         ISender mediator,
         CancellationToken ct)
     {
-        List<PlanResponse> result = await mediator.Send(new GetPlansQuery(), ct);
+        List<PlanResponse> result = await mediator.Send(
+            new GetPlansQuery(IncludeRetired: user.IsInRole("admin")), ct);
         return Results.Ok(result);
     }
 

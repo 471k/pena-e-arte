@@ -13,7 +13,18 @@ import {
   useChangePlanMutation,
   useCreateSubscriptionMutation,
 } from "../billingApi";
-import { priceFor, type PlanResponse, type PlanPriceResponse } from "../billing.types";
+import { priceFor, purchasablePriceFor, type PlanResponse, type PlanPriceResponse } from "../billing.types";
+
+// Purchasable price for a plan card at the given cycle. Free is a special case: it has
+// no Yearly PlanPrice row (D5) but must still render as a selectable "Free" card while
+// the toggle is on Yearly, so we fall back to its Monthly ($0) price for that one card.
+function purchasableCardPrice(plan: PlanResponse, cycle: "Monthly" | "Yearly"): PlanPriceResponse | undefined {
+  if (cycle === "Yearly") {
+    const monthly = purchasablePriceFor(plan, "Monthly");
+    if (monthly && monthly.price === 0) return monthly;
+  }
+  return purchasablePriceFor(plan, cycle);
+}
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(price);
@@ -122,12 +133,14 @@ export function SubscribePage() {
     ?? plans.find((p) => priceFor(p, "Yearly"))?.yearlyDiscountPercent
     ?? 0;
 
-  // Every tier stays visible in both toggle states — a tier with no price at the
-  // current cycle renders disabled instead of being silently dropped from the list.
-  const plansWithPrice = plans.map((p) => ({ plan: p, price: priceFor(p, billingCycle) }));
+  // Every tier stays visible in both toggle states — a tier with no purchasable price at
+  // the current cycle (missing entirely, or a paid price with no linked Stripe price)
+  // renders disabled instead of being silently dropped from the list or offered for a
+  // checkout that would fail.
+  const plansWithPrice = plans.map((p) => ({ plan: p, price: purchasableCardPrice(p, billingCycle) }));
 
   const selectedPlan       = plans.find((p) => p.id === selectedPlanId) ?? null;
-  const selectedPrice      = selectedPlan ? priceFor(selectedPlan, billingCycle) : undefined;
+  const selectedPrice      = selectedPlan ? purchasableCardPrice(selectedPlan, billingCycle) : undefined;
   const isFreePlanSelected = selectedPrice?.price === 0;
 
   // A studio already on an active Free plan is "cash-billed" in the existing model
@@ -147,9 +160,10 @@ export function SubscribePage() {
     setSubmitError(null);
 
     // Free plan: activate directly through the existing no-Stripe subscribe endpoint —
-    // no card form, no Checkout redirect.
+    // no card form, no Checkout redirect. Always Monthly — Free has no Yearly price row
+    // (D5) even when the toggle is on Yearly.
     if (isFreePlanSelected) {
-      const result = await activateFree({ planId: selectedPlanId, billingInterval: billingCycle });
+      const result = await activateFree({ planId: selectedPlanId, billingInterval: "Monthly" });
       if ("error" in result) {
         const err = result.error as { data?: { message?: string } } | undefined;
         setSubmitError(err?.data?.message ?? "Failed to activate the Free plan. Please try again.");

@@ -11,24 +11,43 @@ public class DataSeederPlanReconciliationTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
 
     [Fact]
-    public async Task ReconcileCoreTiersAsync_EmptyDatabase_InsertsAllFiveCanonicalPlans()
+    public async Task ReconcileCoreTiersAsync_EmptyDatabase_InsertsFourCanonicalPlansNoPro()
     {
         await DataSeeder.ReconcileCoreTiersAsync(_db);
 
-        _db.Plans.Should().HaveCount(5);
+        _db.Plans.Should().HaveCount(4);
         _db.Plans.Select(p => p.Name).Should()
-            .Contain(["Free", "Starter", "Growth", "Premium", "Pro"]);
-        _db.Plans.Count(p => p.Name == "Premium").Should().Be(1);
+            .Contain(["Free", "Starter", "Growth", "Premium"]);
+        _db.Plans.Select(p => p.Name).Should().NotContain("Pro");
+        _db.Plans.Any(p => p.Id == DataSeeder.ProPlanId).Should().BeFalse();
     }
 
     [Fact]
-    public async Task ReconcileCoreTiersAsync_EmptyDatabase_InsertsSixPlanPriceRows()
+    public async Task ReconcileCoreTiersAsync_EmptyDatabase_InsertsSevenPlanPriceRows()
     {
-        // 5 tiers, one Monthly row each, plus Premium's extra Yearly row = 6.
+        // Free 1, Starter 2, Growth 2, Premium 2 = 7.
         await DataSeeder.ReconcileCoreTiersAsync(_db);
 
-        _db.PlanPrices.Should().HaveCount(6);
+        _db.PlanPrices.Should().HaveCount(7);
+        _db.PlanPrices.Count(pp => pp.PlanId == DataSeeder.FreePlanId).Should().Be(1);
+        _db.PlanPrices.Count(pp => pp.PlanId == DataSeeder.StarterPlanId).Should().Be(2);
+        _db.PlanPrices.Count(pp => pp.PlanId == DataSeeder.GrowthPlanId).Should().Be(2);
         _db.PlanPrices.Count(pp => pp.PlanId == DataSeeder.PremiumPlanId).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ReconcileCoreTiersAsync_EmptyDatabase_PremiumAbsorbsProLimitsAndApiAccess()
+    {
+        await DataSeeder.ReconcileCoreTiersAsync(_db);
+
+        Plan premium = _db.Plans.Single(p => p.Id == DataSeeder.PremiumPlanId);
+        premium.MaxArtists.Should().Be(10);
+        premium.MaxAppointmentsPerMonth.Should().Be(1000);
+        premium.MaxNotificationsPerMonth.Should().Be(2500);
+        premium.MaxStorageGb.Should().Be(50);
+        premium.MaxLocations.Should().BeNull();
+        premium.AllowApiAccess.Should().BeTrue();
+        premium.PrioritySupport.Should().BeFalse();
     }
 
     [Fact]
@@ -52,7 +71,7 @@ public class DataSeederPlanReconciliationTests
         starter.MaxAppointmentsPerMonth.Should().Be(40);
         starter.MaxNotificationsPerMonth.Should().Be(150);
         starter.MaxStorageGb.Should().Be(2);
-        starter.MaxLocations.Should().Be(1);
+        starter.MaxLocations.Should().BeNull();
     }
 
     [Fact]
@@ -69,7 +88,8 @@ public class DataSeederPlanReconciliationTests
 
         await DataSeeder.ReconcileCoreTiersAsync(_db);
 
-        _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.StarterPlanId).Price.Should().Be(29m);
+        _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.StarterPlanId && pp.Interval == BillingInterval.Monthly)
+            .Price.Should().Be(29m);
     }
 
     [Fact]
@@ -87,32 +107,50 @@ public class DataSeederPlanReconciliationTests
 
         await DataSeeder.ReconcileCoreTiersAsync(_db);
 
-        _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.StarterPlanId)
+        _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.StarterPlanId && pp.Interval == BillingInterval.Monthly)
             .StripePriceId.Should().Be("price_real_stripe_id");
     }
 
     [Fact]
-    public async Task ReconcileCoreTiersAsync_ProMissingMaxFields_BackfillsThemWithoutTouchingPrice()
+    public async Task ReconcileCoreTiersAsync_ExistingYearlyPlanPrice_DoesNotOverwriteStripePriceId()
     {
-        _db.Plans.Add(new Plan
+        _db.Plans.Add(new Plan { Id = DataSeeder.StarterPlanId, Name = "Starter" });
+        _db.PlanPrices.Add(new PlanPrice
         {
-            Id = DataSeeder.ProPlanId,
-            Name = "Pro",
-            YearlyDiscountPercent = 17,
+            PlanId = DataSeeder.StarterPlanId,
+            Interval = BillingInterval.Yearly,
+            Price = 290m,
+            StripePriceId = "price_real_yearly_stripe_id",
+        });
+        await _db.SaveChangesAsync();
+
+        await DataSeeder.ReconcileCoreTiersAsync(_db);
+
+        _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.StarterPlanId && pp.Interval == BillingInterval.Yearly)
+            .StripePriceId.Should().Be("price_real_yearly_stripe_id");
+    }
+
+    [Fact]
+    public async Task ReconcileCoreTiersAsync_ExistingProRowWithPrice_KeepsRowDeactivatesPriceLeavesValueUntouched()
+    {
+        _db.Plans.Add(new Plan { Id = DataSeeder.ProPlanId, Name = "Pro", YearlyDiscountPercent = 17 });
+        _db.PlanPrices.Add(new PlanPrice
+        {
+            PlanId = DataSeeder.ProPlanId,
+            Interval = BillingInterval.Monthly,
+            Price = 99m,
+            IsActive = true,
         });
         await _db.SaveChangesAsync();
 
         await DataSeeder.ReconcileCoreTiersAsync(_db);
 
         Plan pro = _db.Plans.Single(p => p.Id == DataSeeder.ProPlanId);
-        pro.MaxArtists.Should().Be(10);
-        pro.MaxAppointmentsPerMonth.Should().Be(1000);
-        pro.MaxNotificationsPerMonth.Should().Be(2500);
-        pro.MaxStorageGb.Should().Be(50);
-        pro.MaxLocations.Should().Be(10);
-        pro.AllowApiAccess.Should().BeTrue();
-        pro.PrioritySupport.Should().BeTrue();
-        _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.ProPlanId).Price.Should().Be(99m);
+        pro.Name.Should().Be("Pro");
+
+        PlanPrice proPrice = _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.ProPlanId);
+        proPrice.IsActive.Should().BeFalse();
+        proPrice.Price.Should().Be(99m); // untouched — reconciler no longer manages Pro's price value
     }
 
     [Fact]
@@ -121,16 +159,35 @@ public class DataSeederPlanReconciliationTests
         await DataSeeder.ReconcileCoreTiersAsync(_db);
         await DataSeeder.ReconcileCoreTiersAsync(_db);
 
-        _db.Plans.Should().HaveCount(5);
-        _db.PlanPrices.Should().HaveCount(6);
+        _db.Plans.Should().HaveCount(4);
+        _db.PlanPrices.Should().HaveCount(7);
         _db.Plans.Count(p => p.Id == DataSeeder.PremiumPlanId).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ReconcileCoreTiersAsync_CalledTwiceWithRetiredPro_StaysIdempotent()
+    {
+        _db.Plans.Add(new Plan { Id = DataSeeder.ProPlanId, Name = "Pro" });
+        _db.PlanPrices.Add(new PlanPrice
+        {
+            PlanId = DataSeeder.ProPlanId,
+            Interval = BillingInterval.Monthly,
+            Price = 99m,
+        });
+        await _db.SaveChangesAsync();
+
+        await DataSeeder.ReconcileCoreTiersAsync(_db);
+        await DataSeeder.ReconcileCoreTiersAsync(_db);
+
+        _db.PlanPrices.Count(pp => pp.PlanId == DataSeeder.ProPlanId).Should().Be(1);
+        _db.PlanPrices.Single(pp => pp.PlanId == DataSeeder.ProPlanId).IsActive.Should().BeFalse();
     }
 
     [Fact]
     public async Task ReconcileCoreTiersAsync_DoesNotTouchDifferentlyNamedCustomPlan()
     {
         // A hand-created Plan (e.g. admin-cloned custom tier) not matching any of the
-        // five reserved tier names must be left completely alone — this reconciler is
+        // four reserved tier names must be left completely alone — this reconciler is
         // keyed on tier Name, so there is nowhere for a duplicate/orphan of a RESERVED
         // name to hide (the bug class both prior fixes had to clean up after).
         Guid customPlanId = Guid.NewGuid();
@@ -141,7 +198,7 @@ public class DataSeederPlanReconciliationTests
 
         await DataSeeder.ReconcileCoreTiersAsync(_db);
 
-        _db.Plans.Should().HaveCount(6); // 5 canonical + 1 untouched custom
+        _db.Plans.Should().HaveCount(5); // 4 canonical + 1 untouched custom
         Plan stored = _db.Plans.Single(p => p.Id == customPlanId);
         stored.Name.Should().Be("Studio X Custom Deal");
         stored.MaxArtists.Should().Be(20);

@@ -27,11 +27,12 @@ public class Plan
     public bool AllowApiAccess { get; set; } = false;
     public bool PrioritySupport { get; set; } = false;
 
-    /// <summary>Gates SendCampaignCommand — unlike AllowApiAccess/PrioritySupport (hidden from
-    /// UI/Help as sold-but-undelivered flags with zero backing implementation, see
-    /// architecture.md Decisions Log "AllowApiAccess/PrioritySupport verification"), this flag
-    /// IS actually enforced: SendCampaignHandler throws BusinessRuleViolationException when
-    /// false. Default false — must be explicitly granted per plan.</summary>
+    /// <summary>Gates SendCampaignCommand — enforced: SendCampaignHandler throws
+    /// BusinessRuleViolationException when false. Default false — must be explicitly
+    /// granted per plan. AllowApiAccess gates the read-only API keys and webhooks feature
+    /// (also real and enforced); PrioritySupport has no implementation and stays hidden
+    /// from UI/Help. See architecture.md Decisions Log "AllowApiAccess/PrioritySupport
+    /// verification".</summary>
     public bool AllowMarketingCampaigns { get; set; } = false;
 
     public ICollection<PlanPrice> Prices { get; set; } = [];

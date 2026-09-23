@@ -133,4 +133,32 @@ public class GetPlansHandlerTests
         result.Single(r => r.Name == "A").SubscriberCount.Should().Be(1);
         result.Single(r => r.Name == "B").SubscriberCount.Should().Be(2);
     }
+
+    [Fact]
+    public async Task Handle_PlanWithOnlyInactivePrices_ExcludedWhenIncludeRetiredFalse()
+    {
+        Plan plan = new() { Id = Guid.NewGuid(), Name = "Pro", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 99m, IsActive = false });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(IncludeRetired: false), default);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_PlanWithOnlyInactivePrices_IncludedWhenIncludeRetiredTrue()
+    {
+        Plan plan = new() { Id = Guid.NewGuid(), Name = "Pro", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 99m, IsActive = false });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(IncludeRetired: true), default);
+
+        result.Should().ContainSingle(r => r.Name == "Pro");
+    }
 }

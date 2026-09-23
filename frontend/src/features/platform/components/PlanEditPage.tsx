@@ -239,6 +239,7 @@ export function PlanEditPage() {
   const watchedMonthlyPrice   = useWatch({ control, name: "monthly.price" });
   const watchedDiscount       = useWatch({ control, name: "yearlyDiscountPercent" });
   const watchedBranding       = useWatch({ control, name: "allowBrandingRemoval" });
+  const watchedApiAccess      = useWatch({ control, name: "allowApiAccess" });
 
   const suggestedYearly =
     watchedMonthlyPrice !== undefined && watchedMonthlyPrice > 0 && watchedDiscount >= 0 && watchedDiscount < 100
@@ -439,9 +440,16 @@ export function PlanEditPage() {
                 />
                 <Label>Allow branding removal</Label>
               </div>
-              {/* allowApiAccess toggle intentionally hidden — no API/webhook subsystem exists yet */}
+              <div className="flex items-center gap-2">
+                <ToggleSwitch
+                  checked={watchedApiAccess}
+                  onChange={() => setValue("allowApiAccess", !watchedApiAccess, { shouldDirty: true })}
+                  aria-label="API access & webhooks"
+                />
+                <Label>API access &amp; webhooks</Label>
+              </div>
               {/* prioritySupport toggle intentionally hidden — no support-priority routing
-                  is implemented; same reasoning as allowApiAccess above. */}
+                  is implemented, unlike allowApiAccess above (real, enforced feature). */}
             </CardContent>
           </Card>
 
@@ -462,9 +470,14 @@ export function PlanEditPage() {
               <LimitField id="maxStorageGb" label="Storage (GB)" name="maxStorageGb"
                 control={control} register={register} setValue={setValue}
                 error={errors.maxStorageGb?.message} />
-              <LimitField id="maxLocations" label="Locations" name="maxLocations"
-                control={control} register={register} setValue={setValue}
-                error={errors.maxLocations?.message} />
+              <div className="space-y-1.5">
+                <LimitField id="maxLocations" label="Locations" name="maxLocations"
+                  control={control} register={register} setValue={setValue}
+                  error={errors.maxLocations?.message} />
+                <p className="text-[11px] text-muted-foreground">
+                  Not enforced yet — multi-location isn't built.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </form>

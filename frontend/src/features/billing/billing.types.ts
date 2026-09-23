@@ -66,3 +66,13 @@ export interface BillingPortalResponse {
 export function priceFor(plan: PlanResponse, interval: "Monthly" | "Yearly"): PlanPriceResponse | undefined {
   return plan.prices.find((p) => p.interval === interval && p.isActive);
 }
+
+// Same as priceFor, but a paid price with no linked Stripe price isn't purchasable yet
+// (checkout would fail with "This plan is not available for online checkout"). Free
+// (price === 0) is always purchasable once active. Used by the subscribe flow only —
+// BillingPage keeps priceFor so it can still display a current plan even if unlinked.
+export function purchasablePriceFor(plan: PlanResponse, interval: "Monthly" | "Yearly"): PlanPriceResponse | undefined {
+  const price = priceFor(plan, interval);
+  if (!price) return undefined;
+  return price.price === 0 || price.stripePriceId !== null ? price : undefined;
+}

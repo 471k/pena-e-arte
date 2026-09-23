@@ -32,7 +32,7 @@ const PLAN_STARTER: PlanResponse = {
   prioritySupport:          false,
   allowMarketingCampaigns: false,
   prices: [
-    { id: "price-starter-m", interval: "Monthly", price: 29, stripePriceId: null, isActive: true },
+    { id: "price-starter-m", interval: "Monthly", price: 29, stripePriceId: "price_starter_m", isActive: true },
   ],
 };
 
@@ -55,6 +55,29 @@ const PLAN_PREMIUM: PlanResponse = {
   prices: [
     { id: "price-premium-m", interval: "Monthly", price: 49, stripePriceId: "price_premium_m", isActive: true },
     { id: "price-premium-y", interval: "Yearly", price: 490, stripePriceId: "price_premium_y", isActive: true },
+  ],
+};
+
+// Growth offers a Yearly PlanPrice row, but it's unlinked to Stripe yet (StripePriceId
+// null) — must render disabled with the "not available" text, distinct from Starter's
+// case above where the Yearly row is missing entirely.
+const PLAN_GROWTH_UNLINKED_YEARLY: PlanResponse = {
+  id:                    "plan-growth",
+  name:                  "Growth",
+  yearlyDiscountPercent: 17,
+  allowBrandingRemoval:  true,
+  subscriberCount:       0,
+  maxArtists:               null,
+  maxAppointmentsPerMonth:  null,
+  maxNotificationsPerMonth: null,
+  maxStorageGb:             null,
+  maxLocations:             null,
+  allowApiAccess:           false,
+  prioritySupport:          false,
+  allowMarketingCampaigns: true,
+  prices: [
+    { id: "price-growth-m", interval: "Monthly", price: 59, stripePriceId: "price_growth_m", isActive: true },
+    { id: "price-growth-y", interval: "Yearly", price: 590, stripePriceId: null, isActive: true },
   ],
 };
 
@@ -744,5 +767,83 @@ describe("SubscribePage", () => {
     );
     renderPage();
     expect(await screen.findByText("Upgrade from Free")).toBeInTheDocument();
+  });
+
+  // --- Unlinked yearly prices (D4) & Free-in-Yearly-view (D5) ---
+
+  it("a paid tier whose Yearly price has no linked Stripe price renders disabled with the unavailable text", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, PLAN_GROWTH_UNLINKED_YEARLY]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Growth");
+
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    await screen.findByText("Growth");
+
+    expect(screen.getByRole("button", { name: /growth/i })).toBeDisabled();
+    expect(screen.getAllByText(/not available on this billing cycle yet/i).length).toBeGreaterThan(0);
+  });
+
+  it("Free stays selectable and shows 'Free' when the toggle is on Yearly", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^free/i });
+
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    await screen.findByRole("button", { name: /^free/i });
+
+    expect(screen.getByRole("button", { name: /^free/i })).not.toBeDisabled();
+    expect(screen.getAllByText("Free").length).toBeGreaterThan(0);
+  });
+
+  it("activating Free while the toggle is on Yearly still sends billingInterval: Monthly", async () => {
+    const subscribeSpy = vi.fn();
+    server.use(
+      http.get("http://localhost/api/v1/billing/plans", () =>
+        HttpResponse.json([...PLANS, FREE_PLAN]),
+      ),
+      http.post(
+        "http://localhost/api/v1/billing/subscription",
+        async ({ request }) => {
+          const body = await request.json();
+          subscribeSpy(body);
+          return HttpResponse.json({ ...SUB_ACTIVE_FREE });
+        },
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: /^free/i });
+
+    await user.click(screen.getByRole("button", { name: /^yearly/i }));
+    await screen.findByRole("button", { name: /^free/i });
+    await user.click(screen.getByRole("button", { name: /^free/i }));
+    await user.click(screen.getByRole("button", { name: /activate free plan/i }));
+
+    await waitFor(() =>
+      expect(subscribeSpy).toHaveBeenCalledWith({ planId: "plan-free", billingInterval: "Monthly" }),
+    );
+    await screen.findByTestId("billing-page");
+  });
+
+  // --- Retired plans (D1) ---
+
+  it("a retired plan simply absent from the API response never appears", async () => {
+    // The backend already excludes retired plans (no active price) from the owner-facing
+    // response (GetPlansQuery.IncludeRetired=false) — the page needs no special handling,
+    // it just never receives Pro in the list.
+    renderPage();
+    await screen.findByText("Starter");
+    expect(screen.queryByText("Pro")).not.toBeInTheDocument();
   });
 });

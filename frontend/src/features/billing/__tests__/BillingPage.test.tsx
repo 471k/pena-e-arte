@@ -741,7 +741,7 @@ describe("BillingPage", () => {
     expect(screen.queryByText(/plan usage/i)).not.toBeInTheDocument();
   });
 
-  it("shows the usage panel with all five dimensions when usage data is present", async () => {
+  it("shows the usage panel with all four displayed dimensions when usage data is present", async () => {
     server.use(
       http.get("http://localhost/api/v1/billing/usage", () => HttpResponse.json(USAGE)),
     );
@@ -752,7 +752,8 @@ describe("BillingPage", () => {
     expect(screen.getByText("Appointments this month")).toBeInTheDocument();
     expect(screen.getByText("Notifications this month")).toBeInTheDocument();
     expect(screen.getByText("Storage")).toBeInTheDocument();
-    expect(screen.getByText("Locations")).toBeInTheDocument();
+    // Locations isn't enforced yet (D3) — not shown on the owner's usage card.
+    expect(screen.queryByText("Locations")).not.toBeInTheDocument();
   });
 
   it("shows current/max for a capped dimension", async () => {

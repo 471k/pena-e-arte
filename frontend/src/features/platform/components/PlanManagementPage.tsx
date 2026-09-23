@@ -64,6 +64,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
   }
 
   const isFree = monthly?.price === 0 || yearly?.price === 0;
+  const isRetired = plan.prices.length > 0 && plan.prices.every((p) => !p.isActive);
 
   return (
     <Card className="hover:border-border/60 transition-colors">
@@ -82,6 +83,11 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
               {plan.allowBrandingRemoval && (
                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                   White-label
+                </span>
+              )}
+              {isRetired && (
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  Retired
                 </span>
               )}
               {/* API access / Priority support badges intentionally hidden — neither has a

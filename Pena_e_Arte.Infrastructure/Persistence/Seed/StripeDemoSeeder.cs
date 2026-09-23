@@ -48,14 +48,14 @@ public static class StripeDemoSeeder
             Stripe.PaymentMethodService paymentMethods = new();
             Stripe.SubscriptionService subscriptions = new();
 
-            // 1. Every PlanPrice row gets a real Stripe price, so any plan-change target
-            //    resolves to a real price id. Only intervals a tier actually offers get a
-            //    row — Starter/Growth/Pro correctly get Monthly only, matching the data
-            //    migration's decision not to fabricate a Yearly price for tiers that never
-            //    had one.
+            // 1. Every active PlanPrice row gets a test-mode Stripe price. Retired tiers'
+            //    prices are inactive and skipped.
             List<PlanPrice> planPrices = await db.PlanPrices.Include(pp => pp.Plan).ToListAsync();
             foreach (PlanPrice pp in planPrices)
             {
+                if (!pp.IsActive)
+                    continue;
+
                 string interval = pp.Interval == BillingInterval.Monthly ? "month" : "year";
                 pp.StripePriceId = await EnsurePriceAsync(prices, pp.Plan, interval, pp.Price, pp.StripePriceId);
             }

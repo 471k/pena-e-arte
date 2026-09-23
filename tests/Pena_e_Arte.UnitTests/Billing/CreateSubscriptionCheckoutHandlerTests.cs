@@ -109,6 +109,29 @@ public class CreateSubscriptionCheckoutHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RetiredPlanWithInactivePrice_ThrowsBusinessRuleViolation()
+    {
+        // Pro is retired: its price row is kept (real Stripe price id and all) but
+        // IsActive = false, so it must never resolve to a purchasable checkout price.
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice
+        {
+            Interval = BillingInterval.Monthly,
+            Price = 99m,
+            StripePriceId = "price_pro_monthly",
+            IsActive = false,
+        });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        await SeedStudioSubscription(SubscriptionStatus.Trialing, stripeCustomerId: "cus_x");
+
+        Func<Task> act = () => CreateSut().Handle(new CreateSubscriptionCheckoutCommand(Req(plan.Id)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*not available for online checkout*");
+    }
+
+    [Fact]
     public async Task Handle_PendingValidReferral_AttachesCouponToCheckout()
     {
         Plan plan = await SeedPlan("price_growth");

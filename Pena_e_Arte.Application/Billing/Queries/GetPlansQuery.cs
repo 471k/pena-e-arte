@@ -2,18 +2,23 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Application.Billing.Queries;
 
-public record GetPlansQuery : IRequest<List<PlanResponse>>;
+public record GetPlansQuery(bool IncludeRetired = false) : IRequest<List<PlanResponse>>;
 
 public class GetPlansHandler(IAppDbContext db)
     : IRequestHandler<GetPlansQuery, List<PlanResponse>>
 {
     public async Task<List<PlanResponse>> Handle(GetPlansQuery query, CancellationToken ct)
     {
-        return await db.Plans
-            .Include(p => p.Prices)
+        IQueryable<Plan> plans = db.Plans.Include(p => p.Prices);
+
+        if (!query.IncludeRetired)
+            plans = plans.Where(p => p.Prices.Any(pp => pp.IsActive));
+
+        return await plans
             .OrderBy(p => p.Prices.Min(pp => pp.Price))
             .Select(p => new PlanResponse(
                 p.Id,
