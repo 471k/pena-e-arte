@@ -41,6 +41,20 @@ public class Subscription
     /// Does not affect the TenantMiddleware PastDue request block — only the reminder emails.</summary>
     public bool DunningExcludedManually { get; set; }
 
+    /// <summary>What this subscription is actually billed, snapshotted from Stripe (or the
+    /// cash-billed Monthly PlanPrice) at create/checkout/webhook time. Null until a billing
+    /// event populates it or the backfill command runs — MrrRules.MonthlyEquivalent falls back
+    /// to the live PlanPrice lookup while null. See architecture.md Decisions Log, "Subscription
+    /// billed-amount snapshot".</summary>
+    public decimal? BilledUnitAmount { get; set; }
+    public int? BilledQuantity { get; set; }
+    public string? BilledCurrency { get; set; }
+
+    /// <summary>Percent off from a `forever`-duration Stripe coupon only. Null for `once`/
+    /// `repeating` coupons — those are temporary and must never reduce MRR (contracted
+    /// revenue).</summary>
+    public decimal? RecurringDiscountPercent { get; set; }
+
     public Studio Studio { get; set; } = null!;
     public Plan? Plan { get; set; }
 }

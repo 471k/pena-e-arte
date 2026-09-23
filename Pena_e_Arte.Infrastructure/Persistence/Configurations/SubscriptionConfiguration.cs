@@ -20,6 +20,10 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
         builder.Property(s => s.PendingBillingInterval)
                .HasConversion<string>().HasMaxLength(32);
 
+        builder.Property(s => s.BilledUnitAmount).HasColumnType("decimal(10,2)");
+        builder.Property(s => s.BilledCurrency).HasMaxLength(3);
+        builder.Property(s => s.RecurringDiscountPercent).HasColumnType("decimal(5,2)");
+
         builder.HasOne(s => s.Studio)
                .WithOne(st => st.Subscription)
                .HasForeignKey<Subscription>(s => s.StudioId)
