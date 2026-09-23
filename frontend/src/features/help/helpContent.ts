@@ -1322,7 +1322,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "This is read-only: a connected tool can read your appointments, clients, and revenue, but it can never create, change, or cancel anything in TattooOS.",
-      "Only available on plans that include API access — if you don't see this section, your current plan doesn't include it.",
+      "Only available on the Premium plan — if you don't see this section, upgrade to unlock it.",
       "If you lose the key, there's no way to retrieve it — generate a new one, which immediately replaces (and disables) the old one.",
     ],
     relatedArticleIds: ["owner-billing", "owner-developer-webhooks"],
@@ -1344,7 +1344,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "We automatically retry a failed delivery several times with increasing delay — a brief outage on your end won't lose the event.",
       "If an endpoint keeps failing, it's automatically disabled after repeated failures to stop wasting retries — re-saving the URL reactivates it.",
       "Only one webhook URL per studio; saving a new one replaces the old one (and issues a new signing secret).",
-      "Same plan requirement as the API key above — both ship together on plans that include API access.",
+      "Same plan requirement as the API key above — only available on the Premium plan.",
     ],
     relatedArticleIds: ["owner-developer-api", "owner-billing"],
   },
@@ -1405,7 +1405,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Choose or change your studio's subscription plan and pay by card.",
     steps: [
       "Go to Billing and click \"Subscribe\" / \"Upgrade\" / \"Change plan\".",
-      "Toggle between Monthly and Yearly billing (yearly usually saves money).",
+      "Toggle between Monthly and Yearly billing — yearly gives you 2 months free on plans that offer it. The Free plan stays free either way.",
       "Click a plan card to select it.",
       "Click the button at the bottom to continue to checkout, switch plan, or activate the Free plan.",
     ],
@@ -1443,7 +1443,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Only clients who've opted in to marketing email ever receive a campaign — this is separate from appointment reminders and booking confirmations, which every client still gets.",
       "Every campaign email includes an unsubscribe link automatically; a client who clicks it won't receive future campaigns.",
-      "Campaigns are included on Growth, Premium, and Pro plans — not Free or Starter.",
+      "Campaigns are included on Growth and Premium plans — not Free or Starter.",
     ],
   },
   {
@@ -1648,6 +1648,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"New plan\" to create one.",
       "Click the pencil icon to edit a plan, or the trash icon to delete it, then confirm.",
     ],
+    tips: ["Free, Starter, Growth and Premium are reset from code on every deploy. To change one, create a new plan instead of editing it. Retired plans (like Pro) show a Retired badge and can't be bought."],
     warnings: ["Deleting a plan is permanent and stops new studios from signing up to it — studios already subscribed keep their subscription unaffected."],
   },
   {
@@ -1658,13 +1659,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["plan price", "usage limits", "feature flags"],
     summary: "Create a new subscription plan or edit an existing one, including its price and usage limits.",
     steps: [
-      "Enter the plan Name and the Yearly discount percentage.",
+      "Enter the plan Name and how many months free yearly billing should give (used to suggest a yearly price).",
       "Turn on Monthly price and/or Yearly price, entering the price for each.",
-      "Toggle feature flags: Allow branding removal.",
-      "Set usage limits (Artists, Appointments/mo, Notifications/mo, Storage, Locations) or check \"Unlimited\".",
+      "Toggle feature flags: Allow branding removal, API access & webhooks.",
+      "Set usage limits (Artists, Appointments/mo, Notifications/mo, Storage) or check \"Unlimited\".",
       "Click Save.",
     ],
-    tips: ["A plan must be either fully free (all prices €0) or fully paid — you can't mix a free interval with a paid one."],
+    tips: [
+      "A plan must be either fully free (all prices €0) or fully paid — you can't mix a free interval with a paid one.",
+      "Locations isn't enforced yet — multi-location isn't built.",
+    ],
   },
   {
     id: "admin-subscriptions",
