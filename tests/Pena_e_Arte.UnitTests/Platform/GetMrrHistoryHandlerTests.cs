@@ -4,6 +4,7 @@ using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.UnitTests.ConsentForms;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Platform;
@@ -11,8 +12,9 @@ namespace Pena_e_Arte.UnitTests.Platform;
 public class GetMrrHistoryHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly CapturingLogger<GetMrrHistoryHandler> _logger = new();
 
-    private GetMrrHistoryHandler CreateSut() => new(_db);
+    private GetMrrHistoryHandler CreateSut() => new(_db, _logger);
 
     [Fact]
     public async Task Handle_NoSubscriptions_ReturnsZeroMrrForEveryMonth()
@@ -191,11 +193,35 @@ public class GetMrrHistoryHandlerTests
         _db.ChangeTracker.Clear();
 
         List<MrrDataPointResponse> historyResult = await CreateSut().Handle(new GetMrrHistoryQuery(1), default);
-        GetPlatformStatsHandler statsHandler = new(_db);
+        GetPlatformStatsHandler statsHandler = new(_db, new CapturingLogger<GetPlatformStatsHandler>());
         PlatformStatsResponse statsResult = await statsHandler.Handle(new GetPlatformStatsQuery(), default);
 
         historyResult.Single().Mrr.Should().Be(statsResult.Mrr);
         statsResult.Mrr.Should().Be(79m + (790m / 12m)); // monthly + yearly active only
+    }
+
+    [Fact]
+    public async Task Handle_FallbackSubscription_LogsFallbackCount()
+    {
+        Studio studio = SeedStudio();
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = studio.Id, PlanId = plan.Id, BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active, CreatedAt = DateTime.UtcNow.AddMonths(-3),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(20), BilledUnitAmount = null,
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(new GetMrrHistoryQuery(1), default);
+
+        _logger.Entries.Should().ContainSingle(e =>
+            e.Message.Contains("1") && e.Message.Contains("fallback", StringComparison.OrdinalIgnoreCase));
     }
 
     private Studio SeedStudio(bool isActive = true, DateTime? trialExpiresAt = null)

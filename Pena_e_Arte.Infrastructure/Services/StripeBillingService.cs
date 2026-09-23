@@ -241,6 +241,29 @@ public class StripeBillingService(
             price.Recurring?.IntervalCount);
     }
 
+    public async Task<StripePriceInfo?> GetSubscriptionBilledPriceAsync(string stripeSubscriptionId, CancellationToken ct)
+    {
+        Stripe.Subscription sub;
+        try
+        {
+            sub = await subscriptionService.GetAsync(stripeSubscriptionId, null, null, ct);
+        }
+        catch (StripeException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        Price? price = sub.Items?.Data?.FirstOrDefault()?.Price;
+        if (price is null) return null;
+
+        return new StripePriceInfo(
+            price.Active,
+            price.UnitAmount,
+            price.Currency,
+            price.Recurring?.Interval,
+            price.Recurring?.IntervalCount);
+    }
+
     public async Task PauseCollectionAsync(string stripeSubscriptionId, CancellationToken ct)
     {
         SubscriptionUpdateOptions options = new()

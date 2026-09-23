@@ -22,4 +22,5 @@ public record PlatformStatsResponse(
     int PayingStudios,
     decimal AtRiskMrr,
     decimal ScheduledChurnMrr,
-    decimal PausedMrr);
+    decimal PausedMrr,
+    decimal DiscountsThisMonth);

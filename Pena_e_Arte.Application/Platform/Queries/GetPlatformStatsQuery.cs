@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Domain.Entities;
@@ -10,7 +11,7 @@ namespace Pena_e_Arte.Application.Platform.Queries;
 
 public record GetPlatformStatsQuery : IRequest<PlatformStatsResponse>;
 
-public class GetPlatformStatsHandler(IAppDbContext db)
+public class GetPlatformStatsHandler(IAppDbContext db, ILogger<GetPlatformStatsHandler> logger)
     : IRequestHandler<GetPlatformStatsQuery, PlatformStatsResponse>
 {
     public async Task<PlatformStatsResponse> Handle(GetPlatformStatsQuery query, CancellationToken ct)
@@ -67,6 +68,21 @@ public class GetPlatformStatsHandler(IAppDbContext db)
 
         int newStudiosThisMonth = studios.Count(s => s.CreatedAt >= monthStart);
 
+        int fallbackCount = inputs.Count(i => i.Subscription.BilledUnitAmount is null && i.Subscription.PlanId is not null);
+        int currencyExcludedCount = inputs.Count(i =>
+            i.Subscription.BilledCurrency is string c && c != MrrRules.PlatformCurrency);
+        if (fallbackCount > 0 || currencyExcludedCount > 0)
+        {
+            logger.LogInformation(
+                "MRR computed with {FallbackCount} subscription(s) on the pre-snapshot PlanPrice fallback " +
+                "and {CurrencyExcludedCount} excluded for non-platform currency",
+                fallbackCount, currencyExcludedCount);
+        }
+
+        decimal discountsThisMonth = await db.SubscriptionInvoicePayments
+            .Where(p => p.PaidAt >= monthStart)
+            .SumAsync(p => p.DiscountAmount, ct);
+
         return new PlatformStatsResponse(
             totalStudios,
             activeSubscriptions,
@@ -82,6 +98,7 @@ public class GetPlatformStatsHandler(IAppDbContext db)
             payingStudios,
             atRiskMrr,
             scheduledChurnMrr,
-            pausedMrr);
+            pausedMrr,
+            discountsThisMonth);
     }
 }

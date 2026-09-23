@@ -94,6 +94,11 @@ public interface IStripeBillingService
     /// <summary>Reads a price back from Stripe for G3's amount/interval match check. Null when not found.</summary>
     Task<StripePriceInfo?> GetPriceAsync(string stripePriceId, CancellationToken ct);
 
+    /// <summary>Reads what a Stripe subscription is currently billed (its first item's price)
+    /// — used by the billed-amount backfill (R6) to snapshot subscriptions created before
+    /// Batch 2b. Null when the subscription has no items.</summary>
+    Task<StripePriceInfo?> GetSubscriptionBilledPriceAsync(string stripeSubscriptionId, CancellationToken ct);
+
     /// <summary>
     /// D6: pauses collection on an active Stripe subscription — renewals during the pause
     /// generate no invoice/charge. The period already paid is not refunded. Idempotent.

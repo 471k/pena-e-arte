@@ -60,16 +60,23 @@ public class UpdatePlanHandler(
             PlanPrice? existing = existingPrices.FirstOrDefault(pp => pp.Interval == interval);
             if (existing is not null)
             {
-                // G2 — no in-place price/Stripe-price change on a price already in use.
+                // G2 — a price change is only blocked while a subscriber on it has not yet been
+                // billed-amount-snapshotted: changing PlanPrice never touches Stripe, so once
+                // every affected subscription carries its own BilledUnitAmount snapshot, an
+                // existing subscriber keeps billing at their original Stripe price regardless
+                // of what this row says afterward — only new sales read the changed row.
                 bool changesRevenue = existing.Price != pr.Price || existing.StripePriceId != pr.StripePriceId;
                 if (changesRevenue)
                 {
-                    int subscriberCount = await CountSubscribersAsync(db, plan.Id, interval, ct);
-                    if (subscriberCount > 0)
+                    bool anyUnsnapshotted = await db.Subscriptions.AnyAsync(s =>
+                        ((s.PlanId == plan.Id && s.BillingInterval == interval)
+                         || (s.PendingPlanId == plan.Id && s.PendingBillingInterval == interval))
+                        && s.BilledUnitAmount == null, ct);
+                    if (anyUnsnapshotted)
                         throw new BusinessRuleViolationException(
-                            $"This price has {subscriberCount} subscribed studio(s). Changing it would change "
-                            + "their reported revenue without changing what Stripe bills them. Deactivate this "
-                            + "price and create a new plan instead.");
+                            $"{await CountSubscribersAsync(db, plan.Id, interval, ct)} subscribed studio(s) on this "
+                            + "price have not been billing-amount-snapshotted yet. Run the backfill "
+                            + "(POST /platform/subscriptions/backfill-billed-amounts) before changing it.");
                 }
 
                 // G3 — a newly-set/changed StripePriceId, or a Price edit on an already-linked
