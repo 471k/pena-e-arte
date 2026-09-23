@@ -71,8 +71,19 @@ public interface IStripeBillingService
     /// <summary>
     /// Applies a Stripe coupon to an already-active subscription. Used to reward the
     /// referring studio when their referral code converts a new paying studio. The coupon
-    /// is applied as a discount on the subscription's next invoice.
+    /// is applied as a discount on the subscription's next invoice. Used for a Monthly
+    /// referrer subscription — see CreditCustomerBalanceAsync for the Yearly case.
     /// </summary>
     Task ApplyCouponToActiveSubscriptionAsync(
         string stripeSubscriptionId, string couponId, CancellationToken ct);
+
+    /// <summary>
+    /// Credits the subscription's customer balance (applied by Stripe to the next
+    /// invoice). Used to reward a Yearly-billed referrer — a coupon would either expire
+    /// unused (repeating, 1 month, but the next invoice is up to a year away) or zero a
+    /// whole renewal (percent-off), so a balance credit worth one month is used instead.
+    /// Returns the customer balance transaction id.
+    /// </summary>
+    Task<string> CreditCustomerBalanceAsync(
+        string stripeSubscriptionId, decimal amount, string idempotencyKey, string description, CancellationToken ct);
 }

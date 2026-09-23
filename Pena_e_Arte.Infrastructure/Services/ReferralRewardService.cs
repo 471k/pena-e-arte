@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Billing;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -77,6 +78,7 @@ public class ReferralRewardService(
         // ── Referrer's active Stripe subscription ────────────────────────────
         Subscription? referrerSub = await db.Subscriptions
             .IgnoreQueryFilters()
+            .Include(s => s.Plan).ThenInclude(p => p!.Prices)
             .FirstOrDefaultAsync(s =>
                 s.StudioId == code.StudioId &&
                 s.Status == SubscriptionStatus.Active &&
@@ -97,49 +99,78 @@ public class ReferralRewardService(
             return;
         }
 
-        // ── Issue and apply the coupon ────────────────────────────────────────
+        // ── Issue and apply the reward ────────────────────────────────────────
         // Idempotency key scoped to THIS redemption, distinct from the referred
-        // studio's coupon key ("referral-coupon-{studioId}") to avoid collision.
+        // studio's coupon key ("referral-coupon-{studioId}-{stripePriceId}") to avoid
+        // collision.
         string idempotencyKey = $"referrer-reward-{referralRedemptionId}";
 
-        string couponId;
+        // D6 — a Monthly referrer keeps the existing repeating 100%-off coupon (their
+        // subscription has one invoice in that window, so it's genuinely one month free).
+        // A Yearly referrer's next invoice is up to a year away: that same coupon would
+        // either expire unused or, if a percent-off coupon were used instead, zero a whole
+        // renewal — so a customer balance credit worth one month is applied to the next
+        // invoice instead. No coupon involved for Yearly.
+        string rewardId;
         try
         {
-            couponId = await discounts.CreateOneMonthFreeCouponAsync(idempotencyKey, ct);
+            if (referrerSub.BillingInterval == BillingInterval.Monthly)
+            {
+                ReferralCouponRequest request = new(
+                    BillingInterval.Monthly, StripePriceId: null, MonthlyPrice: 0m, idempotencyKey);
+                rewardId = await discounts.CreateReferralCouponAsync(request, ct);
+            }
+            else
+            {
+                decimal amount = referrerSub.Plan is not null
+                    ? ReferralRewardAmount.OneMonthOf(referrerSub.Plan)
+                    : 0m;
+                rewardId = await billing.CreditCustomerBalanceAsync(
+                    referrerSub.StripeSubscriptionId, amount, idempotencyKey,
+                    "Referral reward: 1 month free", ct);
+            }
         }
         catch (Exception ex)
         {
-            // Coupon creation failure must not roll back or corrupt the referred
+            // Reward creation failure must not roll back or corrupt the referred
             // studio's subscription, which is already committed. Log and return.
             logger.LogError(ex,
-                "Failed to create referrer reward coupon for redemption {@RedemptionId}; " +
+                "Failed to create referrer reward for redemption {@RedemptionId}; " +
                 "subscription unaffected. Referrer studio: {@ReferrerStudioId}.",
                 referralRedemptionId, code.StudioId);
             return;
         }
 
-        try
+        if (referrerSub.BillingInterval == BillingInterval.Monthly)
         {
-            await billing.ApplyCouponToActiveSubscriptionAsync(
-                referrerSub.StripeSubscriptionId, couponId, ct);
+            try
+            {
+                await billing.ApplyCouponToActiveSubscriptionAsync(
+                    referrerSub.StripeSubscriptionId, rewardId, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to apply referrer reward coupon {@CouponId} to Stripe subscription " +
+                    "for redemption {@RedemptionId}. Referrer studio: {@ReferrerStudioId}. " +
+                    "Coupon was created and should be applied manually.",
+                    rewardId, referralRedemptionId, code.StudioId);
+                return;
+            }
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,
-                "Failed to apply referrer reward coupon {@CouponId} to Stripe subscription " +
-                "for redemption {@RedemptionId}. Referrer studio: {@ReferrerStudioId}. " +
-                "Coupon was created and should be applied manually.",
-                couponId, referralRedemptionId, code.StudioId);
-            return;
-        }
+        // Yearly: CreditCustomerBalanceAsync already applied the credit — Stripe carries
+        // it forward automatically to the subscription's next invoice, no separate
+        // "apply" step exists for a balance transaction.
 
         redemption.ReferrerRewardApplied = true;
-        redemption.ReferrerRewardCouponId = couponId;
+        // Holds a Stripe coupon id for a Monthly referrer, or a customer balance
+        // transaction id ("cbtxn_…") for a Yearly one — see architecture.md Decisions Log.
+        redemption.ReferrerRewardCouponId = rewardId;
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
             "Referrer reward applied for redemption {@RedemptionId}. " +
-            "Referrer studio {@ReferrerStudioId} received coupon.",
+            "Referrer studio {@ReferrerStudioId} received reward.",
             referralRedemptionId, code.StudioId);
     }
 }

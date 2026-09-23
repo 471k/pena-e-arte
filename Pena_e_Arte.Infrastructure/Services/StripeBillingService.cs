@@ -9,7 +9,8 @@ public class StripeBillingService(
     SubscriptionService subscriptionService,
     SubscriptionScheduleService scheduleService,
     SessionService checkoutSessions,
-    Stripe.BillingPortal.SessionService portalSessions)
+    Stripe.BillingPortal.SessionService portalSessions,
+    CustomerBalanceTransactionService balanceTransactions)
     : IStripeBillingService
 {
     public async Task<string> CreateCustomerAsync(string email, CancellationToken ct)
@@ -194,5 +195,24 @@ public class StripeBillingService(
         };
 
         await subscriptionService.UpdateAsync(stripeSubscriptionId, options, null, ct);
+    }
+
+    public async Task<string> CreditCustomerBalanceAsync(
+        string stripeSubscriptionId, decimal amount, string idempotencyKey, string description, CancellationToken ct)
+    {
+        Stripe.Subscription sub = await subscriptionService.GetAsync(stripeSubscriptionId, null, null, ct);
+
+        CustomerBalanceTransactionCreateOptions options = new()
+        {
+            // Negative = credit, applied by Stripe to the customer's next invoice.
+            Amount = -(long)Math.Round(amount * 100m),
+            Currency = sub.Currency,
+            Description = description,
+        };
+
+        RequestOptions requestOptions = new() { IdempotencyKey = idempotencyKey };
+        CustomerBalanceTransaction transaction =
+            await balanceTransactions.CreateAsync(sub.CustomerId, options, requestOptions, ct);
+        return transaction.Id;
     }
 }

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
@@ -17,27 +18,33 @@ public class ReferralRewardServiceTests
 
     public ReferralRewardServiceTests()
     {
-        _discounts.CreateOneMonthFreeCouponAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _discounts.CreateReferralCouponAsync(Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>())
                   .Returns("coup_referrer_reward");
+        _billing.CreditCustomerBalanceAsync(
+                Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("cbtxn_referrer_reward");
     }
 
     private ReferralRewardService CreateSut() =>
         new(_db, _billing, _discounts, NullLogger<ReferralRewardService>.Instance);
 
     [Fact]
-    public async Task RewardReferrerAsync_AppliesCoupon_WhenReferrerHasActiveStripeSubscription()
+    public async Task RewardReferrerAsync_MonthlyReferrer_AppliesCoupon()
     {
         (ReferralRedemption redemption, string referrerSubId) =
-            await SeedFullReferralScenario(referrerHasStripeSub: true);
+            await SeedFullReferralScenario(referrerHasStripeSub: true, referrerInterval: BillingInterval.Monthly);
 
         await CreateSut().RewardReferrerAsync(redemption.Id, default);
 
-        await _discounts.Received(1).CreateOneMonthFreeCouponAsync(
-            Arg.Is<string>(k => k.StartsWith("referrer-reward-")),
+        await _discounts.Received(1).CreateReferralCouponAsync(
+            Arg.Is<ReferralCouponRequest>(r =>
+                r.Interval == BillingInterval.Monthly && r.IdempotencyKey.StartsWith("referrer-reward-")),
             Arg.Any<CancellationToken>());
 
         await _billing.Received(1).ApplyCouponToActiveSubscriptionAsync(
             referrerSubId, "coup_referrer_reward", Arg.Any<CancellationToken>());
+        await _billing.DidNotReceive().CreditCustomerBalanceAsync(
+            Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
 
         ReferralRedemption updated = _db.ReferralRedemptions.Single(r => r.Id == redemption.Id);
         updated.ReferrerRewardApplied.Should().BeTrue();
@@ -45,28 +52,71 @@ public class ReferralRewardServiceTests
     }
 
     [Fact]
+    public async Task RewardReferrerAsync_YearlyReferrer_CreditsCustomerBalanceInsteadOfCoupon()
+    {
+        // D6 — a Yearly referrer's next invoice is up to a year away: a repeating coupon
+        // would expire unused, so a customer balance credit worth one Monthly price (79
+        // for Premium) is applied to the next invoice instead. No coupon at all.
+        (ReferralRedemption redemption, string referrerSubId) = await SeedFullReferralScenario(
+            referrerHasStripeSub: true, referrerInterval: BillingInterval.Yearly,
+            planMonthlyPrice: 79m, planYearlyPrice: 790m);
+
+        await CreateSut().RewardReferrerAsync(redemption.Id, default);
+
+        await _billing.Received(1).CreditCustomerBalanceAsync(
+            referrerSubId, 79m, Arg.Is<string>(k => k.StartsWith("referrer-reward-")),
+            "Referral reward: 1 month free", Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateReferralCouponAsync(
+            Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
+        await _billing.DidNotReceive().ApplyCouponToActiveSubscriptionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        ReferralRedemption updated = _db.ReferralRedemptions.Single(r => r.Id == redemption.Id);
+        updated.ReferrerRewardApplied.Should().BeTrue();
+        updated.ReferrerRewardCouponId.Should().Be("cbtxn_referrer_reward");
+    }
+
+    [Fact]
+    public async Task RewardReferrerAsync_YearlyReferrer_BalanceCreditThrows_LoggedNotAppliedNotRethrown()
+    {
+        (ReferralRedemption redemption, _) = await SeedFullReferralScenario(
+            referrerHasStripeSub: true, referrerInterval: BillingInterval.Yearly,
+            planMonthlyPrice: 79m, planYearlyPrice: 790m);
+        _billing.CreditCustomerBalanceAsync(
+                Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Stripe unavailable"));
+
+        Func<Task> act = () => CreateSut().RewardReferrerAsync(redemption.Id, default);
+
+        await act.Should().NotThrowAsync();
+        ReferralRedemption updated = _db.ReferralRedemptions.Single(r => r.Id == redemption.Id);
+        updated.ReferrerRewardApplied.Should().BeFalse();
+        updated.ReferrerRewardCouponId.Should().BeNull();
+    }
+
+    [Fact]
     public async Task RewardReferrerAsync_IsIdempotent_WhenCalledTwice()
     {
         (ReferralRedemption redemption, _) =
-            await SeedFullReferralScenario(referrerHasStripeSub: true);
+            await SeedFullReferralScenario(referrerHasStripeSub: true, referrerInterval: BillingInterval.Monthly);
 
         await CreateSut().RewardReferrerAsync(redemption.Id, default);
         await CreateSut().RewardReferrerAsync(redemption.Id, default);
 
-        await _discounts.Received(1).CreateOneMonthFreeCouponAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _discounts.Received(1).CreateReferralCouponAsync(
+            Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task RewardReferrerAsync_NoOp_WhenReferrerHasNoActiveStripeSub()
     {
         (ReferralRedemption redemption, _) =
-            await SeedFullReferralScenario(referrerHasStripeSub: false);
+            await SeedFullReferralScenario(referrerHasStripeSub: false, referrerInterval: BillingInterval.Monthly);
 
         await CreateSut().RewardReferrerAsync(redemption.Id, default);
 
-        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateReferralCouponAsync(
+            Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
         await _billing.DidNotReceive().ApplyCouponToActiveSubscriptionAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
 
@@ -93,6 +143,9 @@ public class ReferralRewardServiceTests
 
     private async Task<(ReferralRedemption, string referrerSubId)> SeedFullReferralScenario(
         bool referrerHasStripeSub,
+        BillingInterval referrerInterval = BillingInterval.Monthly,
+        decimal planMonthlyPrice = 59m,
+        decimal? planYearlyPrice = null,
         string referrerOwnerEmail = "referrer@studio.com",
         string newStudioOwnerEmail = "new@studio.com")
     {
@@ -127,12 +180,20 @@ public class ReferralRewardServiceTests
         };
         _db.ReferralCodes.Add(code);
 
+        Plan plan = new() { Name = "Referrer Plan" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = planMonthlyPrice });
+        if (planYearlyPrice is decimal yp)
+            plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Yearly, Price = yp });
+        _db.Plans.Add(plan);
+
         string referrerSubId = "sub_referrer_test";
         if (referrerHasStripeSub)
         {
             _db.Subscriptions.Add(new Subscription
             {
                 StudioId = referringStudio.Id,
+                PlanId = plan.Id,
+                BillingInterval = referrerInterval,
                 Status = SubscriptionStatus.Active,
                 StripeSubscriptionId = referrerSubId,
                 CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1),

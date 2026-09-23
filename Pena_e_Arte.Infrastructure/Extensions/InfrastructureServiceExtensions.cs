@@ -104,6 +104,8 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<Stripe.BillingPortal.SessionService>();
         services.AddSingleton<Stripe.CouponService>();
         services.AddSingleton<Stripe.BalanceService>();
+        services.AddSingleton<Stripe.PriceService>();
+        services.AddSingleton<Stripe.CustomerBalanceTransactionService>();
 
         TwilioClient.Init(
             configuration["Twilio:AccountSid"]!,

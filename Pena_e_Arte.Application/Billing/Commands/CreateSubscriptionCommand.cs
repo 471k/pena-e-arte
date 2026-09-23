@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Billing;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -25,6 +26,7 @@ public class CreateSubscriptionHandler(
     public async Task<SubscriptionResponse> Handle(CreateSubscriptionCommand command, CancellationToken ct)
     {
         Domain.Entities.Plan plan = await db.Plans
+            .Include(p => p.Prices)
             .FirstOrDefaultAsync(p => p.Id == command.Request.PlanId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Plan), command.Request.PlanId);
 
@@ -63,9 +65,14 @@ public class CreateSubscriptionHandler(
             {
                 try
                 {
-                    // Idempotency key ensures retries don't create a second coupon for the same studio.
-                    string idempotencyKey = $"referral-coupon-{tenant.StudioId}";
-                    couponId = await discounts.CreateOneMonthFreeCouponAsync(idempotencyKey, ct);
+                    // Idempotency key scoped by price, not just studio — retries don't create
+                    // a second coupon for the same studio, and a studio that picks a
+                    // different price doesn't collide with a prior attempt's key.
+                    string idempotencyKey = $"referral-coupon-{tenant.StudioId}-{price.StripePriceId}";
+                    ReferralCouponRequest request = new(
+                        requestedInterval, price.StripePriceId, ReferralRewardAmount.OneMonthOf(plan),
+                        idempotencyKey);
+                    couponId = await discounts.CreateReferralCouponAsync(request, ct);
                     discountApplied = true;
                     logger.LogInformation(
                         "Applying referral discount via coupon for studio {@StudioId} from code {@ReferralCodeId}",

@@ -181,8 +181,8 @@ public class CreateSubscriptionHandlerTests
         await CreateSut()
             .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
-        await _discounts.DidNotReceive().CreateOneMonthFreeCouponAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _discounts.DidNotReceive().CreateReferralCouponAsync(
+            Arg.Any<ReferralCouponRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
