@@ -11,7 +11,8 @@ public class StripeBillingService(
     SessionService checkoutSessions,
     Stripe.BillingPortal.SessionService portalSessions,
     CustomerBalanceTransactionService balanceTransactions,
-    PriceService priceService)
+    PriceService priceService,
+    RefundService refundService)
     : IStripeBillingService
 {
     public async Task<string> CreateCustomerAsync(string email, CancellationToken ct)
@@ -281,5 +282,26 @@ public class StripeBillingService(
         SubscriptionUpdateOptions options = new();
         options.AddExtraParam("pause_collection", "");
         await subscriptionService.UpdateAsync(stripeSubscriptionId, options, null, ct);
+    }
+
+    public async Task ScheduleCancellationAsync(string stripeSubscriptionId, CancellationToken ct)
+    {
+        SubscriptionUpdateOptions options = new() { CancelAtPeriodEnd = true };
+        await subscriptionService.UpdateAsync(stripeSubscriptionId, options, null, ct);
+    }
+
+    public async Task UndoScheduledCancellationAsync(string stripeSubscriptionId, CancellationToken ct)
+    {
+        SubscriptionUpdateOptions options = new() { CancelAtPeriodEnd = false };
+        await subscriptionService.UpdateAsync(stripeSubscriptionId, options, null, ct);
+    }
+
+    public async Task<(string RefundId, string Status)> RefundAsync(
+        string stripePaymentIntentId, long amountInCents, string idempotencyKey, CancellationToken ct)
+    {
+        RefundCreateOptions options = new() { PaymentIntent = stripePaymentIntentId, Amount = amountInCents };
+        RequestOptions requestOptions = new() { IdempotencyKey = idempotencyKey };
+        Refund refund = await refundService.CreateAsync(options, requestOptions, ct);
+        return (refund.Id, refund.Status);
     }
 }
