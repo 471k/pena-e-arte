@@ -36,14 +36,14 @@ export function LineAreaChart<T>({ data, valueOf, labelOf, ariaLabel }: LineArea
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" aria-label={ariaLabel} role="img">
       <line x1={PAD_L} y1={PAD_T + PLOT_H} x2={W - PAD_R} y2={PAD_T + PLOT_H}
             stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} />
-      <path d={areaPath} style={{ fill: "hsl(var(--primary) / 0.08)" }} />
-      <polyline points={linePts} fill="none" style={{ stroke: "hsl(var(--primary))" }}
+      <path d={areaPath} style={{ fill: "color-mix(in srgb, var(--color-primary) 8%, transparent)" }} />
+      <polyline points={linePts} fill="none" style={{ stroke: "var(--color-primary)" }}
                 strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
       {points.map(({ x, y, d, i }) => {
         const label = labelOf(d, i, n);
         return (
           <g key={i}>
-            <circle cx={x} cy={y} r={3} style={{ fill: "hsl(var(--primary))" }} />
+            <circle cx={x} cy={y} r={3} style={{ fill: "var(--color-primary)" }} />
             {label && (
               <text x={x} y={H - 4} textAnchor="middle" fontSize={9} fill="currentColor" fillOpacity={0.5}>
                 {label}

@@ -76,11 +76,11 @@ export function RevenueTrendChart({ data }: { data: MonthlyRevenuePoint[] }) {
         </g>
       ))}
 
-      {n > 0 && <path d={areaPath} style={{ fill: "hsl(var(--primary) / 0.08)" }} />}
+      {n > 0 && <path d={areaPath} style={{ fill: "color-mix(in srgb, var(--color-primary) 8%, transparent)" }} />}
 
       {n > 0 && (
         <polyline
-          points={linePts} fill="none" style={{ stroke: "hsl(var(--primary))" }}
+          points={linePts} fill="none" style={{ stroke: "var(--color-primary)" }}
           strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"
         />
       )}
@@ -92,7 +92,7 @@ export function RevenueTrendChart({ data }: { data: MonthlyRevenuePoint[] }) {
           onMouseLeave={() => setTooltip(null)}
           style={{ cursor: "default" }}
         >
-          <circle cx={x} cy={y} r={4} style={{ fill: "hsl(var(--primary))" }} />
+          <circle cx={x} cy={y} r={4} style={{ fill: "var(--color-primary)" }} />
           <circle cx={x} cy={y} r={10} fill="transparent" />
           {(i % 2 === 0 || i === n - 1) && (
             <text x={x} y={H - 4} textAnchor="middle" fontSize={9} fill="currentColor" fillOpacity={0.5}>
@@ -110,7 +110,7 @@ export function RevenueTrendChart({ data }: { data: MonthlyRevenuePoint[] }) {
         return (
           <g>
             <rect x={tipX} y={tipY} width={tipW} height={tipH} rx={4}
-                  fill="hsl(var(--popover))" stroke="hsl(var(--border))" strokeWidth={0.5} />
+                  fill="var(--color-popover)" stroke="var(--color-border)" strokeWidth={0.5} />
             <text x={tipX + tipW / 2} y={tipY + 10} textAnchor="middle" fontSize={9}
                   fill="currentColor" fillOpacity={0.7}>
               {fmtMonth(tooltip.month)}
