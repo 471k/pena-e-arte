@@ -43,6 +43,19 @@ public static class AuditMetadataBuilder
             ["amount"] = c.ComputedRefundAmount,
             ["monthsUsed"] = c.ComputedMonthsUsed,
         },
+        // Backfill run counts only — no studio ids, no amounts (rule #3).
+        BackfillSubscriptionBilledAmountsCommand c => new Dictionary<string, object?>
+        {
+            ["cardBilledUpdated"] = c.CardBilledUpdated,
+            ["cardBilledSkipped"] = c.CardBilledSkipped,
+            ["cashBilledSnapshotted"] = c.CashBilledSnapshotted,
+        },
+        BackfillRevenueLedgerCommand c => new Dictionary<string, object?>
+        {
+            ["created"] = c.Created,
+            ["skippedAlreadyInLedger"] = c.SkippedAlreadyInLedger,
+            ["skippedNotBilling"] = c.SkippedNotBilling,
+        },
         UpdatePlanCommand c => new Dictionary<string, object?>
         {
             // Plan name is a studio-facing product label, not PII.

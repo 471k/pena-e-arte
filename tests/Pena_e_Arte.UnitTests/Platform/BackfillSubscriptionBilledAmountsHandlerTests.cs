@@ -119,4 +119,44 @@ public class BackfillSubscriptionBilledAmountsHandlerTests
         result.CashBilledSnapshots.Should().BeEmpty();
         result.CardBilledUpdated.Should().Be(0);
     }
+
+    [Fact]
+    public async Task Handle_PopulatesTheCommandCountsTheAuditRowIsBuiltFrom()
+    {
+        _db.Subscriptions.AddRange(
+            new Subscription
+            {
+                StudioId = Guid.NewGuid(),
+                Status = SubscriptionStatus.Active,
+                StripeSubscriptionId = "sub_card_ok",
+                CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+            },
+            new Subscription
+            {
+                StudioId = Guid.NewGuid(),
+                Status = SubscriptionStatus.Active,
+                StripeSubscriptionId = "sub_card_missing",
+                CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+            },
+            new Subscription
+            {
+                StudioId = Guid.NewGuid(),
+                Status = SubscriptionStatus.Active,
+                StripeSubscriptionId = null,
+                CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+            });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        _stripe.GetSubscriptionBilledPriceAsync("sub_card_ok", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 5900, "eur", "month", 1));
+        _stripe.GetSubscriptionBilledPriceAsync("sub_card_missing", Arg.Any<CancellationToken>())
+            .Returns((StripePriceInfo?)null);
+        BackfillSubscriptionBilledAmountsCommand command = new();
+
+        await CreateSut().Handle(command, default);
+
+        command.CardBilledUpdated.Should().Be(1);
+        command.CardBilledSkipped.Should().Be(1);
+        command.CashBilledSnapshotted.Should().Be(1);
+    }
 }

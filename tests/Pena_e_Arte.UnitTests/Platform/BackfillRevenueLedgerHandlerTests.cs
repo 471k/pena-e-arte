@@ -175,4 +175,18 @@ public class BackfillRevenueLedgerHandlerTests
         _db.SubscriptionRevenueEvents.OrderBy(e => e.OccurredAt).ThenBy(e => e.CreatedAt).Select(e => e.Type)
             .Should().Equal(RevenueEventType.New, RevenueEventType.Paused);
     }
+
+    [Fact]
+    public async Task Handle_PopulatesTheCommandCountsTheAuditRowIsBuiltFrom()
+    {
+        await SeedSubscription();                                   // seeded
+        await SeedSubscription(SubscriptionStatus.Cancelled);        // not billing
+        BackfillRevenueLedgerCommand command = new();
+
+        await CreateSut().Handle(command, default);
+
+        command.Created.Should().Be(1);
+        command.SkippedAlreadyInLedger.Should().Be(0);
+        command.SkippedNotBilling.Should().Be(1);
+    }
 }

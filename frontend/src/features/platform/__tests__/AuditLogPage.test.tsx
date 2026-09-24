@@ -80,6 +80,29 @@ describe("AuditLogPage", () => {
     expect(screen.getByText("Platform-wide")).toBeInTheDocument();
   });
 
+  it("shows a platform-wide backfill entry with target 'Platform' and no all-zero id", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/audit-log", () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: "log-3", actorUserId: "u-1", actorRole: "admin",
+              action: "Platform.RevenueLedgerBackfilled", targetType: "Platform",
+              targetId: "00000000-0000-0000-0000-000000000000",
+              studioId: null, metadata: '{"created":9}', createdAt: "2026-07-21T10:00:00Z",
+            },
+          ],
+          totalCount: 1, page: 1, pageSize: 50,
+        }),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Platform.RevenueLedgerBackfilled");
+    expect(screen.getByText("Platform")).toBeInTheDocument();
+    expect(screen.queryByText("00000000")).not.toBeInTheDocument();
+    expect(screen.getByText("Platform-wide")).toBeInTheDocument(); // the studio column
+  });
+
   it("shows the total count in the header badge", async () => {
     renderPage();
     expect(await screen.findByText("2")).toBeInTheDocument();
