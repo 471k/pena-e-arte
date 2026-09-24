@@ -35,6 +35,9 @@ public static class BillingEndpoints
             .RequireAuthorization("OwnerOnly").RequireRateLimiting("billing");
         billingGroup.MapPut("/subscription/plan", ChangePlan).RequireAuthorization("OwnerOnly");
         billingGroup.MapDelete("/subscription/plan/pending", CancelPlanChange).RequireAuthorization("OwnerOnly");
+        billingGroup.MapGet("/subscription/cancel/quote", GetCancellationQuote).RequireAuthorization("OwnerOnly");
+        billingGroup.MapPost("/subscription/cancel", CancelMySubscription).RequireAuthorization("OwnerOnly");
+        billingGroup.MapDelete("/subscription/cancel", KeepMySubscription).RequireAuthorization("OwnerOnly");
         billingGroup.MapPost("/portal", CreateBillingPortalSession).RequireAuthorization("OwnerOnly");
 
         RouteGroupBuilder webhookGroup = app.MapGroup("/api/v1/webhooks/stripe");
@@ -145,6 +148,32 @@ public static class BillingEndpoints
         return Results.Ok(result);
     }
 
+    private static async Task<IResult> GetCancellationQuote(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        CancellationQuoteResponse result = await mediator.Send(new GetCancellationQuoteQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> CancelMySubscription(
+        ICurrentTenant tenant,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        SubscriptionResponse result = await mediator.Send(new CancelMySubscriptionCommand(tenant.StudioId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> KeepMySubscription(
+        ICurrentTenant tenant,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        SubscriptionResponse result = await mediator.Send(new KeepMySubscriptionCommand(tenant.StudioId), ct);
+        return Results.Ok(result);
+    }
+
     private static async Task<IResult> CreateBillingPortalSession(
         CreateBillingPortalRequest request,
         ISender mediator,
@@ -202,10 +231,23 @@ public static class BillingEndpoints
                             decimal balanceCredit = invoice.StartingBalance < invoice.EndingBalance
                                 ? 0m
                                 : (invoice.StartingBalance - (invoice.EndingBalance ?? invoice.StartingBalance)) / 100m;
+
+                            // Yearly-cancellation-refund snapshot (Batch 3a) — verified against
+                            // the compiled Stripe.net 52.4.1 SDK's post-"thin invoice" shape (see
+                            // docs/claude/overnight-prompt-yearly-cancellation-refunds-2026-09-24.md
+                            // §3): PeriodStart comes off the first invoice line item, not a
+                            // top-level Invoice property; the refund target comes off
+                            // Payments.Data[0].Payment.PaymentIntentId — Invoice no longer
+                            // exposes PaymentIntentId directly at all in this SDK version.
+                            DateTime? periodStart = invoice.Lines?.Data?.FirstOrDefault()?.Period?.Start;
+                            string? paymentIntentId =
+                                invoice.Payments?.Data?.FirstOrDefault()?.Payment?.PaymentIntentId;
+
                             await mediator.Send(new HandleInvoicePaidCommand(
                                 stripeSubId, invoice.PeriodEnd, invoice.Id,
                                 invoice.AmountPaid / 100m, discountAmount + balanceCredit,
-                                invoice.Currency, invoice.StatusTransitions?.PaidAt ?? DateTime.UtcNow), ct);
+                                invoice.Currency, invoice.StatusTransitions?.PaidAt ?? DateTime.UtcNow,
+                                periodStart, paymentIntentId), ct);
                         }
                         break;
                     }
@@ -229,6 +271,15 @@ public static class BillingEndpoints
 
                 case "customer.subscription.deleted" when stripeEvent.Data.Object is Stripe.Subscription sub:
                     await mediator.Send(new HandleSubscriptionDeletedCommand(sub.Id), ct);
+                    break;
+
+                // Yearly-cancellation-refund status transitions (Batch 3a). Stripe has used
+                // both event-type strings across API versions for a refund status change —
+                // this account's actual configured webhook events could not be verified from
+                // this session (no live Stripe Dashboard access), so both are handled
+                // defensively; see docs/claude/overnight-prompt-yearly-cancellation-refunds-2026-09-24.md §9.1.
+                case "refund.updated" or "charge.refund.updated" when stripeEvent.Data.Object is Refund refund:
+                    await mediator.Send(new HandleRefundUpdatedCommand(refund.Id, refund.Status, refund.FailureReason), ct);
                     break;
             }
         }

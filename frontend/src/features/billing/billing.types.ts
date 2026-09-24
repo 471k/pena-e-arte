@@ -66,6 +66,18 @@ export interface BillingPortalResponse {
   url: string;
 }
 
+// Camelcase mirror of Pena_e_Arte.Contracts.Responses.CancellationQuoteResponse — what the
+// owner sees before confirming a cancellation, computed by the same YearlyRefundCalculator
+// the backend uses to actually issue the refund.
+export interface CancellationQuoteResponse {
+  billingInterval:       "Monthly" | "Yearly";
+  refundAmount:          number;
+  monthsUsed:            number | null;
+  accessEndDate:         string;
+  amountPaid:            number | null;
+  monthlyReferencePrice: number | null;
+}
+
 // Returns the active price for the given plan at the given billing interval, or
 // undefined when the tier doesn't offer that interval (or it's currently disabled).
 export function priceFor(plan: PlanResponse, interval: "Monthly" | "Yearly"): PlanPriceResponse | undefined {
