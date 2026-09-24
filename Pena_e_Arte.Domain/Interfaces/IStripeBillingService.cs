@@ -108,4 +108,18 @@ public interface IStripeBillingService
     /// <summary>D6: clears a paused subscription's pause_collection — billing resumes at the
     /// next normal renewal date. Idempotent.</summary>
     Task ResumeCollectionAsync(string stripeSubscriptionId, CancellationToken ct);
+
+    /// <summary>Sets cancel_at_period_end=true — the studio keeps access to CurrentPeriodEnd,
+    /// same as today's monthly-cancel-via-portal behaviour. Idempotent.</summary>
+    Task ScheduleCancellationAsync(string stripeSubscriptionId, CancellationToken ct);
+
+    /// <summary>Clears cancel_at_period_end — "Keep my plan". Idempotent.</summary>
+    Task UndoScheduledCancellationAsync(string stripeSubscriptionId, CancellationToken ct);
+
+    /// <summary>Refunds part or all of a payment (the yearly-refund formula's computed amount,
+    /// or an admin override). amountInCents in integer cents. Idempotent via idempotencyKey —
+    /// callers use subscription id + invoice period start so a retry never double-refunds.
+    /// Returns the Stripe refund id and its initial status ("succeeded"/"pending"/"failed").</summary>
+    Task<(string RefundId, string Status)> RefundAsync(
+        string stripePaymentIntentId, long amountInCents, string idempotencyKey, CancellationToken ct);
 }

@@ -6,6 +6,7 @@ using Pena_e_Arte.Application.Support.Commands;
 using Pena_e_Arte.Application.Support.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -142,10 +143,12 @@ public static class PlatformEndpoints
 
     private static async Task<IResult> CancelSubscription(
         Guid studioId,
+        CancelSubscriptionRequest? request,
         ISender mediator,
         CancellationToken ct)
     {
-        await mediator.Send(new CancelSubscriptionCommand(studioId), ct);
+        RefundRule? overrideRule = request?.Override is string o ? Enum.Parse<RefundRule>(o, ignoreCase: true) : null;
+        await mediator.Send(new CancelSubscriptionCommand(studioId, overrideRule, request?.Reason), ct);
         return Results.NoContent();
     }
 

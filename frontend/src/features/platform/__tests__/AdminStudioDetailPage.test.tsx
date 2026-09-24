@@ -125,6 +125,7 @@ const server = setupServer(
       artistCount:      3,
       clientCount:      47,
       appointmentCount: 129,
+      recentRefunds:    [],
     })
   ),
   http.get("http://localhost/api/v1/platform/referral-codes", () => HttpResponse.json([])),

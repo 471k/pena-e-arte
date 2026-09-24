@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle, Banknote, Calendar, CalendarClock,
-  CreditCard, ExternalLink, Loader2, RefreshCw, Settings, ShieldX, Zap,
+  CreditCard, ExternalLink, Loader2, RefreshCw, Settings, ShieldX, XCircle, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
 import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
@@ -18,6 +22,9 @@ import {
   useCancelPlanChangeMutation,
   useFinalizeCheckoutMutation,
   useCreatePortalSessionMutation,
+  useGetCancellationQuoteQuery,
+  useCancelSubscriptionMutation,
+  useKeepSubscriptionMutation,
 } from "../billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { priceFor, type SubscriptionResponse, type PlanResponse, type PlanUsageDimension, type PlanUsageResponse } from "../billing.types";
@@ -36,6 +43,77 @@ function formatEur(euros: number): string {
     currency:              "EUR",
     minimumFractionDigits: 0,
   }).format(euros);
+}
+
+// Owner-facing cancel flow — replaces Stripe-portal cancellation (A4). Shown from both the
+// card-billed and cash-billed trigger points below; the quote is skipped for cash-billed
+// (always immediate, no refund) since there's nothing to compute.
+interface CancelSubscriptionDialogProps {
+  open:         boolean;
+  onOpenChange: (open: boolean) => void;
+  isCashBilled: boolean;
+  isYearly:     boolean;
+}
+
+function CancelSubscriptionDialog({ open, onOpenChange, isCashBilled, isYearly }: CancelSubscriptionDialogProps) {
+  const { data: quote, isFetching: loadingQuote } =
+    useGetCancellationQuoteQuery(undefined, { skip: !open || isCashBilled });
+  const [cancelSubscription, { isLoading: cancelling }] = useCancelSubscriptionMutation();
+
+  async function handleConfirm() {
+    try {
+      await cancelSubscription().unwrap();
+      toast.success("Your subscription has been cancelled.");
+      onOpenChange(false);
+    } catch {
+      toast.error("Failed to cancel your subscription. Please try again.");
+    }
+  }
+
+  function body() {
+    if (isCashBilled) {
+      return "You'll lose access today. This subscription is billed in cash — no refund applies.";
+    }
+    if (loadingQuote || !quote) {
+      return "Checking your refund eligibility…";
+    }
+    if (quote.billingInterval === "Yearly") {
+      return quote.refundAmount > 0
+        ? `You'll get ${formatEur(quote.refundAmount)} back and lose access today.`
+        : "You won't get a refund (you've used the full value of this year's plan) and you'll lose access today.";
+    }
+    return `You'll keep access until ${formatDate(quote.accessEndDate)}. No refund — you've already paid for this period.`;
+  }
+
+  const breakdown =
+    !isCashBilled && quote?.billingInterval === "Yearly" && quote.monthsUsed !== null
+      ? `${quote.monthsUsed} month${quote.monthsUsed === 1 ? "" : "s"} used of ${formatEur(quote.amountPaid ?? 0)} paid`
+      : null;
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancel your {isYearly ? "yearly" : "monthly"} plan?</AlertDialogTitle>
+          <AlertDialogDescription className="space-y-1">
+            <span className="block">{body()}</span>
+            {breakdown && <span className="block text-xs">{breakdown}</span>}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={cancelling}>Keep my plan</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => { e.preventDefault(); void handleConfirm(); }}
+            disabled={cancelling || (!isCashBilled && loadingQuote)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Cancel plan
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 interface StatusConfig {
@@ -151,6 +229,17 @@ export function BillingPage() {
   const { data: usage } =
     useGetPlanUsageQuery(undefined, { refetchOnMountOrArgChange: true });
   const [cancelPlanChange, { isLoading: cancellingChange }] = useCancelPlanChangeMutation();
+  const [keepSubscription, { isLoading: keepingSubscription }] = useKeepSubscriptionMutation();
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+
+  async function handleKeepSubscription() {
+    try {
+      await keepSubscription().unwrap();
+      toast.success("Your subscription will continue as normal.");
+    } catch {
+      toast.error("Failed to keep your subscription. Please try again.");
+    }
+  }
 
   async function handleCancelPlanChange() {
     try {
@@ -389,13 +478,24 @@ export function BillingPage() {
                   Manage billing
                   {!openingPortal && <ExternalLink className="h-3 w-3 opacity-40" />}
                 </Button>
+                {!sub.cancelAtPeriodEnd && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1.5 text-destructive-text hover:text-destructive-text"
+                    onClick={() => setCancelDialogOpen(true)}
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    Cancel plan
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Subscription scheduled to cancel at period end (set via the Stripe billing
-            portal — there is no in-app "undo", so point back to the same portal). */}
+        {/* Subscription scheduled to cancel at period end (Monthly — set via in-app cancel,
+            §2.4; "Keep my plan" reverses it both locally and in Stripe). */}
         {sub.status === "Active" && sub.cancelAtPeriodEnd && (
           <Card className="border-amber-500/20">
             <CardContent className="p-5 space-y-3">
@@ -412,15 +512,14 @@ export function BillingPage() {
                 variant="outline"
                 size="sm"
                 className="w-full gap-1.5"
-                disabled={openingPortal}
-                onClick={() => void handleManageBilling()}
+                disabled={keepingSubscription}
+                onClick={() => void handleKeepSubscription()}
               >
-                {openingPortal
+                {keepingSubscription
                   ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : <Settings className="h-3.5 w-3.5" />
+                  : <RefreshCw className="h-3.5 w-3.5" />
                 }
-                Manage billing
-                {!openingPortal && <ExternalLink className="h-3 w-3 opacity-40" />}
+                Keep my plan
               </Button>
             </CardContent>
           </Card>
@@ -489,6 +588,15 @@ export function BillingPage() {
                 </a>
                 .
               </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full gap-1.5 text-destructive-text hover:text-destructive-text"
+                onClick={() => setCancelDialogOpen(true)}
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Cancel plan
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -516,6 +624,13 @@ export function BillingPage() {
             </CardContent>
           </Card>
         )}
+
+        <CancelSubscriptionDialog
+          open={cancelDialogOpen}
+          onOpenChange={setCancelDialogOpen}
+          isCashBilled={isCashBilled}
+          isYearly={sub.billingInterval === "Yearly"}
+        />
 
       </main>
     </div>

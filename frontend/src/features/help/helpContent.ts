@@ -1397,6 +1397,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     relatedArticleIds: ["owner-billing"],
   },
   {
+    // TODO(Batch 3a, 2026-09-24): this article doesn't yet mention the yearly-cancellation
+    // refund rule (A9) — deliberately deferred per CLAUDE.md rule #7's spec-directed exception
+    // (Starter/Growth yearly aren't purchasable yet; refund terms need legal review before
+    // publication). See docs/claude/overnight-prompt-yearly-cancellation-refunds-2026-09-24.md
+    // §11. Add refund-formula copy here once A8's launch checklist clears.
     id: "owner-subscribe",
     roles: [Owner],
     title: "Choose or change your subscription plan",

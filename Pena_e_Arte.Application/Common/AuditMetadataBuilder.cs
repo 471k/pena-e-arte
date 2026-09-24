@@ -30,6 +30,19 @@ public static class AuditMetadataBuilder
         {
             ["planId"] = c.PlanId,
         },
+        // Yearly-cancellation-refund amounts/counts only — never names, never card data (rule #3).
+        CancelSubscriptionCommand c => new Dictionary<string, object?>
+        {
+            ["rule"] = c.ComputedRule,
+            ["amount"] = c.ComputedRefundAmount,
+            ["monthsUsed"] = c.ComputedMonthsUsed,
+            ["reason"] = c.OverrideReason,
+        },
+        CancelMySubscriptionCommand c => new Dictionary<string, object?>
+        {
+            ["amount"] = c.ComputedRefundAmount,
+            ["monthsUsed"] = c.ComputedMonthsUsed,
+        },
         UpdatePlanCommand c => new Dictionary<string, object?>
         {
             // Plan name is a studio-facing product label, not PII.

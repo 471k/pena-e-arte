@@ -83,6 +83,12 @@ public class GetPlatformStatsHandler(IAppDbContext db, ILogger<GetPlatformStatsH
             .Where(p => p.PaidAt >= monthStart)
             .SumAsync(p => p.DiscountAmount, ct);
 
+        // A7 — "Refunds this month". Only Succeeded rows count as an actual cash outflow;
+        // Pending/Failed haven't (yet, or ever) actually left the account.
+        decimal refundsThisMonth = await db.SubscriptionRefunds
+            .Where(r => r.Status == RefundStatus.Succeeded && r.CreatedAt >= monthStart)
+            .SumAsync(r => r.Amount, ct);
+
         return new PlatformStatsResponse(
             totalStudios,
             activeSubscriptions,
@@ -99,6 +105,7 @@ public class GetPlatformStatsHandler(IAppDbContext db, ILogger<GetPlatformStatsH
             atRiskMrr,
             scheduledChurnMrr,
             pausedMrr,
-            discountsThisMonth);
+            discountsThisMonth,
+            refundsThisMonth);
     }
 }

@@ -114,6 +114,8 @@ export function AdminStudioDetailPage() {
   const [extending,  setExtending]  = useState(false);
   const [activating, setActivating] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [cancelOverride, setCancelOverride] = useState<"formula" | "AdminFull" | "AdminNone">("formula");
+  const [cancelReason,   setCancelReason]   = useState("");
   const [days,       setDays]       = useState("7");
   const [cashPlanId, setCashPlanId] = useState("");
   const [cashNote,   setCashNote]   = useState("");
@@ -183,10 +185,13 @@ export function AdminStudioDetailPage() {
 
   async function handleCancel() {
     if (!studioId) return;
+    const override = cancelOverride === "formula" ? undefined : cancelOverride;
     try {
-      await cancelSub(studioId).unwrap();
+      await cancelSub({ studioId, override, reason: override ? cancelReason.trim() : undefined }).unwrap();
       toast.success("Subscription cancelled");
       setConfirming(false);
+      setCancelOverride("formula");
+      setCancelReason("");
     } catch {
       toast.error("Failed to cancel subscription");
     }
@@ -427,6 +432,35 @@ export function AdminStudioDetailPage() {
                         <p className="text-[10px] text-muted-foreground mt-0.5">Appointments</p>
                       </div>
                     </div>
+
+                    {/* Recent refunds (A6 — "visible on the studio's admin page" for a
+                        Failed refund; also shows Succeeded/Pending for context). */}
+                    {summary.recentRefunds && summary.recentRefunds.length > 0 && (
+                      <div className="border-t pt-3 space-y-1.5">
+                        <p className="text-[11px] text-muted-foreground font-medium uppercase">
+                          Recent refunds
+                        </p>
+                        {summary.recentRefunds.map((refund, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs gap-2">
+                            <span className="tabular-nums">
+                              €{refund.amount.toFixed(2)} · {new Date(refund.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                            </span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${
+                                refund.status === "Failed"
+                                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                                  : refund.status === "Succeeded"
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                              }`}
+                              title={refund.failureReason ?? undefined}
+                            >
+                              {refund.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">Summary unavailable.</p>
@@ -702,22 +736,61 @@ export function AdminStudioDetailPage() {
                   </div>
                 )}
 
-                {/* Cancel subscription confirm */}
+                {/* Cancel subscription confirm — includes the refund override (§2.5). The
+                    admin's own reason is required whenever they override the formula. */}
                 {confirming && (
                   <div className="flex flex-col gap-1.5 pt-2 border-t">
                     <p className="text-xs text-destructive-text font-medium">Cancel subscription permanently?</p>
                     <p className="text-xs text-muted-foreground">
                       Billing ends immediately. Studio data is retained and the studio can re-subscribe at any time.
+                      Only affects the refund on a Yearly plan with a paid invoice — otherwise there's nothing to refund.
                     </p>
+                    <fieldset className="space-y-1">
+                      <legend className="text-xs font-medium text-muted-foreground">Refund</legend>
+                      {([
+                        ["formula", "Use the formula (default)"],
+                        ["AdminFull", "Full refund"],
+                        ["AdminNone", "No refund"],
+                      ] as const).map(([value, label]) => (
+                        <label key={value} className="flex items-center gap-1.5 text-xs">
+                          <input
+                            type="radio"
+                            name="cancel-refund-override"
+                            value={value}
+                            checked={cancelOverride === value}
+                            onChange={() => setCancelOverride(value)}
+                            className="h-3 w-3"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </fieldset>
+                    {cancelOverride !== "formula" && (
+                      <div className="space-y-1">
+                        <Label htmlFor="detail-cancel-reason" className="text-xs">
+                          Reason <span className="text-destructive-text">(required)</span>
+                        </Label>
+                        <Input
+                          id="detail-cancel-reason"
+                          value={cancelReason}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          placeholder="e.g. Goodwill gesture per support ticket #123"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 mt-0.5">
                       <Button
                         size="sm" variant="destructive" className="h-7 px-2 text-xs"
-                        disabled={cancelling_} onClick={handleCancel}
+                        disabled={cancelling_ || (cancelOverride !== "formula" && cancelReason.trim().length === 0)}
+                        onClick={handleCancel}
                       >
                         {cancelling_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                        onClick={() => setConfirming(false)}>Back</Button>
+                        onClick={() => { setConfirming(false); setCancelOverride("formula"); setCancelReason(""); }}>
+                        Back
+                      </Button>
                     </div>
                   </div>
                 )}

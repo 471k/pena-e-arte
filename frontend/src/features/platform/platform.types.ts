@@ -15,6 +15,7 @@ export interface PlatformStatsResponse {
   scheduledChurnMrr:   number;
   pausedMrr:           number;
   discountsThisMonth:  number;
+  refundsThisMonth:    number;
 }
 
 export type SubscriptionStatus =
@@ -64,12 +65,20 @@ export interface MrrDataPoint {
   mrr:   number;
 }
 
+export interface RecentRefundResponse {
+  amount:        number;
+  status:        "Pending" | "Succeeded" | "Failed";
+  createdAt:     string;
+  failureReason: string | null;
+}
+
 export interface AdminStudioSummaryResponse {
   ownerEmail:       string;
   ownerDisplayName: string;
   artistCount:      number;
   clientCount:      number;
   appointmentCount: number;
+  recentRefunds:    RecentRefundResponse[];
 }
 
 export interface StudioPlanUsageRow {
