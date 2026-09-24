@@ -193,10 +193,12 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
   return (
     <Card className={sub.isSuspended ? "border-amber-400/40 dark:border-amber-600/30" : ""}>
       <CardContent className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-4">
+        {/* Stacked on phones, side by side from sm up: the action group below is wider than a phone
+            and must be free to wrap there, or it pushes the whole page past the viewport. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="space-y-0.5 min-w-0">
-            <div className="flex items-center gap-2 flex-nowrap min-w-0">
-              <span className="font-medium text-sm shrink-0">{sub.studioName}</span>
+            <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
+              <span className="font-medium text-sm">{sub.studioName}</span>
               <button
                 type="button"
                 onClick={(e) => {
@@ -241,7 +243,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap sm:justify-end sm:shrink-0">
             <Link to={`/platform/studios/${sub.studioId}`}>
               <Button
                 size="sm"

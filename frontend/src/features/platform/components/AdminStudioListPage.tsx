@@ -231,10 +231,12 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
       <CardContent className="p-4 space-y-2">
 
         {/* ── Main row ─────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4">
+        {/* Stacked on phones, side by side from sm up (see SubscriptionOversightPage). The name / slug /
+            status line wraps instead of forcing the page wider than the viewport. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="space-y-0.5 min-w-0">
-            <div className="flex items-center gap-2 flex-nowrap min-w-0">
-              <span className="font-medium text-sm shrink-0">{studio.name}</span>
+            <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
+              <span className="font-medium text-sm">{studio.name}</span>
               <button
                 type="button"
                 onClick={(e) => {
@@ -272,7 +274,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
           </div>
 
           {/* ── Action buttons ──────────────────────────────────────────── */}
-          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0 sm:justify-end">
 
             {/* 0. View detail — always visible, never hidden by anyExpanded */}
             <Link to={`/platform/studios/${studio.id}`}>
